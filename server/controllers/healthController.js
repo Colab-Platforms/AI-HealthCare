@@ -261,33 +261,69 @@ exports.aiChat = async (req, res) => {
       status: 'completed' 
     }).sort({ createdAt: -1 });
 
-    // Prepare context
-    let contextInfo = `User Profile: ${req.user.name}`;
+    // Prepare system prompt with user context
+    let systemPrompt = `You are a helpful medical AI assistant specializing in health and wellness. 
+    
+User Profile: ${req.user.name}`;
+    
     if (req.user.profile) {
-      contextInfo += `, Age: ${req.user.profile.age || 'N/A'}, Gender: ${req.user.profile.gender || 'N/A'}`;
+      systemPrompt += `, Age: ${req.user.profile.age || 'N/A'}, Gender: ${req.user.profile.gender || 'N/A'}`;
     }
 
     if (latestReport && latestReport.aiAnalysis) {
       const analysis = latestReport.aiAnalysis;
-      contextInfo += `\n\nLatest Health Data:`;
+      systemPrompt += `\n\nUser's Latest Health Data (${new Date(latestReport.createdAt).toLocaleDateString()}):`;
       if (analysis.healthScore) {
-        contextInfo += `\n- Health Score: ${analysis.healthScore}/100`;
+        systemPrompt += `\n- Health Score: ${analysis.healthScore}/100`;
       }
       if (analysis.deficiencies && analysis.deficiencies.length > 0) {
-        contextInfo += `\n- Deficiencies: ${analysis.deficiencies.join(', ')}`;
+        systemPrompt += `\n- Identified Deficiencies: ${analysis.deficiencies.map(d => d.name).join(', ')}`;
       }
       if (analysis.metrics) {
-        contextInfo += `\n- Key Metrics: ${JSON.stringify(analysis.metrics)}`;
+        systemPrompt += `\n- Key Metrics: ${JSON.stringify(analysis.metrics)}`;
       }
     }
 
-    // Call AI service with context
-    const { chatWithReport } = require('../services/aiService');
-    const aiResponse = await chatWithReport(
-      query,
-      contextInfo,
-      conversationHistory || []
+    systemPrompt += `\n\nProvide helpful, accurate health information. Always remind users to consult healthcare professionals for medical decisions.`;
+
+    // Build messages array for AI
+    const messages = [
+      { role: 'system', content: systemPrompt }
+    ];
+
+    // Add conversation history if provided
+    if (conversationHistory && Array.isArray(conversationHistory)) {
+      conversationHistory.slice(-10).forEach(msg => {
+        if (msg.role && msg.content) {
+          messages.push({ role: msg.role, content: msg.content });
+        }
+      });
+    }
+
+    // Add current query
+    messages.push({ role: 'user', content: query });
+
+    // Call OpenRouter API
+    const axios = require('axios');
+    const response = await axios.post(
+      'https://openrouter.ai/api/v1/chat/completions',
+      {
+        model: 'openai/chatgpt-4o-latest',
+        messages,
+        temperature: 0.3,
+        max_tokens: 1000
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': process.env.CLIENT_URL || 'http://localhost:3000',
+          'X-Title': 'HealthAI Platform'
+        }
+      }
     );
+
+    const aiResponse = response.data.choices[0].message.content;
 
     res.json({ 
       success: true,
@@ -295,7 +331,7 @@ exports.aiChat = async (req, res) => {
       timestamp: new Date()
     });
   } catch (error) {
-    console.error('AI Chat error:', error);
+    console.error('AI Chat error:', error.response?.data || error.message);
     res.status(500).json({ 
       success: false,
       message: 'Failed to process AI chat request',

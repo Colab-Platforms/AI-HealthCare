@@ -49,23 +49,50 @@ export default function AIChat() {
     };
 
     setMessages(prev => [...prev, userMessage]);
+    const currentInput = input;
     setInput('');
     setLoading(true);
 
     try {
-      // Simulate AI response (replace with actual API call)
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      // Call actual AI API
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/health/ai-chat', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          query: currentInput,
+          conversationHistory: messages.filter(m => m.role !== 'assistant' || !m.content.includes('Hello')).slice(-10)
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get AI response');
+      }
+
+      const data = await response.json();
       
       const aiResponse = {
         role: 'assistant',
-        content: generateAIResponse(input),
+        content: data.response || generateAIResponse(currentInput),
         timestamp: new Date()
       };
 
       setMessages(prev => [...prev, aiResponse]);
     } catch (error) {
       console.error('AI Chat error:', error);
-      toast.error('Failed to get AI response');
+      
+      // Fallback to template response if API fails
+      const aiResponse = {
+        role: 'assistant',
+        content: generateAIResponse(currentInput),
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, aiResponse]);
+      
+      toast.error('Using offline mode - AI service unavailable');
     } finally {
       setLoading(false);
     }
