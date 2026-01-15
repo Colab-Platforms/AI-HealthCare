@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const AI_MODEL = 'openai/chatgpt-4o-latest';
+const AI_MODEL = 'google/gemini-2.0-flash-exp:free'; // FREE Google Gemini model
 
 const makeOpenRouterRequest = async (messages, maxTokens = 2500) => {
   const response = await axios.post(
@@ -9,14 +9,14 @@ const makeOpenRouterRequest = async (messages, maxTokens = 2500) => {
     {
       model: AI_MODEL,
       messages,
-      temperature: 0.3,
+      temperature: 0.7,
       max_tokens: maxTokens
     },
     {
       headers: {
         'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
         'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.APP_URL || 'http://localhost:3000',
+        'HTTP-Referer': process.env.CLIENT_URL || process.env.APP_URL || 'https://ai-diagnostic-steel.vercel.app',
         'X-Title': 'HealthAI Platform'
       }
     }

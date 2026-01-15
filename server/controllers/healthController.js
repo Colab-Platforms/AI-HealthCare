@@ -313,23 +313,23 @@ User Profile: ${req.user.name}`;
     // Add current query
     messages.push({ role: 'user', content: query });
 
-    console.log('Calling OpenRouter API...');
+    console.log('Calling OpenRouter API with free model...');
 
-    // Call OpenRouter API
+    // Call OpenRouter API with FREE model
     const axios = require('axios');
     const response = await axios.post(
       'https://openrouter.ai/api/v1/chat/completions',
       {
-        model: 'openai/chatgpt-4o-latest',
+        model: 'google/gemini-2.0-flash-exp:free', // FREE Google Gemini model
         messages,
-        temperature: 0.3,
-        max_tokens: 1000
+        temperature: 0.7,
+        max_tokens: 2000
       },
       {
         headers: {
           'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
           'Content-Type': 'application/json',
-          'HTTP-Referer': process.env.CLIENT_URL || 'http://localhost:3000',
+          'HTTP-Referer': process.env.CLIENT_URL || 'https://ai-diagnostic-steel.vercel.app',
           'X-Title': 'HealthAI Platform'
         },
         timeout: 30000 // 30 second timeout
