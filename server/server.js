@@ -9,8 +9,12 @@ dotenv.config();
 
 // Create uploads directory
 const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+} catch (error) {
+  console.error('Error creating uploads directory:', error);
 }
 
 const app = express();
@@ -23,38 +27,61 @@ app.use(cors({
 app.use(express.json());
 app.use('/uploads', express.static(uploadsDir));
 
-// Routes
-app.use('/api/auth', require('./routes/authRoutes'));
-app.use('/api/health', require('./routes/healthRoutes'));
-app.use('/api/doctors', require('./routes/doctorRoutes'));
-app.use('/api/admin', require('./routes/adminRoutes'));
-app.use('/api/wearables', require('./routes/wearableRoutes'));
-
-// Health check
+// Health check - must be before other routes
 app.get('/api/health-check', (req, res) => {
-  res.json({ status: 'ok', message: 'Healthcare AI Platform API' });
+  res.json({ 
+    status: 'ok', 
+    message: 'Healthcare AI Platform API',
+    env: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString()
+  });
 });
+
+// Routes - wrapped in try-catch for Vercel
+try {
+  app.use('/api/auth', require('./routes/authRoutes'));
+  app.use('/api/health', require('./routes/healthRoutes'));
+  app.use('/api/doctors', require('./routes/doctorRoutes'));
+  app.use('/api/admin', require('./routes/adminRoutes'));
+  app.use('/api/wearables', require('./routes/wearableRoutes'));
+} catch (error) {
+  console.error('Error loading routes:', error);
+}
 
 // Error handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ message: err.message || 'Something went wrong!' });
+  console.error('Error:', err.stack);
+  res.status(500).json({ 
+    message: err.message || 'Something went wrong!',
+    error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  });
 });
 
 // Connect to database
 let dbConnected = false;
 const initDB = async () => {
   if (!dbConnected) {
-    await connectDB();
-    dbConnected = true;
-    // Initialize reminder service after database connection
-    require('./services/reminderService');
+    try {
+      await connectDB();
+      dbConnected = true;
+      console.log('Database connected successfully');
+      // Initialize reminder service after database connection
+      try {
+        require('./services/reminderService');
+      } catch (error) {
+        console.error('Error loading reminder service:', error);
+      }
+    } catch (error) {
+      console.error('Database connection error:', error);
+      // Don't throw - let the app start anyway
+    }
   }
 };
 
 // For Vercel serverless
 if (process.env.VERCEL) {
-  initDB().catch(console.error);
+  console.log('Running in Vercel environment');
+  initDB().catch(err => console.error('DB init error:', err));
   module.exports = app;
 } else {
   // For local development
@@ -69,5 +96,8 @@ if (process.env.VERCEL) {
       console.log(`Local: http://localhost:${PORT}`);
       console.log(`Network: http://<your-local-ip>:${PORT}`);
     });
+  }).catch(err => {
+    console.error('Failed to start server:', err);
+    process.exit(1);
   });
 }
