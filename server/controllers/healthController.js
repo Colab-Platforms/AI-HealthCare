@@ -255,6 +255,16 @@ exports.aiChat = async (req, res) => {
       return res.status(400).json({ message: 'Query is required' });
     }
 
+    // Check if API key is configured
+    if (!process.env.OPENROUTER_API_KEY) {
+      console.error('OPENROUTER_API_KEY not configured');
+      return res.status(500).json({ 
+        success: false,
+        message: 'AI service not configured. Please contact administrator.',
+        error: 'Missing API key'
+      });
+    }
+
     // Get user's latest health data for context
     const latestReport = await HealthReport.findOne({ 
       user: req.user._id, 
@@ -303,6 +313,8 @@ User Profile: ${req.user.name}`;
     // Add current query
     messages.push({ role: 'user', content: query });
 
+    console.log('Calling OpenRouter API...');
+
     // Call OpenRouter API
     const axios = require('axios');
     const response = await axios.post(
@@ -319,11 +331,13 @@ User Profile: ${req.user.name}`;
           'Content-Type': 'application/json',
           'HTTP-Referer': process.env.CLIENT_URL || 'http://localhost:3000',
           'X-Title': 'HealthAI Platform'
-        }
+        },
+        timeout: 30000 // 30 second timeout
       }
     );
 
     const aiResponse = response.data.choices[0].message.content;
+    console.log('OpenRouter API success');
 
     res.json({ 
       success: true,
@@ -331,11 +345,16 @@ User Profile: ${req.user.name}`;
       timestamp: new Date()
     });
   } catch (error) {
-    console.error('AI Chat error:', error.response?.data || error.message);
+    console.error('AI Chat error details:', {
+      message: error.message,
+      response: error.response?.data,
+      status: error.response?.status
+    });
+    
     res.status(500).json({ 
       success: false,
       message: 'Failed to process AI chat request',
-      error: error.message 
+      error: error.response?.data?.error?.message || error.message
     });
   }
 };
