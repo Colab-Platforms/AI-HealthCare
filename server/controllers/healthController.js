@@ -12,7 +12,8 @@ exports.uploadReport = async (req, res) => {
 
     let extractedText = '';
     if (req.file.mimetype === 'application/pdf') {
-      const dataBuffer = fs.readFileSync(req.file.path);
+      // Handle both memory storage (Vercel) and disk storage (local)
+      const dataBuffer = req.file.buffer || fs.readFileSync(req.file.path);
       const pdfData = await pdfParse(dataBuffer);
       extractedText = pdfData.text;
     } else {
@@ -28,8 +29,8 @@ exports.uploadReport = async (req, res) => {
       user: req.user._id,
       reportType: req.body.reportType || 'general',
       originalFile: {
-        filename: req.file.filename,
-        path: req.file.path,
+        filename: req.file.originalname || req.file.filename,
+        path: req.file.path || 'memory-storage',
         mimetype: req.file.mimetype
       },
       extractedText,
