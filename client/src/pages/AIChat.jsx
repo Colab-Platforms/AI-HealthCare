@@ -56,7 +56,13 @@ export default function AIChat() {
     try {
       // Call actual AI API
       const token = localStorage.getItem('token');
-      const response = await fetch('/api/health/ai-chat', {
+      
+      // Use full URL for production, relative for development
+      const apiUrl = import.meta.env.PROD 
+        ? `${window.location.origin}/api/health/ai-chat`
+        : '/api/health/ai-chat';
+      
+      const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -69,7 +75,9 @@ export default function AIChat() {
       });
 
       if (!response.ok) {
-        throw new Error('Failed to get AI response');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('API Error:', response.status, errorData);
+        throw new Error(errorData.message || 'Failed to get AI response');
       }
 
       const data = await response.json();
