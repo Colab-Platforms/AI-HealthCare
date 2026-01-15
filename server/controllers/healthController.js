@@ -265,11 +265,30 @@ exports.aiChat = async (req, res) => {
       });
     }
 
+    // Ensure user exists
+    if (!req.user) {
+      console.error('User not found in request');
+      return res.status(401).json({ 
+        success: false,
+        message: 'Authentication required',
+        error: 'User not found.'
+      });
+    }
+
+    console.log('AI Chat request from user:', req.user._id);
+
     // Get user's latest health data for context
-    const latestReport = await HealthReport.findOne({ 
-      user: req.user._id, 
-      status: 'completed' 
-    }).sort({ createdAt: -1 });
+    let latestReport = null;
+    try {
+      const HealthReport = require('../models/HealthReport');
+      latestReport = await HealthReport.findOne({ 
+        user: req.user._id, 
+        status: 'completed' 
+      }).sort({ createdAt: -1 });
+    } catch (dbError) {
+      console.error('Error fetching health report:', dbError.message);
+      // Continue without health data
+    }
 
     // Prepare system prompt with user context
     let systemPrompt = `You are a helpful medical AI assistant specializing in health and wellness. 
