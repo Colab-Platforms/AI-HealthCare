@@ -55,8 +55,8 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
 
   return (
     <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar - Fixed on desktop, slide-in on mobile */}
-      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-white border-r border-slate-200 shadow-sm transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+      {/* Sidebar - Slide from RIGHT on mobile, fixed on desktop */}
+      <aside className={`fixed inset-y-0 right-0 lg:left-0 lg:right-auto z-50 w-64 bg-white border-l lg:border-r lg:border-l-0 border-slate-200 shadow-lg lg:shadow-sm transform transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
         <div className="flex flex-col h-full">
           {/* Logo - Fixed at top */}
           <div className="p-6 border-b border-slate-100 shrink-0">

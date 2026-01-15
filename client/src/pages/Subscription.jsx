@@ -5,8 +5,8 @@ import { Crown, Check, Calendar, CreditCard, Zap, Star } from 'lucide-react';
 
 const plans = [
   { id: 'free', name: 'Free', price: 0, period: 'forever', features: ['1 Report analysis per month', 'Basic AI insights', 'View doctor listings', 'Email support'], color: 'slate', icon: Star },
-  { id: 'basic', name: 'Basic', price: 299, period: 'month', features: ['5 Report analyses per month', 'Full AI analysis with deficiencies', 'Personalized diet plans', 'Supplement recommendations', 'Health trend tracking', 'Priority support'], color: 'cyan', icon: Zap, popular: true },
-  { id: 'premium', name: 'Premium', price: 599, period: 'month', features: ['Unlimited report analyses', 'Advanced AI insights', 'Personalized diet & exercise plans', 'Supplement recommendations', 'Health trend analytics', 'Chat with AI about reports', 'Doctor recommendations', '24/7 Priority support'], color: 'violet', icon: Crown }
+  { id: 'basic', name: 'Basic', price: 0, period: 'month', features: ['5 Report analyses per month', 'Full AI analysis with deficiencies', 'Personalized diet plans', 'Supplement recommendations', 'Health trend tracking', 'Priority support'], color: 'cyan', icon: Zap, popular: true },
+  { id: 'premium', name: 'Premium', price: 0, period: 'month', features: ['Unlimited report analyses', 'Advanced AI insights', 'Personalized diet & exercise plans', 'Supplement recommendations', 'Health trend analytics', 'Chat with AI about reports', 'Doctor recommendations', '24/7 Priority support'], color: 'violet', icon: Crown }
 ];
 
 export default function Subscription() {
