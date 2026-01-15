@@ -59,28 +59,41 @@ app.use((err, req, res, next) => {
 
 // Connect to database
 let dbConnected = false;
+let dbConnectionPromise = null;
+
 const initDB = async () => {
-  if (!dbConnected) {
+  if (dbConnected) return true;
+  
+  if (dbConnectionPromise) {
+    await dbConnectionPromise;
+    return dbConnected;
+  }
+  
+  try {
+    dbConnectionPromise = connectDB();
+    await dbConnectionPromise;
+    dbConnected = true;
+    console.log('Database connected successfully');
+    
+    // Initialize reminder service after database connection
     try {
-      await connectDB();
-      dbConnected = true;
-      console.log('Database connected successfully');
-      // Initialize reminder service after database connection
-      try {
-        require('./services/reminderService');
-      } catch (error) {
-        console.error('Error loading reminder service:', error);
-      }
+      require('./services/reminderService');
     } catch (error) {
-      console.error('Database connection error:', error);
-      // Don't throw - let the app start anyway
+      console.error('Error loading reminder service:', error);
     }
+    
+    return true;
+  } catch (error) {
+    console.error('Database connection error:', error);
+    dbConnectionPromise = null;
+    return false;
   }
 };
 
 // For Vercel serverless
 if (process.env.VERCEL) {
   console.log('Running in Vercel environment');
+  // Initialize DB connection immediately
   initDB().catch(err => console.error('DB init error:', err));
   module.exports = app;
 } else {

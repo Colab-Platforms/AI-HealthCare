@@ -1,5 +1,35 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const mongoose = require('mongoose');
+const connectDB = require('../config/db');
+
+// Cache database connection
+let isConnecting = false;
+let connectionPromise = null;
+
+const ensureDBConnection = async () => {
+  if (mongoose.connection.readyState === 1) {
+    return true; // Already connected
+  }
+  
+  if (isConnecting && connectionPromise) {
+    await connectionPromise; // Wait for existing connection attempt
+    return mongoose.connection.readyState === 1;
+  }
+  
+  try {
+    isConnecting = true;
+    connectionPromise = connectDB();
+    await connectionPromise;
+    isConnecting = false;
+    return true;
+  } catch (error) {
+    isConnecting = false;
+    connectionPromise = null;
+    console.error('Failed to connect to database:', error.message);
+    return false;
+  }
+};
 
 exports.protect = async (req, res, next) => {
   try {
@@ -15,21 +45,36 @@ exports.protect = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log('Token decoded, user ID:', decoded.id);
     
-    // Ensure database connection
-    const mongoose = require('mongoose');
-    if (mongoose.connection.readyState !== 1) {
-      console.log('Database not connected, attempting to connect...');
-      const connectDB = require('../config/db');
-      await connectDB();
+    // Ensure database connection with retry
+    const connected = await ensureDBConnection();
+    if (!connected) {
+      console.error('Database connection failed');
+      return res.status(500).json({ message: 'Database connection error' });
     }
     
-    req.user = await User.findById(decoded.id).select('-password');
+    // Retry user lookup with timeout
+    let retries = 3;
+    let user = null;
     
-    if (!req.user) {
-      console.error('User not found in database:', decoded.id);
+    while (retries > 0 && !user) {
+      try {
+        user = await User.findById(decoded.id).select('-password').maxTimeMS(5000);
+        if (user) break;
+      } catch (dbError) {
+        console.error(`User lookup attempt ${4 - retries} failed:`, dbError.message);
+        retries--;
+        if (retries > 0) {
+          await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms before retry
+        }
+      }
+    }
+    
+    if (!user) {
+      console.error('User not found in database after retries:', decoded.id);
       return res.status(401).json({ message: 'User not found' });
     }
     
+    req.user = user;
     console.log('User authenticated:', req.user._id, req.user.name);
     next();
   } catch (error) {
