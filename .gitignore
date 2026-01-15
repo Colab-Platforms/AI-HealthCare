@@ -9,8 +9,8 @@ server/node_modules/
 .env.production
 server/.env
 
-# Build outputs
-client/dist/
+# Build outputs (commented out to deploy pre-built files)
+# client/dist/
 client/build/
 server/dist/
 
