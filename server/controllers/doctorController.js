@@ -1,5 +1,6 @@
 const Doctor = require('../models/Doctor');
 const Appointment = require('../models/Appointment');
+const cache = require('../utils/cache');
 const User = require('../models/User');
 const HealthReport = require('../models/HealthReport');
 const WearableData = require('../models/WearableData');
@@ -9,6 +10,13 @@ const videoService = require('../services/videoService');
 exports.getAllDoctors = async (req, res) => {
   try {
     const { specialization, available } = req.query;
+    const cacheKey = `doctors:${specialization || 'all'}:${available || 'all'}`;
+    const cached = cache.get(cacheKey);
+    
+    if (cached) {
+      return res.json(cached);
+    }
+
     const filter = {
       approvalStatus: 'approved',
       isListed: true
@@ -26,6 +34,7 @@ exports.getAllDoctors = async (req, res) => {
       user: doc.user ? doc.user : { name: doc.name, email: doc.email }
     }));
     
+    cache.set(cacheKey, transformedDoctors, 300); // Cache for 5 minutes
     res.json(transformedDoctors);
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -3,6 +3,7 @@ const Doctor = require('../models/Doctor');
 const { analyzeHealthReport, compareReports, chatWithReport } = require('../services/aiService');
 const pdfParse = require('pdf-parse');
 const fs = require('fs');
+const cache = require('../utils/cache');
 
 exports.uploadReport = async (req, res) => {
   try {
@@ -55,6 +56,10 @@ exports.uploadReport = async (req, res) => {
       await req.user.save();
     }
 
+    // Invalidate cache for this user
+    cache.delete(`reports:${req.user._id}`);
+    cache.delete(`dashboard:${req.user._id}`);
+
     // Find recommended doctors from platform
     let recommendedDoctors = [];
     if (aiAnalysis.doctorConsultation?.recommended && aiAnalysis.doctorConsultation?.specializations?.length > 0) {
@@ -80,9 +85,18 @@ exports.uploadReport = async (req, res) => {
 
 exports.getReports = async (req, res) => {
   try {
+    const cacheKey = `reports:${req.user._id}`;
+    const cached = cache.get(cacheKey);
+    
+    if (cached) {
+      return res.json(cached);
+    }
+
     const reports = await HealthReport.find({ user: req.user._id })
       .sort({ createdAt: -1 })
       .limit(50);
+    
+    cache.set(cacheKey, reports, 180); // Cache for 3 minutes
     res.json(reports);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -214,6 +228,13 @@ exports.getHealthHistory = async (req, res) => {
 
 exports.getDashboardData = async (req, res) => {
   try {
+    const cacheKey = `dashboard:${req.user._id}`;
+    const cached = cache.get(cacheKey);
+    
+    if (cached) {
+      return res.json(cached);
+    }
+
     const reports = await HealthReport.find({ user: req.user._id, status: 'completed' })
       .sort({ createdAt: -1 })
       .limit(10);
@@ -232,7 +253,7 @@ exports.getDashboardData = async (req, res) => {
       reportTypeCounts[r.reportType] = (reportTypeCounts[r.reportType] || 0) + 1;
     });
 
-    res.json({
+    const dashboardData = {
       user: { ...req.user.toObject(), password: undefined },
       healthScores,
       latestAnalysis: latestReport?.aiAnalysis || null,
@@ -240,7 +261,10 @@ exports.getDashboardData = async (req, res) => {
       totalReports: await HealthReport.countDocuments({ user: req.user._id }),
       recentReports: reports.slice(0, 5),
       reportTypeCounts
-    });
+    };
+
+    cache.set(cacheKey, dashboardData, 120); // Cache for 2 minutes
+    res.json(dashboardData);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
