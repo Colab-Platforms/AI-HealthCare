@@ -54,23 +54,19 @@ export default function AIChat() {
     setLoading(true);
 
     try {
-      // Call actual AI API
-      const token = localStorage.getItem('token');
-      
-      // Use full URL for production, relative for development
+      // Use simple chat endpoint (no auth required)
       const apiUrl = import.meta.env.PROD 
-        ? `${window.location.origin}/api/health/ai-chat`
-        : '/api/health/ai-chat';
+        ? `${window.location.origin}/api/chat`
+        : '/api/chat';
       
       const response = await fetch(apiUrl, {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           query: currentInput,
-          conversationHistory: messages.filter(m => m.role !== 'assistant' || !m.content.includes('Hello')).slice(-10)
+          conversationHistory: messages.filter(m => !m.content.includes('Hello')).slice(-10)
         })
       });
 
@@ -82,13 +78,25 @@ export default function AIChat() {
 
       const data = await response.json();
       
-      const aiResponse = {
-        role: 'assistant',
-        content: data.response || generateAIResponse(currentInput),
-        timestamp: new Date()
-      };
-
-      setMessages(prev => [...prev, aiResponse]);
+      if (data.success && data.response) {
+        const aiResponse = {
+          role: 'assistant',
+          content: data.response,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, aiResponse]);
+        
+        // Save to localStorage
+        try {
+          const savedChats = JSON.parse(localStorage.getItem('aiChatHistory') || '[]');
+          savedChats.push({ query: currentInput, response: data.response, timestamp: new Date().toISOString() });
+          localStorage.setItem('aiChatHistory', JSON.stringify(savedChats.slice(-50))); // Keep last 50
+        } catch (e) {
+          console.error('Failed to save chat history:', e);
+        }
+      } else {
+        throw new Error('Invalid response from AI');
+      }
     } catch (error) {
       console.error('AI Chat error:', error);
       
