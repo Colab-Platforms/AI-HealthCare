@@ -88,7 +88,7 @@ function Hero() {
   ];
 
   return (
-    <MeshGradientHero className="pt-16 pb-20 md:pt-24 md:pb-32">
+    <div className="pt-16 pb-20 md:pt-24 md:pb-32">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-4xl mx-auto">
 
@@ -143,7 +143,7 @@ function Hero() {
           </div>
         </div>
       </div>
-    </MeshGradientHero>
+    </div>
   );
 }
 
@@ -183,7 +183,7 @@ function Features() {
   ];
 
   return (
-    <section id="features" className="py-20 md:py-32 bg-white">
+    <section id="features" className="py-20 md:py-32">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
@@ -204,7 +204,7 @@ function Features() {
           {features.map((feature, index) => (
             <div
               key={index}
-              className="group p-8 rounded-2xl bg-white border border-slate-200 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-600/5 transition-all duration-300"
+              className="group p-8 rounded-2xl bg-white/80 backdrop-blur-sm border border-slate-200 hover:border-blue-300 hover:shadow-lg hover:shadow-blue-600/5 transition-all duration-300"
             >
               <div className="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center mb-6 group-hover:bg-blue-100 transition-colors">
                 <feature.icon className="w-6 h-6 text-blue-600" />
@@ -729,8 +729,10 @@ export default function Landing() {
   return (
     <div className="min-h-screen bg-white">
       <Header />
-      <Hero />
-      <Features />
+      <MeshGradientHero>
+        <Hero />
+        <Features />
+      </MeshGradientHero>
       <HowItWorks />
       <Pricing />
       <Testimonials />
