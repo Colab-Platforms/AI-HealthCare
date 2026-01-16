@@ -9,6 +9,10 @@ server/node_modules/
 .env.production
 server/.env
 
+# Documentation files (may contain sensitive info)
+*.md
+!README.md
+
 # Build outputs (commented out to deploy pre-built files)
 # client/dist/
 client/build/
