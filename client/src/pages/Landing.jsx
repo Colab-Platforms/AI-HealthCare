@@ -6,6 +6,7 @@ import {
   BarChart3, Menu, X, Clock, Award, Globe, Smartphone, Database, Lock,
   ArrowLeft, Quote, ChevronDown
 } from 'lucide-react';
+import MeshGradientHero from '../components/MeshGradientHero';
 
 // Header Component
 function Header() {
@@ -87,10 +88,9 @@ function Hero() {
   ];
 
   return (
-    <section className="relative overflow-hidden pt-16 pb-20 md:pt-24 md:pb-32 bg-gradient-to-br from-slate-50 to-blue-50">
+    <MeshGradientHero className="pt-16 pb-20 md:pt-24 md:pb-32">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="text-center max-w-4xl mx-auto">
-
 
           {/* Headline */}
           <h1 className="text-4xl md:text-6xl lg:text-7xl font-bold text-slate-900 leading-tight tracking-tight mb-6">
@@ -143,7 +143,7 @@ function Hero() {
           </div>
         </div>
       </div>
-    </section>
+    </MeshGradientHero>
   );
 }
 

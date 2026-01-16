@@ -166,8 +166,8 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
         </main>
       </div>
 
-      {/* Text Selection Popup */}
-      <TextSelectionPopup />
+      {/* Text Selection Popup - Disabled on AI Chat page */}
+      {location.pathname !== '/ai-chat' && <TextSelectionPopup />}
     </div>
   );
 }

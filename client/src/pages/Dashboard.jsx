@@ -241,7 +241,6 @@ export default function Dashboard() {
   const [wearableData, setWearableData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [generatingDemo, setGeneratingDemo] = useState(false);
   const [selectedMetric, setSelectedMetric] = useState(null);
 
   const fetchData = async () => {
@@ -264,19 +263,6 @@ export default function Dashboard() {
   useEffect(() => {
     fetchData();
   }, []);
-
-  const generateDemoData = async () => {
-    setGeneratingDemo(true);
-    try {
-      await wearableService.connectDevice('smartwatch', 'Demo Smartwatch');
-      await wearableService.generateDemoData('smartwatch');
-      await fetchData();
-    } catch (error) {
-      console.error('Failed to generate demo data:', error);
-    } finally {
-      setGeneratingDemo(false);
-    }
-  };
 
   if (loading) {
     return (
@@ -630,26 +616,11 @@ export default function Dashboard() {
                 : 'Our AI will analyze your health reports and provide personalized insights, recommendations, and track your health trends over time.'}
             </p>
             <div className="flex flex-wrap gap-3">
-              {data?.latestReportId ? (
-                <Link to={`/reports/${data.latestReportId}`} className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-medium hover:shadow-lg flex items-center gap-2">
-                  <MessageSquare className="w-4 h-4" />
-                  Chat with AI Assistant
-                </Link>
-              ) : (
+              {!hasReports && (
                 <Link to="/upload" className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-medium hover:shadow-lg flex items-center gap-2">
                   <Upload className="w-4 h-4" />
                   Upload Your First Report
                 </Link>
-              )}
-              {!hasWearableData && (
-                <button 
-                  onClick={generateDemoData} 
-                  disabled={generatingDemo}
-                  className="px-6 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-50 flex items-center gap-2"
-                >
-                  <RefreshCw className={`w-4 h-4 ${generatingDemo ? 'animate-spin' : ''}`} />
-                  {generatingDemo ? 'Generating...' : 'Generate Demo Data'}
-                </button>
               )}
               {hasWearableData && (
                 <Link to="/wearables" className="px-6 py-2 bg-white border border-slate-200 text-slate-700 rounded-xl font-medium hover:bg-slate-50">View Wearable Data</Link>

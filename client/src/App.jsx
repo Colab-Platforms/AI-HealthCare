@@ -53,13 +53,6 @@ const DoctorRoute = ({ children }) => {
 
 export default function App() {
   const { user, isAdmin, isDoctor } = useAuth();
-  
-  const getDefaultRoute = () => {
-    if (!user) return <Landing />;
-    if (isAdmin()) return <Navigate to="/admin" />;
-    if (isDoctor()) return <Navigate to="/doctor/dashboard" />;
-    return <Navigate to="/dashboard" />;
-  };
 
   const getLoginRedirect = () => {
     if (!user) return <Login />;
@@ -70,7 +63,7 @@ export default function App() {
   
   return (
     <Routes>
-      <Route path="/" element={getDefaultRoute()} />
+      <Route path="/" element={<Landing />} />
       <Route path="/login" element={getLoginRedirect()} />
       <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Register />} />
       <Route path="/register/doctor" element={user ? <Navigate to="/doctor/dashboard" /> : <DoctorRegister />} />

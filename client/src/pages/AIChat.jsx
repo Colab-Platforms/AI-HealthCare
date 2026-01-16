@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Send, Bot, User, Sparkles, Loader2, Copy, Check } from 'lucide-react';
+import { Send, Bot, User, Sparkles, Loader2, Copy, Check, Trash2, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -10,18 +10,85 @@ export default function AIChat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [streaming, setStreaming] = useState(false);
+  const [streamingText, setStreamingText] = useState('');
   const [copiedIndex, setCopiedIndex] = useState(null);
+  const [userReports, setUserReports] = useState([]);
+  const [loadingReports, setLoadingReports] = useState(true);
   const messagesEndRef = useRef(null);
+  const chatContainerRef = useRef(null);
 
+  // Load user's reports for context
   useEffect(() => {
-    // Add welcome message
-    setMessages([
-      {
-        role: 'assistant',
-        content: `Hello ${user?.name || 'there'}! 👋 I'm your AI health assistant. I can help you understand your health reports, answer questions about your symptoms, and provide general health guidance. How can I assist you today?`,
-        timestamp: new Date()
+    const fetchUserReports = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/health/reports', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          setUserReports(data.reports || []);
+        }
+      } catch (error) {
+        console.error('Failed to load reports:', error);
+      } finally {
+        setLoadingReports(false);
       }
-    ]);
+    };
+
+    fetchUserReports();
+  }, []);
+
+  // Load chat history from database
+  useEffect(() => {
+    const loadChatHistory = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/chat/history', {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.messages && data.messages.length > 0) {
+            setMessages(data.messages.map(msg => ({
+              role: msg.role,
+              content: msg.content,
+              timestamp: new Date(msg.timestamp)
+            })));
+          } else {
+            // No history, show welcome message
+            setMessages([
+              {
+                role: 'assistant',
+                content: `Hello ${user?.name || 'there'}! 👋 I'm your AI health assistant. I have access to your health reports and can help you understand them. What would you like to know?`,
+                timestamp: new Date()
+              }
+            ]);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load chat history:', error);
+        // Show welcome message on error
+        setMessages([
+          {
+            role: 'assistant',
+            content: `Hello ${user?.name || 'there'}! 👋 I'm your AI health assistant. How can I help you today?`,
+            timestamp: new Date()
+          }
+        ]);
+      }
+    };
+
+    if (user) {
+      loadChatHistory();
+    }
 
     // If text was selected, add it as initial query
     if (location.state?.selectedText) {
@@ -32,10 +99,78 @@ export default function AIChat() {
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages]);
+  }, [messages, streamingText]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  // Streaming effect function
+  const streamResponse = (text, callback) => {
+    setStreaming(true);
+    setStreamingText('');
+    let index = 0;
+    
+    const interval = setInterval(() => {
+      if (index < text.length) {
+        setStreamingText(prev => prev + text[index]);
+        index++;
+      } else {
+        clearInterval(interval);
+        setStreaming(false);
+        callback();
+      }
+    }, 20); // Adjust speed here (lower = faster)
+    
+    return () => clearInterval(interval);
+  };
+
+  const clearChat = async () => {
+    if (confirm('Are you sure you want to clear the chat history?')) {
+      try {
+        const token = localStorage.getItem('token');
+        await fetch('/api/chat/history', {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+        
+        setMessages([
+          {
+            role: 'assistant',
+            content: `Hello ${user?.name || 'there'}! 👋 I'm your AI health assistant. How can I assist you today?`,
+            timestamp: new Date()
+          }
+        ]);
+        toast.success('Chat cleared');
+      } catch (error) {
+        console.error('Failed to clear chat:', error);
+        toast.error('Failed to clear chat');
+      }
+    }
+  };
+
+  // Save message to database
+  const saveMessageToDb = async (userQuery, aiResponse) => {
+    try {
+      const token = localStorage.getItem('token');
+      await fetch('/api/chat/history', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          messages: [
+            { role: 'user', content: userQuery, timestamp: new Date() },
+            { role: 'assistant', content: aiResponse, timestamp: new Date() }
+          ]
+        })
+      });
+    } catch (error) {
+      console.error('Failed to save message:', error);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -66,7 +201,13 @@ export default function AIChat() {
         },
         body: JSON.stringify({
           query: currentInput,
-          conversationHistory: messages.filter(m => !m.content.includes('Hello')).slice(-10)
+          conversationHistory: messages.filter(m => !m.content.includes('Hello')).slice(-10),
+          userReports: userReports.map(r => ({
+            type: r.reportType,
+            date: r.uploadDate,
+            analysis: r.analysis,
+            metrics: r.metrics
+          }))
         })
       });
 
@@ -79,36 +220,36 @@ export default function AIChat() {
       const data = await response.json();
       
       if (data.success && data.response) {
-        const aiResponse = {
-          role: 'assistant',
-          content: data.response,
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, aiResponse]);
-        
-        // Save to localStorage
-        try {
-          const savedChats = JSON.parse(localStorage.getItem('aiChatHistory') || '[]');
-          savedChats.push({ query: currentInput, response: data.response, timestamp: new Date().toISOString() });
-          localStorage.setItem('aiChatHistory', JSON.stringify(savedChats.slice(-50))); // Keep last 50
-        } catch (e) {
-          console.error('Failed to save chat history:', e);
-        }
+        // Stream the response with typing effect
+        streamResponse(data.response, () => {
+          const aiResponse = {
+            role: 'assistant',
+            content: data.response,
+            timestamp: new Date()
+          };
+          setMessages(prev => [...prev, aiResponse]);
+          setStreamingText('');
+          
+          // Save to database
+          saveMessageToDb(currentInput, data.response);
+        });
       } else {
         throw new Error('Invalid response from AI');
       }
     } catch (error) {
       console.error('AI Chat error:', error);
       
-      // Fallback to template response if API fails
-      const aiResponse = {
-        role: 'assistant',
-        content: generateAIResponse(currentInput),
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, aiResponse]);
-      
-      toast.error('Using offline mode - AI service unavailable');
+      // Fallback to template response with streaming
+      const fallbackResponse = generateAIResponse(currentInput);
+      streamResponse(fallbackResponse, () => {
+        const aiResponse = {
+          role: 'assistant',
+          content: fallbackResponse,
+          timestamp: new Date()
+        };
+        setMessages(prev => [...prev, aiResponse]);
+        setStreamingText('');
+      });
     } finally {
       setLoading(false);
     }
@@ -141,41 +282,36 @@ export default function AIChat() {
   };
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col bg-slate-50">
-      {/* Header */}
-      <div className="bg-white border-b border-slate-200 px-4 sm:px-6 py-4">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
-            <Bot className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h1 className="text-lg font-bold text-slate-800">AI Health Assistant</h1>
-            <p className="text-sm text-slate-500">Ask me anything about your health</p>
-          </div>
-        </div>
-      </div>
-
+    <div className="h-[calc(100vh-4rem)] flex flex-col bg-gradient-to-br from-slate-50 via-cyan-50/30 to-blue-50/30">
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-4">
+      <div 
+        ref={chatContainerRef}
+        className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-4"
+        style={{ userSelect: 'text' }}
+        onMouseUp={(e) => {
+          // Prevent text selection popup on this page
+          e.stopPropagation();
+        }}
+      >
         {messages.map((message, index) => (
           <div
             key={index}
             className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             {message.role === 'assistant' && (
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center shrink-0 shadow-md">
                 <Bot className="w-5 h-5 text-white" />
               </div>
             )}
             
             <div
-              className={`max-w-[80%] sm:max-w-[70%] rounded-2xl px-4 py-3 ${
+              className={`max-w-[80%] sm:max-w-[70%] rounded-2xl px-4 py-3 shadow-sm ${
                 message.role === 'user'
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white'
+                  ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-cyan-200'
                   : 'bg-white border border-slate-200 text-slate-800'
               }`}
             >
-              <div className="whitespace-pre-wrap break-words text-sm sm:text-base">
+              <div className="whitespace-pre-wrap break-words text-sm sm:text-base leading-relaxed">
                 {message.content}
               </div>
               <div className="flex items-center justify-between mt-2 gap-2">
@@ -185,7 +321,8 @@ export default function AIChat() {
                 {message.role === 'assistant' && (
                   <button
                     onClick={() => copyToClipboard(message.content, index)}
-                    className="text-slate-400 hover:text-slate-600 transition-colors"
+                    className="text-slate-400 hover:text-cyan-600 transition-colors p-1 hover:bg-slate-100 rounded"
+                    title="Copy response"
                   >
                     {copiedIndex === index ? (
                       <Check className="w-4 h-4 text-green-500" />
@@ -198,22 +335,38 @@ export default function AIChat() {
             </div>
 
             {message.role === 'user' && (
-              <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center shrink-0">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center shrink-0 shadow-sm">
                 <User className="w-5 h-5 text-slate-600" />
               </div>
             )}
           </div>
         ))}
 
-        {loading && (
+        {/* Streaming message */}
+        {streaming && streamingText && (
           <div className="flex gap-3 justify-start">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center shrink-0 shadow-md">
               <Bot className="w-5 h-5 text-white" />
             </div>
-            <div className="bg-white border border-slate-200 rounded-2xl px-4 py-3">
+            <div className="max-w-[80%] sm:max-w-[70%] bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-sm">
+              <div className="whitespace-pre-wrap break-words text-sm sm:text-base leading-relaxed text-slate-800">
+                {streamingText}
+                <span className="inline-block w-1 h-4 bg-cyan-500 ml-1 animate-pulse"></span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Loading indicator */}
+        {loading && !streaming && (
+          <div className="flex gap-3 justify-start">
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center shrink-0 shadow-md">
+              <Bot className="w-5 h-5 text-white" />
+            </div>
+            <div className="bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-sm">
               <div className="flex items-center gap-2 text-slate-500">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                <span className="text-sm">Thinking...</span>
+                <Loader2 className="w-4 h-4 animate-spin text-cyan-500" />
+                <span className="text-sm">Analyzing your question...</span>
               </div>
             </div>
           </div>
@@ -223,22 +376,33 @@ export default function AIChat() {
       </div>
 
       {/* Input */}
-      <div className="bg-white border-t border-slate-200 px-4 sm:px-6 py-4">
+      <div className="bg-white/80 backdrop-blur-sm border-t border-slate-200/50 px-4 sm:px-6 py-4 shadow-lg">
         <form onSubmit={handleSubmit} className="flex gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Ask about your health, symptoms, or reports..."
-            className="flex-1 px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:border-cyan-500 focus:outline-none focus:ring-2 focus:ring-cyan-500/20"
-            disabled={loading}
-          />
+          <div className="flex-1 relative">
+            <input
+              type="text"
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              placeholder="Ask about your health reports, symptoms, or get health advice..."
+              className="w-full px-4 py-3 pr-10 bg-white border-2 border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:border-cyan-500 focus:outline-none focus:ring-4 focus:ring-cyan-500/10 transition-all"
+              disabled={loading || streaming}
+            />
+            {input && (
+              <button
+                type="button"
+                onClick={() => setInput('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xl"
+              >
+                ×
+              </button>
+            )}
+          </div>
           <button
             type="submit"
-            disabled={!input.trim() || loading}
-            className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-medium hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            disabled={!input.trim() || loading || streaming}
+            className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-medium hover:shadow-xl hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-2"
           >
-            {loading ? (
+            {loading || streaming ? (
               <Loader2 className="w-5 h-5 animate-spin" />
             ) : (
               <>
@@ -248,28 +412,6 @@ export default function AIChat() {
             )}
           </button>
         </form>
-        
-        {/* Suggestions */}
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button
-            onClick={() => setInput('What do my vitamin levels mean?')}
-            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs transition-colors"
-          >
-            Explain my vitamins
-          </button>
-          <button
-            onClick={() => setInput('How can I improve my iron levels?')}
-            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs transition-colors"
-          >
-            Improve iron levels
-          </button>
-          <button
-            onClick={() => setInput('What foods should I eat?')}
-            className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs transition-colors"
-          >
-            Diet suggestions
-          </button>
-        </div>
       </div>
     </div>
   );
