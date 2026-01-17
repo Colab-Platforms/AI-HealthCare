@@ -72,29 +72,29 @@ export default function ReportDetails() {
 
       {/* Comparison Section */}
       {showComparison && comparison && (
-        <div className="bg-[#111827] rounded-2xl border border-blue-500/30 p-6">
-          <div className="flex items-center justify-between mb-6"><h2 className="text-lg font-bold text-white flex items-center gap-2"><GitCompare className="w-5 h-5 text-blue-400" /> Health Comparison</h2><span className={`px-3 py-1 rounded-lg text-sm font-medium ${comparison.comparison.overallTrend === 'improved' ? 'bg-emerald-500/20 text-emerald-400' : comparison.comparison.overallTrend === 'declined' ? 'bg-red-500/20 text-red-400' : 'bg-slate-700 text-slate-400'}`}>{comparison.comparison.overallTrend === 'improved' ? '↑ Improved' : comparison.comparison.overallTrend === 'declined' ? '↓ Declined' : '→ Stable'}</span></div>
+        <div className="bg-white rounded-2xl border-2 border-blue-200 p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-6"><h2 className="text-lg font-bold text-slate-800 flex items-center gap-2"><GitCompare className="w-5 h-5 text-blue-500" /> Health Comparison</h2><span className={`px-3 py-1 rounded-lg text-sm font-medium ${comparison.comparison.overallTrend === 'improved' ? 'bg-emerald-100 text-emerald-700' : comparison.comparison.overallTrend === 'declined' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-700'}`}>{comparison.comparison.overallTrend === 'improved' ? '↑ Improved' : comparison.comparison.overallTrend === 'declined' ? '↓ Declined' : '→ Stable'}</span></div>
           <div className="grid md:grid-cols-2 gap-4 mb-4">
-            <div className="bg-slate-800 p-4 rounded-xl border border-slate-700"><p className="text-sm text-slate-400 mb-1">Previous Report</p><p className="font-medium text-white">{new Date(comparison.previousReport.createdAt).toLocaleDateString()}</p><p className="text-2xl font-bold text-slate-400">{comparison.previousReport.healthScore}/100</p></div>
-            <div className="bg-slate-800 p-4 rounded-xl border border-cyan-500/30"><p className="text-sm text-slate-400 mb-1">Current Report</p><p className="font-medium text-white">{new Date(comparison.currentReport.createdAt).toLocaleDateString()}</p><p className="text-2xl font-bold text-cyan-400">{comparison.currentReport.healthScore}/100</p></div>
+            <div className="bg-slate-50 p-4 rounded-xl border-2 border-slate-200"><p className="text-sm text-slate-600 mb-1">Previous Report</p><p className="font-medium text-slate-800">{new Date(comparison.previousReport.createdAt).toLocaleDateString()}</p><p className="text-2xl font-bold text-slate-600">{comparison.previousReport.healthScore}/100</p></div>
+            <div className="bg-cyan-50 p-4 rounded-xl border-2 border-cyan-200"><p className="text-sm text-cyan-700 mb-1">Current Report</p><p className="font-medium text-slate-800">{new Date(comparison.currentReport.createdAt).toLocaleDateString()}</p><p className="text-2xl font-bold text-cyan-600">{comparison.currentReport.healthScore}/100</p></div>
           </div>
-          <p className="text-slate-400">{comparison.comparison.summary}</p>
+          <p className="text-slate-700">{comparison.comparison.summary}</p>
         </div>
       )}
 
       {/* Chat Section */}
       {chatOpen && (
-        <div className="bg-[#111827] rounded-2xl border border-violet-500/30 p-6">
-          <div className="flex items-center justify-between mb-4"><h2 className="text-lg font-bold text-white flex items-center gap-2"><Sparkles className="w-5 h-5 text-violet-400" /> Ask About Your Report</h2><button onClick={() => setChatOpen(false)} className="p-2 text-slate-400 hover:text-white rounded-lg"><X className="w-5 h-5" /></button></div>
-          <div className="h-64 overflow-y-auto mb-4 space-y-3 p-4 bg-slate-800 rounded-xl">
+        <div className="bg-white rounded-2xl border-2 border-violet-200 p-6 shadow-sm">
+          <div className="flex items-center justify-between mb-4"><h2 className="text-lg font-bold text-slate-800 flex items-center gap-2"><Sparkles className="w-5 h-5 text-violet-500" /> Ask About Your Report</h2><button onClick={() => setChatOpen(false)} className="p-2 text-slate-400 hover:text-slate-800 rounded-lg"><X className="w-5 h-5" /></button></div>
+          <div className="h-64 overflow-y-auto mb-4 space-y-3 p-4 bg-slate-50 rounded-xl border border-slate-200">
             {chatHistory.length === 0 && <p className="text-slate-500 text-center py-8">Ask any questions about your health report.<br />"What does my hemoglobin level mean?"</p>}
-            {chatHistory.map((msg, i) => (<div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[80%] p-3 rounded-xl ${msg.role === 'user' ? 'bg-violet-600 text-white' : 'bg-slate-700 text-slate-200'}`}>{msg.content}</div></div>))}
-            {sending && <div className="flex justify-start"><div className="bg-slate-700 p-3 rounded-xl"><span className="animate-pulse text-slate-400">Thinking...</span></div></div>}
+            {chatHistory.map((msg, i) => (<div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}><div className={`max-w-[80%] p-3 rounded-xl ${msg.role === 'user' ? 'bg-violet-500 text-white' : 'bg-white border border-slate-200 text-slate-800'}`}>{msg.content}</div></div>))}
+            {sending && <div className="flex justify-start"><div className="bg-white border border-slate-200 p-3 rounded-xl"><span className="animate-pulse text-slate-600">Thinking...</span></div></div>}
             <div ref={chatEndRef} />
           </div>
           <form onSubmit={handleSendMessage} className="flex gap-2">
-            <input type="text" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Ask a question..." className="flex-1 bg-slate-800 border border-slate-700 rounded-xl py-3 px-4 text-white placeholder-slate-500 focus:border-violet-500 focus:outline-none" disabled={sending} />
-            <button type="submit" disabled={sending || !message.trim()} className="px-4 py-3 bg-violet-600 text-white rounded-xl hover:bg-violet-700 transition-all disabled:opacity-50"><Send className="w-5 h-5" /></button>
+            <input type="text" value={message} onChange={(e) => setMessage(e.target.value)} placeholder="Ask a question..." className="flex-1 bg-white border-2 border-slate-200 rounded-xl py-3 px-4 text-slate-800 placeholder-slate-400 focus:border-violet-400 focus:outline-none" disabled={sending} />
+            <button type="submit" disabled={sending || !message.trim()} className="px-4 py-3 bg-violet-500 text-white rounded-xl hover:bg-violet-600 transition-all disabled:opacity-50"><Send className="w-5 h-5" /></button>
           </form>
         </div>
       )}
@@ -192,23 +192,23 @@ export default function ReportDetails() {
               {aiAnalysis.dietPlan.foodsToLimit?.length > 0 && (<div className="p-4 bg-red-500/10 rounded-xl border border-red-500/20"><h3 className="font-bold text-red-400 mb-3">⚠️ Foods to Limit</h3><div className="flex flex-wrap gap-2">{aiAnalysis.dietPlan.foodsToLimit.map((food, i) => (<span key={i} className="text-xs bg-red-500/20 text-red-400 px-3 py-1 rounded-full">{food}</span>))}</div></div>)}
             </div>
           )}
-          {aiAnalysis.dietPlan.tips?.length > 0 && (<div className="p-4 bg-slate-800 rounded-xl"><h3 className="font-bold text-white mb-3 flex items-center gap-2"><Sparkles className="w-4 h-4 text-amber-400" /> Diet Tips</h3><ul className="space-y-2">{aiAnalysis.dietPlan.tips.map((tip, i) => (<li key={i} className="text-sm text-slate-400 flex items-start gap-2"><span className="w-1.5 h-1.5 bg-cyan-500 rounded-full mt-2" />{tip}</li>))}</ul></div>)}
+          {aiAnalysis.dietPlan.tips?.length > 0 && (<div className="p-4 bg-slate-50 border border-slate-200 rounded-xl"><h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2"><Sparkles className="w-4 h-4 text-amber-500" /> Diet Tips</h3><ul className="space-y-2">{aiAnalysis.dietPlan.tips.map((tip, i) => (<li key={i} className="text-sm text-slate-700 flex items-start gap-2"><span className="w-1.5 h-1.5 bg-cyan-500 rounded-full mt-2" />{tip}</li>))}</ul></div>)}
         </div>
       )}
 
       {/* Recommended Doctors */}
       {recommendedDoctors.length > 0 && (
-        <div className="bg-[#111827] rounded-2xl border border-cyan-500/30 p-6">
-          <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2"><Users className="w-5 h-5 text-cyan-400" /> Recommended Doctors</h2>
+        <div className="bg-white rounded-2xl border-2 border-cyan-200 p-6 shadow-sm">
+          <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2"><Users className="w-5 h-5 text-cyan-500" /> Recommended Doctors</h2>
           <div className="grid md:grid-cols-3 gap-4">
             {recommendedDoctors.map((doctor) => (
-              <div key={doctor._id} className="bg-slate-800 p-4 rounded-xl border border-slate-700">
+              <div key={doctor._id} className="bg-slate-50 p-4 rounded-xl border-2 border-slate-200 hover:border-cyan-300 transition-colors">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-12 h-12 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl flex items-center justify-center text-lg font-bold text-white">{(doctor.name || doctor.user?.name)?.[0]?.toUpperCase()}</div>
-                  <div><p className="font-bold text-white">Dr. {doctor.name || doctor.user?.name}</p><p className="text-sm text-cyan-400">{doctor.specialization}</p></div>
+                  <div><p className="font-bold text-slate-800">Dr. {doctor.name || doctor.user?.name}</p><p className="text-sm text-cyan-600">{doctor.specialization}</p></div>
                 </div>
-                <div className="flex items-center gap-2 text-sm text-slate-400 mb-3"><Star className="w-4 h-4 text-amber-400 fill-amber-400" /><span>{doctor.rating?.toFixed(1)}</span><span>•</span><Clock className="w-4 h-4" /><span>{doctor.experience} yrs</span></div>
-                <div className="flex items-center justify-between pt-3 border-t border-slate-700"><span className="font-bold text-white">₹{doctor.consultationFee || 0}</span><Link to="/doctors" className="text-sm bg-cyan-600 text-white px-4 py-2 rounded-lg hover:bg-cyan-700 transition-colors">Book Now</Link></div>
+                <div className="flex items-center gap-2 text-sm text-slate-600 mb-3"><Star className="w-4 h-4 text-amber-500 fill-amber-500" /><span>{doctor.rating?.toFixed(1)}</span><span>•</span><Clock className="w-4 h-4" /><span>{doctor.experience} yrs</span></div>
+                <div className="flex items-center justify-between pt-3 border-t border-slate-200"><span className="font-bold text-slate-800">₹{doctor.consultationFee || 0}</span><Link to="/doctors" className="text-sm bg-cyan-500 text-white px-4 py-2 rounded-lg hover:bg-cyan-600 transition-colors">Book Now</Link></div>
               </div>
             ))}
           </div>
@@ -216,8 +216,8 @@ export default function ReportDetails() {
       )}
 
       {/* Disclaimer */}
-      <div className="p-4 bg-blue-500/10 rounded-xl border border-blue-500/20">
-        <p className="text-sm text-blue-400"><strong>Disclaimer:</strong> This AI analysis is for informational wellness support only and should not replace professional medical advice. Always consult with a healthcare provider for medical decisions.</p>
+      <div className="p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
+        <p className="text-sm text-blue-700"><strong>Disclaimer:</strong> This AI analysis is for informational wellness support only and should not replace professional medical advice. Always consult with a healthcare provider for medical decisions.</p>
       </div>
     </div>
   );

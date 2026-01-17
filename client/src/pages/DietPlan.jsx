@@ -534,20 +534,27 @@ export default function DietPlan() {
 
 function MealCard({ icon: Icon, title, color, items, expanded, onToggle }) {
   const colorClasses = {
-    amber: 'bg-amber-100 text-amber-600',
-    orange: 'bg-orange-100 text-orange-600',
-    indigo: 'bg-indigo-100 text-indigo-600',
-    green: 'bg-green-100 text-green-600'
+    amber: 'bg-amber-100 text-amber-700',
+    orange: 'bg-orange-100 text-orange-700',
+    indigo: 'bg-indigo-100 text-indigo-700',
+    green: 'bg-green-100 text-green-700'
+  };
+
+  const borderClasses = {
+    amber: 'border-amber-200',
+    orange: 'border-orange-200',
+    indigo: 'border-indigo-200',
+    green: 'border-green-200'
   };
 
   return (
-    <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm">
+    <div className={`bg-white rounded-2xl border-2 ${borderClasses[color]} p-5 shadow-sm hover:shadow-md transition-shadow`}>
       <button onClick={onToggle} className="w-full flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className={`w-10 h-10 rounded-xl ${colorClasses[color]} flex items-center justify-center`}>
             <Icon className="w-5 h-5" />
           </div>
-          <h3 className="font-semibold text-slate-800">{title}</h3>
+          <h3 className="font-semibold text-slate-800 text-lg">{title}</h3>
         </div>
         {expanded ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
       </button>
@@ -555,8 +562,8 @@ function MealCard({ icon: Icon, title, color, items, expanded, onToggle }) {
       {expanded && items.length > 0 && (
         <ul className="mt-4 space-y-2">
           {items.map((item, i) => (
-            <li key={i} className="flex items-center gap-2 text-slate-600 text-sm">
-              <div className="w-1.5 h-1.5 rounded-full bg-slate-400"></div>
+            <li key={i} className="flex items-center gap-2 text-slate-700 text-sm font-medium">
+              <div className={`w-1.5 h-1.5 rounded-full ${colorClasses[color].split(' ')[1].replace('text-', 'bg-')}`}></div>
               {item}
             </li>
           ))}
@@ -564,7 +571,7 @@ function MealCard({ icon: Icon, title, color, items, expanded, onToggle }) {
       )}
       
       {!expanded && items.length > 0 && (
-        <p className="mt-2 text-sm text-slate-500">{items.length} options available</p>
+        <p className="mt-2 text-sm text-slate-600 font-medium">{items.length} options available</p>
       )}
     </div>
   );
