@@ -66,7 +66,6 @@ export default function ReportDetails() {
         </div>
         <div className="relative flex gap-3 mt-6 pt-6 border-t border-white/20">
           <button onClick={handleCompare} disabled={loadingComparison} className="flex items-center gap-2 px-4 py-2.5 bg-white/20 backdrop-blur-sm text-white rounded-xl hover:bg-white/30 transition-all font-medium"><GitCompare className="w-4 h-4" />{loadingComparison ? 'Loading...' : showComparison ? 'Hide Comparison' : 'Compare with Previous'}</button>
-          <button onClick={() => setChatOpen(!chatOpen)} className="flex items-center gap-2 px-4 py-2.5 bg-white/20 backdrop-blur-sm text-white rounded-xl hover:bg-white/30 transition-all font-medium"><MessageCircle className="w-4 h-4" />Ask AI Questions</button>
         </div>
       </div>
 
@@ -101,38 +100,38 @@ export default function ReportDetails() {
 
       {/* Summary */}
       {aiAnalysis?.summary && (
-        <div className="bg-[#111827] rounded-2xl border border-slate-700 p-6">
-          <h2 className="text-lg font-bold text-white mb-3 flex items-center gap-2"><Activity className="w-5 h-5 text-cyan-400" /> Summary</h2>
-          <p className="text-slate-400 leading-relaxed">{aiAnalysis.summary}</p>
+        <div className="bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-sm">
+          <h2 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2"><Activity className="w-5 h-5 text-cyan-500" /> Summary</h2>
+          <p className="text-slate-700 leading-relaxed">{aiAnalysis.summary}</p>
         </div>
       )}
 
       {/* Key Findings & Risk Factors */}
       <div className="grid md:grid-cols-2 gap-6">
         {aiAnalysis?.keyFindings?.length > 0 && (
-          <div className="bg-[#111827] rounded-2xl border border-slate-700 p-6">
-            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><Heart className="w-5 h-5 text-blue-400" /> Key Findings</h2>
-            <ul className="space-y-2">{aiAnalysis.keyFindings.map((finding, i) => (<li key={i} className="flex items-start gap-3 text-sm text-slate-400"><span className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0" />{finding}</li>))}</ul>
+          <div className="bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-sm">
+            <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><Heart className="w-5 h-5 text-blue-500" /> Key Findings</h2>
+            <ul className="space-y-2">{aiAnalysis.keyFindings.map((finding, i) => (<li key={i} className="flex items-start gap-3 text-sm text-slate-700"><span className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0" />{finding}</li>))}</ul>
           </div>
         )}
         {aiAnalysis?.riskFactors?.length > 0 && (
-          <div className="bg-[#111827] rounded-2xl border-l-4 border-amber-500 border-t border-r border-b border-slate-700 p-6">
-            <h2 className="text-lg font-bold text-white mb-4 flex items-center gap-2"><AlertTriangle className="w-5 h-5 text-amber-400" /> Risk Factors</h2>
-            <ul className="space-y-2">{aiAnalysis.riskFactors.map((risk, i) => (<li key={i} className="flex items-start gap-3 text-sm text-slate-400"><span className="w-2 h-2 bg-amber-500 rounded-full mt-2 flex-shrink-0" />{risk}</li>))}</ul>
+          <div className="bg-white rounded-2xl border-l-4 border-amber-500 border-t-2 border-r-2 border-b-2 border-t-slate-200 border-r-slate-200 border-b-slate-200 p-6 shadow-sm">
+            <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><AlertTriangle className="w-5 h-5 text-amber-500" /> Risk Factors</h2>
+            <ul className="space-y-2">{aiAnalysis.riskFactors.map((risk, i) => (<li key={i} className="flex items-start gap-3 text-sm text-slate-700"><span className="w-2 h-2 bg-amber-500 rounded-full mt-2 flex-shrink-0" />{risk}</li>))}</ul>
           </div>
         )}
       </div>
 
       {/* Health Metrics */}
       {aiAnalysis?.metrics && Object.keys(aiAnalysis.metrics).length > 0 && (
-        <div className="bg-[#111827] rounded-2xl border border-slate-700 p-6">
-          <h2 className="text-lg font-bold text-white mb-6">Health Metrics</h2>
+        <div className="bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-sm">
+          <h2 className="text-lg font-bold text-slate-800 mb-6">Health Metrics</h2>
           <div className="grid md:grid-cols-3 gap-4">
             {Object.entries(aiAnalysis.metrics).map(([key, metric]) => (
-              <div key={key} className={`p-4 rounded-xl border ${metric.status === 'normal' ? 'bg-emerald-500/10 border-emerald-500/30' : metric.status === 'borderline' ? 'bg-amber-500/10 border-amber-500/30' : 'bg-red-500/10 border-red-500/30'}`}>
-                <p className="text-sm text-slate-400 capitalize mb-1">{key.replace(/([A-Z])/g, ' $1')}</p>
-                <p className="text-2xl font-bold text-white">{metric.value} <span className="text-sm font-normal text-slate-500">{metric.unit}</span></p>
-                <div className="flex items-center justify-between mt-2"><span className="text-xs text-slate-500">Normal: {metric.normalRange}</span><span className={`px-2 py-0.5 rounded text-xs font-medium ${metric.status === 'normal' ? 'bg-emerald-500/20 text-emerald-400' : metric.status === 'borderline' ? 'bg-amber-500/20 text-amber-400' : 'bg-red-500/20 text-red-400'}`}>{metric.status}</span></div>
+              <div key={key} className={`p-4 rounded-xl border-2 ${metric.status === 'normal' ? 'bg-emerald-50 border-emerald-200' : metric.status === 'borderline' ? 'bg-amber-50 border-amber-200' : 'bg-red-50 border-red-200'}`}>
+                <p className="text-sm text-slate-600 capitalize mb-1 font-medium">{key.replace(/([A-Z])/g, ' $1')}</p>
+                <p className="text-2xl font-bold text-slate-800">{metric.value} <span className="text-sm font-normal text-slate-500">{metric.unit}</span></p>
+                <div className="flex items-center justify-between mt-2"><span className="text-xs text-slate-600">Normal: {metric.normalRange}</span><span className={`px-2 py-0.5 rounded text-xs font-medium ${metric.status === 'normal' ? 'bg-emerald-100 text-emerald-700' : metric.status === 'borderline' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'}`}>{metric.status}</span></div>
               </div>
             ))}
           </div>
@@ -141,14 +140,14 @@ export default function ReportDetails() {
 
       {/* Deficiencies */}
       {aiAnalysis?.deficiencies?.length > 0 && (
-        <div className="bg-[#111827] rounded-2xl border-l-4 border-amber-500 border-t border-r border-b border-slate-700 p-6">
-          <h2 className="text-lg font-bold text-white mb-6 flex items-center gap-2"><Droplets className="w-5 h-5 text-amber-400" /> Detected Deficiencies</h2>
+        <div className="bg-white rounded-2xl border-l-4 border-amber-500 border-t-2 border-r-2 border-b-2 border-t-slate-200 border-r-slate-200 border-b-slate-200 p-6 shadow-sm">
+          <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2"><Droplets className="w-5 h-5 text-amber-500" /> Detected Deficiencies</h2>
           <div className="grid md:grid-cols-2 gap-4">
             {aiAnalysis.deficiencies.map((def, i) => (
-              <div key={i} className={`p-4 rounded-xl ${def.severity === 'severe' ? 'bg-red-500/10 border border-red-500/30' : def.severity === 'moderate' ? 'bg-amber-500/10 border border-amber-500/30' : 'bg-yellow-500/10 border border-yellow-500/30'}`}>
-                <div className="flex items-center justify-between mb-2"><span className="font-bold text-white">{def.name}</span><span className={`px-2 py-0.5 rounded text-xs font-medium ${def.severity === 'severe' ? 'bg-red-500/20 text-red-400' : def.severity === 'moderate' ? 'bg-amber-500/20 text-amber-400' : 'bg-yellow-500/20 text-yellow-400'}`}>{def.severity}</span></div>
-                <p className="text-sm text-slate-400">Current: {def.currentValue}</p><p className="text-sm text-slate-500">Normal: {def.normalRange}</p>
-                {def.symptoms?.length > 0 && <p className="text-xs text-slate-500 mt-2">Symptoms: {def.symptoms.join(', ')}</p>}
+              <div key={i} className={`p-4 rounded-xl border-2 ${def.severity === 'severe' ? 'bg-red-50 border-red-200' : def.severity === 'moderate' ? 'bg-amber-50 border-amber-200' : 'bg-yellow-50 border-yellow-200'}`}>
+                <div className="flex items-center justify-between mb-2"><span className="font-bold text-slate-800">{def.name}</span><span className={`px-2 py-0.5 rounded text-xs font-medium ${def.severity === 'severe' ? 'bg-red-100 text-red-700' : def.severity === 'moderate' ? 'bg-amber-100 text-amber-700' : 'bg-yellow-100 text-yellow-700'}`}>{def.severity}</span></div>
+                <p className="text-sm text-slate-700 font-medium">Current: {def.currentValue}</p><p className="text-sm text-slate-600">Normal: {def.normalRange}</p>
+                {def.symptoms?.length > 0 && <p className="text-xs text-slate-600 mt-2">Symptoms: {def.symptoms.join(', ')}</p>}
               </div>
             ))}
           </div>
@@ -157,14 +156,14 @@ export default function ReportDetails() {
 
       {/* Supplements */}
       {aiAnalysis?.supplements?.length > 0 && (
-        <div className="bg-[#111827] rounded-2xl border border-slate-700 p-6">
-          <h2 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><Pill className="w-5 h-5 text-violet-400" /> Supplement Recommendations</h2>
-          <p className="text-sm text-slate-500 mb-6">General supplement categories (not brand-specific)</p>
+        <div className="bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-sm">
+          <h2 className="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2"><Pill className="w-5 h-5 text-violet-500" /> Supplement Recommendations</h2>
+          <p className="text-sm text-slate-600 mb-6">General supplement categories (not brand-specific)</p>
           <div className="grid md:grid-cols-2 gap-4">
             {aiAnalysis.supplements.map((supp, i) => (
-              <div key={i} className="p-4 bg-gradient-to-r from-violet-500/10 to-purple-500/10 rounded-xl border border-violet-500/20">
-                <p className="font-bold text-violet-300">{supp.category}</p><p className="text-sm text-violet-400/80 mt-1">{supp.reason}</p><p className="text-xs text-violet-400 mt-2 font-medium">{supp.generalDosage}</p>
-                {supp.note && <p className="text-xs text-violet-400/60 mt-1 italic">{supp.note}</p>}
+              <div key={i} className="p-4 bg-violet-50 rounded-xl border-2 border-violet-200">
+                <p className="font-bold text-violet-700">{supp.category}</p><p className="text-sm text-violet-600 mt-1">{supp.reason}</p><p className="text-xs text-violet-700 mt-2 font-medium">{supp.generalDosage}</p>
+                {supp.note && <p className="text-xs text-violet-600 mt-1 italic">{supp.note}</p>}
               </div>
             ))}
           </div>
@@ -173,23 +172,23 @@ export default function ReportDetails() {
 
       {/* Diet Plan */}
       {aiAnalysis?.dietPlan && (
-        <div className="bg-[#111827] rounded-2xl border border-slate-700 p-6">
-          <h2 className="text-lg font-bold text-white mb-2 flex items-center gap-2"><Apple className="w-5 h-5 text-emerald-400" /> Personalized Diet Plan</h2>
-          {aiAnalysis.dietPlan.overview && <p className="text-slate-400 mb-6">{aiAnalysis.dietPlan.overview}</p>}
+        <div className="bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-sm">
+          <h2 className="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2"><Apple className="w-5 h-5 text-emerald-500" /> Personalized Diet Plan</h2>
+          {aiAnalysis.dietPlan.overview && <p className="text-slate-700 mb-6">{aiAnalysis.dietPlan.overview}</p>}
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-            {[{ key: 'breakfast', label: 'Breakfast', icon: '🌅', color: 'emerald' }, { key: 'lunch', label: 'Lunch', icon: '☀️', color: 'blue' }, { key: 'dinner', label: 'Dinner', icon: '🌙', color: 'violet' }, { key: 'snacks', label: 'Snacks', icon: '🍎', color: 'amber' }].map(({ key, label, icon, color }) => (
+            {[{ key: 'breakfast', label: 'Breakfast', icon: '🌅', color: 'emerald', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700' }, { key: 'lunch', label: 'Lunch', icon: '☀️', color: 'blue', bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700' }, { key: 'dinner', label: 'Dinner', icon: '🌙', color: 'violet', bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-700' }, { key: 'snacks', label: 'Snacks', icon: '🍎', color: 'amber', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' }].map(({ key, label, icon, bg, border, text }) => (
               aiAnalysis.dietPlan[key]?.length > 0 && (
-                <div key={key} className={`p-4 rounded-xl bg-${color}-500/10 border border-${color}-500/20`}>
-                  <div className="flex items-center gap-2 mb-3"><span className="text-xl">{icon}</span><span className={`font-bold text-${color}-400`}>{label}</span></div>
-                  {aiAnalysis.dietPlan[key].map((meal, i) => (<div key={i} className="mb-2"><p className={`text-sm text-${color}-300`}>{meal.meal}</p>{meal.tip && <p className={`text-xs text-${color}-400/60 italic`}>{meal.tip}</p>}</div>))}
+                <div key={key} className={`p-4 rounded-xl ${bg} border-2 ${border}`}>
+                  <div className="flex items-center gap-2 mb-3"><span className="text-xl">{icon}</span><span className={`font-bold ${text}`}>{label}</span></div>
+                  {aiAnalysis.dietPlan[key].map((meal, i) => (<div key={i} className="mb-2"><p className={`text-sm ${text} font-medium`}>{meal.meal}</p>{meal.tip && <p className={`text-xs text-slate-600 italic`}>{meal.tip}</p>}</div>))}
                 </div>
               )
             ))}
           </div>
           {(aiAnalysis.dietPlan.foodsToIncrease?.length > 0 || aiAnalysis.dietPlan.foodsToLimit?.length > 0) && (
             <div className="grid md:grid-cols-2 gap-4 mb-4">
-              {aiAnalysis.dietPlan.foodsToIncrease?.length > 0 && (<div className="p-4 bg-emerald-500/10 rounded-xl border border-emerald-500/20"><h3 className="font-bold text-emerald-400 mb-3">✅ Foods to Increase</h3><div className="flex flex-wrap gap-2">{aiAnalysis.dietPlan.foodsToIncrease.map((food, i) => (<span key={i} className="text-xs bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-full">{food}</span>))}</div></div>)}
-              {aiAnalysis.dietPlan.foodsToLimit?.length > 0 && (<div className="p-4 bg-red-500/10 rounded-xl border border-red-500/20"><h3 className="font-bold text-red-400 mb-3">⚠️ Foods to Limit</h3><div className="flex flex-wrap gap-2">{aiAnalysis.dietPlan.foodsToLimit.map((food, i) => (<span key={i} className="text-xs bg-red-500/20 text-red-400 px-3 py-1 rounded-full">{food}</span>))}</div></div>)}
+              {aiAnalysis.dietPlan.foodsToIncrease?.length > 0 && (<div className="p-4 bg-emerald-50 rounded-xl border-2 border-emerald-200"><h3 className="font-bold text-emerald-700 mb-3">✅ Foods to Increase</h3><div className="flex flex-wrap gap-2">{aiAnalysis.dietPlan.foodsToIncrease.map((food, i) => (<span key={i} className="text-xs bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full font-medium">{food}</span>))}</div></div>)}
+              {aiAnalysis.dietPlan.foodsToLimit?.length > 0 && (<div className="p-4 bg-red-50 rounded-xl border-2 border-red-200"><h3 className="font-bold text-red-700 mb-3">⚠️ Foods to Limit</h3><div className="flex flex-wrap gap-2">{aiAnalysis.dietPlan.foodsToLimit.map((food, i) => (<span key={i} className="text-xs bg-red-100 text-red-700 px-3 py-1 rounded-full font-medium">{food}</span>))}</div></div>)}
             </div>
           )}
           {aiAnalysis.dietPlan.tips?.length > 0 && (<div className="p-4 bg-slate-50 border border-slate-200 rounded-xl"><h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2"><Sparkles className="w-4 h-4 text-amber-500" /> Diet Tips</h3><ul className="space-y-2">{aiAnalysis.dietPlan.tips.map((tip, i) => (<li key={i} className="text-sm text-slate-700 flex items-start gap-2"><span className="w-1.5 h-1.5 bg-cyan-500 rounded-full mt-2" />{tip}</li>))}</ul></div>)}
