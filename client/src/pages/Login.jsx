@@ -35,7 +35,7 @@ export default function Login() {
           <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
         </div>
         
-        <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
+        <div className="relative z-10 flex flex-col justify-center items-center w-full p-12 text-white">
           <div className="w-20 h-20 bg-white/20 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-8">
             <Activity className="w-10 h-10" />
           </div>
@@ -130,12 +130,6 @@ export default function Login() {
             <Link to="/register/doctor" className="text-sm text-slate-500 hover:text-cyan-600">
               Register as a Doctor →
             </Link>
-          </div>
-
-          {/* Demo Credentials */}
-          <div className="mt-8 p-4 bg-cyan-50 rounded-xl border border-cyan-200">
-            <p className="text-sm font-medium text-cyan-800 mb-2">Demo Credentials</p>
-            <p className="text-sm text-cyan-700">Admin: admin@healthai.com / admin123</p>
           </div>
         </div>
       </div>
