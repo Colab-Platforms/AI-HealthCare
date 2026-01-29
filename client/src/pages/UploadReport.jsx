@@ -203,14 +203,6 @@ export default function UploadReport() {
             </div>
           )}
 
-          {/* Report Analysis Preview */}
-          <div className="relative rounded-2xl overflow-hidden shadow-lg bg-gradient-to-br from-purple-500 to-pink-500 p-6">
-            <div className="text-white">
-              <h3 className="text-lg font-bold mb-1">AI-Powered Analysis</h3>
-              <p className="text-white/90 text-sm">Get detailed insights, health scores, and personalized recommendations</p>
-            </div>
-          </div>
-
           {/* Submit Button */}
           <button
             onClick={handleSubmit}

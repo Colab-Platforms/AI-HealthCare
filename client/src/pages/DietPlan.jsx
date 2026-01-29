@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { healthService } from '../services/api';
 import { 
   Apple, Coffee, Sun, Moon, Utensils, AlertCircle, 
-  CheckCircle, Lightbulb, Plus, ChevronDown, ChevronUp, Leaf
+  CheckCircle, Lightbulb, Plus, ChevronDown, ChevronUp, Leaf, Sparkles
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -202,14 +202,20 @@ const supplementRecommendations = {
 export default function DietPlan() {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [generating, setGenerating] = useState(false);
   const [deficiencies, setDeficiencies] = useState([]);
+  const [personalizedPlan, setPersonalizedPlan] = useState(null);
+  const [supplementRecommendations, setSupplementRecommendations] = useState(null);
   const [manualDeficiencies, setManualDeficiencies] = useState('');
   const [showAddDeficiency, setShowAddDeficiency] = useState(false);
   const [expandedMeal, setExpandedMeal] = useState(null);
   const [dietOptIn, setDietOptIn] = useState(true);
+  const [showAIPlan, setShowAIPlan] = useState(false);
 
   useEffect(() => {
     fetchHealthData();
+    fetchPersonalizedPlan();
+    fetchSupplementRecommendations();
   }, []);
 
   const fetchHealthData = async () => {
@@ -221,6 +227,87 @@ export default function DietPlan() {
       console.error('Failed to fetch health data:', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchPersonalizedPlan = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/diet-recommendations/diet-plan/active', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success && data.dietPlan) {
+        setPersonalizedPlan(data.dietPlan);
+        setShowAIPlan(true);
+      }
+    } catch (error) {
+      console.error('Failed to fetch personalized plan:', error);
+    }
+  };
+
+  const fetchSupplementRecommendations = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/diet-recommendations/supplements/active', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await response.json();
+      if (data.success && data.recommendations) {
+        setSupplementRecommendations(data.recommendations);
+      }
+    } catch (error) {
+      console.error('Failed to fetch supplement recommendations:', error);
+    }
+  };
+
+  const generateAIPlan = async () => {
+    setGenerating(true);
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/diet-recommendations/diet-plan/generate', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setPersonalizedPlan(data.dietPlan);
+        setShowAIPlan(true);
+        toast.success('AI-powered diet plan generated!');
+      } else {
+        toast.error(data.message || 'Failed to generate plan');
+      }
+    } catch (error) {
+      console.error('Failed to generate AI plan:', error);
+      toast.error('Failed to generate personalized plan');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const generateSupplements = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/diet-recommendations/supplements/generate', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      const data = await response.json();
+      if (data.success) {
+        setSupplementRecommendations(data.recommendations);
+        toast.success('Supplement recommendations generated!');
+      } else {
+        toast.error(data.message || 'Failed to generate recommendations');
+      }
+    } catch (error) {
+      console.error('Failed to generate supplements:', error);
+      toast.error('Failed to generate supplement recommendations');
     }
   };
 
@@ -277,6 +364,7 @@ export default function DietPlan() {
 
   // Get supplement recommendations
   const getSupplements = () => {
+    if (!supplementRecommendations) return [];
     return deficiencies.map(def => {
       const rec = Object.entries(supplementRecommendations).find(([key]) => 
         def.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(def.toLowerCase())
@@ -314,12 +402,33 @@ export default function DietPlan() {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          {!personalizedPlan && (
+            <button
+              onClick={generateAIPlan}
+              disabled={generating}
+              className="px-6 py-3 text-white rounded-xl font-medium hover:shadow-lg flex items-center gap-2 disabled:opacity-50"
+              style={{ backgroundColor: '#8B7355' }}
+            >
+              {generating ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-5 h-5" />
+                  Generate AI Plan
+                </>
+              )}
+            </button>
+          )}
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
               checked={dietOptIn}
               onChange={(e) => setDietOptIn(e.target.checked)}
-              className="w-4 h-4 rounded border-slate-300 text-cyan-500 focus:ring-cyan-500"
+              className="w-4 h-4 rounded border-slate-300 focus:ring-2"
+              style={{ accentColor: '#8B7355' }}
             />
             <span className="text-sm text-slate-600">Enable diet recommendations</span>
           </label>
@@ -400,7 +509,161 @@ export default function DietPlan() {
             )}
           </div>
 
-          {hasPlan && (
+          {/* AI-Powered Personalized Plan */}
+          {personalizedPlan && showAIPlan && (
+            <div className="bg-gradient-to-br from-purple-50 to-blue-50 rounded-2xl border-2 border-purple-200 p-6 shadow-lg">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-bold text-purple-900 flex items-center gap-2">
+                  <Sparkles className="w-6 h-6 text-purple-600" />
+                  AI-Powered Personalized Diet Plan
+                </h2>
+                <button
+                  onClick={() => setShowAIPlan(false)}
+                  className="text-purple-600 hover:text-purple-800 text-sm"
+                >
+                  Show Basic Plan
+                </button>
+              </div>
+
+              <p className="text-sm text-purple-700 mb-4">
+                Generated on {new Date(personalizedPlan.generatedAt).toLocaleDateString()} • 
+                Valid until {new Date(personalizedPlan.validUntil).toLocaleDateString()}
+              </p>
+
+              {/* Calorie & Macro Targets */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div className="bg-white rounded-xl p-4 text-center">
+                  <p className="text-sm text-slate-600">Daily Calories</p>
+                  <p className="text-2xl font-bold text-purple-900">{personalizedPlan.dailyCalorieTarget}</p>
+                </div>
+                <div className="bg-white rounded-xl p-4 text-center">
+                  <p className="text-sm text-slate-600">Protein</p>
+                  <p className="text-2xl font-bold text-blue-900">{personalizedPlan.macroTargets?.protein}g</p>
+                </div>
+                <div className="bg-white rounded-xl p-4 text-center">
+                  <p className="text-sm text-slate-600">Carbs</p>
+                  <p className="text-2xl font-bold text-green-900">{personalizedPlan.macroTargets?.carbs}g</p>
+                </div>
+                <div className="bg-white rounded-xl p-4 text-center">
+                  <p className="text-sm text-slate-600">Fats</p>
+                  <p className="text-2xl font-bold text-orange-900">{personalizedPlan.macroTargets?.fats}g</p>
+                </div>
+              </div>
+
+              {/* AI Meal Plan */}
+              <div className="space-y-4">
+                {Object.entries(personalizedPlan.mealPlan || {}).map(([mealType, meals]) => (
+                  meals && meals.length > 0 && (
+                    <div key={mealType} className="bg-white rounded-xl p-4">
+                      <h3 className="font-semibold text-purple-900 mb-3 capitalize">
+                        {mealType.replace(/([A-Z])/g, ' $1').trim()}
+                      </h3>
+                      <div className="space-y-2">
+                        {meals.map((meal, idx) => (
+                          <div key={idx} className="p-3 bg-purple-50 rounded-lg">
+                            <div className="flex justify-between items-start">
+                              <div className="flex-1">
+                                <p className="font-medium text-purple-900">{meal.name}</p>
+                                <p className="text-sm text-purple-700 mt-1">{meal.description}</p>
+                                {meal.benefits && (
+                                  <p className="text-xs text-green-700 mt-1">✓ {meal.benefits}</p>
+                                )}
+                              </div>
+                              <div className="text-right ml-4">
+                                <p className="text-sm font-semibold text-purple-900">{meal.calories} cal</p>
+                                {meal.protein && (
+                                  <p className="text-xs text-purple-600">{meal.protein}g protein</p>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )
+                ))}
+              </div>
+
+              {/* Key Foods */}
+              {personalizedPlan.keyFoods && personalizedPlan.keyFoods.length > 0 && (
+                <div className="mt-6 bg-white rounded-xl p-4">
+                  <h3 className="font-semibold text-purple-900 mb-3">Key Foods to Include</h3>
+                  <div className="grid md:grid-cols-2 gap-3">
+                    {personalizedPlan.keyFoods.map((food, idx) => (
+                      <div key={idx} className="p-3 bg-green-50 rounded-lg border border-green-200">
+                        <p className="font-medium text-green-900">{food.name}</p>
+                        <p className="text-sm text-green-700 mt-1">{food.reason}</p>
+                        <p className="text-xs text-green-600 mt-1">Frequency: {food.frequency}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Deficiency Corrections */}
+              {personalizedPlan.deficiencyCorrections && personalizedPlan.deficiencyCorrections.length > 0 && (
+                <div className="mt-6 bg-white rounded-xl p-4">
+                  <h3 className="font-semibold text-purple-900 mb-3">Deficiency Corrections</h3>
+                  <div className="space-y-3">
+                    {personalizedPlan.deficiencyCorrections.map((correction, idx) => (
+                      <div key={idx} className="p-3 bg-amber-50 rounded-lg border border-amber-200">
+                        <p className="font-medium text-amber-900">{correction.deficiency}</p>
+                        <p className="text-sm text-amber-700 mt-1">
+                          <strong>Foods:</strong> {correction.indianFoods.join(', ')}
+                        </p>
+                        <p className="text-sm text-amber-700 mt-1">
+                          <strong>Meals:</strong> {correction.mealSuggestions.join(', ')}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Lifestyle Recommendations */}
+              {personalizedPlan.lifestyleRecommendations && personalizedPlan.lifestyleRecommendations.length > 0 && (
+                <div className="mt-6 bg-white rounded-xl p-4">
+                  <h3 className="font-semibold text-purple-900 mb-3 flex items-center gap-2">
+                    <Lightbulb className="w-5 h-5 text-purple-600" />
+                    Lifestyle Tips
+                  </h3>
+                  <ul className="space-y-2">
+                    {personalizedPlan.lifestyleRecommendations.map((tip, idx) => (
+                      <li key={idx} className="flex items-start gap-2 text-purple-700">
+                        <CheckCircle className="w-4 h-4 mt-0.5 text-purple-500 shrink-0" />
+                        {tip}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {/* Foods to Avoid */}
+              {personalizedPlan.avoidFoods && personalizedPlan.avoidFoods.length > 0 && (
+                <div className="mt-6 bg-white rounded-xl p-4">
+                  <h3 className="font-semibold text-red-900 mb-3">Foods to Avoid</h3>
+                  <div className="space-y-2">
+                    {personalizedPlan.avoidFoods.map((item, idx) => (
+                      <div key={idx} className="p-3 bg-red-50 rounded-lg border border-red-200">
+                        <p className="font-medium text-red-900">{item.food}</p>
+                        <p className="text-sm text-red-700 mt-1">{item.reason}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={generateAIPlan}
+                disabled={generating}
+                className="mt-6 w-full px-6 py-3 bg-purple-600 text-white rounded-xl font-medium hover:bg-purple-700 disabled:opacity-50"
+              >
+                {generating ? 'Regenerating...' : 'Regenerate Plan'}
+              </button>
+            </div>
+          )}
+
+          {hasPlan && !showAIPlan && (
             <>
               {/* Recommended Foods */}
               <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
@@ -479,12 +742,103 @@ export default function DietPlan() {
               )}
 
               {/* Supplement Recommendations */}
-              {supplements.length > 0 && (
+              {supplementRecommendations && supplementRecommendations.supplements && supplementRecommendations.supplements.length > 0 ? (
                 <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-                  <h2 className="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
-                    <Utensils className="w-5 h-5 text-purple-500" />
-                    Supplement Recommendations
-                  </h2>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                      <Utensils className="w-5 h-5 text-purple-500" />
+                      AI-Powered Supplement Recommendations
+                    </h2>
+                    <button
+                      onClick={generateSupplements}
+                      className="text-sm text-purple-600 hover:text-purple-700"
+                    >
+                      Regenerate
+                    </button>
+                  </div>
+                  <p className="text-sm text-slate-500 mb-4">
+                    {supplementRecommendations.consultationNote || 'Always consult a healthcare provider before starting supplements.'}
+                  </p>
+                  <div className="space-y-4">
+                    {supplementRecommendations.supplements.map((supp, i) => (
+                      <div key={i} className="p-4 bg-purple-50 border border-purple-200 rounded-xl">
+                        <div className="flex items-start justify-between mb-2">
+                          <h3 className="font-medium text-purple-800">{supp.name}</h3>
+                          {supp.priority && (
+                            <span className={`text-xs px-2 py-1 rounded-full ${
+                              supp.priority === 'high' ? 'bg-red-100 text-red-700' :
+                              supp.priority === 'medium' ? 'bg-amber-100 text-amber-700' :
+                              'bg-green-100 text-green-700'
+                            }`}>
+                              {supp.priority} priority
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-sm text-purple-700 mb-2">
+                          <strong>For:</strong> {supp.deficiency}
+                        </p>
+                        <p className="text-sm text-purple-700 mb-2">{supp.reason}</p>
+                        <div className="grid md:grid-cols-2 gap-2 mt-3">
+                          <div className="text-sm">
+                            <strong className="text-purple-800">Dosage:</strong>
+                            <p className="text-purple-600">{supp.dosage}</p>
+                          </div>
+                          <div className="text-sm">
+                            <strong className="text-purple-800">Timing:</strong>
+                            <p className="text-purple-600">{supp.timing}</p>
+                          </div>
+                        </div>
+                        {supp.foodAlternatives && supp.foodAlternatives.length > 0 && (
+                          <div className="mt-3 p-2 bg-green-50 rounded-lg">
+                            <p className="text-xs text-green-700">
+                              <strong>Food alternatives:</strong> {supp.foodAlternatives.join(', ')}
+                            </p>
+                          </div>
+                        )}
+                        {supp.indianBrands && supp.indianBrands.length > 0 && (
+                          <div className="mt-2 text-xs text-purple-600">
+                            <strong>Available brands:</strong> {supp.indianBrands.join(', ')}
+                          </div>
+                        )}
+                        {supp.precautions && (
+                          <div className="mt-2 p-2 bg-amber-50 rounded-lg">
+                            <p className="text-xs text-amber-700">
+                              <strong>⚠️ Precautions:</strong> {supp.precautions}
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {supplementRecommendations.generalGuidance && supplementRecommendations.generalGuidance.length > 0 && (
+                    <div className="mt-4 p-4 bg-blue-50 rounded-xl">
+                      <h4 className="font-medium text-blue-900 mb-2">General Guidance</h4>
+                      <ul className="space-y-1">
+                        {supplementRecommendations.generalGuidance.map((tip, idx) => (
+                          <li key={idx} className="text-sm text-blue-700 flex items-start gap-2">
+                            <CheckCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                            {tip}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              ) : supplements.length > 0 && (
+                <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="text-lg font-semibold text-slate-800 flex items-center gap-2">
+                      <Utensils className="w-5 h-5 text-purple-500" />
+                      Supplement Recommendations
+                    </h2>
+                    <button
+                      onClick={generateSupplements}
+                      className="px-4 py-2 text-sm text-white rounded-lg hover:shadow-lg"
+                      style={{ backgroundColor: '#8B7355' }}
+                    >
+                      Get AI Recommendations
+                    </button>
+                  </div>
                   <p className="text-sm text-slate-500 mb-4">
                     General wellness guidance based on your deficiencies. Always consult a healthcare provider before starting supplements.
                   </p>

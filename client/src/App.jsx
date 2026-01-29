@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -23,6 +24,7 @@ import EmailTest from './pages/EmailTest';
 import DoctorAvailability from './pages/DoctorAvailability';
 import DietPlan from './pages/DietPlan';
 import AIChat from './pages/AIChat';
+import Nutrition from './pages/Nutrition';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -62,7 +64,9 @@ export default function App() {
   };
   
   return (
-    <Routes>
+    <>
+      <PWAInstallPrompt />
+      <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={getLoginRedirect()} />
       <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Register />} />
@@ -76,6 +80,7 @@ export default function App() {
       <Route path="/consultation/:appointmentId" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Consultation /></ProtectedRoute>} />
       <Route path="/consultation-summary/:appointmentId" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><ConsultationSummary /></Layout></ProtectedRoute>} />
       <Route path="/wearables" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Wearables /></Layout></ProtectedRoute>} />
+      <Route path="/nutrition" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Nutrition /></Layout></ProtectedRoute>} />
       <Route path="/subscription" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Subscription /></Layout></ProtectedRoute>} />
       <Route path="/diet-plan" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><DietPlan /></Layout></ProtectedRoute>} />
       <Route path="/ai-chat" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><AIChat /></Layout></ProtectedRoute>} />
@@ -94,6 +99,7 @@ export default function App() {
       <Route path="/demo" element={<DemoPreview />} />
       <Route path="/video-test" element={<VideoTest />} />
       <Route path="/email-test" element={<EmailTest />} />
-    </Routes>
+      </Routes>
+    </>
   );
 }

@@ -6,7 +6,14 @@ import {
   BarChart3, Menu, X, Clock, Award, Globe, Smartphone, Database, Lock,
   ArrowLeft, Quote, ChevronDown
 } from 'lucide-react';
-import MeshGradientHero from '../components/MeshGradientHero';
+import MinimalHeader from '../components/MinimalHeader';
+import VideoHero from '../components/VideoHero';
+import FeaturesSection from '../components/FeaturesSection';
+import ProductShowcaseSection from '../components/ProductShowcaseSection';
+import WhySection from '../components/WhySection';
+import StackingCardShowcase from '../components/StackingCardShowcase';
+import ScrollPhoneShowcase from '../components/ScrollPhoneShowcase';
+import HealthCardsSection from '../components/HealthCardsSection';
 
 // Header Component
 function Header() {
@@ -167,8 +174,8 @@ function Features() {
     },
     {
       icon: Smartphone,
-      title: "Health Tracking App",
-      description: "Monitor your vitals, medications, and wellness goals in one beautiful, easy-to-use dashboard.",
+      title: "Report Analysis",
+      description: "Upload your medical reports and get instant AI-powered analysis with personalized health insights.",
     },
     {
       icon: Users,
@@ -462,27 +469,27 @@ function Testimonials() {
   const prev = () => setCurrent((prev) => (prev - 1 + testimonials.length) % testimonials.length);
 
   return (
-    <section id="testimonials" className="py-20 md:py-32 bg-slate-50">
+    <section id="testimonials" className="py-20 md:py-32 bg-[#F5F1EA]">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto mb-16">
           <div className="inline-flex items-center gap-2 mb-4">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
-            <span className="text-sm uppercase tracking-wider text-slate-500 font-medium">Testimonials</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#8B7355]"></span>
+            <span className="text-sm uppercase tracking-wider text-[#5C4F3D] font-medium">Testimonials</span>
           </div>
-          <h2 className="text-3xl md:text-5xl font-bold text-slate-900 mb-6">
+          <h2 className="text-3xl md:text-5xl font-serif text-[#2C2416] mb-6">
             Hear from our users
           </h2>
-          <p className="text-lg text-slate-600">
+          <p className="text-lg text-[#5C4F3D]">
             Join thousands who've transformed their health with AI-powered insights.
           </p>
         </div>
 
         {/* Testimonial Card */}
         <div className="max-w-4xl mx-auto">
-          <div className="relative bg-white rounded-3xl p-8 md:p-12 shadow-xl border border-slate-200">
+          <div className="relative bg-white/60 backdrop-blur-sm rounded-3xl p-8 md:p-12 shadow-xl border border-[#E5DFD3]">
             {/* Quote Icon */}
-            <Quote className="absolute top-8 right-8 w-16 h-16 text-blue-100" />
+            <Quote className="absolute top-8 right-8 w-16 h-16 text-[#8B7355]/20" />
 
             {/* Stars */}
             <div className="flex gap-1 mb-6">
@@ -492,7 +499,7 @@ function Testimonials() {
             </div>
 
             {/* Quote */}
-            <blockquote className="text-xl md:text-2xl text-slate-900 leading-relaxed mb-8">
+            <blockquote className="text-xl md:text-2xl text-[#2C2416] leading-relaxed mb-8 font-serif">
               "{testimonials[current].quote}"
             </blockquote>
 
@@ -501,11 +508,11 @@ function Testimonials() {
               <img
                 src={testimonials[current].image}
                 alt={testimonials[current].author}
-                className="w-14 h-14 rounded-full object-cover border-2 border-slate-200"
+                className="w-14 h-14 rounded-full object-cover border-2 border-[#E5DFD3]"
               />
               <div>
-                <p className="font-semibold text-slate-900">{testimonials[current].author}</p>
-                <p className="text-sm text-slate-600">
+                <p className="font-semibold text-[#2C2416]">{testimonials[current].author}</p>
+                <p className="text-sm text-[#5C4F3D]">
                   {testimonials[current].role} · {testimonials[current].location}
                 </p>
               </div>
@@ -516,9 +523,9 @@ function Testimonials() {
           <div className="flex items-center justify-center gap-4 mt-8">
             <button
               onClick={prev}
-              className="w-12 h-12 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center transition-colors"
+              className="w-12 h-12 rounded-full border border-[#E5DFD3] bg-white/60 hover:bg-white transition-colors flex items-center justify-center"
             >
-              <ArrowLeft className="w-5 h-5 text-slate-900" />
+              <ArrowLeft className="w-5 h-5 text-[#2C2416]" />
             </button>
             <div className="flex gap-2">
               {testimonials.map((_, i) => (
@@ -526,16 +533,16 @@ function Testimonials() {
                   key={i}
                   onClick={() => setCurrent(i)}
                   className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                    i === current ? "bg-blue-600" : "bg-slate-300 hover:bg-slate-400"
+                    i === current ? "bg-[#8B7355]" : "bg-[#E5DFD3] hover:bg-[#8B7355]/50"
                   }`}
                 />
               ))}
             </div>
             <button
               onClick={next}
-              className="w-12 h-12 rounded-full border border-slate-200 bg-white hover:bg-slate-50 flex items-center justify-center transition-colors"
+              className="w-12 h-12 rounded-full border border-[#E5DFD3] bg-white/60 hover:bg-white transition-colors flex items-center justify-center"
             >
-              <ArrowRight className="w-5 h-5 text-slate-900" />
+              <ArrowRight className="w-5 h-5 text-[#2C2416]" />
             </button>
           </div>
         </div>
@@ -581,11 +588,11 @@ function FAQ() {
         {/* Section Header */}
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 mb-4">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-600"></span>
-            <span className="text-sm uppercase tracking-wider text-slate-500 font-medium">FAQ</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-[#8B7355]"></span>
+            <span className="text-sm uppercase tracking-wider text-[#5C4F3D] font-medium">FAQ</span>
           </div>
-          <h2 className="text-3xl md:text-5xl font-bold text-slate-900 mb-6">Got questions?</h2>
-          <p className="text-lg text-slate-600">
+          <h2 className="text-3xl md:text-5xl font-serif text-[#2C2416] mb-6">Got questions?</h2>
+          <p className="text-lg text-[#5C4F3D]">
             We've got answers. If you can't find what you're looking for, chat with our team.
           </p>
         </div>
@@ -593,14 +600,14 @@ function FAQ() {
         {/* FAQ Items */}
         <div className="space-y-4">
           {faqs.map((faq, index) => (
-            <div key={index} className="border border-slate-200 rounded-xl overflow-hidden bg-white">
+            <div key={index} className="border border-[#E5DFD3] rounded-xl overflow-hidden bg-white/60 backdrop-blur-sm">
               <button
                 onClick={() => setOpenIndex(openIndex === index ? null : index)}
                 className="w-full flex items-center justify-between p-6 text-left"
               >
-                <span className="text-lg font-medium text-slate-900 pr-4">{faq.question}</span>
+                <span className="text-lg font-medium text-[#2C2416] pr-4">{faq.question}</span>
                 <ChevronDown
-                  className={`w-5 h-5 text-slate-500 shrink-0 transition-transform duration-200 ${
+                  className={`w-5 h-5 text-[#5C4F3D] shrink-0 transition-transform duration-200 ${
                     openIndex === index ? "rotate-180" : ""
                   }`}
                 />
@@ -610,7 +617,7 @@ function FAQ() {
                   openIndex === index ? "max-h-96" : "max-h-0"
                 }`}
               >
-                <p className="px-6 pb-6 text-slate-600 leading-relaxed">{faq.answer}</p>
+                <p className="px-6 pb-6 text-[#5C4F3D] leading-relaxed">{faq.answer}</p>
               </div>
             </div>
           ))}
@@ -623,31 +630,31 @@ function FAQ() {
 // CTA Component
 function CTA() {
   return (
-    <section className="py-20 md:py-32 bg-blue-600">
+    <section className="py-20 md:py-32 bg-[#8B7355]">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-        <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
+        <h2 className="text-3xl md:text-5xl font-serif text-white mb-6">
           Ready to transform your health with AI?
         </h2>
-        <p className="text-lg text-blue-100 mb-10 max-w-2xl mx-auto">
+        <p className="text-lg text-white/90 mb-10 max-w-2xl mx-auto">
           Join 10,000+ people who've made the switch to proactive, AI-powered healthcare. 
           Your future self will thank you.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link
             to="/register"
-            className="bg-white text-blue-600 hover:bg-blue-50 rounded-full px-8 py-4 text-base font-medium transition-all inline-flex items-center gap-2"
+            className="bg-white text-[#8B7355] hover:bg-[#F5F1EA] rounded-full px-8 py-4 text-base font-medium transition-all inline-flex items-center gap-2 shadow-lg"
           >
             Start your free analysis
             <ArrowRight className="w-5 h-5" />
           </Link>
           <Link
             to="/login"
-            className="rounded-full px-8 py-4 text-base font-medium border border-blue-400 text-white hover:bg-blue-700 bg-transparent transition-all"
+            className="rounded-full px-8 py-4 text-base font-medium border-2 border-white/40 text-white hover:bg-white/10 bg-transparent transition-all backdrop-blur-sm"
           >
             Talk to our team
           </Link>
         </div>
-        <p className="text-sm text-blue-200 mt-6">Free forever plan · No credit card required · Cancel anytime</p>
+        <p className="text-sm text-white/80 mt-6">Free forever plan · No credit card required · Cancel anytime</p>
       </div>
     </section>
   );
@@ -656,28 +663,28 @@ function CTA() {
 // Footer Component
 function Footer() {
   return (
-    <footer className="bg-slate-900 text-white py-16">
+    <footer className="bg-[#2C2416] text-white py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 mb-12">
           {/* Brand */}
           <div className="col-span-2 lg:col-span-1">
             <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl flex items-center justify-center">
+              <div className="w-8 h-8 bg-[#8B7355] rounded-xl flex items-center justify-center">
                 <Activity className="w-5 h-5 text-white" />
               </div>
-              <span className="font-semibold text-xl">HealthAI</span>
+              <span className="font-serif text-xl">HealthAI</span>
             </div>
-            <p className="text-slate-400 text-sm mb-4">AI-powered health insights for better living.</p>
+            <p className="text-white/60 text-sm mb-4">AI-powered health insights for better living.</p>
           </div>
 
           {/* Product */}
           <div>
             <h4 className="font-semibold mb-4">Product</h4>
             <ul className="space-y-3 text-sm">
-              <li><a href="#" className="text-slate-400 hover:text-white transition-colors">Features</a></li>
-              <li><a href="#" className="text-slate-400 hover:text-white transition-colors">Pricing</a></li>
-              <li><a href="#" className="text-slate-400 hover:text-white transition-colors">Mobile App</a></li>
-              <li><a href="#" className="text-slate-400 hover:text-white transition-colors">API</a></li>
+              <li><a href="#" className="text-white/60 hover:text-white transition-colors">Features</a></li>
+              <li><a href="#" className="text-white/60 hover:text-white transition-colors">Pricing</a></li>
+              <li><a href="#" className="text-white/60 hover:text-white transition-colors">Mobile App</a></li>
+              <li><a href="#" className="text-white/60 hover:text-white transition-colors">API</a></li>
             </ul>
           </div>
 
@@ -685,10 +692,10 @@ function Footer() {
           <div>
             <h4 className="font-semibold mb-4">Company</h4>
             <ul className="space-y-3 text-sm">
-              <li><a href="#" className="text-slate-400 hover:text-white transition-colors">About</a></li>
-              <li><a href="#" className="text-slate-400 hover:text-white transition-colors">Blog</a></li>
-              <li><a href="#" className="text-slate-400 hover:text-white transition-colors">Careers</a></li>
-              <li><a href="#" className="text-slate-400 hover:text-white transition-colors">Press</a></li>
+              <li><a href="#" className="text-white/60 hover:text-white transition-colors">About</a></li>
+              <li><a href="#" className="text-white/60 hover:text-white transition-colors">Blog</a></li>
+              <li><a href="#" className="text-white/60 hover:text-white transition-colors">Careers</a></li>
+              <li><a href="#" className="text-white/60 hover:text-white transition-colors">Press</a></li>
             </ul>
           </div>
 
@@ -696,10 +703,10 @@ function Footer() {
           <div>
             <h4 className="font-semibold mb-4">Resources</h4>
             <ul className="space-y-3 text-sm">
-              <li><a href="#" className="text-slate-400 hover:text-white transition-colors">Help Center</a></li>
-              <li><a href="#" className="text-slate-400 hover:text-white transition-colors">Health Guides</a></li>
-              <li><a href="#" className="text-slate-400 hover:text-white transition-colors">Find a Doctor</a></li>
-              <li><a href="#" className="text-slate-400 hover:text-white transition-colors">Partner with Us</a></li>
+              <li><a href="#" className="text-white/60 hover:text-white transition-colors">Help Center</a></li>
+              <li><a href="#" className="text-white/60 hover:text-white transition-colors">Health Guides</a></li>
+              <li><a href="#" className="text-white/60 hover:text-white transition-colors">Find a Doctor</a></li>
+              <li><a href="#" className="text-white/60 hover:text-white transition-colors">Partner with Us</a></li>
             </ul>
           </div>
 
@@ -707,17 +714,17 @@ function Footer() {
           <div>
             <h4 className="font-semibold mb-4">Legal</h4>
             <ul className="space-y-3 text-sm">
-              <li><a href="#" className="text-slate-400 hover:text-white transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="text-slate-400 hover:text-white transition-colors">Terms of Service</a></li>
-              <li><a href="#" className="text-slate-400 hover:text-white transition-colors">HIPAA Compliance</a></li>
+              <li><a href="#" className="text-white/60 hover:text-white transition-colors">Privacy Policy</a></li>
+              <li><a href="#" className="text-white/60 hover:text-white transition-colors">Terms of Service</a></li>
+              <li><a href="#" className="text-white/60 hover:text-white transition-colors">HIPAA Compliance</a></li>
             </ul>
           </div>
         </div>
 
         {/* Bottom */}
-        <div className="pt-8 border-t border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-slate-400">© 2024 HealthAI. All rights reserved.</p>
-          <p className="text-sm text-slate-400">Made with ❤️ for better health</p>
+        <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
+          <p className="text-sm text-white/60">© 2024 HealthAI. All rights reserved.</p>
+          <p className="text-sm text-white/60">Made with ❤️ for better health</p>
         </div>
       </div>
     </footer>
@@ -727,14 +734,14 @@ function Footer() {
 // Main Landing Page Component
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-white">
-      <Header />
-      <MeshGradientHero>
-        <Hero />
-        <Features />
-      </MeshGradientHero>
-      <HowItWorks />
-      <Pricing />
+    <div className="min-h-screen bg-[#F5F1EA]">
+      <MinimalHeader />
+      <VideoHero />
+      <FeaturesSection />
+      <ProductShowcaseSection />
+      <WhySection />
+      <HealthCardsSection />
+      <ScrollPhoneShowcase />
       <Testimonials />
       <FAQ />
       <CTA />

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { healthService, wearableService } from '../services/api';
+import { useData } from '../context/DataContext';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart
 } from 'recharts';
@@ -9,7 +9,7 @@ import {
   Heart, Moon, TrendingUp, MessageSquare, Watch, FileText, Plus, Battery, 
   Sparkles, Upload, Footprints, RefreshCw, Eye, X, Droplets, Zap, Brain,
   Bone, Shield, Pill, Activity, Sun, Calendar, Clock, AlertTriangle,
-  CheckCircle, ArrowUp, Minus, Target, Award
+  CheckCircle, ArrowUp, Minus, Target, Award, Utensils, Flame
 } from 'lucide-react';
 
 // Health metrics info - simple explanations for users
@@ -237,32 +237,50 @@ const MetricCard = ({ metricKey, value, unit, status, subtitle, onInfoClick }) =
 
 export default function Dashboard() {
   const { user } = useAuth();
-  const [data, setData] = useState(null);
-  const [wearableData, setWearableData] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const { 
+    dashboardData, 
+    wearableData, 
+    nutritionData: cachedNutritionData,
+    loading: contextLoading,
+    fetchDashboard,
+    fetchWearable,
+    fetchNutrition
+  } = useData();
+  
   const [selectedMetric, setSelectedMetric] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [localNutritionData, setLocalNutritionData] = useState(null);
+  const [error, setError] = useState(null);
 
-  const fetchData = async () => {
-    try {
-      setError(null);
-      const [dashboardRes, wearableRes] = await Promise.all([
-        healthService.getDashboard(),
-        wearableService.getDashboard().catch(() => ({ data: { connected: false } }))
-      ]);
-      setData(dashboardRes.data);
-      setWearableData(wearableRes.data);
-    } catch (error) {
-      console.error('Failed to fetch dashboard:', error);
-      setError(error.response?.data?.message || 'Failed to load dashboard data');
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  // Fetch data on mount - will use cache if available
   useEffect(() => {
-    fetchData();
-  }, []);
+    const loadData = async () => {
+      try {
+        setError(null);
+        await Promise.all([
+          fetchDashboard(),
+          fetchWearable()
+        ]);
+      } catch (error) {
+        console.error('Failed to fetch dashboard:', error);
+        setError(error.response?.data?.message || 'Failed to load dashboard data');
+      }
+    };
+    loadData();
+  }, [fetchDashboard, fetchWearable]);
+
+  // Fetch nutrition data when date changes
+  useEffect(() => {
+    const loadNutrition = async () => {
+      const data = await fetchNutrition(selectedDate);
+      setLocalNutritionData(data);
+    };
+    loadNutrition();
+  }, [selectedDate, fetchNutrition]);
+
+  const loading = contextLoading.dashboard || contextLoading.wearable;
+  const data = dashboardData;
+  const nutritionDataToUse = localNutritionData || cachedNutritionData;
 
   if (loading) {
     return (
@@ -363,7 +381,7 @@ export default function Dashboard() {
             <span className="hidden sm:inline">Upload Records</span>
             <span className="sm:hidden">Upload</span>
           </Link>
-          <button className="px-3 sm:px-6 py-2 sm:py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-medium hover:shadow-lg flex items-center gap-1 sm:gap-2 text-xs sm:text-base">
+          <button className="px-3 sm:px-6 py-2 sm:py-3 text-white rounded-xl font-medium hover:shadow-lg flex items-center gap-1 sm:gap-2 text-xs sm:text-base" style={{ backgroundColor: '#8B7355' }}>
             <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
             <span className="hidden sm:inline">Log Symptoms</span>
             <span className="sm:hidden">Log</span>
@@ -371,68 +389,204 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* AI Health Dashboard Banner */}
-      <div className="relative rounded-2xl overflow-hidden shadow-lg bg-gradient-to-r from-cyan-500 to-blue-500 p-6 sm:p-8">
-        <div className="text-white max-w-2xl">
-          <h2 className="text-2xl sm:text-3xl font-bold mb-2">AI-Powered Health Insights</h2>
-          <p className="text-white/90 text-sm sm:text-base">Get personalized health recommendations based on your medical reports and wearable data</p>
-        </div>
-      </div>
-
       {/* Health Score Trend Chart */}
-      {hasReports && healthScore ? (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 mb-4">
-            <div>
-              <h3 className="text-base sm:text-lg font-semibold text-slate-800">Health Score Trend</h3>
-              <p className="text-slate-500 text-xs sm:text-sm">Your overall health progress</p>
+      <div className="grid lg:grid-cols-2 gap-6">
+        {/* Health Score */}
+        {hasReports && healthScore ? (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 mb-4">
+              <div>
+                <h3 className="text-base sm:text-lg font-semibold text-slate-800">Health Score Trend</h3>
+                <p className="text-slate-500 text-xs sm:text-sm">Your overall health progress</p>
+              </div>
+              <div className="flex items-baseline gap-2">
+                <span className="text-2xl sm:text-4xl font-bold text-slate-800">{healthScore}</span>
+                <span className="text-slate-400 text-sm">/100</span>
+                {healthScoreTrend.length > 1 && (
+                  <span className="text-emerald-500 text-xs sm:text-sm ml-2">
+                    {healthScoreTrend[healthScoreTrend.length - 1].score > healthScoreTrend[healthScoreTrend.length - 2].score ? '+' : ''}
+                    {healthScoreTrend[healthScoreTrend.length - 1].score - healthScoreTrend[healthScoreTrend.length - 2].score}%
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl sm:text-4xl font-bold text-slate-800">{healthScore}</span>
-              <span className="text-slate-400 text-sm">/100</span>
-              {healthScoreTrend.length > 1 && (
-                <span className="text-emerald-500 text-xs sm:text-sm ml-2">
-                  {healthScoreTrend[healthScoreTrend.length - 1].score > healthScoreTrend[healthScoreTrend.length - 2].score ? '+' : ''}
-                  {healthScoreTrend[healthScoreTrend.length - 1].score - healthScoreTrend[healthScoreTrend.length - 2].score}%
-                </span>
-              )}
+            {healthScoreTrend.length > 0 && (
+              <ResponsiveContainer width="100%" height={140}>
+                <AreaChart data={healthScoreTrend}>
+                  <defs>
+                    <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
+                  <XAxis dataKey="date" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} domain={[50, 100]} hide />
+                  <Tooltip
+                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px' }}
+                    labelStyle={{ color: '#64748b' }}
+                    formatter={(value) => [`${value}/100`, 'Score']}
+                  />
+                  <Area type="monotone" dataKey="score" stroke="#10b981" strokeWidth={2} fill="url(#scoreGradient)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        ) : (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center">
+            <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
+              <TrendingUp className="w-8 h-8 text-slate-400" />
+            </div>
+            <h3 className="text-lg font-semibold text-slate-800 mb-2">No Health Data Yet</h3>
+            <p className="text-slate-500 mb-4">Upload your first health report to see your personalized health score and track your progress over time.</p>
+            <Link to="/upload" className="inline-flex items-center gap-2 px-6 py-3 text-white rounded-xl font-medium hover:shadow-lg transition-all" style={{ backgroundColor: '#8B7355' }}>
+              <Upload className="w-4 h-4" />
+              Upload Your First Report
+            </Link>
+          </div>
+        )}
+
+        {/* Nutrition Tracker */}
+        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-base sm:text-lg font-semibold text-slate-800 flex items-center gap-2">
+                <Utensils className="w-5 h-5 text-emerald-500" />
+                Nutrition Tracker
+              </h3>
+              <p className="text-slate-500 text-xs sm:text-sm">Daily calorie and macro tracking</p>
             </div>
           </div>
-          {healthScoreTrend.length > 0 && (
-            <ResponsiveContainer width="100%" height={140}>
-              <AreaChart data={healthScoreTrend}>
-                <defs>
-                  <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                <XAxis dataKey="date" stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={10} tickLine={false} axisLine={false} domain={[50, 100]} hide />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '8px', fontSize: '12px' }}
-                  labelStyle={{ color: '#64748b' }}
-                  formatter={(value) => [`${value}/100`, 'Score']}
-                />
-                <Area type="monotone" dataKey="score" stroke="#10b981" strokeWidth={2} fill="url(#scoreGradient)" />
-              </AreaChart>
-            </ResponsiveContainer>
+
+          {/* Date Filter */}
+          <div className="flex items-center gap-2 mb-4">
+            <input
+              type="date"
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+            />
+            <button
+              onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
+              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-sm font-medium transition-colors"
+            >
+              Today
+            </button>
+          </div>
+
+          {nutritionDataToUse ? (
+            <div className="space-y-4">
+              {/* Calories Progress */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm text-slate-600">Calories</span>
+                  <span className="text-sm font-semibold text-slate-800">
+                    {nutritionDataToUse.totalCalories || 0} / {nutritionDataToUse.calorieGoal || 1800}
+                  </span>
+                </div>
+                <div className="w-full bg-slate-100 rounded-full h-2">
+                  <div
+                    className="h-2 rounded-full transition-all"
+                    style={{ 
+                      width: `${Math.min(((nutritionDataToUse.totalCalories || 0) / (nutritionDataToUse.calorieGoal || 1800)) * 100, 100)}%`,
+                      backgroundColor: '#8B7355'
+                    }}
+                  />
+                </div>
+                {!nutritionDataToUse.calorieGoal && (
+                  <p className="text-xs text-amber-600 mt-1">
+                    <Link to="/profile" className="underline">Set your fitness goal</Link> for personalized targets
+                  </p>
+                )}
+              </div>
+
+              {/* Macros */}
+              <div className="grid grid-cols-3 gap-3">
+                {/* Protein */}
+                <div className="bg-blue-50 rounded-xl p-3">
+                  <div className="flex items-center gap-1 mb-1">
+                    <Flame className="w-3 h-3 text-blue-500" />
+                    <span className="text-xs text-blue-600 font-medium">Protein</span>
+                  </div>
+                  <p className="text-lg font-bold text-blue-700">{(nutritionDataToUse.totalProtein || 0).toFixed(2)}g</p>
+                  <div className="w-full bg-blue-200 rounded-full h-1 mt-2">
+                    <div
+                      className="bg-blue-500 h-1 rounded-full"
+                      style={{ width: `${Math.min(((nutritionDataToUse.totalProtein || 0) / (nutritionDataToUse.proteinGoal || 80)) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Carbs */}
+                <div className="bg-amber-50 rounded-xl p-3">
+                  <div className="flex items-center gap-1 mb-1">
+                    <Flame className="w-3 h-3 text-amber-500" />
+                    <span className="text-xs text-amber-600 font-medium">Carbs</span>
+                  </div>
+                  <p className="text-lg font-bold text-amber-700">{(nutritionDataToUse.totalCarbs || 0).toFixed(2)}g</p>
+                  <div className="w-full bg-amber-200 rounded-full h-1 mt-2">
+                    <div
+                      className="bg-amber-500 h-1 rounded-full"
+                      style={{ width: `${Math.min(((nutritionDataToUse.totalCarbs || 0) / (nutritionDataToUse.carbsGoal || 200)) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Fats */}
+                <div className="bg-rose-50 rounded-xl p-3">
+                  <div className="flex items-center gap-1 mb-1">
+                    <Flame className="w-3 h-3 text-rose-500" />
+                    <span className="text-xs text-rose-600 font-medium">Fats</span>
+                  </div>
+                  <p className="text-lg font-bold text-rose-700">{(nutritionDataToUse.totalFats || 0).toFixed(2)}g</p>
+                  <div className="w-full bg-rose-200 rounded-full h-1 mt-2">
+                    <div
+                      className="bg-rose-500 h-1 rounded-full"
+                      style={{ width: `${Math.min(((nutritionDataToUse.totalFats || 0) / (nutritionDataToUse.fatsGoal || 50)) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Meals Logged */}
+              <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                <span className="text-sm text-slate-600">Meals logged today</span>
+                <span className="text-sm font-semibold text-slate-800">
+                  {(nutritionDataToUse.mealsLogged?.breakfast ? 1 : 0) + 
+                   (nutritionDataToUse.mealsLogged?.lunch ? 1 : 0) + 
+                   (nutritionDataToUse.mealsLogged?.dinner ? 1 : 0) + 
+                   (nutritionDataToUse.mealsLogged?.snacks || 0)}
+                </span>
+              </div>
+
+              {/* Log Meal Button */}
+              <Link
+                to="/nutrition"
+                className="w-full py-2 text-white rounded-xl font-medium hover:shadow-lg flex items-center justify-center gap-2 text-sm transition-all"
+                style={{ backgroundColor: '#8B7355' }}
+              >
+                <Plus className="w-4 h-4" />
+                Log Meal
+              </Link>
+            </div>
+          ) : (
+            <div className="text-center py-6">
+              <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Utensils className="w-6 h-6 text-slate-400" />
+              </div>
+              <p className="text-slate-500 text-sm mb-4">No meals logged for this day</p>
+              <Link
+                to="/nutrition"
+                className="inline-flex items-center gap-2 px-4 py-2 text-white rounded-xl font-medium hover:shadow-lg text-sm transition-all"
+                style={{ backgroundColor: '#8B7355' }}
+              >
+                <Plus className="w-4 h-4" />
+                Log Your First Meal
+              </Link>
+            </div>
           )}
         </div>
-      ) : (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-8 text-center">
-          <div className="w-16 h-16 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <TrendingUp className="w-8 h-8 text-slate-400" />
-          </div>
-          <h3 className="text-lg font-semibold text-slate-800 mb-2">No Health Data Yet</h3>
-          <p className="text-slate-500 mb-4">Upload your first health report to see your personalized health score and track your progress over time.</p>
-          <Link to="/upload" className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-medium hover:shadow-lg transition-all">
-            <Upload className="w-4 h-4" />
-            Upload Your First Report
-          </Link>
-        </div>
-      )}
+      </div>
 
       {/* Vital Signs Section */}
       <div>
@@ -595,10 +749,10 @@ export default function Dashboard() {
         {/* Left Column - AI Analysis */}
         <div className="lg:col-span-2 space-y-6">
           {/* AI Analysis Card */}
-          <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl border border-cyan-200 p-6">
+          <div className="rounded-2xl p-6" style={{ backgroundColor: '#F5F1EA', border: '2px solid #E5DFD3' }}>
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <div className="px-3 py-1 bg-cyan-100 rounded-full flex items-center gap-2">
+                <div className="px-3 py-1 rounded-full flex items-center gap-2" style={{ backgroundColor: '#E5DFD3' }}>
                   <Sparkles className="w-4 h-4 text-cyan-600" />
                   <span className="text-cyan-700 text-sm font-medium">AI ANALYSIS</span>
                 </div>
@@ -617,7 +771,7 @@ export default function Dashboard() {
             </p>
             <div className="flex flex-wrap gap-3">
               {!hasReports && (
-                <Link to="/upload" className="px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-medium hover:shadow-lg flex items-center gap-2">
+                <Link to="/upload" className="px-6 py-2 text-white rounded-xl font-medium hover:shadow-lg flex items-center gap-2" style={{ backgroundColor: '#8B7355' }}>
                   <Upload className="w-4 h-4" />
                   Upload Your First Report
                 </Link>
@@ -657,46 +811,6 @@ export default function Dashboard() {
 
         {/* Right Column - Devices & Reports */}
         <div className="space-y-6">
-          {/* Connected Devices */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold text-slate-800">Connected Devices</h3>
-              <Link to="/wearables" className="text-cyan-500 text-sm hover:text-cyan-600">Manage</Link>
-            </div>
-            <div className="space-y-3">
-              {wearableData?.devices?.length > 0 ? (
-                wearableData.devices.map((device, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center">
-                        <Watch className="w-5 h-5 text-cyan-500" />
-                      </div>
-                      <div>
-                        <p className="text-slate-800 font-medium">{device.name || device.type}</p>
-                        <div className="flex items-center gap-1">
-                          <span className="w-2 h-2 rounded-full bg-emerald-500" />
-                          <span className="text-emerald-600 text-xs">Connected</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 text-slate-500">
-                      <Battery className="w-4 h-4" />
-                      <span className="text-sm">82%</span>
-                    </div>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-4">
-                  <Watch className="w-10 h-10 text-slate-300 mx-auto mb-2" />
-                  <p className="text-slate-500 text-sm">No devices connected</p>
-                  <Link to="/wearables" className="text-cyan-500 text-sm hover:text-cyan-600">
-                    + Connect Device
-                  </Link>
-                </div>
-              )}
-            </div>
-          </div>
-
           {/* Recent Reports */}
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
             <div className="flex items-center justify-between mb-4">

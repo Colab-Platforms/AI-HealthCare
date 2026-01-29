@@ -43,35 +43,25 @@ export default function AIChat() {
     fetchUserReports();
   }, []);
 
-  // Load chat history from database
+  // Load chat history from localStorage on mount
   useEffect(() => {
     const loadChatHistory = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('/api/chat/history', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.messages && data.messages.length > 0) {
-            setMessages(data.messages.map(msg => ({
-              role: msg.role,
-              content: msg.content,
-              timestamp: new Date(msg.timestamp)
-            })));
-          } else {
-            // No history, show welcome message
-            setMessages([
-              {
-                role: 'assistant',
-                content: `Hello ${user?.name || 'there'}! 👋 I'm your AI health assistant. I have access to your health reports and can help you understand them. What would you like to know?`,
-                timestamp: new Date()
-              }
-            ]);
-          }
+        // Try to load from localStorage first
+        const savedMessages = localStorage.getItem(`chat_history_${user?.id}`);
+        if (savedMessages) {
+          const parsedMessages = JSON.parse(savedMessages);
+          setMessages(parsedMessages);
+          console.log('Loaded chat history from localStorage:', parsedMessages.length, 'messages');
+        } else {
+          // Show welcome message if no history
+          setMessages([
+            {
+              role: 'assistant',
+              content: `Hello ${user?.name || 'there'}! 👋 I'm your AI health assistant. I can help you understand your health reports, explain medical terms, provide diet guidance, and answer health-related questions. What would you like to know?`,
+              timestamp: new Date()
+            }
+          ]);
         }
       } catch (error) {
         console.error('Failed to load chat history:', error);
@@ -95,7 +85,7 @@ export default function AIChat() {
       const selectedText = location.state.selectedText;
       setInput(`Can you explain this: "${selectedText}"`);
     }
-  }, [location.state, user]);
+  }, [user?.id, location.state, user?.name]);
 
   useEffect(() => {
     scrollToBottom();
@@ -112,15 +102,15 @@ export default function AIChat() {
     let index = 0;
     
     const interval = setInterval(() => {
-      if (index < text.length) {
-        setStreamingText(prev => prev + text[index]);
+      if (index <= text.length) {
+        setStreamingText(text.substring(0, index));
         index++;
       } else {
         clearInterval(interval);
         setStreaming(false);
         callback();
       }
-    }, 20); // Adjust speed here (lower = faster)
+    }, 15); // Adjust speed here (lower = faster)
     
     return () => clearInterval(interval);
   };
@@ -128,13 +118,8 @@ export default function AIChat() {
   const clearChat = async () => {
     if (confirm('Are you sure you want to clear the chat history?')) {
       try {
-        const token = localStorage.getItem('token');
-        await fetch('/api/chat/history', {
-          method: 'DELETE',
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        // Clear from localStorage
+        localStorage.removeItem(`chat_history_${user?.id}`);
         
         setMessages([
           {
@@ -151,25 +136,19 @@ export default function AIChat() {
     }
   };
 
-  // Save message to database
+  // Save message to localStorage
   const saveMessageToDb = async (userQuery, aiResponse) => {
     try {
-      const token = localStorage.getItem('token');
-      await fetch('/api/chat/history', {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          messages: [
-            { role: 'user', content: userQuery, timestamp: new Date() },
-            { role: 'assistant', content: aiResponse, timestamp: new Date() }
-          ]
-        })
-      });
+      // Save to localStorage for persistence
+      const updatedMessages = [
+        ...messages,
+        { role: 'user', content: userQuery, timestamp: new Date() },
+        { role: 'assistant', content: aiResponse, timestamp: new Date() }
+      ];
+      localStorage.setItem(`chat_history_${user?.id}`, JSON.stringify(updatedMessages));
+      console.log('Chat history saved to localStorage');
     } catch (error) {
-      console.error('Failed to save message:', error);
+      console.error('Failed to save chat history:', error);
     }
   };
 
@@ -189,19 +168,15 @@ export default function AIChat() {
     setLoading(true);
 
     try {
-      // Use simple chat endpoint (no auth required)
-      const apiUrl = import.meta.env.PROD 
-        ? `${window.location.origin}/api/chat`
-        : '/api/chat';
-      
-      const response = await fetch(apiUrl, {
+      // Call the chat API endpoint
+      const response = await fetch('/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
           query: currentInput,
-          conversationHistory: messages.filter(m => !m.content.includes('Hello')).slice(-10),
+          conversationHistory: messages.slice(-10), // Send last 10 messages for context
           userReports: userReports.map(r => ({
             type: r.reportType,
             date: r.uploadDate,
@@ -214,7 +189,7 @@ export default function AIChat() {
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         console.error('API Error:', response.status, errorData);
-        throw new Error(errorData.message || 'Failed to get AI response');
+        throw new Error(errorData.message || `Failed to get AI response (${response.status})`);
       }
 
       const data = await response.json();
@@ -230,14 +205,16 @@ export default function AIChat() {
           setMessages(prev => [...prev, aiResponse]);
           setStreamingText('');
           
-          // Save to database
-          saveMessageToDb(currentInput, data.response);
+          // Save to localStorage
+          const updatedMessages = [...messages, userMessage, aiResponse];
+          localStorage.setItem(`chat_history_${user?.id}`, JSON.stringify(updatedMessages));
         });
       } else {
         throw new Error('Invalid response from AI');
       }
     } catch (error) {
       console.error('AI Chat error:', error);
+      toast.error('Failed to get response. Using fallback.');
       
       // Fallback to template response with streaming
       const fallbackResponse = generateAIResponse(currentInput);
@@ -282,11 +259,11 @@ export default function AIChat() {
   };
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col bg-gradient-to-br from-slate-50 via-cyan-50/30 to-blue-50/30">
+    <div className="h-screen flex flex-col" style={{ backgroundColor: '#F5F1EA' }}>
       {/* Messages */}
       <div 
         ref={chatContainerRef}
-        className="flex-1 overflow-y-auto px-4 sm:px-6 py-6 space-y-4"
+        className="flex-1 overflow-y-auto px-3 md:px-6 py-4 md:py-6 space-y-4 pb-32 md:pb-28"
         style={{ userSelect: 'text' }}
         onMouseUp={(e) => {
           // Prevent text selection popup on this page
@@ -299,7 +276,7 @@ export default function AIChat() {
             className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
           >
             {message.role === 'assistant' && (
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center shrink-0 shadow-md">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-md" style={{ backgroundColor: '#8B7355' }}>
                 <Bot className="w-5 h-5 text-white" />
               </div>
             )}
@@ -307,9 +284,15 @@ export default function AIChat() {
             <div
               className={`max-w-[80%] sm:max-w-[70%] rounded-2xl px-4 py-3 shadow-sm ${
                 message.role === 'user'
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-cyan-200'
-                  : 'bg-white border border-slate-200 text-slate-800'
+                  ? 'text-white shadow-sm'
+                  : 'bg-white text-slate-800'
               }`}
+              style={message.role === 'user' ? { 
+                backgroundColor: '#8B7355',
+                border: '1px solid #E5DFD3'
+              } : {
+                border: '1px solid #E5DFD3'
+              }}
             >
               <div className="whitespace-pre-wrap break-words text-sm sm:text-base leading-relaxed">
                 {message.content}
@@ -321,7 +304,16 @@ export default function AIChat() {
                 {message.role === 'assistant' && (
                   <button
                     onClick={() => copyToClipboard(message.content, index)}
-                    className="text-slate-400 hover:text-cyan-600 transition-colors p-1 hover:bg-slate-100 rounded"
+                    className="transition-colors p-1 rounded"
+                    style={{ color: '#5C4F3D' }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = '#8B7355';
+                      e.currentTarget.style.backgroundColor = '#F5F1EA';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = '#5C4F3D';
+                      e.currentTarget.style.backgroundColor = 'transparent';
+                    }}
                     title="Copy response"
                   >
                     {copiedIndex === index ? (
@@ -335,8 +327,8 @@ export default function AIChat() {
             </div>
 
             {message.role === 'user' && (
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-slate-200 to-slate-300 flex items-center justify-center shrink-0 shadow-sm">
-                <User className="w-5 h-5 text-slate-600" />
+              <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm" style={{ backgroundColor: '#E5DFD3' }}>
+                <User className="w-5 h-5" style={{ color: '#5C4F3D' }} />
               </div>
             )}
           </div>
@@ -345,13 +337,13 @@ export default function AIChat() {
         {/* Streaming message */}
         {streaming && streamingText && (
           <div className="flex gap-3 justify-start">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center shrink-0 shadow-md">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-md" style={{ backgroundColor: '#8B7355' }}>
               <Bot className="w-5 h-5 text-white" />
             </div>
-            <div className="max-w-[80%] sm:max-w-[70%] bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-sm">
-              <div className="whitespace-pre-wrap break-words text-sm sm:text-base leading-relaxed text-slate-800">
+            <div className="max-w-[80%] sm:max-w-[70%] bg-white rounded-2xl px-4 py-3 shadow-sm" style={{ border: '1px solid #E5DFD3' }}>
+              <div className="whitespace-pre-wrap break-words text-sm sm:text-base leading-relaxed" style={{ color: '#2C2416' }}>
                 {streamingText}
-                <span className="inline-block w-1 h-4 bg-cyan-500 ml-1 animate-pulse"></span>
+                <span className="inline-block w-1 h-4 ml-1 animate-pulse" style={{ backgroundColor: '#8B7355' }}></span>
               </div>
             </div>
           </div>
@@ -360,12 +352,12 @@ export default function AIChat() {
         {/* Loading indicator */}
         {loading && !streaming && (
           <div className="flex gap-3 justify-start">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center shrink-0 shadow-md">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-md" style={{ backgroundColor: '#8B7355' }}>
               <Bot className="w-5 h-5 text-white" />
             </div>
-            <div className="bg-white border border-slate-200 rounded-2xl px-4 py-3 shadow-sm">
-              <div className="flex items-center gap-2 text-slate-500">
-                <Loader2 className="w-4 h-4 animate-spin text-cyan-500" />
+            <div className="bg-white rounded-2xl px-4 py-3 shadow-sm" style={{ border: '1px solid #E5DFD3' }}>
+              <div className="flex items-center gap-2" style={{ color: '#5C4F3D' }}>
+                <Loader2 className="w-4 h-4 animate-spin" style={{ color: '#8B7355' }} />
                 <span className="text-sm">Analyzing your question...</span>
               </div>
             </div>
@@ -375,23 +367,36 @@ export default function AIChat() {
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Input */}
-      <div className="bg-white/80 backdrop-blur-sm border-t border-slate-200/50 px-4 sm:px-6 py-4 shadow-lg">
-        <form onSubmit={handleSubmit} className="flex gap-2">
+      {/* Input - Sticky at bottom on both mobile and desktop */}
+      <div className="fixed bottom-20 md:bottom-0 left-0 right-0 flex justify-center items-center px-3 md:px-6 py-3 md:py-4" style={{ backgroundColor: '#F5F1EA', zIndex: 40 }}>
+        <form onSubmit={handleSubmit} className="w-full md:max-w-2xl flex gap-2 md:gap-3 items-end">
           <div className="flex-1 relative">
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about your health reports, symptoms, or get health advice..."
-              className="w-full px-4 py-3 pr-10 bg-white border-2 border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:border-cyan-500 focus:outline-none focus:ring-4 focus:ring-cyan-500/10 transition-all"
+              placeholder="Ask about your health..."
+              className="w-full px-4 py-2.5 md:py-3 pr-10 bg-white rounded-full focus:outline-none focus:ring-2 transition-all text-sm md:text-base shadow-md hover:shadow-lg"
+              style={{ 
+                border: '1.5px solid #E5DFD3',
+                color: '#2C2416'
+              }}
+              onFocus={(e) => {
+                e.target.style.borderColor = '#8B7355';
+                e.target.style.boxShadow = '0 4px 16px rgba(139, 115, 85, 0.2)';
+              }}
+              onBlur={(e) => {
+                e.target.style.borderColor = '#E5DFD3';
+                e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.08)';
+              }}
               disabled={loading || streaming}
             />
             {input && (
               <button
                 type="button"
                 onClick={() => setInput('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 text-xl"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-lg hover:opacity-70 transition-opacity"
+                style={{ color: '#5C4F3D' }}
               >
                 ×
               </button>
@@ -400,13 +405,15 @@ export default function AIChat() {
           <button
             type="submit"
             disabled={!input.trim() || loading || streaming}
-            className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-medium hover:shadow-xl hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-2"
+            className="px-4 md:px-5 py-2.5 md:py-3 text-white rounded-full font-medium hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-1 md:gap-2 flex-shrink-0 text-sm md:text-base shadow-md"
+            style={{ backgroundColor: '#8B7355' }}
+            title={!input.trim() ? 'Type a message first' : 'Send message'}
           >
             {loading || streaming ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
+              <Loader2 className="w-4 md:w-5 h-4 md:h-5 animate-spin" />
             ) : (
               <>
-                <Send className="w-5 h-5" />
+                <Send className="w-4 md:w-5 h-4 md:h-5" />
                 <span className="hidden sm:inline">Send</span>
               </>
             )}

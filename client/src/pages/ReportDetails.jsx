@@ -154,16 +154,20 @@ export default function ReportDetails() {
         </div>
       )}
 
-      {/* Supplements */}
+      {/* Natural Supplements - Indian Foods */}
       {aiAnalysis?.supplements?.length > 0 && (
         <div className="bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2"><Pill className="w-5 h-5 text-violet-500" /> Supplement Recommendations</h2>
-          <p className="text-sm text-slate-600 mb-6">General supplement categories (not brand-specific)</p>
+          <h2 className="text-lg font-bold text-slate-800 mb-2 flex items-center gap-2">
+            <Apple className="w-5 h-5 text-green-600" /> Natural Supplement Recommendations
+          </h2>
+          <p className="text-sm text-slate-600 mb-6">Natural Indian foods and remedies to address your deficiencies</p>
           <div className="grid md:grid-cols-2 gap-4">
             {aiAnalysis.supplements.map((supp, i) => (
-              <div key={i} className="p-4 bg-violet-50 rounded-xl border-2 border-violet-200">
-                <p className="font-bold text-violet-700">{supp.category}</p><p className="text-sm text-violet-600 mt-1">{supp.reason}</p><p className="text-xs text-violet-700 mt-2 font-medium">{supp.generalDosage}</p>
-                {supp.note && <p className="text-xs text-violet-600 mt-1 italic">{supp.note}</p>}
+              <div key={i} className="p-4 bg-green-50 rounded-xl border-2 border-green-200">
+                <p className="font-bold text-green-700">{supp.category}</p>
+                <p className="text-sm text-green-600 mt-1">{supp.reason}</p>
+                <p className="text-xs text-green-700 mt-2 font-medium">{supp.naturalSources || supp.generalDosage}</p>
+                {supp.note && <p className="text-xs text-green-600 mt-1 italic">{supp.note}</p>}
               </div>
             ))}
           </div>
@@ -192,25 +196,6 @@ export default function ReportDetails() {
             </div>
           )}
           {aiAnalysis.dietPlan.tips?.length > 0 && (<div className="p-4 bg-slate-50 border border-slate-200 rounded-xl"><h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2"><Sparkles className="w-4 h-4 text-amber-500" /> Diet Tips</h3><ul className="space-y-2">{aiAnalysis.dietPlan.tips.map((tip, i) => (<li key={i} className="text-sm text-slate-700 flex items-start gap-2"><span className="w-1.5 h-1.5 bg-cyan-500 rounded-full mt-2" />{tip}</li>))}</ul></div>)}
-        </div>
-      )}
-
-      {/* Recommended Doctors */}
-      {recommendedDoctors.length > 0 && (
-        <div className="bg-white rounded-2xl border-2 border-cyan-200 p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2"><Users className="w-5 h-5 text-cyan-500" /> Recommended Doctors</h2>
-          <div className="grid md:grid-cols-3 gap-4">
-            {recommendedDoctors.map((doctor) => (
-              <div key={doctor._id} className="bg-slate-50 p-4 rounded-xl border-2 border-slate-200 hover:border-cyan-300 transition-colors">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="w-12 h-12 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl flex items-center justify-center text-lg font-bold text-white">{(doctor.name || doctor.user?.name)?.[0]?.toUpperCase()}</div>
-                  <div><p className="font-bold text-slate-800">Dr. {doctor.name || doctor.user?.name}</p><p className="text-sm text-cyan-600">{doctor.specialization}</p></div>
-                </div>
-                <div className="flex items-center gap-2 text-sm text-slate-600 mb-3"><Star className="w-4 h-4 text-amber-500 fill-amber-500" /><span>{doctor.rating?.toFixed(1)}</span><span>•</span><Clock className="w-4 h-4" /><span>{doctor.experience} yrs</span></div>
-                <div className="flex items-center justify-between pt-3 border-t border-slate-200"><span className="font-bold text-slate-800">₹{doctor.consultationFee || 0}</span><Link to="/doctors" className="text-sm bg-cyan-500 text-white px-4 py-2 rounded-lg hover:bg-cyan-600 transition-colors">Book Now</Link></div>
-              </div>
-            ))}
-          </div>
         </div>
       )}
 

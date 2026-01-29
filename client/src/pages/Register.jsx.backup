@@ -1,0 +1,709 @@
+import { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import { Activity, Mail, Lock, User, Eye, EyeOff, ArrowRight, Stethoscope, Heart, ArrowLeft, Scale, Ruler, Droplet, Cigarette, Wine, Moon, Dumbbell, Target, TrendingUp, TrendingDown, Minus, Plus, X } from 'lucide-react';
+import toast from 'react-hot-toast';
+
+export default function Register() {
+  const [step, setStep] = useState(1); // 1: role selection, 2: basic info, 3: health profile, 4: lifestyle, 5: goals
+  const [userType, setUserType] = useState(null); // 'patient' or 'doctor'
+  const [formData, setFormData] = useState({ 
+    // Basic Info
+    name: '', 
+    email: '', 
+    password: '', 
+    confirmPassword: '',
+    age: '',
+    gender: '',
+    // Health Profile
+    height: '', // cm
+    weight: '', // kg
+    bloodGroup: '',
+    dietaryPreference: 'non-vegetarian',
+    activityLevel: 'sedentary',
+    // Medical History
+    chronicConditions: [],
+    allergies: [],
+    currentMedications: [],
+    // Lifestyle
+    smoker: false,
+    smokingFrequency: '',
+    alcohol: false,
+    alcoholFrequency: '',
+    sleepHours: '7',
+    stressLevel: 'moderate',
+    waterIntake: '8',
+    // Nutrition Goals
+    nutritionGoal: 'general_health',
+    targetWeight: '',
+    weeklyGoal: '0.5'
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const { register } = useAuth();
+  const navigate = useNavigate();
+
+  const handleRoleSelect = (role) => {
+    setUserType(role);
+    if (role === 'doctor') {
+      navigate('/register/doctor');
+    } else {
+      setStep(2);
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (formData.password !== formData.confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    if (!formData.age || !formData.gender) {
+      toast.error('Please provide your age and gender');
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      const profileData = {
+        age: parseInt(formData.age),
+        gender: formData.gender,
+        height: formData.height ? parseFloat(formData.height) : undefined,
+        weight: formData.weight ? parseFloat(formData.weight) : undefined,
+        bloodGroup: formData.bloodGroup || undefined,
+        dietaryPreference: formData.dietaryPreference,
+        activityLevel: formData.activityLevel,
+        medicalHistory: {
+          conditions: formData.chronicConditions,
+          currentMedications: formData.currentMedications
+        },
+        lifestyle: {
+          smoker: formData.smoker,
+          smokingFrequency: formData.smokingFrequency,
+          alcohol: formData.alcohol,
+          alcoholFrequency: formData.alcoholFrequency,
+          sleepHours: parseInt(formData.sleepHours),
+          stressLevel: formData.stressLevel,
+          waterIntake: parseInt(formData.waterIntake)
+        },
+        allergies: formData.allergies
+      };
+
+      const nutritionGoal = {
+        goal: formData.nutritionGoal,
+        targetWeight: formData.targetWeight ? parseFloat(formData.targetWeight) : null,
+        weeklyGoal: parseFloat(formData.weeklyGoal)
+      };
+
+      await register(formData.name, formData.email, formData.password, profileData, nutritionGoal);
+      toast.success('Account created successfully! Your personalized nutrition plan is ready.');
+      navigate('/dashboard');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Registration failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const nextStep = () => {
+    // Validation for each step
+    if (step === 2) {
+      if (!formData.name || !formData.email || !formData.password || !formData.age || !formData.gender) {
+        toast.error('Please fill in all required fields');
+        return;
+      }
+      if (formData.password !== formData.confirmPassword) {
+        toast.error('Passwords do not match');
+        return;
+      }
+    }
+    if (step === 3) {
+      if (!formData.height || !formData.weight) {
+        toast.error('Please provide your height and weight for accurate nutrition calculations');
+        return;
+      }
+    }
+    setStep(step + 1);
+  };
+
+  const prevStep = () => setStep(step - 1);
+
+  const toggleArrayItem = (field, item) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: prev[field].includes(item) 
+        ? prev[field].filter(i => i !== item)
+        : [...prev[field], item]
+    }));
+  };
+
+  const addCustomItem = (field, value) => {
+    if (value && !formData[field].includes(value)) {
+      setFormData(prev => ({
+        ...prev,
+        [field]: [...prev[field], value]
+      }));
+    }
+  };
+
+  const removeItem = (field, item) => {
+    setFormData(prev => ({
+      ...prev,
+      [field]: prev[field].filter(i => i !== item)
+    }));
+  };
+
+  // Step 1: Role Selection
+  if (step === 1) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-2xl">
+          {/* Logo */}
+          <div className="flex items-center justify-center gap-3 mb-8">
+            <div className="w-12 h-12 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-xl flex items-center justify-center">
+              <Activity className="w-7 h-7 text-white" />
+            </div>
+            <span className="text-2xl font-bold text-slate-800">HealthAI</span>
+          </div>
+
+          <div className="text-center mb-8">
+            <h1 className="text-3xl font-bold text-slate-800 mb-2">Join HealthAI</h1>
+            <p className="text-slate-500">Choose how you want to use our platform</p>
+          </div>
+
+          {/* Role Selection Cards */}
+          <div className="grid md:grid-cols-2 gap-6">
+            {/* Patient Card */}
+            <button
+              onClick={() => handleRoleSelect('patient')}
+              className="bg-white rounded-2xl border-2 border-slate-200 p-8 text-left hover:border-cyan-500 hover:shadow-lg transition-all group"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-cyan-100 flex items-center justify-center mb-4 group-hover:bg-cyan-500 transition-colors">
+                <Heart className="w-8 h-8 text-cyan-600 group-hover:text-white transition-colors" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-800 mb-2">I am a Patient</h2>
+              <p className="text-slate-500 text-sm mb-4">
+                Upload health reports, get AI-powered insights, personalized diet plans, and connect with doctors.
+              </p>
+              <ul className="text-sm text-slate-600 space-y-2">
+                <li className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-500"></div>
+                  AI Health Report Analysis
+                </li>
+                <li className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-500"></div>
+                  Personalized Diet Plans
+                </li>
+                <li className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-500"></div>
+                  Video Consultations
+                </li>
+              </ul>
+              <div className="mt-6 flex items-center text-cyan-600 font-medium">
+                Get Started <ArrowRight className="w-4 h-4 ml-2" />
+              </div>
+            </button>
+
+            {/* Doctor Card */}
+            <button
+              onClick={() => handleRoleSelect('doctor')}
+              className="bg-white rounded-2xl border-2 border-slate-200 p-8 text-left hover:border-blue-500 hover:shadow-lg transition-all group"
+            >
+              <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center mb-4 group-hover:bg-blue-500 transition-colors">
+                <Stethoscope className="w-8 h-8 text-blue-600 group-hover:text-white transition-colors" />
+              </div>
+              <h2 className="text-xl font-bold text-slate-800 mb-2">I am a Doctor</h2>
+              <p className="text-slate-500 text-sm mb-4">
+                Join our platform to provide consultations, manage appointments, and help patients.
+              </p>
+              <ul className="text-sm text-slate-600 space-y-2">
+                <li className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                  Manage Your Schedule
+                </li>
+                <li className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                  Video Consultations
+                </li>
+                <li className="flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 rounded-full bg-blue-500"></div>
+                  View Patient Reports
+                </li>
+              </ul>
+              <div className="mt-6 flex items-center text-blue-600 font-medium">
+                Apply Now <ArrowRight className="w-4 h-4 ml-2" />
+              </div>
+            </button>
+          </div>
+
+          <p className="text-center mt-8 text-slate-600">
+            Already have an account?{' '}
+            <Link to="/login" className="text-cyan-600 font-semibold hover:text-cyan-700">Sign in</Link>
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  // Step 2: Patient Registration Form - Basic Info
+  if (step === 2) {
+    return (
+      <div className="min-h-screen flex bg-slate-50">
+        {/* Left Panel */}
+        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-cyan-500 via-blue-500 to-indigo-600">
+          <div className="absolute inset-0">
+            <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
+            <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+          </div>
+          <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
+            <div className="w-20 h-20 bg-white/20 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-8">
+              <Heart className="w-10 h-10" />
+            </div>
+            <h1 className="text-4xl font-bold mb-4 text-center">Your Health Journey Starts Here</h1>
+            <p className="text-xl text-white/80 text-center max-w-md">
+              Get personalized health insights, diet plans, and supplement recommendations based on your unique profile.
+            </p>
+            <div className="mt-8 flex gap-2">
+              <div className="w-2 h-2 rounded-full bg-white"></div>
+              <div className="w-2 h-2 rounded-full bg-white/40"></div>
+              <div className="w-2 h-2 rounded-full bg-white/40"></div>
+              <div className="w-2 h-2 rounded-full bg-white/40"></div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Right Panel - Form */}
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="w-full max-w-md">
+            <button onClick={() => setStep(1)} className="flex items-center gap-2 text-slate-500 hover:text-slate-700 mb-6">
+              <ArrowLeft className="w-4 h-4" /> Back
+            </button>
+
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-slate-800 mb-2">Basic Information</h2>
+              <p className="text-slate-500">Step 1 of 4 - Let's start with the basics</p>
+            </div>
+            
+            <form onSubmit={(e) => { e.preventDefault(); nextStep(); }} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Full Name *</label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type="text"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl py-3 pl-12 pr-4 text-slate-800 placeholder-slate-400 focus:border-cyan-500 focus:outline-none"
+                    placeholder="John Doe"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Age *</label>
+                  <input
+                    type="number"
+                    value={formData.age}
+                    onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl py-3 px-4 text-slate-800 placeholder-slate-400 focus:border-cyan-500 focus:outline-none"
+                    placeholder="25"
+                    min="1"
+                    max="120"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Gender *</label>
+                  <select
+                    value={formData.gender}
+                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl py-3 px-4 text-slate-800 focus:border-cyan-500 focus:outline-none"
+                    required
+                  >
+                    <option value="">Select</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Email Address *</label>
+                <div className="relative">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl py-3 pl-12 pr-4 text-slate-800 placeholder-slate-400 focus:border-cyan-500 focus:outline-none"
+                    placeholder="you@example.com"
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Password *</label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl py-3 pl-12 pr-12 text-slate-800 placeholder-slate-400 focus:border-cyan-500 focus:outline-none"
+                    placeholder="••••••••"
+                    required
+                  />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Confirm Password *</label>
+                <div className="relative">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type="password"
+                    value={formData.confirmPassword}
+                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl py-3 pl-12 pr-4 text-slate-800 placeholder-slate-400 focus:border-cyan-500 focus:outline-none"
+                    placeholder="••••••••"
+                    required
+                  />
+                </div>
+              </div>
+            
+              <button 
+                type="submit"
+                className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2"
+              >
+                Continue <ArrowRight className="w-5 h-5" />
+              </button>
+            </form>
+            
+            <p className="text-center mt-6 text-slate-600">
+              Already have an account?{' '}
+              <Link to="/login" className="text-cyan-600 font-semibold hover:text-cyan-700">Sign in</Link>
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Step 3: Health Profile
+  if (step === 3) {
+    return (
+      <div className="min-h-screen flex bg-slate-50">
+        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-emerald-500 via-green-500 to-teal-600">
+          <div className="absolute inset-0">
+            <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
+            <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+          </div>
+          <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
+            <div className="w-20 h-20 bg-white/20 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-8">
+              <Scale className="w-10 h-10" />
+            </div>
+            <h1 className="text-4xl font-bold mb-4 text-center">Health Profile</h1>
+            <p className="text-xl text-white/80 text-center max-w-md">
+              Help us calculate your personalized nutrition goals based on your body metrics.
+            </p>
+            <div className="mt-8 flex gap-2">
+              <div className="w-2 h-2 rounded-full bg-white/40"></div>
+              <div className="w-2 h-2 rounded-full bg-white"></div>
+              <div className="w-2 h-2 rounded-full bg-white/40"></div>
+              <div className="w-2 h-2 rounded-full bg-white/40"></div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex-1 flex items-center justify-center p-8">
+          <div className="w-full max-w-md">
+            <button onClick={prevStep} className="flex items-center gap-2 text-slate-500 hover:text-slate-700 mb-6">
+              <ArrowLeft className="w-4 h-4" /> Back
+            </button>
+
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold text-slate-800 mb-2">Health Profile</h2>
+              <p className="text-slate-500">Step 2 of 4 - Your body metrics</p>
+            </div>
+            
+            <form onSubmit={(e) => { e.preventDefault(); nextStep(); }} className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Height (cm) *</label>
+                  <div className="relative">
+                    <Ruler className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <input
+                      type="number"
+                      value={formData.height}
+                      onChange={(e) => setFormData({ ...formData, height: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-xl py-3 pl-12 pr-4 text-slate-800 placeholder-slate-400 focus:border-cyan-500 focus:outline-none"
+                      placeholder="170"
+                      min="100"
+                      max="250"
+                      step="0.1"
+                      required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Weight (kg) *</label>
+                  <div className="relative">
+                    <Scale className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                    <input
+                      type="number"
+                      value={formData.weight}
+                      onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-xl py-3 pl-12 pr-4 text-slate-800 placeholder-slate-400 focus:border-cyan-500 focus:outline-none"
+                      placeholder="70"
+                      min="30"
+                      max="300"
+                      step="0.1"
+                      required
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Blood Group</label>
+                <div className="relative">
+                  <Droplet className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <select
+                    value={formData.bloodGroup}
+                    onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
+                    className="w-full bg-white border border-slate-200 rounded-xl py-3 pl-12 pr-4 text-slate-800 focus:border-cyan-500 focus:outline-none"
+                  >
+                    <option value="">Select (Optional)</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Dietary Preference *</label>
+                <select
+                  value={formData.dietaryPreference}
+                  onChange={(e) => setFormData({ ...formData, dietaryPreference: e.target.value })}
+                  className="w-full bg-white border border-slate-200 rounded-xl py-3 px-4 text-slate-800 focus:border-cyan-500 focus:outline-none"
+                  required
+                >
+                  <option value="non-vegetarian">Non-Vegetarian</option>
+                  <option value="vegetarian">Vegetarian</option>
+                  <option value="vegan">Vegan</option>
+                  <option value="eggetarian">Eggetarian</option>
+                </select>
+                <p className="text-xs text-slate-500 mt-1">This helps us recommend suitable diet plans</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Activity Level *</label>
+                <select
+                  value={formData.activityLevel}
+                  onChange={(e) => setFormData({ ...formData, activityLevel: e.target.value })}
+                  className="w-full bg-white border border-slate-200 rounded-xl py-3 px-4 text-slate-800 focus:border-cyan-500 focus:outline-none"
+                  required
+                >
+                  <option value="sedentary">Sedentary (Little or no exercise)</option>
+                  <option value="lightly_active">Lightly Active (1-3 days/week)</option>
+                  <option value="moderately_active">Moderately Active (3-5 days/week)</option>
+                  <option value="very_active">Very Active (6-7 days/week)</option>
+                  <option value="extremely_active">Extremely Active (Athlete)</option>
+                </select>
+                <p className="text-xs text-slate-500 mt-1">Used to calculate your daily calorie needs</p>
+              </div>
+            
+              <button 
+                type="submit"
+                className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2"
+              >
+                Continue <ArrowRight className="w-5 h-5" />
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Step 2: Patient Registration Form
+  return (
+    <div className="min-h-screen flex bg-slate-50">
+      {/* Left Panel */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-cyan-500 via-blue-500 to-indigo-600">
+        <div className="absolute inset-0">
+          <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
+          <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+        </div>
+        <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
+          <div className="w-20 h-20 bg-white/20 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-8">
+            <Heart className="w-10 h-10" />
+          </div>
+          <h1 className="text-4xl font-bold mb-4 text-center">Your Health Journey Starts Here</h1>
+          <p className="text-xl text-white/80 text-center max-w-md">
+            Get personalized health insights, diet plans, and supplement recommendations based on your unique profile.
+          </p>
+        </div>
+      </div>
+      
+      {/* Right Panel - Form */}
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="w-full max-w-md">
+          <button onClick={() => setStep(1)} className="flex items-center gap-2 text-slate-500 hover:text-slate-700 mb-6">
+            <ArrowLeft className="w-4 h-4" /> Back
+          </button>
+
+          <div className="text-center mb-8">
+            <h2 className="text-3xl font-bold text-slate-800 mb-2">Create Patient Account</h2>
+            <p className="text-slate-500">We need some details for personalized health insights</p>
+          </div>
+          
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Full Name</label>
+              <div className="relative">
+                <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full bg-white border border-slate-200 rounded-xl py-3 pl-12 pr-4 text-slate-800 placeholder-slate-400 focus:border-cyan-500 focus:outline-none"
+                  placeholder="John Doe"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Age</label>
+                <input
+                  type="number"
+                  value={formData.age}
+                  onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                  className="w-full bg-white border border-slate-200 rounded-xl py-3 px-4 text-slate-800 placeholder-slate-400 focus:border-cyan-500 focus:outline-none"
+                  placeholder="25"
+                  min="1"
+                  max="120"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Gender</label>
+                <select
+                  value={formData.gender}
+                  onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                  className="w-full bg-white border border-slate-200 rounded-xl py-3 px-4 text-slate-800 focus:border-cyan-500 focus:outline-none"
+                  required
+                >
+                  <option value="">Select</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Dietary Preference</label>
+              <select
+                value={formData.dietaryPreference}
+                onChange={(e) => setFormData({ ...formData, dietaryPreference: e.target.value })}
+                className="w-full bg-white border border-slate-200 rounded-xl py-3 px-4 text-slate-800 focus:border-cyan-500 focus:outline-none"
+                required
+              >
+                <option value="non-vegetarian">Non-Vegetarian</option>
+                <option value="vegetarian">Vegetarian</option>
+                <option value="vegan">Vegan</option>
+                <option value="eggetarian">Eggetarian</option>
+              </select>
+              <p className="text-xs text-slate-500 mt-1">This helps us recommend suitable diet plans</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Email Address</label>
+              <div className="relative">
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  type="email"
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full bg-white border border-slate-200 rounded-xl py-3 pl-12 pr-4 text-slate-800 placeholder-slate-400 focus:border-cyan-500 focus:outline-none"
+                  placeholder="you@example.com"
+                  required
+                />
+              </div>
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Password</label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  className="w-full bg-white border border-slate-200 rounded-xl py-3 pl-12 pr-12 text-slate-800 placeholder-slate-400 focus:border-cyan-500 focus:outline-none"
+                  placeholder="••••••••"
+                  required
+                />
+                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                </button>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-700 mb-2">Confirm Password</label>
+              <div className="relative">
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <input
+                  type="password"
+                  value={formData.confirmPassword}
+                  onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                  className="w-full bg-white border border-slate-200 rounded-xl py-3 pl-12 pr-4 text-slate-800 placeholder-slate-400 focus:border-cyan-500 focus:outline-none"
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+            </div>
+
+            <p className="text-xs text-slate-500">
+              Your age, gender, and dietary preference help us provide personalized health interpretations, deficiency assessments, and suitable diet recommendations.
+            </p>
+            
+            <button 
+              type="submit" 
+              disabled={loading} 
+              className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {loading ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>Create Account <ArrowRight className="w-5 h-5" /></>
+              )}
+            </button>
+          </form>
+          
+          <p className="text-center mt-6 text-slate-600">
+            Already have an account?{' '}
+            <Link to="/login" className="text-cyan-600 font-semibold hover:text-cyan-700">Sign in</Link>
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}

@@ -134,4 +134,13 @@ export const subscriptionService = {
   getSubscription: () => api.get('/auth/subscription')
 };
 
+export const nutritionService = {
+  analyzeFood: (foodDescription) => api.post('/nutrition/analyze-food', { foodDescription }),
+  logMeal: (mealData) => api.post('/nutrition/log-meal', mealData),
+  getTodayLogs: () => api.get('/nutrition/logs/today'),
+  getDailySummary: (date) => api.get('/nutrition/summary/daily', { params: { date } }),
+  getGoals: () => api.get('/nutrition/goals'),
+  updateGoals: (goals) => api.put('/nutrition/goals', goals)
+};
+
 export default api;

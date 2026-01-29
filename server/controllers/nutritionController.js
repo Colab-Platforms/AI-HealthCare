@@ -1,0 +1,748 @@
+const FoodLog = require('../models/FoodLog');
+const HealthGoal = require('../models/HealthGoal');
+const NutritionSummary = require('../models/NutritionSummary');
+const nutritionAI = require('../services/nutritionAI');
+
+// Analyze food from image or text
+exports.analyzeFood = async (req, res) => {
+  try {
+    const { foodDescription, imageBase64, additionalContext } = req.body;
+
+    if (!foodDescription && !imageBase64) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide either a food description or image'
+      });
+    }
+
+    let analysis;
+    
+    if (imageBase64) {
+      // Analyze from image
+      analysis = await nutritionAI.analyzeFromImage(imageBase64, additionalContext);
+    } else {
+      // Analyze from text
+      analysis = await nutritionAI.analyzeFromText(foodDescription);
+    }
+
+    res.json({
+      success: true,
+      analysis: analysis.data,
+      message: 'Food analyzed successfully'
+    });
+  } catch (error) {
+    console.error('Analyze food error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to analyze food',
+      error: error.message
+    });
+  }
+};
+
+// Log a meal
+exports.logMeal = async (req, res) => {
+  try {
+    const { mealType, foodItems, imageUrl, notes, timestamp } = req.body;
+
+    if (!mealType || !foodItems || foodItems.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: 'Meal type and food items are required'
+      });
+    }
+
+    const foodLog = new FoodLog({
+      userId: req.user._id,
+      mealType,
+      foodItems,
+      imageUrl,
+      notes,
+      timestamp: timestamp || new Date()
+    });
+
+    await foodLog.save();
+
+    // Update daily summary
+    await updateDailySummary(req.user._id, foodLog.timestamp);
+
+    res.json({
+      success: true,
+      foodLog,
+      message: 'Meal logged successfully'
+    });
+  } catch (error) {
+    console.error('Log meal error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to log meal',
+      error: error.message
+    });
+  }
+};
+
+// Get food logs
+exports.getFoodLogs = async (req, res) => {
+  try {
+    const { startDate, endDate, mealType } = req.query;
+
+    const query = { userId: req.user._id };
+
+    if (startDate || endDate) {
+      query.timestamp = {};
+      if (startDate) query.timestamp.$gte = new Date(startDate);
+      if (endDate) query.timestamp.$lte = new Date(endDate);
+    }
+
+    if (mealType) {
+      query.mealType = mealType;
+    }
+
+    const foodLogs = await FoodLog.find(query)
+      .sort({ timestamp: -1 })
+      .limit(100);
+
+    res.json({
+      success: true,
+      foodLogs,
+      count: foodLogs.length
+    });
+  } catch (error) {
+    console.error('Get food logs error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get food logs',
+      error: error.message
+    });
+  }
+};
+
+// Get today's food logs
+exports.getTodayLogs = async (req, res) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+
+    const foodLogs = await FoodLog.find({
+      userId: req.user._id,
+      timestamp: {
+        $gte: today,
+        $lt: tomorrow
+      }
+    }).sort({ timestamp: 1 });
+
+    res.json({
+      success: true,
+      foodLogs,
+      count: foodLogs.length
+    });
+  } catch (error) {
+    console.error('Get today logs error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get today\'s logs',
+      error: error.message
+    });
+  }
+};
+
+// Update food log
+exports.updateFoodLog = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updates = req.body;
+
+    const foodLog = await FoodLog.findOne({
+      _id: id,
+      userId: req.user._id
+    });
+
+    if (!foodLog) {
+      return res.status(404).json({
+        success: false,
+        message: 'Food log not found'
+      });
+    }
+
+    Object.assign(foodLog, updates);
+    await foodLog.save();
+
+    // Update daily summary
+    await updateDailySummary(req.user._id, foodLog.timestamp);
+
+    res.json({
+      success: true,
+      foodLog,
+      message: 'Food log updated successfully'
+    });
+  } catch (error) {
+    console.error('Update food log error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update food log',
+      error: error.message
+    });
+  }
+};
+
+// Delete food log
+exports.deleteFoodLog = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const foodLog = await FoodLog.findOneAndDelete({
+      _id: id,
+      userId: req.user._id
+    });
+
+    if (!foodLog) {
+      return res.status(404).json({
+        success: false,
+        message: 'Food log not found'
+      });
+    }
+
+    // Update daily summary
+    await updateDailySummary(req.user._id, foodLog.timestamp);
+
+    res.json({
+      success: true,
+      message: 'Food log deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete food log error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete food log',
+      error: error.message
+    });
+  }
+};
+
+// Set health goal
+exports.setHealthGoal = async (req, res) => {
+  try {
+    const goalData = {
+      ...req.body,
+      userId: req.user._id
+    };
+
+    let healthGoal = await HealthGoal.findOne({ userId: req.user._id });
+
+    if (healthGoal) {
+      // Update existing goal
+      Object.assign(healthGoal, goalData);
+    } else {
+      // Create new goal
+      healthGoal = new HealthGoal(goalData);
+    }
+
+    await healthGoal.save();
+
+    res.json({
+      success: true,
+      healthGoal,
+      message: 'Health goal set successfully'
+    });
+  } catch (error) {
+    console.error('Set health goal error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to set health goal',
+      error: error.message
+    });
+  }
+};
+
+// Get health goal
+exports.getHealthGoal = async (req, res) => {
+  try {
+    const healthGoal = await HealthGoal.findOne({ userId: req.user._id });
+
+    if (!healthGoal) {
+      return res.status(404).json({
+        success: false,
+        message: 'No health goal found. Please set your goals first.'
+      });
+    }
+
+    res.json({
+      success: true,
+      healthGoal
+    });
+  } catch (error) {
+    console.error('Get health goal error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get health goal',
+      error: error.message
+    });
+  }
+};
+
+// Log weight
+exports.logWeight = async (req, res) => {
+  try {
+    const { weight, notes } = req.body;
+
+    const healthGoal = await HealthGoal.findOne({ userId: req.user._id });
+
+    if (!healthGoal) {
+      return res.status(404).json({
+        success: false,
+        message: 'Please set your health goal first'
+      });
+    }
+
+    healthGoal.currentWeight = weight;
+    healthGoal.weeklyWeightLogs.push({
+      weight,
+      date: new Date(),
+      notes
+    });
+
+    // Recalculate targets based on new weight
+    await healthGoal.save();
+
+    res.json({
+      success: true,
+      healthGoal,
+      message: 'Weight logged successfully'
+    });
+  } catch (error) {
+    console.error('Log weight error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to log weight',
+      error: error.message
+    });
+  }
+};
+
+// Get daily nutrition summary
+exports.getDailySummary = async (req, res) => {
+  try {
+    const { date } = req.query;
+    const targetDate = date ? new Date(date) : new Date();
+    targetDate.setHours(0, 0, 0, 0);
+
+    let summary = await NutritionSummary.findOne({
+      userId: req.user._id,
+      date: targetDate
+    });
+
+    if (!summary) {
+      // Create summary if doesn't exist
+      summary = await createDailySummary(req.user._id, targetDate);
+    }
+
+    res.json({
+      success: true,
+      summary
+    });
+  } catch (error) {
+    console.error('Get daily summary error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get daily summary',
+      error: error.message
+    });
+  }
+};
+
+// Get weekly summary
+exports.getWeeklySummary = async (req, res) => {
+  try {
+    const endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
+    
+    const startDate = new Date(endDate);
+    startDate.setDate(startDate.getDate() - 6);
+    startDate.setHours(0, 0, 0, 0);
+
+    const summaries = await NutritionSummary.find({
+      userId: req.user._id,
+      date: { $gte: startDate, $lte: endDate }
+    }).sort({ date: 1 });
+
+    // Calculate weekly averages
+    const weeklyStats = {
+      avgCalories: 0,
+      avgProtein: 0,
+      avgCarbs: 0,
+      avgFats: 0,
+      daysLogged: summaries.length,
+      dailySummaries: summaries
+    };
+
+    if (summaries.length > 0) {
+      summaries.forEach(summary => {
+        weeklyStats.avgCalories += summary.totalCalories;
+        weeklyStats.avgProtein += summary.totalProtein;
+        weeklyStats.avgCarbs += summary.totalCarbs;
+        weeklyStats.avgFats += summary.totalFats;
+      });
+
+      weeklyStats.avgCalories = Math.round(weeklyStats.avgCalories / summaries.length);
+      weeklyStats.avgProtein = Math.round(weeklyStats.avgProtein / summaries.length);
+      weeklyStats.avgCarbs = Math.round(weeklyStats.avgCarbs / summaries.length);
+      weeklyStats.avgFats = Math.round(weeklyStats.avgFats / summaries.length);
+    }
+
+    res.json({
+      success: true,
+      weeklyStats
+    });
+  } catch (error) {
+    console.error('Get weekly summary error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get weekly summary',
+      error: error.message
+    });
+  }
+};
+
+// Get last 7 days activity data for chart
+exports.getActivityWeek = async (req, res) => {
+  try {
+    const endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
+    
+    const startDate = new Date(endDate);
+    startDate.setDate(startDate.getDate() - 6);
+    startDate.setHours(0, 0, 0, 0);
+
+    const summaries = await NutritionSummary.find({
+      userId: req.user._id,
+      date: { $gte: startDate, $lte: endDate }
+    }).sort({ date: 1 });
+
+    // Create array with all 7 days, filling in missing days with 0 calories
+    const weekData = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startDate);
+      date.setDate(date.getDate() + i);
+      date.setHours(0, 0, 0, 0);
+      
+      const summary = summaries.find(s => {
+        const sDate = new Date(s.date);
+        sDate.setHours(0, 0, 0, 0);
+        return sDate.getTime() === date.getTime();
+      });
+
+      weekData.push({
+        date: date.toISOString().split('T')[0],
+        calories: summary?.totalCalories || 0,
+        protein: summary?.totalProtein || 0,
+        carbs: summary?.totalCarbs || 0,
+        fats: summary?.totalFats || 0
+      });
+    }
+
+    res.json({
+      success: true,
+      weekData
+    });
+  } catch (error) {
+    console.error('Get activity week error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get activity data',
+      error: error.message
+    });
+  }
+};
+
+// Get meal recommendations
+exports.getRecommendations = async (req, res) => {
+  try {
+    const healthGoal = await HealthGoal.findOne({ userId: req.user._id });
+    
+    if (!healthGoal) {
+      return res.status(404).json({
+        success: false,
+        message: 'Please set your health goal first'
+      });
+    }
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    let todaySummary = await NutritionSummary.findOne({
+      userId: req.user._id,
+      date: today
+    });
+
+    if (!todaySummary) {
+      todaySummary = await createDailySummary(req.user._id, today);
+    }
+
+    // Get user's deficiencies from latest health report
+    const User = require('../models/User');
+    const user = await User.findById(req.user._id);
+    const deficiencies = user.healthMetrics?.deficiencies || [];
+
+    const recommendations = await nutritionAI.getMealRecommendations(
+      healthGoal,
+      todaySummary,
+      deficiencies
+    );
+
+    res.json({
+      success: true,
+      recommendations: recommendations.data
+    });
+  } catch (error) {
+    console.error('Get recommendations error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get recommendations',
+      error: error.message
+    });
+  }
+};
+
+// Helper function to update daily summary
+async function updateDailySummary(userId, date) {
+  const targetDate = new Date(date);
+  targetDate.setHours(0, 0, 0, 0);
+
+  const nextDay = new Date(targetDate);
+  nextDay.setDate(nextDay.getDate() + 1);
+
+  // Get all food logs for the day
+  const foodLogs = await FoodLog.find({
+    userId,
+    timestamp: {
+      $gte: targetDate,
+      $lt: nextDay
+    }
+  });
+
+  // Calculate totals
+  const totals = {
+    totalCalories: 0,
+    totalProtein: 0,
+    totalCarbs: 0,
+    totalFats: 0,
+    totalFiber: 0,
+    totalSugar: 0,
+    totalSodium: 0
+  };
+
+  const mealsLogged = {
+    breakfast: false,
+    lunch: false,
+    dinner: false,
+    snacks: 0
+  };
+
+  foodLogs.forEach(log => {
+    if (log.totalNutrition) {
+      totals.totalCalories += log.totalNutrition.calories || 0;
+      totals.totalProtein += log.totalNutrition.protein || 0;
+      totals.totalCarbs += log.totalNutrition.carbs || 0;
+      totals.totalFats += log.totalNutrition.fats || 0;
+      totals.totalFiber += log.totalNutrition.fiber || 0;
+      totals.totalSugar += log.totalNutrition.sugar || 0;
+      totals.totalSodium += log.totalNutrition.sodium || 0;
+    }
+
+    if (log.mealType === 'snack') {
+      mealsLogged.snacks++;
+    } else {
+      mealsLogged[log.mealType] = true;
+    }
+  });
+
+  // Get user's health goal
+  const healthGoal = await HealthGoal.findOne({ userId });
+
+  let summary = await NutritionSummary.findOne({
+    userId,
+    date: targetDate
+  });
+
+  if (!summary) {
+    summary = new NutritionSummary({
+      userId,
+      date: targetDate
+    });
+  }
+
+  Object.assign(summary, totals);
+  summary.mealsLogged = mealsLogged;
+
+  if (healthGoal) {
+    summary.calorieGoal = healthGoal.dailyCalorieTarget;
+    summary.proteinGoal = healthGoal.macroTargets.protein;
+    summary.carbsGoal = healthGoal.macroTargets.carbs;
+    summary.fatsGoal = healthGoal.macroTargets.fats;
+  }
+
+  await summary.save();
+  return summary;
+}
+
+// Helper function to create daily summary
+async function createDailySummary(userId, date) {
+  return await updateDailySummary(userId, date);
+}
+
+// Quick food check without logging
+exports.quickFoodCheck = async (req, res) => {
+  try {
+    const { foodDescription, imageBase64, additionalContext } = req.body;
+
+    if (!foodDescription && !imageBase64) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a food description or image'
+      });
+    }
+
+    let resultData;
+    
+    if (imageBase64) {
+      try {
+        // Analyze from image using the same quick check format
+        const imageAnalysis = await nutritionAI.analyzeFromImage(imageBase64, additionalContext || foodDescription);
+        
+        if (!imageAnalysis || !imageAnalysis.data) {
+          throw new Error('Invalid image analysis response');
+        }
+        
+        // Transform the detailed analysis into quick check format
+        const totalNutrition = imageAnalysis.data.totalNutrition;
+        
+        if (!totalNutrition) {
+          throw new Error('No nutrition data in image analysis');
+        }
+        
+        // Determine if healthy based on nutrition
+        const isHealthy = (
+          (totalNutrition.sugar || 0) < 20 &&
+          (totalNutrition.sodium || 0) < 800 &&
+          (totalNutrition.fiber || 0) > 3 &&
+          (totalNutrition.protein || 0) > 10
+        );
+        
+        resultData = {
+          foodItem: {
+            name: imageAnalysis.data.foodItems?.map(item => item.name).join(', ') || 'Unknown food',
+            quantity: imageAnalysis.data.foodItems?.map(item => item.quantity).join(', ') || 'Unknown quantity',
+            nutrition: {
+              calories: totalNutrition.calories || 0,
+              protein: totalNutrition.protein || 0,
+              carbs: totalNutrition.carbs || 0,
+              fats: totalNutrition.fats || 0,
+              fiber: totalNutrition.fiber || 0,
+              sugar: totalNutrition.sugar || 0,
+              sodium: totalNutrition.sodium || 0
+            }
+          },
+          healthScore: isHealthy ? 75 : 45,
+          isHealthy,
+          analysis: imageAnalysis.data.analysis || 'Food analyzed from image',
+          warnings: !isHealthy ? ['High in calories', 'Consider portion control'] : [],
+          benefits: isHealthy ? ['Good nutritional balance'] : [],
+          alternatives: []
+        };
+      } catch (imageError) {
+        console.error('Image analysis error:', imageError);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to analyze image. Please try with text description or a clearer image.',
+          error: imageError.message
+        });
+      }
+    } else {
+      // Use text-based quick check
+      try {
+        const result = await nutritionAI.quickFoodCheck(foodDescription);
+        
+        if (!result || !result.data) {
+          throw new Error('Invalid quick check response');
+        }
+        
+        resultData = result.data;
+      } catch (textError) {
+        console.error('Text analysis error:', textError);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to analyze food. Please try again or provide more details.',
+          error: textError.message
+        });
+      }
+    }
+
+    res.json({
+      success: true,
+      ...resultData,
+      message: 'Food analyzed successfully'
+    });
+  } catch (error) {
+    console.error('Quick food check error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to analyze food. Please try again.',
+      error: error.message
+    });
+  }
+};
+
+// Get healthy alternatives for a food
+exports.getHealthyAlternatives = async (req, res) => {
+  try {
+    const { foodName } = req.body;
+
+    if (!foodName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a food name'
+      });
+    }
+
+    // Get user's preferences
+    const healthGoal = await HealthGoal.findOne({ userId: req.user._id });
+    const User = require('../models/User');
+    const user = await User.findById(req.user._id);
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const todaySummary = await NutritionSummary.findOne({
+      userId: req.user._id,
+      date: today
+    });
+
+    const userPreferences = {
+      dietaryPreference: healthGoal?.dietaryPreference || user.profile?.dietaryPreference,
+      allergies: healthGoal?.allergies || user.profile?.allergies || [],
+      goal: healthGoal?.goalType,
+      remainingCalories: healthGoal && todaySummary 
+        ? healthGoal.dailyCalorieTarget - todaySummary.totalCalories 
+        : null
+    };
+
+    const result = await nutritionAI.getHealthyAlternatives(foodName, userPreferences);
+
+    res.json({
+      success: true,
+      ...result.data,
+      message: 'Alternatives generated successfully'
+    });
+  } catch (error) {
+    console.error('Get alternatives error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get alternatives',
+      error: error.message
+    });
+  }
+};
+
+module.exports = exports;

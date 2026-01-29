@@ -44,6 +44,8 @@ try {
   app.use('/api/doctors', require('./routes/doctorRoutes'));
   app.use('/api/admin', require('./routes/adminRoutes'));
   app.use('/api/wearables', require('./routes/wearableRoutes'));
+  app.use('/api/nutrition', require('./routes/nutritionRoutes')); // Nutrition tracking routes
+  app.use('/api/diet-recommendations', require('./routes/dietRecommendationRoutes')); // Personalized diet & supplements
   app.use('/api', require('./routes/chatRoutes')); // AI chat route
   app.use('/api/chat', require('./routes/chatHistoryRoutes')); // Chat history routes
 } catch (error) {

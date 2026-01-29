@@ -2,12 +2,13 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api, { healthService } from '../services/api';
+import axios from 'axios';
 import { 
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { 
-  User, Save, Activity, TrendingUp, TrendingDown, FileText, 
-  Heart, AlertCircle, ChevronRight, Camera, Mail, Phone, Upload
+  User, Save, Activity, FileText, 
+  Heart, AlertCircle, ChevronRight, Camera, Mail, Phone, Upload, Target
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -17,6 +18,18 @@ export default function Profile() {
   const [healthHistory, setHealthHistory] = useState(null);
   const [selectedType, setSelectedType] = useState('');
   const [activeTab, setActiveTab] = useState('profile');
+  const [healthGoal, setHealthGoal] = useState(null);
+  const [goalLoading, setGoalLoading] = useState(false);
+  const [goalFormData, setGoalFormData] = useState({
+    goalType: 'maintenance',
+    currentWeight: user?.profile?.weight || '',
+    targetWeight: '',
+    height: user?.profile?.height || '',
+    age: user?.profile?.age || '',
+    gender: user?.profile?.gender || 'male',
+    activityLevel: 'moderate',
+    dietaryPreference: user?.profile?.dietaryPreference || 'non-vegetarian'
+  });
   const [formData, setFormData] = useState({
     name: user?.name || '',
     profile: {
@@ -42,7 +55,33 @@ export default function Profile() {
         console.error('Failed to fetch health history:', error);
       }
     };
+    
+    const fetchHealthGoal = async () => {
+      try {
+        const token = localStorage.getItem('token');
+        const response = await axios.get('/api/nutrition/goals', {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        if (response.data.healthGoal) {
+          setHealthGoal(response.data.healthGoal);
+          setGoalFormData({
+            goalType: response.data.healthGoal.goalType,
+            currentWeight: response.data.healthGoal.currentWeight,
+            targetWeight: response.data.healthGoal.targetWeight,
+            height: response.data.healthGoal.height,
+            age: response.data.healthGoal.age,
+            gender: response.data.healthGoal.gender,
+            activityLevel: response.data.healthGoal.activityLevel,
+            dietaryPreference: response.data.healthGoal.dietaryPreference
+          });
+        }
+      } catch (error) {
+        console.log('No health goal set yet');
+      }
+    };
+    
     fetchHistory();
+    fetchHealthGoal();
   }, []);
 
   const handleChange = (e) => {
@@ -80,6 +119,37 @@ export default function Profile() {
     }
   };
 
+  const handleGoalSubmit = async (e) => {
+    e.preventDefault();
+    setGoalLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      const payload = {
+        ...goalFormData,
+        currentWeight: Number(goalFormData.currentWeight),
+        targetWeight: Number(goalFormData.targetWeight),
+        height: Number(goalFormData.height),
+        age: Number(goalFormData.age)
+      };
+      
+      const response = await axios.post('/api/nutrition/goals', payload, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      setHealthGoal(response.data.healthGoal);
+      toast.success('Fitness goal set successfully! Your daily targets have been calculated.');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to set fitness goal');
+    } finally {
+      setGoalLoading(false);
+    }
+  };
+
+  const handleGoalChange = (e) => {
+    const { name, value } = e.target;
+    setGoalFormData(prev => ({ ...prev, [name]: value }));
+  };
+
   const bmi = formData.profile.height && formData.profile.weight
     ? (formData.profile.weight / Math.pow(formData.profile.height / 100, 2)).toFixed(1) : null;
 
@@ -98,52 +168,45 @@ export default function Profile() {
   })).reverse() || [];
   const reportTypes = Object.keys(healthHistory?.history || {});
 
-  const getHealthTrend = () => {
-    if (!chartData || chartData.length < 2) return null;
-    const latest = chartData[chartData.length - 1]?.score || 0;
-    const previous = chartData[chartData.length - 2]?.score || 0;
-    const diff = latest - previous;
-    return { diff, trend: diff > 0 ? 'improved' : diff < 0 ? 'declined' : 'stable' };
-  };
-  const healthTrend = getHealthTrend();
-
   return (
-    <div className="max-w-6xl mx-auto space-y-6 animate-fade-in">
+    <div className="w-full overflow-x-hidden space-y-6 animate-fade-in px-3 md:px-6">
       <div>
         <h1 className="text-2xl font-bold text-slate-800">My Profile</h1>
         <p className="text-slate-500 mt-1">Manage your information and track health progress</p>
       </div>
 
       {/* Profile Header Card */}
-      <div className="bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl p-6 text-white relative overflow-hidden shadow-lg">
+      <div className="bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl p-3 md:p-6 text-white relative overflow-hidden shadow-lg">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -translate-y-1/2 translate-x-1/2" />
         </div>
-        <div className="relative flex flex-col md:flex-row md:items-center gap-6">
-          <div className="relative">
-            <div className="w-20 h-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-3xl font-bold">
-              {user?.name?.[0]?.toUpperCase()}
+        <div className="relative flex flex-col gap-4 md:gap-6">
+          <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
+            <div className="relative">
+              <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl md:text-3xl font-bold">
+                {user?.name?.[0]?.toUpperCase()}
+              </div>
+              <button className="absolute -bottom-2 -right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center text-cyan-600 shadow-lg hover:scale-110 transition-transform">
+                <Camera className="w-4 h-4" />
+              </button>
             </div>
-            <button className="absolute -bottom-2 -right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center text-cyan-600 shadow-lg hover:scale-110 transition-transform">
-              <Camera className="w-4 h-4" />
-            </button>
-          </div>
-          <div className="flex-1">
-            <h2 className="text-2xl font-bold">{user?.name}</h2>
-            <div className="flex flex-wrap items-center gap-4 mt-2 text-white/90">
-              <span className="flex items-center gap-1"><Mail className="w-4 h-4" /> {user?.email}</span>
-              {user?.phone && <span className="flex items-center gap-1"><Phone className="w-4 h-4" /> {user?.phone}</span>}
+            <div className="flex-1">
+              <h2 className="text-xl md:text-2xl font-bold">{user?.name}</h2>
+              <div className="flex flex-col gap-2 mt-2 text-white/90 text-sm md:text-base">
+                <span className="flex items-center gap-1"><Mail className="w-4 h-4 flex-shrink-0" /> {user?.email}</span>
+                {user?.phone && <span className="flex items-center gap-1"><Phone className="w-4 h-4 flex-shrink-0" /> {user?.phone}</span>}
+              </div>
             </div>
           </div>
-          <div className="flex gap-4">
-            <div className="text-center p-4 bg-white/10 backdrop-blur-sm rounded-xl">
-              <p className="text-3xl font-bold">{user?.healthMetrics?.healthScore || '--'}</p>
-              <p className="text-sm text-white/80">Health Score</p>
+          <div className="flex gap-3 md:gap-4">
+            <div className="text-center p-3 md:p-4 bg-white/10 backdrop-blur-sm rounded-xl flex-1">
+              <p className="text-2xl md:text-3xl font-bold">{user?.healthMetrics?.healthScore || '--'}</p>
+              <p className="text-xs md:text-sm text-white/80">Health Score</p>
             </div>
             {bmi && (
-              <div className="text-center p-4 bg-white/10 backdrop-blur-sm rounded-xl">
-                <p className="text-3xl font-bold">{bmi}</p>
-                <p className="text-sm text-white/80">BMI</p>
+              <div className="text-center p-3 md:p-4 bg-white/10 backdrop-blur-sm rounded-xl flex-1">
+                <p className="text-2xl md:text-3xl font-bold">{bmi}</p>
+                <p className="text-xs md:text-sm text-white/80">BMI</p>
               </div>
             )}
           </div>
@@ -151,33 +214,38 @@ export default function Profile() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 p-1 bg-slate-100 rounded-xl w-fit">
-        {[{ id: 'profile', label: 'Edit Profile', icon: User }, { id: 'history', label: 'Health History', icon: Activity }].map(tab => (
+      <div className="flex gap-1 md:gap-2 p-1 bg-slate-100 rounded-xl w-full md:w-fit overflow-x-auto">
+        {[
+          { id: 'profile', label: 'Edit Profile', icon: User }, 
+          { id: 'goals', label: 'Fitness Goals', icon: Target },
+          { id: 'history', label: 'Health History', icon: Activity }
+        ].map(tab => (
           <button 
             key={tab.id} 
             onClick={() => setActiveTab(tab.id)} 
-            className={`flex items-center gap-2 px-5 py-2.5 rounded-lg font-medium transition-all ${
+            className={`flex items-center gap-1 md:gap-2 px-3 md:px-5 py-2 md:py-2.5 rounded-lg font-medium transition-all whitespace-nowrap text-sm md:text-base ${
               activeTab === tab.id 
                 ? 'bg-white text-slate-800 shadow-sm' 
                 : 'text-slate-600 hover:text-slate-800'
             }`}
           >
             <tab.icon className="w-4 h-4" />
-            {tab.label}
+            <span className="hidden md:inline">{tab.label}</span>
+            <span className="md:hidden">{tab.label.split(' ')[0]}</span>
           </button>
         ))}
       </div>
 
       {activeTab === 'profile' && (
-        <form onSubmit={handleSubmit} className="grid lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
+        <form onSubmit={handleSubmit} className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+          <div className="lg:col-span-2 space-y-4 md:space-y-6">
             {/* Basic Information */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
-              <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+            <div className="bg-white rounded-2xl border border-slate-200 p-3 md:p-6 shadow-sm">
+              <h3 className="text-base md:text-lg font-bold text-slate-800 mb-4 md:mb-6 flex items-center gap-2">
                 <User className="w-5 h-5 text-cyan-500" />
                 Basic Information
               </h3>
-              <div className="grid md:grid-cols-2 gap-5">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-5">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Full Name</label>
                   <input 
@@ -243,7 +311,7 @@ export default function Profile() {
             </div>
 
             {/* Health Information */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <div className="bg-white rounded-2xl border border-slate-200 p-3 md:p-6 shadow-sm">
               <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
                 <Heart className="w-5 h-5 text-red-500" />
                 Health Information
@@ -293,7 +361,7 @@ export default function Profile() {
             </div>
 
             {/* Medical History */}
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <div className="bg-white rounded-2xl border border-slate-200 p-3 md:p-6 shadow-sm">
               <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
                 <AlertCircle className="w-5 h-5 text-amber-500" />
                 Medical History
@@ -347,7 +415,7 @@ export default function Profile() {
           {/* Sidebar */}
           <div className="space-y-6">
             {bmi && (
-              <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+              <div className="bg-white rounded-2xl border border-slate-200 p-3 md:p-6 shadow-sm">
                 <h3 className="text-lg font-bold text-slate-800 mb-4">BMI Calculator</h3>
                 <div className="text-center">
                   <div className={`w-24 h-24 rounded-full bg-${bmiStatus.color}-100 flex items-center justify-center mx-auto mb-4`}>
@@ -360,7 +428,7 @@ export default function Profile() {
               </div>
             )}
 
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+            <div className="bg-white rounded-2xl border border-slate-200 p-3 md:p-6 shadow-sm">
               <h3 className="text-lg font-bold text-slate-800 mb-4">Quick Stats</h3>
               <div className="space-y-3">
                 <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
@@ -383,12 +451,227 @@ export default function Profile() {
         </form>
       )}
 
+      {activeTab === 'goals' && (
+        <form onSubmit={handleGoalSubmit} className="max-w-4xl space-y-6">
+          {/* Current Goal Display */}
+          {healthGoal && (
+            <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl border-2 border-blue-200 p-3 md:p-6 shadow-sm w-full overflow-hidden">
+              <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 md:gap-4 mb-4">
+                <div className="flex-1">
+                  <h3 className="text-lg md:text-xl font-bold text-blue-900 mb-1">Your Current Goal</h3>
+                  <p className="text-xs md:text-sm text-blue-700">Daily targets calculated based on your goal</p>
+                </div>
+                <div className="px-3 md:px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold capitalize text-sm md:text-base whitespace-nowrap">
+                  {healthGoal.goalType.replace('_', ' ')}
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mt-4">
+                <div className="bg-white p-2 md:p-4 rounded-xl">
+                  <p className="text-xs md:text-sm text-slate-600 mb-1">Daily Calories</p>
+                  <p className="text-lg md:text-2xl font-bold text-slate-800 truncate">{healthGoal.dailyCalorieTarget}</p>
+                </div>
+                <div className="bg-white p-2 md:p-4 rounded-xl">
+                  <p className="text-xs md:text-sm text-slate-600 mb-1">Protein</p>
+                  <p className="text-lg md:text-2xl font-bold text-slate-800 truncate">{healthGoal.macroTargets.protein}g</p>
+                </div>
+                <div className="bg-white p-2 md:p-4 rounded-xl">
+                  <p className="text-xs md:text-sm text-slate-600 mb-1">Carbs</p>
+                  <p className="text-lg md:text-2xl font-bold text-slate-800 truncate">{healthGoal.macroTargets.carbs}g</p>
+                </div>
+                <div className="bg-white p-2 md:p-4 rounded-xl">
+                  <p className="text-xs md:text-sm text-slate-600 mb-1">Fats</p>
+                  <p className="text-lg md:text-2xl font-bold text-slate-800 truncate">{healthGoal.macroTargets.fats}g</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Goal Setting Form */}
+          <div className="bg-white rounded-2xl border border-slate-200 p-3 md:p-6 shadow-sm">
+            <h3 className="text-lg font-semibold text-slate-800 mb-4">
+              {healthGoal ? 'Update Your Fitness Goal' : 'Set Your Fitness Goal'}
+            </h3>
+            
+            <div className="grid md:grid-cols-2 gap-6">
+              {/* Goal Type */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Goal Type</label>
+                <select
+                  name="goalType"
+                  value={goalFormData.goalType}
+                  onChange={handleGoalChange}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  required
+                >
+                  <option value="weight_loss">Weight Loss (Fat Loss)</option>
+                  <option value="muscle_gain">Muscle Gain (Bulking)</option>
+                  <option value="weight_gain">Weight Gain</option>
+                  <option value="maintenance">Maintenance</option>
+                  <option value="health_improvement">Health Improvement</option>
+                </select>
+              </div>
+
+              {/* Activity Level */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Activity Level</label>
+                <select
+                  name="activityLevel"
+                  value={goalFormData.activityLevel}
+                  onChange={handleGoalChange}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  required
+                >
+                  <option value="sedentary">Sedentary (Little or no exercise)</option>
+                  <option value="light">Light (Exercise 1-3 days/week)</option>
+                  <option value="moderate">Moderate (Exercise 3-5 days/week)</option>
+                  <option value="active">Active (Exercise 6-7 days/week)</option>
+                  <option value="very_active">Very Active (Hard exercise daily)</option>
+                </select>
+              </div>
+
+              {/* Current Weight */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Current Weight (kg)</label>
+                <input
+                  type="number"
+                  name="currentWeight"
+                  value={goalFormData.currentWeight}
+                  onChange={handleGoalChange}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  required
+                  min="30"
+                  max="300"
+                  step="0.1"
+                />
+              </div>
+
+              {/* Target Weight */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Target Weight (kg)</label>
+                <input
+                  type="number"
+                  name="targetWeight"
+                  value={goalFormData.targetWeight}
+                  onChange={handleGoalChange}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  required
+                  min="30"
+                  max="300"
+                  step="0.1"
+                />
+              </div>
+
+              {/* Height */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Height (cm)</label>
+                <input
+                  type="number"
+                  name="height"
+                  value={goalFormData.height}
+                  onChange={handleGoalChange}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  required
+                  min="100"
+                  max="250"
+                />
+              </div>
+
+              {/* Age */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Age</label>
+                <input
+                  type="number"
+                  name="age"
+                  value={goalFormData.age}
+                  onChange={handleGoalChange}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  required
+                  min="10"
+                  max="120"
+                />
+              </div>
+
+              {/* Gender */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Gender</label>
+                <select
+                  name="gender"
+                  value={goalFormData.gender}
+                  onChange={handleGoalChange}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  required
+                >
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
+
+              {/* Dietary Preference */}
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-2">Dietary Preference</label>
+                <select
+                  name="dietaryPreference"
+                  value={goalFormData.dietaryPreference}
+                  onChange={handleGoalChange}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  required
+                >
+                  <option value="vegetarian">Vegetarian</option>
+                  <option value="vegan">Vegan</option>
+                  <option value="non-vegetarian">Non-Vegetarian</option>
+                  <option value="eggetarian">Eggetarian</option>
+                </select>
+              </div>
+            </div>
+
+            <button
+              type="submit"
+              disabled={goalLoading}
+              className="mt-6 w-full md:w-auto px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg font-medium hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              <Target className="w-5 h-5" />
+              {goalLoading ? 'Calculating...' : healthGoal ? 'Update Goal' : 'Set Goal & Calculate Targets'}
+            </button>
+          </div>
+
+          {/* Info Box */}
+          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+            <div className="flex gap-3">
+              <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-blue-900 mb-1">How it works (Scientifically Backed)</p>
+                <p className="text-sm text-blue-700 mb-2">
+                  We use the <strong>Mifflin-St Jeor equation</strong> (industry standard used by WHO, fitness apps, and hospitals) to calculate your BMR:
+                </p>
+                <p className="text-xs text-blue-600 font-mono mb-2">
+                  Male: BMR = (10 × weight) + (6.25 × height) − (5 × age) + 5<br/>
+                  Female: BMR = (10 × weight) + (6.25 × height) − (5 × age) − 161
+                </p>
+                <p className="text-sm text-blue-700 mb-2">
+                  Then we calculate TDEE (Total Daily Energy Expenditure) by multiplying BMR with your activity level, and adjust calories based on your goal:
+                </p>
+                <ul className="text-xs text-blue-600 space-y-1 ml-4">
+                  <li>• Muscle Gain: +350 calories</li>
+                  <li>• Fat Loss: -400 calories</li>
+                  <li>• Maintenance: No adjustment</li>
+                </ul>
+                <p className="text-sm text-blue-700 mt-2">
+                  <strong>Macros:</strong> Protein = 1.6g per kg body weight (realistic & sustainable), Fats = 0.8g per kg, Carbs = remaining calories. These targets will be used throughout the platform to track your nutrition and provide personalized recommendations.
+                </p>
+              </div>
+            </div>
+          </div>
+        </form>
+      )}
+
       {activeTab === 'history' && (
         <div className="space-y-6">
           {reportTypes.length > 0 ? (
             <>
               {/* Health Score Trend Chart */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+              <div className="bg-white rounded-2xl border border-slate-200 p-3 md:p-6 shadow-sm">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
                   <div>
                     <h3 className="text-lg font-bold text-slate-800">Health Score Trend</h3>
@@ -433,7 +716,7 @@ export default function Profile() {
               </div>
 
               {/* Recent Reports */}
-              <div className="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+              <div className="bg-white rounded-2xl border border-slate-200 p-3 md:p-6 shadow-sm">
                 <h3 className="text-lg font-bold text-slate-800 mb-6">Recent {selectedType} Reports</h3>
                 <div className="space-y-3">
                   {healthHistory?.history?.[selectedType]?.slice(0, 5).map((report, i) => {
@@ -476,7 +759,7 @@ export default function Profile() {
               </div>
             </>
           ) : (
-            <div className="bg-white rounded-2xl border border-slate-200 p-6 text-center py-16 shadow-sm">
+            <div className="bg-white rounded-2xl border border-slate-200 p-3 md:p-6 text-center py-16 shadow-sm">
               <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
               <h3 className="text-xl font-bold text-slate-800 mb-2">No Health History Yet</h3>
               <p className="text-slate-500 mb-6">Upload health reports to track your progress over time</p>

@@ -14,12 +14,48 @@ const userSchema = new mongoose.Schema({
     age: Number,
     gender: { type: String, enum: ['male', 'female', 'other'] },
     dietaryPreference: { type: String, enum: ['vegetarian', 'non-vegetarian', 'vegan', 'eggetarian'], default: 'non-vegetarian' },
-    height: Number,
-    weight: Number,
+    height: Number, // in cm
+    weight: Number, // in kg
     bloodGroup: String,
     allergies: [String],
     chronicConditions: [String],
-    avatar: String
+    avatar: String,
+    // New comprehensive health fields
+    activityLevel: { 
+      type: String, 
+      enum: ['sedentary', 'lightly_active', 'moderately_active', 'very_active', 'extremely_active'],
+      default: 'sedentary'
+    },
+    medicalHistory: {
+      conditions: [String], // diabetes, hypertension, etc.
+      surgeries: [String],
+      familyHistory: [String],
+      currentMedications: [String]
+    },
+    lifestyle: {
+      smoker: { type: Boolean, default: false },
+      smokingFrequency: String, // 'occasional', 'regular', 'heavy'
+      alcohol: { type: Boolean, default: false },
+      alcoholFrequency: String, // 'occasional', 'moderate', 'heavy'
+      sleepHours: Number,
+      stressLevel: { type: String, enum: ['low', 'moderate', 'high'] },
+      waterIntake: Number // glasses per day
+    }
+  },
+  nutritionGoal: {
+    goal: { 
+      type: String, 
+      enum: ['weight_loss', 'weight_gain', 'muscle_gain', 'maintain', 'general_health'],
+      default: 'general_health'
+    },
+    targetWeight: Number, // in kg
+    weeklyGoal: Number, // kg per week (0.25, 0.5, 1)
+    calorieGoal: Number,
+    proteinGoal: Number, // in grams
+    carbsGoal: Number, // in grams
+    fatGoal: Number, // in grams
+    autoCalculated: { type: Boolean, default: true },
+    lastUpdated: Date
   },
   subscription: {
     plan: { type: String, enum: ['free', 'basic', 'premium'], default: 'free' },

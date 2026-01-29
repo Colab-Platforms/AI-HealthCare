@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Doctor = require('../models/Doctor');
+const { calculateNutritionGoals } = require('../services/nutritionGoalCalculator');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
@@ -8,7 +9,7 @@ const generateToken = (id) => {
 
 exports.register = async (req, res) => {
   try {
-    const { name, email, phone, password, role, profile } = req.body;
+    const { name, email, phone, password, role, profile, nutritionGoal } = req.body;
     
     // Check if user exists by email or phone
     const existingUser = await User.findOne({ 
@@ -22,6 +23,26 @@ exports.register = async (req, res) => {
     // Doctor registration is separate, admin is created by existing admin
     const userRole = role === 'doctor' ? 'doctor' : 'patient';
     
+    // Calculate nutrition goals if profile data is provided
+    let calculatedGoals = null;
+    if (profile && profile.age && profile.gender && profile.weight && profile.height && nutritionGoal) {
+      try {
+        calculatedGoals = calculateNutritionGoals({
+          age: profile.age,
+          gender: profile.gender,
+          weight: profile.weight,
+          height: profile.height,
+          activityLevel: profile.activityLevel || 'sedentary',
+          goal: nutritionGoal.goal || 'general_health',
+          targetWeight: nutritionGoal.targetWeight,
+          weeklyGoal: nutritionGoal.weeklyGoal || 0.5
+        });
+      } catch (calcError) {
+        console.error('Nutrition goal calculation error:', calcError);
+        // Continue with registration even if calculation fails
+      }
+    }
+    
     const user = await User.create({ 
       name, 
       email, 
@@ -29,6 +50,13 @@ exports.register = async (req, res) => {
       password, 
       role: userRole,
       profile: profile || {},
+      nutritionGoal: calculatedGoals ? {
+        goal: nutritionGoal.goal,
+        targetWeight: nutritionGoal.targetWeight,
+        weeklyGoal: nutritionGoal.weeklyGoal,
+        ...calculatedGoals,
+        autoCalculated: true
+      } : undefined,
       subscription: {
         plan: 'free',
         status: 'active',
@@ -43,10 +71,12 @@ exports.register = async (req, res) => {
       phone: user.phone,
       role: user.role,
       profile: user.profile,
+      nutritionGoal: user.nutritionGoal,
       subscription: user.subscription,
       token: generateToken(user._id)
     });
   } catch (error) {
+    console.error('Registration error:', error);
     res.status(500).json({ message: error.message });
   }
 };

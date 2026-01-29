@@ -24,7 +24,7 @@ const makeOpenRouterRequest = async (messages, maxTokens = 2500) => {
   return response.data.choices[0].message.content;
 };
 
-const HEALTH_ANALYSIS_PROMPT = `You are an expert medical AI assistant specializing in nutritional health analysis. Analyze the following health report and provide comprehensive insights.
+const HEALTH_ANALYSIS_PROMPT = `You are an expert medical AI assistant specializing in nutritional health analysis with focus on natural Indian remedies. Analyze the following health report and provide comprehensive insights.
 
 IMPORTANT: This is for informational wellness support only and should not replace professional medical advice or diagnosis.
 
@@ -51,29 +51,27 @@ Provide your analysis in the following JSON format:
     {"name": "Vitamin B12", "severity": "mild", "currentValue": "180 pg/mL", "normalRange": "200-900 pg/mL", "symptoms": ["Weakness"]}
   ],
   "supplements": [
-    {"category": "Vitamin D3", "reason": "To address Vitamin D deficiency", "generalDosage": "1000-2000 IU daily", "note": "Take with fatty meal for better absorption"},
-    {"category": "Vitamin B12", "reason": "To improve B12 levels", "generalDosage": "500-1000 mcg daily", "note": "Sublingual form may be better absorbed"}
+    {"category": "Vitamin D", "reason": "To address Vitamin D deficiency", "naturalSources": "🌞 Get 15-20 mins morning sunlight daily. Eat: Mushrooms, fortified milk, paneer, eggs, fish (salmon, mackerel)", "note": "Sunlight is the best natural source"},
+    {"category": "Vitamin B12", "reason": "To improve B12 levels", "naturalSources": "🥚 Eggs, milk, yogurt, paneer, fortified cereals. Non-veg: Chicken, fish, mutton", "note": "Include dairy products daily"},
+    {"category": "Iron", "reason": "To boost iron levels", "naturalSources": "🥬 Spinach (palak), beetroot, pomegranate, dates, jaggery, raisins. Non-veg: Chicken liver, mutton", "note": "Pair with vitamin C foods like lemon for better absorption"},
+    {"category": "Vitamin C", "reason": "For immunity and iron absorption", "naturalSources": "🍊 Amla (Indian gooseberry), oranges, guava, lemon, tomatoes, bell peppers", "note": "Amla is one of the richest sources"},
+    {"category": "Calcium", "reason": "For bone health", "naturalSources": "🥛 Milk, yogurt, paneer, sesame seeds (til), ragi, almonds, green leafy vegetables", "note": "Include dairy in daily diet"},
+    {"category": "Omega-3", "reason": "For heart and brain health", "naturalSources": "🐟 Walnuts, flaxseeds (alsi), chia seeds, fish (salmon, sardines)", "note": "Soak flaxseeds before consuming"}
   ],
   "dietPlan": {
-    "overview": "Personalized diet plan to address identified deficiencies",
-    "breakfast": [{"meal": "Fortified cereal with milk", "nutrients": ["Vitamin D", "B12", "Iron"], "tip": "Choose whole grain options"}],
-    "lunch": [{"meal": "Grilled salmon with leafy greens", "nutrients": ["Vitamin D", "Omega-3", "Iron"], "tip": "Include citrus for iron absorption"}],
-    "dinner": [{"meal": "Lean meat with vegetables", "nutrients": ["B12", "Iron", "Zinc"], "tip": "Pair with vitamin C rich foods"}],
-    "snacks": [{"meal": "Nuts and seeds", "nutrients": ["Vitamin E", "Magnesium"], "tip": "A handful provides daily needs"}],
-    "foodsToIncrease": ["Fatty fish", "Eggs", "Fortified dairy", "Leafy greens", "Citrus fruits"],
-    "foodsToLimit": ["Processed foods", "Excessive caffeine", "Alcohol"],
-    "hydration": "Drink 8-10 glasses of water daily",
-    "tips": ["Eat meals at regular times", "Include protein with each meal", "Get 15 mins of sunlight daily for Vitamin D"]
+    "overview": "Personalized Indian diet plan to address identified deficiencies using natural foods",
+    "breakfast": [{"meal": "Poha with vegetables and peanuts", "nutrients": ["Iron", "Vitamin C"], "tip": "Add lemon juice for iron absorption"}, {"meal": "Idli with sambhar", "nutrients": ["Protein", "Iron"], "tip": "Fermented foods aid digestion"}],
+    "lunch": [{"meal": "Dal, roti, sabzi, curd", "nutrients": ["Protein", "Calcium", "B12"], "tip": "Include seasonal vegetables"}, {"meal": "Fish curry with rice", "nutrients": ["Vitamin D", "Omega-3", "B12"], "tip": "For non-vegetarians"}],
+    "dinner": [{"meal": "Khichdi with vegetables", "nutrients": ["Protein", "Fiber"], "tip": "Easy to digest"}, {"meal": "Roti, dal, paneer sabzi", "nutrients": ["Protein", "Calcium"], "tip": "Light dinner for better sleep"}],
+    "snacks": [{"meal": "Handful of almonds and dates", "nutrients": ["Iron", "Calcium"], "tip": "Soak almonds overnight"}, {"meal": "Fruit chaat with chaat masala", "nutrients": ["Vitamin C", "Fiber"], "tip": "Use seasonal fruits"}],
+    "foodsToIncrease": ["Leafy greens (palak, methi)", "Seasonal fruits", "Whole grains (ragi, jowar)", "Dairy products", "Nuts and seeds", "Lentils and beans"],
+    "foodsToLimit": ["Processed foods", "Excessive tea/coffee", "Refined sugar", "Deep fried foods"],
+    "hydration": "Drink 8-10 glasses of water daily. Include coconut water, buttermilk (chaas)",
+    "tips": ["Eat meals at regular times", "Include protein with each meal", "Get 15-20 mins of morning sunlight for Vitamin D", "Use iron kadhai for cooking", "Soak nuts and seeds before eating"]
   },
   "recommendations": {
-    "lifestyle": ["Get 15-20 minutes of morning sunlight", "Regular exercise", "Adequate sleep"],
+    "lifestyle": ["Get 15-20 minutes of morning sunlight", "Regular yoga or walking", "Adequate sleep (7-8 hours)", "Stress management through meditation"],
     "tests": ["Follow-up vitamin panel in 3 months"]
-  },
-  "doctorConsultation": {
-    "recommended": true,
-    "urgency": "low/medium/high/urgent",
-    "specializations": ["General Physician", "Nutritionist"],
-    "reason": "Why consultation is needed"
   },
   "overallTrend": "Summary of health trend based on deficiencies"
 }`;
