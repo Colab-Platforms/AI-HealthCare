@@ -3,6 +3,7 @@ const SupplementRecommendation = require('../models/SupplementRecommendation');
 const HealthReport = require('../models/HealthReport');
 const User = require('../models/User');
 const dietRecommendationAI = require('../services/dietRecommendationAI');
+const { calculateNutritionGoals, getDietRecommendations } = require('../services/nutritionGoalCalculator');
 
 /**
  * Generate personalized diet plan based on comprehensive health data
@@ -18,8 +19,8 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
     }
 
     // Get latest health reports
-    const healthReports = await HealthReport.find({ userId })
-      .sort({ uploadDate: -1 })
+    const healthReports = await HealthReport.find({ user: userId })
+      .sort({ createdAt: -1 })
       .limit(5);
 
     // Extract lab report insights
@@ -27,8 +28,8 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
     const deficiencies = [];
 
     healthReports.forEach(report => {
-      if (report.analysis?.deficiencies) {
-        report.analysis.deficiencies.forEach(def => {
+      if (report.aiAnalysis?.deficiencies) {
+        report.aiAnalysis.deficiencies.forEach(def => {
           deficiencies.push({
             nutrient: def.name || def,
             severity: def.severity || 'detected',
@@ -37,27 +38,50 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
         });
       }
 
-      if (report.analysis?.keyFindings) {
-        report.analysis.keyFindings.forEach(finding => {
+      if (report.aiAnalysis?.metrics) {
+        Object.entries(report.aiAnalysis.metrics).forEach(([key, metric]) => {
           labReportInsights.push({
-            parameter: finding.parameter || finding,
-            value: finding.value || '',
-            unit: finding.unit || '',
-            status: finding.status || 'noted',
+            parameter: key,
+            value: metric.value || '',
+            unit: metric.unit || '',
+            status: metric.status || 'noted',
             reportId: report._id
           });
         });
       }
     });
 
+    // Calculate user's nutrition goals
+    let nutritionGoals = null;
+    try {
+      nutritionGoals = calculateNutritionGoals({
+        age: user.profile?.age || 25,
+        gender: user.profile?.gender || 'male',
+        weight: user.profile?.weight || 70,
+        height: user.profile?.height || 170,
+        activityLevel: user.profile?.activityLevel || 'moderately_active',
+        goal: user.profile?.fitnessGoals?.[0] || 'general_health',
+        targetWeight: user.profile?.targetWeight
+      });
+    } catch (error) {
+      console.warn('Could not calculate nutrition goals:', error.message);
+      // Use default goals if calculation fails
+      nutritionGoals = {
+        calorieGoal: 2000,
+        proteinGoal: 150,
+        carbsGoal: 200,
+        fatGoal: 65
+      };
+    }
+
     // Prepare user data for AI
     const userData = {
-      age: user.profile?.age || user.age,
-      gender: user.profile?.gender || user.gender,
-      weight: user.profile?.weight,
-      height: user.profile?.height,
+      age: user.profile?.age || 25,
+      gender: user.profile?.gender || 'male',
+      weight: user.profile?.weight || 70,
+      height: user.profile?.height || 170,
       dietaryPreference: user.profile?.dietaryPreference || 'non-vegetarian',
-      activityLevel: user.profile?.activityLevel || 'moderate',
+      activityLevel: user.profile?.activityLevel || 'moderately_active',
       fitnessGoals: user.profile?.fitnessGoals || [],
       medicalConditions: user.profile?.medicalConditions || [],
       allergies: user.profile?.allergies || [],
@@ -65,21 +89,28 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       healthParameters: {
         bmi: user.profile?.bmi,
         bloodPressure: user.profile?.bloodPressure
+      },
+      // Add nutrition goals to userData
+      nutritionGoals: {
+        dailyCalories: nutritionGoals.calorieGoal,
+        protein: nutritionGoals.proteinGoal,
+        carbs: nutritionGoals.carbsGoal,
+        fat: nutritionGoals.fatGoal
       }
     };
 
-    // Generate AI-powered diet plan
+    // Generate AI-powered diet plan with nutrition goals
     const aiDietPlan = await dietRecommendationAI.generatePersonalizedDietPlan(userData);
 
     // Deactivate old diet plans
     await PersonalizedDietPlan.updateMany(
-      { userId, isActive: true },
+      { user: userId, isActive: true },
       { isActive: false }
     );
 
-    // Save new diet plan
+    // Save new diet plan with nutrition goals
     const dietPlan = new PersonalizedDietPlan({
-      userId,
+      user: userId,
       inputData: {
         age: userData.age,
         gender: userData.gender,
@@ -92,7 +123,18 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
         allergies: userData.allergies
       },
       labReportInsights,
-      ...aiDietPlan
+      nutritionGoals: {
+        dailyCalorieTarget: nutritionGoals.calorieGoal,
+        macroTargets: {
+          protein: nutritionGoals.proteinGoal,
+          carbs: nutritionGoals.carbsGoal,
+          fat: nutritionGoals.fatGoal
+        }
+      },
+      ...aiDietPlan,
+      generatedAt: new Date(),
+      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Valid for 30 days
+      isActive: true
     });
 
     await dietPlan.save();

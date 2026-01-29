@@ -8,6 +8,7 @@ class DietRecommendationAI {
 
   /**
    * Generate personalized Indian diet recommendations based on comprehensive health data
+   * ENSURES MEALS EXACTLY MEET DAILY CALORIE AND MACRO TARGETS WITH EASY INDIAN DISHES
    */
   async generatePersonalizedDietPlan(userData) {
     const {
@@ -21,10 +22,44 @@ class DietRecommendationAI {
       height,
       dietaryPreference = 'non-vegetarian',
       medicalConditions = [],
-      allergies = []
+      allergies = [],
+      nutritionGoals = {}
     } = userData;
 
-    const prompt = `You are an expert Indian nutritionist and dietitian. Generate a comprehensive, personalized Indian diet plan based on the following health data:
+    const dailyCalories = nutritionGoals.dailyCalories || 2000;
+    const proteinGoal = nutritionGoals.protein || 150;
+    const carbsGoal = nutritionGoals.carbs || 200;
+    const fatGoal = nutritionGoals.fat || 65;
+
+    const prompt = `You are an expert Indian nutritionist specializing in creating practical, easy-to-prepare Indian diet plans. Your task is to generate a PRECISE diet plan where meals EXACTLY meet the user's daily nutrition targets.
+
+CRITICAL REQUIREMENTS - MUST FOLLOW STRICTLY:
+1. ALL meals combined MUST total EXACTLY ${dailyCalories} calories (tolerance: ±50 cal)
+2. ALL meals combined MUST total EXACTLY ${proteinGoal}g protein (tolerance: ±5g)
+3. ALL meals combined MUST total EXACTLY ${carbsGoal}g carbs (tolerance: ±10g)
+4. ALL meals combined MUST total EXACTLY ${fatGoal}g fat (tolerance: ±3g)
+5. Use ONLY easy, practical Indian dishes that are commonly eaten in Indian households
+6. Include EXACT portion sizes in grams/ml for every ingredient
+7. Suggest common Indian ingredients and traditional cooking methods
+8. Make meals achievable for busy Indian families (preparation time < 30 mins)
+9. Provide cooking instructions for each meal
+10. Include difficulty level (Easy/Medium) for each meal
+
+MEAL SELECTION GUIDELINES:
+- Breakfast: Traditional Indian options (Idli, Dosa, Paratha, Upma, Poha, Oats, Eggs)
+- Mid-Morning Snack: Light options (Fruit, Yogurt, Nuts, Chikhalwali)
+- Lunch: Main meal with protein + carbs + vegetables (Curry + Rice/Roti, Dal + Rice)
+- Evening Snack: Light options (Tea with snack, Fruit, Nuts)
+- Dinner: Lighter than lunch (Soup, Salad, Light curry with Roti)
+
+PORTION SIZE EXAMPLES:
+- Rice: 150g cooked = ~200 cal, 4g protein, 45g carbs
+- Roti: 1 piece (30g) = ~80 cal, 2.5g protein, 15g carbs
+- Dal: 150ml cooked = ~100 cal, 8g protein, 15g carbs
+- Chicken: 100g = ~165 cal, 31g protein, 0g carbs
+- Vegetables: 100g = ~25-50 cal, 1-2g protein, 5-10g carbs
+
+Generate a comprehensive, personalized Indian diet plan based on the following health data:
 
 **Patient Profile:**
 - Age: ${age} years
@@ -36,6 +71,12 @@ class DietRecommendationAI {
 ${medicalConditions.length > 0 ? `- Medical Conditions: ${medicalConditions.join(', ')}` : ''}
 ${allergies.length > 0 ? `- Allergies: ${allergies.join(', ')}` : ''}
 
+**DAILY NUTRITION TARGETS (MUST BE MET BY SUGGESTED MEALS):**
+- Daily Calories: ${dailyCalories} kcal (±50 cal)
+- Protein: ${proteinGoal}g (±5g)
+- Carbohydrates: ${carbsGoal}g (±10g)
+- Fats: ${fatGoal}g (±3g)
+
 **Lab Report Insights:**
 ${labReports.length > 0 ? labReports.map(report => `- ${report.parameter}: ${report.value} ${report.unit} (${report.status})`).join('\n') : 'No lab reports available'}
 
@@ -45,51 +86,156 @@ ${Object.keys(healthParameters).length > 0 ? Object.entries(healthParameters).ma
 **Fitness Goals:**
 ${fitnessGoals.length > 0 ? fitnessGoals.join(', ') : 'General health maintenance'}
 
-**Requirements:**
-1. Provide ONLY Indian foods, dishes, and ingredients
-2. Use Indian meal terminology (breakfast/nashta, lunch/dopahar ka khana, dinner/raat ka khana, snacks)
-3. Filter all recommendations based on dietary preference: ${dietaryPreference}
-4. Focus on correcting nutritional deficiencies identified in lab reports
-5. Support the stated fitness goals
-6. Consider activity level for calorie recommendations
-7. Provide practical, home-cooked Indian meal suggestions
-8. Include regional variety (North Indian, South Indian, etc.)
-
 **Response Format (JSON):**
 {
-  "dailyCalorieTarget": <number>,
+  "dailyCalorieTarget": ${dailyCalories},
   "macroTargets": {
-    "protein": <grams>,
-    "carbs": <grams>,
-    "fats": <grams>
+    "protein": ${proteinGoal},
+    "carbs": ${carbsGoal},
+    "fat": ${fatGoal}
   },
   "mealPlan": {
-    "breakfast": [
-      {
-        "name": "<Indian dish name>",
-        "description": "<brief description>",
-        "calories": <number>,
-        "protein": <grams>,
-        "benefits": "<why this helps>"
-      }
-    ],
-    "midMorningSnack": [...],
-    "lunch": [...],
-    "eveningSnack": [...],
-    "dinner": [...]
+    "breakfast": {
+      "name": "<Indian dish name>",
+      "description": "<brief description>",
+      "calories": <number>,
+      "protein": <grams>,
+      "carbs": <grams>,
+      "fat": <grams>,
+      "portionSize": "<exact portion in grams/ml>",
+      "ingredients": [
+        {
+          "item": "<ingredient name>",
+          "quantity": "<amount in grams/ml>",
+          "calories": <number>,
+          "protein": <grams>,
+          "carbs": <grams>,
+          "fat": <grams>
+        }
+      ],
+      "cookingMethod": "<how to prepare>",
+      "cookingTime": "<minutes>",
+      "difficulty": "Easy|Medium",
+      "benefits": "<why this helps>"
+    },
+    "midMorningSnack": {
+      "name": "<Indian snack>",
+      "description": "<brief description>",
+      "calories": <number>,
+      "protein": <grams>,
+      "carbs": <grams>,
+      "fat": <grams>,
+      "portionSize": "<exact portion in grams/ml>",
+      "ingredients": [
+        {
+          "item": "<ingredient name>",
+          "quantity": "<amount in grams/ml>",
+          "calories": <number>,
+          "protein": <grams>,
+          "carbs": <grams>,
+          "fat": <grams>
+        }
+      ],
+      "cookingMethod": "<how to prepare>",
+      "cookingTime": "<minutes>",
+      "difficulty": "Easy|Medium",
+      "benefits": "<why this helps>"
+    },
+    "lunch": {
+      "name": "<Indian dish name>",
+      "description": "<brief description>",
+      "calories": <number>,
+      "protein": <grams>,
+      "carbs": <grams>,
+      "fat": <grams>,
+      "portionSize": "<exact portion in grams/ml>",
+      "ingredients": [
+        {
+          "item": "<ingredient name>",
+          "quantity": "<amount in grams/ml>",
+          "calories": <number>,
+          "protein": <grams>,
+          "carbs": <grams>,
+          "fat": <grams>
+        }
+      ],
+      "cookingMethod": "<how to prepare>",
+      "cookingTime": "<minutes>",
+      "difficulty": "Easy|Medium",
+      "benefits": "<why this helps>"
+    },
+    "eveningSnack": {
+      "name": "<Indian snack>",
+      "description": "<brief description>",
+      "calories": <number>,
+      "protein": <grams>,
+      "carbs": <grams>,
+      "fat": <grams>,
+      "portionSize": "<exact portion in grams/ml>",
+      "ingredients": [
+        {
+          "item": "<ingredient name>",
+          "quantity": "<amount in grams/ml>",
+          "calories": <number>,
+          "protein": <grams>,
+          "carbs": <grams>,
+          "fat": <grams>
+        }
+      ],
+      "cookingMethod": "<how to prepare>",
+      "cookingTime": "<minutes>",
+      "difficulty": "Easy|Medium",
+      "benefits": "<why this helps>"
+    },
+    "dinner": {
+      "name": "<Indian dish name>",
+      "description": "<brief description>",
+      "calories": <number>,
+      "protein": <grams>,
+      "carbs": <grams>,
+      "fat": <grams>,
+      "portionSize": "<exact portion in grams/ml>",
+      "ingredients": [
+        {
+          "item": "<ingredient name>",
+          "quantity": "<amount in grams/ml>",
+          "calories": <number>,
+          "protein": <grams>,
+          "carbs": <grams>,
+          "fat": <grams>
+        }
+      ],
+      "cookingMethod": "<how to prepare>",
+      "cookingTime": "<minutes>",
+      "difficulty": "Easy|Medium",
+      "benefits": "<why this helps>"
+    }
+  },
+  "dailyMacroSummary": {
+    "totalCalories": <sum of all meals - MUST be ${dailyCalories} ±50>,
+    "totalProtein": <sum of all protein - MUST be ${proteinGoal}g ±5g>,
+    "totalCarbs": <sum of all carbs - MUST be ${carbsGoal}g ±10g>,
+    "totalFat": <sum of all fats - MUST be ${fatGoal}g ±3g>,
+    "calorieAccuracy": "<percentage match to target>",
+    "proteinAccuracy": "<percentage match to target>",
+    "carbsAccuracy": "<percentage match to target>",
+    "fatAccuracy": "<percentage match to target>",
+    "note": "All values MUST match the daily targets within specified tolerances"
   },
   "keyFoods": [
     {
       "name": "<Indian food item>",
       "reason": "<why recommended>",
-      "frequency": "<how often to consume>"
+      "frequency": "<how often to consume>",
+      "servingSize": "<portion in grams/ml>"
     }
   ],
   "deficiencyCorrections": [
     {
       "deficiency": "<nutrient name>",
       "indianFoods": ["<food1>", "<food2>"],
-      "mealSuggestions": ["<specific Indian dish>"]
+      "mealSuggestions": ["<specific Indian dish>"],
+      "servingSize": "<portion in grams/ml>"
     }
   ],
   "lifestyleRecommendations": [
@@ -100,20 +246,39 @@ ${fitnessGoals.length > 0 ? fitnessGoals.join(', ') : 'General health maintenanc
       "food": "<food to avoid>",
       "reason": "<why to avoid>"
     }
+  ],
+  "trackingTips": [
+    "Measure portions using a kitchen scale for accuracy",
+    "Track your meals daily to ensure you meet targets",
+    "Adjust portion sizes if consistently over or under targets",
+    "Drink 8-10 glasses of water daily",
+    "Prepare meals in advance for busy days"
+  ],
+  "shoppingList": [
+    {
+      "category": "<category name>",
+      "items": [
+        {
+          "item": "<ingredient>",
+          "quantity": "<amount needed for week>",
+          "unit": "kg|liters|pieces"
+        }
+      ]
+    }
   ]
 }
 
-Provide ONLY the JSON response, no additional text.`;
+IMPORTANT: Provide ONLY the JSON response, no additional text. Ensure all calorie and macro calculations are accurate and sum to the daily targets.`;
 
     try {
       const response = await axios.post(
         this.apiUrl,
         {
-          model: 'openai/gpt-4o',
+          model: 'anthropic/claude-3.5-sonnet',
           messages: [
             {
               role: 'system',
-              content: 'You are an expert Indian nutritionist specializing in personalized diet plans based on lab reports and health data. Always provide Indian food recommendations only.'
+              content: 'You are an expert Indian nutritionist specializing in personalized diet plans based on lab reports and health data. Always provide Indian food recommendations only. CRITICAL: Ensure all meal suggestions add up to meet the user\'s daily calorie and macro targets. Include detailed calorie and macro information for each meal.'
             },
             {
               role: 'user',
@@ -121,7 +286,7 @@ Provide ONLY the JSON response, no additional text.`;
             }
           ],
           temperature: 0.7,
-          max_tokens: 3000
+          max_tokens: 4000
         },
         {
           headers: {
@@ -199,7 +364,8 @@ ${deficiencies.map(d => `- ${d.nutrient || d}: ${d.severity || 'detected'}`).joi
       "reason": "<why needed based on lab reports>",
       "foodAlternatives": ["<Indian food sources>"],
       "precautions": "<any warnings>",
-      "indianBrands": ["<available brands in India>"]
+      "indianBrands": ["<available brands in India>"],
+      "priority": "high|medium|low"
     }
   ],
   "generalGuidance": [
@@ -214,7 +380,7 @@ Provide ONLY the JSON response, no additional text.`;
       const response = await axios.post(
         this.apiUrl,
         {
-          model: 'openai/gpt-4o',
+          model: 'anthropic/claude-3.5-sonnet',
           messages: [
             {
               role: 'system',

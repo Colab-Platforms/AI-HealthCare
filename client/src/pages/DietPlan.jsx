@@ -402,26 +402,29 @@ export default function DietPlan() {
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {!personalizedPlan && (
-            <button
-              onClick={generateAIPlan}
-              disabled={generating}
-              className="px-6 py-3 text-white rounded-xl font-medium hover:shadow-lg flex items-center gap-2 disabled:opacity-50"
-              style={{ backgroundColor: '#8B7355' }}
-            >
-              {generating ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  Generating...
-                </>
-              ) : (
-                <>
-                  <Sparkles className="w-5 h-5" />
-                  Generate AI Plan
-                </>
-              )}
-            </button>
-          )}
+          <button
+            onClick={generateAIPlan}
+            disabled={generating}
+            className="px-6 py-3 text-white rounded-xl font-medium hover:shadow-lg flex items-center gap-2 disabled:opacity-50 transition-all"
+            style={{ backgroundColor: '#8B7355' }}
+          >
+            {generating ? (
+              <>
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                Generating...
+              </>
+            ) : personalizedPlan ? (
+              <>
+                <Sparkles className="w-5 h-5" />
+                Regenerate Plan
+              </>
+            ) : (
+              <>
+                <Sparkles className="w-5 h-5" />
+                Generate AI Plan
+              </>
+            )}
+          </button>
           <label className="flex items-center gap-2 cursor-pointer">
             <input
               type="checkbox"
@@ -652,14 +655,6 @@ export default function DietPlan() {
                   </div>
                 </div>
               )}
-
-              <button
-                onClick={generateAIPlan}
-                disabled={generating}
-                className="mt-6 w-full px-6 py-3 bg-purple-600 text-white rounded-xl font-medium hover:bg-purple-700 disabled:opacity-50"
-              >
-                {generating ? 'Regenerating...' : 'Regenerate Plan'}
-              </button>
             </div>
           )}
 

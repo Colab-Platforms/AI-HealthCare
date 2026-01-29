@@ -1,0 +1,140 @@
+================================================================================
+VERCEL DEPLOYMENT FIX - ACTION CHECKLIST
+================================================================================
+
+WHAT WAS DONE:
+✅ Updated vercel.json with buildCommand
+✅ Updated api/chat.js to use Claude models
+✅ Rebuilt client with latest UI
+✅ Pushed to GitHub (commit bf07019)
+
+NOW YOU NEED TO:
+================================================================================
+
+IMMEDIATE ACTIONS (Do these now):
+
+☐ 1. Clear Vercel Cache
+   - Go to https://vercel.com/dashboard
+   - Select your project
+   - Settings > Git
+   - Click "Clear Build Cache"
+   - Confirm
+
+☐ 2. Trigger Redeploy
+   - Go to Vercel Dashboard
+   - Click "Deployments" tab
+   - Find latest deployment
+   - Click three dots menu
+   - Select "Redeploy"
+   - Confirm
+
+☐ 3. Monitor Build
+   - Watch the deployment progress
+   - Look for "✓ Build successful"
+   - Check build logs if there are errors
+
+☐ 4. Verify Environment Variables
+   - Vercel Dashboard > Settings > Environment Variables
+   - Confirm OPENROUTER_API_KEY is set
+   - Confirm MONGODB_URI is set
+   - Confirm JWT_SECRET is set
+   - Confirm NODE_ENV = production
+
+TESTING ACTIONS (After deployment):
+
+☐ 5. Hard Refresh Browser
+   - Go to your Vercel URL
+   - Press Ctrl+Shift+R (Windows) or Cmd+Shift+R (Mac)
+   - Or use incognito window
+
+☐ 6. Check New UI
+   - Verify new input field design (centered, pill-shaped)
+   - Verify input field is sticky at bottom
+   - Verify no errors in browser console (F12)
+
+☐ 7. Test AI Chat
+   - Go to AI Chat page
+   - Send a test message
+   - Verify Claude responds (not GPT-4o)
+   - Check response appears correctly
+
+☐ 8. Test Chat Persistence
+   - Send a few messages
+   - Refresh the page (F5)
+   - Verify messages are still there
+
+☐ 9. Verify API
+   - Open DevTools (F12)
+   - Go to Network tab
+   - Send a message
+   - Check /api/chat request returns 200 status
+   - Verify response contains AI text
+
+VERIFICATION CHECKLIST:
+
+☐ Vercel deployment shows "✓ Build successful"
+☐ New UI loads on production
+☐ Input field is centered and pill-shaped
+☐ Input field is sticky at bottom
+☐ AI Chat responds with Claude model
+☐ Messages persist after refresh
+☐ No errors in browser console
+☐ API requests return 200 status
+☐ Environment variables are set
+
+================================================================================
+TROUBLESHOOTING QUICK REFERENCE:
+================================================================================
+
+If still seeing old UI:
+→ Clear Vercel cache and redeploy
+→ Hard refresh browser (Ctrl+Shift+R)
+→ Try incognito window
+→ Check Vercel build logs
+
+If API errors (404 or 500):
+→ Verify OPENROUTER_API_KEY is set in Vercel
+→ Check Vercel build logs
+→ Open DevTools (F12) and check Network tab
+
+If chat not persisting:
+→ Check browser console for errors
+→ Verify localStorage is enabled
+→ Check DevTools > Application > Local Storage
+
+================================================================================
+IMPORTANT LINKS:
+================================================================================
+
+Vercel Dashboard: https://vercel.com/dashboard
+Your Project: https://vercel.com/dashboard/[your-project]
+Production URL: https://ai-diagnostic-steel.vercel.app
+GitHub Repo: https://github.com/Colab-Platforms/AI-Diagnostic
+
+Latest Commit: bf07019
+Build Command: cd client && npm install && npm run build
+
+================================================================================
+DOCUMENTATION FILES:
+================================================================================
+
+For detailed information, see:
+- DEPLOYMENT_RESOLUTION.md (Complete guide)
+- VERCEL_DEPLOYMENT_STEPS.txt (Step-by-step instructions)
+- VERCEL_FIX_SUMMARY.txt (Quick summary)
+- DEPLOYMENT_QUICK_FIX.md (Quick reference)
+
+================================================================================
+NEXT STEPS:
+================================================================================
+
+1. Clear Vercel cache (see checklist above)
+2. Redeploy
+3. Monitor build progress
+4. Test on production
+5. Verify all features work
+
+Status: ✅ READY FOR DEPLOYMENT
+Date: January 29, 2026
+
+================================================================================
