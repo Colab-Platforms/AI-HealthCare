@@ -1,0 +1,72 @@
+MESH GRADIENT NOT VISIBLE ON VERCEL - TROUBLESHOOTING GUIDE
+============================================================
+
+ISSUE: Mesh gradient background is not visible on Vercel deployment but works locally.
+
+POSSIBLE CAUSES & SOLUTIONS:
+
+1. BUILD CACHE ISSUE
+   - Vercel might be using cached build files
+   - Solution: Force a fresh deployment
+   
+   Steps:
+   a) Go to Vercel Dashboard: https://vercel.com/dashboard
+   b) Select your project
+   c) Go to Deployments tab
+   d) Click "..." menu on latest deployment
+   e) Select "Redeploy" → Check "Use existing Build Cache" OFF
+   f) Click "Redeploy"
+
+2. PACKAGE NOT INSTALLED
+   - The @paper-design/shaders-react package might not be installed on Vercel
+   - Check: Package IS in client/package.json ✓
+   
+   "@paper-design/shaders-react": "^0.0.70"
+
+3. WEBGL COMPATIBILITY
+   - The mesh gradient uses WebGL which might have issues on some browsers
+   - The component already has proper error handling
+   - Check browser console for WebGL errors
+
+4. ENVIRONMENT VARIABLES
+   - No environment variables needed for mesh gradient
+   - This is not the issue
+
+5. BUILD CONFIGURATION
+   - Vercel build command: vite build
+   - This is correct in package.json
+
+RECOMMENDED ACTIONS:
+
+1. IMMEDIATE FIX - Redeploy without cache:
+   - Go to Vercel → Your Project → Deployments
+   - Redeploy latest deployment WITHOUT build cache
+   - This will force Vercel to rebuild everything fresh
+
+2. VERIFY PACKAGE INSTALLATION:
+   - Check deployment logs in Vercel
+   - Look for "@paper-design/shaders-react" in npm install logs
+   - If missing, the package.json might not be committed
+
+3. CHECK BROWSER COMPATIBILITY:
+   - Open Vercel URL in different browsers
+   - Check browser console for errors
+   - WebGL might be disabled in some browsers
+
+4. VERIFY COMPONENT IMPORT:
+   - The MeshGradientHero component is properly imported in Landing.jsx ✓
+   - The component wraps Hero and Features sections ✓
+
+CURRENT STATUS:
+- Package installed: ✓
+- Component created: ✓
+- Component imported: ✓
+- Used in Landing page: ✓
+- Pushed to GitHub: ✓
+
+NEXT STEP: Redeploy on Vercel without build cache
+
+If issue persists after redeployment, check:
+- Vercel deployment logs for errors
+- Browser console on Vercel URL
+- Try different browsers (Chrome, Firefox, Safari)

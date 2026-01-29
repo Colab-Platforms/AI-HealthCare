@@ -46,10 +46,10 @@ module.exports = async (req, res) => {
 
     // Try OpenRouter API if key is configured
     if (process.env.OPENROUTER_API_KEY) {
-      // Use ChatGPT-4o model (premium quality)
+      // Use Claude model from OpenRouter (as per requirements)
       const models = [
-        'openai/gpt-4o',
-        'openai/gpt-4o-mini'
+        'anthropic/claude-3.5-sonnet',
+        'anthropic/claude-3-sonnet'
       ];
 
       for (const model of models) {
