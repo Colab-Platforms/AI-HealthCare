@@ -3,8 +3,10 @@ const mongoose = require('mongoose');
 const healthReportSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   reportType: { type: String, required: true },
+  patientName: { type: String, description: 'Patient name extracted from report for validation' },
   originalFile: { filename: String, path: String, mimetype: String },
   extractedText: String,
+  reportDate: { type: Date, description: 'Date mentioned in the report (Reported On)' },
   aiAnalysis: {
     summary: String,
     keyFindings: [String],

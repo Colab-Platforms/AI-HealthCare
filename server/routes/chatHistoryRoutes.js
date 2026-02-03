@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const ChatHistory = require('../models/ChatHistory');
-const auth = require('../middleware/auth');
+const { protect } = require('../middleware/auth');
 
 // Get chat history for user
-router.get('/history', auth, async (req, res) => {
+router.get('/history', protect, async (req, res) => {
   try {
     let chatHistory = await ChatHistory.findOne({ userId: req.user.userId });
     
@@ -27,7 +27,7 @@ router.get('/history', auth, async (req, res) => {
 });
 
 // Save messages to chat history
-router.post('/history', auth, async (req, res) => {
+router.post('/history', protect, async (req, res) => {
   try {
     const { messages } = req.body;
 
@@ -70,7 +70,7 @@ router.post('/history', auth, async (req, res) => {
 });
 
 // Clear chat history
-router.delete('/history', auth, async (req, res) => {
+router.delete('/history', protect, async (req, res) => {
   try {
     await ChatHistory.findOneAndDelete({ userId: req.user.userId });
 

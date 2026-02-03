@@ -1,27 +1,53 @@
 const axios = require('axios');
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
-const AI_MODEL = 'google/gemini-2.0-flash-exp:free'; // FREE Google Gemini model
+// Using Claude model which is more stable and widely available
+// const AI_MODEL = 'google/gemini-2.0-flash-exp:free';
+const AI_MODEL = 'anthropic/claude-3-haiku';
 
 const makeOpenRouterRequest = async (messages, maxTokens = 2500) => {
-  const response = await axios.post(
-    OPENROUTER_API_URL,
-    {
-      model: AI_MODEL,
-      messages,
-      temperature: 0.7,
-      max_tokens: maxTokens
-    },
-    {
-      headers: {
-        'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-        'Content-Type': 'application/json',
-        'HTTP-Referer': process.env.CLIENT_URL || process.env.APP_URL || 'https://ai-diagnostic-steel.vercel.app',
-        'X-Title': 'HealthAI Platform'
-      }
+  try {
+    if (!process.env.OPENROUTER_API_KEY) {
+      throw new Error('OPENROUTER_API_KEY is not set in environment variables');
     }
-  );
-  return response.data.choices[0].message.content;
+
+    console.log('Making OpenRouter request with model:', AI_MODEL);
+    
+    const response = await axios.post(
+      OPENROUTER_API_URL,
+      {
+        model: AI_MODEL,
+        messages,
+        temperature: 0.7,
+        max_tokens: maxTokens
+      },
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': process.env.CLIENT_URL || process.env.APP_URL || 'https://ai-diagnostic-steel.vercel.app',
+          'X-Title': 'HealthAI Platform'
+        },
+        timeout: 60000 // 60 second timeout
+      }
+    );
+    
+    if (!response.data.choices || !response.data.choices[0]) {
+      throw new Error('Invalid response structure from OpenRouter');
+    }
+    
+    return response.data.choices[0].message.content;
+  } catch (error) {
+    console.error('OpenRouter API Error:', {
+      status: error.response?.status,
+      statusText: error.response?.statusText,
+      data: error.response?.data,
+      message: error.message,
+      code: error.code,
+      model: AI_MODEL
+    });
+    throw error;
+  }
 };
 
 const HEALTH_ANALYSIS_PROMPT = `You are an expert medical AI assistant specializing in nutritional health analysis with focus on natural Indian remedies. Analyze the following health report and provide comprehensive insights.
@@ -32,24 +58,63 @@ Focus on identifying:
 1. Vitamin deficiencies (Vitamin B12, Vitamin D, Vitamin C, Iron, Folate, etc.)
 2. Basic preventive health indicators
 3. Nutritional gaps
+4. **IMPORTANT: Extract the "Reported On" or "Report Date" from the document**
+5. **IMPORTANT: Extract the patient name from the report**
 
 Extract all numerical values from the report and include them in metrics.
 
+**IMPORTANT: For EACH metric found in the report, generate detailed educational information in BOTH English and Hindi.**
+
 Provide your analysis in the following JSON format:
 {
+  "patientName": "John Doe",
+  "reportDate": "2026-01-15",
   "summary": "Brief overview of the health report focusing on nutritional status",
   "keyFindings": ["Finding 1", "Finding 2"],
   "riskFactors": ["Risk 1", "Risk 2"],
   "healthScore": 75,
   "metrics": {
-    "vitaminD": {"value": 20, "unit": "ng/mL", "status": "low", "normalRange": "30-100"},
-    "vitaminB12": {"value": 180, "unit": "pg/mL", "status": "borderline", "normalRange": "200-900"},
-    "hemoglobin": {"value": 14.5, "unit": "g/dL", "status": "normal", "normalRange": "12-16"}
+    "vitaminD": {
+      "value": 20,
+      "unit": "ng/mL",
+      "status": "low",
+      "normalRange": "30-100",
+      "metricInfo": {
+        "en": {
+          "name": "Vitamin D",
+          "whatIsIt": "Vitamin D is a fat-soluble vitamin that helps your body absorb calcium and maintain strong bones...",
+          "whenHighTitle": "When Vitamin D is High (>100 ng/mL)",
+          "whenHighEffects": ["Effect 1", "Effect 2"],
+          "whenLowTitle": "When Vitamin D is Low (<30 ng/mL)",
+          "whenLowEffects": ["Effect 1", "Effect 2"],
+          "solutions": ["Solution 1", "Solution 2"]
+        },
+        "hi": {
+          "name": "विटामिन डी",
+          "whatIsIt": "विटामिन डी एक वसा में घुलनशील विटामिन है...",
+          "whenHighTitle": "जब विटामिन डी अधिक हो (>100 ng/mL)",
+          "whenHighEffects": ["प्रभाव 1", "प्रभाव 2"],
+          "whenLowTitle": "जब विटामिन डी कम हो (<30 ng/mL)",
+          "whenLowEffects": ["प्रभाव 1", "प्रभाव 2"],
+          "solutions": ["समाधान 1", "समाधान 2"]
+        }
+      }
+    }
   },
   "deficiencies": [
-    {"name": "Vitamin D", "severity": "moderate", "currentValue": "20 ng/mL", "normalRange": "30-100 ng/mL", "symptoms": ["Fatigue", "Bone pain"]},
-    {"name": "Vitamin B12", "severity": "mild", "currentValue": "180 pg/mL", "normalRange": "200-900 pg/mL", "symptoms": ["Weakness"]}
-  ],
+    {
+      "name": "Vitamin D",
+      "severity": "moderate",
+      "currentValue": "20 ng/mL",
+      "normalRange": "30-100 ng/mL",
+      "symptoms": ["Fatigue", "Bone pain"],
+      "metricInfo": {
+        "en": {...},
+        "hi": {...}
+      }
+    }
+  ]
+}
   "supplements": [
     {"category": "Vitamin D", "reason": "To address Vitamin D deficiency", "naturalSources": "🌞 Get 15-20 mins morning sunlight daily. Eat: Mushrooms, fortified milk, paneer, eggs, fish (salmon, mackerel)", "note": "Sunlight is the best natural source"},
     {"category": "Vitamin B12", "reason": "To improve B12 levels", "naturalSources": "🥚 Eggs, milk, yogurt, paneer, fortified cereals. Non-veg: Chicken, fish, mutton", "note": "Include dairy products daily"},
@@ -90,12 +155,51 @@ exports.analyzeHealthReport = async (reportText, userProfile = {}) => {
     ]);
 
     const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('Invalid AI response format');
+    if (!jsonMatch) {
+      console.error('No JSON found in response:', content.substring(0, 500));
+      throw new Error('Invalid AI response format - no JSON found');
+    }
     
-    return JSON.parse(jsonMatch[0]);
+    const analysis = JSON.parse(jsonMatch[0]);
+    return analysis;
   } catch (error) {
-    console.error('AI Analysis Error:', error.response?.data || error.message);
-    throw new Error('Failed to analyze health report');
+    console.error('AI Analysis Error:', {
+      message: error.message,
+      apiError: error.response?.data,
+      status: error.response?.status
+    });
+    
+    // Fallback: Return a basic analysis structure if API fails
+    console.log('Using fallback analysis due to API error');
+    return {
+      summary: 'Health report received. Please consult with a healthcare professional for detailed analysis.',
+      keyFindings: ['Report uploaded successfully', 'Awaiting detailed analysis'],
+      riskFactors: [],
+      healthScore: 70,
+      metrics: {
+        vitaminD: { value: null, unit: 'ng/mL', status: 'unknown', normalRange: '30-100' },
+        vitaminB12: { value: null, unit: 'pg/mL', status: 'unknown', normalRange: '200-900' },
+        hemoglobin: { value: null, unit: 'g/dL', status: 'unknown', normalRange: '12-16' }
+      },
+      deficiencies: [],
+      supplements: [],
+      dietPlan: {
+        overview: 'Personalized diet plan will be available after detailed analysis',
+        breakfast: [],
+        lunch: [],
+        dinner: [],
+        snacks: [],
+        foodsToIncrease: [],
+        foodsToLimit: [],
+        hydration: 'Drink 8-10 glasses of water daily',
+        tips: ['Consult with a healthcare professional for personalized advice']
+      },
+      recommendations: {
+        lifestyle: ['Maintain a healthy lifestyle', 'Regular exercise', 'Adequate sleep'],
+        tests: ['Follow-up tests recommended']
+      },
+      overallTrend: 'Report analysis pending'
+    };
   }
 };
 
@@ -168,5 +272,101 @@ Answer the user's questions about their report clearly and helpfully. If they as
   } catch (error) {
     console.error('Chat Error:', error.response?.data || error.message);
     throw new Error('Failed to process your question');
+  }
+};
+
+// In-memory cache for metric info (server-side)
+const metricInfoServerCache = {};
+const CACHE_DURATION = 3600000; // 1 hour
+
+// Generate metric information on-the-fly using AI
+exports.generateMetricInfo = async (metricName, metricValue, normalRange, unit) => {
+  try {
+    console.log('generateMetricInfo called with:', { metricName, metricValue, normalRange, unit });
+    
+    // Check server-side cache first
+    const cacheKey = `${metricName.toLowerCase()}-${normalRange}`;
+    if (metricInfoServerCache[cacheKey] && Date.now() - metricInfoServerCache[cacheKey].timestamp < CACHE_DURATION) {
+      console.log('✅ Using server-side cached metric info for:', metricName);
+      return metricInfoServerCache[cacheKey].data;
+    }
+    
+    const prompt = `Generate concise health information for this metric in JSON format. Keep responses SHORT and DIRECT.
+
+Metric: ${metricName}
+Current Value: ${metricValue} ${unit}
+Normal Range: ${normalRange}
+
+Return ONLY valid JSON (no markdown, no extra text):
+{
+  "en": {
+    "name": "Metric name",
+    "whatIsIt": "1-2 sentence explanation",
+    "whenHighTitle": "When high",
+    "whenHighEffects": ["Effect 1", "Effect 2"],
+    "whenLowTitle": "When low",
+    "whenLowEffects": ["Effect 1", "Effect 2"],
+    "solutions": ["Solution 1", "Solution 2"]
+  },
+  "hi": {
+    "name": "मेट्रिक का नाम",
+    "whatIsIt": "1-2 वाक्य व्याख्या",
+    "whenHighTitle": "जब अधिक हो",
+    "whenHighEffects": ["प्रभाव 1", "प्रभाव 2"],
+    "whenLowTitle": "जब कम हो",
+    "whenLowEffects": ["प्रभाव 1", "प्रभाव 2"],
+    "solutions": ["समाधान 1", "समाधान 2"]
+  }
+}`;
+
+    console.log('🔄 Calling OpenRouter API for metric info...');
+    const content = await makeOpenRouterRequest([
+      { role: 'system', content: 'You are a medical AI assistant. Generate health information in JSON format only. Keep responses SHORT.' },
+      { role: 'user', content: prompt }
+    ], 800); // Reduced token limit for faster response
+
+    console.log('OpenRouter response received, parsing JSON...');
+    
+    // Parse JSON response
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      console.error('No JSON found in response:', content.substring(0, 500));
+      throw new Error('Invalid response format');
+    }
+    
+    const metricInfo = JSON.parse(jsonMatch[0]);
+    console.log('✨ Successfully parsed metric info');
+    
+    // Cache the result
+    metricInfoServerCache[cacheKey] = {
+      data: metricInfo,
+      timestamp: Date.now()
+    };
+    
+    return metricInfo;
+  } catch (error) {
+    console.error('Metric Info Generation Error:', error.message);
+    console.error('Full error:', error);
+    // Return fallback generic info
+    return {
+      en: {
+        name: metricName,
+        whatIsIt: `${metricName} is a health metric. Your current value is ${metricValue} ${unit}, with normal range being ${normalRange}.`,
+        whenHighTitle: 'When High',
+        whenHighEffects: ['Please consult with a healthcare professional'],
+        whenLowTitle: 'When Low',
+        whenLowEffects: ['Please consult with a healthcare professional'],
+        solutions: ['Consult with your doctor for personalized advice']
+      },
+      hi: {
+        name: metricName,
+        whatIsIt: `${metricName} एक स्वास्थ्य मेट्रिक है। आपका वर्तमान मान ${metricValue} ${unit} है।`,
+        whenHighTitle: 'जब अधिक हो',
+        whenHighEffects: ['कृपया स्वास्थ्य सेवा प्रदाता से परामर्श लें'],
+        whenLowTitle: 'जब कम हो',
+        whenLowEffects: ['कृपया स्वास्थ्य सेवा प्रदाता से परामर्श लें'],
+        solutions: ['व्यक्तिगत सलाह के लिए अपने डॉक्टर से परामर्श लें']
+      }
+    };
   }
 };

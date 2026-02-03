@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
   headers: { 'Content-Type': 'application/json' }
 });
 
@@ -35,7 +35,8 @@ export const healthService = {
   getHistory: (reportType) => api.get('/health/history', { params: { reportType } }),
   compareReport: (id) => api.get(`/health/reports/${id}/compare`),
   chatAboutReport: (id, message, chatHistory) => api.post(`/health/reports/${id}/chat`, { message, chatHistory }),
-  askAI: (data) => api.post('/health/ai-chat', data)
+  askAI: (data) => api.post('/health/ai-chat', data),
+  getMetricInfo: (data) => api.post('/health/metric-info', data)
 };
 
 export const authService = {

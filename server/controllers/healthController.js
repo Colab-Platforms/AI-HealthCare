@@ -12,14 +12,19 @@ exports.uploadReport = async (req, res) => {
     }
 
     let extractedText = '';
-    if (req.file.mimetype === 'application/pdf') {
-      // Handle both memory storage (Vercel) and disk storage (local)
-      const dataBuffer = req.file.buffer || fs.readFileSync(req.file.path);
-      const pdfData = await pdfParse(dataBuffer);
-      extractedText = pdfData.text;
-    } else {
-      // For images, use manual text or OCR service
-      extractedText = req.body.manualText || 'Image report - manual text provided';
+    try {
+      if (req.file.mimetype === 'application/pdf') {
+        // Handle both memory storage (Vercel) and disk storage (local)
+        const dataBuffer = req.file.buffer || fs.readFileSync(req.file.path);
+        const pdfData = await pdfParse(dataBuffer);
+        extractedText = pdfData.text;
+      } else {
+        // For images, use manual text or OCR service
+        extractedText = req.body.manualText || 'Image report - manual text provided';
+      }
+    } catch (parseError) {
+      console.error('File parsing error:', parseError.message);
+      return res.status(400).json({ message: `Failed to parse file: ${parseError.message}` });
     }
 
     if (!extractedText || extractedText.trim().length < 20) {
@@ -40,9 +45,37 @@ exports.uploadReport = async (req, res) => {
 
     // Analyze with AI
     const userProfile = req.user.profile || {};
-    const aiAnalysis = await analyzeHealthReport(extractedText, userProfile);
+    let aiAnalysis;
+    try {
+      aiAnalysis = await analyzeHealthReport(extractedText, userProfile);
+    } catch (aiError) {
+      console.error('AI Analysis failed:', aiError.message);
+      // Save report with error status
+      report.status = 'failed';
+      report.error = aiError.message;
+      await report.save();
+      return res.status(500).json({ message: `AI Analysis failed: ${aiError.message}` });
+    }
     
     report.aiAnalysis = aiAnalysis;
+    
+    // Extract and save report date from AI analysis
+    if (aiAnalysis.reportDate) {
+      try {
+        report.reportDate = new Date(aiAnalysis.reportDate);
+      } catch (dateError) {
+        console.log('Could not parse report date:', aiAnalysis.reportDate);
+        report.reportDate = new Date(); // Fallback to current date
+      }
+    } else {
+      report.reportDate = new Date(); // Fallback to current date
+    }
+    
+    // Extract and save patient name from AI analysis
+    if (aiAnalysis.patientName) {
+      report.patientName = aiAnalysis.patientName.trim();
+    }
+    
     report.status = 'completed';
     await report.save();
 
@@ -270,6 +303,32 @@ exports.getDashboardData = async (req, res) => {
   }
 };
 
+
+// Generate metric information on-the-fly
+exports.getMetricInfo = async (req, res) => {
+  try {
+    console.log('getMetricInfo endpoint called');
+    console.log('Request body:', req.body);
+    console.log('User:', req.user?._id);
+    
+    const { metricName, metricValue, normalRange, unit } = req.body;
+
+    if (!metricName) {
+      return res.status(400).json({ message: 'Metric name is required' });
+    }
+
+    const { generateMetricInfo } = require('../services/aiService');
+    console.log('Calling generateMetricInfo with:', { metricName, metricValue, normalRange, unit });
+    
+    const metricInfo = await generateMetricInfo(metricName, metricValue, normalRange, unit);
+    
+    console.log('Generated metric info:', metricInfo);
+    res.json({ metricInfo });
+  } catch (error) {
+    console.error('Get metric info error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
 
 // AI Chat endpoint for general health questions
 exports.aiChat = async (req, res) => {

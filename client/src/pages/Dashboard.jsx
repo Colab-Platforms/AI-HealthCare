@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
@@ -9,10 +9,116 @@ import {
   Heart, Moon, TrendingUp, MessageSquare, Watch, FileText, Plus, Battery, 
   Sparkles, Upload, Footprints, RefreshCw, Eye, X, Droplets, Zap, Brain,
   Bone, Shield, Pill, Activity, Sun, Calendar, Clock, AlertTriangle,
-  CheckCircle, ArrowUp, Minus, Target, Award, Utensils, Flame
+  CheckCircle, ArrowUp, Minus, Target, Award, Utensils, Flame, ChevronDown, ArrowDown
 } from 'lucide-react';
 
-// Health metrics info - simple explanations for users
+// Custom Styled Dropdown Component
+const ReportFilterDropdown = ({ reports, selectedReport, onSelect }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const selectedReportData = reports?.find(r => r._id === selectedReport);
+  
+  // Use reportDate if available, otherwise use createdAt
+  const getReportDate = (report) => {
+    const dateToUse = report.reportDate || report.createdAt;
+    return new Date(dateToUse).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' });
+  };
+  
+  const displayText = selectedReportData 
+    ? `${selectedReportData.reportType} - ${getReportDate(selectedReportData)}`
+    : 'Select Report';
+
+  return (
+    <div className="relative inline-block z-10" ref={dropdownRef}>
+      {/* Dropdown Button */}
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="px-3 sm:px-4 py-2 bg-white rounded-lg text-xs sm:text-sm font-medium cursor-pointer transition-all shadow-sm hover:shadow-md flex items-center gap-2"
+        style={{
+          borderColor: '#8B7355',
+          border: '2px solid #8B7355',
+          color: '#8B7355'
+        }}
+      >
+        <FileText className="w-4 h-4" />
+        <span className="hidden sm:inline">{displayText}</span>
+        <span className="sm:hidden">{selectedReportData ? selectedReportData.reportType : 'Report'}</span>
+        <ChevronDown 
+          className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+          style={{ color: '#8B7355' }}
+        />
+      </button>
+
+      {/* Dropdown Menu */}
+      {isOpen && (
+        <div 
+          className="absolute top-full left-0 right-0 mt-2 bg-white rounded-lg shadow-lg border-2 overflow-hidden"
+          style={{ borderColor: '#8B7355' }}
+        >
+          {/* Select Report Option */}
+          <button
+            onClick={() => {
+              onSelect(null);
+              setIsOpen(false);
+            }}
+            className="w-full px-4 py-2.5 text-left text-xs sm:text-sm font-medium transition-colors hover:bg-slate-50"
+            style={{
+              color: selectedReport === null ? '#8B7355' : '#64748b',
+              backgroundColor: selectedReport === null ? '#F5F1EA' : 'transparent',
+              borderBottom: '1px solid #e2e8f0'
+            }}
+          >
+            Select Report
+          </button>
+
+          {/* Reports List */}
+          {reports && reports.length > 0 ? (
+            reports.map((report) => (
+              <button
+                key={report._id}
+                onClick={() => {
+                  onSelect(report._id);
+                  setIsOpen(false);
+                }}
+                className="w-full px-4 py-2.5 text-left text-xs sm:text-sm transition-colors hover:bg-slate-50 border-b border-slate-100 last:border-b-0"
+                style={{
+                  color: selectedReport === report._id ? '#8B7355' : '#64748b',
+                  backgroundColor: selectedReport === report._id ? '#F5F1EA' : 'transparent',
+                  fontWeight: selectedReport === report._id ? '600' : '500'
+                }}
+              >
+                <div className="flex items-center justify-between">
+                  <span>{report.reportType}</span>
+                  <span className="text-slate-400 text-xs">
+                    {getReportDate(report)}
+                  </span>
+                </div>
+              </button>
+            ))
+          ) : (
+            <div className="px-4 py-3 text-center text-slate-500 text-xs sm:text-sm">
+              No reports available
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Info Modal Component - Light Theme
 const healthMetricsInfo = {
   vitaminD: {
     name: 'Vitamin D',
@@ -181,8 +287,8 @@ const MetricInfoModal = ({ metric, onClose }) => {
   );
 };
 
-// Metric Card Component - Light Theme
-const MetricCard = ({ metricKey, value, unit, status, subtitle, onInfoClick }) => {
+// Metric Card Component - Light Theme with Comparison
+const MetricCard = ({ metricKey, value, unit, status, subtitle, onInfoClick, previousValue, allReports, isSamePatient }) => {
   const info = healthMetricsInfo[metricKey];
   if (!info) return null;
   const Icon = info.icon;
@@ -196,6 +302,47 @@ const MetricCard = ({ metricKey, value, unit, status, subtitle, onInfoClick }) =
   const statusColor = statusColors[status] || 'slate';
   
   const hasValue = value !== null && value !== undefined && value !== '';
+  
+  // Calculate comparison with previous report (only if same patient)
+  let comparisonData = null;
+  if (hasValue && previousValue !== null && previousValue !== undefined && allReports && allReports.length > 1 && isSamePatient) {
+    const currentNum = parseFloat(value);
+    const prevNum = parseFloat(previousValue);
+    
+    if (!isNaN(currentNum) && !isNaN(prevNum) && prevNum !== 0) {
+      const change = currentNum - prevNum;
+      const percentChange = ((change / prevNum) * 100).toFixed(1);
+      
+      // Determine if change is good or bad based on metric
+      let isImprovement = false;
+      let comparisonColor = 'slate';
+      
+      // For most vitamins/minerals, higher is better
+      if (['vitaminD', 'vitaminB12', 'iron', 'calcium', 'hemoglobin', 'vitaminC'].includes(metricKey)) {
+        isImprovement = change > 0;
+        if (change > 0) comparisonColor = 'emerald'; // Green - improved
+        else if (change < 0) comparisonColor = 'red'; // Red - worsened
+      }
+      // For cholesterol and blood sugar, lower is better
+      else if (['cholesterol', 'bloodSugar', 'tsh'].includes(metricKey)) {
+        isImprovement = change < 0;
+        if (change < 0) comparisonColor = 'emerald'; // Green - improved
+        else if (change > 0) comparisonColor = 'red'; // Red - worsened
+      }
+      
+      // Yellow for small changes (warning/borderline)
+      if (Math.abs(percentChange) < 5) {
+        comparisonColor = 'amber';
+      }
+      
+      comparisonData = {
+        change,
+        percentChange,
+        isImprovement,
+        color: comparisonColor
+      };
+    }
+  }
 
   return (
     <div className="bg-white rounded-2xl border border-slate-200 shadow-sm group relative p-3 sm:p-5 hover:shadow-md transition-shadow">
@@ -229,6 +376,24 @@ const MetricCard = ({ metricKey, value, unit, status, subtitle, onInfoClick }) =
           <span className="text-slate-400 text-sm">No data</span>
         )}
       </div>
+      
+      {/* Comparison Arrow and Percentage */}
+      {comparisonData && (
+        <div className={`flex items-center gap-1 mt-2 text-xs sm:text-sm font-medium`}>
+          <div className={`flex items-center gap-0.5 px-2 py-1 rounded-lg bg-${comparisonData.color}-100`}>
+            {comparisonData.change > 0 ? (
+              <ArrowUp className={`w-3 h-3 sm:w-4 sm:h-4 text-${comparisonData.color}-600`} />
+            ) : (
+              <ArrowDown className={`w-3 h-3 sm:w-4 sm:h-4 text-${comparisonData.color}-600`} />
+            )}
+            <span className={`text-${comparisonData.color}-600`}>
+              {comparisonData.change > 0 ? '+' : ''}{comparisonData.percentChange}%
+            </span>
+          </div>
+          <span className="text-slate-400 text-[10px] sm:text-xs">vs prev</span>
+        </div>
+      )}
+      
       {subtitle && <p className="text-slate-400 text-[10px] sm:text-xs mt-1 sm:mt-2 truncate">{subtitle}</p>}
     </div>
   );
@@ -251,6 +416,7 @@ export default function Dashboard() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
   const [localNutritionData, setLocalNutritionData] = useState(null);
   const [error, setError] = useState(null);
+  const [selectedReport, setSelectedReport] = useState(null);
 
   // Fetch data on mount - will use cache if available
   useEffect(() => {
@@ -268,6 +434,13 @@ export default function Dashboard() {
     };
     loadData();
   }, [fetchDashboard, fetchWearable]);
+
+  // Set latest report as default when data loads
+  useEffect(() => {
+    if (dashboardData?.recentReports && dashboardData.recentReports.length > 0 && selectedReport === null) {
+      setSelectedReport(dashboardData.recentReports[0]._id);
+    }
+  }, [dashboardData?.recentReports, selectedReport]);
 
   // Fetch nutrition data when date changes
   useEffect(() => {
@@ -298,7 +471,7 @@ export default function Dashboard() {
       <div className="flex items-center justify-center h-[60vh]">
         <div className="text-center">
           <p className="text-red-500 mb-4">{error}</p>
-          <button onClick={fetchData} className="px-6 py-2 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600">Try Again</button>
+          <button onClick={() => fetchDashboard()} className="px-6 py-2 bg-cyan-500 text-white rounded-xl hover:bg-cyan-600">Try Again</button>
         </div>
       </div>
     );
@@ -306,10 +479,17 @@ export default function Dashboard() {
 
   const { user: userData, healthScores, latestAnalysis, recentReports } = data || {};
   const hasReports = recentReports && recentReports.length > 0;
-  const healthScore = userData?.healthMetrics?.healthScore || latestAnalysis?.healthScore || null;
+  
+  // Get selected report data or use latest analysis
+  const selectedReportData = selectedReport && recentReports 
+    ? recentReports.find(r => r._id === selectedReport)
+    : recentReports?.[0];
+  
+  const analysisToUse = selectedReportData?.aiAnalysis || latestAnalysis;
+  const healthScore = userData?.healthMetrics?.healthScore || analysisToUse?.healthScore || null;
 
-  // Extract metrics from latest analysis
-  const rawMetrics = latestAnalysis?.metrics || {};
+  // Extract metrics from selected report analysis or latest analysis
+  const rawMetrics = analysisToUse?.metrics || {};
   const getMetricValue = (metric) => {
     if (metric === null || metric === undefined) return null;
     if (typeof metric === 'object' && metric.value !== undefined) return metric.value;
@@ -326,6 +506,42 @@ export default function Dashboard() {
     vitaminC: getMetricValue(rawMetrics.vitaminC),
     cholesterol: getMetricValue(rawMetrics.cholesterol) || getMetricValue(rawMetrics.totalCholesterol),
   };
+  
+  // Get previous metrics for comparison (second latest report)
+  const previousMetrics = {};
+  let isSamePatient = true; // Flag to check if same patient
+  
+  if (recentReports && recentReports.length > 1) {
+    const previousReport = recentReports[1]; // Second latest report
+    const currentPatientName = selectedReportData?.patientName || user?.name || '';
+    const previousPatientName = previousReport?.patientName || '';
+    
+    // Validate if both reports are from same patient
+    if (currentPatientName && previousPatientName) {
+      // Simple name matching (case-insensitive, trim whitespace)
+      const currentName = currentPatientName.toLowerCase().trim();
+      const prevName = previousPatientName.toLowerCase().trim();
+      isSamePatient = currentName === prevName;
+      
+      if (!isSamePatient) {
+        console.log(`Patient mismatch: "${currentPatientName}" vs "${previousPatientName}"`);
+      }
+    }
+    
+    // Only extract previous metrics if same patient
+    if (isSamePatient) {
+      const prevRawMetrics = previousReport?.aiAnalysis?.metrics || {};
+      previousMetrics.vitaminD = getMetricValue(prevRawMetrics.vitaminD);
+      previousMetrics.vitaminB12 = getMetricValue(prevRawMetrics.vitaminB12);
+      previousMetrics.iron = getMetricValue(prevRawMetrics.iron);
+      previousMetrics.calcium = getMetricValue(prevRawMetrics.calcium);
+      previousMetrics.hemoglobin = getMetricValue(prevRawMetrics.hemoglobin);
+      previousMetrics.bloodSugar = getMetricValue(prevRawMetrics.bloodSugar) || getMetricValue(prevRawMetrics.glucose);
+      previousMetrics.tsh = getMetricValue(prevRawMetrics.tsh) || getMetricValue(prevRawMetrics.thyroid);
+      previousMetrics.vitaminC = getMetricValue(prevRawMetrics.vitaminC);
+      previousMetrics.cholesterol = getMetricValue(prevRawMetrics.cholesterol) || getMetricValue(prevRawMetrics.totalCholesterol);
+    }
+  }
   
   // Use real wearable data or defaults
   const hasWearableData = wearableData?.connected && wearableData?.todayMetrics;
@@ -590,15 +806,24 @@ export default function Dashboard() {
 
       {/* Vital Signs Section */}
       <div>
-        <h3 className="text-sm sm:text-lg font-semibold text-slate-800 mb-2 sm:mb-3 flex items-center gap-2">
-          <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-500" />
-          Vital Signs & Activity
-        </h3>
+        <div className="flex items-center justify-between mb-2 sm:mb-3">
+          <h3 className="text-sm sm:text-lg font-semibold text-slate-800 flex items-center gap-2">
+            <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-500" />
+            Vital Signs & Activity
+          </h3>
+          
+          {/* Report Filter Dropdown - Custom Styled */}
+          <ReportFilterDropdown 
+            reports={recentReports}
+            selectedReport={selectedReport}
+            onSelect={setSelectedReport}
+          />
+        </div>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
           <MetricCard metricKey="heartRate" value={avgHeartRate} status={getStatus(avgHeartRate, 60, 100)} subtitle={hasWearableData ? 'From wearable' : 'Connect device'} onInfoClick={setSelectedMetric} />
           <MetricCard metricKey="sleep" value={avgSleep} status={avgSleep ? getStatus(parseFloat(avgSleep), 7, 9) : null} subtitle={recentSleep.length > 0 ? `${recentSleep.length} nights avg` : 'Track sleep'} onInfoClick={setSelectedMetric} />
           <MetricCard metricKey="steps" value={todayMetrics.steps > 0 ? todayMetrics.steps.toLocaleString() : null} unit="steps" status={todayMetrics.steps >= 8000 ? 'normal' : todayMetrics.steps >= 5000 ? 'low' : todayMetrics.steps > 0 ? 'critical' : null} subtitle={hasWearableData ? `${todayMetrics.caloriesBurned} cal` : 'Today'} onInfoClick={setSelectedMetric} />
-          <MetricCard metricKey="cholesterol" value={metrics.cholesterol} status={getStatus(metrics.cholesterol, 0, 200)} subtitle="From blood work" onInfoClick={setSelectedMetric} />
+          <MetricCard metricKey="cholesterol" value={metrics.cholesterol} previousValue={previousMetrics.cholesterol} allReports={recentReports} isSamePatient={isSamePatient} status={getStatus(metrics.cholesterol, 0, 200)} subtitle="From blood work" onInfoClick={setSelectedMetric} />
         </div>
       </div>
 
@@ -609,10 +834,10 @@ export default function Dashboard() {
           Vitamins & Minerals
         </h3>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-          <MetricCard metricKey="vitaminD" value={metrics.vitaminD} status={getStatus(metrics.vitaminD, 30, 100)} subtitle="Bone & immune health" onInfoClick={setSelectedMetric} />
-          <MetricCard metricKey="vitaminB12" value={metrics.vitaminB12} status={getStatus(metrics.vitaminB12, 300, 900)} subtitle="Energy & nerves" onInfoClick={setSelectedMetric} />
-          <MetricCard metricKey="iron" value={metrics.iron} status={getStatus(metrics.iron, 60, 170)} subtitle="Blood oxygen" onInfoClick={setSelectedMetric} />
-          <MetricCard metricKey="calcium" value={metrics.calcium} status={getStatus(metrics.calcium, 8.5, 10.5)} subtitle="Bones & teeth" onInfoClick={setSelectedMetric} />
+          <MetricCard metricKey="vitaminD" value={metrics.vitaminD} previousValue={previousMetrics.vitaminD} allReports={recentReports} isSamePatient={isSamePatient} status={getStatus(metrics.vitaminD, 30, 100)} subtitle="Bone & immune health" onInfoClick={setSelectedMetric} />
+          <MetricCard metricKey="vitaminB12" value={metrics.vitaminB12} previousValue={previousMetrics.vitaminB12} allReports={recentReports} isSamePatient={isSamePatient} status={getStatus(metrics.vitaminB12, 300, 900)} subtitle="Energy & nerves" onInfoClick={setSelectedMetric} />
+          <MetricCard metricKey="iron" value={metrics.iron} previousValue={previousMetrics.iron} allReports={recentReports} isSamePatient={isSamePatient} status={getStatus(metrics.iron, 60, 170)} subtitle="Blood oxygen" onInfoClick={setSelectedMetric} />
+          <MetricCard metricKey="calcium" value={metrics.calcium} previousValue={previousMetrics.calcium} allReports={recentReports} isSamePatient={isSamePatient} status={getStatus(metrics.calcium, 8.5, 10.5)} subtitle="Bones & teeth" onInfoClick={setSelectedMetric} />
         </div>
       </div>
 
@@ -623,10 +848,10 @@ export default function Dashboard() {
           Blood & Hormones
         </h3>
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
-          <MetricCard metricKey="hemoglobin" value={metrics.hemoglobin} status={getStatus(metrics.hemoglobin, 12, 17)} subtitle="Oxygen carrier" onInfoClick={setSelectedMetric} />
-          <MetricCard metricKey="bloodSugar" value={metrics.bloodSugar} status={getStatus(metrics.bloodSugar, 70, 100)} subtitle="Fasting glucose" onInfoClick={setSelectedMetric} />
-          <MetricCard metricKey="thyroid" value={metrics.tsh} status={getStatus(metrics.tsh, 0.4, 4.0)} subtitle="Metabolism control" onInfoClick={setSelectedMetric} />
-          <MetricCard metricKey="vitaminC" value={metrics.vitaminC} status={getStatus(metrics.vitaminC, 0.6, 2.0)} subtitle="Immune & healing" onInfoClick={setSelectedMetric} />
+          <MetricCard metricKey="hemoglobin" value={metrics.hemoglobin} previousValue={previousMetrics.hemoglobin} allReports={recentReports} isSamePatient={isSamePatient} status={getStatus(metrics.hemoglobin, 12, 17)} subtitle="Oxygen carrier" onInfoClick={setSelectedMetric} />
+          <MetricCard metricKey="bloodSugar" value={metrics.bloodSugar} previousValue={previousMetrics.bloodSugar} allReports={recentReports} isSamePatient={isSamePatient} status={getStatus(metrics.bloodSugar, 70, 100)} subtitle="Fasting glucose" onInfoClick={setSelectedMetric} />
+          <MetricCard metricKey="thyroid" value={metrics.tsh} previousValue={previousMetrics.tsh} allReports={recentReports} isSamePatient={isSamePatient} status={getStatus(metrics.tsh, 0.4, 4.0)} subtitle="Metabolism control" onInfoClick={setSelectedMetric} />
+          <MetricCard metricKey="vitaminC" value={metrics.vitaminC} previousValue={previousMetrics.vitaminC} allReports={recentReports} isSamePatient={isSamePatient} status={getStatus(metrics.vitaminC, 0.6, 2.0)} subtitle="Immune & healing" onInfoClick={setSelectedMetric} />
         </div>
       </div>
 
@@ -723,14 +948,14 @@ export default function Dashboard() {
           </div>
 
           {/* Health Improvement Recommendations */}
-          {latestAnalysis?.recommendations && (
+          {analysisToUse?.recommendations && (
             <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
               <h4 className="text-slate-800 font-medium mb-4 flex items-center gap-2">
                 <Award className="w-5 h-5 text-cyan-500" />
                 Personalized Recommendations
               </h4>
               <div className="space-y-3">
-                {latestAnalysis.recommendations.lifestyle?.slice(0, 3).map((rec, i) => (
+                {analysisToUse.recommendations.lifestyle?.slice(0, 3).map((rec, i) => (
                   <div key={i} className="flex items-start gap-3 p-3 bg-slate-50 rounded-lg">
                     <CheckCircle className="w-5 h-5 text-green-500 mt-0.5 shrink-0" />
                     <div>
@@ -762,11 +987,11 @@ export default function Dashboard() {
               </span>
             </div>
             <h3 className="text-xl font-bold text-slate-800 mb-3">
-              {latestAnalysis?.summary?.split('.')[0] || 'Upload a health report to get AI insights'}
+              {analysisToUse?.summary?.split('.')[0] || 'Upload a health report to get AI insights'}
             </h3>
             <p className="text-slate-600 mb-6">
-              {latestAnalysis 
-                ? latestAnalysis.summary 
+              {analysisToUse 
+                ? analysisToUse.summary 
                 : 'Our AI will analyze your health reports and provide personalized insights, recommendations, and track your health trends over time.'}
             </p>
             <div className="flex flex-wrap gap-3">
@@ -783,11 +1008,11 @@ export default function Dashboard() {
           </div>
 
           {/* Key Findings */}
-          {latestAnalysis?.keyFindings?.length > 0 && (
+          {analysisToUse?.keyFindings?.length > 0 && (
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-6">
               <h3 className="text-lg font-semibold text-slate-800 mb-4">Key Findings from Your Reports</h3>
               <div className="space-y-3">
-                {latestAnalysis.keyFindings.slice(0, 4).map((finding, idx) => {
+                {analysisToUse.keyFindings.slice(0, 4).map((finding, idx) => {
                   const findingText = typeof finding === 'string' ? finding : (finding.title || finding.finding || JSON.stringify(finding));
                   const findingDesc = typeof finding === 'object' ? finding.description : null;
                   const severity = typeof finding === 'object' ? finding.severity : 'low';
