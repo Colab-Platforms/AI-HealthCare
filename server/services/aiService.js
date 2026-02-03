@@ -2,7 +2,6 @@ const axios = require('axios');
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 // Using Claude model which is more stable and widely available
-// const AI_MODEL = 'google/gemini-2.0-flash-exp:free';
 const AI_MODEL = 'anthropic/claude-3-haiku';
 
 const makeOpenRouterRequest = async (messages, maxTokens = 2500) => {
@@ -12,6 +11,7 @@ const makeOpenRouterRequest = async (messages, maxTokens = 2500) => {
     }
 
     console.log('Making OpenRouter request with model:', AI_MODEL);
+    console.log('API Key present:', !!process.env.OPENROUTER_API_KEY);
     
     const response = await axios.post(
       OPENROUTER_API_URL,
@@ -36,9 +36,10 @@ const makeOpenRouterRequest = async (messages, maxTokens = 2500) => {
       throw new Error('Invalid response structure from OpenRouter');
     }
     
+    console.log('✅ OpenRouter API call successful');
     return response.data.choices[0].message.content;
   } catch (error) {
-    console.error('OpenRouter API Error:', {
+    console.error('❌ OpenRouter API Error:', {
       status: error.response?.status,
       statusText: error.response?.statusText,
       data: error.response?.data,
@@ -50,130 +51,110 @@ const makeOpenRouterRequest = async (messages, maxTokens = 2500) => {
   }
 };
 
-const HEALTH_ANALYSIS_PROMPT = `You are an expert medical AI assistant specializing in nutritional health analysis with focus on natural Indian remedies. Analyze the following health report and provide comprehensive insights.
+const HEALTH_ANALYSIS_PROMPT = `You are a medical AI assistant. Analyze this health report and return ONLY valid JSON.
 
-IMPORTANT: This is for informational wellness support only and should not replace professional medical advice or diagnosis.
+CRITICAL: Return ONLY JSON, no other text.
 
-Focus on identifying:
-1. Vitamin deficiencies (Vitamin B12, Vitamin D, Vitamin C, Iron, Folate, etc.)
-2. Basic preventive health indicators
-3. Nutritional gaps
-4. **IMPORTANT: Extract the "Reported On" or "Report Date" from the document**
-5. **IMPORTANT: Extract the patient name from the report**
-
-Extract all numerical values from the report and include them in metrics.
-
-**IMPORTANT: For EACH metric found in the report, generate detailed educational information in BOTH English and Hindi.**
-
-Provide your analysis in the following JSON format:
+Return this exact structure:
 {
-  "patientName": "John Doe",
-  "reportDate": "2026-01-15",
-  "summary": "Brief overview of the health report focusing on nutritional status",
+  "patientName": "Patient Name from report",
+  "reportDate": "YYYY-MM-DD",
+  "summary": "Brief health overview",
   "keyFindings": ["Finding 1", "Finding 2"],
-  "riskFactors": ["Risk 1", "Risk 2"],
+  "riskFactors": ["Risk 1"],
   "healthScore": 75,
   "metrics": {
-    "vitaminD": {
-      "value": 20,
-      "unit": "ng/mL",
-      "status": "low",
-      "normalRange": "30-100",
-      "metricInfo": {
-        "en": {
-          "name": "Vitamin D",
-          "whatIsIt": "Vitamin D is a fat-soluble vitamin that helps your body absorb calcium and maintain strong bones...",
-          "whenHighTitle": "When Vitamin D is High (>100 ng/mL)",
-          "whenHighEffects": ["Effect 1", "Effect 2"],
-          "whenLowTitle": "When Vitamin D is Low (<30 ng/mL)",
-          "whenLowEffects": ["Effect 1", "Effect 2"],
-          "solutions": ["Solution 1", "Solution 2"]
-        },
-        "hi": {
-          "name": "विटामिन डी",
-          "whatIsIt": "विटामिन डी एक वसा में घुलनशील विटामिन है...",
-          "whenHighTitle": "जब विटामिन डी अधिक हो (>100 ng/mL)",
-          "whenHighEffects": ["प्रभाव 1", "प्रभाव 2"],
-          "whenLowTitle": "जब विटामिन डी कम हो (<30 ng/mL)",
-          "whenLowEffects": ["प्रभाव 1", "प्रभाव 2"],
-          "solutions": ["समाधान 1", "समाधान 2"]
-        }
-      }
-    }
+    "vitaminD": {"value": 20, "unit": "ng/mL", "status": "low", "normalRange": "30-100"},
+    "vitaminB12": {"value": 300, "unit": "pg/mL", "status": "normal", "normalRange": "200-900"},
+    "hemoglobin": {"value": 14, "unit": "g/dL", "status": "normal", "normalRange": "12-16"}
   },
   "deficiencies": [
-    {
-      "name": "Vitamin D",
-      "severity": "moderate",
-      "currentValue": "20 ng/mL",
-      "normalRange": "30-100 ng/mL",
-      "symptoms": ["Fatigue", "Bone pain"],
-      "metricInfo": {
-        "en": {...},
-        "hi": {...}
-      }
-    }
-  ]
-}
+    {"name": "Vitamin D", "severity": "moderate", "currentValue": "20 ng/mL", "normalRange": "30-100 ng/mL", "symptoms": ["Fatigue"]}
+  ],
   "supplements": [
-    {"category": "Vitamin D", "reason": "To address Vitamin D deficiency", "naturalSources": "🌞 Get 15-20 mins morning sunlight daily. Eat: Mushrooms, fortified milk, paneer, eggs, fish (salmon, mackerel)", "note": "Sunlight is the best natural source"},
-    {"category": "Vitamin B12", "reason": "To improve B12 levels", "naturalSources": "🥚 Eggs, milk, yogurt, paneer, fortified cereals. Non-veg: Chicken, fish, mutton", "note": "Include dairy products daily"},
-    {"category": "Iron", "reason": "To boost iron levels", "naturalSources": "🥬 Spinach (palak), beetroot, pomegranate, dates, jaggery, raisins. Non-veg: Chicken liver, mutton", "note": "Pair with vitamin C foods like lemon for better absorption"},
-    {"category": "Vitamin C", "reason": "For immunity and iron absorption", "naturalSources": "🍊 Amla (Indian gooseberry), oranges, guava, lemon, tomatoes, bell peppers", "note": "Amla is one of the richest sources"},
-    {"category": "Calcium", "reason": "For bone health", "naturalSources": "🥛 Milk, yogurt, paneer, sesame seeds (til), ragi, almonds, green leafy vegetables", "note": "Include dairy in daily diet"},
-    {"category": "Omega-3", "reason": "For heart and brain health", "naturalSources": "🐟 Walnuts, flaxseeds (alsi), chia seeds, fish (salmon, sardines)", "note": "Soak flaxseeds before consuming"}
+    {"category": "Vitamin D", "reason": "Low levels", "naturalSources": "Sunlight, mushrooms, fish", "note": "Get 15-20 mins sunlight daily"}
   ],
   "dietPlan": {
-    "overview": "Personalized Indian diet plan to address identified deficiencies using natural foods",
-    "breakfast": [{"meal": "Poha with vegetables and peanuts", "nutrients": ["Iron", "Vitamin C"], "tip": "Add lemon juice for iron absorption"}, {"meal": "Idli with sambhar", "nutrients": ["Protein", "Iron"], "tip": "Fermented foods aid digestion"}],
-    "lunch": [{"meal": "Dal, roti, sabzi, curd", "nutrients": ["Protein", "Calcium", "B12"], "tip": "Include seasonal vegetables"}, {"meal": "Fish curry with rice", "nutrients": ["Vitamin D", "Omega-3", "B12"], "tip": "For non-vegetarians"}],
-    "dinner": [{"meal": "Khichdi with vegetables", "nutrients": ["Protein", "Fiber"], "tip": "Easy to digest"}, {"meal": "Roti, dal, paneer sabzi", "nutrients": ["Protein", "Calcium"], "tip": "Light dinner for better sleep"}],
-    "snacks": [{"meal": "Handful of almonds and dates", "nutrients": ["Iron", "Calcium"], "tip": "Soak almonds overnight"}, {"meal": "Fruit chaat with chaat masala", "nutrients": ["Vitamin C", "Fiber"], "tip": "Use seasonal fruits"}],
-    "foodsToIncrease": ["Leafy greens (palak, methi)", "Seasonal fruits", "Whole grains (ragi, jowar)", "Dairy products", "Nuts and seeds", "Lentils and beans"],
-    "foodsToLimit": ["Processed foods", "Excessive tea/coffee", "Refined sugar", "Deep fried foods"],
-    "hydration": "Drink 8-10 glasses of water daily. Include coconut water, buttermilk (chaas)",
-    "tips": ["Eat meals at regular times", "Include protein with each meal", "Get 15-20 mins of morning sunlight for Vitamin D", "Use iron kadhai for cooking", "Soak nuts and seeds before eating"]
+    "overview": "Personalized diet plan",
+    "breakfast": [{"meal": "Eggs with toast", "nutrients": ["Protein", "B12"], "tip": "Include daily"}],
+    "lunch": [{"meal": "Dal with rice", "nutrients": ["Iron", "Protein"], "tip": "Add lemon"}],
+    "dinner": [{"meal": "Vegetables with paneer", "nutrients": ["Calcium"], "tip": "Light dinner"}],
+    "snacks": [{"meal": "Almonds", "nutrients": ["Calcium"], "tip": "Soak overnight"}],
+    "foodsToIncrease": ["Leafy greens", "Dairy"],
+    "foodsToLimit": ["Processed foods"],
+    "hydration": "Drink 8-10 glasses water daily",
+    "tips": ["Eat at regular times"]
   },
   "recommendations": {
-    "lifestyle": ["Get 15-20 minutes of morning sunlight", "Regular yoga or walking", "Adequate sleep (7-8 hours)", "Stress management through meditation"],
+    "lifestyle": ["Get morning sunlight", "Regular exercise", "Adequate sleep"],
     "tests": ["Follow-up vitamin panel in 3 months"]
   },
-  "overallTrend": "Summary of health trend based on deficiencies"
+  "overallTrend": "Health status overview"
 }`;
 
 exports.analyzeHealthReport = async (reportText, userProfile = {}) => {
   try {
+    console.log('🔄 Starting health report analysis...');
+    console.log('📝 Report text length:', reportText.length);
+    
     const userContext = userProfile.age ? 
-      `Patient Info: Age ${userProfile.age}, Gender: ${userProfile.gender || 'Not specified'}, ` +
-      `Blood Group: ${userProfile.bloodGroup || 'Unknown'}, ` +
-      `Known Allergies: ${userProfile.allergies?.join(', ') || 'None'}, ` +
-      `Chronic Conditions: ${userProfile.chronicConditions?.join(', ') || 'None'}` : '';
+      `Patient Info: Age ${userProfile.age}, Gender: ${userProfile.gender || 'Not specified'}` : '';
 
+    console.log('📝 Calling AI with report text length:', reportText.length);
+    
     const content = await makeOpenRouterRequest([
       { role: 'system', content: HEALTH_ANALYSIS_PROMPT },
       { role: 'user', content: `${userContext}\n\nHealth Report:\n${reportText}` }
     ]);
 
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    console.log('📦 Received response from AI');
+    console.log('Response length:', content.length);
+    console.log('Response preview:', content.substring(0, 300));
+    
+    // Try to extract JSON - be more flexible
+    let jsonMatch = content.match(/\{[\s\S]*\}/);
+    
     if (!jsonMatch) {
-      console.error('No JSON found in response:', content.substring(0, 500));
+      console.error('❌ No JSON found in response');
+      console.error('Full response:', content);
       throw new Error('Invalid AI response format - no JSON found');
     }
     
-    const analysis = JSON.parse(jsonMatch[0]);
-    return analysis;
+    let jsonStr = jsonMatch[0];
+    console.log('Extracted JSON length:', jsonStr.length);
+    
+    // Try to fix common JSON issues
+    try {
+      const analysis = JSON.parse(jsonStr);
+      console.log('✅ Successfully parsed AI analysis');
+      console.log('📊 Analysis summary:', {
+        healthScore: analysis.healthScore,
+        metricsCount: Object.keys(analysis.metrics || {}).length,
+        deficienciesCount: analysis.deficiencies?.length || 0,
+        supplementsCount: analysis.supplements?.length || 0
+      });
+      
+      return analysis;
+    } catch (parseError) {
+      console.error('❌ JSON Parse Error:', parseError.message);
+      console.error('Attempted to parse:', jsonStr.substring(0, 500));
+      throw parseError;
+    }
   } catch (error) {
-    console.error('AI Analysis Error:', {
+    console.error('❌ AI Analysis Error:', {
       message: error.message,
       apiError: error.response?.data,
-      status: error.response?.status
+      status: error.response?.status,
+      code: error.code
     });
     
     // Fallback: Return a basic analysis structure if API fails
-    console.log('Using fallback analysis due to API error');
+    console.log('⚠️ Using fallback analysis due to API error');
     return {
-      summary: 'Health report received. Please consult with a healthcare professional for detailed analysis.',
-      keyFindings: ['Report uploaded successfully', 'Awaiting detailed analysis'],
+      patientName: 'Patient',
+      reportDate: new Date().toISOString().split('T')[0],
+      summary: 'Health report received. AI analysis is currently unavailable. Please try uploading again or contact support.',
+      keyFindings: ['Report uploaded successfully', 'AI analysis pending - please refresh the page'],
       riskFactors: [],
       healthScore: 70,
       metrics: {
@@ -182,23 +163,30 @@ exports.analyzeHealthReport = async (reportText, userProfile = {}) => {
         hemoglobin: { value: null, unit: 'g/dL', status: 'unknown', normalRange: '12-16' }
       },
       deficiencies: [],
-      supplements: [],
+      supplements: [
+        {
+          category: 'General Health',
+          reason: 'Awaiting detailed analysis',
+          naturalSources: 'Please refresh the page to get AI-generated recommendations',
+          note: 'Analysis will be available shortly'
+        }
+      ],
       dietPlan: {
         overview: 'Personalized diet plan will be available after detailed analysis',
         breakfast: [],
         lunch: [],
         dinner: [],
         snacks: [],
-        foodsToIncrease: [],
+        foodsToIncrease: ['Consult with healthcare professional for personalized advice'],
         foodsToLimit: [],
         hydration: 'Drink 8-10 glasses of water daily',
-        tips: ['Consult with a healthcare professional for personalized advice']
+        tips: ['Consult with a healthcare professional for personalized advice', 'Refresh the page to get AI-generated recommendations']
       },
       recommendations: {
-        lifestyle: ['Maintain a healthy lifestyle', 'Regular exercise', 'Adequate sleep'],
+        lifestyle: ['Maintain a healthy lifestyle', 'Regular exercise', 'Adequate sleep', 'Refresh page for AI recommendations'],
         tests: ['Follow-up tests recommended']
       },
-      overallTrend: 'Report analysis pending'
+      overallTrend: 'Report analysis pending - please refresh'
     };
   }
 };
