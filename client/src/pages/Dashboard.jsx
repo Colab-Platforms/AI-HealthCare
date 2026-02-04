@@ -677,10 +677,27 @@ export default function Dashboard() {
           {/* Date Filter */}
           <div className="flex items-center gap-2 mb-4">
             <input
-              type="date"
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
+              type="text"
+              value={selectedDate ? new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: '2-digit' }) : ''}
+              onChange={(e) => {
+                const input = e.target.value;
+                // Parse DD/MM/YY format
+                const parts = input.split('/');
+                if (parts.length === 3) {
+                  const day = parts[0];
+                  const month = parts[1];
+                  let year = parts[2];
+                  // Convert YY to YYYY
+                  if (year.length === 2) {
+                    year = (parseInt(year) > 30 ? '19' : '20') + year;
+                  }
+                  const dateStr = `${year}-${month}-${day}`;
+                  setSelectedDate(dateStr);
+                }
+              }}
+              placeholder="DD/MM/YY"
               className="flex-1 px-3 py-2 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500"
+              maxLength="8"
             />
             <button
               onClick={() => setSelectedDate(new Date().toISOString().split('T')[0])}
