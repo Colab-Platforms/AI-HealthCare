@@ -169,22 +169,10 @@ export default function Nutrition() {
   const waterGoal = 8; // 8 glasses per day
 
   return (
-    <>
-      <div className={`w-full h-screen bg-gradient-to-b from-blue-50 to-white overflow-y-auto flex flex-col ${showAddMeal ? 'overflow-hidden' : ''}`}>
-      {/* Header */}
-      <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-3 md:px-6 lg:px-8 py-3">
-        <div className="flex items-center justify-between mb-3 max-w-7xl mx-auto">
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Nutrition</h1>
-            <p className="text-xs md:text-sm text-gray-600">Track your daily intake</p>
-          </div>
-          <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-blue-100 flex items-center justify-center">
-            <span className="text-sm">{user?.name?.[0]?.toUpperCase()}</span>
-          </div>
-        </div>
-
-        {/* Date Selector */}
-        <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2 max-w-7xl mx-auto">
+    <div className={`w-full h-full bg-gradient-to-b from-blue-50 to-white overflow-y-auto flex flex-col ${showAddMeal ? 'overflow-hidden' : ''}`}>
+      <div className="px-3 md:px-6 lg:px-8 py-4 space-y-4 pb-24 flex-1 overflow-y-auto max-w-7xl mx-auto w-full">
+        {/* Date Selector Card */}
+        <div className="flex items-center gap-2 bg-white rounded-2xl px-4 py-3 border-2 border-gray-200 shadow-sm">
           <Calendar className="w-4 h-4 text-gray-600" />
           <input
             type="date"
@@ -193,9 +181,7 @@ export default function Nutrition() {
             className="bg-transparent text-sm font-medium text-gray-900 outline-none flex-1"
           />
         </div>
-      </div>
 
-      <div className="px-3 md:px-6 lg:px-8 py-4 space-y-4 pb-24 flex-1 overflow-y-auto max-w-7xl mx-auto w-full">
         {/* Goal Check */}
         {!healthGoal && (
           <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 flex items-start gap-3">
@@ -487,6 +473,5 @@ export default function Nutrition() {
         </div>
       )}
     </div>
-    </>
   );
 }
