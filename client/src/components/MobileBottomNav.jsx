@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useNavbar } from '../context/NavbarContext';
 import { LayoutDashboard, MessageSquare, Utensils, FileText, MoreVertical, Settings, LogOut, Heart, Watch, X, Calendar } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -8,21 +9,46 @@ export default function MobileBottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { hideNavbar } = useNavbar();
   const [showMoreMenu, setShowMoreMenu] = useState(false);
 
   // Check if modal is open by looking for modal elements
   useEffect(() => {
     const checkModal = () => {
-      // Check for any modal with "Add Meal" or "Edit Meal" text
-      const modals = document.querySelectorAll('.fixed.inset-0');
       let hasModal = false;
       
-      modals.forEach(modal => {
-        const text = modal.textContent;
-        if (text.includes('Add Meal') || text.includes('Edit Meal')) {
+      // Check for any fixed overlay (modal backdrop)
+      const fixedOverlays = document.querySelectorAll('.fixed.inset-0');
+      
+      fixedOverlays.forEach(overlay => {
+        // Check if it's a modal overlay (has bg-black or similar backdrop)
+        const hasBackdrop = overlay.classList.contains('bg-black') || 
+                           overlay.style.backgroundColor.includes('rgba') ||
+                           overlay.style.backgroundColor.includes('rgb');
+        
+        // Check if it's not the main page container
+        const isNotMainContainer = !overlay.classList.contains('flex') || 
+                                  overlay.classList.contains('z-40') || 
+                                  overlay.classList.contains('z-50');
+        
+        if (hasBackdrop && isNotMainContainer) {
           hasModal = true;
         }
       });
+      
+      // Also check for any element with z-50 or z-40 that's a modal
+      if (!hasModal) {
+        const highZElements = document.querySelectorAll('[class*="z-50"], [class*="z-40"]');
+        highZElements.forEach(el => {
+          if (el.classList.contains('fixed') && el.textContent.length > 0) {
+            // Check if it looks like a modal (has rounded corners, padding, etc.)
+            const style = window.getComputedStyle(el);
+            if (style.position === 'fixed' && (el.classList.contains('rounded') || el.classList.contains('bg-white'))) {
+              hasModal = true;
+            }
+          }
+        });
+      }
       
       hasModal = hasModal || showMoreMenu;
       
@@ -41,14 +67,18 @@ export default function MobileBottomNav() {
     checkModal();
     
     // Also check on a small delay to catch modals that render after this effect
-    const timer = setTimeout(checkModal, 100);
+    const timer = setTimeout(checkModal, 50);
     
-    // Watch for changes
+    // Watch for changes with more frequent checks
     const observer = new MutationObserver(checkModal);
-    observer.observe(document.body, { childList: true, subtree: true });
+    observer.observe(document.body, { childList: true, subtree: true, attributes: true });
+    
+    // Also add a periodic check as fallback
+    const intervalId = setInterval(checkModal, 200);
     
     return () => {
       clearTimeout(timer);
+      clearInterval(intervalId);
       observer.disconnect();
     };
   }, [showMoreMenu]);
@@ -165,7 +195,7 @@ export default function MobileBottomNav() {
         </div>
       )}
 
-      <nav className="mobile-bottom-nav-container">
+      <nav className={`mobile-bottom-nav-container ${hideNavbar || showMoreMenu ? 'hidden' : ''}`}>
         <div className="mobile-bottom-nav">
           {navItems.map((item) => {
             const Icon = item.icon;

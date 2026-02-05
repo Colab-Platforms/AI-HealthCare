@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
+import { NavbarProvider } from './context/NavbarContext';
 import Layout from './components/Layout';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import Landing from './pages/Landing';
@@ -64,9 +65,10 @@ export default function App() {
   };
   
   return (
-    <>
-      <PWAInstallPrompt />
-      <Routes>
+    <NavbarProvider>
+      <>
+        <PWAInstallPrompt />
+        <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={getLoginRedirect()} />
       <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Register />} />
@@ -100,6 +102,7 @@ export default function App() {
       <Route path="/video-test" element={<VideoTest />} />
       <Route path="/email-test" element={<EmailTest />} />
       </Routes>
-    </>
+      </>
+    </NavbarProvider>
   );
 }

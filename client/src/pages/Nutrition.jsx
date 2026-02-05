@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useNavbar } from '../context/NavbarContext';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import {
@@ -12,6 +13,7 @@ import QuickFoodCheck from '../components/QuickFoodCheck';
 export default function Nutrition() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const { setHideNavbar } = useNavbar();
   const [loading, setLoading] = useState(true);
   const [todayLogs, setTodayLogs] = useState([]);
   const [dailySummary, setDailySummary] = useState(null);
@@ -29,6 +31,11 @@ export default function Nutrition() {
   useEffect(() => {
     fetchData();
   }, [selectedDate]);
+
+  useEffect(() => {
+    // Hide navbar when modal is open
+    setHideNavbar(showAddMeal);
+  }, [showAddMeal, setHideNavbar]);
 
   const fetchData = async () => {
     try {
