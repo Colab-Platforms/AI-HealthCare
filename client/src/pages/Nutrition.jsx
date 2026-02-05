@@ -159,16 +159,6 @@ export default function Nutrition() {
     return icons[type] || '🍽️';
   };
 
-  const getMealColor = (type) => {
-    const colors = {
-      breakfast: 'from-orange-400 to-orange-500',
-      lunch: 'from-green-400 to-green-500',
-      dinner: 'from-purple-400 to-purple-500',
-      snack: 'from-yellow-400 to-yellow-500'
-    };
-    return colors[type] || 'from-blue-400 to-blue-500';
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -181,16 +171,16 @@ export default function Nutrition() {
   const waterGoal = 8; // 8 glasses per day
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white pb-20">
+    <div className="fixed inset-0 bg-gradient-to-b from-blue-50 to-white overflow-y-auto">
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-4">
-        <div className="flex items-center justify-between mb-4">
+      <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-3">
+        <div className="flex items-center justify-between mb-3">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Nutrition</h1>
-            <p className="text-sm text-gray-600">Track your daily intake</p>
+            <h1 className="text-xl font-bold text-gray-900">Nutrition</h1>
+            <p className="text-xs text-gray-600">Track your daily intake</p>
           </div>
-          <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-            <span className="text-lg">{user?.name?.[0]?.toUpperCase()}</span>
+          <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center">
+            <span className="text-sm">{user?.name?.[0]?.toUpperCase()}</span>
           </div>
         </div>
 
@@ -206,7 +196,7 @@ export default function Nutrition() {
         </div>
       </div>
 
-      <div className="px-4 py-6 space-y-6">
+      <div className="px-3 py-4 space-y-4 pb-24">
         {/* Goal Check */}
         {!healthGoal && (
           <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 flex items-start gap-3">
@@ -333,7 +323,7 @@ export default function Nutrition() {
               const mealCalories = mealLogs.reduce((sum, log) => sum + (log.totalNutrition?.calories || 0), 0);
 
               return (
-                <div key={type} className={`bg-gradient-to-br ${getMealColor(type)} rounded-2xl p-4 text-white shadow-md`}>
+                <div key={type} className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 text-white shadow-md">
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <p className="text-sm opacity-90 capitalize">{type}</p>
@@ -435,39 +425,39 @@ export default function Nutrition() {
             ) : (
               <div className="space-y-4">
                 {/* Nutrition Card */}
-                <div className="bg-gradient-to-br from-orange-50 to-yellow-50 rounded-2xl p-4 border-2 border-orange-200">
-                  <h3 className="font-bold text-gray-900 mb-4">{analysisResult.foodItem?.name}</h3>
+                <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 text-white">
+                  <h3 className="font-bold text-white mb-4">{analysisResult.foodItem?.name}</h3>
 
                   <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className="bg-white rounded-xl p-3 text-center">
-                      <Flame className="w-5 h-5 text-orange-500 mx-auto mb-1" />
-                      <p className="text-xs text-gray-600">Calories</p>
-                      <p className="text-xl font-bold text-gray-900">{analysisResult.foodItem?.nutrition?.calories || 0}</p>
+                    <div className="bg-white/20 rounded-xl p-3 text-center">
+                      <Flame className="w-5 h-5 text-orange-300 mx-auto mb-1" />
+                      <p className="text-xs text-blue-100">Calories</p>
+                      <p className="text-xl font-bold text-white">{analysisResult.foodItem?.nutrition?.calories || 0}</p>
                     </div>
-                    <div className="bg-white rounded-xl p-3 text-center">
-                      <Heart className="w-5 h-5 text-red-500 mx-auto mb-1" />
-                      <p className="text-xs text-gray-600">Protein</p>
-                      <p className="text-xl font-bold text-gray-900">{analysisResult.foodItem?.nutrition?.protein || 0}g</p>
+                    <div className="bg-white/20 rounded-xl p-3 text-center">
+                      <Heart className="w-5 h-5 text-red-300 mx-auto mb-1" />
+                      <p className="text-xs text-blue-100">Protein</p>
+                      <p className="text-xl font-bold text-white">{analysisResult.foodItem?.nutrition?.protein || 0}g</p>
                     </div>
-                    <div className="bg-white rounded-xl p-3 text-center">
-                      <Zap className="w-5 h-5 text-yellow-500 mx-auto mb-1" />
-                      <p className="text-xs text-gray-600">Carbs</p>
-                      <p className="text-xl font-bold text-gray-900">{analysisResult.foodItem?.nutrition?.carbs || 0}g</p>
+                    <div className="bg-white/20 rounded-xl p-3 text-center">
+                      <Zap className="w-5 h-5 text-yellow-300 mx-auto mb-1" />
+                      <p className="text-xs text-blue-100">Carbs</p>
+                      <p className="text-xl font-bold text-white">{analysisResult.foodItem?.nutrition?.carbs || 0}g</p>
                     </div>
-                    <div className="bg-white rounded-xl p-3 text-center">
-                      <Droplets className="w-5 h-5 text-blue-500 mx-auto mb-1" />
-                      <p className="text-xs text-gray-600">Fats</p>
-                      <p className="text-xl font-bold text-gray-900">{analysisResult.foodItem?.nutrition?.fats || 0}g</p>
+                    <div className="bg-white/20 rounded-xl p-3 text-center">
+                      <Droplets className="w-5 h-5 text-cyan-300 mx-auto mb-1" />
+                      <p className="text-xs text-blue-100">Fats</p>
+                      <p className="text-xl font-bold text-white">{analysisResult.foodItem?.nutrition?.fats || 0}g</p>
                     </div>
                   </div>
 
                   {analysisResult.isHealthy ? (
-                    <div className="flex items-center gap-2 text-green-700 bg-green-50 px-3 py-2 rounded-lg">
+                    <div className="flex items-center gap-2 text-white bg-white/20 px-3 py-2 rounded-lg">
                       <CheckCircle className="w-5 h-5" />
                       <span className="text-sm font-medium">Healthy Choice</span>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2 text-red-700 bg-red-50 px-3 py-2 rounded-lg">
+                    <div className="flex items-center gap-2 text-white bg-white/20 px-3 py-2 rounded-lg">
                       <AlertCircle className="w-5 h-5" />
                       <span className="text-sm font-medium">Not Ideal</span>
                     </div>
