@@ -20,7 +20,19 @@ export default function Login() {
       toast.success('Welcome back!');
       navigate(user.role === 'admin' ? '/admin' : user.role === 'doctor' ? '/doctor/dashboard' : '/dashboard');
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Login failed');
+      const errorMsg = error.response?.data?.message || error.message || 'Login failed';
+      
+      // Check for network errors
+      if (!error.response) {
+        toast.error('Network error - Check if server is running and accessible');
+        console.error('Connection details:', {
+          apiUrl: error.config?.baseURL,
+          host: window.location.hostname,
+          port: window.location.port
+        });
+      } else {
+        toast.error(errorMsg);
+      }
     } finally {
       setLoading(false);
     }

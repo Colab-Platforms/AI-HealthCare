@@ -1,7 +1,33 @@
 import axios from 'axios';
 
+// Determine API URL based on environment
+const getApiUrl = () => {
+  // If VITE_API_URL is explicitly set, use it
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+
+  // For development, check if we're on mobile/different device
+  if (import.meta.env.DEV) {
+    // If accessing from a different host (mobile), use that host
+    const currentHost = window.location.hostname;
+    const currentPort = window.location.port;
+    
+    // If on localhost, try to use the same host for API
+    if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
+      return 'http://localhost:5000/api';
+    } else {
+      // On mobile or different device, use the same host with port 5000
+      return `http://${currentHost}:5000/api`;
+    }
+  }
+
+  // For production, use relative path
+  return '/api';
+};
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: getApiUrl(),
   headers: { 'Content-Type': 'application/json' }
 });
 
@@ -21,6 +47,17 @@ api.interceptors.response.use(
       localStorage.removeItem('user');
       window.location.href = '/login';
     }
+    
+    // Better error handling for network issues on mobile
+    if (!error.response) {
+      console.error('Network Error:', {
+        message: error.message,
+        apiUrl: api.defaults.baseURL,
+        currentHost: window.location.hostname,
+        currentPort: window.location.port
+      });
+    }
+    
     return Promise.reject(error);
   }
 );
