@@ -170,21 +170,21 @@ export default function Nutrition() {
 
   return (
     <>
-      <div className={`fixed inset-0 bg-gradient-to-b from-blue-50 to-white overflow-y-auto ${showAddMeal ? 'overflow-hidden' : ''}`}>
+      <div className={`w-full h-screen bg-gradient-to-b from-blue-50 to-white overflow-y-auto flex flex-col ${showAddMeal ? 'overflow-hidden' : ''}`}>
       {/* Header */}
-      <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-3">
-        <div className="flex items-center justify-between mb-3">
+      <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-3 md:px-6 lg:px-8 py-3">
+        <div className="flex items-center justify-between mb-3 max-w-7xl mx-auto">
           <div>
-            <h1 className="text-xl font-bold text-gray-900">Nutrition</h1>
-            <p className="text-xs text-gray-600">Track your daily intake</p>
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">Nutrition</h1>
+            <p className="text-xs md:text-sm text-gray-600">Track your daily intake</p>
           </div>
-          <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center">
+          <div className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-blue-100 flex items-center justify-center">
             <span className="text-sm">{user?.name?.[0]?.toUpperCase()}</span>
           </div>
         </div>
 
         {/* Date Selector */}
-        <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2">
+        <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-2 max-w-7xl mx-auto">
           <Calendar className="w-4 h-4 text-gray-600" />
           <input
             type="date"
@@ -195,7 +195,7 @@ export default function Nutrition() {
         </div>
       </div>
 
-      <div className="px-3 py-4 space-y-4 pb-24">
+      <div className="px-3 md:px-6 lg:px-8 py-4 space-y-4 pb-24 flex-1 overflow-y-auto max-w-7xl mx-auto w-full">
         {/* Goal Check */}
         {!healthGoal && (
           <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 flex items-start gap-3">
@@ -374,8 +374,8 @@ export default function Nutrition() {
 
       {/* Add Meal Modal */}
       {showAddMeal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end pb-20">
-          <div className="bg-white w-full rounded-t-3xl p-6 max-h-[70vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center md:justify-center">
+          <div className="bg-white w-full md:w-full md:max-w-2xl rounded-t-3xl md:rounded-3xl p-6 max-h-[85vh] md:max-h-[90vh] overflow-y-auto md:mb-0">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900">Add {mealType.charAt(0).toUpperCase() + mealType.slice(1)}</h2>
               <button
