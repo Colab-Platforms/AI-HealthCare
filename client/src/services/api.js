@@ -26,7 +26,19 @@ api.interceptors.response.use(
 );
 
 export const healthService = {
-  uploadReport: (formData) => api.post('/health/upload', formData, {
+  // Upload with Ekacare parsing (NEW - recommended)
+  uploadReport: (formData) => api.post('/health/upload-ekacare', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  }),
+  // Get Ekacare metrics for a report
+  getEkacareMetrics: (reportId) => api.get(`/health/ekacare-metrics/${reportId}`),
+  // Compare Ekacare metrics between reports
+  compareEkacareMetrics: (reportId1, reportId2) => api.post('/health/compare-ekacare', {
+    reportId1,
+    reportId2
+  }),
+  // Legacy upload (kept for backward compatibility)
+  uploadReportLegacy: (formData) => api.post('/health/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
   getReports: () => api.get('/health/reports'),

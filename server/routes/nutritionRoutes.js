@@ -11,6 +11,13 @@ router.post('/analyze-food', nutritionController.analyzeFood);
 router.post('/quick-check', nutritionController.quickFoodCheck);
 router.post('/get-alternatives', nutritionController.getHealthyAlternatives);
 
+// Quick Food Check History & Storage
+router.get('/quick-checks', nutritionController.getQuickFoodChecks);
+router.get('/quick-checks/:id', nutritionController.getQuickFoodCheck);
+router.delete('/quick-checks/:id', nutritionController.deleteQuickFoodCheck);
+router.get('/quick-checks/history/date', nutritionController.getFoodCheckHistory);
+router.get('/quick-checks/summary/weekly', nutritionController.getWeeklyFoodCheckSummary);
+
 // Food Logging
 router.post('/log-meal', nutritionController.logMeal);
 router.get('/logs', nutritionController.getFoodLogs);
