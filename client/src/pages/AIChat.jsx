@@ -2,13 +2,11 @@ import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Send, Bot, User, Sparkles, Loader2, Copy, Check, Trash2, RefreshCw } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import { useNavbar } from '../context/NavbarContext';
 import toast from 'react-hot-toast';
 
 export default function AIChat() {
   const { user } = useAuth();
   const location = useLocation();
-  const { setHideNavbar } = useNavbar();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -21,12 +19,6 @@ export default function AIChat() {
   const chatContainerRef = useRef(null);
 
   // Load user's reports for context
-  useEffect(() => {
-    // Hide navbar on AI Chat page for better UX
-    setHideNavbar(true);
-    return () => setHideNavbar(false);
-  }, [setHideNavbar]);
-
   useEffect(() => {
     const fetchUserReports = async () => {
       try {

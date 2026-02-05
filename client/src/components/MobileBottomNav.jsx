@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { useNavbar } from '../context/NavbarContext';
 import { LayoutDashboard, MessageSquare, Utensils, FileText, MoreVertical, Settings, LogOut, Heart, Watch, X, Calendar } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -9,8 +8,8 @@ export default function MobileBottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
-  const { hideNavbar } = useNavbar();
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const [hideNavbar, setHideNavbar] = useState(false);
 
   // Check if modal is open by looking for modal elements
   useEffect(() => {
@@ -82,6 +81,49 @@ export default function MobileBottomNav() {
       observer.disconnect();
     };
   }, [showMoreMenu]);
+
+  // Check if modal is open by looking for modal elements
+  useEffect(() => {
+    const checkModal = () => {
+      // Check for any fixed overlay with high z-index (modal backdrop)
+      const fixedElements = document.querySelectorAll('.fixed');
+      let hasModal = false;
+      
+      fixedElements.forEach(el => {
+        // Check if it's a modal (has bg-black/50 or similar backdrop)
+        const classList = el.className;
+        const hasBackdrop = classList.includes('bg-black') || classList.includes('inset-0');
+        const hasHighZ = classList.includes('z-50') || classList.includes('z-40');
+        
+        // If it has both backdrop and high z-index, it's likely a modal
+        if (hasBackdrop && hasHighZ && el.offsetHeight > 0) {
+          hasModal = true;
+        }
+      });
+      
+      // Also check for AI Chat page
+      if (location.pathname === '/ai-chat') {
+        hasModal = true;
+      }
+      
+      setHideNavbar(hasModal || showMoreMenu);
+    };
+
+    // Check immediately
+    checkModal();
+    
+    // Check on a small delay to catch modals that render after this effect
+    const timer = setTimeout(checkModal, 100);
+    
+    // Watch for changes
+    const observer = new MutationObserver(checkModal);
+    observer.observe(document.body, { childList: true, subtree: true });
+    
+    return () => {
+      clearTimeout(timer);
+      observer.disconnect();
+    };
+  }, [location.pathname, showMoreMenu]);
 
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Home' },
@@ -195,7 +237,7 @@ export default function MobileBottomNav() {
         </div>
       )}
 
-      <nav className={`mobile-bottom-nav-container ${hideNavbar || showMoreMenu ? 'hidden' : ''}`}>
+      <nav className={`mobile-bottom-nav-container ${hideNavbar ? 'hidden' : ''}`}>
         <div className="mobile-bottom-nav">
           {navItems.map((item) => {
             const Icon = item.icon;
