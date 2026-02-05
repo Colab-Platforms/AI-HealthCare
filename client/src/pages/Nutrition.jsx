@@ -762,7 +762,13 @@ export default function Nutrition() {
                   </>
                 )}
                 <button 
-                  onClick={() => setShowAddMeal(true)}
+                  onClick={() => {
+                    if (!healthGoal) {
+                      toast.error('Please set your fitness goal first');
+                      return;
+                    }
+                    setShowAddMeal(true);
+                  }}
                   className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-[#8B7355] text-white flex items-center justify-center text-lg md:text-xl font-medium hover:bg-[#A0826D] transition-colors"
                   title="Add new meal"
                 >
@@ -781,7 +787,13 @@ export default function Nutrition() {
         <div className="flex items-center justify-between mb-4">
           <h2 className="text-lg md:text-xl font-semibold text-[#2C2416]">Recently logged</h2>
           <button
-            onClick={() => setShowAddMeal(true)}
+            onClick={() => {
+              if (!healthGoal) {
+                toast.error('Please set your fitness goal first');
+                return;
+              }
+              setShowAddMeal(true);
+            }}
             className="p-2 bg-[#8B7355] text-white rounded-full hover:bg-[#A0826D] flex-shrink-0"
           >
             <Plus className="w-5 h-5" />
@@ -793,7 +805,13 @@ export default function Nutrition() {
               <Apple className="w-12 h-12 text-[#E5DFD3] mx-auto mb-3" />
               <p className="text-[#5C4F3D] mb-3">No meals logged today</p>
               <button
-                onClick={() => setShowAddMeal(true)}
+                onClick={() => {
+                  if (!healthGoal) {
+                    toast.error('Please set your fitness goal first');
+                    return;
+                  }
+                  setShowAddMeal(true);
+                }}
                 className="px-4 py-2 bg-[#8B7355] text-white rounded-lg hover:bg-[#A0826D] text-sm"
               >
                 Log Your First Meal

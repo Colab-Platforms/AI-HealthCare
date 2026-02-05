@@ -272,21 +272,15 @@ export default function QuickFoodCheck() {
 
           {/* Image Upload & Check Button */}
           <div className="grid grid-cols-2 gap-3">
-            {/* Image Upload */}
+            {/* Image Upload - Disabled */}
             <div className="relative group">
-              <label className="flex flex-col items-center justify-center gap-2 px-4 py-4 bg-white border-2 border-dashed border-blue-300 rounded-2xl cursor-pointer hover:border-blue-500 hover:bg-blue-50 transition-all">
+              <div className="flex flex-col items-center justify-center gap-2 px-4 py-4 bg-gray-100 border-2 border-dashed border-gray-300 rounded-2xl cursor-not-allowed opacity-60">
                 <div className="relative">
-                  <Camera className="w-6 h-6 text-blue-500" />
+                  <Camera className="w-6 h-6 text-gray-400" />
                   <span className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full flex items-center justify-center text-[10px] font-bold text-white">!</span>
                 </div>
-                <span className="text-xs font-semibold text-blue-600">Photo</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageSelect}
-                  className="hidden"
-                />
-              </label>
+                <span className="text-xs font-semibold text-gray-500">Photo</span>
+              </div>
               {/* Tooltip */}
               <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
                 Coming soon - Enter manually for now
