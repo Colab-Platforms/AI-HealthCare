@@ -27,26 +27,54 @@ const metricInfoCache = {};
 const MetricDetailModal = ({ metric, onClose }) => {
   const [language, setLanguage] = useState('en');
   const [metricInfo, setMetricInfo] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [isAIGenerated, setIsAIGenerated] = useState(false);
 
+  // Generate fallback info instantly
+  const generateFallbackInfo = () => {
+    return {
+      en: {
+        name: metric.name,
+        whatIsIt: `${metric.name} is a health metric. Your current value is ${metric.value} ${metric.unit || ''}.`,
+        whenHighTitle: 'When High',
+        whenHighEffects: ['Please consult with a healthcare professional'],
+        whenLowTitle: 'When Low',
+        whenLowEffects: ['Please consult with a healthcare professional'],
+        solutions: ['Consult with your doctor for personalized advice']
+      },
+      hi: {
+        name: metric.name,
+        whatIsIt: `${metric.name} एक स्वास्थ्य मेट्रिक है।`,
+        whenHighTitle: 'जब अधिक हो',
+        whenHighEffects: ['कृपया डॉक्टर से परामर्श लें'],
+        whenLowTitle: 'जब कम हो',
+        whenLowEffects: ['कृपया डॉक्टर से परामर्श लें'],
+        solutions: ['व्यक्तिगत सलाह के लिए अपने डॉक्टर से परामर्श लें']
+      }
+    };
+  };
+
   useEffect(() => {
+    // Show fallback info INSTANTLY
+    setMetricInfo(generateFallbackInfo());
+    setLoading(false);
+    setIsAIGenerated(false);
+
+    // Fetch AI info in background
     const fetchMetricInfo = async () => {
       try {
         const cacheKey = `${metric.name}-${metric.value}`;
         
-        // Check global cache first (instant)
+        // Check global cache first
         if (metricInfoCache[cacheKey]) {
           console.log('✅ Using cached metric info for:', metric.name);
           setMetricInfo(metricInfoCache[cacheKey]);
           setIsAIGenerated(true);
-          setLoading(false);
           return;
         }
         
         console.log('🔄 Fetching AI-generated metric info for:', metric.name);
         setLoading(true);
-        setIsAIGenerated(false);
         
         // Fetch AI info
         const response = await healthService.getMetricInfo({
@@ -58,39 +86,15 @@ const MetricDetailModal = ({ metric, onClose }) => {
 
         console.log('✨ Received AI metric info:', response.data);
         
-        // Cache the result
+        // Cache and update
         metricInfoCache[cacheKey] = response.data.metricInfo;
         setMetricInfo(response.data.metricInfo);
         setIsAIGenerated(true);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching metric info:', error);
-        
-        // Fallback to generic info only on error
-        const fallbackInfo = {
-          en: {
-            name: metric.name,
-            whatIsIt: `${metric.name} is a health metric. Your current value is ${metric.value} ${metric.unit || ''}.`,
-            whenHighTitle: 'When High',
-            whenHighEffects: ['Please consult with a healthcare professional'],
-            whenLowTitle: 'When Low',
-            whenLowEffects: ['Please consult with a healthcare professional'],
-            solutions: ['Consult with your doctor for personalized advice']
-          },
-          hi: {
-            name: metric.name,
-            whatIsIt: `${metric.name} एक स्वास्थ्य मेट्रिक है।`,
-            whenHighTitle: 'जब अधिक हो',
-            whenHighEffects: ['कृपया डॉक्टर से परामर्श लें'],
-            whenLowTitle: 'जब कम हो',
-            whenLowEffects: ['कृपया डॉक्टर से परामर्श लें'],
-            solutions: ['व्यक्तिगत सलाह के लिए अपने डॉक्टर से परामर्श लें']
-          }
-        };
-        
-        setMetricInfo(fallbackInfo);
-        setIsAIGenerated(false);
         setLoading(false);
+        // Keep fallback info
       }
     };
 

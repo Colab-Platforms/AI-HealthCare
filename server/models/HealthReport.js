@@ -37,7 +37,28 @@ const healthReportSchema = new mongoose.Schema({
       hydration: String,
       tips: [String]
     },
+    fitnessPlan: {
+      overview: String,
+      cardio: String,
+      strength: String,
+      flexibility: String,
+      frequency: String,
+      duration: String,
+      intensity: String,
+      precautions: [String],
+      progressionPlan: String,
+      exercises: [{
+        name: String,
+        duration: String,
+        frequency: String,
+        description: String
+      }],
+      tips: [String]
+    },
     recommendations: {
+      immediate: [String],
+      shortTerm: [String],
+      longTerm: [String],
       lifestyle: [String],
       tests: [String]
     },
