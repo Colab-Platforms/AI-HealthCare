@@ -593,7 +593,7 @@ async function createDailySummary(userId, date) {
   return await updateDailySummary(userId, date);
 }
 
-// Quick food check without logging
+// Quick food check without logging - with complete details persistence
 exports.quickFoodCheck = async (req, res) => {
   try {
     const { foodDescription, imageBase64, additionalContext } = req.body;
@@ -605,91 +605,54 @@ exports.quickFoodCheck = async (req, res) => {
       });
     }
 
-    let resultData;
+    let analysis;
     
+    // Get AI analysis
     if (imageBase64) {
-      try {
-        // Analyze from image using the same quick check format
-        const imageAnalysis = await nutritionAI.analyzeFromImage(imageBase64, additionalContext || foodDescription);
-        
-        if (!imageAnalysis || !imageAnalysis.data) {
-          throw new Error('Invalid image analysis response');
-        }
-        
-        // Transform the detailed analysis into quick check format
-        const totalNutrition = imageAnalysis.data.totalNutrition;
-        
-        if (!totalNutrition) {
-          throw new Error('No nutrition data in image analysis');
-        }
-        
-        // Determine if healthy based on nutrition
-        const isHealthy = (
-          (totalNutrition.sugar || 0) < 20 &&
-          (totalNutrition.sodium || 0) < 800 &&
-          (totalNutrition.fiber || 0) > 3 &&
-          (totalNutrition.protein || 0) > 10
-        );
-        
-        resultData = {
-          foodItem: {
-            name: imageAnalysis.data.foodItems?.map(item => item.name).join(', ') || 'Unknown food',
-            quantity: imageAnalysis.data.foodItems?.map(item => item.quantity).join(', ') || 'Unknown quantity',
-            nutrition: {
-              calories: totalNutrition.calories || 0,
-              protein: totalNutrition.protein || 0,
-              carbs: totalNutrition.carbs || 0,
-              fats: totalNutrition.fats || 0,
-              fiber: totalNutrition.fiber || 0,
-              sugar: totalNutrition.sugar || 0,
-              sodium: totalNutrition.sodium || 0
-            }
-          },
-          healthScore: isHealthy ? 75 : 45,
-          isHealthy,
-          analysis: imageAnalysis.data.analysis || 'Food analyzed from image',
-          warnings: !isHealthy ? ['High in calories', 'Consider portion control'] : [],
-          benefits: isHealthy ? ['Good nutritional balance'] : [],
-          alternatives: []
-        };
-      } catch (imageError) {
-        console.error('Image analysis error:', imageError);
-        return res.status(500).json({
-          success: false,
-          message: 'Failed to analyze image. Please try with text description or a clearer image.',
-          error: imageError.message
-        });
-      }
+      analysis = await nutritionAI.quickFoodCheck(additionalContext || 'Food from image');
     } else {
-      // Use text-based quick check
-      try {
-        const result = await nutritionAI.quickFoodCheck(foodDescription);
-        
-        if (!result || !result.data) {
-          throw new Error('Invalid quick check response');
-        }
-        
-        resultData = result.data;
-      } catch (textError) {
-        console.error('Text analysis error:', textError);
-        return res.status(500).json({
-          success: false,
-          message: 'Failed to analyze food. Please try again or provide more details.',
-          error: textError.message
-        });
-      }
+      analysis = await nutritionAI.quickFoodCheck(foodDescription);
     }
+
+    if (!analysis.success || !analysis.data) {
+      throw new Error('Failed to analyze food');
+    }
+
+    const QuickFoodCheck = require('../models/QuickFoodCheck');
+    
+    // Save to database for permanent storage with ALL details
+    const foodCheck = new QuickFoodCheck({
+      userId: req.user._id,
+      foodName: analysis.data.foodItem?.name || foodDescription,
+      quantity: analysis.data.foodItem?.quantity || 'Not specified',
+      calories: analysis.data.foodItem?.nutrition?.calories || 0,
+      protein: analysis.data.foodItem?.nutrition?.protein || 0,
+      carbs: analysis.data.foodItem?.nutrition?.carbs || 0,
+      fats: analysis.data.foodItem?.nutrition?.fats || 0,
+      nutrition: analysis.data.foodItem?.nutrition || {},
+      healthScore: analysis.data.healthScore || 50,
+      isHealthy: analysis.data.isHealthy || false,
+      analysis: analysis.data.analysis || '',
+      warnings: analysis.data.warnings || [],
+      benefits: analysis.data.benefits || [],
+      alternatives: analysis.data.alternatives || [],
+      imageUrl: imageBase64 ? `data:image/jpeg;base64,${imageBase64.substring(0, 100)}...` : null,
+      timestamp: new Date()
+    });
+
+    await foodCheck.save();
 
     res.json({
       success: true,
-      ...resultData,
-      message: 'Food analyzed successfully'
+      data: analysis.data,
+      savedId: foodCheck._id,
+      message: 'Food analyzed and saved successfully'
     });
   } catch (error) {
     console.error('Quick food check error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to analyze food. Please try again.',
+      message: 'Failed to analyze food',
       error: error.message
     });
   }
@@ -747,67 +710,6 @@ exports.getHealthyAlternatives = async (req, res) => {
 
 module.exports = exports;
 
-
-// Enhanced Quick Food Check with smart suggestions and permanent storage
-exports.quickFoodCheck = async (req, res) => {
-  try {
-    const { foodDescription, imageBase64, additionalContext } = req.body;
-
-    if (!foodDescription && !imageBase64) {
-      return res.status(400).json({
-        success: false,
-        message: 'Please provide a food description or image'
-      });
-    }
-
-    let analysis;
-    
-    // Get AI analysis
-    if (imageBase64) {
-      analysis = await nutritionAI.quickFoodCheck(additionalContext || 'Food from image');
-    } else {
-      analysis = await nutritionAI.quickFoodCheck(foodDescription);
-    }
-
-    if (!analysis.success || !analysis.data) {
-      throw new Error('Failed to analyze food');
-    }
-
-    const QuickFoodCheck = require('../models/QuickFoodCheck');
-    
-    // Save to database for permanent storage
-    const foodCheck = new QuickFoodCheck({
-      userId: req.user._id,
-      foodName: analysis.data.foodItem?.name || foodDescription,
-      quantity: analysis.data.foodItem?.quantity || 'Not specified',
-      nutrition: analysis.data.foodItem?.nutrition || {},
-      healthScore: analysis.data.healthScore || 50,
-      isHealthy: analysis.data.isHealthy || false,
-      analysis: analysis.data.analysis || '',
-      warnings: analysis.data.warnings || [],
-      benefits: analysis.data.benefits || [],
-      alternatives: analysis.data.alternatives || [],
-      imageUrl: imageBase64 ? `data:image/jpeg;base64,${imageBase64.substring(0, 100)}...` : null,
-      timestamp: new Date()
-    });
-
-    await foodCheck.save();
-
-    res.json({
-      success: true,
-      data: analysis.data,
-      savedId: foodCheck._id,
-      message: 'Food analyzed and saved successfully'
-    });
-  } catch (error) {
-    console.error('Quick food check error:', error);
-    res.status(500).json({
-      success: false,
-      message: 'Failed to analyze food',
-      error: error.message
-    });
-  }
-};
 
 // Get all saved quick food checks for user
 exports.getQuickFoodChecks = async (req, res) => {

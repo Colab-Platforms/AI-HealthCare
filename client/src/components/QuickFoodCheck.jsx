@@ -222,27 +222,39 @@ export default function QuickFoodCheck() {
 
         {/* Food Input Section */}
         <div className="space-y-4">
-          {/* Main Input */}
+          {/* Main Input with Camera Icon */}
           <div className="relative">
             <input
               type="text"
               value={foodInput}
               onChange={handleFoodInputChange}
               placeholder="What did you eat? e.g., Pizza, Chicken..."
-              className="w-full px-5 py-4 bg-white border-2 border-blue-200 rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-900 placeholder-gray-500 font-medium transition-all"
+              className="w-full px-5 py-4 pr-14 bg-white border-2 border-blue-200 rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-900 placeholder-gray-500 font-medium transition-all"
             />
-            {foodInput && (
-              <button
-                onClick={() => {
-                  setFoodInput('');
-                  setShowQuantitySuggestion(false);
-                  setShowPrepMethod(false);
-                }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 p-2 hover:bg-gray-100 rounded-lg transition"
-              >
-                <X className="w-5 h-5 text-gray-400" />
-              </button>
-            )}
+            {/* Camera Icon - Disabled */}
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+              <div className="relative group">
+                <div className="p-2 text-gray-300 cursor-not-allowed opacity-50">
+                  <Camera className="w-5 h-5" />
+                </div>
+                {/* Tooltip */}
+                <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
+                  Coming soon
+                </div>
+              </div>
+              {foodInput && (
+                <button
+                  onClick={() => {
+                    setFoodInput('');
+                    setShowQuantitySuggestion(false);
+                    setShowPrepMethod(false);
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition"
+                >
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* Quantity Suggestion */}
@@ -292,37 +304,23 @@ export default function QuickFoodCheck() {
           )}
 
           {/* Image Upload & Check Button */}
-          <div className="grid grid-cols-2 gap-3">
-            {/* Image Upload - Disabled */}
-            <div className="relative group">
-              <div className="flex flex-col items-center justify-center gap-2 px-4 py-4 bg-gray-100 border-2 border-dashed border-gray-300 rounded-2xl cursor-not-allowed opacity-60">
-                <div className="relative">
-                  <Camera className="w-6 h-6 text-gray-400" />
-                  <span className="absolute -top-1 -right-1 w-3 h-3 bg-yellow-400 rounded-full flex items-center justify-center text-[10px] font-bold text-white">!</span>
-                </div>
-                <span className="text-xs font-semibold text-gray-500">Photo</span>
-              </div>
-              {/* Tooltip */}
-              <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                Coming soon - Enter manually for now
-              </div>
-            </div>
-
-            {/* Check Button */}
+          <div className="grid grid-cols-1 gap-3">
+            {/* Check Button - Improved */}
             <button
               onClick={handleQuickCheck}
               disabled={loading || (!foodInput.trim() && !image)}
-              className="px-4 py-4 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-2xl font-bold hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2"
+              className="px-4 py-4 bg-gradient-to-r from-cyan-500 via-blue-500 to-blue-600 text-white rounded-2xl font-bold hover:shadow-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 transition-all flex items-center justify-center gap-2 shadow-lg"
             >
               {loading ? (
                 <>
                   <Loader2 className="w-5 h-5 animate-spin" />
-                  <span className="hidden sm:inline">Checking...</span>
+                  <span className="hidden sm:inline">Analyzing...</span>
                 </>
               ) : (
                 <>
                   <Zap className="w-5 h-5" />
-                  <span className="hidden sm:inline">Check</span>
+                  <span className="hidden sm:inline">Analyze Food</span>
+                  <span className="sm:hidden">Check</span>
                 </>
               )}
             </button>

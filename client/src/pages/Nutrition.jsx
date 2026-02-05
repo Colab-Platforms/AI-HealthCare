@@ -5,7 +5,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import {
   Loader2, Plus, Trash2, X, Droplets, Flame, Zap, Heart,
-  Target, Calendar, ChevronDown, AlertCircle, CheckCircle
+  Calendar, AlertCircle, CheckCircle
 } from 'lucide-react';
 import QuickFoodCheck from '../components/QuickFoodCheck';
 
@@ -17,8 +17,6 @@ export default function Nutrition() {
   const [dailySummary, setDailySummary] = useState(null);
   const [healthGoal, setHealthGoal] = useState(null);
   const [showAddMeal, setShowAddMeal] = useState(false);
-  const [mealTypeToAdd, setMealTypeToAdd] = useState(null);
-  const [showGoalModal, setShowGoalModal] = useState(false);
   const [waterIntake, setWaterIntake] = useState(0);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
@@ -171,7 +169,8 @@ export default function Nutrition() {
   const waterGoal = 8; // 8 glasses per day
 
   return (
-    <div className="fixed inset-0 bg-gradient-to-b from-blue-50 to-white overflow-y-auto">
+    <>
+      <div className={`fixed inset-0 bg-gradient-to-b from-blue-50 to-white overflow-y-auto ${showAddMeal ? 'overflow-hidden' : ''}`}>
       {/* Header */}
       <div className="sticky top-0 z-40 bg-white border-b border-gray-200 px-4 py-3">
         <div className="flex items-center justify-between mb-3">
@@ -488,5 +487,6 @@ export default function Nutrition() {
         </div>
       )}
     </div>
+    </>
   );
 }

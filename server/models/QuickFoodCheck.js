@@ -12,6 +12,10 @@ const quickFoodCheckSchema = new mongoose.Schema({
     required: true
   },
   quantity: String,
+  calories: Number,
+  protein: Number,
+  carbs: Number,
+  fats: Number,
   nutrition: {
     calories: Number,
     protein: Number,
