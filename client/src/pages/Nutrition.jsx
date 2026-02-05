@@ -5,12 +5,11 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import {
   Loader2, Plus, Trash2, X, Droplets, Flame, Zap, Heart,
-  Calendar, AlertCircle, CheckCircle
+  AlertCircle, CheckCircle, ChevronLeft, ChevronRight
 } from 'lucide-react';
 import QuickFoodCheck from '../components/QuickFoodCheck';
 
 export default function Nutrition() {
-  const { user } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [todayLogs, setTodayLogs] = useState([]);
@@ -157,6 +156,30 @@ export default function Nutrition() {
     return icons[type] || '🍽️';
   };
 
+  const handlePreviousDay = () => {
+    const date = new Date(selectedDate);
+    date.setDate(date.getDate() - 1);
+    setSelectedDate(date.toISOString().split('T')[0]);
+  };
+
+  const handleNextDay = () => {
+    const date = new Date(selectedDate);
+    date.setDate(date.getDate() + 1);
+    setSelectedDate(date.toISOString().split('T')[0]);
+  };
+
+  const formatDate = (dateStr) => {
+    const date = new Date(dateStr + 'T00:00:00');
+    const today = new Date();
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    
+    if (dateStr === today.toISOString().split('T')[0]) return 'Today';
+    if (dateStr === yesterday.toISOString().split('T')[0]) return 'Yesterday';
+    
+    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -170,19 +193,27 @@ export default function Nutrition() {
 
   return (
     <div className={`w-full h-full bg-gradient-to-b from-blue-50 to-white overflow-y-auto flex flex-col ${showAddMeal ? 'overflow-hidden' : ''}`}>
-      <div className="px-3 md:px-6 lg:px-8 py-4 space-y-4 pb-24 flex-1 overflow-y-auto max-w-7xl mx-auto w-full">
-        {/* Date Selector Card */}
-        <div className="flex items-center gap-2 bg-white rounded-2xl px-4 py-3 border-2 border-gray-200 shadow-sm">
-          <Calendar className="w-4 h-4 text-gray-600" />
-          <input
-            type="date"
-            value={selectedDate}
-            onChange={(e) => setSelectedDate(e.target.value)}
-            className="bg-transparent text-sm font-medium text-gray-900 outline-none flex-1"
-          />
+      {/* Date Picker Header */}
+      <div className="w-full px-3 md:px-6 lg:px-8 py-3 flex items-center justify-between bg-white border-b border-gray-200 sticky top-0 z-10">
+        <button
+          onClick={handlePreviousDay}
+          className="p-2 hover:bg-gray-100 rounded-lg transition"
+        >
+          <ChevronLeft className="w-5 h-5 text-gray-600" />
+        </button>
+        <div className="text-center">
+          <p className="text-sm text-gray-500">Nutrition</p>
+          <p className="text-lg font-bold text-gray-900">{formatDate(selectedDate)}</p>
         </div>
+        <button
+          onClick={handleNextDay}
+          className="p-2 hover:bg-gray-100 rounded-lg transition"
+        >
+          <ChevronRight className="w-5 h-5 text-gray-600" />
+        </button>
+      </div>
 
-        {/* Goal Check */}
+      <div className="w-full px-3 md:px-6 lg:px-8 py-4 space-y-4 pb-24 flex-1 overflow-y-auto">
         {!healthGoal && (
           <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -344,7 +375,6 @@ export default function Nutrition() {
                       }
                       setMealType(type);
                       setShowAddMeal(true);
-                      setMealTypeToAdd(type);
                     }}
                     className="w-full bg-white/30 hover:bg-white/40 text-white font-bold py-2 rounded-lg transition-all flex items-center justify-center gap-2"
                   >

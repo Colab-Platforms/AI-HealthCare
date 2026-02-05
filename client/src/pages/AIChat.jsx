@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Send, Bot, User, Sparkles, Loader2, Copy, Check, Trash2, RefreshCw } from 'lucide-react';
+import { Send, Bot, User, Sparkles, Loader2, Copy, Check, Trash2, RefreshCw, Menu, X as XIcon, MessageSquare } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -15,6 +15,9 @@ export default function AIChat() {
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [userReports, setUserReports] = useState([]);
   const [loadingReports, setLoadingReports] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [chatSessions, setChatSessions] = useState([]);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
 
@@ -43,33 +46,56 @@ export default function AIChat() {
     fetchUserReports();
   }, []);
 
+  // Load chat sessions from localStorage
+  useEffect(() => {
+    const loadChatSessions = () => {
+      try {
+        const sessions = localStorage.getItem(`chat_sessions_${user?.id}`);
+        if (sessions) {
+          const parsedSessions = JSON.parse(sessions);
+          setChatSessions(parsedSessions);
+        }
+      } catch (error) {
+        console.error('Failed to load chat sessions:', error);
+      }
+    };
+
+    if (user) {
+      loadChatSessions();
+    }
+  }, [user?.id]);
+
   // Load chat history from localStorage on mount
   useEffect(() => {
     const loadChatHistory = async () => {
       try {
+        // Generate session ID if not exists
+        const sessionId = currentSessionId || `session_${Date.now()}`;
+        setCurrentSessionId(sessionId);
+
         // Try to load from localStorage first
-        const savedMessages = localStorage.getItem(`chat_history_${user?.id}`);
+        const savedMessages = localStorage.getItem(`chat_history_${user?.id}_${sessionId}`);
         if (savedMessages) {
           const parsedMessages = JSON.parse(savedMessages);
           setMessages(parsedMessages);
-          console.log('Loaded chat history from localStorage:', parsedMessages.length, 'messages');
         } else {
-          // Show welcome message if no history
+          // Create greeting with report context
+          const greeting = generateGreetingWithReports();
           setMessages([
             {
               role: 'assistant',
-              content: `Hello ${user?.name || 'there'}! 👋 I'm your AI health assistant. I can help you understand your health reports, explain medical terms, provide diet guidance, and answer health-related questions. What would you like to know?`,
+              content: greeting,
               timestamp: new Date()
             }
           ]);
         }
       } catch (error) {
         console.error('Failed to load chat history:', error);
-        // Show welcome message on error
+        const greeting = generateGreetingWithReports();
         setMessages([
           {
             role: 'assistant',
-            content: `Hello ${user?.name || 'there'}! 👋 I'm your AI health assistant. How can I help you today?`,
+            content: greeting,
             timestamp: new Date()
           }
         ]);
@@ -85,7 +111,37 @@ export default function AIChat() {
       const selectedText = location.state.selectedText;
       setInput(`Can you explain this: "${selectedText}"`);
     }
-  }, [user?.id, location.state, user?.name]);
+  }, [user?.id, location.state, user?.name, currentSessionId]);
+
+  const generateGreetingWithReports = () => {
+    let greeting = `Hello ${user?.name || 'there'}! 👋 I'm your AI health assistant.\n\n`;
+    
+    if (userReports && userReports.length > 0) {
+      greeting += `I've reviewed your uploaded health reports:\n\n`;
+      
+      userReports.slice(0, 3).forEach((report, idx) => {
+        const date = new Date(report.uploadDate).toLocaleDateString();
+        greeting += `📋 **${report.reportType}** (${date})\n`;
+        
+        if (report.analysis) {
+          const summary = report.analysis.substring(0, 100);
+          greeting += `   ${summary}...\n`;
+        }
+        
+        if (report.metrics && Object.keys(report.metrics).length > 0) {
+          const metricKeys = Object.keys(report.metrics).slice(0, 2);
+          greeting += `   Key metrics: ${metricKeys.join(', ')}\n`;
+        }
+        greeting += '\n';
+      });
+      
+      greeting += `I have a complete understanding of your health profile. Feel free to ask me about your reports, health concerns, or get personalized recommendations!\n\nWhat would you like to know?`;
+    } else {
+      greeting += `I can help you understand your health reports, explain medical terms, provide diet guidance, and answer health-related questions. What would you like to know?`;
+    }
+    
+    return greeting;
+  };
 
   useEffect(() => {
     scrollToBottom();
@@ -119,12 +175,13 @@ export default function AIChat() {
     if (confirm('Are you sure you want to clear the chat history?')) {
       try {
         // Clear from localStorage
-        localStorage.removeItem(`chat_history_${user?.id}`);
+        localStorage.removeItem(`chat_history_${user?.id}_${currentSessionId}`);
         
+        const greeting = generateGreetingWithReports();
         setMessages([
           {
             role: 'assistant',
-            content: `Hello ${user?.name || 'there'}! 👋 I'm your AI health assistant. How can I assist you today?`,
+            content: greeting,
             timestamp: new Date()
           }
         ]);
@@ -133,6 +190,36 @@ export default function AIChat() {
         console.error('Failed to clear chat:', error);
         toast.error('Failed to clear chat');
       }
+    }
+  };
+
+  const startNewSession = () => {
+    const newSessionId = `session_${Date.now()}`;
+    setCurrentSessionId(newSessionId);
+    const greeting = generateGreetingWithReports();
+    setMessages([
+      {
+        role: 'assistant',
+        content: greeting,
+        timestamp: new Date()
+      }
+    ]);
+    setSidebarOpen(false);
+    toast.success('New chat started');
+  };
+
+  const loadChatSession = (sessionId) => {
+    try {
+      const savedMessages = localStorage.getItem(`chat_history_${user?.id}_${sessionId}`);
+      if (savedMessages) {
+        const parsedMessages = JSON.parse(savedMessages);
+        setMessages(parsedMessages);
+        setCurrentSessionId(sessionId);
+        setSidebarOpen(false);
+      }
+    } catch (error) {
+      console.error('Failed to load session:', error);
+      toast.error('Failed to load chat session');
     }
   };
 
@@ -145,8 +232,23 @@ export default function AIChat() {
         { role: 'user', content: userQuery, timestamp: new Date() },
         { role: 'assistant', content: aiResponse, timestamp: new Date() }
       ];
-      localStorage.setItem(`chat_history_${user?.id}`, JSON.stringify(updatedMessages));
-      console.log('Chat history saved to localStorage');
+      localStorage.setItem(`chat_history_${user?.id}_${currentSessionId}`, JSON.stringify(updatedMessages));
+      
+      // Update chat sessions list
+      const sessionTitle = userQuery.substring(0, 30) + (userQuery.length > 30 ? '...' : '');
+      const existingSession = chatSessions.find(s => s.id === currentSessionId);
+      
+      if (!existingSession) {
+        const newSession = {
+          id: currentSessionId,
+          title: sessionTitle,
+          date: new Date().toISOString(),
+          preview: userQuery.substring(0, 50)
+        };
+        const updatedSessions = [newSession, ...chatSessions];
+        setChatSessions(updatedSessions);
+        localStorage.setItem(`chat_sessions_${user?.id}`, JSON.stringify(updatedSessions));
+      }
     } catch (error) {
       console.error('Failed to save chat history:', error);
     }
@@ -207,7 +309,22 @@ export default function AIChat() {
           
           // Save to localStorage
           const updatedMessages = [...messages, userMessage, aiResponse];
-          localStorage.setItem(`chat_history_${user?.id}`, JSON.stringify(updatedMessages));
+          localStorage.setItem(`chat_history_${user?.id}_${currentSessionId}`, JSON.stringify(updatedMessages));
+          
+          // Update sessions
+          const sessionTitle = currentInput.substring(0, 30) + (currentInput.length > 30 ? '...' : '');
+          const existingSession = chatSessions.find(s => s.id === currentSessionId);
+          if (!existingSession) {
+            const newSession = {
+              id: currentSessionId,
+              title: sessionTitle,
+              date: new Date().toISOString(),
+              preview: currentInput.substring(0, 50)
+            };
+            const updatedSessions = [newSession, ...chatSessions];
+            setChatSessions(updatedSessions);
+            localStorage.setItem(`chat_sessions_${user?.id}`, JSON.stringify(updatedSessions));
+          }
         });
       } else {
         throw new Error('Invalid response from AI');
@@ -226,6 +343,10 @@ export default function AIChat() {
         };
         setMessages(prev => [...prev, aiResponse]);
         setStreamingText('');
+        
+        // Save to localStorage
+        const updatedMessages = [...messages, userMessage, aiResponse];
+        localStorage.setItem(`chat_history_${user?.id}_${currentSessionId}`, JSON.stringify(updatedMessages));
       });
     } finally {
       setLoading(false);
@@ -259,166 +380,239 @@ export default function AIChat() {
   };
 
   return (
-    <div className="h-screen flex flex-col" style={{ backgroundColor: '#F5F1EA' }}>
-      {/* Messages */}
-      <div 
-        ref={chatContainerRef}
-        className="flex-1 overflow-y-auto px-3 md:px-6 py-4 md:py-6 space-y-4 pb-32 md:pb-28"
-        style={{ userSelect: 'text' }}
-        onMouseUp={(e) => {
-          // Prevent text selection popup on this page
-          e.stopPropagation();
-        }}
-      >
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+    <div className="h-screen flex" style={{ backgroundColor: '#F5F1EA' }}>
+      {/* Sidebar */}
+      <div className={`fixed md:relative w-64 h-screen bg-white border-r border-gray-200 flex flex-col transition-transform duration-300 z-50 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}`}>
+        {/* Sidebar Header */}
+        <div className="p-4 border-b border-gray-200 flex items-center justify-between">
+          <h2 className="font-bold text-gray-900">Chat History</h2>
+          <button
+            onClick={() => setSidebarOpen(false)}
+            className="md:hidden p-1 hover:bg-gray-100 rounded"
           >
-            {message.role === 'assistant' && (
+            <XIcon className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* New Chat Button */}
+        <button
+          onClick={startNewSession}
+          className="m-3 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 font-medium"
+        >
+          <MessageSquare className="w-4 h-4" />
+          New Chat
+        </button>
+
+        {/* Chat Sessions */}
+        <div className="flex-1 overflow-y-auto px-3 space-y-2">
+          {chatSessions.length > 0 ? (
+            chatSessions.map((session) => (
+              <button
+                key={session.id}
+                onClick={() => loadChatSession(session.id)}
+                className={`w-full text-left p-3 rounded-lg transition ${
+                  currentSessionId === session.id
+                    ? 'bg-blue-100 border-l-4 border-blue-600'
+                    : 'hover:bg-gray-100'
+                }`}
+              >
+                <p className="text-sm font-medium text-gray-900 truncate">{session.title}</p>
+                <p className="text-xs text-gray-500 truncate mt-1">{session.preview}</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  {new Date(session.date).toLocaleDateString()}
+                </p>
+              </button>
+            ))
+          ) : (
+            <p className="text-sm text-gray-500 text-center py-8">No chat history yet</p>
+          )}
+        </div>
+
+        {/* Sidebar Footer */}
+        <div className="p-3 border-t border-gray-200 space-y-2">
+          <button
+            onClick={clearChat}
+            className="w-full px-3 py-2 text-sm text-red-600 hover:bg-red-50 rounded-lg transition flex items-center justify-center gap-2"
+          >
+            <Trash2 className="w-4 h-4" />
+            Clear Chat
+          </button>
+        </div>
+      </div>
+
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col">
+        {/* Header with Menu Button */}
+        <div className="md:hidden flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-white">
+          <button
+            onClick={() => setSidebarOpen(true)}
+            className="p-2 hover:bg-gray-100 rounded"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+          <h1 className="font-bold text-gray-900">AI Assistant</h1>
+          <div className="w-8" />
+        </div>
+
+        {/* Messages */}
+        <div 
+          ref={chatContainerRef}
+          className="flex-1 overflow-y-auto px-3 md:px-6 py-4 md:py-6 space-y-4 pb-32 md:pb-28"
+          style={{ userSelect: 'text' }}
+          onMouseUp={(e) => {
+            e.stopPropagation();
+          }}
+        >
+          {messages.map((message, index) => (
+            <div
+              key={index}
+              className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+            >
+              {message.role === 'assistant' && (
+                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-md" style={{ backgroundColor: '#8B7355' }}>
+                  <Bot className="w-5 h-5 text-white" />
+                </div>
+              )}
+              
+              <div
+                className={`max-w-[80%] sm:max-w-[70%] rounded-2xl px-4 py-3 shadow-sm ${
+                  message.role === 'user'
+                    ? 'text-white shadow-sm'
+                    : 'bg-white text-slate-800'
+                }`}
+                style={message.role === 'user' ? { 
+                  backgroundColor: '#8B7355',
+                  border: '1px solid #E5DFD3'
+                } : {
+                  border: '1px solid #E5DFD3'
+                }}
+              >
+                <div className="whitespace-pre-wrap break-words text-sm sm:text-base leading-relaxed">
+                  {message.content}
+                </div>
+                <div className="flex items-center justify-between mt-2 gap-2">
+                  <span className={`text-xs ${message.role === 'user' ? 'text-white/70' : 'text-slate-400'}`}>
+                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  {message.role === 'assistant' && (
+                    <button
+                      onClick={() => copyToClipboard(message.content, index)}
+                      className="transition-colors p-1 rounded"
+                      style={{ color: '#5C4F3D' }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = '#8B7355';
+                        e.currentTarget.style.backgroundColor = '#F5F1EA';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = '#5C4F3D';
+                        e.currentTarget.style.backgroundColor = 'transparent';
+                      }}
+                      title="Copy response"
+                    >
+                      {copiedIndex === index ? (
+                        <Check className="w-4 h-4 text-green-500" />
+                      ) : (
+                        <Copy className="w-4 h-4" />
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {message.role === 'user' && (
+                <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm" style={{ backgroundColor: '#E5DFD3' }}>
+                  <User className="w-5 h-5" style={{ color: '#5C4F3D' }} />
+                </div>
+              )}
+            </div>
+          ))}
+
+          {/* Streaming message */}
+          {streaming && streamingText && (
+            <div className="flex gap-3 justify-start">
               <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-md" style={{ backgroundColor: '#8B7355' }}>
                 <Bot className="w-5 h-5 text-white" />
               </div>
-            )}
-            
-            <div
-              className={`max-w-[80%] sm:max-w-[70%] rounded-2xl px-4 py-3 shadow-sm ${
-                message.role === 'user'
-                  ? 'text-white shadow-sm'
-                  : 'bg-white text-slate-800'
-              }`}
-              style={message.role === 'user' ? { 
-                backgroundColor: '#8B7355',
-                border: '1px solid #E5DFD3'
-              } : {
-                border: '1px solid #E5DFD3'
-              }}
+              <div className="max-w-[80%] sm:max-w-[70%] bg-white rounded-2xl px-4 py-3 shadow-sm" style={{ border: '1px solid #E5DFD3' }}>
+                <div className="whitespace-pre-wrap break-words text-sm sm:text-base leading-relaxed" style={{ color: '#2C2416' }}>
+                  {streamingText}
+                  <span className="inline-block w-1 h-4 ml-1 animate-pulse" style={{ backgroundColor: '#8B7355' }}></span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Loading indicator */}
+          {loading && !streaming && (
+            <div className="flex gap-3 justify-start">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-md" style={{ backgroundColor: '#8B7355' }}>
+                <Bot className="w-5 h-5 text-white" />
+              </div>
+              <div className="bg-white rounded-2xl px-4 py-3 shadow-sm" style={{ border: '1px solid #E5DFD3' }}>
+                <div className="flex items-center gap-2" style={{ color: '#5C4F3D' }}>
+                  <Loader2 className="w-4 h-4 animate-spin" style={{ color: '#8B7355' }} />
+                  <span className="text-sm">Analyzing your question...</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input - Sticky at bottom */}
+        <div className="fixed bottom-20 md:bottom-0 left-0 right-0 md:left-64 flex justify-center items-center px-3 md:px-6 py-3 md:py-4" style={{ backgroundColor: '#F5F1EA', zIndex: 40 }}>
+          <form onSubmit={handleSubmit} className="w-full md:max-w-2xl flex gap-2 md:gap-3 items-end">
+            <div className="flex-1 relative">
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                placeholder="Ask about your health..."
+                className="w-full px-4 py-2.5 md:py-3 pr-10 bg-white rounded-full focus:outline-none focus:ring-2 transition-all text-sm md:text-base shadow-md hover:shadow-lg"
+                style={{ 
+                  border: '1.5px solid #E5DFD3',
+                  color: '#2C2416'
+                }}
+                onFocus={(e) => {
+                  e.target.style.borderColor = '#8B7355';
+                  e.target.style.boxShadow = '0 4px 16px rgba(139, 115, 85, 0.2)';
+                }}
+                onBlur={(e) => {
+                  e.target.style.borderColor = '#E5DFD3';
+                  e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.08)';
+                }}
+                disabled={loading || streaming}
+              />
+              {input && (
+                <button
+                  type="button"
+                  onClick={() => setInput('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-lg hover:opacity-70 transition-opacity"
+                  style={{ color: '#5C4F3D' }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
+            <button
+              type="submit"
+              disabled={!input.trim() || loading || streaming}
+              className="px-4 md:px-5 py-2.5 md:py-3 text-white rounded-full font-medium hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-1 md:gap-2 flex-shrink-0 text-sm md:text-base shadow-md"
+              style={{ backgroundColor: '#8B7355' }}
+              title={!input.trim() ? 'Type a message first' : 'Send message'}
             >
-              <div className="whitespace-pre-wrap break-words text-sm sm:text-base leading-relaxed">
-                {message.content}
-              </div>
-              <div className="flex items-center justify-between mt-2 gap-2">
-                <span className={`text-xs ${message.role === 'user' ? 'text-white/70' : 'text-slate-400'}`}>
-                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
-                {message.role === 'assistant' && (
-                  <button
-                    onClick={() => copyToClipboard(message.content, index)}
-                    className="transition-colors p-1 rounded"
-                    style={{ color: '#5C4F3D' }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = '#8B7355';
-                      e.currentTarget.style.backgroundColor = '#F5F1EA';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = '#5C4F3D';
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
-                    title="Copy response"
-                  >
-                    {copiedIndex === index ? (
-                      <Check className="w-4 h-4 text-green-500" />
-                    ) : (
-                      <Copy className="w-4 h-4" />
-                    )}
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {message.role === 'user' && (
-              <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm" style={{ backgroundColor: '#E5DFD3' }}>
-                <User className="w-5 h-5" style={{ color: '#5C4F3D' }} />
-              </div>
-            )}
-          </div>
-        ))}
-
-        {/* Streaming message */}
-        {streaming && streamingText && (
-          <div className="flex gap-3 justify-start">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-md" style={{ backgroundColor: '#8B7355' }}>
-              <Bot className="w-5 h-5 text-white" />
-            </div>
-            <div className="max-w-[80%] sm:max-w-[70%] bg-white rounded-2xl px-4 py-3 shadow-sm" style={{ border: '1px solid #E5DFD3' }}>
-              <div className="whitespace-pre-wrap break-words text-sm sm:text-base leading-relaxed" style={{ color: '#2C2416' }}>
-                {streamingText}
-                <span className="inline-block w-1 h-4 ml-1 animate-pulse" style={{ backgroundColor: '#8B7355' }}></span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Loading indicator */}
-        {loading && !streaming && (
-          <div className="flex gap-3 justify-start">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-md" style={{ backgroundColor: '#8B7355' }}>
-              <Bot className="w-5 h-5 text-white" />
-            </div>
-            <div className="bg-white rounded-2xl px-4 py-3 shadow-sm" style={{ border: '1px solid #E5DFD3' }}>
-              <div className="flex items-center gap-2" style={{ color: '#5C4F3D' }}>
-                <Loader2 className="w-4 h-4 animate-spin" style={{ color: '#8B7355' }} />
-                <span className="text-sm">Analyzing your question...</span>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input - Sticky at bottom on both mobile and desktop */}
-      <div className="fixed bottom-20 md:bottom-0 left-0 right-0 flex justify-center items-center px-3 md:px-6 py-3 md:py-4" style={{ backgroundColor: '#F5F1EA', zIndex: 40 }}>
-        <form onSubmit={handleSubmit} className="w-full md:max-w-2xl flex gap-2 md:gap-3 items-end">
-          <div className="flex-1 relative">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about your health..."
-              className="w-full px-4 py-2.5 md:py-3 pr-10 bg-white rounded-full focus:outline-none focus:ring-2 transition-all text-sm md:text-base shadow-md hover:shadow-lg"
-              style={{ 
-                border: '1.5px solid #E5DFD3',
-                color: '#2C2416'
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = '#8B7355';
-                e.target.style.boxShadow = '0 4px 16px rgba(139, 115, 85, 0.2)';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = '#E5DFD3';
-                e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.08)';
-              }}
-              disabled={loading || streaming}
-            />
-            {input && (
-              <button
-                type="button"
-                onClick={() => setInput('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-lg hover:opacity-70 transition-opacity"
-                style={{ color: '#5C4F3D' }}
-              >
-                ×
-              </button>
-            )}
-          </div>
-          <button
-            type="submit"
-            disabled={!input.trim() || loading || streaming}
-            className="px-4 md:px-5 py-2.5 md:py-3 text-white rounded-full font-medium hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-1 md:gap-2 flex-shrink-0 text-sm md:text-base shadow-md"
-            style={{ backgroundColor: '#8B7355' }}
-            title={!input.trim() ? 'Type a message first' : 'Send message'}
-          >
-            {loading || streaming ? (
-              <Loader2 className="w-4 md:w-5 h-4 md:h-5 animate-spin" />
-            ) : (
-              <>
-                <Send className="w-4 md:w-5 h-4 md:h-5" />
-                <span className="hidden sm:inline">Send</span>
-              </>
-            )}
-          </button>
-        </form>
+              {loading || streaming ? (
+                <Loader2 className="w-4 md:w-5 h-4 md:h-5 animate-spin" />
+              ) : (
+                <>
+                  <Send className="w-4 md:w-5 h-4 md:h-5" />
+                  <span className="hidden sm:inline">Send</span>
+                </>
+              )}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );
