@@ -375,8 +375,8 @@ export default function Nutrition() {
 
       {/* Add Meal Modal */}
       {showAddMeal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end">
-          <div className="bg-white w-full rounded-t-3xl p-6 max-h-[80vh] overflow-y-auto">
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end pb-20">
+          <div className="bg-white w-full rounded-t-3xl p-6 max-h-[70vh] overflow-y-auto">
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900">Add {mealType.charAt(0).toUpperCase() + mealType.slice(1)}</h2>
               <button

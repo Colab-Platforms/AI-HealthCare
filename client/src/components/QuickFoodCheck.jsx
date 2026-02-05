@@ -169,6 +169,27 @@ export default function QuickFoodCheck() {
     }
   };
 
+  const handleHistoryItemClick = (check) => {
+    setResult({
+      foodItem: {
+        name: check.foodName,
+        quantity: check.quantity || '',
+        nutrition: {
+          calories: check.calories || 0,
+          protein: check.protein || 0,
+          carbs: check.carbs || 0,
+          fats: check.fats || 0
+        }
+      },
+      isHealthy: check.isHealthy,
+      healthScore: check.healthScore,
+      analysis: check.analysis || 'Previously analyzed food item',
+      warnings: check.warnings || [],
+      alternatives: check.alternatives || []
+    });
+    setShowHistory(false);
+  };
+
   const deleteFromHistory = async (id) => {
     if (!confirm('Delete this food check?')) return;
 
@@ -465,7 +486,11 @@ export default function QuickFoodCheck() {
               <p className="text-center text-gray-500 py-4">No checks yet today</p>
             ) : (
               history.map((check) => (
-                <div key={check._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all">
+                <button
+                  key={check._id}
+                  onClick={() => handleHistoryItemClick(check)}
+                  className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl hover:from-blue-100 hover:to-cyan-100 transition-all text-left"
+                >
                   <div className="flex-1">
                     <p className="font-semibold text-gray-900">{check.foodName}</p>
                     <div className="flex items-center gap-2 mt-1">
@@ -475,17 +500,23 @@ export default function QuickFoodCheck() {
                         {check.healthScore}/100
                       </span>
                       <span className="text-xs text-gray-500">
+                        {check.calories} cal
+                      </span>
+                      <span className="text-xs text-gray-500">
                         {new Date(check.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                     </div>
                   </div>
                   <button
-                    onClick={() => deleteFromHistory(check._id)}
-                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteFromHistory(check._id);
+                    }}
+                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition ml-2"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>
-                </div>
+                </button>
               ))
             )}
           </div>
