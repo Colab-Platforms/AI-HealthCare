@@ -1,17 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import {
   Camera, Upload, Loader2, Plus, Trash2, Edit2, TrendingUp,
   Apple, Flame, Droplets, Activity, Target, ChevronDown, ChevronUp,
-  Sparkles, Calendar, Search, AlertCircle, CheckCircle, Lightbulb
+  Sparkles, Calendar, Search, AlertCircle, CheckCircle, Lightbulb, X
 } from 'lucide-react';
 import QuickFoodCheck from '../components/QuickFoodCheck';
 
 export default function Nutrition() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [analyzing, setAnalyzing] = useState(false);
   const [todayLogs, setTodayLogs] = useState([]);
@@ -22,6 +23,7 @@ export default function Nutrition() {
   const [editingLog, setEditingLog] = useState(null);
   const [editFormData, setEditFormData] = useState(null);
   const [activityData, setActivityData] = useState([]);
+  const [showGoalModal, setShowGoalModal] = useState(false);
 
   // Quick Food Check State
   const [quickCheckFood, setQuickCheckFood] = useState('');
@@ -316,6 +318,12 @@ export default function Nutrition() {
       return;
     }
 
+    // Check if user has set a health goal
+    if (!healthGoal) {
+      setShowGoalModal(true);
+      return;
+    }
+
     setCheckingFood(true);
     try {
       const token = localStorage.getItem('token');
@@ -403,6 +411,68 @@ export default function Nutrition() {
   const proteinPercentage = dailySummary?.proteinPercentage || 0;
   const carbsPercentage = dailySummary?.carbsPercentage || 0;
   const fatsPercentage = dailySummary?.fatsPercentage || 0;
+
+  // Goal Modal Component
+  const GoalModal = () => (
+    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-fade-in">
+      <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full p-6 md:p-8 animate-in fade-in slide-in-from-bottom-4">
+        {/* Close Button */}
+        <button
+          onClick={() => setShowGoalModal(false)}
+          className="absolute top-4 right-4 p-2 hover:bg-gray-100 rounded-lg transition"
+        >
+          <X className="w-5 h-5 text-gray-400" />
+        </button>
+
+        {/* Icon */}
+        <div className="w-16 h-16 bg-gradient-to-br from-amber-100 to-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+          <Target className="w-8 h-8 text-amber-600" />
+        </div>
+
+        {/* Content */}
+        <h2 className="text-2xl font-bold text-gray-900 text-center mb-2">Set Your Fitness Goal</h2>
+        <p className="text-gray-600 text-center mb-6">
+          To track your nutrition accurately, we need to know your fitness goal. This helps us calculate your daily calorie and macro targets.
+        </p>
+
+        {/* Benefits List */}
+        <div className="space-y-3 mb-8 bg-blue-50 rounded-2xl p-4">
+          <div className="flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+            <span className="text-sm text-gray-700">Personalized calorie targets</span>
+          </div>
+          <div className="flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+            <span className="text-sm text-gray-700">Macro nutrient recommendations</span>
+          </div>
+          <div className="flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0 mt-0.5" />
+            <span className="text-sm text-gray-700">Track progress towards your goal</span>
+          </div>
+        </div>
+
+        {/* Buttons */}
+        <div className="flex gap-3">
+          <button
+            onClick={() => setShowGoalModal(false)}
+            className="flex-1 px-4 py-3 border-2 border-gray-200 text-gray-700 rounded-xl font-semibold hover:bg-gray-50 transition-all"
+          >
+            Maybe Later
+          </button>
+          <button
+            onClick={() => {
+              setShowGoalModal(false);
+              navigate('/profile?tab=goals');
+            }}
+            className="flex-1 px-4 py-3 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2"
+          >
+            <Target className="w-5 h-5" />
+            Set Goal
+          </button>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="space-y-6 animate-fade-in w-full overflow-x-hidden">
@@ -1005,6 +1075,9 @@ export default function Nutrition() {
           </div>
         </div>
       )}
+
+      {/* Goal Modal */}
+      {showGoalModal && <GoalModal />}
     </div>
   );
 }

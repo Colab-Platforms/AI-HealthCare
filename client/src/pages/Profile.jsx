@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api, { healthService } from '../services/api';
 import axios from 'axios';
@@ -14,10 +14,11 @@ import toast from 'react-hot-toast';
 
 export default function Profile() {
   const { user, updateUser } = useAuth();
+  const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [healthHistory, setHealthHistory] = useState(null);
   const [selectedType, setSelectedType] = useState('');
-  const [activeTab, setActiveTab] = useState('profile');
+  const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'profile');
   const [healthGoal, setHealthGoal] = useState(null);
   const [goalLoading, setGoalLoading] = useState(false);
   const [goalFormData, setGoalFormData] = useState({
