@@ -44,8 +44,23 @@ export default function ReportSummary() {
       <div className="bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl p-8 text-white">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
+            {/* Patient Name */}
+            {(report.patientName || aiAnalysis?.patientName) && (
+              <div className="mb-3">
+                <p className="text-sm text-white/60 uppercase tracking-wide">Patient Name</p>
+                <p className="text-xl font-semibold">{report.patientName || aiAnalysis?.patientName}</p>
+              </div>
+            )}
             <h1 className="text-3xl font-bold mb-2">{report.reportType} Analysis</h1>
-            <p className="text-white/70">Analyzed on {new Date(report.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-white/70">
+              <p>Analyzed on {new Date(report.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+              {(report.reportDate || aiAnalysis?.reportDate) && (
+                <>
+                  <span className="hidden sm:inline">•</span>
+                  <p>Report Date: {new Date(report.reportDate || aiAnalysis?.reportDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                </>
+              )}
+            </div>
           </div>
           <div className="text-center">
             <div className="text-5xl font-bold mb-2">{healthScore}</div>

@@ -1,7 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { healthService } from '../services/api';
-import { FileText, Activity, ArrowLeft, X, Droplets, Eye, Pill, UtensilsCrossed, Heart } from 'lucide-react';
+import { FileText, Activity, ArrowLeft, X, Droplets, Eye, Pill, UtensilsCrossed, Heart, TrendingUp, BarChart3 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const translations = {
@@ -30,12 +30,31 @@ const MetricDetailModal = ({ metric, onClose }) => {
   const [loading, setLoading] = useState(false);
   const [isAIGenerated, setIsAIGenerated] = useState(false);
 
+  // Early return if no metric - CRITICAL FIX
+  if (!metric) {
+    console.error('MetricDetailModal: metric is undefined or null');
+    return (
+      <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-[9999] p-4" onClick={onClose}>
+        <div className="bg-white rounded-2xl p-6 max-w-md text-center">
+          <p className="text-slate-600 mb-4">Unable to load metric information</p>
+          <button onClick={onClose} className="px-6 py-2 bg-cyan-500 text-white rounded-lg hover:bg-cyan-600">
+            Close
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   // Generate fallback info instantly
   const generateFallbackInfo = () => {
+    const metricName = metric?.name || 'Unknown Metric';
+    const metricValue = metric?.value || 'N/A';
+    const metricUnit = metric?.unit || '';
+    
     return {
       en: {
-        name: metric.name,
-        whatIsIt: `${metric.name} is a health metric. Your current value is ${metric.value} ${metric.unit || ''}.`,
+        name: metricName,
+        whatIsIt: `${metricName} is a health metric. Your current value is ${metricValue} ${metricUnit}.`,
         whenHighTitle: 'When High',
         whenHighEffects: ['Please consult with a healthcare professional'],
         whenLowTitle: 'When Low',
@@ -43,8 +62,8 @@ const MetricDetailModal = ({ metric, onClose }) => {
         solutions: ['Consult with your doctor for personalized advice']
       },
       hi: {
-        name: metric.name,
-        whatIsIt: `${metric.name} एक स्वास्थ्य मेट्रिक है।`,
+        name: metricName,
+        whatIsIt: `${metricName} एक स्वास्थ्य मेट्रिक है।`,
         whenHighTitle: 'जब अधिक हो',
         whenHighEffects: ['कृपया डॉक्टर से परामर्श लें'],
         whenLowTitle: 'जब कम हो',
@@ -107,6 +126,12 @@ const MetricDetailModal = ({ metric, onClose }) => {
 
   const info = metricInfo[language];
   const t = translations[language];
+  
+  // Safety checks for metric properties
+  const metricName = metric?.name || 'Unknown Metric';
+  const metricValue = metric?.value || 'N/A';
+  const metricUnit = metric?.unit || '';
+  const metricNormalRange = metric?.normalRange || 'N/A';
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-end sm:items-center justify-center z-[9999] p-0 sm:p-4" onClick={onClose}>
@@ -119,7 +144,7 @@ const MetricDetailModal = ({ metric, onClose }) => {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h2 className="text-2xl sm:text-3xl font-bold text-slate-800 mb-2">{info.name}</h2>
-            <p className="text-slate-600">{language === 'hi' ? 'सामान्य रेंज' : 'Normal Range'}: <span className="font-semibold text-cyan-600">{metric.normalRange} {metric.unit}</span></p>
+            <p className="text-slate-600">{language === 'hi' ? 'सामान्य रेंज' : 'Normal Range'}: <span className="font-semibold text-cyan-600">{metricNormalRange} {metricUnit}</span></p>
           </div>
           
           <div className="flex flex-col items-end gap-2">
@@ -211,6 +236,9 @@ export default function ReportDetails() {
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedMetric, setSelectedMetric] = useState(null);
+  const [showComparison, setShowComparison] = useState(false);
+  const [previousReport, setPreviousReport] = useState(null);
+  const [comparisonData, setComparisonData] = useState(null);
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -225,6 +253,21 @@ export default function ReportDetails() {
     };
     fetchReport();
   }, [id]);
+
+  const handleCompare = async () => {
+    try {
+      const { data } = await healthService.compareReport(id);
+      if (data.comparison) {
+        setComparisonData(data);
+        setPreviousReport(data.previousReport);
+        setShowComparison(true);
+      } else {
+        toast.info('No previous report found for comparison');
+      }
+    } catch (error) {
+      toast.error('Failed to load comparison data');
+    }
+  };
 
   if (loading) return <div className="flex items-center justify-center h-[60vh]"><div className="text-center"><div className="w-16 h-16 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4" /><p className="text-slate-400">Loading report...</p></div></div>;
   if (!report) return <div className="text-center py-12 text-slate-400">Report not found</div>;
@@ -245,23 +288,60 @@ export default function ReportDetails() {
         <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-5">
             <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center"><FileText className="w-8 h-8" /></div>
-            <div><h1 className="text-2xl font-bold">{report.reportType} Report</h1><p className="text-white/70">Analyzed on {new Date(report.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p></div>
+            <div>
+              <h1 className="text-2xl font-bold">{report.reportType} Report</h1>
+              <p className="text-white/70">Analyzed on {new Date(report.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+              {report.aiAnalysis?.patientName && report.aiAnalysis.patientName !== 'Patient' && (
+                <p className="text-white/90 text-sm mt-2 font-semibold">
+                  👤 {report.aiAnalysis.patientName}
+                  {report.aiAnalysis?.patientAge && report.aiAnalysis.patientAge !== 'N/A' && ` • Age: ${report.aiAnalysis.patientAge}`}
+                  {report.aiAnalysis?.patientGender && report.aiAnalysis.patientGender !== 'N/A' && ` • ${report.aiAnalysis.patientGender}`}
+                </p>
+              )}
+              {report.aiAnalysis?.reportDate && report.aiAnalysis.reportDate !== 'N/A' && (
+                <p className="text-white/70 text-sm">📅 Report Date: {report.aiAnalysis.reportDate}</p>
+              )}
+            </div>
           </div>
-          <div className="text-center p-4 bg-white/10 backdrop-blur-sm rounded-xl"><p className="text-4xl font-bold">{healthScore}</p><p className="text-sm text-white/70">Health Score</p></div>
+          <div className="flex flex-col gap-3">
+            <div className="text-center p-4 bg-white/10 backdrop-blur-sm rounded-xl"><p className="text-4xl font-bold">{healthScore}</p><p className="text-sm text-white/70">Health Score</p></div>
+            <button
+              onClick={handleCompare}
+              className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-all flex items-center gap-2 text-sm font-medium"
+            >
+              <BarChart3 className="w-4 h-4" />
+              Compare with Previous
+            </button>
+          </div>
         </div>
       </div>
 
       {aiAnalysis?.summary && (
         <div className="bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-sm">
           <h2 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2"><Activity className="w-5 h-5 text-cyan-500" /> Summary</h2>
-          <p className="text-slate-700 leading-relaxed">{aiAnalysis.summary}</p>
+          <p className="text-slate-700 leading-relaxed mb-4">{aiAnalysis.summary}</p>
+          
+          {/* Key Findings - Mandatory */}
+          {aiAnalysis?.keyFindings && aiAnalysis.keyFindings.length > 0 && (
+            <div className="mt-4 p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
+              <h3 className="font-semibold text-blue-900 mb-3">🔍 Key Findings</h3>
+              <ul className="space-y-2">
+                {aiAnalysis.keyFindings.map((finding, i) => (
+                  <li key={i} className="flex items-start gap-2 text-slate-700">
+                    <span className="text-blue-500 font-bold mt-0.5">•</span>
+                    {finding}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 
       {aiAnalysis?.metrics && Object.keys(aiAnalysis.metrics).length > 0 && (
         <div className="bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-800 mb-6">Health Metrics</h2>
-          <div className="grid md:grid-cols-3 gap-4">
+          <h2 className="text-lg font-bold text-slate-800 mb-6">All Health Metrics</h2>
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {Object.entries(aiAnalysis.metrics).map(([key, metric]) => (
               <button
                 key={key}
@@ -292,20 +372,20 @@ export default function ReportDetails() {
             {aiAnalysis.deficiencies.map((def, i) => (
               <button
                 key={i}
-                onClick={() => setSelectedMetric({ key: def.name.toLowerCase().replace(/\s+/g, ''), name: def.name, value: def.currentValue, normalRange: def.normalRange, unit: '' })}
+                onClick={() => def.name && setSelectedMetric({ key: def.name.toLowerCase().replace(/\s+/g, ''), name: def.name, value: def.currentValue, normalRange: def.normalRange, unit: '' })}
                 className={`p-4 rounded-xl border-2 cursor-pointer transition-all hover:shadow-md hover:scale-105 text-left ${def.severity === 'severe' ? 'bg-red-50 border-red-200 hover:border-red-300' : def.severity === 'moderate' ? 'bg-amber-50 border-amber-200 hover:border-amber-300' : 'bg-yellow-50 border-yellow-200 hover:border-yellow-300'}`}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-slate-800">{def.name}</span>
+                  <span className="font-bold text-slate-800">{def.name || 'Unknown Deficiency'}</span>
                   <div className="flex items-center gap-2">
                     <span className={`px-2 py-0.5 rounded text-xs font-medium ${def.severity === 'severe' ? 'bg-red-100 text-red-700' : def.severity === 'moderate' ? 'bg-amber-100 text-amber-700' : 'bg-yellow-100 text-yellow-700'}`}>
-                      {def.severity}
+                      {def.severity || 'unknown'}
                     </span>
                     <Eye className="w-4 h-4 text-slate-400" />
                   </div>
                 </div>
-                <p className="text-sm text-slate-700 font-medium">Current: {def.currentValue}</p>
-                <p className="text-sm text-slate-600">Normal: {def.normalRange}</p>
+                <p className="text-sm text-slate-700 font-medium">Current: {def.currentValue || 'N/A'}</p>
+                <p className="text-sm text-slate-600">Normal: {def.normalRange || 'N/A'}</p>
                 {def.symptoms?.length > 0 && <p className="text-xs text-slate-600 mt-2">Symptoms: {def.symptoms.join(', ')}</p>}
               </button>
             ))}
@@ -467,6 +547,80 @@ export default function ReportDetails() {
               </div>
             )}
           </div>
+        </div>
+      )}
+
+      {showComparison && comparisonData && (
+        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl border-2 border-blue-200 p-6 shadow-lg">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-bold text-blue-900 flex items-center gap-2">
+              <TrendingUp className="w-6 h-6 text-blue-600" />
+              Report Comparison
+            </h2>
+            <button
+              onClick={() => setShowComparison(false)}
+              className="text-blue-600 hover:text-blue-800 text-sm"
+            >
+              Close
+            </button>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6 mb-6">
+            <div className="bg-white rounded-xl p-4 border-2 border-blue-200">
+              <p className="text-sm text-blue-600 font-semibold mb-2">Current Report</p>
+              <p className="text-2xl font-bold text-blue-900">{comparisonData.currentReport?.healthScore || 0}</p>
+              <p className="text-xs text-blue-600 mt-1">{new Date(comparisonData.currentReport?.createdAt).toLocaleDateString()}</p>
+            </div>
+            <div className="bg-white rounded-xl p-4 border-2 border-amber-200">
+              <p className="text-sm text-amber-600 font-semibold mb-2">Previous Report</p>
+              <p className="text-2xl font-bold text-amber-900">{previousReport?.healthScore || 0}</p>
+              <p className="text-xs text-amber-600 mt-1">{new Date(previousReport?.createdAt).toLocaleDateString()}</p>
+            </div>
+          </div>
+
+          {/* Metrics Comparison */}
+          {comparisonData.currentReport?.metrics && (
+            <div className="bg-white rounded-xl p-4 border-2 border-blue-200">
+              <h3 className="font-bold text-blue-900 mb-4">Metrics Comparison</h3>
+              <div className="space-y-3">
+                {Object.entries(comparisonData.currentReport.metrics || {}).map(([key, currentMetric]) => {
+                  const previousMetric = previousReport?.metrics?.[key];
+                  if (!previousMetric) return null;
+                  
+                  const improvement = currentMetric.value - previousMetric.value;
+                  const isImprovement = (currentMetric.status === 'normal' && previousMetric.status !== 'normal') || 
+                                       (improvement > 0 && key.includes('HDL')) ||
+                                       (improvement < 0 && !key.includes('HDL') && !key.includes('Glucose') && !key.includes('Cholesterol'));
+                  
+                  return (
+                    <div key={key} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+                      <div className="flex-1">
+                        <p className="font-medium text-slate-800">{key}</p>
+                        <div className="flex items-center gap-4 mt-1">
+                          <div className="text-sm">
+                            <span className="text-slate-600">Previous: </span>
+                            <span className="font-semibold text-amber-700">{previousMetric.value} {previousMetric.unit}</span>
+                          </div>
+                          <div className="text-sm">
+                            <span className="text-slate-600">Current: </span>
+                            <span className="font-semibold text-blue-700">{currentMetric.value} {currentMetric.unit}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <div className={`text-sm font-bold ${isImprovement ? 'text-green-600' : 'text-red-600'}`}>
+                          {isImprovement ? '↓' : '↑'} {Math.abs(improvement).toFixed(1)}
+                        </div>
+                        <p className={`text-xs font-medium ${isImprovement ? 'text-green-600' : 'text-red-600'}`}>
+                          {isImprovement ? 'Improved' : 'Changed'}
+                        </p>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
       )}
 

@@ -1,6 +1,6 @@
 const HealthReport = require('../models/HealthReport');
 const Doctor = require('../models/Doctor');
-const { analyzeHealthReport, compareReports, chatWithReport } = require('../services/aiService');
+const { analyzeHealthReport, compareReports, chatWithReport } = require('../services/aiService-fixed');
 const pdfParse = require('pdf-parse');
 const fs = require('fs');
 const cache = require('../utils/cache');
@@ -47,7 +47,45 @@ exports.uploadReport = async (req, res) => {
     const userProfile = req.user.profile || {};
     let aiAnalysis;
     try {
+      console.log('\n🔄 ========== ANALYZING REPORT ==========');
+      console.log('📝 PDF Text Length:', extractedText.length, 'characters');
+      console.log('📝 First 1000 characters of PDF text:');
+      console.log('---PDF-START---');
+      console.log(extractedText.substring(0, 1000));
+      console.log('---PDF-END---');
+      
+      console.log('\n🔄 Analyzing report...');
       aiAnalysis = await analyzeHealthReport(extractedText, userProfile);
+      
+      console.log('\n📦 ========== FULL AI ANALYSIS OBJECT ==========');
+      console.log('Type:', typeof aiAnalysis);
+      console.log('Keys:', Object.keys(aiAnalysis));
+      console.log('\n📊 COMPLETE AI ANALYSIS:');
+      console.log(JSON.stringify(aiAnalysis, null, 2).substring(0, 3000));
+      console.log('========================================\n');
+      
+      console.log('\n✅ ========== AI ANALYSIS RECEIVED ==========');
+      console.log('📊 Patient Name:', aiAnalysis.patientName || 'NOT FOUND');
+      console.log('📊 Health Score:', aiAnalysis.healthScore);
+      console.log('📊 Summary:', aiAnalysis.summary?.substring(0, 200) || 'NO SUMMARY');
+      console.log('📊 Key Findings:', aiAnalysis.keyFindings?.length || 0, 'items');
+      console.log('📊 Metrics:', Object.keys(aiAnalysis.metrics || {}).length, 'metrics found');
+      
+      if (aiAnalysis.metrics && Object.keys(aiAnalysis.metrics).length > 0) {
+        console.log('\n📊 SAMPLE METRICS (first 3):');
+        Object.entries(aiAnalysis.metrics).slice(0, 3).forEach(([key, metric]) => {
+          console.log(`   - ${key}: ${metric.value} ${metric.unit} (${metric.status})`);
+        });
+      } else {
+        console.log('⚠️  NO METRICS EXTRACTED!');
+      }
+      
+      console.log('\n📊 Diet Plan:');
+      console.log('   Breakfast:', aiAnalysis.dietPlan?.breakfast?.length || 0, 'meals');
+      console.log('   Lunch:', aiAnalysis.dietPlan?.lunch?.length || 0, 'meals');
+      console.log('   Dinner:', aiAnalysis.dietPlan?.dinner?.length || 0, 'meals');
+      console.log('   Snacks:', aiAnalysis.dietPlan?.snacks?.length || 0, 'meals');
+      console.log('========================================\n');
     } catch (aiError) {
       console.error('AI Analysis failed:', aiError.message);
       // Save report with error status
@@ -56,6 +94,167 @@ exports.uploadReport = async (req, res) => {
       await report.save();
       return res.status(500).json({ message: `AI Analysis failed: ${aiError.message}` });
     }
+    
+    // ✅ CRITICAL FIX: Validate and fix healthScore
+    if (aiAnalysis.healthScore) {
+      // If it's a string, convert to number
+      if (typeof aiAnalysis.healthScore === 'string') {
+        const scoreMap = {
+          'excellent': 95, 'very good': 90, 'good': 85,
+          'fair': 75, 'poor': 60, 'very poor': 50
+        };
+        const lowerScore = aiAnalysis.healthScore.toLowerCase();
+        aiAnalysis.healthScore = scoreMap[lowerScore] || 75;
+        console.log('⚠️ Converted string healthScore to number:', aiAnalysis.healthScore);
+      }
+      // Ensure it's a valid number between 0-100
+      aiAnalysis.healthScore = Math.max(0, Math.min(100, Number(aiAnalysis.healthScore) || 75));
+    } else {
+      aiAnalysis.healthScore = 75;
+      console.log('⚠️ No healthScore, using default: 75');
+    }
+    console.log('✅ Final healthScore:', aiAnalysis.healthScore, '(type:', typeof aiAnalysis.healthScore, ')');
+    
+    // ✅ CRITICAL FIX: Validate deficiencies array
+    if (!Array.isArray(aiAnalysis.deficiencies)) {
+      console.warn('⚠️ deficiencies is not an array, fixing...');
+      if (typeof aiAnalysis.deficiencies === 'string') {
+        // Convert string to array with single object
+        aiAnalysis.deficiencies = [{
+          name: aiAnalysis.deficiencies,
+          severity: 'moderate',
+          currentValue: 'N/A',
+          normalRange: 'N/A',
+          symptoms: []
+        }];
+      } else if (aiAnalysis.deficiencies && typeof aiAnalysis.deficiencies === 'object') {
+        // If it's an object, wrap it in array
+        aiAnalysis.deficiencies = [aiAnalysis.deficiencies];
+      } else {
+        aiAnalysis.deficiencies = [];
+      }
+    }
+    
+    // ✅ CRITICAL FIX: Validate supplements array
+    console.log('🔍 Checking supplements:', typeof aiAnalysis.supplements, '=', aiAnalysis.supplements);
+    if (!Array.isArray(aiAnalysis.supplements)) {
+      console.warn('⚠️ supplements is not an array, fixing...');
+      if (typeof aiAnalysis.supplements === 'string') {
+        // Convert string to array with single object
+        console.log('Converting string supplements to array');
+        aiAnalysis.supplements = [{
+          category: 'General Health',
+          reason: aiAnalysis.supplements,
+          naturalSources: 'Consult healthcare professional',
+          note: 'Please consult with your doctor'
+        }];
+      } else if (aiAnalysis.supplements && typeof aiAnalysis.supplements === 'object') {
+        // If it's an object, wrap it in array
+        console.log('Wrapping object supplements in array');
+        aiAnalysis.supplements = [aiAnalysis.supplements];
+      } else {
+        console.log('Setting supplements to empty array');
+        aiAnalysis.supplements = [];
+      }
+    }
+    console.log('✅ Supplements after validation:', Array.isArray(aiAnalysis.supplements), 'length:', aiAnalysis.supplements?.length);
+    
+    // ✅ Validate keyFindings array
+    if (!Array.isArray(aiAnalysis.keyFindings)) {
+      console.warn('⚠️ keyFindings is not an array, fixing...');
+      if (typeof aiAnalysis.keyFindings === 'string') {
+        aiAnalysis.keyFindings = [aiAnalysis.keyFindings];
+      } else {
+        aiAnalysis.keyFindings = [];
+      }
+    }
+    
+    // ✅ Validate riskFactors array
+    if (aiAnalysis.riskFactors && !Array.isArray(aiAnalysis.riskFactors)) {
+      console.warn('⚠️ riskFactors is not an array, fixing...');
+      if (typeof aiAnalysis.riskFactors === 'string') {
+        aiAnalysis.riskFactors = [aiAnalysis.riskFactors];
+      } else {
+        aiAnalysis.riskFactors = [];
+      }
+    }
+    
+    // ✅ Validate dietPlan arrays
+    if (aiAnalysis.dietPlan) {
+      ['breakfast', 'lunch', 'dinner', 'snacks'].forEach(meal => {
+        if (aiAnalysis.dietPlan[meal] && !Array.isArray(aiAnalysis.dietPlan[meal])) {
+          console.warn(`⚠️ dietPlan.${meal} is not an array, fixing...`);
+          aiAnalysis.dietPlan[meal] = [];
+        }
+      });
+      ['foodsToIncrease', 'foodsToLimit', 'tips'].forEach(field => {
+        if (aiAnalysis.dietPlan[field] && !Array.isArray(aiAnalysis.dietPlan[field])) {
+          console.warn(`⚠️ dietPlan.${field} is not an array, fixing...`);
+          if (typeof aiAnalysis.dietPlan[field] === 'string') {
+            aiAnalysis.dietPlan[field] = [aiAnalysis.dietPlan[field]];
+          } else {
+            aiAnalysis.dietPlan[field] = [];
+          }
+        }
+      });
+    }
+    
+    // ✅ Validate recommendations arrays
+    if (aiAnalysis.recommendations) {
+      ['immediate', 'shortTerm', 'longTerm', 'lifestyle', 'tests'].forEach(field => {
+        if (aiAnalysis.recommendations[field] && !Array.isArray(aiAnalysis.recommendations[field])) {
+          console.warn(`⚠️ recommendations.${field} is not an array, fixing...`);
+          if (typeof aiAnalysis.recommendations[field] === 'string') {
+            aiAnalysis.recommendations[field] = [aiAnalysis.recommendations[field]];
+          } else {
+            aiAnalysis.recommendations[field] = [];
+          }
+        }
+      });
+    }
+    
+    // ✅ Validate doctorConsultation.specializations array
+    if (aiAnalysis.doctorConsultation && aiAnalysis.doctorConsultation.specializations && 
+        !Array.isArray(aiAnalysis.doctorConsultation.specializations)) {
+      console.warn('⚠️ doctorConsultation.specializations is not an array, fixing...');
+      if (typeof aiAnalysis.doctorConsultation.specializations === 'string') {
+        aiAnalysis.doctorConsultation.specializations = [aiAnalysis.doctorConsultation.specializations];
+      } else {
+        aiAnalysis.doctorConsultation.specializations = [];
+      }
+    }
+    
+    console.log('✅ Validated all arrays - deficiencies:', aiAnalysis.deficiencies?.length, 'supplements:', aiAnalysis.supplements?.length);
+    
+    // ✅ CRITICAL: Check if arrays contain strings instead of objects
+    if (Array.isArray(aiAnalysis.deficiencies) && aiAnalysis.deficiencies.length > 0) {
+      if (typeof aiAnalysis.deficiencies[0] === 'string') {
+        console.warn('⚠️ deficiencies array contains strings, converting to objects...');
+        aiAnalysis.deficiencies = aiAnalysis.deficiencies.map(def => ({
+          name: def,
+          severity: 'moderate',
+          currentValue: 'N/A',
+          normalRange: 'N/A',
+          symptoms: []
+        }));
+        console.log('✅ Converted deficiencies to objects:', aiAnalysis.deficiencies.length);
+      }
+    }
+    
+    if (Array.isArray(aiAnalysis.supplements) && aiAnalysis.supplements.length > 0) {
+      if (typeof aiAnalysis.supplements[0] === 'string') {
+        console.warn('⚠️ supplements array contains strings, converting to objects...');
+        aiAnalysis.supplements = aiAnalysis.supplements.map(supp => ({
+          category: 'General Health',
+          reason: supp,
+          naturalSources: 'Consult healthcare professional',
+          note: 'Consult doctor for dosage'
+        }));
+        console.log('✅ Converted supplements to objects:', aiAnalysis.supplements.length);
+      }
+    }
+    
+    console.log('✅ FINAL CHECK - deficiencies:', aiAnalysis.deficiencies?.length, 'supplements:', aiAnalysis.supplements?.length);
     
     report.aiAnalysis = aiAnalysis;
     

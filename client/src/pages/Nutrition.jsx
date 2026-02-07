@@ -192,7 +192,7 @@ export default function Nutrition() {
   const waterGoal = 8; // 8 glasses per day
 
   return (
-    <div className={`w-full h-full bg-white flex flex-col ${showAddMeal ? 'overflow-hidden' : ''}`}>
+    <div className={`w-full h-full bg-gradient-to-br from-cyan-50 via-blue-50 to-cyan-100 flex flex-col ${showAddMeal ? 'overflow-hidden' : ''}`}>
       {/* Date Picker Header */}
       <div className="w-full px-3 md:px-6 lg:px-8 py-3 flex items-center justify-between bg-white border-b border-gray-200 sticky top-0 z-10 shrink-0">
         <button
@@ -213,7 +213,9 @@ export default function Nutrition() {
         </button>
       </div>
 
-      <div className="w-full px-3 md:px-6 lg:px-8 py-4 space-y-4 pb-24 flex-1 overflow-y-auto">
+      {/* Main Content with Max Width on Desktop */}
+      <div className="w-full flex-1 overflow-y-auto flex justify-center">
+        <div className="w-full max-w-4xl px-3 md:px-6 lg:px-8 py-4 space-y-4 pb-24">
         {!healthGoal && (
           <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 flex items-start gap-3">
             <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
@@ -385,6 +387,7 @@ export default function Nutrition() {
               );
             })}
           </div>
+        </div>
         </div>
       </div>
 

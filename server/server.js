@@ -5,6 +5,12 @@ const connectDB = require('./config/db');
 const fs = require('fs');
 const path = require('path');
 
+// ✅ FORCE CLEAR MODULE CACHE FOR DEVELOPMENT
+console.log('🔄 Clearing module cache for aiService...');
+const aiServicePath = path.join(__dirname, 'services', 'aiService.js');
+delete require.cache[require.resolve('./services/aiService')];
+console.log('✅ Cache cleared, aiService will reload fresh');
+
 dotenv.config();
 
 // Create uploads directory

@@ -7,6 +7,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import DoctorRegister from './pages/DoctorRegister';
 import Dashboard from './pages/Dashboard';
+import DashboardEnhanced from './pages/DashboardEnhanced';
 import DoctorDashboard from './pages/DoctorDashboard';
 import UploadReport from './pages/UploadReport';
 import ReportDetails from './pages/ReportDetails';
@@ -25,6 +26,9 @@ import DoctorAvailability from './pages/DoctorAvailability';
 import DietPlan from './pages/DietPlan';
 import AIChat from './pages/AIChat';
 import Nutrition from './pages/Nutrition';
+import AllReports from './pages/AllReports';
+import Challenge30Days from './pages/Challenge30Days';
+import ReportSummary from './pages/ReportSummary';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -73,9 +77,13 @@ export default function App() {
       <Route path="/register/doctor" element={user ? <Navigate to="/doctor/dashboard" /> : <DoctorRegister />} />
       
       {/* Patient Routes */}
-      <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Dashboard /></Layout></ProtectedRoute>} />
+      <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><DashboardEnhanced /></Layout></ProtectedRoute>} />
+      <Route path="/dashboard/classic" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Dashboard /></Layout></ProtectedRoute>} />
       <Route path="/upload" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><UploadReport /></Layout></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><AllReports /></Layout></ProtectedRoute>} />
       <Route path="/reports/:id" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><ReportDetails /></Layout></ProtectedRoute>} />
+      <Route path="/reports/:id/summary" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><ReportSummary /></Layout></ProtectedRoute>} />
+      <Route path="/challenge" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Challenge30Days /></Layout></ProtectedRoute>} />
       <Route path="/doctors" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Doctors /></Layout></ProtectedRoute>} />
       <Route path="/consultation/:appointmentId" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Consultation /></ProtectedRoute>} />
       <Route path="/consultation-summary/:appointmentId" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><ConsultationSummary /></Layout></ProtectedRoute>} />

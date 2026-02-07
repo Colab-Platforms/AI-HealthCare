@@ -86,17 +86,17 @@ export default function MobileBottomNav() {
 
       {/* More Menu Dropdown */}
       {showMoreMenu && (
-        <div className="fixed bottom-24 right-4 bg-white rounded-2xl shadow-2xl z-50 w-56 overflow-hidden animate-fade-in">
-          <div className="p-4 border-b border-[#E5DFD3]">
+        <div className="fixed bottom-24 right-4 left-4 sm:left-auto sm:w-72 bg-gradient-to-br from-white to-cyan-50 rounded-3xl shadow-2xl z-50 overflow-hidden animate-fade-in border-2 border-cyan-200">
+          <div className="p-5 bg-gradient-to-r from-cyan-500 to-blue-500">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-[#2C2416]">Menu</h3>
-              <button onClick={() => setShowMoreMenu(false)} className="text-[#5C4F3D] hover:text-[#2C2416]">
+              <h3 className="font-bold text-white text-lg">Menu</h3>
+              <button onClick={() => setShowMoreMenu(false)} className="text-white hover:bg-white/20 rounded-full p-1.5 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
           </div>
 
-          <div className="space-y-1 p-2">
+          <div className="space-y-1 p-3">
             {moreMenuItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.path);
@@ -105,13 +105,15 @@ export default function MobileBottomNav() {
                 return (
                   <div
                     key={item.label}
-                    className="w-full flex items-center justify-between px-4 py-3 text-[#5C4F3D] bg-[#F5F1EA] rounded-xl opacity-60 cursor-not-allowed text-sm"
+                    className="w-full flex items-center justify-between px-4 py-3.5 text-slate-500 bg-slate-50 rounded-xl opacity-60 cursor-not-allowed text-sm"
                   >
                     <div className="flex items-center gap-3">
-                      <Icon className="w-5 h-5" />
-                      <span>{item.label}</span>
+                      <div className="w-10 h-10 rounded-xl bg-slate-200 flex items-center justify-center">
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <span className="font-medium">{item.label}</span>
                     </div>
-                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-1 rounded-full font-medium">Soon</span>
+                    <span className="text-xs bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full font-semibold">Soon</span>
                   </div>
                 );
               }
@@ -124,10 +126,12 @@ export default function MobileBottomNav() {
                       toast.info('Appointment coming soon');
                       setShowMoreMenu(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-3 text-[#5C4F3D] hover:bg-[#F5F1EA] rounded-xl transition-colors text-sm"
+                    className="w-full flex items-center gap-3 px-4 py-3.5 text-slate-700 hover:bg-cyan-50 rounded-xl transition-all text-sm group"
                   >
-                    <Icon className="w-5 h-5" />
-                    <span>{item.label}</span>
+                    <div className="w-10 h-10 rounded-xl bg-cyan-100 flex items-center justify-center group-hover:bg-cyan-200 transition-colors">
+                      <Icon className="w-5 h-5 text-cyan-600" />
+                    </div>
+                    <span className="font-medium">{item.label}</span>
                   </button>
                 );
               }
@@ -137,29 +141,43 @@ export default function MobileBottomNav() {
                   key={item.path}
                   to={item.path}
                   onClick={() => setShowMoreMenu(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-colors text-sm ${
+                  className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all text-sm group ${
                     active
-                      ? 'bg-[#F5F1EA] text-[#8B7355] font-medium'
-                      : 'text-[#5C4F3D] hover:bg-[#F5F1EA]'
+                      ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg'
+                      : 'text-slate-700 hover:bg-cyan-50'
                   }`}
                 >
-                  <Icon className="w-5 h-5" />
-                  <span>{item.label}</span>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+                    active 
+                      ? 'bg-white/20' 
+                      : 'bg-cyan-100 group-hover:bg-cyan-200'
+                  }`}>
+                    <Icon className={`w-5 h-5 ${active ? 'text-white' : 'text-cyan-600'}`} />
+                  </div>
+                  <span className="font-medium">{item.label}</span>
                 </Link>
               );
             })}
 
-            <div className="border-t border-[#E5DFD3] my-2" />
+            <div className="border-t-2 border-cyan-100 my-3" />
 
-            <div className="px-4 py-2 text-xs text-[#5C4F3D] font-medium">
-              {user?.name}
+            <div className="px-4 py-2 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-white font-bold">
+                {user?.name?.[0]?.toUpperCase()}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-slate-800 truncate">{user?.name}</p>
+                <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+              </div>
             </div>
 
             <button
               onClick={handleLogout}
-              className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl transition-colors text-sm font-medium"
+              className="w-full flex items-center gap-3 px-4 py-3.5 text-red-600 hover:bg-red-50 rounded-xl transition-all text-sm font-medium group"
             >
-              <LogOut className="w-5 h-5" />
+              <div className="w-10 h-10 rounded-xl bg-red-100 flex items-center justify-center group-hover:bg-red-200 transition-colors">
+                <LogOut className="w-5 h-5" />
+              </div>
               <span>Logout</span>
             </button>
           </div>
@@ -177,7 +195,7 @@ export default function MobileBottomNav() {
                 <Link
                   key={item.path}
                   to={item.path}
-                  className="nav-center-fab"
+                  className="nav-center-fab flex flex-col items-center justify-center"
                   aria-label={item.label}
                   title={item.label}
                 >
@@ -190,11 +208,12 @@ export default function MobileBottomNav() {
               <Link
                 key={item.path}
                 to={item.path}
-                className={`nav-item-modern ${active ? 'active' : ''}`}
+                className={`nav-item-modern flex flex-col items-center justify-center gap-0.5 ${active ? 'active' : ''}`}
                 aria-label={item.label}
                 title={item.label}
               >
                 <Icon className="w-5 h-5" />
+                <span className="text-[9px] font-medium">{item.label}</span>
               </Link>
             );
           })}
@@ -202,11 +221,12 @@ export default function MobileBottomNav() {
           {/* More Button */}
           <button
             onClick={() => setShowMoreMenu(!showMoreMenu)}
-            className={`nav-item-modern ${showMoreMenu ? 'active' : ''}`}
+            className={`nav-item-modern flex flex-col items-center justify-center gap-0.5 ${showMoreMenu ? 'active' : ''}`}
             aria-label="More options"
             title="More options"
           >
             <MoreVertical className="w-5 h-5" />
+            <span className="text-[9px] font-medium">More</span>
           </button>
         </div>
       </nav>
