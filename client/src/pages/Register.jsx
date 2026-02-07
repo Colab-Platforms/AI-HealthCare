@@ -1,12 +1,16 @@
 import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Activity, Mail, Lock, User, Eye, EyeOff, ArrowRight, Stethoscope, Heart, ArrowLeft, Scale, Ruler, Droplet, Cigarette, Wine, Moon, Dumbbell, Target, TrendingUp, TrendingDown, Minus, Plus, X } from 'lucide-react';
+import { Activity, Mail, Lock, User, Eye, EyeOff, ArrowRight, Stethoscope, Heart, ArrowLeft, Scale, Ruler, Droplet, Cigarette, Wine, Moon, Dumbbell, Target, TrendingUp, TrendingDown, Minus, Plus, X, CheckCircle2, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function Register() {
-  const [step, setStep] = useState(1); // 1: role selection, 2: basic info, 3: health profile, 4: lifestyle, 5: goals
-  const [userType, setUserType] = useState(null); // 'patient' or 'doctor'
+  const location = useLocation();
+  const searchParams = new URLSearchParams(location.search);
+  
+  // Always skip role selection and start at step 2 (basic info)
+  const [step, setStep] = useState(2);
+  const [userType, setUserType] = useState('patient'); // Always patient
   const [formData, setFormData] = useState({ 
     // Basic Info
     name: '', 
@@ -48,11 +52,8 @@ export default function Register() {
   const navigate = useNavigate();
 
   const handleRoleSelect = (role) => {
-    setUserType(role);
     if (role === 'doctor') {
       navigate('/register/doctor');
-    } else {
-      setStep(2);
     }
   };
 
@@ -130,7 +131,14 @@ export default function Register() {
     setStep(step + 1);
   };
 
-  const prevStep = () => setStep(step - 1);
+  const prevStep = () => {
+    if (step === 2) {
+      // Go back to landing page instead of role selection
+      navigate('/');
+    } else {
+      setStep(step - 1);
+    }
+  };
 
   const toggleArrayItem = (field, item) => {
     setFormData(prev => ({
@@ -157,124 +165,78 @@ export default function Register() {
     }));
   };
 
-  // Step 1: Role Selection
-  if (step === 1) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4" style={{ backgroundColor: '#F5F1EA' }}>
-        <div className="w-full max-w-2xl">
-          {/* Logo */}
-          <div className="flex items-center justify-center gap-3 mb-8">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#8B7355' }}>
-              <Activity className="w-7 h-7 text-white" />
-            </div>
-            <span className="text-2xl font-bold" style={{ color: '#2C2416' }}>HealthAI</span>
-          </div>
-
-          <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold mb-2" style={{ color: '#2C2416' }}>Join HealthAI</h1>
-            <p style={{ color: '#5C4F3D' }}>Choose how you want to use our platform</p>
-          </div>
-
-          {/* Role Selection Cards */}
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Patient Card */}
-            <button
-              onClick={() => handleRoleSelect('patient')}
-              className="bg-white rounded-2xl p-8 text-left hover:shadow-lg transition-all group"
-              style={{ border: '2px solid #E5DFD3' }}
-            >
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 transition-colors" style={{ backgroundColor: '#F5F1EA' }}>
-                <Heart className="w-8 h-8 transition-colors" style={{ color: '#8B7355' }} />
-              </div>
-              <h2 className="text-xl font-bold mb-2" style={{ color: '#2C2416' }}>I am a Patient</h2>
-              <p className="text-sm mb-4" style={{ color: '#5C4F3D' }}>
-                Upload health reports, get AI-powered insights, personalized diet plans, and connect with doctors.
-              </p>
-              <ul className="text-sm space-y-2" style={{ color: '#5C4F3D' }}>
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#8B7355' }}></div>
-                  AI Health Report Analysis
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#8B7355' }}></div>
-                  Personalized Diet Plans
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#8B7355' }}></div>
-                  Video Consultations
-                </li>
-              </ul>
-              <div className="mt-6 flex items-center font-medium" style={{ color: '#8B7355' }}>
-                Get Started <ArrowRight className="w-4 h-4 ml-2" />
-              </div>
-            </button>
-
-            {/* Doctor Card */}
-            <button
-              onClick={() => handleRoleSelect('doctor')}
-              className="bg-white rounded-2xl p-8 text-left hover:shadow-lg transition-all group"
-              style={{ border: '2px solid #E5DFD3' }}
-            >
-              <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4 transition-colors" style={{ backgroundColor: '#F5F1EA' }}>
-                <Stethoscope className="w-8 h-8 transition-colors" style={{ color: '#8B7355' }} />
-              </div>
-              <h2 className="text-xl font-bold mb-2" style={{ color: '#2C2416' }}>I am a Doctor</h2>
-              <p className="text-sm mb-4" style={{ color: '#5C4F3D' }}>
-                Join our platform to provide consultations, manage appointments, and help patients.
-              </p>
-              <ul className="text-sm space-y-2" style={{ color: '#5C4F3D' }}>
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#8B7355' }}></div>
-                  Manage Your Schedule
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#8B7355' }}></div>
-                  Video Consultations
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#8B7355' }}></div>
-                  View Patient Reports
-                </li>
-              </ul>
-              <div className="mt-6 flex items-center font-medium" style={{ color: '#8B7355' }}>
-                Apply Now <ArrowRight className="w-4 h-4 ml-2" />
-              </div>
-            </button>
-          </div>
-
-          <p className="text-center mt-8" style={{ color: '#5C4F3D' }}>
-            Already have an account?{' '}
-            <Link to="/login" className="font-semibold" style={{ color: '#8B7355' }}>Sign in</Link>
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Step 1 is completely removed - we start at step 2
 
   // Step 2: Patient Registration Form - Basic Info
   if (step === 2) {
     return (
       <div className="min-h-screen flex" style={{ backgroundColor: '#F5F1EA' }}>
-        {/* Left Panel */}
+        {/* Left Panel with Animation */}
         <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden" style={{ background: 'linear-gradient(to bottom right, #8B7355, #A0826D, #8B7355)' }}>
           <div className="absolute inset-0">
             <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
             <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
           </div>
           <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
-            <div className="w-20 h-20 bg-white/20 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-8">
-              <Heart className="w-10 h-10" />
+            {/* Animated Medical Icon */}
+            <div className="relative w-32 h-32 mb-8">
+              <div className="absolute inset-0 bg-white/20 backdrop-blur-xl rounded-full animate-pulse"></div>
+              <div className="absolute inset-4 bg-white/30 backdrop-blur-xl rounded-full flex items-center justify-center">
+                <Heart className="w-12 h-12 animate-pulse" />
+              </div>
+              {/* Progress Ring */}
+              <svg className="absolute inset-0 w-full h-full -rotate-90">
+                <circle cx="64" cy="64" r="60" stroke="white" strokeOpacity="0.2" strokeWidth="4" fill="none" />
+                <circle 
+                  cx="64" cy="64" r="60" 
+                  stroke="white" 
+                  strokeWidth="4" 
+                  fill="none"
+                  strokeDasharray="377"
+                  strokeDashoffset={377 - (377 * 0.25)}
+                  className="transition-all duration-500"
+                  strokeLinecap="round"
+                />
+              </svg>
             </div>
+            
             <h1 className="text-4xl font-bold mb-4 text-center">Your Health Journey Starts Here</h1>
-            <p className="text-xl text-white/80 text-center max-w-md">
+            <p className="text-xl text-white/80 text-center max-w-md mb-6">
               Get personalized health insights, diet plans, and supplement recommendations based on your unique profile.
             </p>
-            <div className="mt-8 flex gap-2">
-              <div className="w-2 h-2 rounded-full bg-white"></div>
-              <div className="w-2 h-2 rounded-full bg-white/40"></div>
-              <div className="w-2 h-2 rounded-full bg-white/40"></div>
-              <div className="w-2 h-2 rounded-full bg-white/40"></div>
+            
+            {/* Progress Steps */}
+            <div className="flex items-center gap-3 mt-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                </div>
+                <span className="text-sm font-medium">Step 1</span>
+              </div>
+              <div className="w-12 h-0.5 bg-white/40"></div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-white/40 flex items-center justify-center">
+                  <span className="text-sm font-bold">2</span>
+                </div>
+                <span className="text-sm">Step 2</span>
+              </div>
+              <div className="w-12 h-0.5 bg-white/20"></div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                  <span className="text-sm">3</span>
+                </div>
+                <span className="text-sm text-white/60">Step 3</span>
+              </div>
+              <div className="w-12 h-0.5 bg-white/20"></div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                  <span className="text-sm">4</span>
+                </div>
+                <span className="text-sm text-white/60">Step 4</span>
+              </div>
             </div>
+            
+            <p className="text-sm text-white/70 mt-6">25% Complete - Almost there!</p>
           </div>
         </div>
         
@@ -419,19 +381,65 @@ export default function Register() {
             <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
           </div>
           <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
-            <div className="w-20 h-20 bg-white/20 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-8">
-              <Scale className="w-10 h-10" />
+            {/* Animated Medical Icon */}
+            <div className="relative w-32 h-32 mb-8">
+              <div className="absolute inset-0 bg-white/20 backdrop-blur-xl rounded-full animate-pulse"></div>
+              <div className="absolute inset-4 bg-white/30 backdrop-blur-xl rounded-full flex items-center justify-center">
+                <Scale className="w-12 h-12 animate-bounce" style={{ animationDuration: '2s' }} />
+              </div>
+              {/* Progress Ring */}
+              <svg className="absolute inset-0 w-full h-full -rotate-90">
+                <circle cx="64" cy="64" r="60" stroke="white" strokeOpacity="0.2" strokeWidth="4" fill="none" />
+                <circle 
+                  cx="64" cy="64" r="60" 
+                  stroke="white" 
+                  strokeWidth="4" 
+                  fill="none"
+                  strokeDasharray="377"
+                  strokeDashoffset={377 - (377 * 0.50)}
+                  className="transition-all duration-500"
+                  strokeLinecap="round"
+                />
+              </svg>
             </div>
+            
             <h1 className="text-4xl font-bold mb-4 text-center">Health Profile</h1>
-            <p className="text-xl text-white/80 text-center max-w-md">
+            <p className="text-xl text-white/80 text-center max-w-md mb-6">
               Help us calculate your personalized nutrition goals based on your body metrics.
             </p>
-            <div className="mt-8 flex gap-2">
-              <div className="w-2 h-2 rounded-full bg-white/40"></div>
-              <div className="w-2 h-2 rounded-full bg-white"></div>
-              <div className="w-2 h-2 rounded-full bg-white/40"></div>
-              <div className="w-2 h-2 rounded-full bg-white/40"></div>
+            
+            {/* Progress Steps */}
+            <div className="flex items-center gap-3 mt-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                </div>
+                <span className="text-sm font-medium">Step 1</span>
+              </div>
+              <div className="w-12 h-0.5 bg-white"></div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                </div>
+                <span className="text-sm font-medium">Step 2</span>
+              </div>
+              <div className="w-12 h-0.5 bg-white/40"></div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-white/40 flex items-center justify-center">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                </div>
+                <span className="text-sm">Step 3</span>
+              </div>
+              <div className="w-12 h-0.5 bg-white/20"></div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                  <span className="text-sm">4</span>
+                </div>
+                <span className="text-sm text-white/60">Step 4</span>
+              </div>
             </div>
+            
+            <p className="text-sm text-white/70 mt-6">50% Complete - Halfway there!</p>
           </div>
         </div>
         
@@ -571,19 +579,65 @@ export default function Register() {
             <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
           </div>
           <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
-            <div className="w-20 h-20 bg-white/20 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-8">
-              <Heart className="w-10 h-10" />
+            {/* Animated Medical Icon */}
+            <div className="relative w-32 h-32 mb-8">
+              <div className="absolute inset-0 bg-white/20 backdrop-blur-xl rounded-full animate-pulse"></div>
+              <div className="absolute inset-4 bg-white/30 backdrop-blur-xl rounded-full flex items-center justify-center">
+                <Heart className="w-12 h-12" />
+              </div>
+              {/* Progress Ring */}
+              <svg className="absolute inset-0 w-full h-full -rotate-90">
+                <circle cx="64" cy="64" r="60" stroke="white" strokeOpacity="0.2" strokeWidth="4" fill="none" />
+                <circle 
+                  cx="64" cy="64" r="60" 
+                  stroke="white" 
+                  strokeWidth="4" 
+                  fill="none"
+                  strokeDasharray="377"
+                  strokeDashoffset={377 - (377 * 0.75)}
+                  className="transition-all duration-500"
+                  strokeLinecap="round"
+                />
+              </svg>
             </div>
+            
             <h1 className="text-4xl font-bold mb-4 text-center">Lifestyle & Health History</h1>
-            <p className="text-xl text-white/80 text-center max-w-md">
+            <p className="text-xl text-white/80 text-center max-w-md mb-6">
               Help us understand your lifestyle and medical background for better recommendations.
             </p>
-            <div className="mt-8 flex gap-2">
-              <div className="w-2 h-2 rounded-full bg-white/40"></div>
-              <div className="w-2 h-2 rounded-full bg-white/40"></div>
-              <div className="w-2 h-2 rounded-full bg-white"></div>
-              <div className="w-2 h-2 rounded-full bg-white/40"></div>
+            
+            {/* Progress Steps */}
+            <div className="flex items-center gap-3 mt-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                </div>
+                <span className="text-sm font-medium">Step 1</span>
+              </div>
+              <div className="w-12 h-0.5 bg-white"></div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                </div>
+                <span className="text-sm font-medium">Step 2</span>
+              </div>
+              <div className="w-12 h-0.5 bg-white"></div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                </div>
+                <span className="text-sm font-medium">Step 3</span>
+              </div>
+              <div className="w-12 h-0.5 bg-white/40"></div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-white/40 flex items-center justify-center">
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                </div>
+                <span className="text-sm">Step 4</span>
+              </div>
             </div>
+            
+            <p className="text-sm text-white/70 mt-6">75% Complete - Almost done!</p>
           </div>
         </div>
         
@@ -954,18 +1008,71 @@ export default function Register() {
             <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
           </div>
           <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
-            <div className="w-20 h-20 bg-white/20 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-8">
-              <Target className="w-10 h-10" />
+            {/* Animated Medical Icon - Final Step */}
+            <div className="relative w-32 h-32 mb-8">
+              <div className="absolute inset-0 bg-white/20 backdrop-blur-xl rounded-full animate-pulse"></div>
+              <div className="absolute inset-4 bg-white/30 backdrop-blur-xl rounded-full flex items-center justify-center">
+                <Target className="w-12 h-12" />
+              </div>
+              {/* Progress Ring - Almost Complete */}
+              <svg className="absolute inset-0 w-full h-full -rotate-90">
+                <circle cx="64" cy="64" r="60" stroke="white" strokeOpacity="0.2" strokeWidth="4" fill="none" />
+                <circle 
+                  cx="64" cy="64" r="60" 
+                  stroke="white" 
+                  strokeWidth="4" 
+                  fill="none"
+                  strokeDasharray="377"
+                  strokeDashoffset={377 - (377 * 0.95)}
+                  className="transition-all duration-500"
+                  strokeLinecap="round"
+                />
+              </svg>
+              {/* Checkmark overlay */}
+              <div className="absolute inset-0 flex items-center justify-center">
+                <CheckCircle2 className="w-16 h-16 text-white/80 animate-pulse" />
+              </div>
             </div>
+            
             <h1 className="text-4xl font-bold mb-4 text-center">Set Your Goals</h1>
-            <p className="text-xl text-white/80 text-center max-w-md">
+            <p className="text-xl text-white/80 text-center max-w-md mb-6">
               We'll calculate your personalized nutrition plan based on your goals.
             </p>
-            <div className="mt-8 flex gap-2">
-              <div className="w-2 h-2 rounded-full bg-white/40"></div>
-              <div className="w-2 h-2 rounded-full bg-white/40"></div>
-              <div className="w-2 h-2 rounded-full bg-white/40"></div>
-              <div className="w-2 h-2 rounded-full bg-white"></div>
+            
+            {/* Progress Steps - All Complete */}
+            <div className="flex items-center gap-3 mt-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                </div>
+                <span className="text-sm font-medium">Step 1</span>
+              </div>
+              <div className="w-12 h-0.5 bg-white"></div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                </div>
+                <span className="text-sm font-medium">Step 2</span>
+              </div>
+              <div className="w-12 h-0.5 bg-white"></div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                </div>
+                <span className="text-sm font-medium">Step 3</span>
+              </div>
+              <div className="w-12 h-0.5 bg-white"></div>
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
+                  <CheckCircle2 className="w-5 h-5 text-green-600" />
+                </div>
+                <span className="text-sm font-medium">Step 4</span>
+              </div>
+            </div>
+            
+            <div className="mt-6 text-center">
+              <p className="text-lg font-bold text-white mb-2">🎉 95% Complete!</p>
+              <p className="text-sm text-white/70">One more step to unlock your personalized health plan</p>
             </div>
           </div>
         </div>

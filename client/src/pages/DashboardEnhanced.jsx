@@ -212,7 +212,11 @@ export default function DashboardEnhanced() {
         {/* Health Stats */}
         {hasReports && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="bg-white rounded-2xl p-5 shadow-md hover:shadow-lg transition-shadow">
+            {/* Health Score Card - Scrolls to graph */}
+            <button
+              onClick={() => document.getElementById('health-score-graph')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+              className="bg-white rounded-2xl p-5 shadow-md hover:shadow-lg transition-all cursor-pointer text-left hover:scale-105 transform duration-200"
+            >
               <div className="flex items-center justify-between mb-3">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-400 to-pink-500 flex items-center justify-center">
                   <Heart className="w-6 h-6 text-white" />
@@ -223,8 +227,13 @@ export default function DashboardEnhanced() {
               <p className="text-3xl font-bold text-slate-800">
                 {dashboardData?.user?.healthMetrics?.healthScore || 'N/A'}
               </p>
-            </div>
-            <div className="bg-white rounded-2xl p-5 shadow-md hover:shadow-lg transition-shadow">
+            </button>
+
+            {/* Total Reports Card - Scrolls to recent reports */}
+            <button
+              onClick={() => document.getElementById('recent-reports')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+              className="bg-white rounded-2xl p-5 shadow-md hover:shadow-lg transition-all cursor-pointer text-left hover:scale-105 transform duration-200"
+            >
               <div className="flex items-center justify-between mb-3">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center">
                   <FileText className="w-6 h-6 text-white" />
@@ -233,10 +242,15 @@ export default function DashboardEnhanced() {
               </div>
               <p className="text-sm text-slate-600 mb-1">Total Reports</p>
               <p className="text-3xl font-bold text-slate-800">
-                {dashboardData?.recentReports?.length || 0}
+                {dashboardData?.totalReports || dashboardData?.recentReports?.length || 0}
               </p>
-            </div>
-            <div className="bg-white rounded-2xl p-5 shadow-md hover:shadow-lg transition-shadow">
+            </button>
+
+            {/* Meals Logged Card - Navigates to Nutrition page */}
+            <Link
+              to="/nutrition#daily-target"
+              className="bg-white rounded-2xl p-5 shadow-md hover:shadow-lg transition-all cursor-pointer hover:scale-105 transform duration-200 block"
+            >
               <div className="flex items-center justify-between mb-3">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center">
                   <Utensils className="w-6 h-6 text-white" />
@@ -247,8 +261,13 @@ export default function DashboardEnhanced() {
               <p className="text-3xl font-bold text-slate-800">
                 {dashboardData?.mealsLogged || 0}
               </p>
-            </div>
-            <div className="bg-white rounded-2xl p-5 shadow-md hover:shadow-lg transition-shadow">
+            </Link>
+
+            {/* Streak Days Card - Redirects to 30 Days Challenge */}
+            <Link
+              to="/challenge"
+              className="bg-white rounded-2xl p-5 shadow-md hover:shadow-lg transition-all cursor-pointer hover:scale-105 transform duration-200 block"
+            >
               <div className="flex items-center justify-between mb-3">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center">
                   <Award className="w-6 h-6 text-white" />
@@ -259,7 +278,7 @@ export default function DashboardEnhanced() {
               <p className="text-3xl font-bold text-slate-800">
                 {dashboardData?.streakDays || 0}
               </p>
-            </div>
+            </Link>
           </div>
         )}
 
@@ -274,7 +293,7 @@ export default function DashboardEnhanced() {
               <p className="text-slate-600 text-sm mt-1">Your personalized health management tools</p>
             </div>
           </div>
-          <div className="md:grid md:grid-cols-3 md:gap-6 flex md:flex-none overflow-x-auto gap-4 pb-4 md:pb-0 snap-x snap-mandatory scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
+          <div className="md:grid md:grid-cols-4 md:gap-6 flex md:flex-none overflow-x-auto gap-4 pb-4 md:pb-0 snap-x snap-mandatory scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
             <div className="min-w-[280px] md:min-w-0 snap-center">
               <FeatureCard
                 title="Upload Report"
@@ -305,12 +324,22 @@ export default function DashboardEnhanced() {
                 status="Personalized"
               />
             </div>
+            <div className="min-w-[280px] md:min-w-0 snap-center">
+              <FeatureCard
+                title="My Fitness Goal"
+                description="Set and track your fitness goals to achieve your health targets"
+                icon={Target}
+                gradient="from-purple-400 via-purple-500 to-purple-600"
+                link="/profile?tab=goals"
+                status={hasProfile ? "View Goals" : "Set Goals"}
+              />
+            </div>
           </div>
         </div>
 
         {/* Health Score Graph */}
         {hasReports && healthScore && dashboardData?.healthScores?.length > 0 && (
-          <div className="bg-white rounded-2xl shadow-md p-6">
+          <div id="health-score-graph" className="bg-white rounded-2xl shadow-md p-6 scroll-mt-20">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 mb-4">
               <div>
                 <h3 className="text-xl font-semibold text-slate-800">Health Score Trend</h3>
@@ -407,7 +436,7 @@ export default function DashboardEnhanced() {
 
         {/* Recent Reports */}
         {hasReports && (
-          <div>
+          <div id="recent-reports" className="scroll-mt-20">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">

@@ -5,7 +5,7 @@ import { healthService } from '../services/api';
 import { 
   Apple, Coffee, Sun, Moon, Utensils, 
   CheckCircle, Lightbulb, ChevronDown, ChevronUp, Leaf, Sparkles,
-  Target, TrendingUp, Zap, Heart, ArrowRight, Calendar, Clock, FileText
+  Target, TrendingUp, Zap, Heart, ArrowRight, Calendar, Clock, FileText, AlertCircle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -35,7 +35,9 @@ export default function DietPlan() {
   const fetchAllReports = async () => {
     try {
       const { data } = await healthService.getReports();
-      const reportsWithDietPlan = data.reports.filter(r => r.aiAnalysis?.dietPlan);
+      // Handle both array and object response formats
+      const reports = Array.isArray(data) ? data : (data.reports || []);
+      const reportsWithDietPlan = reports.filter(r => r.aiAnalysis?.dietPlan);
       setAllReports(reportsWithDietPlan);
       
       // Auto-select the latest report with diet plan
@@ -52,34 +54,87 @@ export default function DietPlan() {
 
   const fetchReportDietPlan = async (reportId) => {
     try {
+      setLoading(true);
       const { data } = await healthService.getReport(reportId);
       const report = data.report;
       
+      console.log('📊 Report Data:', report);
+      console.log('📊 AI Analysis:', report.aiAnalysis);
+      console.log('📊 Diet Plan:', report.aiAnalysis?.dietPlan);
+      
       if (report.aiAnalysis?.dietPlan) {
+        const dietPlan = report.aiAnalysis.dietPlan;
+        console.log('🍽️ Breakfast:', dietPlan.breakfast);
+        console.log('🍽️ Lunch:', dietPlan.lunch);
+        console.log('🍽️ Dinner:', dietPlan.dinner);
+        console.log('🍽️ Snacks:', dietPlan.snacks);
+        
+        // Try to get user's fitness goals for accurate macro targets
+        let macroTargets = { protein: 150, carbs: 250, fats: 65 };
+        let dailyCalorieTarget = 2000;
+        let hasGoals = false;
+        
+        try {
+          const token = localStorage.getItem('token');
+          const goalsResponse = await fetch('/api/nutrition/goals', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const goalsData = await goalsResponse.json();
+          
+          if (goalsData.healthGoal) {
+            dailyCalorieTarget = goalsData.healthGoal.dailyCalorieTarget || 2000;
+            macroTargets = goalsData.healthGoal.macroTargets || macroTargets;
+            hasGoals = true;
+          }
+        } catch (goalError) {
+          console.log('Using default macro targets');
+        }
+        
         // Convert report diet plan to personalized plan format
-        setPersonalizedPlan({
+        const planData = {
           mealPlan: {
-            breakfast: report.aiAnalysis.dietPlan.breakfast || [],
-            lunch: report.aiAnalysis.dietPlan.lunch || [],
-            dinner: report.aiAnalysis.dietPlan.dinner || [],
-            snacks: report.aiAnalysis.dietPlan.snacks || []
+            breakfast: Array.isArray(dietPlan.breakfast) ? dietPlan.breakfast : [],
+            lunch: Array.isArray(dietPlan.lunch) ? dietPlan.lunch : [],
+            dinner: Array.isArray(dietPlan.dinner) ? dietPlan.dinner : [],
+            snacks: Array.isArray(dietPlan.snacks) ? dietPlan.snacks : []
           },
-          dailyCalorieTarget: 2000, // Default value
-          macroTargets: {
-            protein: 150,
-            carbs: 250,
-            fats: 65
-          },
+          dailyCalorieTarget,
+          macroTargets,
+          hasGoals,
           keyFoods: [],
-          lifestyleRecommendations: report.aiAnalysis.dietPlan.tips || [],
+          lifestyleRecommendations: Array.isArray(dietPlan.tips) ? dietPlan.tips : [],
           createdAt: report.createdAt,
           source: 'report',
           reportId: reportId
+        };
+        
+        console.log('✅ Setting personalized plan:', planData);
+        console.log('✅ Meal counts:', {
+          breakfast: planData.mealPlan.breakfast.length,
+          lunch: planData.mealPlan.lunch.length,
+          dinner: planData.mealPlan.dinner.length,
+          snacks: planData.mealPlan.snacks.length
         });
+        
+        setPersonalizedPlan(planData);
+        
+        if (planData.mealPlan.breakfast.length === 0 && 
+            planData.mealPlan.lunch.length === 0 && 
+            planData.mealPlan.dinner.length === 0 && 
+            planData.mealPlan.snacks.length === 0) {
+          toast.error('Diet plan is empty. The AI analysis may not have generated meal recommendations.');
+        }
+      } else {
+        console.log('❌ No diet plan in AI analysis');
+        setPersonalizedPlan(null);
+        toast.error('This report does not contain a diet plan');
       }
     } catch (error) {
-      console.error('Failed to fetch report diet plan:', error);
+      console.error('❌ Failed to fetch report diet plan:', error);
       toast.error('Failed to load diet plan from report');
+      setPersonalizedPlan(null);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -252,6 +307,11 @@ export default function DietPlan() {
                 </div>
                 <p className="text-sm text-slate-600 mb-1">Daily Calories</p>
                 <p className="text-2xl font-bold text-slate-800">{personalizedPlan.dailyCalorieTarget}</p>
+                {personalizedPlan.source === 'report' && !personalizedPlan.hasGoals && (
+                  <Link to="/profile?tab=goals" className="text-xs text-cyan-600 hover:underline mt-1 block">
+                    Set Goals
+                  </Link>
+                )}
               </div>
               <div className="bg-white rounded-2xl shadow-lg p-5 text-center hover:shadow-xl transition-shadow">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center mx-auto mb-3">
@@ -275,6 +335,21 @@ export default function DietPlan() {
                 <p className="text-2xl font-bold text-slate-800">{personalizedPlan.macroTargets?.fats}g</p>
               </div>
             </div>
+
+            {/* Info Banner if using defaults */}
+            {personalizedPlan.source === 'report' && !personalizedPlan.hasGoals && (
+              <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm text-amber-900">
+                    <strong>Using default macro targets.</strong> For personalized calorie and macro goals based on your body metrics, 
+                    <Link to="/profile?tab=goals" className="text-amber-700 hover:underline font-semibold ml-1">
+                      set your fitness goals →
+                    </Link>
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Meal Plan */}
             <div className="bg-white rounded-2xl shadow-lg p-6">
@@ -389,15 +464,17 @@ export default function DietPlan() {
         )}
 
         {/* No Plan State */}
-        {!personalizedPlan && deficiencies.length === 0 && (
+        {!personalizedPlan && !loading && (
           <div className="bg-white rounded-2xl shadow-lg p-12 text-center">
             <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center mx-auto mb-6">
               <Apple className="w-10 h-10 text-white" />
             </div>
             <h3 className="text-2xl font-bold text-slate-800 mb-3">No Diet Plan Available</h3>
             <p className="text-slate-600 mb-6 max-w-md mx-auto">
-              Upload a health report to get AI-analyzed deficiencies and personalized diet recommendations, 
-              or add your known deficiencies manually.
+              {allReports.length > 0 
+                ? 'The selected report does not have a diet plan. Please upload a new health report to get AI-analyzed deficiencies and personalized diet recommendations.'
+                : 'Upload a health report to get AI-analyzed deficiencies and personalized diet recommendations.'
+              }
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <Link
@@ -406,12 +483,6 @@ export default function DietPlan() {
               >
                 Upload Report
               </Link>
-              <button
-                onClick={() => setShowAddDeficiency(true)}
-                className="px-6 py-3 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200 transition-all"
-              >
-                Add Deficiencies
-              </button>
             </div>
           </div>
         )}
@@ -438,6 +509,9 @@ function MealCard({ mealType, meals, expanded, onToggle }) {
   const config = mealIcons[mealType.toLowerCase()] || mealIcons.breakfast;
   const Icon = config.icon;
 
+  // Ensure meals is an array
+  const mealsArray = Array.isArray(meals) ? meals : [];
+
   return (
     <div className={`${config.bg} border-2 ${config.border} rounded-xl p-5 hover:shadow-md transition-all`}>
       <button onClick={onToggle} className="w-full flex items-center justify-between">
@@ -449,37 +523,78 @@ function MealCard({ mealType, meals, expanded, onToggle }) {
             <h3 className="font-bold text-slate-800 text-lg capitalize">
               {mealType.replace(/([A-Z])/g, ' $1').trim()}
             </h3>
-            <p className="text-sm text-slate-600">{meals.length} options</p>
+            <p className="text-sm text-slate-600">{mealsArray.length} options</p>
           </div>
         </div>
         {expanded ? <ChevronUp className="w-6 h-6 text-slate-400" /> : <ChevronDown className="w-6 h-6 text-slate-400" />}
       </button>
       
-      {expanded && (
+      {expanded && mealsArray.length > 0 && (
         <div className="mt-4 space-y-3">
-          {meals.map((meal, idx) => (
-            <div key={idx} className="p-4 bg-white rounded-xl border border-slate-200">
-              <div className="flex justify-between items-start mb-2">
-                <div className="flex-1">
-                  <p className="font-bold text-slate-800">{meal.name}</p>
-                  <p className="text-sm text-slate-600 mt-1">{meal.description}</p>
-                  {meal.benefits && (
-                    <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
-                      <CheckCircle className="w-3 h-3" />
-                      {meal.benefits}
-                    </p>
-                  )}
-                </div>
-                <div className="text-right ml-4">
-                  <p className="text-lg font-bold text-slate-800">{meal.calories}</p>
-                  <p className="text-xs text-slate-500">calories</p>
-                  {meal.protein && (
-                    <p className="text-xs text-blue-600 mt-1">{meal.protein}g protein</p>
+          {mealsArray.map((mealItem, idx) => {
+            // Handle different meal data formats
+            let mealName = 'Meal';
+            let mealDescription = '';
+            let mealBenefits = '';
+            let mealCalories = '';
+            let mealProtein = '';
+            
+            try {
+              if (typeof mealItem === 'string') {
+                // Simple string format
+                mealName = mealItem;
+              } else if (mealItem && typeof mealItem === 'object') {
+                // Object format - handle both old and new structures
+                mealName = String(mealItem.name || mealItem.meal || 'Meal');
+                mealDescription = String(mealItem.description || mealItem.tip || '');
+                mealBenefits = String(mealItem.benefits || '');
+                
+                // Handle nutrients object or direct properties
+                if (mealItem.nutrients && typeof mealItem.nutrients === 'object') {
+                  mealCalories = String(mealItem.nutrients.calories || mealItem.nutrients.Calories || '');
+                  mealProtein = String(mealItem.nutrients.protein || mealItem.nutrients.Protein || '');
+                } else {
+                  mealCalories = String(mealItem.calories || '');
+                  mealProtein = String(mealItem.protein || '');
+                }
+              }
+            } catch (error) {
+              console.error('Error parsing meal item:', error, mealItem);
+              mealName = 'Meal';
+            }
+            
+            return (
+              <div key={idx} className="p-4 bg-white rounded-xl border border-slate-200">
+                <div className="flex justify-between items-start mb-2">
+                  <div className="flex-1">
+                    <p className="font-bold text-slate-800">{mealName}</p>
+                    {mealDescription && <p className="text-sm text-slate-600 mt-1">{mealDescription}</p>}
+                    {mealBenefits && (
+                      <p className="text-xs text-green-600 mt-2 flex items-center gap-1">
+                        <CheckCircle className="w-3 h-3" />
+                        <span>{mealBenefits}</span>
+                      </p>
+                    )}
+                  </div>
+                  {mealCalories && (
+                    <div className="text-right ml-4">
+                      <p className="text-lg font-bold text-slate-800">{mealCalories}</p>
+                      <p className="text-xs text-slate-500">calories</p>
+                      {mealProtein && (
+                        <p className="text-xs text-blue-600 mt-1">{mealProtein}g protein</p>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
+        </div>
+      )}
+      
+      {expanded && mealsArray.length === 0 && (
+        <div className="mt-4 p-4 bg-white rounded-xl border border-slate-200 text-center text-slate-500">
+          No meals available for this category
         </div>
       )}
     </div>

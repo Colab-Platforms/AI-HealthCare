@@ -63,8 +63,8 @@ export default function MobileBottomNav() {
 
   const moreMenuItems = [
     { path: '/profile', icon: Settings, label: 'Profile' },
-    { path: '/wearables', icon: Watch, label: 'Wearables', comingSoon: true },
     { path: '/diet-plan', icon: Heart, label: 'Diet Plan' },
+    { path: '/wearables', icon: Watch, label: 'Wearables', comingSoon: true },
     { path: '#appointment', icon: Calendar, label: 'Appointment', comingSoon: true }
   ];
 

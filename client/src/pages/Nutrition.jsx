@@ -29,6 +29,18 @@ export default function Nutrition() {
     fetchData();
   }, [selectedDate]);
 
+  // Handle hash navigation for smooth scroll to daily target
+  useEffect(() => {
+    if (window.location.hash === '#daily-target') {
+      setTimeout(() => {
+        document.getElementById('daily-target')?.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+      }, 100);
+    }
+  }, []);
+
   const fetchData = async () => {
     try {
       const token = localStorage.getItem('token');
@@ -331,7 +343,7 @@ export default function Nutrition() {
         </div>
 
         {/* Meals Section */}
-        <div>
+        <div id="daily-target" className="scroll-mt-20">
           <h2 className="text-lg font-bold text-gray-900 mb-4">My Daily Target</h2>
 
           {/* Meal Cards */}

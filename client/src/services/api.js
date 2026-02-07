@@ -69,6 +69,7 @@ export const healthService = {
   }),
   getReports: () => api.get('/health/reports'),
   getReport: (id) => api.get(`/health/reports/${id}`),
+  deleteReport: (id) => api.delete(`/health/reports/${id}`),
   getDashboard: () => api.get('/health/dashboard'),
   getHistory: (reportType) => api.get('/health/history', { params: { reportType } }),
   compareReport: (id) => api.get(`/health/reports/${id}/compare`),

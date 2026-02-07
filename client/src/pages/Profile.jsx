@@ -1,15 +1,18 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useLocation, useNavigate } from 'react-router-dom';
 import api, { healthService } from '../services/api';
 import axios from 'axios';
 import { 
   User, Activity, Heart, AlertCircle, Mail, Phone, Target,
-  TrendingUp, Award, Edit, Check, X, Sparkles, Beef, Wheat, Droplet
+  TrendingUp, Award, Edit, Check, X, Sparkles, Beef, Wheat, Droplet, FileText, ChevronRight
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function Profile() {
   const { user, updateUser } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [healthHistory, setHealthHistory] = useState(null);
   const [activeTab, setActiveTab] = useState('profile');
@@ -46,7 +49,14 @@ export default function Profile() {
     window.scrollTo(0, 0);
     fetchHistory();
     fetchHealthGoal();
-  }, []);
+    
+    // Handle URL parameter for tab navigation
+    const params = new URLSearchParams(location.search);
+    const tab = params.get('tab');
+    if (tab === 'goals') {
+      setActiveTab('goals');
+    }
+  }, [location.search]);
 
   const fetchHistory = async () => {
     try {
@@ -702,6 +712,66 @@ export default function Profile() {
               </button>
             </div>
           </form>
+        )}
+
+        {/* Health Reports Section */}
+        {healthHistory && healthHistory.history && Object.keys(healthHistory.history).length > 0 && (
+          <div className="bg-white rounded-3xl shadow-lg p-6 border-2 border-cyan-100">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center">
+                <FileText className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-slate-800">Health Reports</h3>
+                <p className="text-sm text-slate-600">Your uploaded health reports by type</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {Object.entries(healthHistory.history).map(([reportType, reports]) => (
+                <button
+                  key={reportType}
+                  onClick={() => navigate('/reports')}
+                  className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl p-5 border-2 border-cyan-200 hover:border-cyan-400 hover:shadow-lg transition-all group text-left"
+                >
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center">
+                      <FileText className="w-6 h-6 text-white" />
+                    </div>
+                    <ChevronRight className="w-5 h-5 text-cyan-600 group-hover:translate-x-1 transition-transform" />
+                  </div>
+                  <h4 className="font-bold text-slate-800 text-lg mb-1 capitalize">
+                    {reportType.replace(/([A-Z])/g, ' $1').trim()}
+                  </h4>
+                  <p className="text-sm text-slate-600 mb-2">
+                    {reports.length} {reports.length === 1 ? 'report' : 'reports'}
+                  </p>
+                  {reports[0]?.healthScore && (
+                    <div className="flex items-center gap-2 mt-2">
+                      <Heart className="w-4 h-4 text-red-500" />
+                      <span className="text-sm font-semibold text-slate-700">
+                        Latest: {reports[0].healthScore}/100
+                      </span>
+                    </div>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-6 flex items-center justify-between p-4 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl text-white">
+              <div>
+                <p className="text-sm text-cyan-100">Total Reports</p>
+                <p className="text-2xl font-bold">{healthHistory.totalReports || 0}</p>
+              </div>
+              <button
+                onClick={() => navigate('/reports')}
+                className="px-6 py-3 bg-white text-cyan-600 rounded-xl font-bold hover:shadow-lg transition-all flex items-center gap-2"
+              >
+                View All
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
         )}
       </div>
     </div>
