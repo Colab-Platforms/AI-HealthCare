@@ -189,10 +189,34 @@ export default function AIChat() {
       if (data.success && data.response) {
         streamResponse(data.response, () => {
           const aiResponse = { role: 'assistant', content: data.response, timestamp: new Date() };
-          setMessages(prev => [...prev, aiResponse]);
-          setStreamingText('');
           const updatedMessages = [...messages, userMessage, aiResponse];
+          setMessages(updatedMessages);
+          setStreamingText('');
+          
+          // Save chat history
           localStorage.setItem(`chat_history_${user?.id}_${currentSessionId}`, JSON.stringify(updatedMessages));
+          
+          // Update chat sessions list
+          const sessions = JSON.parse(localStorage.getItem(`chat_sessions_${user?.id}`) || '[]');
+          const existingSessionIndex = sessions.findIndex(s => s.id === currentSessionId);
+          const sessionData = {
+            id: currentSessionId,
+            title: messages.length === 1 ? currentInput.substring(0, 50) : sessions[existingSessionIndex]?.title || currentInput.substring(0, 50),
+            lastMessage: currentInput.substring(0, 100),
+            timestamp: new Date().toISOString(),
+            messageCount: updatedMessages.length
+          };
+          
+          if (existingSessionIndex >= 0) {
+            sessions[existingSessionIndex] = sessionData;
+          } else {
+            sessions.unshift(sessionData);
+          }
+          
+          // Keep only last 50 sessions
+          const limitedSessions = sessions.slice(0, 50);
+          localStorage.setItem(`chat_sessions_${user?.id}`, JSON.stringify(limitedSessions));
+          setChatSessions(limitedSessions);
         });
       }
     } catch (error) {
@@ -201,8 +225,12 @@ export default function AIChat() {
       const fallbackResponse = generateAIResponse(currentInput);
       streamResponse(fallbackResponse, () => {
         const aiResponse = { role: 'assistant', content: fallbackResponse, timestamp: new Date() };
-        setMessages(prev => [...prev, aiResponse]);
+        const updatedMessages = [...messages, userMessage, aiResponse];
+        setMessages(updatedMessages);
         setStreamingText('');
+        
+        // Save even fallback responses
+        localStorage.setItem(`chat_history_${user?.id}_${currentSessionId}`, JSON.stringify(updatedMessages));
       });
     } finally {
       setLoading(false);

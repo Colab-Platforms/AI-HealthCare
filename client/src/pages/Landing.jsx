@@ -45,7 +45,7 @@ function Header() {
             <Link to="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">
               Log in
             </Link>
-            <Link to="/register" className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-5 py-2 text-sm font-medium transition-colors">
+            <Link to="/register?skip=true" className="bg-blue-600 hover:bg-blue-700 text-white rounded-full px-5 py-2 text-sm font-medium transition-colors">
               Get started
             </Link>
           </div>
@@ -72,7 +72,7 @@ function Header() {
                 <Link to="/login" className="text-sm font-medium text-slate-600 hover:text-slate-900 py-2">
                   Log in
                 </Link>
-                <Link to="/register" className="bg-blue-600 text-white rounded-full py-2 px-4 text-sm font-medium text-center">
+                <Link to="/register?skip=true" className="bg-blue-600 text-white rounded-full py-2 px-4 text-sm font-medium text-center">
                   Get started
                 </Link>
               </div>
@@ -417,7 +417,7 @@ function Pricing() {
                 ))}
               </ul>
               <Link
-                to="/register"
+                to="/register?skip=true"
                 className={`w-full rounded-full py-4 px-6 text-center font-medium transition-colors block ${
                   plan.popular
                     ? "bg-white text-blue-600 hover:bg-blue-50"
@@ -641,7 +641,7 @@ function CTA() {
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
           <Link
-            to="/register"
+            to="/register?skip=true"
             className="bg-white text-[#8B7355] hover:bg-[#F5F1EA] rounded-full px-8 py-4 text-base font-medium transition-all inline-flex items-center gap-2 shadow-lg"
           >
             Start your free analysis

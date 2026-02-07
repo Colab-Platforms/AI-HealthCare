@@ -529,6 +529,41 @@ exports.getMetricInfo = async (req, res) => {
   }
 };
 
+// Delete report endpoint
+exports.deleteReport = async (req, res) => {
+  try {
+    const report = await HealthReport.findOne({ _id: req.params.id, user: req.user._id });
+    
+    if (!report) {
+      return res.status(404).json({ message: 'Report not found' });
+    }
+
+    // Delete the file if it exists
+    if (report.originalFile && report.originalFile.path && report.originalFile.path !== 'memory-storage') {
+      try {
+        if (fs.existsSync(report.originalFile.path)) {
+          fs.unlinkSync(report.originalFile.path);
+        }
+      } catch (fileError) {
+        console.error('Error deleting file:', fileError.message);
+        // Continue with database deletion even if file deletion fails
+      }
+    }
+
+    // Delete the report from database
+    await HealthReport.deleteOne({ _id: req.params.id });
+
+    // Invalidate cache
+    cache.delete(`reports:${req.user._id}`);
+    cache.delete(`dashboard:${req.user._id}`);
+
+    res.json({ message: 'Report deleted successfully' });
+  } catch (error) {
+    console.error('Delete report error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // AI Chat endpoint for general health questions
 exports.aiChat = async (req, res) => {
   try {
