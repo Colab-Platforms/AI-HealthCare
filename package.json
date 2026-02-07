@@ -5,19 +5,20 @@
   "private": true,
   "scripts": {},
   "dependencies": {
-    "express": "^4.18.2",
-    "mongoose": "^8.0.0",
+    "@vercel/analytics": "^1.6.1",
+    "agora-token": "^2.0.5",
+    "axios": "^1.6.2",
     "bcryptjs": "^2.4.3",
-    "jsonwebtoken": "^9.0.2",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
+    "express": "^4.18.2",
+    "express-validator": "^7.0.1",
+    "jsonwebtoken": "^9.0.2",
+    "mongoose": "^8.0.0",
     "multer": "^1.4.5-lts.1",
-    "axios": "^1.6.2",
-    "nodemailer": "^7.0.12",
     "node-cron": "^4.2.1",
-    "agora-token": "^2.0.5",
+    "nodemailer": "^7.0.12",
     "pdf-parse": "^1.1.1",
-    "uuid": "^13.0.0",
-    "express-validator": "^7.0.1"
+    "uuid": "^13.0.0"
   }
 }
