@@ -13,7 +13,15 @@
   },
   "rewrites": [
     {
-      "source": "/api/(.*)",
+      "source": "/api/nutrition/:path*",
+      "destination": "/api/nutrition"
+    },
+    {
+      "source": "/api/auth/:path*",
+      "destination": "/api/auth"
+    },
+    {
+      "source": "/api/:path*",
       "destination": "/api/index"
     },
     {
