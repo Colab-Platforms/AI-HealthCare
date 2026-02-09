@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Target, TrendingUp, TrendingDown, AlertCircle, CheckCircle, X } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { Target, TrendingUp, TrendingDown, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import toast from 'react-hot-toast';
 import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
@@ -121,94 +121,7 @@ const BMICategory = ({ bmi }) => {
   );
 };
 
-// Goal Setting Modal
-const GoalModal = ({ isOpen, onClose, currentBMI, onSave }) => {
-  const [goalType, setGoalType] = useState('maintain');
-  const [targetWeight, setTargetWeight] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  if (!isOpen) return null;
-
-  const handleSave = async () => {
-    if (goalType !== 'maintain' && !targetWeight) {
-      toast.error('Please enter target weight');
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await onSave({ goalType, targetWeight: parseFloat(targetWeight) || null });
-      onClose();
-    } catch (error) {
-      toast.error('Failed to save goal');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between mb-6">
-          <h3 className="text-xl font-bold text-slate-800">Set Your BMI Goal</h3>
-          <button onClick={onClose} className="p-2 hover:bg-slate-100 rounded-lg transition-colors">
-            <X className="w-5 h-5 text-slate-600" />
-          </button>
-        </div>
-
-        <div className="space-y-4">
-          {/* Goal Type */}
-          <div>
-            <label className="block text-sm font-medium text-slate-700 mb-2">What's your goal?</label>
-            <div className="space-y-2">
-              {[
-                { value: 'weight_loss', label: 'Lose Weight', icon: TrendingDown },
-                { value: 'maintain', label: 'Maintain Weight', icon: Target },
-                { value: 'weight_gain', label: 'Gain Weight', icon: TrendingUp }
-              ].map(({ value, label, icon: Icon }) => (
-                <button
-                  key={value}
-                  onClick={() => setGoalType(value)}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all ${
-                    goalType === value
-                      ? 'border-cyan-500 bg-cyan-50 text-cyan-700'
-                      : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
-                  }`}
-                >
-                  <Icon className="w-5 h-5" />
-                  <span className="font-medium">{label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Target Weight */}
-          {goalType !== 'maintain' && (
-            <div>
-              <label className="block text-sm font-medium text-slate-700 mb-2">Target Weight (kg)</label>
-              <input
-                type="number"
-                value={targetWeight}
-                onChange={(e) => setTargetWeight(e.target.value)}
-                placeholder="Enter target weight"
-                className="w-full px-4 py-2 border-2 border-slate-200 rounded-xl focus:border-cyan-500 focus:outline-none"
-              />
-            </div>
-          )}
-
-          {/* Save Button */}
-          <button
-            onClick={handleSave}
-            disabled={loading}
-            className="w-full py-3 bg-cyan-500 text-white rounded-xl font-semibold hover:bg-cyan-600 transition-colors disabled:opacity-50"
-          >
-            {loading ? 'Saving...' : 'Save Goal'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
+// No modal needed - will redirect to profile page
 
 // Main BMI Widget Component
 export default function BMIWidget() {
@@ -217,7 +130,6 @@ export default function BMIWidget() {
   const [bmiPrime, setBMIPrime] = useState(null);
   const [ponderalIndex, setPonderalIndex] = useState(null);
   const [healthyWeightRange, setHealthyWeightRange] = useState(null);
-  const [showGoalModal, setShowGoalModal] = useState(false);
   const [currentGoal, setCurrentGoal] = useState(null);
 
   useEffect(() => {
@@ -261,29 +173,6 @@ export default function BMIWidget() {
       setCurrentGoal(data.user?.nutritionGoal);
     } catch (error) {
       console.error('Failed to fetch goal:', error);
-    }
-  };
-
-  const handleSaveGoal = async (goal) => {
-    try {
-      const token = localStorage.getItem('token');
-      await axios.put(
-        `${API_URL}/api/auth/profile`,
-        {
-          nutritionGoal: {
-            goal: goal.goalType,
-            targetWeight: goal.targetWeight,
-            lastUpdated: new Date()
-          }
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` }
-        }
-      );
-      toast.success('Goal saved successfully!');
-      fetchCurrentGoal();
-    } catch (error) {
-      throw error;
     }
   };
 
@@ -356,34 +245,26 @@ export default function BMIWidget() {
                       {currentGoal.targetWeight && ` - ${currentGoal.targetWeight} kg`}
                     </p>
                   </div>
-                  <button
-                    onClick={() => setShowGoalModal(true)}
+                  <Link
+                    to="/profile?tab=goals"
                     className="px-4 py-2 bg-cyan-500 text-white rounded-lg text-sm font-medium hover:bg-cyan-600 transition-colors"
                   >
                     Change
-                  </button>
+                  </Link>
                 </div>
               </div>
             ) : (
-              <button
-                onClick={() => setShowGoalModal(true)}
+              <Link
+                to="/profile?tab=goals"
                 className="w-full py-3 bg-cyan-500 text-white rounded-xl font-semibold hover:bg-cyan-600 transition-colors flex items-center justify-center gap-2"
               >
                 <Target className="w-5 h-5" />
                 Set Your Goal
-              </button>
+              </Link>
             )}
           </div>
         </div>
       </div>
-
-      {/* Goal Modal */}
-      <GoalModal
-        isOpen={showGoalModal}
-        onClose={() => setShowGoalModal(false)}
-        currentBMI={bmi}
-        onSave={handleSaveGoal}
-      />
     </>
   );
 }
