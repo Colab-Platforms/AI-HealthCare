@@ -5,6 +5,7 @@
   "type": "module",
   "dependencies": {
     "@paper-design/shaders-react": "^0.0.70",
+    "@vercel/analytics": "^1.6.1",
     "agora-rtc-react": "^2.5.1",
     "agora-rtc-sdk-ng": "^4.24.2",
     "axios": "^1.6.2",
