@@ -6,37 +6,105 @@ import axios from 'axios';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
 
-// BMI Gauge Component
-const BMIGauge = ({ bmi }) => {
+// BMI Gauge Component - Desktop (Right-side half circle)
+const BMIGaugeDesktop = ({ bmi }) => {
   const size = 200;
   const strokeWidth = 20;
   const radius = (size - strokeWidth) / 2;
-  const circumference = Math.PI * radius; // Half circle
 
-  // Calculate angle for needle (0-180 degrees)
-  // BMI ranges: <16 (severe underweight), 16-18.5 (underweight), 18.5-25 (normal), 25-30 (overweight), 30-35 (obese), >35 (severely obese)
   const getNeedleAngle = () => {
     if (bmi < 16) return 0;
     if (bmi >= 40) return 180;
-    // Map BMI 16-40 to 0-180 degrees
     return ((bmi - 16) / 24) * 180;
   };
 
   const angle = getNeedleAngle();
 
-  // Define color zones
   const zones = [
-    { start: 0, end: 30, color: '#ef4444', label: 'Underweight' }, // Red (0-30 degrees = BMI 16-18.5)
-    { start: 30, end: 82.5, color: '#22c55e', label: 'Normal' }, // Green (30-82.5 degrees = BMI 18.5-25)
-    { start: 82.5, end: 120, color: '#eab308', label: 'Overweight' }, // Yellow (82.5-120 degrees = BMI 25-30)
-    { start: 120, end: 157.5, color: '#f97316', label: 'Obese' }, // Orange (120-157.5 degrees = BMI 30-35)
-    { start: 157.5, end: 180, color: '#dc2626', label: 'Severely Obese' } // Dark Red (157.5-180 degrees = BMI 35-40)
+    { start: 0, end: 30, color: '#ef4444' },
+    { start: 30, end: 82.5, color: '#22c55e' },
+    { start: 82.5, end: 120, color: '#eab308' },
+    { start: 120, end: 157.5, color: '#f97316' },
+    { start: 157.5, end: 180, color: '#dc2626' }
+  ];
+
+  return (
+    <div className="relative flex items-center justify-center">
+      <svg width={size} height={size / 2 + 20} className="overflow-visible">
+        {zones.map((zone, idx) => {
+          const startAngle = zone.start - 90;
+          const endAngle = zone.end - 90;
+          const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+          
+          const startX = size / 2 + radius * Math.cos((startAngle * Math.PI) / 180);
+          const startY = size / 2 + radius * Math.sin((startAngle * Math.PI) / 180);
+          const endX = size / 2 + radius * Math.cos((endAngle * Math.PI) / 180);
+          const endY = size / 2 + radius * Math.sin((endAngle * Math.PI) / 180);
+
+          return (
+            <path
+              key={idx}
+              d={`M ${startX} ${startY} A ${radius} ${radius} 0 ${largeArc} 1 ${endX} ${endY}`}
+              fill="none"
+              stroke={zone.color}
+              strokeWidth={strokeWidth}
+              strokeLinecap="round"
+            />
+          );
+        })}
+
+        <g transform={`rotate(${angle - 90} ${size / 2} ${size / 2})`}>
+          <line
+            x1={size / 2}
+            y1={size / 2}
+            x2={size / 2 + radius - 10}
+            y2={size / 2}
+            stroke="#1e293b"
+            strokeWidth="3"
+            strokeLinecap="round"
+          />
+          <circle cx={size / 2} cy={size / 2} r="8" fill="#1e293b" />
+        </g>
+
+        <text x={size / 2} y={size / 2 + 35} textAnchor="middle" className="text-3xl font-bold fill-slate-800">
+          {bmi.toFixed(1)}
+        </text>
+        <text x={size / 2} y={size / 2 + 55} textAnchor="middle" className="text-xs fill-slate-500">
+          kg/m²
+        </text>
+      </svg>
+
+      <div className="absolute bottom-0 left-0 text-[10px] text-slate-600 font-medium">16</div>
+      <div className="absolute bottom-0 right-0 text-[10px] text-slate-600 font-medium">40</div>
+    </div>
+  );
+};
+
+// BMI Gauge Component - Mobile (Top half circle)
+const BMIGaugeMobile = ({ bmi }) => {
+  const size = 200;
+  const strokeWidth = 20;
+  const radius = (size - strokeWidth) / 2;
+
+  const getNeedleAngle = () => {
+    if (bmi < 16) return 0;
+    if (bmi >= 40) return 180;
+    return ((bmi - 16) / 24) * 180;
+  };
+
+  const angle = getNeedleAngle();
+
+  const zones = [
+    { start: 0, end: 30, color: '#ef4444' },
+    { start: 30, end: 82.5, color: '#22c55e' },
+    { start: 82.5, end: 120, color: '#eab308' },
+    { start: 120, end: 157.5, color: '#f97316' },
+    { start: 157.5, end: 180, color: '#dc2626' }
   ];
 
   return (
     <div className="relative flex flex-col items-center justify-center w-full">
       <svg width={size} height={size / 2 + 40} viewBox={`0 0 ${size} ${size / 2 + 40}`} className="overflow-visible">
-        {/* Background arc zones */}
         {zones.map((zone, idx) => {
           const startAngle = zone.start;
           const endAngle = zone.end;
@@ -59,7 +127,6 @@ const BMIGauge = ({ bmi }) => {
           );
         })}
 
-        {/* Needle */}
         <g transform={`rotate(${-angle} ${size / 2} ${size / 2})`}>
           <line
             x1={size / 2}
@@ -73,25 +140,13 @@ const BMIGauge = ({ bmi }) => {
           <circle cx={size / 2} cy={size / 2} r="8" fill="#1e293b" />
         </g>
 
-        {/* Center text */}
-        <text
-          x={size / 2}
-          y={size / 2 + 20}
-          textAnchor="middle"
-          className="text-3xl font-bold fill-slate-800"
-        >
+        <text x={size / 2} y={size / 2 + 20} textAnchor="middle" className="text-3xl font-bold fill-slate-800">
           {bmi.toFixed(1)}
         </text>
-        <text
-          x={size / 2}
-          y={size / 2 + 38}
-          textAnchor="middle"
-          className="text-xs fill-slate-500"
-        >
+        <text x={size / 2} y={size / 2 + 38} textAnchor="middle" className="text-xs fill-slate-500">
           kg/m²
         </text>
 
-        {/* Labels */}
         <text x="20" y={size / 2 + 5} className="text-[10px] fill-slate-600 font-medium">16</text>
         <text x={size - 30} y={size / 2 + 5} className="text-[10px] fill-slate-600 font-medium">40</text>
       </svg>
@@ -201,15 +256,21 @@ export default function BMIWidget() {
   return (
     <>
       <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl border-2 border-cyan-200 p-4 sm:p-6 shadow-sm">
-        <div className="flex flex-col items-center gap-4 sm:gap-6">
-          {/* BMI Gauge - Full width on mobile, centered */}
-          <div className="w-full max-w-xs">
-            <BMIGauge bmi={bmi} />
+        <div className="flex flex-col lg:flex-row items-center gap-4 lg:gap-6">
+          {/* BMI Gauge - Mobile version (top half-circle) visible only on mobile */}
+          <div className="lg:hidden w-full max-w-xs">
+            <BMIGaugeMobile bmi={bmi} />
+          </div>
+
+          {/* BMI Gauge - Desktop version (right-side half-circle) visible only on desktop */}
+          <div className="hidden lg:block flex-shrink-0">
+            <BMIGaugeDesktop bmi={bmi} />
           </div>
 
           {/* BMI Info */}
-          <div className="w-full space-y-4 text-center">
-            <div className="flex flex-col items-center gap-2">
+          <div className="flex-1 w-full space-y-4 text-center lg:text-left">
+            <div className="flex flex-col lg:flex-row lg:items-center gap-2">
+              <h3 className="hidden lg:block text-2xl font-bold text-slate-800">Your BMI</h3>
               <BMICategory bmi={bmi} />
             </div>
 
