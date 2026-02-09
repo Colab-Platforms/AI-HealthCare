@@ -1,3 +1,7 @@
+// Vercel serverless function entry point
+process.env.VERCEL = '1';
+process.env.NODE_ENV = process.env.NODE_ENV || 'production';
+
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
@@ -6,49 +10,52 @@ const path = require('path');
 // Load environment variables
 dotenv.config({ path: path.join(__dirname, '../server/.env') });
 
-// Set environment flags
-process.env.VERCEL = '1';
-process.env.NODE_ENV = 'production';
-
 const app = express();
 
 // Middleware
-app.use(cors({ 
-  origin: process.env.CLIENT_URL || '*',
-  credentials: true 
+app.use(cors({
+  origin: '*',
+  credentials: true
 }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Database connection
-const connectDB = require('../server/config/db');
-let dbConnected = false;
-
+// Initialize database connection
+let dbInitialized = false;
 const initDB = async () => {
-  if (dbConnected) return;
+  if (dbInitialized) return;
+
   try {
+    const connectDB = require('../server/config/db');
     await connectDB();
-    dbConnected = true;
+    dbInitialized = true;
     console.log('✅ Database connected');
   } catch (error) {
-    console.error('❌ Database error:', error.message);
+    console.error('❌ Database connection error:', error.message);
   }
 };
 
-// Initialize DB immediately
-initDB();
+// Initialize DB on first request
+app.use((req, res, next) => {
+  if (!dbInitialized) {
+    initDB().then(() => next()).catch(() => next());
+  } else {
+    next();
+  }
+});
 
 // Health check
 app.get('/api/health-check', (req, res) => {
-  res.json({ 
-    status: 'ok', 
-    message: 'FitCure API',
-    dbConnected,
+  res.json({
+    status: 'ok',
+    message: 'FitCure API - Vercel',
+    env: process.env.NODE_ENV,
+    dbConnected: dbInitialized,
     timestamp: new Date().toISOString()
   });
 });
 
-// Load all routes
+// Load routes
 try {
   const authRoutes = require('../server/routes/authRoutes');
   const healthRoutes = require('../server/routes/healthRoutes');
@@ -69,26 +76,26 @@ try {
   app.use('/api/diet-recommendations', dietRecommendationRoutes);
   app.use('/api', chatRoutes);
   app.use('/api/chat', chatHistoryRoutes);
-  
+
   console.log('✅ All routes loaded successfully');
 } catch (error) {
   console.error('❌ Error loading routes:', error.message);
   console.error(error.stack);
 }
 
-// Error handling middleware
+// Error handler
 app.use((err, req, res, next) => {
-  console.error('Server error:', err);
-  res.status(500).json({ 
-    error: 'Internal server error',
-    message: err.message 
+  console.error('Error:', err.message);
+  res.status(500).json({
+    message: err.message || 'Something went wrong!',
+    path: req.path
   });
 });
 
 // 404 handler
 app.use((req, res) => {
   console.log('404 - Route not found:', req.method, req.path);
-  res.status(404).json({ 
+  res.status(404).json({
     error: 'Route not found',
     method: req.method,
     path: req.path,
@@ -96,5 +103,5 @@ app.use((req, res) => {
   });
 });
 
-// Export for Vercel serverless
+// Export for Vercel
 module.exports = app;
