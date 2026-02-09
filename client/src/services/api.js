@@ -1,4 +1,5 @@
 import axios from 'axios';
+import cache from '../utils/cache';
 
 // Determine API URL based on environment
 const getApiUrl = () => {
@@ -30,6 +31,30 @@ const api = axios.create({
   baseURL: getApiUrl(),
   headers: { 'Content-Type': 'application/json' }
 });
+
+// Cached GET request wrapper
+const cachedGet = async (url, options = {}) => {
+  const { ttl = 5 * 60 * 1000, skipCache = false } = options;
+  const cacheKey = `api_${url}`;
+
+  // Check cache first
+  if (!skipCache) {
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      console.log('📦 Cache hit:', url);
+      return { data: cached, fromCache: true };
+    }
+  }
+
+  // Make API call
+  console.log('🌐 API call:', url);
+  const response = await api.get(url);
+  
+  // Cache the response
+  cache.set(cacheKey, response.data, ttl);
+  
+  return { ...response, fromCache: false };
+};
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
