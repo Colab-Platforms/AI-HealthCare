@@ -1,46 +1,43 @@
 // Vercel serverless function entry point
+// Set VERCEL flag BEFORE requiring anything
 process.env.VERCEL = '1';
+process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 
 let app;
 
 try {
-  // Try to load Express
+  // Load the full server app
+  app = require('../server/server');
+  console.log('✅ Server app loaded successfully for Vercel');
+} catch (serverError) {
+  console.error('❌ Error loading server:', serverError.message);
+  console.error('Stack:', serverError.stack);
+  
+  // Fallback: Create minimal Express app
   const express = require('express');
-  const appInstance = express();
+  app = express();
   
-  appInstance.use(express.json());
+  app.use(express.json());
   
-  // Simple health check that always works
-  appInstance.get('/api/health-check', (req, res) => {
+  // Health check endpoint
+  app.get('/api/health-check', (req, res) => {
     res.json({ 
-      status: 'ok', 
-      message: 'Healthcare AI Platform API',
+      status: 'error',
+      message: 'Server failed to load',
+      error: serverError.message,
       timestamp: new Date().toISOString()
     });
   });
   
-  // Try to load the full server app
-  try {
-    const fullApp = require('../server/server');
-    app = fullApp;
-    console.log('Full app loaded successfully');
-  } catch (serverError) {
-    console.error('Error loading full server:', serverError.message);
-    // Use simple app if full app fails
-    app = appInstance;
-  }
-} catch (expressError) {
-  console.error('Critical error - Express not available:', expressError.message);
-  
-  // Fallback: Export a simple function
-  module.exports = (req, res) => {
+  // Catch-all error response
+  app.use((req, res) => {
     res.status(500).json({
       error: 'Server initialization failed',
-      message: expressError.message
+      message: serverError.message,
+      path: req.path
     });
-  };
+  });
 }
 
-if (app) {
-  module.exports = app;
-}
+// Export the app for Vercel
+module.exports = app;
