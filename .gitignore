@@ -12,6 +12,7 @@ server/.env
 # Documentation files (may contain sensitive info)
 *.md
 !README.md
+*.txt
 
 # Build outputs (commented out to deploy pre-built files)
 # client/dist/
