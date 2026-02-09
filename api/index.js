@@ -61,6 +61,26 @@ app.get('/api/health-check', (req, res) => {
   });
 });
 
+// Test endpoint to verify routing works (no auth required)
+app.get('/api/test-route', (req, res) => {
+  res.json({
+    message: 'Routing works!',
+    path: req.path,
+    url: req.url,
+    originalUrl: req.originalUrl
+  });
+});
+
+// Test nutrition endpoint (no auth required)
+app.get('/api/nutrition/test', (req, res) => {
+  res.json({
+    message: 'Nutrition routing works!',
+    path: req.path,
+    url: req.url,
+    originalUrl: req.originalUrl
+  });
+});
+
 // Load routes with error handling
 try {
   console.log('📦 Loading routes...');
