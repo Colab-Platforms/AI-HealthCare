@@ -386,11 +386,11 @@ export default function DashboardEnhanced() {
           
           {/* Desktop: Grid layout */}
           <div className="hidden md:grid md:grid-cols-4 gap-4">
-            <QuickActionCard icon={FileText} title="My Reports" subtitle="View all reports" link="/reports" color="blue" />
             <QuickActionCard icon={Apple} title="Quick Food Check" subtitle="Instant nutrition" link="/nutrition" color="emerald" />
-            <QuickActionCard icon={Activity} title="Vital Signs" subtitle="Track metrics" link="/dashboard/classic" color="red" />
-            <QuickActionCard icon={Pill} title="Supplements" subtitle="Recommendations" link="/diet-plan" color="purple" />
+            <QuickActionCard icon={Activity} title="Vital Signs" subtitle="Track metrics" link="/vital-signs" color="red" />
+            <QuickActionCard icon={Pill} title="Supplements" subtitle="Recommendations" link="/supplements" color="purple" />
             <QuickActionCard icon={MessageSquare} title="AI Chat" subtitle="Ask health questions" link="/ai-chat" color="cyan" />
+            <QuickActionCard icon={FileText} title="My Reports" subtitle="View all reports" link="/reports" color="blue" />
             <QuickActionCard icon={Calendar} title="Appointments" subtitle="Book doctors" link="/doctors" color="indigo" comingSoon />
             <QuickActionCard icon={Dumbbell} title="Fitness Plan" subtitle="Exercise routines" link="/dashboard" color="orange" comingSoon />
             <QuickActionCard icon={Brain} title="Mental Health" subtitle="Mood tracking" link="/dashboard" color="pink" comingSoon />
@@ -400,19 +400,19 @@ export default function DashboardEnhanced() {
           <div className="md:hidden">
             <div className="flex overflow-x-auto gap-3 pb-4 snap-x snap-mandatory scrollbar-hide -mx-4 px-4">
               <div className="min-w-[calc(50%-6px)] snap-start flex-shrink-0">
-                <QuickActionCard icon={FileText} title="My Reports" subtitle="View all reports" link="/reports" color="blue" />
-              </div>
-              <div className="min-w-[calc(50%-6px)] snap-start flex-shrink-0">
                 <QuickActionCard icon={Apple} title="Quick Food Check" subtitle="Instant nutrition" link="/nutrition" color="emerald" />
               </div>
               <div className="min-w-[calc(50%-6px)] snap-start flex-shrink-0">
-                <QuickActionCard icon={Activity} title="Vital Signs" subtitle="Track metrics" link="/dashboard/classic" color="red" />
+                <QuickActionCard icon={Activity} title="Vital Signs" subtitle="Track metrics" link="/vital-signs" color="red" />
               </div>
               <div className="min-w-[calc(50%-6px)] snap-start flex-shrink-0">
-                <QuickActionCard icon={Pill} title="Supplements" subtitle="Recommendations" link="/diet-plan" color="purple" />
+                <QuickActionCard icon={Pill} title="Supplements" subtitle="Recommendations" link="/supplements" color="purple" />
               </div>
               <div className="min-w-[calc(50%-6px)] snap-start flex-shrink-0">
                 <QuickActionCard icon={MessageSquare} title="AI Chat" subtitle="Ask health questions" link="/ai-chat" color="cyan" />
+              </div>
+              <div className="min-w-[calc(50%-6px)] snap-start flex-shrink-0">
+                <QuickActionCard icon={FileText} title="My Reports" subtitle="View all reports" link="/reports" color="blue" />
               </div>
               <div className="min-w-[calc(50%-6px)] snap-start flex-shrink-0">
                 <QuickActionCard icon={Calendar} title="Appointments" subtitle="Book doctors" link="/doctors" color="indigo" comingSoon />
