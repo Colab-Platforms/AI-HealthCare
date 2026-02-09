@@ -16,7 +16,7 @@ const ACTIVITY_MULTIPLIERS = {
 const GOAL_ADJUSTMENTS = {
   weight_loss: -500,        // 500 cal deficit for ~0.5kg/week loss
   weight_gain: 500,         // 500 cal surplus for ~0.5kg/week gain
-  muscle_gain: 300,         // 300 cal surplus for lean muscle gain
+  muscle_gain: 250,         // 250 cal surplus for lean muscle gain (not bulking)
   maintain: 0,              // Maintenance calories
   general_health: 0         // Maintenance calories
 };
@@ -25,7 +25,7 @@ const GOAL_ADJUSTMENTS = {
 const MACRO_RATIOS = {
   weight_loss: { protein: 0.35, carbs: 0.35, fat: 0.30 },
   weight_gain: { protein: 0.25, carbs: 0.45, fat: 0.30 },
-  muscle_gain: { protein: 0.35, carbs: 0.40, fat: 0.25 },
+  muscle_gain: { protein: 0.40, carbs: 0.35, fat: 0.25 }, // Higher protein for lean muscle
   maintain: { protein: 0.30, carbs: 0.40, fat: 0.30 },
   general_health: { protein: 0.30, carbs: 0.40, fat: 0.30 }
 };
@@ -204,14 +204,15 @@ function getDietRecommendations(goal, dietaryPreference) {
     },
     muscle_gain: {
       tips: [
-        'Eat 1.8-2.2g protein per kg body weight',
-        'Time protein intake around workouts',
-        'Include complex carbs for energy',
-        'Stay hydrated',
-        'Get adequate sleep for recovery'
+        'Prioritize protein: 2.0-2.2g per kg body weight for lean muscle',
+        'Time protein intake around workouts (pre and post)',
+        'Include complex carbs for sustained energy and recovery',
+        'Focus on progressive overload in training',
+        'Get 7-9 hours of quality sleep for muscle recovery',
+        'Stay hydrated - drink 3-4 liters of water daily'
       ],
-      mealTiming: 'Eat protein within 2 hours post-workout',
-      priority: 'High protein with moderate calorie surplus'
+      mealTiming: 'Eat protein-rich meal within 2 hours post-workout. Spread protein intake across 4-5 meals.',
+      priority: 'High protein (40% of calories) with controlled calorie surplus for LEAN muscle gain, not bulking'
     },
     maintain: {
       tips: [

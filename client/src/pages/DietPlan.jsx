@@ -32,6 +32,25 @@ export default function DietPlan() {
     }
   }, [selectedReportId]);
 
+  // Auto-generate plan if user has goals but no plan
+  useEffect(() => {
+    const autoGeneratePlan = async () => {
+      // Wait for initial load to complete
+      if (loading) return;
+      
+      // Check if user has nutrition goals set
+      const hasGoals = user?.nutritionGoal?.goal;
+      
+      // If no plan exists and user has goals, auto-generate
+      if (!personalizedPlan && hasGoals && !generating) {
+        console.log('🎯 Auto-generating diet plan based on user goals...');
+        await generateAIPlan();
+      }
+    };
+
+    autoGeneratePlan();
+  }, [loading, personalizedPlan, user]);
+
   const fetchAllReports = async () => {
     try {
       const { data } = await healthService.getReports();
@@ -469,14 +488,25 @@ export default function DietPlan() {
             <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center mx-auto mb-6">
               <Apple className="w-10 h-10 text-white" />
             </div>
-            <h3 className="text-2xl font-bold text-slate-800 mb-3">No Diet Plan Available</h3>
+            <h3 className="text-2xl font-bold text-slate-800 mb-3">
+              {user?.nutritionGoal?.goal ? 'Generating Your Diet Plan...' : 'Set Your Goals First'}
+            </h3>
             <p className="text-slate-600 mb-6 max-w-md mx-auto">
-              {allReports.length > 0 
-                ? 'The selected report does not have a diet plan. Please upload a new health report to get AI-analyzed deficiencies and personalized diet recommendations.'
-                : 'Upload a health report to get AI-analyzed deficiencies and personalized diet recommendations.'
+              {user?.nutritionGoal?.goal 
+                ? 'We\'re creating a personalized diet plan based on your nutrition goals. This will take just a moment...'
+                : 'Set your nutrition goals in your profile to get a personalized diet plan. You can also upload health reports for more detailed recommendations.'
               }
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              {!user?.nutritionGoal?.goal && (
+                <Link
+                  to="/profile?tab=goals"
+                  className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                >
+                  <Target className="w-5 h-5" />
+                  Set Your Goals
+                </Link>
+              )}
               <Link
                 to="/upload"
                 className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-medium hover:shadow-lg transition-all"
