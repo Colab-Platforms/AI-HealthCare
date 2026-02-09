@@ -54,10 +54,18 @@ export default function VitalDetailsPopup({ vital, onClose }) {
   const percentage = getPercentage();
 
   return (
-    <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+    <div 
+      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
+      onClick={(e) => {
+        // Close modal if clicking on backdrop
+        if (e.target === e.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
-        <div className={`${colors.bg} border-b-2 ${colors.border} p-6 flex items-center justify-between sticky top-0`}>
+        <div className={`${colors.bg} border-b-2 ${colors.border} p-6 flex items-center justify-between sticky top-0 z-10`}>
           <div className="flex items-center gap-3">
             <div className={`w-12 h-12 rounded-xl ${colors.badge} flex items-center justify-center`}>
               {status === 'normal' && <CheckCircle className={`w-6 h-6 ${colors.text}`} />}
