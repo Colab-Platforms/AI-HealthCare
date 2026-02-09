@@ -139,6 +139,7 @@ try {
   const wearableRoutes = require('../server/routes/wearableRoutes');
   console.log('  ✓ wearableRoutes loaded');
   
+  console.log('  Loading nutritionRoutes...');
   const nutritionRoutes = require('../server/routes/nutritionRoutes');
   console.log('  ✓ nutritionRoutes loaded');
   
@@ -156,7 +157,11 @@ try {
   app.use('/api/doctors', doctorRoutes);
   app.use('/api/admin', adminRoutes);
   app.use('/api/wearables', wearableRoutes);
+  
+  console.log('  Mounting nutritionRoutes at /api/nutrition...');
   app.use('/api/nutrition', nutritionRoutes);
+  console.log('  ✓ nutritionRoutes mounted');
+  
   app.use('/api/diet-recommendations', dietRecommendationRoutes);
   app.use('/api', chatRoutes);
   app.use('/api/chat', chatHistoryRoutes);
