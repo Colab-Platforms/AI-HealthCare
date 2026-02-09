@@ -33,6 +33,8 @@ export default function DietPlan() {
   }, [selectedReportId]);
 
   // Auto-generate plan if user has goals but no plan
+  // DISABLED: Requires manual generation until server routes are available
+  /*
   useEffect(() => {
     const autoGeneratePlan = async () => {
       // Wait for initial load to complete
@@ -50,6 +52,7 @@ export default function DietPlan() {
 
     autoGeneratePlan();
   }, [loading, personalizedPlan, user]);
+  */
 
   const fetchAllReports = async () => {
     try {
@@ -163,6 +166,13 @@ export default function DietPlan() {
       const response = await fetch('/api/diet-recommendations/diet-plan/active', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      
+      // Handle 404 - routes not available
+      if (response.status === 404) {
+        console.log('Diet recommendation routes not available');
+        return;
+      }
+      
       const data = await response.json();
       if (data.success && data.dietPlan) {
         setPersonalizedPlan(data.dietPlan);
@@ -178,6 +188,13 @@ export default function DietPlan() {
       const response = await fetch('/api/diet-recommendations/supplements/active', {
         headers: { 'Authorization': `Bearer ${token}` }
       });
+      
+      // Handle 404 - routes not available
+      if (response.status === 404) {
+        console.log('Supplement recommendation routes not available');
+        return;
+      }
+      
       const data = await response.json();
       if (data.success && data.recommendations) {
         setSupplementRecommendations(data.recommendations);
@@ -198,6 +215,13 @@ export default function DietPlan() {
           'Content-Type': 'application/json'
         }
       });
+      
+      // Handle 404 - routes not available
+      if (response.status === 404) {
+        toast.error('Diet plan service is not available. Please restart the server.');
+        return;
+      }
+      
       const data = await response.json();
       if (data.success) {
         setPersonalizedPlan(data.dietPlan);
@@ -207,7 +231,7 @@ export default function DietPlan() {
       }
     } catch (error) {
       console.error('Failed to generate AI plan:', error);
-      toast.error('Failed to generate personalized plan');
+      toast.error('Failed to generate personalized plan. Please restart the server.');
     } finally {
       setGenerating(false);
     }
@@ -489,16 +513,34 @@ export default function DietPlan() {
               <Apple className="w-10 h-10 text-white" />
             </div>
             <h3 className="text-2xl font-bold text-slate-800 mb-3">
-              {user?.nutritionGoal?.goal ? 'Generating Your Diet Plan...' : 'Set Your Goals First'}
+              {user?.nutritionGoal?.goal ? 'Generate Your Diet Plan' : 'Set Your Goals First'}
             </h3>
             <p className="text-slate-600 mb-6 max-w-md mx-auto">
               {user?.nutritionGoal?.goal 
-                ? 'We\'re creating a personalized diet plan based on your nutrition goals. This will take just a moment...'
+                ? 'Click the button below to generate a personalized AI-powered diet plan based on your nutrition goals.'
                 : 'Set your nutrition goals in your profile to get a personalized diet plan. You can also upload health reports for more detailed recommendations.'
               }
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              {!user?.nutritionGoal?.goal && (
+              {user?.nutritionGoal?.goal ? (
+                <button
+                  onClick={generateAIPlan}
+                  disabled={generating}
+                  className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-green-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {generating ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                      Generating...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-5 h-5" />
+                      Generate AI Diet Plan
+                    </>
+                  )}
+                </button>
+              ) : (
                 <Link
                   to="/profile?tab=goals"
                   className="px-6 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2"
