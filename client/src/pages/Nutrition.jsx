@@ -11,7 +11,8 @@ import QuickFoodCheck from '../components/QuickFoodCheck';
 
 export default function Nutrition() {
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const [todayLogs, setTodayLogs] = useState([]);
   const [dailySummary, setDailySummary] = useState(null);
   const [healthGoal, setHealthGoal] = useState(null);
@@ -42,6 +43,7 @@ export default function Nutrition() {
   }, []);
 
   const fetchData = async () => {
+    setLoading(true);
     try {
       const token = localStorage.getItem('token');
       const headers = { Authorization: `Bearer ${token}` };
@@ -64,9 +66,12 @@ export default function Nutrition() {
       // Load water intake from localStorage
       const savedWater = localStorage.getItem(`waterIntake_${selectedDate}`);
       setWaterIntake(savedWater ? parseInt(savedWater) : 0);
+      
+      setIsInitialLoad(false);
     } catch (error) {
       console.error('Failed to fetch data:', error);
       toast.error('Failed to load nutrition data');
+      setIsInitialLoad(false);
     } finally {
       setLoading(false);
     }
@@ -192,7 +197,7 @@ export default function Nutrition() {
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
-  if (loading) {
+  if (isInitialLoad && loading) {
     return (
       <div className="flex items-center justify-center h-screen">
         <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
@@ -205,6 +210,14 @@ export default function Nutrition() {
 
   return (
     <div className={`w-full h-full bg-gradient-to-br from-cyan-50 via-blue-50 to-cyan-100 flex flex-col ${showAddMeal ? 'overflow-hidden' : ''}`}>
+      {/* Subtle refresh indicator */}
+      {loading && !isInitialLoad && (
+        <div className="fixed top-20 right-4 z-50 bg-white rounded-full shadow-lg px-4 py-2 flex items-center gap-2 animate-slide-in-right">
+          <div className="w-4 h-4 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
+          <span className="text-sm text-slate-600">Refreshing...</span>
+        </div>
+      )}
+      
       {/* Date Picker Header */}
       <div className="w-full px-3 md:px-6 lg:px-8 py-3 flex items-center justify-between bg-white border-b border-gray-200 sticky top-0 z-10 shrink-0">
         <button

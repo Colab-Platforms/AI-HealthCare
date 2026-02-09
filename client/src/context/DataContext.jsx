@@ -38,7 +38,7 @@ export const DataProvider = ({ children }) => {
       const response = await healthService.getDashboard();
       const data = response.data;
       setDashboardData(data);
-      cache.set('dashboard', data, 3 * 60 * 1000); // Cache for 3 minutes
+      cache.set('dashboard', data, 10 * 60 * 1000); // Cache for 10 minutes
       return data;
     } catch (error) {
       console.error('Failed to fetch dashboard:', error);

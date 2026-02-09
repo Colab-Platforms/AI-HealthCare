@@ -185,9 +185,14 @@ export default function DashboardEnhanced() {
   const { user } = useAuth();
   const { dashboardData, loading, fetchDashboard } = useData();
   const [completionProgress, setCompletionProgress] = useState(0);
+  const [isInitialLoad, setIsInitialLoad] = useState(!dashboardData);
 
   useEffect(() => {
-    fetchDashboard();
+    const loadData = async () => {
+      await fetchDashboard();
+      setIsInitialLoad(false);
+    };
+    loadData();
   }, [fetchDashboard]);
 
   useEffect(() => {
@@ -203,7 +208,8 @@ export default function DashboardEnhanced() {
     }
   }, [dashboardData, user]);
 
-  if (loading.dashboard) {
+  // Only show full-screen loader on initial load with no cached data
+  if (isInitialLoad && loading.dashboard && !dashboardData) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <div className="text-center">
@@ -222,6 +228,14 @@ export default function DashboardEnhanced() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-cyan-100">
+      {/* Subtle refresh indicator - only shows when refreshing with cached data */}
+      {loading.dashboard && dashboardData && (
+        <div className="fixed top-20 right-4 z-50 bg-white rounded-full shadow-lg px-4 py-2 flex items-center gap-2 animate-slide-in-right">
+          <div className="w-4 h-4 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
+          <span className="text-sm text-slate-600">Refreshing...</span>
+        </div>
+      )}
+      
       <div className="max-w-7xl mx-auto space-y-8 animate-fade-in pb-20 px-4">
         
         {/* Header */}

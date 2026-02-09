@@ -43,6 +43,17 @@
   }
 }
 
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
 @keyframes heartbeat {
   0%, 100% {
     transform: scale(1);
@@ -72,6 +83,10 @@
 
 .animate-fade-in {
   animation: fade-in 0.5s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
 }
 
 .animate-heartbeat {
