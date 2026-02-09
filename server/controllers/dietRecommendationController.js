@@ -23,50 +23,55 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(5);
 
-    // Extract lab report insights
+    // Check if user has any reports
+    const hasReports = healthReports.length > 0;
+
+    // Extract lab report insights (only if reports exist)
     const labReportInsights = [];
     const deficiencies = [];
     const reportConditions = [];
 
-    healthReports.forEach(report => {
-      if (report.aiAnalysis?.deficiencies) {
-        report.aiAnalysis.deficiencies.forEach(def => {
-          deficiencies.push({
-            nutrient: def.name || def,
-            severity: def.severity || 'detected',
-            reportId: report._id
-          });
-        });
-      }
-
-      if (report.aiAnalysis?.metrics) {
-        Object.entries(report.aiAnalysis.metrics).forEach(([key, metric]) => {
-          labReportInsights.push({
-            parameter: key,
-            value: metric.value || '',
-            unit: metric.unit || '',
-            status: metric.status || 'noted',
-            reportId: report._id
-          });
-          
-          // Track abnormal conditions
-          if (metric.status !== 'normal') {
-            reportConditions.push({
-              parameter: key,
-              status: metric.status,
-              value: metric.value
+    if (hasReports) {
+      healthReports.forEach(report => {
+        if (report.aiAnalysis?.deficiencies) {
+          report.aiAnalysis.deficiencies.forEach(def => {
+            deficiencies.push({
+              nutrient: def.name || def,
+              severity: def.severity || 'detected',
+              reportId: report._id
             });
-          }
-        });
-      }
+          });
+        }
 
-      // Extract key findings as conditions
-      if (report.aiAnalysis?.keyFindings) {
-        report.aiAnalysis.keyFindings.forEach(finding => {
-          reportConditions.push({ finding });
-        });
-      }
-    });
+        if (report.aiAnalysis?.metrics) {
+          Object.entries(report.aiAnalysis.metrics).forEach(([key, metric]) => {
+            labReportInsights.push({
+              parameter: key,
+              value: metric.value || '',
+              unit: metric.unit || '',
+              status: metric.status || 'noted',
+              reportId: report._id
+            });
+            
+            // Track abnormal conditions
+            if (metric.status !== 'normal') {
+              reportConditions.push({
+                parameter: key,
+                status: metric.status,
+                value: metric.value
+              });
+            }
+          });
+        }
+
+        // Extract key findings as conditions
+        if (report.aiAnalysis?.keyFindings) {
+          report.aiAnalysis.keyFindings.forEach(finding => {
+            reportConditions.push({ finding });
+          });
+        }
+      });
+    }
 
     // Get BMI and nutrition goal
     const bmiGoal = user.nutritionGoal?.goal || 'maintain';
@@ -99,7 +104,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       };
     }
 
-    // Prepare user data for AI - INCLUDING BMI GOAL AND REPORT CONDITIONS
+    // Prepare user data for AI
     const userData = {
       age: user.profile?.age || 25,
       gender: user.profile?.gender || 'male',
@@ -113,6 +118,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       fitnessGoals: user.profile?.fitnessGoals || [],
       medicalConditions: user.profile?.medicalConditions || [],
       allergies: user.profile?.allergies || [],
+      hasReports: hasReports, // Flag to indicate if reports exist
       labReports: labReportInsights,
       reportConditions: reportConditions, // Abnormal conditions from reports
       deficiencies: deficiencies, // Nutrient deficiencies
@@ -129,7 +135,9 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       }
     };
 
-    // Generate AI-powered diet plan with BMI goal AND report conditions
+    // Generate AI-powered diet plan
+    // If no reports: Focus on BMI goal and nutrition targets
+    // If reports exist: Consider BMI goal + report conditions + deficiencies
     const aiDietPlan = await dietRecommendationAI.generatePersonalizedDietPlan(userData);
 
     // Deactivate old diet plans
@@ -153,7 +161,8 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
         activityLevel: userData.activityLevel,
         fitnessGoals: userData.fitnessGoals,
         medicalConditions: userData.medicalConditions,
-        allergies: userData.allergies
+        allergies: userData.allergies,
+        hasReports: hasReports
       },
       labReportInsights,
       nutritionGoals: {
@@ -174,8 +183,11 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Personalized diet plan generated successfully',
-      dietPlan
+      message: hasReports 
+        ? 'Personalized diet plan generated based on your goal and health reports'
+        : 'Personalized diet plan generated based on your nutrition goal',
+      dietPlan,
+      basedOn: hasReports ? 'goal_and_reports' : 'goal_only'
     });
 
   } catch (error) {

@@ -28,6 +28,7 @@ class DietRecommendationAI {
       allergies = [],
       reportConditions = [],
       deficiencies = [],
+      hasReports = false, // NEW: Flag to indicate if user has reports
       nutritionGoals = {}
     } = userData;
 
@@ -46,21 +47,66 @@ class DietRecommendationAI {
       bmiGoalDescription = `MAINTAIN WEIGHT: User wants to maintain current weight of ${weight}kg. Focus on balanced nutrition.`;
     }
 
-    // Build report conditions description
+    // Build report conditions description (only if reports exist)
     let reportConditionsDescription = '';
-    if (reportConditions.length > 0) {
-      reportConditionsDescription = `\n**CRITICAL: Health Report Conditions (MUST ADDRESS IN DIET):**\n${reportConditions.map(c => 
-        c.finding ? `- ${c.finding}` : `- ${c.parameter}: ${c.value} (${c.status})`
-      ).join('\n')}`;
+    let deficienciesDescription = '';
+    
+    if (hasReports) {
+      if (reportConditions.length > 0) {
+        reportConditionsDescription = `\n**CRITICAL: Health Report Conditions (MUST ADDRESS IN DIET):**\n${reportConditions.map(c => 
+          c.finding ? `- ${c.finding}` : `- ${c.parameter}: ${c.value} (${c.status})`
+        ).join('\n')}`;
+      }
+
+      if (deficiencies.length > 0) {
+        deficienciesDescription = `\n**CRITICAL: Nutrient Deficiencies (MUST ADDRESS IN DIET):**\n${deficiencies.map(d => 
+          `- ${d.nutrient} (${d.severity})`
+        ).join('\n')}`;
+      }
     }
 
-    // Build deficiencies description
-    let deficienciesDescription = '';
-    if (deficiencies.length > 0) {
-      deficienciesDescription = `\n**CRITICAL: Nutrient Deficiencies (MUST ADDRESS IN DIET):**\n${deficiencies.map(d => 
-        `- ${d.nutrient} (${d.severity})`
-      ).join('\n')}`;
-    }
+    // Build scenario-specific instructions
+    const scenarioInstructions = hasReports 
+      ? `
+**SCENARIO: User HAS uploaded health reports**
+Your diet plan MUST address:
+1. User's BMI goal (${bmiGoal})
+2. Health report conditions (abnormal values)
+3. Nutrient deficiencies detected in reports
+4. Daily nutrition targets
+
+PRIORITY ORDER:
+1. Fix deficiencies and abnormal conditions (HIGHEST PRIORITY)
+2. Meet daily nutrition targets
+3. Support BMI goal achievement
+4. Use Indian foods that address all above
+
+Example: If user has Vitamin D deficiency + wants weight loss:
+- Include Vitamin D rich foods (mushrooms, fortified milk, eggs)
+- Keep calories in deficit for weight loss
+- Ensure protein is high to preserve muscle
+- Suggest practical Indian meals
+`
+      : `
+**SCENARIO: User has NOT uploaded any health reports**
+Your diet plan MUST focus ONLY on:
+1. User's BMI goal (${bmiGoal})
+2. Meeting daily nutrition targets EXACTLY
+3. Practical Indian meals
+
+PRIORITY ORDER:
+1. Meet daily nutrition targets (calories, protein, carbs, fat)
+2. Support BMI goal achievement
+3. Use easy, practical Indian foods
+4. Ensure meals are balanced and sustainable
+
+Example: If user wants weight loss:
+- Create calorie deficit diet
+- High protein to preserve muscle
+- Moderate carbs for energy
+- Healthy fats for satiety
+- All using common Indian foods
+`;
 
     const prompt = `You are an expert Indian nutritionist specializing in creating practical, easy-to-prepare Indian diet plans. Your task is to generate a PRECISE diet plan where meals EXACTLY meet the user's daily nutrition targets.
 
@@ -76,6 +122,8 @@ CRITICAL REQUIREMENTS - MUST FOLLOW STRICTLY:
 9. Provide cooking instructions for each meal
 10. Include difficulty level (Easy/Medium) for each meal
 
+${scenarioInstructions}
+
 **BMI GOAL (CRITICAL - MUST ALIGN DIET WITH THIS):**
 ${bmiGoalDescription}
 - Current BMI: ${currentBMI}
@@ -84,7 +132,7 @@ ${deficienciesDescription}
 
 MEAL SELECTION GUIDELINES:
 - Breakfast: Traditional Indian options (Idli, Dosa, Paratha, Upma, Poha, Oats, Eggs)
-- Mid-Morning Snack: Light options (Fruit, Yogurt, Nuts, Chikhalwali)
+- Mid-Morning Snack: Light options (Fruit, Yogurt, Nuts, Chana)
 - Lunch: Main meal with protein + carbs + vegetables (Curry + Rice/Roti, Dal + Rice)
 - Evening Snack: Light options (Tea with snack, Fruit, Nuts)
 - Dinner: Lighter than lunch (Soup, Salad, Light curry with Roti)
@@ -94,6 +142,7 @@ PORTION SIZE EXAMPLES:
 - Roti: 1 piece (30g) = ~80 cal, 2.5g protein, 15g carbs
 - Dal: 150ml cooked = ~100 cal, 8g protein, 15g carbs
 - Chicken: 100g = ~165 cal, 31g protein, 0g carbs
+- Paneer: 100g = ~265 cal, 18g protein, 6g carbs, 20g fat
 - Vegetables: 100g = ~25-50 cal, 1-2g protein, 5-10g carbs
 
 Generate a comprehensive, personalized Indian diet plan based on the following health data:
@@ -110,6 +159,7 @@ ${targetWeight ? `- Target Weight: ${targetWeight} kg` : ''}
 - Activity Level: ${activityLevel}
 ${medicalConditions.length > 0 ? `- Medical Conditions: ${medicalConditions.join(', ')}` : ''}
 ${allergies.length > 0 ? `- Allergies: ${allergies.join(', ')}` : ''}
+- Has Health Reports: ${hasReports ? 'YES' : 'NO'}
 
 **DAILY NUTRITION TARGETS (MUST BE MET BY SUGGESTED MEALS):**
 - Daily Calories: ${dailyCalories} kcal (±50 cal)
@@ -117,8 +167,7 @@ ${allergies.length > 0 ? `- Allergies: ${allergies.join(', ')}` : ''}
 - Carbohydrates: ${carbsGoal}g (±10g)
 - Fats: ${fatGoal}g (±3g)
 
-**Lab Report Insights:**
-${labReports.length > 0 ? labReports.map(report => `- ${report.parameter}: ${report.value} ${report.unit} (${report.status})`).join('\n') : 'No lab reports available'}
+${hasReports && labReports.length > 0 ? `**Lab Report Insights:**\n${labReports.map(report => `- ${report.parameter}: ${report.value} ${report.unit} (${report.status})`).join('\n')}` : ''}
 
 **Health Parameters:**
 ${Object.keys(healthParameters).length > 0 ? Object.entries(healthParameters).map(([key, value]) => `- ${key}: ${value}`).join('\n') : 'No specific parameters provided'}
