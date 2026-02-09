@@ -209,78 +209,76 @@ export default function DashboardEnhanced() {
           <p className="text-slate-600">Welcome to your health journey</p>
         </div>
 
-        {/* Health Stats */}
-        {hasReports && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {/* Health Score Card - Scrolls to graph */}
-            <button
-              onClick={() => document.getElementById('health-score-graph')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-              className="bg-white rounded-2xl p-5 shadow-md hover:shadow-lg transition-all cursor-pointer text-left hover:scale-105 transform duration-200"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-400 to-pink-500 flex items-center justify-center">
-                  <Heart className="w-6 h-6 text-white" />
-                </div>
-                <TrendingUp className="w-5 h-5 text-emerald-500" />
+        {/* Health Stats - Always show cards */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {/* Health Score Card - Scrolls to graph */}
+          <button
+            onClick={() => hasReports && document.getElementById('health-score-graph')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+            className="bg-white rounded-2xl p-5 shadow-md hover:shadow-lg transition-all cursor-pointer text-left hover:scale-105 transform duration-200"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-400 to-pink-500 flex items-center justify-center">
+                <Heart className="w-6 h-6 text-white" />
               </div>
-              <p className="text-sm text-slate-600 mb-1">Health Score</p>
-              <p className="text-3xl font-bold text-slate-800">
-                {dashboardData?.user?.healthMetrics?.healthScore || 'N/A'}
-              </p>
-            </button>
+              <TrendingUp className="w-5 h-5 text-emerald-500" />
+            </div>
+            <p className="text-sm text-slate-600 mb-1">Health Score</p>
+            <p className="text-3xl font-bold text-slate-800">
+              {dashboardData?.user?.healthMetrics?.healthScore || '--'}
+            </p>
+          </button>
 
-            {/* Total Reports Card - Scrolls to recent reports */}
-            <button
-              onClick={() => document.getElementById('recent-reports')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-              className="bg-white rounded-2xl p-5 shadow-md hover:shadow-lg transition-all cursor-pointer text-left hover:scale-105 transform duration-200"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center">
-                  <FileText className="w-6 h-6 text-white" />
-                </div>
-                <ArrowRight className="w-5 h-5 text-slate-400" />
+          {/* Total Reports Card - Scrolls to recent reports */}
+          <button
+            onClick={() => hasReports && document.getElementById('recent-reports')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+            className="bg-white rounded-2xl p-5 shadow-md hover:shadow-lg transition-all cursor-pointer text-left hover:scale-105 transform duration-200"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center">
+                <FileText className="w-6 h-6 text-white" />
               </div>
-              <p className="text-sm text-slate-600 mb-1">Total Reports</p>
-              <p className="text-3xl font-bold text-slate-800">
-                {dashboardData?.totalReports || dashboardData?.recentReports?.length || 0}
-              </p>
-            </button>
+              <ArrowRight className="w-5 h-5 text-slate-400" />
+            </div>
+            <p className="text-sm text-slate-600 mb-1">Total Reports</p>
+            <p className="text-3xl font-bold text-slate-800">
+              {dashboardData?.totalReports || dashboardData?.recentReports?.length || 0}
+            </p>
+          </button>
 
-            {/* Meals Logged Card - Navigates to Nutrition page */}
-            <Link
-              to="/nutrition#daily-target"
-              className="bg-white rounded-2xl p-5 shadow-md hover:shadow-lg transition-all cursor-pointer hover:scale-105 transform duration-200 block"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center">
-                  <Utensils className="w-6 h-6 text-white" />
-                </div>
-                <Flame className="w-5 h-5 text-orange-500" />
+          {/* Meals Logged Card - Navigates to Nutrition page */}
+          <Link
+            to="/nutrition#daily-target"
+            className="bg-white rounded-2xl p-5 shadow-md hover:shadow-lg transition-all cursor-pointer hover:scale-105 transform duration-200 block"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center">
+                <Utensils className="w-6 h-6 text-white" />
               </div>
-              <p className="text-sm text-slate-600 mb-1">Meals Logged</p>
-              <p className="text-3xl font-bold text-slate-800">
-                {dashboardData?.mealsLogged || 0}
-              </p>
-            </Link>
+              <Flame className="w-5 h-5 text-orange-500" />
+            </div>
+            <p className="text-sm text-slate-600 mb-1">Meals Logged</p>
+            <p className="text-3xl font-bold text-slate-800">
+              {dashboardData?.mealsLogged || 0}
+            </p>
+          </Link>
 
-            {/* Streak Days Card - Redirects to 30 Days Challenge */}
-            <Link
-              to="/challenge"
-              className="bg-white rounded-2xl p-5 shadow-md hover:shadow-lg transition-all cursor-pointer hover:scale-105 transform duration-200 block"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center">
-                  <Award className="w-6 h-6 text-white" />
-                </div>
-                <Star className="w-5 h-5 text-amber-400" />
+          {/* Streak Days Card - Redirects to 30 Days Challenge */}
+          <Link
+            to="/challenge"
+            className="bg-white rounded-2xl p-5 shadow-md hover:shadow-lg transition-all cursor-pointer hover:scale-105 transform duration-200 block"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center">
+                <Award className="w-6 h-6 text-white" />
               </div>
-              <p className="text-sm text-slate-600 mb-1">Streak Days</p>
-              <p className="text-3xl font-bold text-slate-800">
-                {dashboardData?.streakDays || 0}
-              </p>
-            </Link>
-          </div>
-        )}
+              <Star className="w-5 h-5 text-amber-400" />
+            </div>
+            <p className="text-sm text-slate-600 mb-1">Streak Days</p>
+            <p className="text-3xl font-bold text-slate-800">
+              {dashboardData?.streakDays || 0}
+            </p>
+          </Link>
+        </div>
 
         {/* Health Journey */}
         <div>
