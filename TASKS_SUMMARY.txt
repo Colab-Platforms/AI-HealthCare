@@ -1,0 +1,105 @@
+🎯 PENDING TASKS - IMPORTANT
+============================
+
+Date: February 9, 2026
+Status: IN PROGRESS
+
+COMPLETED TODAY:
+---------------
+✅ Backend APIs fixed on Vercel (separate serverless functions)
+✅ Health-themed loader added
+✅ API caching implemented
+✅ Metric modal fixed in ReportSummary
+✅ HealthLoader added to multiple pages
+
+PENDING TASKS (HIGH PRIORITY):
+------------------------------
+
+1. FIX QUICK-CHECK API (500 ERROR)
+   - Issue: /api/nutrition/quick-check returning 500 error
+   - Food analysis not working
+   - Need to check nutritionController.js quickFoodCheck method
+   - Check nutritionAI service
+   - Verify OPENROUTER_API_KEY is working
+
+2. ADD BMI WIDGET TO DASHBOARD
+   - Location: Dashboard page, just below welcome message
+   - Design: Semicircular gauge like the image provided
+   - Features:
+     * Show current BMI value
+     * Color-coded zones (Underweight/Normal/Overweight/Obese)
+     * BMI categories with ranges
+     * Healthy weight range for user's height
+     * BMI Prime calculation
+     * Ponderal Index
+   - Action: Ask user to set BMI goal if not normal
+   - Calculate from user's height and weight in profile
+
+3. IMPROVE DIET PLAN GENERATION
+   - Current: Basic diet recommendations
+   - Required: Smart diet based on:
+     * User's BMI goal (if set)
+     * User's health report conditions (if uploaded)
+     * Combine both factors for personalized diet
+   - Logic:
+     * If BMI goal = lose weight → calorie deficit diet
+     * If BMI goal = gain weight → calorie surplus diet
+     * If report shows deficiencies → add foods for those
+     * If report shows high values → avoid certain foods
+     * Combine all factors for final diet plan
+
+TECHNICAL DETAILS:
+-----------------
+
+Quick-Check API Fix:
+- File: server/controllers/nutritionController.js
+- Method: exports.quickFoodCheck
+- Check: nutritionAI.analyzeFromText() or similar
+- Verify: AI service is working
+- Test: POST /api/nutrition/quick-check with food description
+
+BMI Widget:
+- Component: client/src/components/BMIWidget.jsx (create new)
+- Add to: client/src/pages/Dashboard.jsx or DashboardEnhanced.jsx
+- Data source: user.height, user.weight from profile
+- Formula: BMI = weight(kg) / (height(m))²
+- BMI Prime = BMI / 25
+- Ponderal Index = weight(kg) / (height(m))³
+
+Diet Plan Improvement:
+- File: server/services/dietRecommendationAI.js
+- Update: generatePersonalizedDietPlan() method
+- Inputs needed:
+  * User profile (height, weight, age, gender, activity)
+  * BMI goal (from HealthGoal model)
+  * Latest health report (from HealthReport model)
+  * Report deficiencies and high values
+- Output: Comprehensive diet plan considering all factors
+
+PRIORITY ORDER:
+--------------
+1. Fix quick-check API (URGENT - users can't analyze food)
+2. Add BMI widget (HIGH - important for user engagement)
+3. Improve diet plan (MEDIUM - enhancement)
+
+NEXT STEPS:
+----------
+1. Debug quick-check API - check server logs
+2. Create BMI widget component
+3. Update diet plan generation logic
+4. Test all features
+5. Deploy to Vercel
+
+USER EXPECTATIONS:
+-----------------
+- Food analysis should work immediately
+- BMI should be visible on dashboard landing
+- Diet plan should be smart and personalized
+- Everything should work on Vercel (production)
+
+NOTES:
+-----
+- All APIs are now working on Vercel
+- Health loader is implemented
+- Caching is working
+- Focus on these 3 tasks next

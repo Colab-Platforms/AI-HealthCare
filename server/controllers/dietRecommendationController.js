@@ -26,6 +26,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
     // Extract lab report insights
     const labReportInsights = [];
     const deficiencies = [];
+    const reportConditions = [];
 
     healthReports.forEach(report => {
       if (report.aiAnalysis?.deficiencies) {
@@ -47,21 +48,45 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
             status: metric.status || 'noted',
             reportId: report._id
           });
+          
+          // Track abnormal conditions
+          if (metric.status !== 'normal') {
+            reportConditions.push({
+              parameter: key,
+              status: metric.status,
+              value: metric.value
+            });
+          }
+        });
+      }
+
+      // Extract key findings as conditions
+      if (report.aiAnalysis?.keyFindings) {
+        report.aiAnalysis.keyFindings.forEach(finding => {
+          reportConditions.push({ finding });
         });
       }
     });
 
-    // Calculate user's nutrition goals
+    // Get BMI and nutrition goal
+    const bmiGoal = user.nutritionGoal?.goal || 'maintain';
+    const targetWeight = user.nutritionGoal?.targetWeight;
+    const currentWeight = user.profile?.weight || 70;
+    const height = user.profile?.height || 170;
+    const heightInMeters = height / 100;
+    const currentBMI = currentWeight / (heightInMeters * heightInMeters);
+
+    // Calculate user's nutrition goals based on BMI goal
     let nutritionGoals = null;
     try {
       nutritionGoals = calculateNutritionGoals({
         age: user.profile?.age || 25,
         gender: user.profile?.gender || 'male',
-        weight: user.profile?.weight || 70,
-        height: user.profile?.height || 170,
+        weight: currentWeight,
+        height: height,
         activityLevel: user.profile?.activityLevel || 'moderately_active',
-        goal: user.profile?.fitnessGoals?.[0] || 'general_health',
-        targetWeight: user.profile?.targetWeight
+        goal: bmiGoal, // Use BMI goal
+        targetWeight: targetWeight
       });
     } catch (error) {
       console.warn('Could not calculate nutrition goals:', error.message);
@@ -74,20 +99,25 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       };
     }
 
-    // Prepare user data for AI
+    // Prepare user data for AI - INCLUDING BMI GOAL AND REPORT CONDITIONS
     const userData = {
       age: user.profile?.age || 25,
       gender: user.profile?.gender || 'male',
-      weight: user.profile?.weight || 70,
-      height: user.profile?.height || 170,
+      weight: currentWeight,
+      height: height,
+      currentBMI: currentBMI.toFixed(1),
+      bmiGoal: bmiGoal, // weight_loss, weight_gain, maintain
+      targetWeight: targetWeight,
       dietaryPreference: user.profile?.dietaryPreference || 'non-vegetarian',
       activityLevel: user.profile?.activityLevel || 'moderately_active',
       fitnessGoals: user.profile?.fitnessGoals || [],
       medicalConditions: user.profile?.medicalConditions || [],
       allergies: user.profile?.allergies || [],
       labReports: labReportInsights,
+      reportConditions: reportConditions, // Abnormal conditions from reports
+      deficiencies: deficiencies, // Nutrient deficiencies
       healthParameters: {
-        bmi: user.profile?.bmi,
+        bmi: currentBMI,
         bloodPressure: user.profile?.bloodPressure
       },
       // Add nutrition goals to userData
@@ -99,7 +129,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       }
     };
 
-    // Generate AI-powered diet plan with nutrition goals
+    // Generate AI-powered diet plan with BMI goal AND report conditions
     const aiDietPlan = await dietRecommendationAI.generatePersonalizedDietPlan(userData);
 
     // Deactivate old diet plans
@@ -116,6 +146,9 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
         gender: userData.gender,
         weight: userData.weight,
         height: userData.height,
+        currentBMI: userData.currentBMI,
+        bmiGoal: userData.bmiGoal,
+        targetWeight: userData.targetWeight,
         dietaryPreference: userData.dietaryPreference,
         activityLevel: userData.activityLevel,
         fitnessGoals: userData.fitnessGoals,

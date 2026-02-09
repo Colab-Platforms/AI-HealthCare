@@ -20,9 +20,14 @@ class DietRecommendationAI {
       gender,
       weight,
       height,
+      currentBMI,
+      bmiGoal = 'maintain',
+      targetWeight,
       dietaryPreference = 'non-vegetarian',
       medicalConditions = [],
       allergies = [],
+      reportConditions = [],
+      deficiencies = [],
       nutritionGoals = {}
     } = userData;
 
@@ -30,6 +35,32 @@ class DietRecommendationAI {
     const proteinGoal = nutritionGoals.protein || 150;
     const carbsGoal = nutritionGoals.carbs || 200;
     const fatGoal = nutritionGoals.fat || 65;
+
+    // Build BMI goal description
+    let bmiGoalDescription = '';
+    if (bmiGoal === 'weight_loss') {
+      bmiGoalDescription = `WEIGHT LOSS GOAL: User wants to lose weight from ${weight}kg to ${targetWeight || 'target'}kg. Focus on calorie deficit, high protein, moderate carbs.`;
+    } else if (bmiGoal === 'weight_gain') {
+      bmiGoalDescription = `WEIGHT GAIN GOAL: User wants to gain weight from ${weight}kg to ${targetWeight || 'target'}kg. Focus on calorie surplus, high protein, high carbs.`;
+    } else {
+      bmiGoalDescription = `MAINTAIN WEIGHT: User wants to maintain current weight of ${weight}kg. Focus on balanced nutrition.`;
+    }
+
+    // Build report conditions description
+    let reportConditionsDescription = '';
+    if (reportConditions.length > 0) {
+      reportConditionsDescription = `\n**CRITICAL: Health Report Conditions (MUST ADDRESS IN DIET):**\n${reportConditions.map(c => 
+        c.finding ? `- ${c.finding}` : `- ${c.parameter}: ${c.value} (${c.status})`
+      ).join('\n')}`;
+    }
+
+    // Build deficiencies description
+    let deficienciesDescription = '';
+    if (deficiencies.length > 0) {
+      deficienciesDescription = `\n**CRITICAL: Nutrient Deficiencies (MUST ADDRESS IN DIET):**\n${deficiencies.map(d => 
+        `- ${d.nutrient} (${d.severity})`
+      ).join('\n')}`;
+    }
 
     const prompt = `You are an expert Indian nutritionist specializing in creating practical, easy-to-prepare Indian diet plans. Your task is to generate a PRECISE diet plan where meals EXACTLY meet the user's daily nutrition targets.
 
@@ -44,6 +75,12 @@ CRITICAL REQUIREMENTS - MUST FOLLOW STRICTLY:
 8. Make meals achievable for busy Indian families (preparation time < 30 mins)
 9. Provide cooking instructions for each meal
 10. Include difficulty level (Easy/Medium) for each meal
+
+**BMI GOAL (CRITICAL - MUST ALIGN DIET WITH THIS):**
+${bmiGoalDescription}
+- Current BMI: ${currentBMI}
+${reportConditionsDescription}
+${deficienciesDescription}
 
 MEAL SELECTION GUIDELINES:
 - Breakfast: Traditional Indian options (Idli, Dosa, Paratha, Upma, Poha, Oats, Eggs)
@@ -66,6 +103,9 @@ Generate a comprehensive, personalized Indian diet plan based on the following h
 - Gender: ${gender}
 - Weight: ${weight} kg
 - Height: ${height} cm
+- Current BMI: ${currentBMI}
+- BMI Goal: ${bmiGoal}
+${targetWeight ? `- Target Weight: ${targetWeight} kg` : ''}
 - Dietary Preference: ${dietaryPreference}
 - Activity Level: ${activityLevel}
 ${medicalConditions.length > 0 ? `- Medical Conditions: ${medicalConditions.join(', ')}` : ''}

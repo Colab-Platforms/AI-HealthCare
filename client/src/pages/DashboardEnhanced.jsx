@@ -11,6 +11,7 @@ import {
   CheckCircle, Target, Award, ChevronRight, Zap, Sun, Droplets,
   BarChart3, ArrowRight, Star, Flame, Trophy
 } from 'lucide-react';
+import BMIWidget from '../components/BMIWidget';
 
 // Animated Progress Ring Component
 const ProgressRing = ({ progress, size = 120, strokeWidth = 8 }) => {
@@ -208,6 +209,9 @@ export default function DashboardEnhanced() {
           </h1>
           <p className="text-slate-600">Welcome to your health journey</p>
         </div>
+
+        {/* BMI Widget - Right below welcome message */}
+        <BMIWidget />
 
         {/* Health Stats - Always show cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
