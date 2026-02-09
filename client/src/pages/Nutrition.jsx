@@ -20,11 +20,18 @@ export default function Nutrition() {
   const [waterIntake, setWaterIntake] = useState(0);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Add meal form state
+  // Add meal form state - Enhanced
   const [mealType, setMealType] = useState('breakfast');
   const [foodDescription, setFoodDescription] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
+  
+  // Smart suggestions state
+  const [quantity, setQuantity] = useState('');
+  const [servingSize, setServingSize] = useState('medium');
+  const [preparationMethod, setPreparationMethod] = useState('homemade');
+  const [foodItems, setFoodItems] = useState([]);
+  const [showQuantitySuggestions, setShowQuantitySuggestions] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -92,6 +99,71 @@ export default function Nutrition() {
     }
   };
 
+  // Smart quantity suggestions based on food type
+  const getQuantitySuggestions = (foodName) => {
+    const lowerFood = foodName.toLowerCase();
+    
+    // Liquids
+    if (lowerFood.includes('juice') || lowerFood.includes('milk') || lowerFood.includes('water') || lowerFood.includes('tea') || lowerFood.includes('coffee')) {
+      return ['1 cup (250ml)', '1 glass (200ml)', '1 bottle (500ml)', '2 cups (500ml)'];
+    }
+    
+    // Rice/Grains
+    if (lowerFood.includes('rice') || lowerFood.includes('pasta') || lowerFood.includes('noodles')) {
+      return ['1 cup', '1.5 cups', '2 cups', '1 bowl'];
+    }
+    
+    // Bread/Roti
+    if (lowerFood.includes('bread') || lowerFood.includes('roti') || lowerFood.includes('chapati') || lowerFood.includes('paratha')) {
+      return ['1 piece', '2 pieces', '3 pieces', '4 pieces'];
+    }
+    
+    // Fruits
+    if (lowerFood.includes('apple') || lowerFood.includes('banana') || lowerFood.includes('orange') || lowerFood.includes('mango')) {
+      return ['1 small', '1 medium', '1 large', '2 pieces'];
+    }
+    
+    // Eggs
+    if (lowerFood.includes('egg')) {
+      return ['1 egg', '2 eggs', '3 eggs', '4 eggs'];
+    }
+    
+    // Chicken/Meat
+    if (lowerFood.includes('chicken') || lowerFood.includes('meat') || lowerFood.includes('fish')) {
+      return ['100g', '150g', '200g', '1 piece'];
+    }
+    
+    // Default
+    return ['1 serving', '1 plate', '1 bowl', '1 cup'];
+  };
+
+  const addFoodItem = () => {
+    if (!analysisResult || !quantity) {
+      toast.error('Please analyze food and select quantity');
+      return;
+    }
+
+    const newItem = {
+      ...analysisResult.foodItem,
+      quantity,
+      servingSize,
+      preparationMethod,
+      id: Date.now()
+    };
+
+    setFoodItems([...foodItems, newItem]);
+    setFoodDescription('');
+    setAnalysisResult(null);
+    setQuantity('');
+    setShowQuantitySuggestions(false);
+    toast.success('Food item added!');
+  };
+
+  const removeFoodItem = (id) => {
+    setFoodItems(foodItems.filter(item => item.id !== id));
+    toast.success('Item removed');
+  };
+
   const analyzeFood = async () => {
     if (!foodDescription.trim()) {
       toast.error('Please enter a food item');
@@ -101,13 +173,18 @@ export default function Nutrition() {
     setAnalyzing(true);
     try {
       const token = localStorage.getItem('token');
+      
+      // Build enhanced description with serving size and preparation
+      const enhancedDescription = `${servingSize} ${preparationMethod} ${foodDescription}`;
+      
       const response = await axios.post(
         '/api/nutrition/quick-check',
-        { foodDescription: foodDescription },
+        { foodDescription: enhancedDescription },
         { headers: { Authorization: `Bearer ${token}` } }
       );
 
       setAnalysisResult(response.data.data);
+      setShowQuantitySuggestions(true);
       toast.success('Food analyzed!');
     } catch (error) {
       console.error('Analysis error:', error);
@@ -118,8 +195,8 @@ export default function Nutrition() {
   };
 
   const logMeal = async () => {
-    if (!analysisResult) {
-      toast.error('Please analyze food first');
+    if (foodItems.length === 0) {
+      toast.error('Please add at least one food item');
       return;
     }
 
@@ -129,8 +206,11 @@ export default function Nutrition() {
         '/api/nutrition/log-meal',
         {
           mealType,
-          foodItems: analysisResult.foodItem ? [analysisResult.foodItem] : [],
-          notes: foodDescription
+          foodItems: foodItems.map(item => ({
+            ...item,
+            notes: `${item.quantity} - ${item.servingSize} - ${item.preparationMethod}`
+          })),
+          notes: `${foodItems.length} items logged`
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -139,6 +219,10 @@ export default function Nutrition() {
       setShowAddMeal(false);
       setFoodDescription('');
       setAnalysisResult(null);
+      setFoodItems([]);
+      setQuantity('');
+      setServingSize('medium');
+      setPreparationMethod('homemade');
       fetchData();
     } catch (error) {
       console.error('Log meal error:', error);
@@ -427,6 +511,11 @@ export default function Nutrition() {
                   setShowAddMeal(false);
                   setFoodDescription('');
                   setAnalysisResult(null);
+                  setFoodItems([]);
+                  setQuantity('');
+                  setServingSize('medium');
+                  setPreparationMethod('homemade');
+                  setShowQuantitySuggestions(false);
                 }}
                 className="p-2 hover:bg-gray-100 rounded-lg"
               >
@@ -434,8 +523,70 @@ export default function Nutrition() {
               </button>
             </div>
 
+            {/* Added Food Items List */}
+            {foodItems.length > 0 && (
+              <div className="mb-4 space-y-2">
+                <h3 className="text-sm font-semibold text-gray-700">Added Items ({foodItems.length})</h3>
+                {foodItems.map((item) => (
+                  <div key={item.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
+                    <div className="flex-1">
+                      <p className="font-medium text-gray-900">{item.name}</p>
+                      <p className="text-xs text-gray-500">{item.quantity} • {item.servingSize} • {item.preparationMethod}</p>
+                      <p className="text-xs text-gray-600 mt-1">{item.nutrition?.calories || 0} cal</p>
+                    </div>
+                    <button
+                      onClick={() => removeFoodItem(item.id)}
+                      className="p-2 hover:bg-red-100 rounded-lg text-red-600"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {!analysisResult ? (
               <div className="space-y-4">
+                {/* Serving Size */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Serving Size</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {['small', 'medium', 'large'].map((size) => (
+                      <button
+                        key={size}
+                        onClick={() => setServingSize(size)}
+                        className={`py-2 px-4 rounded-lg font-medium transition-all ${
+                          servingSize === size
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {size.charAt(0).toUpperCase() + size.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Preparation Method */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Preparation Method</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {['homemade', 'baked', 'fried', 'grilled', 'steamed', 'raw'].map((method) => (
+                      <button
+                        key={method}
+                        onClick={() => setPreparationMethod(method)}
+                        className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
+                          preparationMethod === method
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {method.charAt(0).toUpperCase() + method.slice(1)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">Food Item</label>
                   <input
@@ -444,6 +595,7 @@ export default function Nutrition() {
                     onChange={(e) => setFoodDescription(e.target.value)}
                     placeholder="e.g., Chicken rice with vegetables"
                     className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
+                    onKeyPress={(e) => e.key === 'Enter' && analyzeFood()}
                   />
                 </div>
 
@@ -507,25 +659,68 @@ export default function Nutrition() {
                   )}
                 </div>
 
+                {/* Quantity Selection */}
+                {showQuantitySuggestions && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Quantity</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      {getQuantitySuggestions(analysisResult.foodItem?.name || '').map((qty) => (
+                        <button
+                          key={qty}
+                          onClick={() => setQuantity(qty)}
+                          className={`py-3 px-4 rounded-lg font-medium transition-all ${
+                            quantity === qty
+                              ? 'bg-cyan-600 text-white ring-2 ring-cyan-300'
+                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          }`}
+                        >
+                          {qty}
+                        </button>
+                      ))}
+                    </div>
+                    <input
+                      type="text"
+                      value={quantity}
+                      onChange={(e) => setQuantity(e.target.value)}
+                      placeholder="Or enter custom quantity"
+                      className="w-full mt-2 px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-cyan-500 focus:outline-none text-sm"
+                    />
+                  </div>
+                )}
+
                 <div className="flex gap-3">
                   <button
                     onClick={() => {
                       setAnalysisResult(null);
                       setFoodDescription('');
+                      setQuantity('');
+                      setShowQuantitySuggestions(false);
                     }}
                     className="flex-1 bg-gray-200 text-gray-900 font-bold py-3 rounded-xl hover:bg-gray-300"
                   >
                     Back
                   </button>
                   <button
-                    onClick={logMeal}
-                    className="flex-1 bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 flex items-center justify-center gap-2"
+                    onClick={addFoodItem}
+                    disabled={!quantity}
+                    className="flex-1 bg-cyan-600 text-white font-bold py-3 rounded-xl hover:bg-cyan-700 disabled:opacity-50 flex items-center justify-center gap-2"
                   >
-                    <CheckCircle className="w-5 h-5" />
-                    Log Meal
+                    <Plus className="w-5 h-5" />
+                    Add Item
                   </button>
                 </div>
               </div>
+            )}
+
+            {/* Log All Button */}
+            {foodItems.length > 0 && !analysisResult && (
+              <button
+                onClick={logMeal}
+                className="w-full mt-4 bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 flex items-center justify-center gap-2"
+              >
+                <CheckCircle className="w-5 h-5" />
+                Log {foodItems.length} Item{foodItems.length > 1 ? 's' : ''}
+              </button>
             )}
           </div>
         </div>
