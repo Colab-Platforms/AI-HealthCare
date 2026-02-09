@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { healthService } from '../services/api';
 import { FileText, ArrowLeft, Calendar, Eye, TrendingUp, AlertCircle, Upload, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import HealthLoader from '../components/HealthLoader';
 
 export default function AllReports() {
   const [reports, setReports] = useState([]);
@@ -50,14 +51,7 @@ export default function AllReports() {
   const reportTypes = ['all', ...new Set(reports.map(r => r.reportType))];
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-400">Loading reports...</p>
-        </div>
-      </div>
-    );
+    return <HealthLoader message="Loading your health reports..." />;
   }
 
   return (

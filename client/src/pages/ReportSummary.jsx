@@ -4,6 +4,7 @@ import { healthService } from '../services/api';
 import { ArrowLeft, Download, Share2, AlertTriangle, CheckCircle, TrendingDown, Apple, Pill, Heart, Activity, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import VitalDetailsPopup from '../components/VitalDetailsPopup';
+import HealthLoader from '../components/HealthLoader';
 
 export default function ReportSummary() {
   const { id } = useParams();
@@ -27,7 +28,21 @@ export default function ReportSummary() {
   }, [id]);
 
   const handleMetricClick = (metricName, metricData) => {
-    setSelectedMetric({ name: metricName, ...metricData });
+    // Ensure we have all required data
+    const metricInfo = {
+      name: metricName,
+      value: metricData.value,
+      unit: metricData.unit || '',
+      normalRange: metricData.normalRange || 'N/A',
+      status: metricData.status || 'normal',
+      description: metricData.description || '',
+      recommendations: metricData.recommendations || [],
+      foodsToConsume: metricData.foodsToConsume || [],
+      foodsToAvoid: metricData.foodsToAvoid || [],
+      symptoms: metricData.symptoms || [],
+      severity: metricData.severity || ''
+    };
+    setSelectedMetric(metricInfo);
     setShowMetricModal(true);
   };
 
@@ -36,7 +51,7 @@ export default function ReportSummary() {
     setSelectedMetric(null);
   };
 
-  if (loading) return <div className="flex items-center justify-center h-[60vh]"><div className="text-center"><div className="w-16 h-16 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4" /><p className="text-slate-400">Loading report...</p></div></div>;
+  if (loading) return <HealthLoader message="Loading your health report..." />;
   if (!report) return <div className="text-center py-12 text-slate-400">Report not found</div>;
 
   const { aiAnalysis } = report;
