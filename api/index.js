@@ -81,6 +81,45 @@ app.get('/api/nutrition/test', (req, res) => {
   });
 });
 
+// Test auth endpoint (requires authentication)
+app.get('/api/nutrition/test-auth', async (req, res) => {
+  try {
+    // Manually check auth
+    const token = req.headers.authorization?.split(' ')[1];
+    if (!token) {
+      return res.status(401).json({ 
+        error: 'No token provided',
+        authHeader: req.headers.authorization,
+        allHeaders: req.headers
+      });
+    }
+    
+    const jwt = require('jsonwebtoken');
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch (jwtError) {
+      return res.status(401).json({
+        error: 'JWT verification failed',
+        message: jwtError.message,
+        hasSecret: !!process.env.JWT_SECRET
+      });
+    }
+    
+    res.json({
+      message: 'Auth works!',
+      userId: decoded.id,
+      path: req.path,
+      dbConnected: dbInitialized
+    });
+  } catch (error) {
+    res.status(500).json({ 
+      error: 'Server error',
+      message: error.message 
+    });
+  }
+});
+
 // Load routes with error handling
 try {
   console.log('📦 Loading routes...');
@@ -123,21 +162,7 @@ try {
   app.use('/api/chat', chatHistoryRoutes);
   
   console.log('✅ All routes mounted successfully');
-  
-  // Log all registered routes for debugging
-  console.log('📋 Registered routes:');
-  app._router.stack.forEach((middleware) => {
-    if (middleware.route) {
-      console.log(`  ${Object.keys(middleware.route.methods)} ${middleware.route.path}`);
-    } else if (middleware.name === 'router') {
-      middleware.handle.stack.forEach((handler) => {
-        if (handler.route) {
-          const path = middleware.regexp.source.replace('\\/?(?=\\/|$)', '').replace(/\\\//g, '/');
-          console.log(`  ${Object.keys(handler.route.methods)} ${path}${handler.route.path}`);
-        }
-      });
-    }
-  });
+  console.log('📍 Nutrition routes should be available at /api/nutrition/*');
 } catch (error) {
   console.error('❌ Error loading routes:', error.message);
   console.error(error.stack);
