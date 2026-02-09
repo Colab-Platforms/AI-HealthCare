@@ -8,10 +8,14 @@
   "functions": {
     "api/**/*.js": {
       "memory": 1024,
-      "maxDuration": 10
+      "maxDuration": 30
     }
   },
   "rewrites": [
+    {
+      "source": "/api/diet-recommendations/:path*",
+      "destination": "/api/index"
+    },
     {
       "source": "/api/nutrition/:path*",
       "destination": "/api/nutrition"
