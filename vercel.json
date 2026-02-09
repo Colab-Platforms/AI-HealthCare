@@ -1,59 +1,18 @@
 {
   "version": 2,
-  "buildCommand": "cd client && npm ci && npm run build",
+  "buildCommand": "cd client && npm install && npm run build",
   "outputDirectory": "client/dist",
-  "installCommand": "npm install",
+  "installCommand": "echo 'Skipping root install'",
+  "devCommand": "cd client && npm run dev",
   "framework": null,
-  "builds": [
+  "rewrites": [
     {
-      "src": "api/test.js",
-      "use": "@vercel/node"
+      "source": "/api/:path*",
+      "destination": "/api/:path*"
     },
     {
-      "src": "api/env-check.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "api/ai-test.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "api/chat.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "api/index.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/api/test",
-      "dest": "/api/test.js"
-    },
-    {
-      "src": "/api/env-check",
-      "dest": "/api/env-check.js"
-    },
-    {
-      "src": "/api/ai-test",
-      "dest": "/api/ai-test.js"
-    },
-    {
-      "src": "/api/chat",
-      "dest": "/api/chat.js"
-    },
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/index.js"
-    },
-    {
-      "src": "/(.*\\.(js|css|png|jpg|jpeg|gif|svg|ico|woff|woff2|ttf|eot))",
-      "dest": "/client/dist/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/client/dist/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }
