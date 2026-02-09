@@ -34,23 +34,23 @@ const BMIGauge = ({ bmi }) => {
   ];
 
   return (
-    <div className="relative flex items-center justify-center">
-      <svg width={size} height={size / 2 + 20} className="overflow-visible">
+    <div className="relative flex flex-col items-center justify-center w-full">
+      <svg width={size} height={size / 2 + 40} viewBox={`0 0 ${size} ${size / 2 + 40}`} className="overflow-visible">
         {/* Background arc zones */}
         {zones.map((zone, idx) => {
-          const startAngle = zone.start - 90;
-          const endAngle = zone.end - 90;
+          const startAngle = zone.start;
+          const endAngle = zone.end;
           const largeArc = endAngle - startAngle > 180 ? 1 : 0;
           
-          const startX = size / 2 + radius * Math.cos((startAngle * Math.PI) / 180);
-          const startY = size / 2 + radius * Math.sin((startAngle * Math.PI) / 180);
-          const endX = size / 2 + radius * Math.cos((endAngle * Math.PI) / 180);
-          const endY = size / 2 + radius * Math.sin((endAngle * Math.PI) / 180);
+          const startX = size / 2 + radius * Math.cos(((180 - startAngle) * Math.PI) / 180);
+          const startY = size / 2 - radius * Math.sin(((180 - startAngle) * Math.PI) / 180);
+          const endX = size / 2 + radius * Math.cos(((180 - endAngle) * Math.PI) / 180);
+          const endY = size / 2 - radius * Math.sin(((180 - endAngle) * Math.PI) / 180);
 
           return (
             <path
               key={idx}
-              d={`M ${startX} ${startY} A ${radius} ${radius} 0 ${largeArc} 1 ${endX} ${endY}`}
+              d={`M ${startX} ${startY} A ${radius} ${radius} 0 ${largeArc} 0 ${endX} ${endY}`}
               fill="none"
               stroke={zone.color}
               strokeWidth={strokeWidth}
@@ -60,12 +60,12 @@ const BMIGauge = ({ bmi }) => {
         })}
 
         {/* Needle */}
-        <g transform={`rotate(${angle - 90} ${size / 2} ${size / 2})`}>
+        <g transform={`rotate(${-angle} ${size / 2} ${size / 2})`}>
           <line
             x1={size / 2}
             y1={size / 2}
-            x2={size / 2 + radius - 10}
-            y2={size / 2}
+            x2={size / 2}
+            y2={size / 2 - radius + 10}
             stroke="#1e293b"
             strokeWidth="3"
             strokeLinecap="round"
@@ -76,7 +76,7 @@ const BMIGauge = ({ bmi }) => {
         {/* Center text */}
         <text
           x={size / 2}
-          y={size / 2 + 35}
+          y={size / 2 + 20}
           textAnchor="middle"
           className="text-3xl font-bold fill-slate-800"
         >
@@ -84,17 +84,19 @@ const BMIGauge = ({ bmi }) => {
         </text>
         <text
           x={size / 2}
-          y={size / 2 + 55}
+          y={size / 2 + 38}
           textAnchor="middle"
           className="text-xs fill-slate-500"
         >
           kg/m²
         </text>
-      </svg>
 
-      {/* Labels */}
-      <div className="absolute bottom-0 left-0 text-[10px] text-slate-600 font-medium">16</div>
-      <div className="absolute bottom-0 right-0 text-[10px] text-slate-600 font-medium">40</div>
+        {/* Labels */}
+        <text x="20" y={size / 2 + 5} className="text-[10px] fill-slate-600 font-medium">16</text>
+        <text x={size - 30} y={size / 2 + 5} className="text-[10px] fill-slate-600 font-medium">40</text>
+      </svg>
+      
+      <p className="text-xs text-slate-600 font-medium mt-2">Your BMI</p>
     </div>
   );
 };
@@ -198,17 +200,16 @@ export default function BMIWidget() {
 
   return (
     <>
-      <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl border-2 border-cyan-200 p-6 shadow-sm">
-        <div className="flex flex-col lg:flex-row items-center gap-6">
-          {/* BMI Gauge */}
-          <div className="flex-shrink-0">
+      <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl border-2 border-cyan-200 p-4 sm:p-6 shadow-sm">
+        <div className="flex flex-col items-center gap-4 sm:gap-6">
+          {/* BMI Gauge - Full width on mobile, centered */}
+          <div className="w-full max-w-xs">
             <BMIGauge bmi={bmi} />
           </div>
 
           {/* BMI Info */}
-          <div className="flex-1 space-y-4 text-center lg:text-left">
-            <div>
-              <h3 className="text-2xl font-bold text-slate-800 mb-2">Your BMI</h3>
+          <div className="w-full space-y-4 text-center">
+            <div className="flex flex-col items-center gap-2">
               <BMICategory bmi={bmi} />
             </div>
 
@@ -237,8 +238,8 @@ export default function BMIWidget() {
             {/* Current Goal or Set Goal Button */}
             {currentGoal?.goal ? (
               <div className="bg-white rounded-xl p-4 border-2 border-cyan-200">
-                <div className="flex items-center justify-between">
-                  <div>
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+                  <div className="text-center sm:text-left">
                     <p className="text-xs text-slate-600 mb-1">Current Goal</p>
                     <p className="text-sm font-bold text-slate-800 capitalize">
                       {currentGoal.goal.replace('_', ' ')}
@@ -247,7 +248,7 @@ export default function BMIWidget() {
                   </div>
                   <Link
                     to="/profile?tab=goals"
-                    className="px-4 py-2 bg-cyan-500 text-white rounded-lg text-sm font-medium hover:bg-cyan-600 transition-colors"
+                    className="px-4 py-2 bg-cyan-500 text-white rounded-lg text-sm font-medium hover:bg-cyan-600 transition-colors whitespace-nowrap"
                   >
                     Change
                   </Link>
