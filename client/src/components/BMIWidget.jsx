@@ -80,10 +80,10 @@ const BMIGaugeDesktop = ({ bmi }) => {
   );
 };
 
-// BMI Gauge Component - Mobile (Top half circle)
+// BMI Gauge Component - Mobile (Top half circle) - Smooth design matching desktop
 const BMIGaugeMobile = ({ bmi }) => {
-  const size = 200;
-  const strokeWidth = 20;
+  const size = 240; // Slightly larger for mobile prominence
+  const strokeWidth = 22;
   const radius = (size - strokeWidth) / 2;
 
   const getNeedleAngle = () => {
@@ -103,22 +103,24 @@ const BMIGaugeMobile = ({ bmi }) => {
   ];
 
   return (
-    <div className="relative flex flex-col items-center justify-center w-full">
-      <svg width={size} height={size / 2 + 40} viewBox={`0 0 ${size} ${size / 2 + 40}`} className="overflow-visible">
+    <div className="relative flex items-center justify-center">
+      <svg width={size} height={size / 2 + 30} className="overflow-visible">
+        {/* Background arc zones - smooth rounded caps */}
         {zones.map((zone, idx) => {
           const startAngle = zone.start;
           const endAngle = zone.end;
-          const largeArc = endAngle - startAngle > 180 ? 1 : 0;
+          const largeArc = 0;
           
-          const startX = size / 2 + radius * Math.cos(((180 - startAngle) * Math.PI) / 180);
-          const startY = size / 2 - radius * Math.sin(((180 - startAngle) * Math.PI) / 180);
-          const endX = size / 2 + radius * Math.cos(((180 - endAngle) * Math.PI) / 180);
-          const endY = size / 2 - radius * Math.sin(((180 - endAngle) * Math.PI) / 180);
+          // Calculate positions for top half-circle (180° to 0°)
+          const startX = size / 2 - radius * Math.cos((startAngle * Math.PI) / 180);
+          const startY = size / 2 - radius * Math.sin((startAngle * Math.PI) / 180);
+          const endX = size / 2 - radius * Math.cos((endAngle * Math.PI) / 180);
+          const endY = size / 2 - radius * Math.sin((endAngle * Math.PI) / 180);
 
           return (
             <path
               key={idx}
-              d={`M ${startX} ${startY} A ${radius} ${radius} 0 ${largeArc} 0 ${endX} ${endY}`}
+              d={`M ${startX} ${startY} A ${radius} ${radius} 0 ${largeArc} 1 ${endX} ${endY}`}
               fill="none"
               stroke={zone.color}
               strokeWidth={strokeWidth}
@@ -127,31 +129,32 @@ const BMIGaugeMobile = ({ bmi }) => {
           );
         })}
 
-        <g transform={`rotate(${-angle} ${size / 2} ${size / 2})`}>
+        {/* Needle - smooth and precise */}
+        <g transform={`rotate(${angle} ${size / 2} ${size / 2})`}>
           <line
             x1={size / 2}
             y1={size / 2}
-            x2={size / 2}
-            y2={size / 2 - radius + 10}
+            x2={size / 2 - radius + 12}
+            y2={size / 2}
             stroke="#1e293b"
             strokeWidth="3"
             strokeLinecap="round"
           />
-          <circle cx={size / 2} cy={size / 2} r="8" fill="#1e293b" />
+          <circle cx={size / 2} cy={size / 2} r="9" fill="#1e293b" />
         </g>
 
-        <text x={size / 2} y={size / 2 + 20} textAnchor="middle" className="text-3xl font-bold fill-slate-800">
+        {/* Center text - larger and bold */}
+        <text x={size / 2} y={size / 2 + 25} textAnchor="middle" className="text-4xl font-bold fill-slate-800">
           {bmi.toFixed(1)}
         </text>
-        <text x={size / 2} y={size / 2 + 38} textAnchor="middle" className="text-xs fill-slate-500">
+        <text x={size / 2} y={size / 2 + 45} textAnchor="middle" className="text-sm fill-slate-500 font-medium">
           kg/m²
         </text>
-
-        <text x="20" y={size / 2 + 5} className="text-[10px] fill-slate-600 font-medium">16</text>
-        <text x={size - 30} y={size / 2 + 5} className="text-[10px] fill-slate-600 font-medium">40</text>
       </svg>
-      
-      <p className="text-xs text-slate-600 font-medium mt-2">Your BMI</p>
+
+      {/* Labels - positioned at bottom corners */}
+      <div className="absolute bottom-2 left-2 text-xs text-slate-600 font-semibold">16</div>
+      <div className="absolute bottom-2 right-2 text-xs text-slate-600 font-semibold">40</div>
     </div>
   );
 };
@@ -171,8 +174,8 @@ const BMICategory = ({ bmi }) => {
   const Icon = category.icon;
 
   return (
-    <div className={`flex items-center gap-2 px-4 py-2 rounded-full border-2 ${category.color} font-semibold text-sm`}>
-      <Icon className="w-4 h-4" />
+    <div className={`flex items-center gap-1.5 lg:gap-2 px-3 lg:px-4 py-1.5 lg:py-2 rounded-full border-2 ${category.color} font-semibold text-xs lg:text-sm`}>
+      <Icon className="w-3.5 h-3.5 lg:w-4 lg:h-4" />
       {category.label}
     </div>
   );
@@ -255,10 +258,10 @@ export default function BMIWidget() {
 
   return (
     <>
-      <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl border-2 border-cyan-200 p-4 sm:p-6 shadow-sm">
-        <div className="flex flex-col lg:flex-row items-center gap-4 lg:gap-6">
+      <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl border-2 border-cyan-200 p-4 lg:p-6 shadow-sm">
+        <div className="flex flex-col lg:flex-row items-center gap-3 lg:gap-6">
           {/* BMI Gauge - Mobile version (top half-circle) visible only on mobile */}
-          <div className="lg:hidden w-full max-w-xs">
+          <div className="lg:hidden w-full flex justify-center">
             <BMIGaugeMobile bmi={bmi} />
           </div>
 
@@ -267,49 +270,50 @@ export default function BMIWidget() {
             <BMIGaugeDesktop bmi={bmi} />
           </div>
 
-          {/* BMI Info */}
-          <div className="flex-1 w-full space-y-4 text-center lg:text-left">
-            <div className="flex flex-col lg:flex-row lg:items-center gap-2">
+          {/* BMI Info - Compact on mobile */}
+          <div className="flex-1 w-full space-y-2 lg:space-y-4 text-center lg:text-left">
+            {/* Category Badge - Compact on mobile */}
+            <div className="flex flex-col lg:flex-row lg:items-center gap-2 justify-center lg:justify-start">
               <h3 className="hidden lg:block text-2xl font-bold text-slate-800">Your BMI</h3>
               <BMICategory bmi={bmi} />
             </div>
 
-            {/* Stats Grid */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white rounded-xl p-3 border border-slate-200">
-                <p className="text-xs text-slate-600 mb-1">Healthy BMI Range</p>
-                <p className="text-sm font-bold text-slate-800">18.5 - 25 kg/m²</p>
+            {/* Stats Grid - Smaller on mobile */}
+            <div className="grid grid-cols-2 gap-2 lg:gap-3">
+              <div className="bg-white rounded-lg lg:rounded-xl p-2 lg:p-3 border border-slate-200">
+                <p className="text-[10px] lg:text-xs text-slate-600 mb-0.5 lg:mb-1">Healthy BMI</p>
+                <p className="text-xs lg:text-sm font-bold text-slate-800">18.5 - 25</p>
               </div>
-              <div className="bg-white rounded-xl p-3 border border-slate-200">
-                <p className="text-xs text-slate-600 mb-1">Healthy Weight</p>
-                <p className="text-sm font-bold text-slate-800">
+              <div className="bg-white rounded-lg lg:rounded-xl p-2 lg:p-3 border border-slate-200">
+                <p className="text-[10px] lg:text-xs text-slate-600 mb-0.5 lg:mb-1">Healthy Weight</p>
+                <p className="text-xs lg:text-sm font-bold text-slate-800">
                   {healthyWeightRange?.min} - {healthyWeightRange?.max} kg
                 </p>
               </div>
-              <div className="bg-white rounded-xl p-3 border border-slate-200">
-                <p className="text-xs text-slate-600 mb-1">BMI Prime</p>
-                <p className="text-sm font-bold text-slate-800">{bmiPrime?.toFixed(2)}</p>
+              <div className="bg-white rounded-lg lg:rounded-xl p-2 lg:p-3 border border-slate-200">
+                <p className="text-[10px] lg:text-xs text-slate-600 mb-0.5 lg:mb-1">BMI Prime</p>
+                <p className="text-xs lg:text-sm font-bold text-slate-800">{bmiPrime?.toFixed(2)}</p>
               </div>
-              <div className="bg-white rounded-xl p-3 border border-slate-200">
-                <p className="text-xs text-slate-600 mb-1">Ponderal Index</p>
-                <p className="text-sm font-bold text-slate-800">{ponderalIndex?.toFixed(1)} kg/m³</p>
+              <div className="bg-white rounded-lg lg:rounded-xl p-2 lg:p-3 border border-slate-200">
+                <p className="text-[10px] lg:text-xs text-slate-600 mb-0.5 lg:mb-1">Ponderal Index</p>
+                <p className="text-xs lg:text-sm font-bold text-slate-800">{ponderalIndex?.toFixed(1)} kg/m³</p>
               </div>
             </div>
 
-            {/* Current Goal or Set Goal Button */}
+            {/* Current Goal or Set Goal Button - Compact on mobile */}
             {currentGoal?.goal ? (
-              <div className="bg-white rounded-xl p-4 border-2 border-cyan-200">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              <div className="bg-white rounded-lg lg:rounded-xl p-2.5 lg:p-4 border-2 border-cyan-200">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2 lg:gap-3">
                   <div className="text-center sm:text-left">
-                    <p className="text-xs text-slate-600 mb-1">Current Goal</p>
-                    <p className="text-sm font-bold text-slate-800 capitalize">
+                    <p className="text-[10px] lg:text-xs text-slate-600 mb-0.5 lg:mb-1">Current Goal</p>
+                    <p className="text-xs lg:text-sm font-bold text-slate-800 capitalize">
                       {currentGoal.goal.replace('_', ' ')}
                       {currentGoal.targetWeight && ` - ${currentGoal.targetWeight} kg`}
                     </p>
                   </div>
                   <Link
                     to="/profile?tab=goals"
-                    className="px-4 py-2 bg-cyan-500 text-white rounded-lg text-sm font-medium hover:bg-cyan-600 transition-colors whitespace-nowrap"
+                    className="px-3 py-1.5 lg:px-4 lg:py-2 bg-cyan-500 text-white rounded-lg text-xs lg:text-sm font-medium hover:bg-cyan-600 transition-colors whitespace-nowrap"
                   >
                     Change
                   </Link>
@@ -318,9 +322,9 @@ export default function BMIWidget() {
             ) : (
               <Link
                 to="/profile?tab=goals"
-                className="w-full py-3 bg-cyan-500 text-white rounded-xl font-semibold hover:bg-cyan-600 transition-colors flex items-center justify-center gap-2"
+                className="w-full py-2 lg:py-3 bg-cyan-500 text-white rounded-lg lg:rounded-xl font-semibold hover:bg-cyan-600 transition-colors flex items-center justify-center gap-2 text-sm lg:text-base"
               >
-                <Target className="w-5 h-5" />
+                <Target className="w-4 h-4 lg:w-5 lg:h-5" />
                 Set Your Goal
               </Link>
             )}
