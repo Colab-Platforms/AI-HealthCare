@@ -57,31 +57,55 @@ const ProgressRing = ({ progress, size = 120, strokeWidth = 8 }) => {
   );
 };
 
-// Feature Card Component
-const FeatureCard = ({ title, description, link, status, icon: Icon, gradient }) => {
+// Feature Card Component with 3D Visual Elements
+const FeatureCard = ({ title, description, link, status, icon: Icon, gradient, emoji }) => {
   return (
     <Link 
       to={link}
       className="group relative overflow-hidden rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
     >
-      <div className={`h-48 bg-gradient-to-br ${gradient} relative rounded-t-3xl`}>
+      <div className={`h-48 bg-gradient-to-br ${gradient} relative rounded-t-3xl overflow-hidden`}>
+        {/* Animated Background Pattern */}
         <div className="absolute inset-0 opacity-10">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.8),transparent_50%)] animate-pulse"></div>
+          <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.1)_50%,transparent_75%)] bg-[length:20px_20px]"></div>
         </div>
-        <div className="absolute top-4 left-4">
-          <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-            <Icon className="w-8 h-8 text-white" />
+        
+        {/* 3D Floating Elements */}
+        <div className="absolute top-1/2 right-8 transform -translate-y-1/2">
+          <div className="relative w-24 h-24 group-hover:scale-110 transition-transform duration-500">
+            {/* 3D Shadow Effect */}
+            <div className="absolute inset-0 bg-white/10 rounded-full blur-xl transform translate-y-2"></div>
+            {/* Main Circle */}
+            <div className="absolute inset-0 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30">
+              <span className="text-5xl filter drop-shadow-lg">{emoji}</span>
+            </div>
+            {/* Shine Effect */}
+            <div className="absolute top-2 left-2 w-8 h-8 bg-white/40 rounded-full blur-md"></div>
           </div>
         </div>
+        
+        {/* Icon Badge */}
+        <div className="absolute top-4 left-4 z-10">
+          <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg border border-white/30 group-hover:scale-110 transition-transform">
+            <Icon className="w-8 h-8 text-white drop-shadow-md" />
+          </div>
+        </div>
+        
+        {/* Status Badge */}
         {status && (
-          <div className="absolute top-4 right-4">
-            <span className="px-3 py-1 bg-white/90 backdrop-blur-sm rounded-full text-xs font-semibold text-slate-700">
+          <div className="absolute top-4 right-4 z-10">
+            <span className="px-3 py-1 bg-white/90 backdrop-blur-sm rounded-full text-xs font-semibold text-slate-700 shadow-md">
               {status}
             </span>
           </div>
         )}
+        
+        {/* Decorative Corner */}
         <div className="absolute bottom-0 right-0 w-32 h-32 bg-white/10 rounded-tl-full"></div>
+        <div className="absolute bottom-0 left-0 w-20 h-20 bg-black/5 rounded-tr-full"></div>
       </div>
+      
       <div className="bg-white p-5 rounded-b-3xl">
         <h3 className="text-lg font-bold text-slate-800 mb-1 group-hover:text-cyan-600 transition-colors">
           {title}
@@ -301,6 +325,7 @@ export default function DashboardEnhanced() {
                 title="Upload Report"
                 description="Get AI-powered analysis of your health reports with personalized insights"
                 icon={Upload}
+                emoji="📋"
                 gradient="from-blue-400 via-blue-500 to-blue-600"
                 link="/upload"
                 status={hasReports ? `${dashboardData.recentReports.length} Reports` : "Get Started"}
@@ -311,6 +336,7 @@ export default function DashboardEnhanced() {
                 title="Nutrition Tracker"
                 description="Track your daily meals, calories, and macros with smart recommendations"
                 icon={Utensils}
+                emoji="🥗"
                 gradient="from-emerald-400 via-emerald-500 to-emerald-600"
                 link="/nutrition"
                 status={hasNutrition ? "Active" : "Start Tracking"}
@@ -321,6 +347,7 @@ export default function DashboardEnhanced() {
                 title="Diet Plan"
                 description="Get personalized meal plans based on your health reports and goals"
                 icon={Apple}
+                emoji="🍎"
                 gradient="from-orange-400 via-orange-500 to-orange-600"
                 link="/diet-plan"
                 status="Personalized"
@@ -331,6 +358,7 @@ export default function DashboardEnhanced() {
                 title="My Fitness Goal"
                 description="Set and track your fitness goals to achieve your health targets"
                 icon={Target}
+                emoji="🎯"
                 gradient="from-purple-400 via-purple-500 to-purple-600"
                 link="/profile?tab=goals"
                 status={hasProfile ? "View Goals" : "Set Goals"}
