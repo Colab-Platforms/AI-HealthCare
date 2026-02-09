@@ -1,6 +1,9 @@
-// Vercel serverless function - simply export the server app
+// Vercel serverless function wrapper
 process.env.VERCEL = '1';
-process.env.NODE_ENV = process.env.NODE_ENV || 'production';
+process.env.NODE_ENV = 'production';
 
-// Export the server app directly
-module.exports = require('../server/server');
+// Import the Express app
+const app = require('../server/server');
+
+// Export as Vercel serverless function
+module.exports = app;

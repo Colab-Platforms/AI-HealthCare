@@ -2,7 +2,7 @@
   "version": 2,
   "buildCommand": "cd client && npm ci --include=dev && npm run build",
   "outputDirectory": "client/dist",
-  "installCommand": "npm install --production=false",
+  "installCommand": "npm install --production=false && cd server && npm install --production=false",
   "devCommand": "cd client && npm run dev",
   "framework": null,
   "functions": {
