@@ -11,6 +11,7 @@ const BMIGaugeDesktop = ({ bmi }) => {
   const size = 200;
   const strokeWidth = 20;
   const radius = (size - strokeWidth) / 2;
+  const [hoveredZone, setHoveredZone] = useState(null);
 
   const getNeedleAngle = () => {
     if (bmi < 16) return 0;
@@ -21,11 +22,11 @@ const BMIGaugeDesktop = ({ bmi }) => {
   const angle = getNeedleAngle();
 
   const zones = [
-    { start: 0, end: 30, color: '#ef4444' },
-    { start: 30, end: 82.5, color: '#22c55e' },
-    { start: 82.5, end: 120, color: '#eab308' },
-    { start: 120, end: 157.5, color: '#f97316' },
-    { start: 157.5, end: 180, color: '#dc2626' }
+    { start: 0, end: 30, color: '#ef4444', label: 'Underweight', range: '< 18.5' },
+    { start: 30, end: 82.5, color: '#22c55e', label: 'Normal', range: '18.5 - 25' },
+    { start: 82.5, end: 120, color: '#eab308', label: 'Overweight', range: '25 - 30' },
+    { start: 120, end: 157.5, color: '#f97316', label: 'Obese', range: '30 - 35' },
+    { start: 157.5, end: 180, color: '#dc2626', label: 'Severely Obese', range: '> 35' }
   ];
 
   return (
@@ -42,14 +43,18 @@ const BMIGaugeDesktop = ({ bmi }) => {
           const endY = size / 2 + radius * Math.sin((endAngle * Math.PI) / 180);
 
           return (
-            <path
-              key={idx}
-              d={`M ${startX} ${startY} A ${radius} ${radius} 0 ${largeArc} 1 ${endX} ${endY}`}
-              fill="none"
-              stroke={zone.color}
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
-            />
+            <g key={idx}>
+              <path
+                d={`M ${startX} ${startY} A ${radius} ${radius} 0 ${largeArc} 1 ${endX} ${endY}`}
+                fill="none"
+                stroke={zone.color}
+                strokeWidth={strokeWidth}
+                strokeLinecap="round"
+                className="cursor-pointer transition-opacity hover:opacity-80"
+                onMouseEnter={() => setHoveredZone(idx)}
+                onMouseLeave={() => setHoveredZone(null)}
+              />
+            </g>
           );
         })}
 
@@ -74,17 +79,24 @@ const BMIGaugeDesktop = ({ bmi }) => {
         </text>
       </svg>
 
-      <div className="absolute bottom-0 left-0 text-[10px] text-slate-600 font-medium">16</div>
-      <div className="absolute bottom-0 right-0 text-[10px] text-slate-600 font-medium">40</div>
+      {/* Hover Tooltip */}
+      {hoveredZone !== null && (
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-full mb-2 px-3 py-2 bg-slate-800 text-white text-xs font-medium rounded-lg shadow-lg whitespace-nowrap z-10">
+          <div className="font-semibold">{zones[hoveredZone].label}</div>
+          <div className="text-slate-300">BMI: {zones[hoveredZone].range}</div>
+          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 translate-y-full w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-800"></div>
+        </div>
+      )}
     </div>
   );
 };
 
 // BMI Gauge Component - Mobile (Top half circle) - Smooth design matching desktop
 const BMIGaugeMobile = ({ bmi }) => {
-  const size = 240; // Slightly larger for mobile prominence
+  const size = 240;
   const strokeWidth = 22;
   const radius = (size - strokeWidth) / 2;
+  const [hoveredZone, setHoveredZone] = useState(null);
 
   const getNeedleAngle = () => {
     if (bmi < 16) return 0;
@@ -95,41 +107,44 @@ const BMIGaugeMobile = ({ bmi }) => {
   const angle = getNeedleAngle();
 
   const zones = [
-    { start: 0, end: 30, color: '#ef4444' },
-    { start: 30, end: 82.5, color: '#22c55e' },
-    { start: 82.5, end: 120, color: '#eab308' },
-    { start: 120, end: 157.5, color: '#f97316' },
-    { start: 157.5, end: 180, color: '#dc2626' }
+    { start: 0, end: 30, color: '#ef4444', label: 'Underweight', range: '< 18.5' },
+    { start: 30, end: 82.5, color: '#22c55e', label: 'Normal', range: '18.5 - 25' },
+    { start: 82.5, end: 120, color: '#eab308', label: 'Overweight', range: '25 - 30' },
+    { start: 120, end: 157.5, color: '#f97316', label: 'Obese', range: '30 - 35' },
+    { start: 157.5, end: 180, color: '#dc2626', label: 'Severely Obese', range: '> 35' }
   ];
 
   return (
     <div className="relative flex items-center justify-center">
       <svg width={size} height={size / 2 + 30} className="overflow-visible">
-        {/* Background arc zones - smooth rounded caps */}
         {zones.map((zone, idx) => {
           const startAngle = zone.start;
           const endAngle = zone.end;
           const largeArc = 0;
           
-          // Calculate positions for top half-circle (180° to 0°)
           const startX = size / 2 - radius * Math.cos((startAngle * Math.PI) / 180);
           const startY = size / 2 - radius * Math.sin((startAngle * Math.PI) / 180);
           const endX = size / 2 - radius * Math.cos((endAngle * Math.PI) / 180);
           const endY = size / 2 - radius * Math.sin((endAngle * Math.PI) / 180);
 
           return (
-            <path
-              key={idx}
-              d={`M ${startX} ${startY} A ${radius} ${radius} 0 ${largeArc} 1 ${endX} ${endY}`}
-              fill="none"
-              stroke={zone.color}
-              strokeWidth={strokeWidth}
-              strokeLinecap="round"
-            />
+            <g key={idx}>
+              <path
+                d={`M ${startX} ${startY} A ${radius} ${radius} 0 ${largeArc} 1 ${endX} ${endY}`}
+                fill="none"
+                stroke={zone.color}
+                strokeWidth={strokeWidth}
+                strokeLinecap="round"
+                className="cursor-pointer transition-opacity active:opacity-80"
+                onTouchStart={() => setHoveredZone(idx)}
+                onTouchEnd={() => setHoveredZone(null)}
+                onMouseEnter={() => setHoveredZone(idx)}
+                onMouseLeave={() => setHoveredZone(null)}
+              />
+            </g>
           );
         })}
 
-        {/* Needle - smooth and precise */}
         <g transform={`rotate(${angle} ${size / 2} ${size / 2})`}>
           <line
             x1={size / 2}
@@ -143,7 +158,6 @@ const BMIGaugeMobile = ({ bmi }) => {
           <circle cx={size / 2} cy={size / 2} r="9" fill="#1e293b" />
         </g>
 
-        {/* Center text - larger and bold */}
         <text x={size / 2} y={size / 2 + 25} textAnchor="middle" className="text-4xl font-bold fill-slate-800">
           {bmi.toFixed(1)}
         </text>
@@ -152,9 +166,14 @@ const BMIGaugeMobile = ({ bmi }) => {
         </text>
       </svg>
 
-      {/* Labels - positioned at bottom corners */}
-      <div className="absolute bottom-2 left-2 text-xs text-slate-600 font-semibold">16</div>
-      <div className="absolute bottom-2 right-2 text-xs text-slate-600 font-semibold">40</div>
+      {/* Hover/Touch Tooltip */}
+      {hoveredZone !== null && (
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-slate-800 text-white text-xs font-medium rounded-lg shadow-lg whitespace-nowrap z-10 animate-fade-in">
+          <div className="font-semibold">{zones[hoveredZone].label}</div>
+          <div className="text-slate-300">BMI: {zones[hoveredZone].range}</div>
+          <div className="absolute top-full left-1/2 -translate-x-1/2 w-0 h-0 border-l-4 border-r-4 border-t-4 border-transparent border-t-slate-800"></div>
+        </div>
+      )}
     </div>
   );
 };
