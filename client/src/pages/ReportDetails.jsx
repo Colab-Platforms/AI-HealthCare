@@ -74,6 +74,14 @@ const MetricDetailModal = ({ metric, onClose }) => {
   };
 
   useEffect(() => {
+    // CRITICAL: Check if metric exists before proceeding
+    if (!metric || !metric.name) {
+      console.error('MetricDetailModal useEffect: metric is invalid', metric);
+      setMetricInfo(generateFallbackInfo());
+      setLoading(false);
+      return;
+    }
+
     // Show fallback info INSTANTLY
     setMetricInfo(generateFallbackInfo());
     setLoading(false);
@@ -105,6 +113,13 @@ const MetricDetailModal = ({ metric, onClose }) => {
 
         console.log('✨ Received AI metric info:', response.data);
         
+        // CRITICAL: Validate response structure
+        if (!response.data || !response.data.metricInfo) {
+          console.error('Invalid AI response structure:', response.data);
+          setLoading(false);
+          return;
+        }
+        
         // Cache and update
         metricInfoCache[cacheKey] = response.data.metricInfo;
         setMetricInfo(response.data.metricInfo);
@@ -117,14 +132,22 @@ const MetricDetailModal = ({ metric, onClose }) => {
       }
     };
 
-    if (metric) {
-      fetchMetricInfo();
-    }
+    fetchMetricInfo();
   }, [metric]);
 
   if (!metric || !metricInfo) return null;
 
-  const info = metricInfo[language];
+  // CRITICAL FIX: Add defensive checks for metricInfo structure
+  const info = metricInfo[language] || metricInfo['en'] || {
+    name: metric?.name || 'Unknown Metric',
+    whatIsIt: 'Information not available',
+    whenHighTitle: 'When High',
+    whenHighEffects: ['Please consult with a healthcare professional'],
+    whenLowTitle: 'When Low',
+    whenLowEffects: ['Please consult with a healthcare professional'],
+    solutions: ['Consult with your doctor for personalized advice']
+  };
+  
   const t = translations[language];
   
   // Safety checks for metric properties
@@ -179,7 +202,7 @@ const MetricDetailModal = ({ metric, onClose }) => {
             <div className="mb-6 p-4 bg-red-50 rounded-xl border-2 border-red-200">
               <h3 className="text-lg font-bold text-red-700 mb-3">{info.whenHighTitle}</h3>
               <ul className="space-y-2">
-                {info.whenHighEffects?.map((effect, i) => (
+                {info.whenHighEffects && Array.isArray(info.whenHighEffects) && info.whenHighEffects.map((effect, i) => (
                   <li key={i} className="flex items-start gap-2 text-slate-700">
                     <span className="text-red-500 font-bold mt-0.5">•</span>
                     {effect}
@@ -191,7 +214,7 @@ const MetricDetailModal = ({ metric, onClose }) => {
             <div className="mb-6 p-4 bg-amber-50 rounded-xl border-2 border-amber-200">
               <h3 className="text-lg font-bold text-amber-700 mb-3">{info.whenLowTitle}</h3>
               <ul className="space-y-2">
-                {info.whenLowEffects?.map((effect, i) => (
+                {info.whenLowEffects && Array.isArray(info.whenLowEffects) && info.whenLowEffects.map((effect, i) => (
                   <li key={i} className="flex items-start gap-2 text-slate-700">
                     <span className="text-amber-500 font-bold mt-0.5">•</span>
                     {effect}
@@ -203,7 +226,7 @@ const MetricDetailModal = ({ metric, onClose }) => {
             <div className="mb-6 p-4 bg-emerald-50 rounded-xl border-2 border-emerald-200">
               <h3 className="text-lg font-bold text-emerald-700 mb-3">✅ {t.howToImprove}</h3>
               <ul className="space-y-2">
-                {info.solutions?.map((solution, i) => (
+                {info.solutions && Array.isArray(info.solutions) && info.solutions.map((solution, i) => (
                   <li key={i} className="flex items-start gap-2 text-slate-700">
                     <span className="text-emerald-500 font-bold mt-0.5">✓</span>
                     {solution}
