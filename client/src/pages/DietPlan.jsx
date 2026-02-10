@@ -43,18 +43,26 @@ export default function DietPlan() {
         headers: { Authorization: `Bearer ${token}` }
       });
       
+      // Handle 404 - no goal set yet
+      if (response.status === 404) {
+        setHasNutritionGoal(false);
+        console.log('❌ No nutrition goal set');
+        return;
+      }
+      
       if (response.ok) {
         const data = await response.json();
-        if (data.healthGoal && data.healthGoal.goal) {
+        if (data.success && data.healthGoal && data.healthGoal.goal) {
           setHasNutritionGoal(true);
           setNutritionGoal(data.healthGoal);
           console.log('✅ User has nutrition goal:', data.healthGoal.goal);
         } else {
           setHasNutritionGoal(false);
-          console.log('❌ No nutrition goal set');
+          console.log('❌ No nutrition goal in response');
         }
       } else {
         setHasNutritionGoal(false);
+        console.log('❌ Failed to fetch nutrition goal, status:', response.status);
       }
     } catch (error) {
       console.error('Failed to check nutrition goal:', error);
