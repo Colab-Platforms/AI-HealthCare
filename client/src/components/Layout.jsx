@@ -61,17 +61,17 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
   return (
     <div className={`min-h-screen flex ${bgColor}`}>
       {/* Sidebar - Slide from RIGHT on mobile, fixed on desktop */}
-      <aside className={`fixed inset-y-0 right-0 lg:left-0 lg:right-auto z-50 w-64 bg-white shadow-lg lg:shadow-sm transform transition-transform duration-300 hidden lg:flex lg:flex-col ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`} style={{ borderRight: '2px solid #E5DFD3', borderLeft: '2px solid #E5DFD3' }}>
+      <aside className={`fixed inset-y-0 right-0 lg:left-0 lg:right-auto z-50 w-64 shadow-lg lg:shadow-sm transform transition-transform duration-300 hidden lg:flex lg:flex-col ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`} style={{ backgroundColor: '#8B7355', borderRight: '2px solid #6B5A45', borderLeft: '2px solid #6B5A45' }}>
         <div className="flex flex-col h-full">
           {/* Logo - Fixed at top */}
-          <div className="p-6 shrink-0" style={{ borderBottom: '1px solid #E5DFD3' }}>
+          <div className="p-6 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
             <Link to={homeLink} className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#8B7355' }}>
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-white/20">
                 <Activity className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="font-bold" style={{ color: '#2C2416' }}>FitCure</p>
-                <p className="text-xs" style={{ color: '#5C4F3D' }}>{portalName}</p>
+                <p className="font-bold text-white">FitCure</p>
+                <p className="text-xs text-white/80">{portalName}</p>
               </div>
             </Link>
           </div>
@@ -85,16 +85,12 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
                   <div
                     key={path}
                     className="flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all cursor-not-allowed relative"
-                    style={{ color: '#5C4F3D', opacity: 0.6 }}
+                    style={{ color: 'rgba(255,255,255,0.5)', opacity: 0.6 }}
                   >
                     <Icon className="w-5 h-5" />
                     <span>{label}</span>
                     <span 
-                      className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold"
-                      style={{ 
-                        backgroundColor: '#8B7355',
-                        color: 'white'
-                      }}
+                      className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold bg-white/20 text-white"
                     >
                       Soon
                     </span>
@@ -114,22 +110,22 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
                       : ''
                   }`}
                   style={location.pathname === path ? {
-                    backgroundColor: '#F5F1EA',
-                    color: '#8B7355',
-                    borderColor: '#E5DFD3'
+                    backgroundColor: 'rgba(255,255,255,0.2)',
+                    color: 'white',
+                    borderColor: 'rgba(255,255,255,0.3)'
                   } : {
-                    color: '#5C4F3D'
+                    color: 'rgba(255,255,255,0.8)'
                   }}
                   onMouseEnter={(e) => {
                     if (location.pathname !== path) {
-                      e.currentTarget.style.backgroundColor = '#F5F1EA';
-                      e.currentTarget.style.color = '#2C2416';
+                      e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.15)';
+                      e.currentTarget.style.color = 'white';
                     }
                   }}
                   onMouseLeave={(e) => {
                     if (location.pathname !== path) {
                       e.currentTarget.style.backgroundColor = 'transparent';
-                      e.currentTarget.style.color = '#5C4F3D';
+                      e.currentTarget.style.color = 'rgba(255,255,255,0.8)';
                     }
                   }}
                 >
@@ -141,27 +137,26 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
           </nav>
 
           {/* User Footer - Fixed at bottom */}
-          <div className="p-4 shrink-0" style={{ borderTop: '1px solid #E5DFD3' }}>
-            <div className="flex items-center gap-3 p-3 rounded-xl" style={{ backgroundColor: '#F5F1EA' }}>
-              <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ backgroundColor: '#8B7355' }}>
-                <span className="text-white font-bold">{user?.name?.[0]?.toUpperCase()}</span>
+          <div className="p-4 shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.2)' }}>
+            <div className="flex items-center gap-3 p-3 rounded-xl bg-white/20">
+              <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-white">
+                <span className="font-bold" style={{ color: '#8B7355' }}>{user?.name?.[0]?.toUpperCase()}</span>
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate" style={{ color: '#2C2416' }}>
+                <p className="text-sm font-medium truncate text-white">
                   {isDoctor() ? `Dr. ${user?.name}` : user?.name}
                 </p>
-                <p className="text-xs truncate" style={{ color: '#5C4F3D' }}>{user?.email}</p>
+                <p className="text-xs truncate text-white/80">{user?.email}</p>
               </div>
               <button
                 onClick={handleLogout}
-                className="p-2 rounded-lg transition-all shrink-0"
-                style={{ color: '#5C4F3D' }}
+                className="p-2 rounded-lg transition-all shrink-0 text-white/80"
                 onMouseEnter={(e) => {
-                  e.currentTarget.style.color = '#dc2626';
-                  e.currentTarget.style.backgroundColor = '#fee2e2';
+                  e.currentTarget.style.color = '#fca5a5';
+                  e.currentTarget.style.backgroundColor = 'rgba(255,255,255,0.2)';
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.color = '#5C4F3D';
+                  e.currentTarget.style.color = 'rgba(255,255,255,0.8)';
                   e.currentTarget.style.backgroundColor = 'transparent';
                 }}
                 title="Logout"
@@ -181,19 +176,19 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
       {/* Main Content - Add left margin for fixed sidebar on desktop */}
       <div className="flex-1 flex flex-col min-h-screen lg:ml-64">
         {/* Top Header */}
-        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-xl" style={{ borderBottom: '1px solid #E5DFD3' }}>
+        <header className="sticky top-0 z-30 backdrop-blur-xl" style={{ backgroundColor: '#8B7355', borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
           <div className="flex items-center justify-between px-3 md:px-4 lg:px-8 py-3 md:py-4">
             <div className="flex items-center gap-2 md:gap-4 flex-1 md:flex-none">
               {/* Mobile Logo - Show on mobile, hide on desktop */}
               <Link to={homeLink} className="lg:hidden flex items-center gap-2 flex-shrink-0">
-                <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#8B7355' }}>
+                <div className="w-8 h-8 rounded-lg flex items-center justify-center bg-white/20">
                   <Activity className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-sm font-bold" style={{ color: '#2C2416' }}>FitCure</span>
+                <span className="text-sm font-bold text-white">FitCure</span>
               </Link>
               
               {/* Desktop Title - Hide on mobile */}
-              <h1 className="text-base md:text-lg font-semibold hidden sm:block" style={{ color: '#2C2416' }}>
+              <h1 className="text-base md:text-lg font-semibold hidden sm:block text-white">
                 {navItems.find(item => item.path === location.pathname)?.label || 'Dashboard'}
               </h1>
             </div>
@@ -202,22 +197,17 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
               {/* Search */}
               <div className="hidden md:flex items-center">
                 <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: '#5C4F3D' }} />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/60" />
                   <input
                     type="text"
                     placeholder="Search..."
-                    className="w-48 pl-10 pr-4 py-2 rounded-xl text-sm focus:outline-none"
-                    style={{ 
-                      backgroundColor: '#F5F1EA',
-                      border: '1px solid #E5DFD3',
-                      color: '#2C2416'
-                    }}
+                    className="w-48 pl-10 pr-4 py-2 rounded-xl text-sm focus:outline-none bg-white/20 border border-white/30 text-white placeholder-white/60"
                   />
                 </div>
               </div>
 
               {/* Notifications */}
-              <button className="relative p-2 rounded-xl transition-all flex-shrink-0" style={{ color: '#5C4F3D' }}>
+              <button className="relative p-2 rounded-xl transition-all flex-shrink-0 text-white/80 hover:bg-white/20">
                 <Bell className="w-5 h-5" />
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
               </button>

@@ -88,7 +88,30 @@ export default function Nutrition() {
     const newWater = waterIntake + 1;
     setWaterIntake(newWater);
     localStorage.setItem(`waterIntake_${selectedDate}`, newWater);
-    toast.success('Water intake updated! 💧');
+    
+    // Check for excessive water consumption (8-9 liters = 32-36 glasses)
+    if (newWater >= 32 && newWater <= 36) {
+      toast('⚠️ You are approaching 8 liters of water. Be mindful of overhydration!', {
+        icon: '💧',
+        duration: 5000,
+        style: {
+          background: '#fef3c7',
+          color: '#92400e',
+          border: '2px solid #fbbf24'
+        }
+      });
+    } else if (newWater > 36) {
+      toast.error('🚨 Warning: You have consumed more than 9 liters of water today! Excessive water intake can be harmful. Please consult a doctor if you feel unwell.', {
+        duration: 7000,
+        style: {
+          background: '#fee2e2',
+          color: '#991b1b',
+          border: '2px solid #ef4444'
+        }
+      });
+    } else {
+      toast.success('Water intake updated! 💧');
+    }
   };
 
   const handleRemoveWater = () => {
@@ -266,7 +289,16 @@ export default function Nutrition() {
   const handleNextDay = () => {
     const date = new Date(selectedDate);
     date.setDate(date.getDate() + 1);
-    setSelectedDate(date.toISOString().split('T')[0]);
+    const nextDate = date.toISOString().split('T')[0];
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Don't allow future dates
+    if (nextDate > today) {
+      toast.error('Cannot view future dates');
+      return;
+    }
+    
+    setSelectedDate(nextDate);
   };
 
   const formatDate = (dateStr) => {
@@ -291,6 +323,8 @@ export default function Nutrition() {
 
   const caloriePercentage = dailySummary?.caloriePercentage || 0;
   const waterGoal = 8; // 8 glasses per day
+  const today = new Date().toISOString().split('T')[0];
+  const isToday = selectedDate === today;
 
   return (
     <div className={`w-full h-full bg-gradient-to-br from-cyan-50 via-blue-50 to-cyan-100 flex flex-col ${showAddMeal ? 'overflow-hidden' : ''}`}>
@@ -316,7 +350,12 @@ export default function Nutrition() {
         </div>
         <button
           onClick={handleNextDay}
-          className="p-2 hover:bg-gray-100 rounded-lg transition"
+          disabled={isToday}
+          className={`p-2 rounded-lg transition ${
+            isToday 
+              ? 'opacity-40 cursor-not-allowed' 
+              : 'hover:bg-gray-100'
+          }`}
         >
           <ChevronRight className="w-5 h-5 text-gray-600" />
         </button>
