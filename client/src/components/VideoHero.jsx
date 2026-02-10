@@ -35,14 +35,14 @@ const VideoHero = () => {
 
           {/* Main Heading */}
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-serif text-white mb-6 leading-[1.1]">
-            Track calories.
+            Take Control of your
             <br />
-            <span className="italic">Naturally</span> healthy.
+            <span className="italic">Health</span> Journey.
           </h1>
 
           {/* Description */}
           <p className="text-base sm:text-lg md:text-xl text-cyan-100 mb-10 leading-relaxed max-w-lg">
-            Discover nutrition tracking that works with you. AI-powered insights, personalized meal plans, effortless calorie counting.
+            Empowers user to take informed action on their health through easy to understand insights, continuous tracking, and goal-based guidance.
           </p>
 
           {/* CTA Button */}

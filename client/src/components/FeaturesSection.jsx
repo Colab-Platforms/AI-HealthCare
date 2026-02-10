@@ -4,7 +4,7 @@ const FeaturesSection = () => {
   const features = [
     {
       icon: Activity,
-      title: "Calorie Tracking",
+      title: "Health Tracking",
       description: "Effortless daily tracking",
     },
     {
