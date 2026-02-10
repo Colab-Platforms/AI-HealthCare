@@ -1,6 +1,7 @@
 const HealthReport = require('../models/HealthReport');
 const Doctor = require('../models/Doctor');
 const { analyzeHealthReport, compareReports, chatWithReport } = require('../services/aiService-fixed');
+const { generateMetricInfo } = require('../services/aiService');
 const pdfParse = require('pdf-parse');
 const fs = require('fs');
 const cache = require('../utils/cache');
@@ -516,7 +517,6 @@ exports.getMetricInfo = async (req, res) => {
       return res.status(400).json({ message: 'Metric name is required' });
     }
 
-    const { generateMetricInfo } = require('../services/aiService');
     console.log('Calling generateMetricInfo with:', { metricName, metricValue, normalRange, unit });
     
     const metricInfo = await generateMetricInfo(metricName, metricValue, normalRange, unit);
