@@ -51,9 +51,13 @@ const auth = (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    req.user = { _id: decoded.userId };
+    // JWT token uses 'id' field, not 'userId'
+    req.user = { _id: decoded.id || decoded.userId };
+    console.log('🔐 Auth middleware - decoded:', decoded);
+    console.log('🔐 Auth middleware - req.user:', req.user);
     next();
   } catch (error) {
+    console.error('🔐 Auth error:', error.message);
     res.status(401).json({ message: 'Invalid token' });
   }
 };
