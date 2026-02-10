@@ -57,12 +57,12 @@ export default function DietPlan() {
         console.log('📦 Full response data:', JSON.stringify(data, null, 2));
         console.log('📦 data.success:', data.success);
         console.log('📦 data.healthGoal:', data.healthGoal);
-        console.log('📦 data.healthGoal?.goal:', data.healthGoal?.goal);
+        console.log('📦 data.healthGoal?.goalType:', data.healthGoal?.goalType);
         
-        if (data.success && data.healthGoal && data.healthGoal.goal) {
+        if (data.success && data.healthGoal && data.healthGoal.goalType) {
           setHasNutritionGoal(true);
           setNutritionGoal(data.healthGoal);
-          console.log('✅ User has nutrition goal:', data.healthGoal.goal);
+          console.log('✅ User has nutrition goal:', data.healthGoal.goalType);
         } else {
           setHasNutritionGoal(false);
           console.log('❌ No nutrition goal in response');
