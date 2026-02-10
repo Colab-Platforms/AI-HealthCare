@@ -162,7 +162,7 @@ app.post('/api/diet-recommendations/diet-plan/generate', auth, async (req, res) 
 
     console.log('📊 User stats:', { currentWeight, targetWeight, height, age, gender, dailyCalorieTarget });
 
-    // Generate simple meal plan based on goal
+    // Generate Indian-style meal plan based on goal
     const goalType = healthGoal.goalType;
     let mealPlan = {};
 
@@ -170,66 +170,66 @@ app.post('/api/diet-recommendations/diet-plan/generate', auth, async (req, res) 
       mealPlan = {
         breakfast: [
           {
-            name: 'Protein-Rich Oatmeal Bowl',
-            description: '1 cup oats, 2 scoops protein powder, 1 banana, 2 tbsp peanut butter, 1 cup milk',
-            calories: 650,
-            protein: 45,
-            benefits: 'High protein and complex carbs for muscle building'
+            name: 'Paneer Paratha with Curd',
+            description: '3 paneer parathas with ghee, 1 cup curd, 1 glass milk',
+            calories: 680,
+            protein: 42,
+            benefits: 'High protein from paneer and milk, healthy fats from ghee for muscle building'
           },
           {
-            name: 'Egg & Avocado Toast',
-            description: '3 whole eggs, 2 slices whole grain bread, 1/2 avocado, cheese',
-            calories: 580,
-            protein: 32,
-            benefits: 'Healthy fats and protein for sustained energy'
+            name: 'Moong Dal Cheela with Eggs',
+            description: '3 moong dal cheelas, 3 boiled eggs, green chutney, 1 glass milk',
+            calories: 620,
+            protein: 48,
+            benefits: 'Complete protein from dal and eggs, easy to digest'
           }
         ],
         lunch: [
           {
-            name: 'Chicken & Rice Bowl',
-            description: '200g grilled chicken, 2 cups brown rice, mixed vegetables, olive oil',
-            calories: 750,
-            protein: 55,
-            benefits: 'Lean protein with complex carbs for muscle growth'
+            name: 'Chicken Biryani with Raita',
+            description: '2 cups chicken biryani, 200g chicken pieces, 1 cup raita, salad',
+            calories: 780,
+            protein: 58,
+            benefits: 'High protein from chicken, complex carbs from rice for energy'
           },
           {
-            name: 'Salmon with Sweet Potato',
-            description: '200g salmon, 2 medium sweet potatoes, broccoli, butter',
-            calories: 720,
-            protein: 48,
-            benefits: 'Omega-3 fats and quality protein'
+            name: 'Dal Makhani with Roti & Paneer',
+            description: '2 cups dal makhani, 4 rotis, 150g paneer bhurji, ghee',
+            calories: 750,
+            protein: 52,
+            benefits: 'Protein-rich dal and paneer combination for muscle growth'
           }
         ],
         dinner: [
           {
-            name: 'Beef Stir-Fry',
-            description: '200g lean beef, 1.5 cups rice, mixed vegetables, sesame oil',
-            calories: 680,
-            protein: 50,
-            benefits: 'High protein and iron for muscle recovery'
+            name: 'Mutton Curry with Rice',
+            description: '200g mutton curry, 2 cups rice, mixed vegetable sabzi',
+            calories: 720,
+            protein: 54,
+            benefits: 'High protein and iron from mutton for muscle recovery'
           },
           {
-            name: 'Turkey & Quinoa',
-            description: '200g ground turkey, 1.5 cups quinoa, vegetables, olive oil',
-            calories: 650,
-            protein: 52,
-            benefits: 'Complete protein with all essential amino acids'
+            name: 'Chicken Tikka with Roti',
+            description: '250g chicken tikka, 4 rotis, dal tadka, ghee',
+            calories: 690,
+            protein: 56,
+            benefits: 'Lean protein from chicken, healthy carbs from roti'
           }
         ],
         snacks: [
           {
-            name: 'Protein Shake',
-            description: '2 scoops whey protein, 1 banana, 2 tbsp peanut butter, milk',
-            calories: 450,
-            protein: 50,
-            benefits: 'Quick protein absorption post-workout'
+            name: 'Protein Lassi with Dry Fruits',
+            description: '2 cups lassi with protein powder, 1 banana, almonds, dates',
+            calories: 480,
+            protein: 45,
+            benefits: 'Quick protein absorption, probiotics from curd'
           },
           {
-            name: 'Greek Yogurt & Nuts',
-            description: '2 cups Greek yogurt, 1/4 cup almonds, honey, berries',
-            calories: 420,
-            protein: 35,
-            benefits: 'Protein and healthy fats for muscle building'
+            name: 'Paneer Tikka with Curd',
+            description: '200g paneer tikka, 1 cup thick curd, handful of nuts',
+            calories: 450,
+            protein: 38,
+            benefits: 'High protein snack for muscle building'
           }
         ]
       };
@@ -237,38 +237,66 @@ app.post('/api/diet-recommendations/diet-plan/generate', auth, async (req, res) 
       mealPlan = {
         breakfast: [
           {
-            name: 'Egg White Omelette',
-            description: '4 egg whites, vegetables, 1 slice whole grain toast',
+            name: 'Moong Dal Cheela',
+            description: '2 moong dal cheelas, green chutney, 1 cup buttermilk',
             calories: 280,
-            protein: 28,
-            benefits: 'High protein, low calorie to preserve muscle'
+            protein: 22,
+            benefits: 'High protein, low calorie, keeps you full longer'
+          },
+          {
+            name: 'Oats Upma with Vegetables',
+            description: '1 cup oats upma with mixed vegetables, 2 boiled egg whites',
+            calories: 300,
+            protein: 24,
+            benefits: 'Fiber-rich oats with protein for satiety'
           }
         ],
         lunch: [
           {
-            name: 'Grilled Chicken Salad',
-            description: '150g chicken breast, mixed greens, olive oil dressing',
-            calories: 350,
-            protein: 40,
-            benefits: 'Lean protein with fiber for satiety'
+            name: 'Grilled Chicken with Salad',
+            description: '150g grilled chicken, mixed vegetable salad, 2 rotis',
+            calories: 380,
+            protein: 42,
+            benefits: 'Lean protein with fiber, low calorie'
+          },
+          {
+            name: 'Fish Curry with Brown Rice',
+            description: '150g fish curry, 1 cup brown rice, steamed vegetables',
+            calories: 360,
+            protein: 38,
+            benefits: 'Omega-3 from fish, low calorie meal'
           }
         ],
         dinner: [
           {
-            name: 'Baked Fish & Vegetables',
-            description: '150g white fish, steamed vegetables, lemon',
+            name: 'Tandoori Chicken with Soup',
+            description: '150g tandoori chicken, clear vegetable soup, cucumber salad',
             calories: 320,
-            protein: 38,
-            benefits: 'Low calorie, high protein meal'
+            protein: 40,
+            benefits: 'High protein, very low calorie dinner'
+          },
+          {
+            name: 'Palak Paneer with Roti',
+            description: '1 cup palak paneer, 2 rotis, cucumber raita',
+            calories: 340,
+            protein: 28,
+            benefits: 'Protein from paneer, iron from spinach'
           }
         ],
         snacks: [
           {
-            name: 'Protein Shake',
-            description: '1 scoop protein, water, berries',
-            calories: 150,
-            protein: 25,
-            benefits: 'Low calorie protein boost'
+            name: 'Sprouts Chaat',
+            description: '1 cup mixed sprouts chaat with lemon, onions, tomatoes',
+            calories: 180,
+            protein: 18,
+            benefits: 'High protein, low calorie, nutrient-dense'
+          },
+          {
+            name: 'Roasted Chana',
+            description: '1 cup roasted chana, green tea',
+            calories: 160,
+            protein: 16,
+            benefits: 'Protein-rich, crunchy, satisfying snack'
           }
         ]
       };
@@ -277,38 +305,66 @@ app.post('/api/diet-recommendations/diet-plan/generate', auth, async (req, res) 
       mealPlan = {
         breakfast: [
           {
-            name: 'Balanced Breakfast Bowl',
-            description: '2 eggs, 1 cup oats, fruits, nuts',
+            name: 'Poha with Peanuts',
+            description: '2 cups poha with peanuts, curry leaves, 1 boiled egg, tea',
+            calories: 420,
+            protein: 18,
+            benefits: 'Balanced meal with carbs, protein, and healthy fats'
+          },
+          {
+            name: 'Idli Sambar with Chutney',
+            description: '4 idlis, 1 cup sambar, coconut chutney, 1 glass milk',
             calories: 450,
-            protein: 25,
-            benefits: 'Balanced macros for sustained energy'
+            protein: 20,
+            benefits: 'Fermented food for gut health, balanced nutrition'
           }
         ],
         lunch: [
           {
-            name: 'Chicken & Quinoa',
-            description: '150g chicken, 1 cup quinoa, vegetables',
+            name: 'Dal Chawal with Sabzi',
+            description: '1 cup dal, 1.5 cups rice, mixed vegetable sabzi, curd',
             calories: 520,
-            protein: 42,
-            benefits: 'Complete nutrition with all macros'
+            protein: 24,
+            benefits: 'Complete balanced Indian meal with all nutrients'
+          },
+          {
+            name: 'Chicken Curry with Roti',
+            description: '150g chicken curry, 3 rotis, vegetable salad',
+            calories: 540,
+            protein: 38,
+            benefits: 'Protein from chicken, fiber from roti and vegetables'
           }
         ],
         dinner: [
           {
-            name: 'Salmon & Brown Rice',
-            description: '150g salmon, 1 cup brown rice, vegetables',
-            calories: 550,
-            protein: 40,
-            benefits: 'Omega-3 and balanced nutrition'
+            name: 'Khichdi with Curd',
+            description: '2 cups dal khichdi, 1 cup curd, papad, pickle',
+            calories: 480,
+            protein: 22,
+            benefits: 'Easy to digest, complete protein, comfort food'
+          },
+          {
+            name: 'Fish Fry with Rice',
+            description: '150g fish fry, 1 cup rice, dal, vegetable curry',
+            calories: 520,
+            protein: 36,
+            benefits: 'Omega-3 from fish, balanced macros'
           }
         ],
         snacks: [
           {
-            name: 'Greek Yogurt & Fruit',
-            description: '1 cup Greek yogurt, mixed berries, honey',
+            name: 'Masala Chai with Biscuits',
+            description: '1 cup masala chai, 4 whole wheat biscuits, handful of nuts',
+            calories: 240,
+            protein: 8,
+            benefits: 'Energy boost with antioxidants from tea'
+          },
+          {
+            name: 'Fruit Chaat',
+            description: '1 cup mixed fruit chaat with chaat masala, roasted peanuts',
             calories: 220,
-            protein: 20,
-            benefits: 'Protein and probiotics'
+            protein: 6,
+            benefits: 'Vitamins, minerals, and natural sugars'
           }
         ]
       };
@@ -339,11 +395,13 @@ app.post('/api/diet-recommendations/diet-plan/generate', auth, async (req, res) 
       macroTargets,
       mealPlan,
       lifestyleRecommendations: [
-        'Drink at least 3-4 liters of water daily',
-        'Get 7-8 hours of quality sleep',
-        'Exercise 4-5 times per week',
-        'Track your meals and progress weekly',
-        'Stay consistent with your nutrition plan'
+        'Drink at least 3-4 liters of water daily (include coconut water, buttermilk)',
+        'Get 7-8 hours of quality sleep every night',
+        'Exercise or yoga 4-5 times per week (morning walks, gym, or home workout)',
+        'Eat meals at regular times - breakfast by 9 AM, lunch by 1 PM, dinner by 8 PM',
+        'Include seasonal Indian fruits and vegetables in your diet',
+        'Avoid junk food, packaged snacks, and excessive sugar',
+        'Track your weight and measurements weekly'
       ],
       generatedAt: new Date(),
       validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
