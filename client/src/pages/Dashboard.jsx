@@ -612,18 +612,48 @@ export default function Dashboard() {
           <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 mb-4">
               <div>
-                <h3 className="text-base sm:text-lg font-semibold text-slate-800">Health Score Trend</h3>
+                <h3 className="text-base sm:text-lg font-semibold text-slate-800">Health Score</h3>
                 <p className="text-slate-500 text-xs sm:text-sm">Your overall health progress</p>
               </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-2xl sm:text-4xl font-bold text-slate-800">{healthScore}</span>
-                <span className="text-slate-400 text-sm">/100</span>
-                {healthScoreTrend.length > 1 && (
-                  <span className="text-emerald-500 text-xs sm:text-sm ml-2">
-                    {healthScoreTrend[healthScoreTrend.length - 1].score > healthScoreTrend[healthScoreTrend.length - 2].score ? '+' : ''}
-                    {healthScoreTrend[healthScoreTrend.length - 1].score - healthScoreTrend[healthScoreTrend.length - 2].score}%
-                  </span>
-                )}
+              <div className="flex flex-col items-end gap-1">
+                <div className="flex items-baseline gap-2">
+                  <span className="text-2xl sm:text-4xl font-bold text-slate-800">{healthScore}</span>
+                  <span className="text-slate-400 text-sm">/100</span>
+                </div>
+                {healthScoreTrend.length > 1 && (() => {
+                  const currentScore = healthScoreTrend[healthScoreTrend.length - 1].score;
+                  const previousScore = healthScoreTrend[healthScoreTrend.length - 2].score;
+                  const difference = currentScore - previousScore;
+                  const isImprovement = difference > 0;
+                  const isStable = difference === 0;
+                  
+                  return (
+                    <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-xs font-bold ${
+                      isImprovement 
+                        ? 'bg-green-100 text-green-700' 
+                        : isStable 
+                        ? 'bg-blue-100 text-blue-700'
+                        : 'bg-red-100 text-red-700'
+                    }`}>
+                      {isImprovement ? (
+                        <>
+                          <ArrowUp className="w-3 h-3" />
+                          <span>+{difference}</span>
+                        </>
+                      ) : isStable ? (
+                        <>
+                          <Minus className="w-3 h-3" />
+                          <span>Stable</span>
+                        </>
+                      ) : (
+                        <>
+                          <ArrowDown className="w-3 h-3" />
+                          <span>{difference}</span>
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
             {healthScoreTrend.length > 0 && (

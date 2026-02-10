@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { healthService } from '../services/api';
-import { Activity, ArrowLeft, Upload, FileText, ChevronDown } from 'lucide-react';
+import { Activity, ArrowLeft, Upload, FileText, ChevronDown, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import HealthLoader from '../components/HealthLoader';
 import VitalDetailsPopup from '../components/VitalDetailsPopup';
 
@@ -12,6 +13,7 @@ export default function VitalSigns() {
   const [loading, setLoading] = useState(true);
   const [selectedMetric, setSelectedMetric] = useState(null);
   const [showMetricModal, setShowMetricModal] = useState(false);
+  const [selectedVitalForGraph, setSelectedVitalForGraph] = useState(null);
 
   useEffect(() => {
     fetchReports();
@@ -68,6 +70,50 @@ export default function VitalSigns() {
     setSelectedMetric(null);
   };
 
+  // Get all unique metrics across all reports
+  const getAllMetrics = () => {
+    const metricsSet = new Set();
+    reports.forEach(report => {
+      if (report.aiAnalysis?.metrics) {
+        Object.keys(report.aiAnalysis.metrics).forEach(key => metricsSet.add(key));
+      }
+    });
+    return Array.from(metricsSet).sort();
+  };
+
+  // Get chart data for selected vital across all reports
+  const getVitalChartData = (vitalKey) => {
+    if (!vitalKey) return [];
+    
+    return reports
+      .filter(r => r.aiAnalysis?.metrics?.[vitalKey])
+      .reverse() // Oldest first
+      .map(r => ({
+        date: new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: '2-digit' }),
+        value: r.aiAnalysis.metrics[vitalKey].value,
+        unit: r.aiAnalysis.metrics[vitalKey].unit,
+        status: r.aiAnalysis.metrics[vitalKey].status,
+        normalRange: r.aiAnalysis.metrics[vitalKey].normalRange,
+        fullDate: new Date(r.createdAt)
+      }));
+  };
+
+  // Calculate trend
+  const calculateTrend = (chartData) => {
+    if (chartData.length < 2) return { direction: 'stable', change: 0, percentChange: 0 };
+    
+    const latest = chartData[chartData.length - 1].value;
+    const previous = chartData[chartData.length - 2].value;
+    const change = latest - previous;
+    const percentChange = ((change / previous) * 100).toFixed(1);
+    
+    let direction = 'stable';
+    if (change > 0) direction = 'up';
+    else if (change < 0) direction = 'down';
+    
+    return { direction, change: change.toFixed(2), percentChange };
+  };
+
   if (loading) {
     return <HealthLoader message="Loading vital signs..." />;
   }
@@ -104,6 +150,9 @@ export default function VitalSigns() {
 
   const metrics = selectedReport?.aiAnalysis?.metrics || {};
   const hasMetrics = Object.keys(metrics).length > 0;
+  const allMetrics = getAllMetrics();
+  const chartData = selectedVitalForGraph ? getVitalChartData(selectedVitalForGraph) : [];
+  const trend = chartData.length > 0 ? calculateTrend(chartData) : null;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 animate-fade-in p-4 pb-20">
@@ -158,10 +207,161 @@ export default function VitalSigns() {
         </div>
       )}
 
+      {/* Vital Progress Graph Section - Only show if multiple reports */}
+      {reports.length > 1 && allMetrics.length > 0 && (
+        <div className="bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-sm">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div>
+              <h2 className="text-xl font-bold text-slate-800">Vital Progress Tracker</h2>
+              <p className="text-slate-600 text-sm">Select a vital to see its progress over time</p>
+            </div>
+            
+            {/* Vital Selector Dropdown */}
+            <div className="relative min-w-[200px]">
+              <select
+                value={selectedVitalForGraph || ''}
+                onChange={(e) => setSelectedVitalForGraph(e.target.value)}
+                className="appearance-none w-full px-4 py-3 pr-10 bg-gradient-to-r from-cyan-50 to-blue-50 border-2 border-cyan-200 rounded-xl text-sm font-medium text-slate-800 hover:border-cyan-400 focus:border-cyan-500 focus:outline-none cursor-pointer transition-colors"
+              >
+                <option value="">Select Vital</option>
+                {allMetrics.map(metric => (
+                  <option key={metric} value={metric}>
+                    {metric}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-600 pointer-events-none" />
+            </div>
+          </div>
+
+          {/* Graph Display */}
+          {selectedVitalForGraph && chartData.length > 0 ? (
+            <div className="space-y-4">
+              {/* Trend Summary */}
+              {trend && chartData.length > 1 && (
+                <div className="flex items-center justify-between p-4 bg-gradient-to-r from-slate-50 to-slate-100 rounded-xl">
+                  <div>
+                    <p className="text-sm text-slate-600 mb-1">Current Value</p>
+                    <p className="text-2xl font-bold text-slate-800">
+                      {chartData[chartData.length - 1].value} <span className="text-sm font-normal text-slate-500">{chartData[chartData.length - 1].unit}</span>
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">Normal: {chartData[chartData.length - 1].normalRange}</p>
+                  </div>
+                  
+                  <div className="text-right">
+                    <p className="text-sm text-slate-600 mb-2">Trend</p>
+                    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold ${
+                      trend.direction === 'up' 
+                        ? 'bg-blue-100 text-blue-700' 
+                        : trend.direction === 'down'
+                        ? 'bg-purple-100 text-purple-700'
+                        : 'bg-slate-100 text-slate-700'
+                    }`}>
+                      {trend.direction === 'up' ? (
+                        <>
+                          <TrendingUp className="w-5 h-5" />
+                          <span>+{trend.change}</span>
+                        </>
+                      ) : trend.direction === 'down' ? (
+                        <>
+                          <TrendingDown className="w-5 h-5" />
+                          <span>{trend.change}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Minus className="w-5 h-5" />
+                          <span>Stable</span>
+                        </>
+                      )}
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1">{Math.abs(trend.percentChange)}% change</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Chart */}
+              <div className="h-64 sm:h-80">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={chartData}>
+                    <defs>
+                      <linearGradient id="vitalGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                    <XAxis 
+                      dataKey="date" 
+                      stroke="#94a3b8" 
+                      fontSize={12}
+                      tickLine={false}
+                    />
+                    <YAxis 
+                      stroke="#94a3b8" 
+                      fontSize={12}
+                      tickLine={false}
+                    />
+                    <Tooltip
+                      contentStyle={{ 
+                        backgroundColor: '#fff', 
+                        border: '2px solid #06b6d4', 
+                        borderRadius: '12px',
+                        padding: '12px'
+                      }}
+                      labelStyle={{ color: '#64748b', fontWeight: 'bold', marginBottom: '4px' }}
+                      formatter={(value, name, props) => [
+                        `${value} ${props.payload.unit}`,
+                        selectedVitalForGraph
+                      ]}
+                    />
+                    <Area 
+                      type="monotone" 
+                      dataKey="value" 
+                      stroke="#06b6d4" 
+                      strokeWidth={3}
+                      fill="url(#vitalGradient)"
+                      dot={{ fill: '#06b6d4', strokeWidth: 2, r: 5 }}
+                      activeDot={{ r: 7, fill: '#0891b2' }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Data Points Summary */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                {chartData.slice(-4).reverse().map((point, idx) => (
+                  <div key={idx} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <p className="text-xs text-slate-500 mb-1">{point.date}</p>
+                    <p className="text-lg font-bold text-slate-800">{point.value}</p>
+                    <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-semibold ${
+                      point.status === 'normal' 
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-red-100 text-red-700'
+                    }`}>
+                      {point.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : selectedVitalForGraph ? (
+            <div className="text-center py-12 text-slate-400">
+              <Activity className="w-16 h-16 mx-auto mb-4 opacity-50" />
+              <p>No data available for this vital across your reports</p>
+            </div>
+          ) : (
+            <div className="text-center py-12 text-slate-400">
+              <Activity className="w-16 h-16 mx-auto mb-4 opacity-50" />
+              <p>Select a vital from the dropdown to see its progress</p>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Vital Signs Grid */}
       {hasMetrics ? (
         <div className="bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-sm">
-          <h2 className="text-xl font-bold text-slate-800 mb-6">Health Metrics</h2>
+          <h2 className="text-xl font-bold text-slate-800 mb-6">Current Health Metrics</h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {Object.entries(metrics).map(([key, metric]) => (
               <button
