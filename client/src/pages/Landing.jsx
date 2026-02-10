@@ -726,7 +726,7 @@ function CTA() {
 // Footer Component
 function Footer() {
   return (
-    <footer className="bg-[#2C2416] text-white py-16">
+    <footer className="bg-gradient-to-b from-[#0a3d5c] to-[#051f2e] text-white py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 mb-12">
           {/* Brand */}
@@ -786,8 +786,8 @@ function Footer() {
 
         {/* Bottom */}
         <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-white/60">© 2024 FitCure. All rights reserved.</p>
-          <p className="text-sm text-white/60">Made with ❤️ for better health</p>
+          <p className="text-sm text-white/60">© 2026 FitCure. All rights reserved.</p>
+          {/* <p className="text-sm text-white/60">Made with ❤️ for better health</p> */}
         </div>
       </div>
     </footer>

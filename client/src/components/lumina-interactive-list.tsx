@@ -41,7 +41,7 @@ export function Component() {
         // --- MAIN LOGIC ---
         const SLIDER_CONFIG: any = {
             settings: {
-                transitionDuration: 2.5, autoSlideSpeed: 5000, currentEffect: "glass", currentEffectPreset: "Default",
+                transitionDuration: 1.2, autoSlideSpeed: 5000, currentEffect: "glass", currentEffectPreset: "Default",
                 globalIntensity: 1.0, speedMultiplier: 1.0, distortionStrength: 1.0, colorEnhancement: 1.0,
                 glassRefractionStrength: 1.0, glassChromaticAberration: 1.0, glassBubbleClarity: 1.0, glassEdgeGlow: 1.0, glassLiquidFlow: 1.0,
                 frostIntensity: 1.5, frostCrystalSize: 1.0, frostIceCoverage: 1.0, frostTemperature: 1.0, frostTexture: 1.0,
@@ -73,12 +73,12 @@ export function Component() {
         const TRANSITION_DURATION = () => SLIDER_CONFIG.settings.transitionDuration;
 
         const slides = [
-            { title: "AI Lab Report Analyzer", description: "", media: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/AILabReportAnalyser_2.png?v=1770707931" },
-            { title: "Health Dashboard", description: "", media: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/WhatsApp_Image_2026-02-07_at_6.46.39_PM.jpg?v=1770707930" },
-            { title: "Nutrition Insights", description: "", media: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/WhatsApp_Image_2026-02-07_at_6.43.52_PM.jpg?v=1770707929" },
-            { title: "Doctor Consultation", description: "", media: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/WhatsApp_Image_2026-02-07_at_6.44.25_PM.jpg?v=1770707929" },
-            { title: "Wellness Tracking", description: "", media: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/WhatsApp_Image_2026-02-07_at_6.48.17_PM.jpg?v=1770707929" },
-            { title: "Health Reports", description: "", media: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/WhatsApp_Image_2026-02-07_at_6.43.52_PM.jpg?v=1770707929" }
+            { title: "Ai Lab report Analyser", description: "", media: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/AILabReportAnalyser_DesktopSize_3f161f3f-0678-452f-9c1a-a413994df30a.png?v=1770719872", mediaMobile: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/AILabReportAnalyser_MobileSize.png?v=1770719520" },
+            { title: "Track Health Parameter", description: "", media: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/NutritionTracker_jpg.jpg?v=1770722505", mediaMobile: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/TrackHealthParameter_MobileSize_jpg.jpg?v=1770719520" },
+            { title: "Nutrition Tracker", description: "", media: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/TrackHealthParameter_DesktopSize_jpg.jpg?v=1770719871", mediaMobile: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/NutritionTrackerMobile_jpg.jpg?v=1770722504" },
+            { title: "Diet Recommendations", description: "", media: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/WhatsApp_Image_2026-02-07_at_6.44.25_PM.jpg?v=1770707929", mediaMobile: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/2150040498_2__jpg.jpg?v=1770722504" },
+            { title: "Supplement Recommendation", description: "", media: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/2150040498_jpg_f6df5fdb-1a8b-4c71-97ec-58643d0dca22.jpg?v=1770722509", mediaMobile: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/NutritionTrackerMobile_jpg.jpg?v=1770722504" },
+            { title: "Doctor Recommendation", description: "", media: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/WhatsApp_Image_2026-02-07_at_6.43.52_PM.jpg?v=1770707929", mediaMobile: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/TrackHealthParameter_MobileSize_jpg.jpg?v=1770719520" }
         ];
 
         // --- SHADERS ---
@@ -265,8 +265,11 @@ export function Component() {
         };
 
         const createSlidesNavigation = () => {
-            const nav = document.getElementById("slidesNav"); if (!nav) return;
-            nav.innerHTML = "";
+            const nav = document.getElementById("slidesNav"); 
+            if (!nav) return;
+            // Check if already created
+            if (nav.children.length > 0) return;
+            
             slides.forEach((slide, i) => {
                 const item = document.createElement("div");
                 item.className = `slide-nav-item${i === 0 ? " active" : ""}`;
@@ -294,18 +297,21 @@ export function Component() {
         };
 
         const startAutoSlideTimer = () => {
-             if (!texturesLoaded || !sliderEnabled) return;
+             if (!texturesLoaded || !sliderEnabled || isTransitioning) return;
              stopAutoSlideTimer();
              let progress = 0;
              const increment = (100 / SLIDE_DURATION()) * PROGRESS_UPDATE_INTERVAL;
              progressAnimation = setInterval(() => {
-                 if (!sliderEnabled) { stopAutoSlideTimer(); return; }
+                 if (!sliderEnabled || isTransitioning) { stopAutoSlideTimer(); return; }
                  progress += increment;
                  updateSlideProgress(currentSlideIndex, progress);
                  if (progress >= 100) {
-                     clearInterval(progressAnimation); progressAnimation = null;
+                     clearInterval(progressAnimation); 
+                     progressAnimation = null;
                      fadeSlideProgress(currentSlideIndex);
-                     if (!isTransitioning) handleSlideChange();
+                     if (!isTransitioning) {
+                       handleSlideChange();
+                     }
                  }
              }, PROGRESS_UPDATE_INTERVAL);
         };
@@ -341,7 +347,15 @@ export function Component() {
             });
             scene.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), shaderMaterial));
             
-            for (const s of slides) { try { slideTextures.push(await loadImageTexture(s.media)); } catch { console.warn("Failed texture"); } }
+            const isMobileDevice = window.innerWidth <= 768;
+            for (const s of slides) { 
+              try { 
+                const imageUrl = isMobileDevice ? (s.mediaMobile || s.media) : s.media;
+                slideTextures.push(await loadImageTexture(imageUrl)); 
+              } catch { 
+                console.warn("Failed texture"); 
+              } 
+            }
             if (slideTextures.length >= 2) {
                 shaderMaterial.uniforms.uTexture1.value = slideTextures[0];
                 shaderMaterial.uniforms.uTexture2.value = slideTextures[1];
@@ -437,7 +451,7 @@ export function Component() {
         }
 
         .slide-title {
-          font-size: 4rem;
+          font-size: 2.5rem;
           font-weight: 300;
           color: white;
           margin: 0;
@@ -466,7 +480,8 @@ export function Component() {
           width: 90%;
           max-width: 1200px;
           justify-content: center;
-          flex-wrap: wrap;
+          flex-wrap: nowrap;
+          overflow-x: hidden;
         }
 
         .slide-nav-item {
@@ -511,31 +526,51 @@ export function Component() {
 
         @media (max-width: 768px) {
           .slide-title {
-            font-size: 2.5rem;
+            font-size: 1.8rem;
           }
 
           .slide-description {
-            font-size: 1rem;
+            font-size: 0.9rem;
           }
 
           .slide-number, .slide-total {
-            font-size: 1.5rem;
-            top: 2rem;
+            font-size: 1.2rem;
+            top: 1.5rem;
           }
 
           .slide-number {
-            left: 2rem;
+            left: 1.5rem;
             transform: none;
           }
 
           .slide-total {
-            right: 2rem;
+            right: 1.5rem;
             transform: none;
           }
 
           .slides-navigation {
             bottom: 1rem;
-            gap: 1rem;
+            gap: 0.5rem;
+            width: 95%;
+            max-width: 100%;
+            flex-wrap: wrap;
+            justify-content: center;
+          }
+
+          .slide-nav-item {
+            flex: 0 1 calc(50% - 0.25rem);
+            min-width: 0;
+          }
+
+          .slide-nav-title {
+            font-size: 0.7rem;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+          }
+
+          .slide-content {
+            width: 90%;
           }
         }
       `}</style>

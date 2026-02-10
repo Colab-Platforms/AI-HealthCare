@@ -35,9 +35,9 @@ const VideoHero = () => {
 
           {/* Main Heading */}
           <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-serif text-white mb-6 leading-[1.1]">
-            Take Control of your
-            <br />
-            <span className="italic">Health</span> Journey.
+            Take Control of your Health Journey.
+            {/* <br /> */}
+            {/* <span className="italic">Health</span> Journey. */}
           </h1>
 
           {/* Description */}
