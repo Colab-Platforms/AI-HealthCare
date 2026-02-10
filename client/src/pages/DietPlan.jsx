@@ -20,6 +20,7 @@ export default function DietPlan() {
   const [selectedReportId, setSelectedReportId] = useState(null);
   const [hasNutritionGoal, setHasNutritionGoal] = useState(false);
   const [nutritionGoal, setNutritionGoal] = useState(null);
+  const [isPlanOutdated, setIsPlanOutdated] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -221,6 +222,19 @@ export default function DietPlan() {
       const data = await response.json();
       if (data.success && data.dietPlan) {
         setPersonalizedPlan(data.dietPlan);
+        
+        // Check if plan is outdated (goals updated after plan was generated)
+        if (nutritionGoal && data.dietPlan.generatedAt) {
+          const planDate = new Date(data.dietPlan.generatedAt);
+          const goalDate = new Date(nutritionGoal.updatedAt || nutritionGoal.createdAt);
+          
+          if (goalDate > planDate) {
+            setIsPlanOutdated(true);
+            console.log('⚠️ Diet plan is outdated - goals were updated after plan generation');
+          } else {
+            setIsPlanOutdated(false);
+          }
+        }
       }
     } catch (error) {
       console.error('Failed to fetch personalized plan:', error);
@@ -270,6 +284,7 @@ export default function DietPlan() {
       const data = await response.json();
       if (data.success) {
         setPersonalizedPlan(data.dietPlan);
+        setIsPlanOutdated(false); // Reset outdated flag
         toast.success('AI-powered diet plan generated!');
       } else {
         toast.error(data.message || 'Failed to generate plan');
@@ -387,6 +402,38 @@ export default function DietPlan() {
         {/* AI-Powered Plan */}
         {personalizedPlan && (
           <>
+            {/* Outdated Plan Banner */}
+            {isPlanOutdated && (
+              <div className="bg-gradient-to-r from-amber-50 to-orange-50 border-2 border-amber-300 rounded-2xl p-6 flex items-start gap-4 shadow-lg">
+                <div className="w-12 h-12 rounded-xl bg-amber-500 flex items-center justify-center shrink-0">
+                  <AlertCircle className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-bold text-amber-900 mb-2">Your Goals Have Changed!</h3>
+                  <p className="text-amber-800 mb-4">
+                    You've updated your nutrition goals since this diet plan was created. Generate a new plan to match your current goals.
+                  </p>
+                  <button
+                    onClick={generateAIPlan}
+                    disabled={generating}
+                    className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-green-600 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {generating ? (
+                      <>
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        Generating New Plan...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="w-5 h-5" />
+                        Generate New Diet Plan
+                      </>
+                    )}
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Macro Targets */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <div className="bg-white rounded-2xl shadow-lg p-5 text-center hover:shadow-xl transition-shadow">
