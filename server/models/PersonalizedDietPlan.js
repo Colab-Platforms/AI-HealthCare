@@ -22,11 +22,15 @@ const personalizedDietPlanSchema = new mongoose.Schema({
     gender: String,
     weight: Number,
     height: Number,
+    currentBMI: String,
+    bmiGoal: String,
+    targetWeight: Number,
     dietaryPreference: String,
     activityLevel: String,
     fitnessGoals: [String],
     medicalConditions: [String],
-    allergies: [String]
+    allergies: [String],
+    hasReports: Boolean
   },
 
   // Lab report insights
@@ -37,6 +41,16 @@ const personalizedDietPlanSchema = new mongoose.Schema({
     status: String,
     reportId: mongoose.Schema.Types.ObjectId
   }],
+
+  // Nutrition goals
+  nutritionGoals: {
+    dailyCalorieTarget: Number,
+    macroTargets: {
+      protein: Number,
+      carbs: Number,
+      fat: Number
+    }
+  },
 
   // Generated diet plan
   dailyCalorieTarget: Number,

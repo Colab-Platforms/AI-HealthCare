@@ -1,4 +1,4 @@
-// Vercel serverless function for auth routes
+// Vercel serverless function for authentication routes
 const path = require('path');
 const dotenv = require('dotenv');
 

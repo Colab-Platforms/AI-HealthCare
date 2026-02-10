@@ -14,7 +14,7 @@
   "rewrites": [
     {
       "source": "/api/diet-recommendations/:path*",
-      "destination": "/api/index"
+      "destination": "/api/diet-recommendations"
     },
     {
       "source": "/api/nutrition/:path*",
