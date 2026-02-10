@@ -18,9 +18,12 @@ export default function DietPlan() {
   const [expandedMeal, setExpandedMeal] = useState(null);
   const [allReports, setAllReports] = useState([]);
   const [selectedReportId, setSelectedReportId] = useState(null);
+  const [hasNutritionGoal, setHasNutritionGoal] = useState(false);
+  const [nutritionGoal, setNutritionGoal] = useState(null);
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    checkNutritionGoal();
     fetchAllReports();
     fetchPersonalizedPlan();
     fetchSupplementRecommendations();
@@ -31,6 +34,33 @@ export default function DietPlan() {
       fetchReportDietPlan(selectedReportId);
     }
   }, [selectedReportId]);
+
+  // Check if user has set nutrition goals
+  const checkNutritionGoal = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await fetch('/api/nutrition/goals', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.healthGoal && data.healthGoal.goal) {
+          setHasNutritionGoal(true);
+          setNutritionGoal(data.healthGoal);
+          console.log('✅ User has nutrition goal:', data.healthGoal.goal);
+        } else {
+          setHasNutritionGoal(false);
+          console.log('❌ No nutrition goal set');
+        }
+      } else {
+        setHasNutritionGoal(false);
+      }
+    } catch (error) {
+      console.error('Failed to check nutrition goal:', error);
+      setHasNutritionGoal(false);
+    }
+  };
 
   // Auto-generate plan if user has goals but no plan
   // DISABLED: Requires manual generation until server routes are available
@@ -513,16 +543,16 @@ export default function DietPlan() {
               <Apple className="w-10 h-10 text-white" />
             </div>
             <h3 className="text-2xl font-bold text-slate-800 mb-3">
-              {user?.nutritionGoal?.goal ? 'Generate Your Diet Plan' : 'Set Your Goals First'}
+              {hasNutritionGoal ? 'Generate Your Diet Plan' : 'Set Your Goals First'}
             </h3>
             <p className="text-slate-600 mb-6 max-w-md mx-auto">
-              {user?.nutritionGoal?.goal 
+              {hasNutritionGoal 
                 ? 'Click the button below to generate a personalized AI-powered diet plan based on your nutrition goals.'
                 : 'Set your nutrition goals in your profile to get a personalized diet plan. You can also upload health reports for more detailed recommendations.'
               }
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              {user?.nutritionGoal?.goal ? (
+              {hasNutritionGoal ? (
                 <button
                   onClick={generateAIPlan}
                   disabled={generating}
