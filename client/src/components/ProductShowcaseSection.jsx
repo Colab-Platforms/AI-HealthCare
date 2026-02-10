@@ -70,10 +70,10 @@ const ProductShowcaseSection = () => {
                 </div>
                 <div className="flex-1">
                   <h3 className="text-xl font-serif text-white mb-2">
-                    Mobile App
+                    Report Analyzer
                   </h3>
                   <p className="text-sm text-cyan-100">
-                    Track on-the-go with our iOS & Android app
+                    Track on-the-go
                   </p>
                 </div>
                 <div className="flex-shrink-0">

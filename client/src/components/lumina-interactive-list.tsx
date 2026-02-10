@@ -73,12 +73,12 @@ export function Component() {
         const TRANSITION_DURATION = () => SLIDER_CONFIG.settings.transitionDuration;
 
         const slides = [
-            { title: "Ethereal Glow", description: "A soft, radiant light that illuminates the soul.", media: "https://assets.codepen.io/7558/orange-portrait-001.jpg" },
-            { title: "Rose Mirage", description: "Lost in a desert of blooming dreams and endless horizons.", media: "https://assets.codepen.io/7558/orange-portrait-002.jpg" },
-            { title: "Velvet Mystique", description: "Wrapped in the deep, luxurious embrace of the night.", media: "https://assets.codepen.io/7558/orange-portrait-003.jpg" },
-            { title: "Golden Hour", description: "That fleeting moment when the world is dipped in gold.", media: "https://assets.codepen.io/7558/orange-portrait-004.jpg" },
-            { title: "Midnight Dreams", description: "Where reality fades and imagination takes flight.", media: "https://assets.codepen.io/7558/orange-portrait-005.jpg" },
-            { title: "Silver Light", description: "A cool, metallic shimmer reflecting the urban pulse.", media: "https://assets.codepen.io/7558/orange-portrait-006.jpg" }
+            { title: "AI Lab Report Analyzer", description: "", media: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/AILabReportAnalyser_2.png?v=1770707931" },
+            { title: "Health Dashboard", description: "", media: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/WhatsApp_Image_2026-02-07_at_6.46.39_PM.jpg?v=1770707930" },
+            { title: "Nutrition Insights", description: "", media: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/WhatsApp_Image_2026-02-07_at_6.43.52_PM.jpg?v=1770707929" },
+            { title: "Doctor Consultation", description: "", media: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/WhatsApp_Image_2026-02-07_at_6.44.25_PM.jpg?v=1770707929" },
+            { title: "Wellness Tracking", description: "", media: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/WhatsApp_Image_2026-02-07_at_6.48.17_PM.jpg?v=1770707929" },
+            { title: "Health Reports", description: "", media: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/WhatsApp_Image_2026-02-07_at_6.43.52_PM.jpg?v=1770707929" }
         ];
 
         // --- SHADERS ---

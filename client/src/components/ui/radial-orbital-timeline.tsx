@@ -113,7 +113,8 @@ export default function RadialOrbitalTimeline({
 
   const calculateNodePosition = (index: number, total: number) => {
     const angle = ((index / total) * 360 + rotationAngle) % 360;
-    const radius = 200;
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 1024;
+    const radius = isMobile ? 160 : 200;
     const radian = (angle * Math.PI) / 180;
 
     const x = radius * Math.cos(radian) + centerOffset.x;
@@ -183,7 +184,7 @@ export default function RadialOrbitalTimeline({
           </div>
 
           {/* Right Side - Timeline Spinner with Ocean Blue Background */}
-          <div className="flex-1 h-full relative rounded-3xl overflow-hidden" style={{background: 'linear-gradient(135deg, rgba(10, 61, 92, 0.4) 0%, rgba(13, 90, 138, 0.4) 100%)'}}>
+          <div className="flex-1 h-full relative rounded-3xl overflow-visible" style={{background: 'linear-gradient(135deg, rgba(10, 61, 92, 0.4) 0%, rgba(13, 90, 138, 0.4) 100%)'}}>
             <div className="absolute inset-0 rounded-3xl border border-cyan-500/30"></div>
         <div
           className="absolute w-full h-full flex items-center justify-center"
@@ -193,13 +194,13 @@ export default function RadialOrbitalTimeline({
             transform: `translate(${centerOffset.x}px, ${centerOffset.y}px)`,
           }}
         >
-          <div className="absolute w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 via-blue-500 to-teal-500 animate-pulse flex items-center justify-center z-10">
-            <div className="absolute w-20 h-20 rounded-full border border-white/20 animate-ping opacity-70"></div>
+          <div className="absolute w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 via-blue-500 to-teal-500 animate-pulse flex items-center justify-center z-50">
+            <div className="absolute w-20 h-20 rounded-full border-2 border-white/30 animate-ping opacity-70"></div>
             <div
-              className="absolute w-24 h-24 rounded-full border border-white/10 animate-ping opacity-50"
+              className="absolute w-24 h-24 rounded-full border-2 border-white/20 animate-ping opacity-50"
               style={{ animationDelay: "0.5s" }}
             ></div>
-            <div className="w-8 h-8 rounded-full bg-white/80 backdrop-blur-md"></div>
+            <div className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-md shadow-lg shadow-white/50"></div>
           </div>
 
           <div className="absolute w-96 h-96 rounded-full border border-white/10"></div>
@@ -246,18 +247,18 @@ export default function RadialOrbitalTimeline({
                   w-10 h-10 rounded-full flex items-center justify-center
                   ${
                     isExpanded
-                      ? "bg-cyan-400 text-[#0a3d5c]"
+                      ? "bg-transparent text-white"
                       : isRelated
-                      ? "bg-cyan-400/60 text-[#0a3d5c]"
-                      : "bg-[#0a3d5c] text-cyan-400"
+                      ? "bg-transparent text-white"
+                      : "bg-transparent text-white"
                   }
                   border-2 
                   ${
                     isExpanded
-                      ? "border-cyan-400 shadow-lg shadow-cyan-400/30"
+                      ? "border-white shadow-lg shadow-white/30"
                       : isRelated
-                      ? "border-cyan-400 animate-pulse"
-                      : "border-cyan-400/60"
+                      ? "border-white animate-pulse"
+                      : "border-white"
                   }
                   transition-all duration-300 transform
                   ${isExpanded ? "scale-150" : ""}
@@ -271,14 +272,14 @@ export default function RadialOrbitalTimeline({
                   absolute top-12  whitespace-nowrap
                   text-xs font-semibold tracking-wider
                   transition-all duration-300
-                  ${isExpanded ? "text-white scale-125" : "text-white/70"}
+                  ${isExpanded ? "text-white scale-125" : "text-white"}
                 `}
                 >
                   {item.title}
                 </div>
 
                 {isExpanded && (
-                  <Card className="absolute top-14 left-1/2 -translate-x-1/2 w-56 bg-gradient-to-br from-[#0a3d5c] to-[#0d5a8a] backdrop-blur-lg border-cyan-500/50 shadow-xl shadow-cyan-500/20 overflow-visible z-50">
+                  <Card className="absolute top-14 left-1/2 -translate-x-1/2 w-48 bg-gradient-to-br from-[#0a3d5c] to-[#0d5a8a] backdrop-blur-lg border-cyan-500/50 shadow-xl shadow-cyan-500/20 overflow-visible z-50">
                     <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-px h-1.5 bg-cyan-400/70"></div>
                     <CardHeader className="pb-1.5 pt-3 px-3">
                       <div className="flex justify-between items-center mb-0.5">
@@ -455,9 +456,9 @@ export default function RadialOrbitalTimeline({
         </div>
 
         {/* Mobile Layout - Only Spinner */}
-        <div className="lg:hidden h-auto py-12 flex flex-col items-center justify-center">
-          <div className="relative w-full h-[600px] flex items-center justify-center rounded-3xl overflow-hidden" style={{background: 'linear-gradient(135deg, rgba(10, 61, 92, 0.4) 0%, rgba(13, 90, 138, 0.4) 100%)'}}>
-            <div className="absolute inset-0 rounded-3xl border border-cyan-500/30"></div>
+        <div className="lg:hidden h-auto py-4 flex flex-col items-center justify-center">
+          <div className="relative w-full h-[480px] flex items-center justify-center rounded-2xl overflow-visible" style={{background: 'linear-gradient(135deg, rgba(10, 61, 92, 0.4) 0%, rgba(13, 90, 138, 0.4) 100%)'}}>
+            <div className="absolute inset-0 rounded-2xl border border-cyan-500/30"></div>
             <div
               className="absolute w-full h-full flex items-center justify-center"
               ref={orbitRef}
@@ -466,13 +467,13 @@ export default function RadialOrbitalTimeline({
                 transform: `translate(${centerOffset.x}px, ${centerOffset.y}px)`,
               }}
             >
-              <div className="absolute w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 via-blue-500 to-teal-500 animate-pulse flex items-center justify-center z-10">
-                <div className="absolute w-20 h-20 rounded-full border border-white/20 animate-ping opacity-70"></div>
+              <div className="absolute w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 via-blue-500 to-teal-500 animate-pulse flex items-center justify-center z-50">
+                <div className="absolute w-20 h-20 rounded-full border-2 border-white/30 animate-ping opacity-70"></div>
                 <div
-                  className="absolute w-24 h-24 rounded-full border border-white/10 animate-ping opacity-50"
+                  className="absolute w-24 h-24 rounded-full border-2 border-white/20 animate-ping opacity-50"
                   style={{ animationDelay: "0.5s" }}
                 ></div>
-                <div className="w-8 h-8 rounded-full bg-white/80 backdrop-blur-md"></div>
+                <div className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-md shadow-lg shadow-white/50"></div>
               </div>
 
               <div className="absolute w-96 h-96 rounded-full border border-white/10"></div>
@@ -519,18 +520,18 @@ export default function RadialOrbitalTimeline({
                       w-10 h-10 rounded-full flex items-center justify-center
                       ${
                         isExpanded
-                          ? "bg-cyan-400 text-[#0a3d5c]"
+                          ? "bg-transparent text-white"
                           : isRelated
-                          ? "bg-cyan-400/60 text-[#0a3d5c]"
-                          : "bg-[#0a3d5c] text-cyan-400"
+                          ? "bg-transparent text-white"
+                          : "bg-transparent text-white"
                       }
                       border-2 
                       ${
                         isExpanded
-                          ? "border-cyan-400 shadow-lg shadow-cyan-400/30"
+                          ? "border-white shadow-lg shadow-white/30"
                           : isRelated
-                          ? "border-cyan-400 animate-pulse"
-                          : "border-cyan-400/60"
+                          ? "border-white animate-pulse"
+                          : "border-white"
                       }
                       transition-all duration-300 transform
                       ${isExpanded ? "scale-150" : ""}
@@ -544,14 +545,14 @@ export default function RadialOrbitalTimeline({
                       absolute top-12  whitespace-nowrap
                       text-xs font-semibold tracking-wider
                       transition-all duration-300
-                      ${isExpanded ? "text-white scale-125" : "text-white/70"}
+                      ${isExpanded ? "text-white scale-125" : "text-white"}
                     `}
                     >
                       {item.title}
                     </div>
 
                     {isExpanded && (
-                      <Card className="absolute top-14 left-1/2 -translate-x-1/2 w-56 bg-gradient-to-br from-[#0a3d5c] to-[#0d5a8a] backdrop-blur-lg border-cyan-500/50 shadow-xl shadow-cyan-500/20 overflow-visible z-50">
+                      <Card className="absolute top-14 left-1/2 -translate-x-1/2 w-48 bg-gradient-to-br from-[#0a3d5c] to-[#0d5a8a] backdrop-blur-lg border-cyan-500/50 shadow-xl shadow-cyan-500/20 overflow-visible z-50">
                         <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-px h-1.5 bg-cyan-400/70"></div>
                         <CardHeader className="pb-1.5 pt-3 px-3">
                           <div className="flex justify-between items-center mb-0.5">
