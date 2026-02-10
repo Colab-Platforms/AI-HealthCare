@@ -1,9 +1,72 @@
 import axios from 'axios';
+import cache from '../utils/cache';
+
+// Determine API URL based on environment
+const getApiUrl = () => {
+  // If VITE_API_URL is explicitly set, use it
+  if (import.meta.env.VITE_API_URL) {
+    return import.meta.env.VITE_API_URL;
+  }
+
+  // Check if we're in production (Vercel, Netlify, etc.)
+  const currentHost = window.location.hostname;
+  const isProduction = 
+    import.meta.env.PROD || 
+    currentHost.includes('vercel.app') || 
+    currentHost.includes('netlify.app') ||
+    (currentHost !== 'localhost' && currentHost !== '127.0.0.1');
+
+  // For production, use relative path (same domain)
+  if (isProduction) {
+    return '/api';
+  }
+
+  // For local development only
+  if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
+    return 'http://localhost:5000/api';
+  } else {
+    // On mobile or different device in dev, use the same host with port 5000
+    return `http://${currentHost}:5000/api`;
+  }
+};
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
+  baseURL: getApiUrl(),
   headers: { 'Content-Type': 'application/json' }
 });
+
+// Log API configuration on startup
+console.log('🔧 API Configuration:', {
+  baseURL: api.defaults.baseURL,
+  hostname: window.location.hostname,
+  isProd: import.meta.env.PROD,
+  isDev: import.meta.env.DEV,
+  mode: import.meta.env.MODE
+});
+
+// Cached GET request wrapper
+const cachedGet = async (url, options = {}) => {
+  const { ttl = 5 * 60 * 1000, skipCache = false } = options;
+  const cacheKey = `api_${url}`;
+
+  // Check cache first
+  if (!skipCache) {
+    const cached = cache.get(cacheKey);
+    if (cached) {
+      console.log('📦 Cache hit:', url);
+      return { data: cached, fromCache: true };
+    }
+  }
+
+  // Make API call
+  console.log('🌐 API call:', url);
+  const response = await api.get(url);
+  
+  // Cache the response
+  cache.set(cacheKey, response.data, ttl);
+  
+  return { ...response, fromCache: false };
+};
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem('token');
@@ -21,16 +84,29 @@ api.interceptors.response.use(
       localStorage.removeItem('user');
       window.location.href = '/login';
     }
+    
+    // Better error handling for network issues on mobile
+    if (!error.response) {
+      console.error('Network Error:', {
+        message: error.message,
+        apiUrl: api.defaults.baseURL,
+        currentHost: window.location.hostname,
+        currentPort: window.location.port
+      });
+    }
+    
     return Promise.reject(error);
   }
 );
 
 export const healthService = {
+  // Upload report for AI analysis
   uploadReport: (formData) => api.post('/health/upload', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
   }),
   getReports: () => api.get('/health/reports'),
   getReport: (id) => api.get(`/health/reports/${id}`),
+  deleteReport: (id) => api.delete(`/health/reports/${id}`),
   getDashboard: () => api.get('/health/dashboard'),
   getHistory: (reportType) => api.get('/health/history', { params: { reportType } }),
   compareReport: (id) => api.get(`/health/reports/${id}/compare`),

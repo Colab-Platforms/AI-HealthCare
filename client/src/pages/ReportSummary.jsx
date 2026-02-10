@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { healthService } from '../services/api';
-import { ArrowLeft, Download, Share2, AlertTriangle, CheckCircle, TrendingDown, Apple, Pill, Heart, Activity } from 'lucide-react';
+import { ArrowLeft, Download, Share2, AlertTriangle, CheckCircle, TrendingDown, Apple, Pill, Heart, Activity, X } from 'lucide-react';
 import toast from 'react-hot-toast';
+import VitalDetailsPopup from '../components/VitalDetailsPopup';
+import HealthLoader from '../components/HealthLoader';
 
 export default function ReportSummary() {
   const { id } = useParams();
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [selectedMetric, setSelectedMetric] = useState(null);
+  const [showMetricModal, setShowMetricModal] = useState(false);
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -23,7 +27,31 @@ export default function ReportSummary() {
     fetchReport();
   }, [id]);
 
-  if (loading) return <div className="flex items-center justify-center h-[60vh]"><div className="text-center"><div className="w-16 h-16 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4" /><p className="text-slate-400">Loading report...</p></div></div>;
+  const handleMetricClick = (metricName, metricData) => {
+    // Ensure we have all required data
+    const metricInfo = {
+      name: metricName,
+      value: metricData.value,
+      unit: metricData.unit || '',
+      normalRange: metricData.normalRange || 'N/A',
+      status: metricData.status || 'normal',
+      description: metricData.description || '',
+      recommendations: metricData.recommendations || [],
+      foodsToConsume: metricData.foodsToConsume || [],
+      foodsToAvoid: metricData.foodsToAvoid || [],
+      symptoms: metricData.symptoms || [],
+      severity: metricData.severity || ''
+    };
+    setSelectedMetric(metricInfo);
+    setShowMetricModal(true);
+  };
+
+  const closeMetricModal = () => {
+    setShowMetricModal(false);
+    setSelectedMetric(null);
+  };
+
+  if (loading) return <HealthLoader message="Loading your health report..." />;
   if (!report) return <div className="text-center py-12 text-slate-400">Report not found</div>;
 
   const { aiAnalysis } = report;
@@ -44,8 +72,23 @@ export default function ReportSummary() {
       <div className="bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl p-8 text-white">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
+            {/* Patient Name */}
+            {(report.patientName || aiAnalysis?.patientName) && (
+              <div className="mb-3">
+                <p className="text-sm text-white/60 uppercase tracking-wide">Patient Name</p>
+                <p className="text-xl font-semibold">{report.patientName || aiAnalysis?.patientName}</p>
+              </div>
+            )}
             <h1 className="text-3xl font-bold mb-2">{report.reportType} Analysis</h1>
-            <p className="text-white/70">Analyzed on {new Date(report.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-white/70">
+              <p>Analyzed on {new Date(report.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+              {(report.reportDate || aiAnalysis?.reportDate) && (
+                <>
+                  <span className="hidden sm:inline">•</span>
+                  <p>Report Date: {new Date(report.reportDate || aiAnalysis?.reportDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
+                </>
+              )}
+            </div>
           </div>
           <div className="text-center">
             <div className="text-5xl font-bold mb-2">{healthScore}</div>
@@ -89,14 +132,15 @@ export default function ReportSummary() {
           </h2>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
             {Object.entries(aiAnalysis.metrics).map(([key, metric]) => (
-              <div
+              <button
                 key={key}
-                className={`p-5 rounded-xl border-2 ${
+                onClick={() => handleMetricClick(key, metric)}
+                className={`p-5 rounded-xl border-2 text-left transition-all hover:scale-105 hover:shadow-lg cursor-pointer ${
                   metric.status === 'normal'
-                    ? 'bg-emerald-50 border-emerald-200'
+                    ? 'bg-emerald-50 border-emerald-200 hover:border-emerald-300'
                     : metric.status === 'high'
-                    ? 'bg-red-50 border-red-200'
-                    : 'bg-amber-50 border-amber-200'
+                    ? 'bg-red-50 border-red-200 hover:border-red-300'
+                    : 'bg-amber-50 border-amber-200 hover:border-amber-300'
                 }`}
               >
                 <p className="text-sm text-slate-600 font-medium mb-2">{key}</p>
@@ -115,7 +159,7 @@ export default function ReportSummary() {
                 >
                   {metric.status.toUpperCase()}
                 </span>
-              </div>
+              </button>
             ))}
           </div>
         </div>
@@ -335,6 +379,14 @@ export default function ReportSummary() {
           <strong>Disclaimer:</strong> This AI analysis is for informational wellness support only and should not replace professional medical advice. Always consult with a healthcare provider for medical decisions.
         </p>
       </div>
+
+      {/* Metric Details Modal */}
+      {showMetricModal && selectedMetric && (
+        <VitalDetailsPopup
+          vital={selectedMetric}
+          onClose={closeMetricModal}
+        />
+      )}
     </div>
   );
 }

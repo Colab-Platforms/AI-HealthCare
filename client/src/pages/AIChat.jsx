@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Send, Bot, User, Sparkles, Loader2, Copy, Check, Trash2, RefreshCw } from 'lucide-react';
+import { Send, Bot, User, Loader2, Copy, Check, Trash2, Menu, X } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -14,93 +14,99 @@ export default function AIChat() {
   const [streamingText, setStreamingText] = useState('');
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [userReports, setUserReports] = useState([]);
-  const [loadingReports, setLoadingReports] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [chatSessions, setChatSessions] = useState([]);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
 
-  // Load user's reports for context
   useEffect(() => {
     const fetchUserReports = async () => {
       try {
         const token = localStorage.getItem('token');
         const response = await fetch('/api/health/reports', {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
+          headers: { 'Authorization': `Bearer ${token}` }
         });
-        
         if (response.ok) {
           const data = await response.json();
           setUserReports(data.reports || []);
         }
       } catch (error) {
         console.error('Failed to load reports:', error);
-      } finally {
-        setLoadingReports(false);
       }
     };
-
     fetchUserReports();
   }, []);
 
-  // Load chat history from localStorage on mount
+  useEffect(() => {
+    const loadChatSessions = () => {
+      try {
+        const sessions = localStorage.getItem(`chat_sessions_${user?.id}`);
+        if (sessions) {
+          setChatSessions(JSON.parse(sessions));
+        }
+      } catch (error) {
+        console.error('Failed to load chat sessions:', error);
+      }
+    };
+    if (user) loadChatSessions();
+  }, [user?.id]);
+
   useEffect(() => {
     const loadChatHistory = async () => {
       try {
-        // Try to load from localStorage first
-        const savedMessages = localStorage.getItem(`chat_history_${user?.id}`);
+        const sessionId = currentSessionId || `session_${Date.now()}`;
+        setCurrentSessionId(sessionId);
+        const savedMessages = localStorage.getItem(`chat_history_${user?.id}_${sessionId}`);
         if (savedMessages) {
-          const parsedMessages = JSON.parse(savedMessages);
-          setMessages(parsedMessages);
-          console.log('Loaded chat history from localStorage:', parsedMessages.length, 'messages');
+          setMessages(JSON.parse(savedMessages));
         } else {
-          // Show welcome message if no history
-          setMessages([
-            {
-              role: 'assistant',
-              content: `Hello ${user?.name || 'there'}! 👋 I'm your AI health assistant. I can help you understand your health reports, explain medical terms, provide diet guidance, and answer health-related questions. What would you like to know?`,
-              timestamp: new Date()
-            }
-          ]);
+          const greeting = generateGreetingWithReports();
+          setMessages([{ role: 'assistant', content: greeting, timestamp: new Date() }]);
         }
       } catch (error) {
         console.error('Failed to load chat history:', error);
-        // Show welcome message on error
-        setMessages([
-          {
-            role: 'assistant',
-            content: `Hello ${user?.name || 'there'}! 👋 I'm your AI health assistant. How can I help you today?`,
-            timestamp: new Date()
-          }
-        ]);
+        const greeting = generateGreetingWithReports();
+        setMessages([{ role: 'assistant', content: greeting, timestamp: new Date() }]);
       }
     };
-
-    if (user) {
-      loadChatHistory();
-    }
-
-    // If text was selected, add it as initial query
+    if (user) loadChatHistory();
     if (location.state?.selectedText) {
-      const selectedText = location.state.selectedText;
-      setInput(`Can you explain this: "${selectedText}"`);
+      setInput(`Can you explain this: "${location.state.selectedText}"`);
     }
-  }, [user?.id, location.state, user?.name]);
+  }, [user?.id, location.state, user?.name, currentSessionId]);
 
   useEffect(() => {
-    scrollToBottom();
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, streamingText]);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const generateGreetingWithReports = () => {
+    let greeting = `Hello ${user?.name || 'there'}! 👋 I'm your AI health assistant.\n\n`;
+    if (userReports && userReports.length > 0) {
+      greeting += `I've reviewed your uploaded health reports:\n\n`;
+      userReports.slice(0, 3).forEach((report) => {
+        const date = new Date(report.uploadDate).toLocaleDateString();
+        greeting += `📋 **${report.reportType}** (${date})\n`;
+        if (report.analysis) {
+          greeting += `   ${report.analysis.substring(0, 100)}...\n`;
+        }
+        if (report.metrics && Object.keys(report.metrics).length > 0) {
+          const metricKeys = Object.keys(report.metrics).slice(0, 2);
+          greeting += `   Key metrics: ${metricKeys.join(', ')}\n`;
+        }
+        greeting += '\n';
+      });
+      greeting += `I have a complete understanding of your health profile. Feel free to ask me about your reports, health concerns, or get personalized recommendations!\n\nWhat would you like to know?`;
+    } else {
+      greeting += `I can help you understand your health reports, explain medical terms, provide diet guidance, and answer health-related questions. What would you like to know?`;
+    }
+    return greeting;
   };
 
-  // Streaming effect function
   const streamResponse = (text, callback) => {
     setStreaming(true);
     setStreamingText('');
     let index = 0;
-    
     const interval = setInterval(() => {
       if (index <= text.length) {
         setStreamingText(text.substring(0, index));
@@ -110,24 +116,16 @@ export default function AIChat() {
         setStreaming(false);
         callback();
       }
-    }, 15); // Adjust speed here (lower = faster)
-    
+    }, 15);
     return () => clearInterval(interval);
   };
 
   const clearChat = async () => {
     if (confirm('Are you sure you want to clear the chat history?')) {
       try {
-        // Clear from localStorage
-        localStorage.removeItem(`chat_history_${user?.id}`);
-        
-        setMessages([
-          {
-            role: 'assistant',
-            content: `Hello ${user?.name || 'there'}! 👋 I'm your AI health assistant. How can I assist you today?`,
-            timestamp: new Date()
-          }
-        ]);
+        localStorage.removeItem(`chat_history_${user?.id}_${currentSessionId}`);
+        const greeting = generateGreetingWithReports();
+        setMessages([{ role: 'assistant', content: greeting, timestamp: new Date() }]);
         toast.success('Chat cleared');
       } catch (error) {
         console.error('Failed to clear chat:', error);
@@ -136,19 +134,26 @@ export default function AIChat() {
     }
   };
 
-  // Save message to localStorage
-  const saveMessageToDb = async (userQuery, aiResponse) => {
+  const startNewSession = () => {
+    const newSessionId = `session_${Date.now()}`;
+    setCurrentSessionId(newSessionId);
+    const greeting = generateGreetingWithReports();
+    setMessages([{ role: 'assistant', content: greeting, timestamp: new Date() }]);
+    setSidebarOpen(false);
+    toast.success('New chat started');
+  };
+
+  const loadChatSession = (sessionId) => {
     try {
-      // Save to localStorage for persistence
-      const updatedMessages = [
-        ...messages,
-        { role: 'user', content: userQuery, timestamp: new Date() },
-        { role: 'assistant', content: aiResponse, timestamp: new Date() }
-      ];
-      localStorage.setItem(`chat_history_${user?.id}`, JSON.stringify(updatedMessages));
-      console.log('Chat history saved to localStorage');
+      const savedMessages = localStorage.getItem(`chat_history_${user?.id}_${sessionId}`);
+      if (savedMessages) {
+        setMessages(JSON.parse(savedMessages));
+        setCurrentSessionId(sessionId);
+        setSidebarOpen(false);
+      }
     } catch (error) {
-      console.error('Failed to save chat history:', error);
+      console.error('Failed to load session:', error);
+      toast.error('Failed to load chat session');
     }
   };
 
@@ -156,27 +161,19 @@ export default function AIChat() {
     e.preventDefault();
     if (!input.trim() || loading) return;
 
-    const userMessage = {
-      role: 'user',
-      content: input,
-      timestamp: new Date()
-    };
-
+    const userMessage = { role: 'user', content: input, timestamp: new Date() };
     setMessages(prev => [...prev, userMessage]);
     const currentInput = input;
     setInput('');
     setLoading(true);
 
     try {
-      // Call the chat API endpoint
       const response = await fetch('/api/chat', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query: currentInput,
-          conversationHistory: messages.slice(-10), // Send last 10 messages for context
+          conversationHistory: messages.slice(-10),
           userReports: userReports.map(r => ({
             type: r.reportType,
             date: r.uploadDate,
@@ -186,46 +183,54 @@ export default function AIChat() {
         })
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('API Error:', response.status, errorData);
-        throw new Error(errorData.message || `Failed to get AI response (${response.status})`);
-      }
-
+      if (!response.ok) throw new Error('Failed to get AI response');
       const data = await response.json();
       
       if (data.success && data.response) {
-        // Stream the response with typing effect
         streamResponse(data.response, () => {
-          const aiResponse = {
-            role: 'assistant',
-            content: data.response,
-            timestamp: new Date()
-          };
-          setMessages(prev => [...prev, aiResponse]);
+          const aiResponse = { role: 'assistant', content: data.response, timestamp: new Date() };
+          const updatedMessages = [...messages, userMessage, aiResponse];
+          setMessages(updatedMessages);
           setStreamingText('');
           
-          // Save to localStorage
-          const updatedMessages = [...messages, userMessage, aiResponse];
-          localStorage.setItem(`chat_history_${user?.id}`, JSON.stringify(updatedMessages));
+          // Save chat history
+          localStorage.setItem(`chat_history_${user?.id}_${currentSessionId}`, JSON.stringify(updatedMessages));
+          
+          // Update chat sessions list
+          const sessions = JSON.parse(localStorage.getItem(`chat_sessions_${user?.id}`) || '[]');
+          const existingSessionIndex = sessions.findIndex(s => s.id === currentSessionId);
+          const sessionData = {
+            id: currentSessionId,
+            title: messages.length === 1 ? currentInput.substring(0, 50) : sessions[existingSessionIndex]?.title || currentInput.substring(0, 50),
+            lastMessage: currentInput.substring(0, 100),
+            timestamp: new Date().toISOString(),
+            messageCount: updatedMessages.length
+          };
+          
+          if (existingSessionIndex >= 0) {
+            sessions[existingSessionIndex] = sessionData;
+          } else {
+            sessions.unshift(sessionData);
+          }
+          
+          // Keep only last 50 sessions
+          const limitedSessions = sessions.slice(0, 50);
+          localStorage.setItem(`chat_sessions_${user?.id}`, JSON.stringify(limitedSessions));
+          setChatSessions(limitedSessions);
         });
-      } else {
-        throw new Error('Invalid response from AI');
       }
     } catch (error) {
       console.error('AI Chat error:', error);
-      toast.error('Failed to get response. Using fallback.');
-      
-      // Fallback to template response with streaming
+      toast.error('Failed to get response');
       const fallbackResponse = generateAIResponse(currentInput);
       streamResponse(fallbackResponse, () => {
-        const aiResponse = {
-          role: 'assistant',
-          content: fallbackResponse,
-          timestamp: new Date()
-        };
-        setMessages(prev => [...prev, aiResponse]);
+        const aiResponse = { role: 'assistant', content: fallbackResponse, timestamp: new Date() };
+        const updatedMessages = [...messages, userMessage, aiResponse];
+        setMessages(updatedMessages);
         setStreamingText('');
+        
+        // Save even fallback responses
+        localStorage.setItem(`chat_history_${user?.id}_${currentSessionId}`, JSON.stringify(updatedMessages));
       });
     } finally {
       setLoading(false);
@@ -233,22 +238,14 @@ export default function AIChat() {
   };
 
   const generateAIResponse = (query) => {
-    // This is a placeholder. Replace with actual AI API integration
     const lowerQuery = query.toLowerCase();
-    
-    if (lowerQuery.includes('vitamin d') || lowerQuery.includes('vitamin-d')) {
-      return `Based on your query about Vitamin D:\n\n**What is Vitamin D?**\nVitamin D is essential for bone health, immune function, and overall wellbeing.\n\n**Normal Range:** 30-100 ng/mL\n\n**If Low:**\n• Get 15-20 minutes of morning sunlight daily\n• Eat fish, eggs, fortified milk\n• Consider supplements (consult your doctor)\n\n**Symptoms of Deficiency:**\n• Fatigue and tiredness\n• Bone pain or weakness\n• Frequent infections\n• Mood changes\n\nWould you like more specific information about your levels?`;
+    if (lowerQuery.includes('vitamin d')) {
+      return `Based on your query about Vitamin D:\n\n**What is Vitamin D?**\nVitamin D is essential for bone health, immune function, and overall wellbeing.\n\n**Normal Range:** 30-100 ng/mL\n\n**If Low:**\n• Get 15-20 minutes of morning sunlight daily\n• Eat fish, eggs, fortified milk\n• Consider supplements (consult your doctor)`;
     }
-    
     if (lowerQuery.includes('iron') || lowerQuery.includes('hemoglobin')) {
-      return `Regarding Iron and Hemoglobin:\n\n**Importance:**\nIron is crucial for producing hemoglobin, which carries oxygen in your blood.\n\n**Normal Hemoglobin:** 12-17 g/dL\n**Normal Iron:** 60-170 mcg/dL\n\n**To Increase Iron:**\n• Red meat, spinach, dal\n• Eat with Vitamin C foods\n• Avoid tea/coffee with meals\n\n**Symptoms of Low Iron:**\n• Extreme fatigue\n• Pale skin\n• Shortness of breath\n• Cold hands and feet\n\nConsult your doctor if symptoms persist.`;
+      return `Regarding Iron and Hemoglobin:\n\n**Importance:**\nIron is crucial for producing hemoglobin, which carries oxygen in your blood.\n\n**Normal Hemoglobin:** 12-17 g/dL\n**Normal Iron:** 60-170 mcg/dL\n\n**To Increase Iron:**\n• Red meat, spinach, dal\n• Eat with Vitamin C foods\n• Avoid tea/coffee with meals`;
     }
-
-    if (lowerQuery.includes('diet') || lowerQuery.includes('food')) {
-      return `For a healthy diet plan:\n\n**General Guidelines:**\n• Eat balanced meals with proteins, carbs, and healthy fats\n• Include plenty of fruits and vegetables\n• Stay hydrated (8-10 glasses of water daily)\n• Limit processed foods and sugar\n\n**Based on Your Health Data:**\nI can provide personalized diet recommendations based on your deficiencies. Check your Diet Plan page for detailed meal suggestions.\n\nWould you like specific recommendations for any nutrient?`;
-    }
-
-    return `Thank you for your question. I'm here to help with:\n\n• Understanding your health reports\n• Explaining medical terms and values\n• Providing general health guidance\n• Diet and lifestyle recommendations\n• Symptom information\n\n**Important:** I provide general information only. For medical diagnosis and treatment, please consult with a healthcare professional.\n\nCould you please provide more details about what you'd like to know?`;
+    return `Thank you for your question. I'm here to help with understanding your health reports, explaining medical terms, providing diet guidance, and answering health-related questions.`;
   };
 
   const copyToClipboard = (text, index) => {
@@ -259,166 +256,129 @@ export default function AIChat() {
   };
 
   return (
-    <div className="h-screen flex flex-col" style={{ backgroundColor: '#F5F1EA' }}>
-      {/* Messages */}
-      <div 
-        ref={chatContainerRef}
-        className="flex-1 overflow-y-auto px-3 md:px-6 py-4 md:py-6 space-y-4 pb-32 md:pb-28"
-        style={{ userSelect: 'text' }}
-        onMouseUp={(e) => {
-          // Prevent text selection popup on this page
-          e.stopPropagation();
-        }}
-      >
-        {messages.map((message, index) => (
-          <div
-            key={index}
-            className={`flex gap-3 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
-          >
-            {message.role === 'assistant' && (
-              <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-md" style={{ backgroundColor: '#8B7355' }}>
-                <Bot className="w-5 h-5 text-white" />
-              </div>
-            )}
-            
-            <div
-              className={`max-w-[80%] sm:max-w-[70%] rounded-2xl px-4 py-3 shadow-sm ${
-                message.role === 'user'
-                  ? 'text-white shadow-sm'
-                  : 'bg-white text-slate-800'
-              }`}
-              style={message.role === 'user' ? { 
-                backgroundColor: '#8B7355',
-                border: '1px solid #E5DFD3'
-              } : {
-                border: '1px solid #E5DFD3'
-              }}
-            >
-              <div className="whitespace-pre-wrap break-words text-sm sm:text-base leading-relaxed">
-                {message.content}
-              </div>
-              <div className="flex items-center justify-between mt-2 gap-2">
-                <span className={`text-xs ${message.role === 'user' ? 'text-white/70' : 'text-slate-400'}`}>
-                  {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                </span>
-                {message.role === 'assistant' && (
-                  <button
-                    onClick={() => copyToClipboard(message.content, index)}
-                    className="transition-colors p-1 rounded"
-                    style={{ color: '#5C4F3D' }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.color = '#8B7355';
-                      e.currentTarget.style.backgroundColor = '#F5F1EA';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.color = '#5C4F3D';
-                      e.currentTarget.style.backgroundColor = 'transparent';
-                    }}
-                    title="Copy response"
-                  >
-                    {copiedIndex === index ? (
-                      <Check className="w-4 h-4 text-green-500" />
-                    ) : (
-                      <Copy className="w-4 h-4" />
-                    )}
-                  </button>
-                )}
-              </div>
-            </div>
+    <div className="w-full h-full bg-white flex flex-col md:flex-row">
+      {sidebarOpen && <div className="fixed inset-0 bg-black/30 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />}
 
-            {message.role === 'user' && (
-              <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-sm" style={{ backgroundColor: '#E5DFD3' }}>
-                <User className="w-5 h-5" style={{ color: '#5C4F3D' }} />
-              </div>
-            )}
-          </div>
-        ))}
+      {/* Sidebar - Hidden on mobile by default, visible on desktop */}
+      <div className={`fixed md:static left-0 top-0 h-full w-64 bg-white border-r border-gray-200 flex flex-col transition-transform duration-300 z-50 md:z-auto ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} md:translate-x-0 shrink-0`}>
+        <div className="p-3 border-b border-gray-200 flex items-center justify-between shrink-0">
+          <h2 className="font-bold text-gray-900 text-xs">Chat History</h2>
+          <button onClick={() => setSidebarOpen(false)} className="p-1 hover:bg-gray-100 rounded md:hidden">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
 
-        {/* Streaming message */}
-        {streaming && streamingText && (
-          <div className="flex gap-3 justify-start">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-md" style={{ backgroundColor: '#8B7355' }}>
-              <Bot className="w-5 h-5 text-white" />
-            </div>
-            <div className="max-w-[80%] sm:max-w-[70%] bg-white rounded-2xl px-4 py-3 shadow-sm" style={{ border: '1px solid #E5DFD3' }}>
-              <div className="whitespace-pre-wrap break-words text-sm sm:text-base leading-relaxed" style={{ color: '#2C2416' }}>
-                {streamingText}
-                <span className="inline-block w-1 h-4 ml-1 animate-pulse" style={{ backgroundColor: '#8B7355' }}></span>
-              </div>
-            </div>
-          </div>
-        )}
+        <button onClick={startNewSession} className="m-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 font-medium text-xs shrink-0">
+          + New Chat
+        </button>
 
-        {/* Loading indicator */}
-        {loading && !streaming && (
-          <div className="flex gap-3 justify-start">
-            <div className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 shadow-md" style={{ backgroundColor: '#8B7355' }}>
-              <Bot className="w-5 h-5 text-white" />
-            </div>
-            <div className="bg-white rounded-2xl px-4 py-3 shadow-sm" style={{ border: '1px solid #E5DFD3' }}>
-              <div className="flex items-center gap-2" style={{ color: '#5C4F3D' }}>
-                <Loader2 className="w-4 h-4 animate-spin" style={{ color: '#8B7355' }} />
-                <span className="text-sm">Analyzing your question...</span>
-              </div>
-            </div>
-          </div>
-        )}
+        <div className="flex-1 overflow-y-auto px-2 space-y-1">
+          {chatSessions.length > 0 ? (
+            chatSessions.map((session) => (
+              <button key={session.id} onClick={() => loadChatSession(session.id)} className={`w-full text-left p-2 rounded-lg transition text-xs ${currentSessionId === session.id ? 'bg-blue-100 border-l-4 border-blue-600' : 'hover:bg-gray-100'}`}>
+                <p className="font-medium text-gray-900 truncate text-xs">{session.title}</p>
+                <p className="text-xs text-gray-500 truncate mt-0.5">{session.preview}</p>
+              </button>
+            ))
+          ) : (
+            <p className="text-xs text-gray-500 text-center py-6">No chat history yet</p>
+          )}
+        </div>
 
-        <div ref={messagesEndRef} />
+        <div className="p-2 border-t border-gray-200 space-y-1 shrink-0">
+          <button onClick={clearChat} className="w-full px-2 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-lg transition flex items-center justify-center gap-2">
+            <Trash2 className="w-3 h-3" />
+            Clear Chat
+          </button>
+        </div>
       </div>
 
-      {/* Input - Sticky at bottom on both mobile and desktop */}
-      <div className="fixed bottom-20 md:bottom-0 left-0 right-0 flex justify-center items-center px-3 md:px-6 py-3 md:py-4" style={{ backgroundColor: '#F5F1EA', zIndex: 40 }}>
-        <form onSubmit={handleSubmit} className="w-full md:max-w-2xl flex gap-2 md:gap-3 items-end">
-          <div className="flex-1 relative">
-            <input
-              type="text"
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask about your health..."
-              className="w-full px-4 py-2.5 md:py-3 pr-10 bg-white rounded-full focus:outline-none focus:ring-2 transition-all text-sm md:text-base shadow-md hover:shadow-lg"
-              style={{ 
-                border: '1.5px solid #E5DFD3',
-                color: '#2C2416'
-              }}
-              onFocus={(e) => {
-                e.target.style.borderColor = '#8B7355';
-                e.target.style.boxShadow = '0 4px 16px rgba(139, 115, 85, 0.2)';
-              }}
-              onBlur={(e) => {
-                e.target.style.borderColor = '#E5DFD3';
-                e.target.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.08)';
-              }}
-              disabled={loading || streaming}
-            />
-            {input && (
-              <button
-                type="button"
-                onClick={() => setInput('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-lg hover:opacity-70 transition-opacity"
-                style={{ color: '#5C4F3D' }}
-              >
-                ×
-              </button>
-            )}
-          </div>
-          <button
-            type="submit"
-            disabled={!input.trim() || loading || streaming}
-            className="px-4 md:px-5 py-2.5 md:py-3 text-white rounded-full font-medium hover:shadow-lg hover:scale-105 transition-all disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 flex items-center gap-1 md:gap-2 flex-shrink-0 text-sm md:text-base shadow-md"
-            style={{ backgroundColor: '#8B7355' }}
-            title={!input.trim() ? 'Type a message first' : 'Send message'}
-          >
-            {loading || streaming ? (
-              <Loader2 className="w-4 md:w-5 h-4 md:h-5 animate-spin" />
-            ) : (
-              <>
-                <Send className="w-4 md:w-5 h-4 md:h-5" />
-                <span className="hidden sm:inline">Send</span>
-              </>
-            )}
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Top Bar */}
+        <div className="flex items-center px-3 py-2 border-b border-gray-200 bg-white shrink-0">
+          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1.5 hover:bg-gray-100 rounded-lg transition md:hidden" title="Toggle chat history">
+            <Menu className="w-5 h-5 text-gray-700" />
           </button>
-        </form>
+        </div>
+
+        {/* Messages - with padding for mobile input */}
+        <div ref={chatContainerRef} className="flex-1 overflow-y-auto px-3 py-4 space-y-3 pb-24 md:pb-4" style={{ userSelect: 'text' }}>
+          {messages.map((message, index) => (
+            <div key={index} className={`flex gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+              {message.role === 'assistant' && (
+                <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 bg-blue-600">
+                  <Bot className="w-4 h-4 text-white" />
+                </div>
+              )}
+              <div className={`max-w-xs md:max-w-md rounded-2xl px-3 py-2 ${message.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'}`}>
+                <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.content}</div>
+                <div className="flex items-center justify-between mt-1 gap-2">
+                  <span className={`text-xs ${message.role === 'user' ? 'text-blue-100' : 'text-gray-500'}`}>
+                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                  {message.role === 'assistant' && (
+                    <button onClick={() => copyToClipboard(message.content, index)} className="transition-colors p-0.5 rounded hover:bg-gray-200" title="Copy response">
+                      {copiedIndex === index ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3 text-gray-500" />}
+                    </button>
+                  )}
+                </div>
+              </div>
+              {message.role === 'user' && (
+                <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 bg-gray-300">
+                  <User className="w-4 h-4 text-gray-700" />
+                </div>
+              )}
+            </div>
+          ))}
+
+          {streaming && streamingText && (
+            <div className="flex gap-2 justify-start">
+              <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 bg-blue-600">
+                <Bot className="w-4 h-4 text-white" />
+              </div>
+              <div className="max-w-xs md:max-w-md bg-gray-100 rounded-2xl px-3 py-2">
+                <div className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-900">
+                  {streamingText}
+                  <span className="inline-block w-1 h-3 ml-1 animate-pulse bg-blue-600"></span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {loading && !streaming && (
+            <div className="flex gap-2 justify-start">
+              <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 bg-blue-600">
+                <Bot className="w-4 h-4 text-white" />
+              </div>
+              <div className="bg-gray-100 rounded-2xl px-3 py-2">
+                <div className="flex items-center gap-2 text-gray-700">
+                  <Loader2 className="w-3 h-3 animate-spin text-blue-600" />
+                  <span className="text-xs">Analyzing...</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <div ref={messagesEndRef} />
+        </div>
+
+        {/* Input - Fixed at bottom on mobile, relative on desktop */}
+        <div className="fixed md:relative bottom-0 left-0 right-0 md:bottom-auto border-t border-gray-200 bg-white p-3 shrink-0 md:w-auto">
+          <form onSubmit={handleSubmit} className="flex gap-2 items-end">
+            <div className="flex-1 relative">
+              <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask..." className="w-full px-3 py-2.5 bg-gray-50 rounded-2xl focus:outline-none transition-all text-sm border border-gray-200 focus:border-blue-500 focus:bg-white" disabled={loading || streaming} />
+              {input && (
+                <button type="button" onClick={() => setInput('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-lg hover:opacity-70 transition-opacity text-gray-500">
+                  ×
+                </button>
+              )}
+            </div>
+            <button type="submit" disabled={!input.trim() || loading || streaming} className="px-3 py-2.5 text-white rounded-2xl font-medium hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 flex-shrink-0 bg-blue-600 hover:bg-blue-700" title={!input.trim() ? 'Type a message first' : 'Send message'}>
+              {loading || streaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );

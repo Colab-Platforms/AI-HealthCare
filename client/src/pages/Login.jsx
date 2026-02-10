@@ -20,16 +20,28 @@ export default function Login() {
       toast.success('Welcome back!');
       navigate(user.role === 'admin' ? '/admin' : user.role === 'doctor' ? '/doctor/dashboard' : '/dashboard');
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Login failed');
+      const errorMsg = error.response?.data?.message || error.message || 'Login failed';
+      
+      // Check for network errors
+      if (!error.response) {
+        toast.error('Network error - Check if server is running and accessible');
+        console.error('Connection details:', {
+          apiUrl: error.config?.baseURL,
+          host: window.location.hostname,
+          port: window.location.port
+        });
+      } else {
+        toast.error(errorMsg);
+      }
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex" style={{ backgroundColor: '#F5F1EA' }}>
+    <div className="min-h-screen flex bg-gradient-to-br from-cyan-50 to-blue-50">
       {/* Left Panel - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden" style={{ background: 'linear-gradient(to bottom right, #8B7355, #A0826D, #8B7355)' }}>
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-cyan-500 via-blue-500 to-cyan-600">
         <div className="absolute inset-0">
           <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
           <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
@@ -51,28 +63,27 @@ export default function Login() {
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
           <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center" style={{ backgroundColor: '#8B7355' }}>
+            <div className="w-12 h-12 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-xl flex items-center justify-center">
               <Activity className="w-7 h-7 text-white" />
             </div>
-            <span className="text-2xl font-bold" style={{ color: '#2C2416' }}>HealthAI</span>
+            <span className="text-2xl font-bold text-gray-900">HealthAI</span>
           </div>
 
           <div className="text-center mb-8">
-            <h2 className="text-3xl font-bold mb-2" style={{ color: '#2C2416' }}>Sign In</h2>
-            <p style={{ color: '#5C4F3D' }}>Access your health dashboard</p>
+            <h2 className="text-3xl font-bold mb-2 text-gray-900">Sign In</h2>
+            <p className="text-gray-600">Access your health dashboard</p>
           </div>
           
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: '#2C2416' }}>Email Address</label>
+              <label className="block text-sm font-medium mb-2 text-gray-700">Email Address</label>
               <div className="relative">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: '#5C4F3D' }} />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-white rounded-xl py-3 pl-12 pr-4 focus:outline-none"
-                  style={{ border: '1px solid #E5DFD3', color: '#2C2416' }}
+                  className="w-full bg-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-gray-200 text-gray-900"
                   placeholder="you@example.com"
                   required
                 />
@@ -80,23 +91,21 @@ export default function Login() {
             </div>
             
             <div>
-              <label className="block text-sm font-medium mb-2" style={{ color: '#2C2416' }}>Password</label>
+              <label className="block text-sm font-medium mb-2 text-gray-700">Password</label>
               <div className="relative">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: '#5C4F3D' }} />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-white rounded-xl py-3 pl-12 pr-12 focus:outline-none"
-                  style={{ border: '1px solid #E5DFD3', color: '#2C2416' }}
+                  className="w-full bg-white rounded-xl py-3 pl-12 pr-12 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-gray-200 text-gray-900"
                   placeholder="••••••••"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2"
-                  style={{ color: '#5C4F3D' }}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -105,17 +114,16 @@ export default function Login() {
 
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 cursor-pointer">
-                <input type="checkbox" className="w-4 h-4 rounded" style={{ borderColor: '#E5DFD3' }} />
-                <span className="text-sm" style={{ color: '#5C4F3D' }}>Remember me</span>
+                <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-cyan-500 focus:ring-cyan-500" />
+                <span className="text-sm text-gray-600">Remember me</span>
               </label>
-              <a href="#" className="text-sm font-medium" style={{ color: '#8B7355' }}>Forgot password?</a>
+              <a href="#" className="text-sm font-medium text-cyan-600 hover:text-cyan-700">Forgot password?</a>
             </div>
             
             <button 
               type="submit" 
               disabled={loading} 
-              className="w-full py-3 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-              style={{ backgroundColor: '#8B7355' }}
+              className="w-full py-3 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -125,16 +133,10 @@ export default function Login() {
             </button>
           </form>
           
-          <p className="text-center mt-8" style={{ color: '#5C4F3D' }}>
+          <p className="text-center mt-8 text-gray-600">
             Don't have an account?{' '}
-            <Link to="/register" className="font-semibold" style={{ color: '#8B7355' }}>Create one</Link>
+            <Link to="/register" className="font-semibold text-cyan-600 hover:text-cyan-700">Create one</Link>
           </p>
-
-          <div className="mt-6 text-center">
-            <Link to="/register/doctor" className="text-sm" style={{ color: '#5C4F3D' }}>
-              Register as a Doctor →
-            </Link>
-          </div>
         </div>
       </div>
     </div>

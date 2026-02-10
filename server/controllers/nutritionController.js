@@ -593,7 +593,7 @@ async function createDailySummary(userId, date) {
   return await updateDailySummary(userId, date);
 }
 
-// Quick food check without logging
+// Quick food check without logging - with complete details persistence
 exports.quickFoodCheck = async (req, res) => {
   try {
     const { foodDescription, imageBase64, additionalContext } = req.body;
@@ -605,91 +605,54 @@ exports.quickFoodCheck = async (req, res) => {
       });
     }
 
-    let resultData;
+    let analysis;
     
+    // Get AI analysis
     if (imageBase64) {
-      try {
-        // Analyze from image using the same quick check format
-        const imageAnalysis = await nutritionAI.analyzeFromImage(imageBase64, additionalContext || foodDescription);
-        
-        if (!imageAnalysis || !imageAnalysis.data) {
-          throw new Error('Invalid image analysis response');
-        }
-        
-        // Transform the detailed analysis into quick check format
-        const totalNutrition = imageAnalysis.data.totalNutrition;
-        
-        if (!totalNutrition) {
-          throw new Error('No nutrition data in image analysis');
-        }
-        
-        // Determine if healthy based on nutrition
-        const isHealthy = (
-          (totalNutrition.sugar || 0) < 20 &&
-          (totalNutrition.sodium || 0) < 800 &&
-          (totalNutrition.fiber || 0) > 3 &&
-          (totalNutrition.protein || 0) > 10
-        );
-        
-        resultData = {
-          foodItem: {
-            name: imageAnalysis.data.foodItems?.map(item => item.name).join(', ') || 'Unknown food',
-            quantity: imageAnalysis.data.foodItems?.map(item => item.quantity).join(', ') || 'Unknown quantity',
-            nutrition: {
-              calories: totalNutrition.calories || 0,
-              protein: totalNutrition.protein || 0,
-              carbs: totalNutrition.carbs || 0,
-              fats: totalNutrition.fats || 0,
-              fiber: totalNutrition.fiber || 0,
-              sugar: totalNutrition.sugar || 0,
-              sodium: totalNutrition.sodium || 0
-            }
-          },
-          healthScore: isHealthy ? 75 : 45,
-          isHealthy,
-          analysis: imageAnalysis.data.analysis || 'Food analyzed from image',
-          warnings: !isHealthy ? ['High in calories', 'Consider portion control'] : [],
-          benefits: isHealthy ? ['Good nutritional balance'] : [],
-          alternatives: []
-        };
-      } catch (imageError) {
-        console.error('Image analysis error:', imageError);
-        return res.status(500).json({
-          success: false,
-          message: 'Failed to analyze image. Please try with text description or a clearer image.',
-          error: imageError.message
-        });
-      }
+      analysis = await nutritionAI.quickFoodCheck(additionalContext || 'Food from image');
     } else {
-      // Use text-based quick check
-      try {
-        const result = await nutritionAI.quickFoodCheck(foodDescription);
-        
-        if (!result || !result.data) {
-          throw new Error('Invalid quick check response');
-        }
-        
-        resultData = result.data;
-      } catch (textError) {
-        console.error('Text analysis error:', textError);
-        return res.status(500).json({
-          success: false,
-          message: 'Failed to analyze food. Please try again or provide more details.',
-          error: textError.message
-        });
-      }
+      analysis = await nutritionAI.quickFoodCheck(foodDescription);
     }
+
+    if (!analysis.success || !analysis.data) {
+      throw new Error('Failed to analyze food');
+    }
+
+    const QuickFoodCheck = require('../models/QuickFoodCheck');
+    
+    // Save to database for permanent storage with ALL details
+    const foodCheck = new QuickFoodCheck({
+      userId: req.user._id,
+      foodName: analysis.data.foodItem?.name || foodDescription,
+      quantity: analysis.data.foodItem?.quantity || 'Not specified',
+      calories: analysis.data.foodItem?.nutrition?.calories || 0,
+      protein: analysis.data.foodItem?.nutrition?.protein || 0,
+      carbs: analysis.data.foodItem?.nutrition?.carbs || 0,
+      fats: analysis.data.foodItem?.nutrition?.fats || 0,
+      nutrition: analysis.data.foodItem?.nutrition || {},
+      healthScore: analysis.data.healthScore || 50,
+      isHealthy: analysis.data.isHealthy || false,
+      analysis: analysis.data.analysis || '',
+      warnings: analysis.data.warnings || [],
+      benefits: analysis.data.benefits || [],
+      alternatives: analysis.data.alternatives || [],
+      imageUrl: imageBase64 ? `data:image/jpeg;base64,${imageBase64.substring(0, 100)}...` : null,
+      timestamp: new Date()
+    });
+
+    await foodCheck.save();
 
     res.json({
       success: true,
-      ...resultData,
-      message: 'Food analyzed successfully'
+      data: analysis.data,
+      savedId: foodCheck._id,
+      message: 'Food analyzed and saved successfully'
     });
   } catch (error) {
     console.error('Quick food check error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to analyze food. Please try again.',
+      message: 'Failed to analyze food',
       error: error.message
     });
   }
@@ -746,3 +709,225 @@ exports.getHealthyAlternatives = async (req, res) => {
 };
 
 module.exports = exports;
+
+
+// Get all saved quick food checks for user
+exports.getQuickFoodChecks = async (req, res) => {
+  try {
+    const { limit = 50, skip = 0, date } = req.query;
+    const QuickFoodCheck = require('../models/QuickFoodCheck');
+
+    const query = { userId: req.user._id };
+
+    // Filter by date if provided
+    if (date) {
+      const targetDate = new Date(date);
+      targetDate.setHours(0, 0, 0, 0);
+      const nextDate = new Date(targetDate);
+      nextDate.setDate(nextDate.getDate() + 1);
+
+      query.timestamp = {
+        $gte: targetDate,
+        $lt: nextDate
+      };
+    }
+
+    const checks = await QuickFoodCheck.find(query)
+      .sort({ timestamp: -1 })
+      .limit(parseInt(limit))
+      .skip(parseInt(skip));
+
+    const total = await QuickFoodCheck.countDocuments(query);
+
+    res.json({
+      success: true,
+      checks,
+      total,
+      limit: parseInt(limit),
+      skip: parseInt(skip)
+    });
+  } catch (error) {
+    console.error('Get quick food checks error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get food checks',
+      error: error.message
+    });
+  }
+};
+
+// Get single quick food check
+exports.getQuickFoodCheck = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const QuickFoodCheck = require('../models/QuickFoodCheck');
+
+    const check = await QuickFoodCheck.findOne({
+      _id: id,
+      userId: req.user._id
+    });
+
+    if (!check) {
+      return res.status(404).json({
+        success: false,
+        message: 'Food check not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      check
+    });
+  } catch (error) {
+    console.error('Get quick food check error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get food check',
+      error: error.message
+    });
+  }
+};
+
+// Delete quick food check
+exports.deleteQuickFoodCheck = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const QuickFoodCheck = require('../models/QuickFoodCheck');
+
+    const check = await QuickFoodCheck.findOneAndDelete({
+      _id: id,
+      userId: req.user._id
+    });
+
+    if (!check) {
+      return res.status(404).json({
+        success: false,
+        message: 'Food check not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      message: 'Food check deleted successfully'
+    });
+  } catch (error) {
+    console.error('Delete quick food check error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to delete food check',
+      error: error.message
+    });
+  }
+};
+
+// Get food check history for a specific date
+exports.getFoodCheckHistory = async (req, res) => {
+  try {
+    const { date } = req.query;
+    const QuickFoodCheck = require('../models/QuickFoodCheck');
+
+    if (!date) {
+      return res.status(400).json({
+        success: false,
+        message: 'Date parameter is required'
+      });
+    }
+
+    const targetDate = new Date(date);
+    targetDate.setHours(0, 0, 0, 0);
+    const nextDate = new Date(targetDate);
+    nextDate.setDate(nextDate.getDate() + 1);
+
+    const checks = await QuickFoodCheck.find({
+      userId: req.user._id,
+      timestamp: {
+        $gte: targetDate,
+        $lt: nextDate
+      }
+    }).sort({ timestamp: -1 });
+
+    // Calculate daily stats
+    const stats = {
+      totalChecks: checks.length,
+      healthyCount: checks.filter(c => c.isHealthy).length,
+      unhealthyCount: checks.filter(c => !c.isHealthy).length,
+      avgHealthScore: checks.length > 0 
+        ? Math.round(checks.reduce((sum, c) => sum + (c.healthScore || 0), 0) / checks.length)
+        : 0,
+      checks
+    };
+
+    res.json({
+      success: true,
+      stats
+    });
+  } catch (error) {
+    console.error('Get food check history error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get food check history',
+      error: error.message
+    });
+  }
+};
+
+// Get weekly food check summary
+exports.getWeeklyFoodCheckSummary = async (req, res) => {
+  try {
+    const QuickFoodCheck = require('../models/QuickFoodCheck');
+
+    const endDate = new Date();
+    endDate.setHours(23, 59, 59, 999);
+    
+    const startDate = new Date(endDate);
+    startDate.setDate(startDate.getDate() - 6);
+    startDate.setHours(0, 0, 0, 0);
+
+    const checks = await QuickFoodCheck.find({
+      userId: req.user._id,
+      timestamp: { $gte: startDate, $lte: endDate }
+    }).sort({ timestamp: -1 });
+
+    // Group by date
+    const byDate = {};
+    checks.forEach(check => {
+      const dateKey = check.timestamp.toISOString().split('T')[0];
+      if (!byDate[dateKey]) {
+        byDate[dateKey] = [];
+      }
+      byDate[dateKey].push(check);
+    });
+
+    // Calculate weekly stats
+    const weeklyStats = {
+      totalChecks: checks.length,
+      healthyCount: checks.filter(c => c.isHealthy).length,
+      unhealthyCount: checks.filter(c => !c.isHealthy).length,
+      avgHealthScore: checks.length > 0
+        ? Math.round(checks.reduce((sum, c) => sum + (c.healthScore || 0), 0) / checks.length)
+        : 0,
+      daysActive: Object.keys(byDate).length,
+      byDate,
+      topUnhealthyFoods: checks
+        .filter(c => !c.isHealthy)
+        .slice(0, 5)
+        .map(c => ({ name: c.foodName, healthScore: c.healthScore })),
+      topHealthyFoods: checks
+        .filter(c => c.isHealthy)
+        .slice(0, 5)
+        .map(c => ({ name: c.foodName, healthScore: c.healthScore }))
+    };
+
+    res.json({
+      success: true,
+      weeklyStats
+    });
+  } catch (error) {
+    console.error('Get weekly food check summary error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to get weekly summary',
+      error: error.message
+    });
+  }
+};

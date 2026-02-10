@@ -2,11 +2,13 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
+import HealthLoader from './components/HealthLoader';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import DoctorRegister from './pages/DoctorRegister';
 import Dashboard from './pages/Dashboard';
+import DashboardEnhanced from './pages/DashboardEnhanced';
 import DoctorDashboard from './pages/DoctorDashboard';
 import UploadReport from './pages/UploadReport';
 import ReportDetails from './pages/ReportDetails';
@@ -25,10 +27,15 @@ import DoctorAvailability from './pages/DoctorAvailability';
 import DietPlan from './pages/DietPlan';
 import AIChat from './pages/AIChat';
 import Nutrition from './pages/Nutrition';
+import AllReports from './pages/AllReports';
+import Challenge30Days from './pages/Challenge30Days';
+import ReportSummary from './pages/ReportSummary';
+import VitalSigns from './pages/VitalSigns';
+import Supplements from './pages/Supplements';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
-  if (loading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  if (loading) return <HealthLoader message="Verifying your credentials..." />;
   if (!user) return <Navigate to="/login" />;
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     // Redirect to appropriate dashboard based on role
@@ -41,14 +48,14 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
 const AdminRoute = ({ children }) => {
   const { user, loading, isAdmin } = useAuth();
-  if (loading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  if (loading) return <HealthLoader message="Checking admin access..." />;
   if (!user) return <Navigate to="/login" />;
   return isAdmin() ? children : <Navigate to="/dashboard" />;
 };
 
 const DoctorRoute = ({ children }) => {
   const { user, loading, isDoctor } = useAuth();
-  if (loading) return <div className="flex items-center justify-center h-screen">Loading...</div>;
+  if (loading) return <HealthLoader message="Verifying doctor credentials..." />;
   if (!user) return <Navigate to="/login" />;
   return isDoctor() ? children : <Navigate to="/dashboard" />;
 };
@@ -77,14 +84,20 @@ export default function App() {
       <Route path="/register/doctor" element={user ? <Navigate to="/doctor/dashboard" /> : <DoctorRegister />} />
       
       {/* Patient Routes */}
-      <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Dashboard /></Layout></ProtectedRoute>} />
+      <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><DashboardEnhanced /></Layout></ProtectedRoute>} />
+      <Route path="/dashboard/classic" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Dashboard /></Layout></ProtectedRoute>} />
       <Route path="/upload" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><UploadReport /></Layout></ProtectedRoute>} />
+      <Route path="/reports" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><AllReports /></Layout></ProtectedRoute>} />
       <Route path="/reports/:id" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><ReportDetails /></Layout></ProtectedRoute>} />
+      <Route path="/reports/:id/summary" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><ReportSummary /></Layout></ProtectedRoute>} />
+      <Route path="/challenge" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Challenge30Days /></Layout></ProtectedRoute>} />
       <Route path="/doctors" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Doctors /></Layout></ProtectedRoute>} />
       <Route path="/consultation/:appointmentId" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Consultation /></ProtectedRoute>} />
       <Route path="/consultation-summary/:appointmentId" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><ConsultationSummary /></Layout></ProtectedRoute>} />
       <Route path="/wearables" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Wearables /></Layout></ProtectedRoute>} />
       <Route path="/nutrition" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Nutrition /></Layout></ProtectedRoute>} />
+      <Route path="/vital-signs" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><VitalSigns /></Layout></ProtectedRoute>} />
+      <Route path="/supplements" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Supplements /></Layout></ProtectedRoute>} />
       <Route path="/subscription" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Subscription /></Layout></ProtectedRoute>} />
       <Route path="/diet-plan" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><DietPlan /></Layout></ProtectedRoute>} />
       <Route path="/ai-chat" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><AIChat /></Layout></ProtectedRoute>} />

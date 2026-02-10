@@ -275,7 +275,7 @@ Be accurate with portion sizes and nutrition values. Use standard serving sizes 
       const remainingCarbs = userGoal.macroTargets.carbs - todaySummary.totalCarbs;
       const remainingFats = userGoal.macroTargets.fats - todaySummary.totalFats;
 
-      const prompt = `You are a professional nutritionist AI. Provide personalized meal recommendations.
+      const prompt = `You are a professional nutritionist AI specializing in Indian cuisine and dietary habits. Provide personalized meal recommendations.
 
 User's Goal: ${userGoal.goalType.replace('_', ' ')}
 Dietary Preference: ${userGoal.dietaryPreference}
@@ -289,17 +289,21 @@ Today's Intake:
 
 ${deficiencies.length > 0 ? `Nutrient Deficiencies: ${deficiencies.join(', ')}` : ''}
 
-Provide 3-5 meal suggestions that:
+IMPORTANT: Suggest INDIAN meals and foods that:
 1. Fit within remaining calorie and macro targets
 2. Address any nutrient deficiencies
 3. Match dietary preferences
 4. Are practical and easy to prepare
+5. Use common Indian ingredients and cooking methods
+6. Consider Indian eating habits and meal times
+
+Provide 3-5 meal suggestions with Indian options.
 
 Return response in JSON format:
 {
   "recommendations": [
     {
-      "mealName": "Meal name",
+      "mealName": "Meal name (Indian)",
       "description": "Brief description",
       "calories": 0,
       "protein": 0,
@@ -307,7 +311,8 @@ Return response in JSON format:
       "fats": 0,
       "ingredients": ["ingredient1", "ingredient2"],
       "benefits": "Why this meal is good for the user",
-      "prepTime": "Preparation time"
+      "prepTime": "Preparation time",
+      "indianName": "Hindi/Regional name if applicable"
     }
   ],
   "insights": "Overall insights about user's nutrition today",
@@ -356,18 +361,22 @@ Return response in JSON format:
    */
   async quickFoodCheck(foodDescription) {
     try {
-      const prompt = `You are a professional nutritionist AI. Analyze this food and provide nutrition info plus healthy alternatives if it's junk food.
+      const prompt = `You are a professional nutritionist AI specializing in Indian cuisine and dietary habits. Analyze this food and provide nutrition info plus healthy alternatives if it's junk food.
 
 Food: "${foodDescription}"
+
+IMPORTANT: Focus on Indian foods and eating habits. Suggest Indian alternatives when possible.
 
 Provide:
 1. Detailed nutrition breakdown
 2. Health impact analysis
-3. If this is junk/unhealthy food, suggest 3-5 HEALTHIER alternatives that:
+3. If this is junk/unhealthy food, suggest 3-5 HEALTHIER Indian alternatives that:
    - Keep the person full (high protein/fiber)
    - Have similar or fewer calories
    - Provide better nutrition
-   - Are practical and easy to find
+   - Are practical and easy to find in India
+   - Match Indian dietary preferences
+4. Consider Indian cooking methods (oil usage, spices, etc.)
 
 Return in this EXACT JSON format:
 {
@@ -391,7 +400,7 @@ Return in this EXACT JSON format:
   "benefits": ["Benefit 1", "Benefit 2"],
   "alternatives": [
     {
-      "name": "Alternative food name",
+      "name": "Alternative food name (preferably Indian)",
       "description": "Why this is better",
       "nutrition": {
         "calories": 0,

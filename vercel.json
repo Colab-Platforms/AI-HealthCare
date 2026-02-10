@@ -1,60 +1,64 @@
 {
   "version": 2,
-  "buildCommand": "cd client && npm install && npm run build",
-  "builds": [
+  "buildCommand": "cd client && npm ci --include=dev && npm run build",
+  "outputDirectory": "client/dist",
+  "installCommand": "npm install --production=false && cd server && npm install --production=false",
+  "devCommand": "cd client && npm run dev",
+  "framework": null,
+  "functions": {
+    "api/**/*.js": {
+      "memory": 1024,
+      "maxDuration": 30
+    }
+  },
+  "headers": [
     {
-      "src": "api/test.js",
-      "use": "@vercel/node"
+      "source": "/index.html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
     },
     {
-      "src": "api/env-check.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "api/ai-test.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "api/chat.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "api/index.js",
-      "use": "@vercel/node"
-    },
-    {
-      "src": "client/dist/**",
-      "use": "@vercel/static"
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        },
+        {
+          "key": "X-Frame-Options",
+          "value": "DENY"
+        },
+        {
+          "key": "X-XSS-Protection",
+          "value": "1; mode=block"
+        }
+      ]
     }
   ],
-  "routes": [
+  "rewrites": [
     {
-      "src": "/api/test",
-      "dest": "/api/test.js"
+      "source": "/api/diet-recommendations/:path*",
+      "destination": "/api/diet-recommendations"
     },
     {
-      "src": "/api/env-check",
-      "dest": "/api/env-check.js"
+      "source": "/api/nutrition/:path*",
+      "destination": "/api/nutrition"
     },
     {
-      "src": "/api/ai-test",
-      "dest": "/api/ai-test.js"
+      "source": "/api/auth/:path*",
+      "destination": "/api/auth"
     },
     {
-      "src": "/api/chat",
-      "dest": "/api/chat.js"
+      "source": "/api/:path*",
+      "destination": "/api/index"
     },
     {
-      "src": "/api/(.*)",
-      "dest": "/api/index.js"
-    },
-    {
-      "src": "/assets/(.*)",
-      "dest": "/client/dist/assets/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/client/dist/index.html"
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ]
 }

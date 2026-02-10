@@ -2,6 +2,97 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom animations for health dashboard */
+@keyframes bounce-slow {
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.8;
+    transform: scale(1.05);
+  }
+}
+
+@keyframes slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes heartbeat {
+  0%, 100% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.1);
+  }
+  50% {
+    transform: scale(1);
+  }
+  75% {
+    transform: scale(1.05);
+  }
+}
+
+.animate-bounce-slow {
+  animation: bounce-slow 3s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+.animate-slide-up {
+  animation: slide-up 0.3s ease-out;
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out;
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out;
+}
+
+.animate-heartbeat {
+  animation: heartbeat 1.5s ease-in-out infinite;
+}
+
 :root {
   /* Ocean Blue Theme Colors */
   --bg-cream: #0d5a8a;
@@ -283,36 +374,40 @@ input:focus, select:focus, textarea:focus {
   align-items: center;
   justify-content: space-between;
   padding: 14px 20px;
-  background: white;
+  background: linear-gradient(135deg, #06b6d4 0%, #0891b2 100%);
   border-radius: 50px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 8px 32px rgba(6, 182, 212, 0.3);
   max-width: 100%;
   margin: 0 auto;
   height: 60px;
   gap: 8px;
+  border: 2px solid rgba(255, 255, 255, 0.2);
 }
 
 .nav-item-modern {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 48px;
+  flex-direction: column;
+  width: 56px;
   height: 48px;
   border-radius: 14px;
-  color: #A0A0A0;
+  color: rgba(255, 255, 255, 0.7);
   text-decoration: none;
   transition: all 0.3s ease;
   flex-shrink: 0;
+  gap: 2px;
 }
 
 .nav-item-modern:hover {
-  background: #F5F1EA;
-  color: #8B7355;
+  background: rgba(255, 255, 255, 0.15);
+  color: white;
 }
 
 .nav-item-modern.active {
-  background: #F5F1EA;
-  color: #2E7D32;
+  background: rgba(255, 255, 255, 0.25);
+  color: white;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 }
 
 .nav-center-fab {
@@ -323,20 +418,21 @@ input:focus, select:focus, textarea:focus {
   width: 64px;
   height: 64px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #2E7D32 0%, #1B5E20 100%);
+  background: linear-gradient(135deg, #06b6d4 0%, #0284c7 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   text-decoration: none;
-  box-shadow: 0 6px 24px rgba(46, 125, 50, 0.35);
+  box-shadow: 0 8px 32px rgba(6, 182, 212, 0.4);
   transition: all 0.3s ease;
   z-index: 10;
+  border: 3px solid white;
 }
 
 .nav-center-fab:hover {
   transform: translateX(-50%) translateY(-3px);
-  box-shadow: 0 8px 28px rgba(46, 125, 50, 0.4);
+  box-shadow: 0 10px 36px rgba(6, 182, 212, 0.5);
 }
 
 .nav-center-fab:active {

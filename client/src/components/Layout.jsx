@@ -55,8 +55,11 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
     portalName = user?.doctorProfile?.specialization || 'Doctor Portal';
   }
 
+  // Light cyan background for all pages
+  const bgColor = 'bg-gradient-to-br from-cyan-50 via-blue-50 to-cyan-100';
+
   return (
-    <div className="min-h-screen flex" style={{ backgroundColor: '#F5F1EA' }}>
+    <div className={`min-h-screen flex ${bgColor}`}>
       {/* Sidebar - Slide from RIGHT on mobile, fixed on desktop */}
       <aside className={`fixed inset-y-0 right-0 lg:left-0 lg:right-auto z-50 w-64 bg-white shadow-lg lg:shadow-sm transform transition-transform duration-300 hidden lg:flex lg:flex-col ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`} style={{ borderRight: '2px solid #E5DFD3', borderLeft: '2px solid #E5DFD3' }}>
         <div className="flex flex-col h-full">
@@ -67,7 +70,7 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
                 <Activity className="w-6 h-6 text-white" />
               </div>
               <div>
-                <p className="font-bold" style={{ color: '#2C2416' }}>HealthAI</p>
+                <p className="font-bold" style={{ color: '#2C2416' }}>FitCure</p>
                 <p className="text-xs" style={{ color: '#5C4F3D' }}>{portalName}</p>
               </div>
             </Link>
@@ -186,7 +189,7 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
                 <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ backgroundColor: '#8B7355' }}>
                   <Activity className="w-5 h-5 text-white" />
                 </div>
-                <span className="text-sm font-bold" style={{ color: '#2C2416' }}>HealthAI</span>
+                <span className="text-sm font-bold" style={{ color: '#2C2416' }}>FitCure</span>
               </Link>
               
               {/* Desktop Title - Hide on mobile */}
@@ -218,17 +221,18 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
                 <Bell className="w-5 h-5" />
                 <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full" />
               </button>
-
-              {/* User Avatar */}
-              <div className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0" style={{ backgroundColor: '#8B7355' }}>
-                <span className="text-white font-bold text-sm">{user?.name?.[0]?.toUpperCase()}</span>
-              </div>
             </div>
           </div>
         </header>
 
         {/* Page Content */}
-        <main className="flex-1 p-3 md:p-4 lg:p-8 main-content-mobile overflow-x-hidden w-full">
+        <main className="flex-1 main-content-mobile overflow-x-hidden w-full" style={
+          location.pathname === '/nutrition' || location.pathname === '/ai-chat' 
+            ? { padding: 0, backgroundColor: 'white' } 
+            : location.pathname === '/dashboard'
+            ? { padding: 0 }
+            : { padding: '0.75rem' }
+        }>
           {children}
         </main>
 

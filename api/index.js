@@ -1,46 +1,19 @@
-// Vercel serverless function entry point
+// Vercel serverless function handler
+const path = require('path');
+const dotenv = require('dotenv');
+
+// Load environment variables
+dotenv.config({ path: path.join(__dirname, '../server/.env') });
+
+// Set Vercel environment
 process.env.VERCEL = '1';
+process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 
-let app;
+// Import and export the server app
+const app = require('../server/server');
 
-try {
-  // Try to load Express
-  const express = require('express');
-  const appInstance = express();
-  
-  appInstance.use(express.json());
-  
-  // Simple health check that always works
-  appInstance.get('/api/health-check', (req, res) => {
-    res.json({ 
-      status: 'ok', 
-      message: 'Healthcare AI Platform API',
-      timestamp: new Date().toISOString()
-    });
-  });
-  
-  // Try to load the full server app
-  try {
-    const fullApp = require('../server/server');
-    app = fullApp;
-    console.log('Full app loaded successfully');
-  } catch (serverError) {
-    console.error('Error loading full server:', serverError.message);
-    // Use simple app if full app fails
-    app = appInstance;
-  }
-} catch (expressError) {
-  console.error('Critical error - Express not available:', expressError.message);
-  
-  // Fallback: Export a simple function
-  module.exports = (req, res) => {
-    res.status(500).json({
-      error: 'Server initialization failed',
-      message: expressError.message
-    });
-  };
-}
+// Export as Vercel serverless function
+module.exports = app;
 
-if (app) {
-  module.exports = app;
-}
+// Also export as default for Vercel
+module.exports.default = app;
