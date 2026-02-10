@@ -70,6 +70,11 @@ const healthReportSchema = new mongoose.Schema({
     },
     overallTrend: String
   },
+  comparison: {
+    previousReportId: { type: mongoose.Schema.Types.ObjectId, ref: 'HealthReport' },
+    previousReportDate: Date,
+    data: mongoose.Schema.Types.Mixed
+  },
   status: { type: String, enum: ['pending', 'processing', 'completed', 'failed'], default: 'pending' }
 }, { timestamps: true });
 

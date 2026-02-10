@@ -293,6 +293,42 @@ exports.uploadReport = async (req, res) => {
     cache.delete(`reports:${req.user._id}`);
     cache.delete(`dashboard:${req.user._id}`);
 
+    // 🆕 AUTO-COMPARE WITH PREVIOUS REPORT
+    let comparisonData = null;
+    try {
+      // Find previous report of same type
+      const previousReport = await HealthReport.findOne({
+        user: req.user._id,
+        reportType: report.reportType,
+        _id: { $ne: report._id },
+        status: 'completed',
+        createdAt: { $lt: report.createdAt }
+      }).sort({ createdAt: -1 });
+
+      if (previousReport && previousReport.aiAnalysis) {
+        console.log('🔄 Found previous report, generating comparison...');
+        
+        // Use the real compareReports from aiService.js
+        const { compareReports: realCompareReports } = require('../services/aiService');
+        comparisonData = await realCompareReports(report, previousReport);
+        
+        // Save comparison to report
+        report.comparison = {
+          previousReportId: previousReport._id,
+          previousReportDate: previousReport.createdAt,
+          data: comparisonData
+        };
+        await report.save();
+        
+        console.log('✅ Comparison generated and saved');
+      } else {
+        console.log('ℹ️ No previous report found for comparison');
+      }
+    } catch (compError) {
+      console.error('⚠️ Comparison failed (non-critical):', compError.message);
+      // Don't fail the upload if comparison fails
+    }
+
     // Find recommended doctors from platform
     let recommendedDoctors = [];
     if (aiAnalysis.doctorConsultation?.recommended && aiAnalysis.doctorConsultation?.specializations?.length > 0) {
@@ -486,11 +522,22 @@ exports.getDashboardData = async (req, res) => {
       reportTypeCounts[r.reportType] = (reportTypeCounts[r.reportType] || 0) + 1;
     });
 
+    // 🆕 Get latest comparison data if available
+    let latestComparison = null;
+    if (latestReport && latestReport.comparison && latestReport.comparison.data) {
+      latestComparison = {
+        ...latestReport.comparison.data,
+        previousReportDate: latestReport.comparison.previousReportDate,
+        currentReportDate: latestReport.createdAt
+      };
+    }
+
     const dashboardData = {
       user: { ...req.user.toObject(), password: undefined },
       healthScores,
       latestAnalysis: latestReport?.aiAnalysis || null,
       latestReportId: latestReport?._id,
+      latestComparison, // 🆕 Add comparison data
       totalReports: await HealthReport.countDocuments({ user: req.user._id }),
       recentReports: reports.slice(0, 5),
       reportTypeCounts
