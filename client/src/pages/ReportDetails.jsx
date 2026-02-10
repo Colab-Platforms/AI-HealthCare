@@ -27,7 +27,7 @@ const metricInfoCache = {};
 const MetricDetailModal = ({ metric, onClose }) => {
   const [language, setLanguage] = useState('en');
   const [metricInfo, setMetricInfo] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);  // Start with loading = true
   const [isAIGenerated, setIsAIGenerated] = useState(false);
 
   // Early return if no metric - CRITICAL FIX
@@ -82,12 +82,12 @@ const MetricDetailModal = ({ metric, onClose }) => {
       return;
     }
 
-    // Show fallback info INSTANTLY
-    setMetricInfo(generateFallbackInfo());
-    setLoading(false);
+    // DON'T show fallback immediately - let loading state show
+    // setMetricInfo(generateFallbackInfo());  // REMOVED
+    setLoading(true);  // Show loading spinner
     setIsAIGenerated(false);
 
-    // Fetch AI info in background
+    // Fetch AI info
     const fetchMetricInfo = async () => {
       try {
         const cacheKey = `${metric.name}-${metric.value}`;
@@ -97,11 +97,11 @@ const MetricDetailModal = ({ metric, onClose }) => {
           console.log('✅ Using cached metric info for:', metric.name);
           setMetricInfo(metricInfoCache[cacheKey]);
           setIsAIGenerated(true);
+          setLoading(false);
           return;
         }
         
         console.log('🔄 Fetching AI-generated metric info for:', metric.name);
-        setLoading(true);
         
         // Fetch AI info
         const response = await healthService.getMetricInfo({
@@ -116,19 +116,22 @@ const MetricDetailModal = ({ metric, onClose }) => {
         // CRITICAL: Validate response structure
         if (!response.data || !response.data.metricInfo) {
           console.error('Invalid AI response structure:', response.data);
+          // Show fallback if AI fails
+          setMetricInfo(generateFallbackInfo());
           setLoading(false);
           return;
         }
         
-        // Cache and update
+        // Cache and update with AI info
         metricInfoCache[cacheKey] = response.data.metricInfo;
         setMetricInfo(response.data.metricInfo);
         setIsAIGenerated(true);
         setLoading(false);
       } catch (error) {
         console.error('Error fetching metric info:', error);
+        // Show fallback if error
+        setMetricInfo(generateFallbackInfo());
         setLoading(false);
-        // Keep fallback info
       }
     };
 
