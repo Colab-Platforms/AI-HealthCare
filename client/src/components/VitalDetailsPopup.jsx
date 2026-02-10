@@ -9,22 +9,26 @@ import { X, TrendingUp, TrendingDown, AlertCircle, CheckCircle, Info } from 'luc
 export default function VitalDetailsPopup({ vital, onClose }) {
   const [activeTab, setActiveTab] = useState('overview');
 
-  if (!vital) return null;
+  // CRITICAL: Add defensive null checks
+  if (!vital) {
+    console.error('VitalDetailsPopup: vital prop is null or undefined');
+    return null;
+  }
 
-  // Extract vital information
+  // Extract vital information with fallback values
   const {
-    name,
-    value,
-    unit,
-    normalRange,
-    status,
-    description,
-    recommendations,
-    foodsToConsume,
-    foodsToAvoid,
-    symptoms,
-    severity
-  } = vital;
+    name = 'Unknown Metric',
+    value = 'N/A',
+    unit = '',
+    normalRange = 'N/A',
+    status = 'normal',
+    description = '',
+    recommendations = [],
+    foodsToConsume = [],
+    foodsToAvoid = [],
+    symptoms = [],
+    severity = ''
+  } = vital || {};
 
   // Parse normal range (e.g., "70-100" or "4.5-5.5")
   const parseRange = (range) => {
@@ -180,7 +184,7 @@ export default function VitalDetailsPopup({ vital, onClose }) {
                 </div>
 
                 {/* Symptoms */}
-                {symptoms && symptoms.length > 0 && (
+                {symptoms && Array.isArray(symptoms) && symptoms.length > 0 && (
                   <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
                     <h3 className="font-semibold text-amber-900 mb-3 flex items-center gap-2">
                       <AlertCircle className="w-4 h-4" />
@@ -202,7 +206,7 @@ export default function VitalDetailsPopup({ vital, onClose }) {
             {/* Recommendations Tab */}
             {activeTab === 'recommendations' && (
               <div className="space-y-4">
-                {recommendations && recommendations.length > 0 ? (
+                {recommendations && Array.isArray(recommendations) && recommendations.length > 0 ? (
                   <div className="space-y-3">
                     {recommendations.map((rec, idx) => (
                       <div key={idx} className="p-4 bg-emerald-50 rounded-xl border border-emerald-200">
@@ -240,7 +244,7 @@ export default function VitalDetailsPopup({ vital, onClose }) {
             {/* Foods & Diet Tab */}
             {activeTab === 'foods' && (
               <div className="space-y-4">
-                {foodsToConsume && foodsToConsume.length > 0 && (
+                {foodsToConsume && Array.isArray(foodsToConsume) && foodsToConsume.length > 0 && (
                   <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200">
                     <h3 className="font-semibold text-emerald-900 mb-3 flex items-center gap-2">
                       <CheckCircle className="w-4 h-4" />
@@ -259,7 +263,7 @@ export default function VitalDetailsPopup({ vital, onClose }) {
                   </div>
                 )}
 
-                {foodsToAvoid && foodsToAvoid.length > 0 && (
+                {foodsToAvoid && Array.isArray(foodsToAvoid) && foodsToAvoid.length > 0 && (
                   <div className="p-4 bg-red-50 rounded-xl border border-red-200">
                     <h3 className="font-semibold text-red-900 mb-3 flex items-center gap-2">
                       <AlertCircle className="w-4 h-4" />
@@ -278,7 +282,8 @@ export default function VitalDetailsPopup({ vital, onClose }) {
                   </div>
                 )}
 
-                {!foodsToConsume && !foodsToAvoid && (
+                {(!foodsToConsume || !Array.isArray(foodsToConsume) || foodsToConsume.length === 0) && 
+                 (!foodsToAvoid || !Array.isArray(foodsToAvoid) || foodsToAvoid.length === 0) && (
                   <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
                     <p className="text-sm text-slate-600">No specific dietary recommendations available.</p>
                   </div>
