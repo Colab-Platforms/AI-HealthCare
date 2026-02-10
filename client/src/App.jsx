@@ -64,7 +64,11 @@ export default function App() {
   };
   
   return (
-    <>
+    <div style={{
+      minHeight: '100vh',
+      background: 'linear-gradient(135deg, #0a3d5c 0%, #0d5a8a 20%, #1a7fa8 40%, #2b9ec9 60%, #1a7fa8 80%, #0f4f7f 100%)',
+      backgroundAttachment: 'fixed'
+    }}>
       <PWAInstallPrompt />
       <Routes>
       <Route path="/" element={<Landing />} />
@@ -100,6 +104,6 @@ export default function App() {
       <Route path="/video-test" element={<VideoTest />} />
       <Route path="/email-test" element={<EmailTest />} />
       </Routes>
-    </>
+    </div>
   );
 }

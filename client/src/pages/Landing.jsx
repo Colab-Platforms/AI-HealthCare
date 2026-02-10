@@ -4,16 +4,79 @@ import {
   Activity, Upload, Brain, Users, Shield, Zap, ChevronRight, Sparkles,
   Heart, TrendingUp, Apple, Pill, Star, ArrowRight, CheckCircle, Play,
   BarChart3, Menu, X, Clock, Award, Globe, Smartphone, Database, Lock,
-  ArrowLeft, Quote, ChevronDown
+  ArrowLeft, Quote, ChevronDown, Calendar, Code, FileText, User
 } from 'lucide-react';
 import MinimalHeader from '../components/MinimalHeader';
 import VideoHero from '../components/VideoHero';
 import FeaturesSection from '../components/FeaturesSection';
 import ProductShowcaseSection from '../components/ProductShowcaseSection';
-import WhySection from '../components/WhySection';
+// import WhySection from '../components/WhySection';
 import StackingCardShowcase from '../components/StackingCardShowcase';
 import ScrollPhoneShowcase from '../components/ScrollPhoneShowcase';
 import HealthCardsSection from '../components/HealthCardsSection';
+import { ConnoisseurStackInteractor } from '../components/connoisseur-stack-interactor'
+// import MasonryGridDemo from '../components/MasonryGridDemo';
+import { StaggerTestimonials } from '../components/stagger-testimonials';
+import { Component } from "../components/lumina-interactive-list";
+import RadialOrbitalTimeline from "../components/ui/radial-orbital-timeline";
+
+const timelineData = [
+  {
+    id: 1,
+    title: "Requirements",
+    date: "Jan 2024",
+    content: "Gathered health platform requirements and user needs analysis.",
+    category: "Planning",
+    icon: Calendar,
+    relatedIds: [2],
+    status: "completed",
+    energy: 100,
+  },
+  {
+    id: 2,
+    title: "Architecture",
+    date: "Feb 2024",
+    content: "Designed AI system architecture and database schema.",
+    category: "Design",
+    icon: FileText,
+    relatedIds: [1, 3],
+    status: "completed",
+    energy: 90,
+  },
+  {
+    id: 3,
+    title: "AI Integration",
+    date: "Mar 2024",
+    content: "Implemented AI analysis engine and report processing.",
+    category: "Development",
+    icon: Code,
+    relatedIds: [2, 4],
+    status: "in-progress",
+    energy: 75,
+  },
+  {
+    id: 4,
+    title: "Testing",
+    date: "Apr 2024",
+    content: "Comprehensive testing and quality assurance.",
+    category: "Testing",
+    icon: User,
+    relatedIds: [3, 5],
+    status: "pending",
+    energy: 50,
+  },
+  {
+    id: 5,
+    title: "Launch",
+    date: "May 2024",
+    content: "Final deployment and production release.",
+    category: "Release",
+    icon: Clock,
+    relatedIds: [4],
+    status: "pending",
+    energy: 30,
+  },
+];
 
 // Header Component
 function Header() {
@@ -28,7 +91,7 @@ function Header() {
             <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-cyan-600 rounded-xl flex items-center justify-center">
               <Activity className="w-5 h-5 text-white" />
             </div>
-            <span className="font-semibold text-slate-900 text-xl">HealthAI</span>
+            <span className="font-semibold text-slate-900 text-xl">FitCure</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -202,7 +265,7 @@ function Features() {
             Everything you need for better health, in one platform
           </h2>
           <p className="text-lg text-slate-600">
-            We've reimagined healthcare to be proactive, not reactive. Here's how HealthAI keeps you thriving.
+            We've reimagined healthcare to be proactive, not reactive. Here's how FitCure keeps you thriving.
           </p>
         </div>
 
@@ -441,7 +504,7 @@ function Testimonials() {
   const testimonials = [
     {
       stars: 5,
-      quote: "HealthAI identified my vitamin D deficiency that my doctor missed. The personalized nutrition plan has completely transformed my energy levels and overall health. I feel like I have a personal health advisor in my pocket.",
+      quote: "FitCure identified my vitamin D deficiency that my doctor missed. The personalized nutrition plan has completely transformed my energy levels and overall health. I feel like I have a personal health advisor in my pocket.",
       author: "Sarah Johnson",
       role: "Marketing Manager",
       location: "San Francisco",
@@ -449,7 +512,7 @@ function Testimonials() {
     },
     {
       stars: 5,
-      quote: "As a busy professional, I never had time to properly analyze my health reports. HealthAI does it instantly and gives me actionable insights. The doctor recommendations were spot-on and saved me months of searching.",
+      quote: "As a busy professional, I never had time to properly analyze my health reports. FitCure does it instantly and gives me actionable insights. The doctor recommendations were spot-on and saved me months of searching.",
       author: "Michael Chen",
       role: "Software Engineer",
       location: "Seattle",
@@ -558,7 +621,7 @@ function FAQ() {
   const faqs = [
     {
       question: "What types of health reports can I upload?",
-      answer: "HealthAI supports all common medical report formats including blood tests, lab results, imaging reports, and general health checkups. You can upload PDFs, images, or even photos of paper reports. Our AI can extract and analyze data from virtually any medical document.",
+      answer: "FitCure supports all common medical report formats including blood tests, lab results, imaging reports, and general health checkups. You can upload PDFs, images, or even photos of paper reports. Our AI can extract and analyze data from virtually any medical document.",
     },
     {
       question: "How accurate is the AI analysis?",
@@ -583,16 +646,16 @@ function FAQ() {
   ];
 
   return (
-    <section id="faq" className="py-20 md:py-32 bg-white">
+    <section id="faq" className="py-20 md:py-32 bg-transparent">
       <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Section Header */}
         <div className="text-center mb-16">
           <div className="inline-flex items-center gap-2 mb-4">
-            <span className="w-1.5 h-1.5 rounded-full bg-[#8B7355]"></span>
-            <span className="text-sm uppercase tracking-wider text-[#5C4F3D] font-medium">FAQ</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
+            <span className="text-sm uppercase tracking-wider text-cyan-300 font-medium">FAQ</span>
           </div>
-          <h2 className="text-3xl md:text-5xl font-serif text-[#2C2416] mb-6">Got questions?</h2>
-          <p className="text-lg text-[#5C4F3D]">
+          <h2 className="text-3xl md:text-5xl font-serif text-white mb-6">Got questions?</h2>
+          <p className="text-lg text-cyan-100">
             We've got answers. If you can't find what you're looking for, chat with our team.
           </p>
         </div>
@@ -600,14 +663,14 @@ function FAQ() {
         {/* FAQ Items */}
         <div className="space-y-4">
           {faqs.map((faq, index) => (
-            <div key={index} className="border border-[#E5DFD3] rounded-xl overflow-hidden bg-white/60 backdrop-blur-sm">
+            <div key={index} className="border border-cyan-500/30 rounded-xl overflow-hidden bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-colors">
               <button
                 onClick={() => setOpenIndex(openIndex === index ? null : index)}
                 className="w-full flex items-center justify-between p-6 text-left"
               >
-                <span className="text-lg font-medium text-[#2C2416] pr-4">{faq.question}</span>
+                <span className="text-lg font-medium text-white pr-4">{faq.question}</span>
                 <ChevronDown
-                  className={`w-5 h-5 text-[#5C4F3D] shrink-0 transition-transform duration-200 ${
+                  className={`w-5 h-5 text-cyan-300 shrink-0 transition-transform duration-200 ${
                     openIndex === index ? "rotate-180" : ""
                   }`}
                 />
@@ -617,7 +680,7 @@ function FAQ() {
                   openIndex === index ? "max-h-96" : "max-h-0"
                 }`}
               >
-                <p className="px-6 pb-6 text-[#5C4F3D] leading-relaxed">{faq.answer}</p>
+                <p className="px-6 pb-6 text-cyan-100 leading-relaxed">{faq.answer}</p>
               </div>
             </div>
           ))}
@@ -630,12 +693,12 @@ function FAQ() {
 // CTA Component
 function CTA() {
   return (
-    <section className="py-20 md:py-32 bg-[#8B7355]">
+    <section className="py-20 md:py-32 bg-transparent">
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
         <h2 className="text-3xl md:text-5xl font-serif text-white mb-6">
           Ready to transform your health with AI?
         </h2>
-        <p className="text-lg text-white/90 mb-10 max-w-2xl mx-auto">
+        <p className="text-lg text-cyan-100 mb-10 max-w-2xl mx-auto">
           Join 10,000+ people who've made the switch to proactive, AI-powered healthcare. 
           Your future self will thank you.
         </p>
@@ -672,7 +735,7 @@ function Footer() {
               <div className="w-8 h-8 bg-[#8B7355] rounded-xl flex items-center justify-center">
                 <Activity className="w-5 h-5 text-white" />
               </div>
-              <span className="font-serif text-xl">HealthAI</span>
+              <span className="font-serif text-xl">FitCure</span>
             </div>
             <p className="text-white/60 text-sm mb-4">AI-powered health insights for better living.</p>
           </div>
@@ -723,7 +786,7 @@ function Footer() {
 
         {/* Bottom */}
         <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-white/60">© 2024 HealthAI. All rights reserved.</p>
+          <p className="text-sm text-white/60">© 2024 FitCure. All rights reserved.</p>
           <p className="text-sm text-white/60">Made with ❤️ for better health</p>
         </div>
       </div>
@@ -734,15 +797,19 @@ function Footer() {
 // Main Landing Page Component
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-[#F5F1EA]">
+    <div className="min-h-screen bg-transparent">
       <MinimalHeader />
       <VideoHero />
       <FeaturesSection />
       <ProductShowcaseSection />
-      <WhySection />
-      <HealthCardsSection />
+      {/* <WhySection /> */}
+      {/* <ConnoisseurStackInteractor /> */}
+      <Component />
+      {/* <HealthCardsSection /> */}
+      <RadialOrbitalTimeline timelineData={timelineData} />
       <ScrollPhoneShowcase />
-      <Testimonials />
+      {/* <Testimonials /> */}
+      <StaggerTestimonials />
       <FAQ />
       <CTA />
       <Footer />

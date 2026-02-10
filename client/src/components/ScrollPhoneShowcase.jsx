@@ -121,7 +121,7 @@ const ScrollPhoneShowcase = () => {
   };
 
   return (
-    <div id="showcase" ref={containerRef} className="relative bg-[#F5F1EA]" style={{ height: `${features.length * 100}vh` }}>
+    <div id="showcase" ref={containerRef} className="relative bg-transparent" style={{ height: `${features.length * 100}vh` }}>
       {/* Sticky container for phone and cards */}
       <div className="sticky top-0 h-screen flex items-center justify-center overflow-hidden pt-20 sm:pt-24 px-2 sm:px-4">
         <div className="relative w-full max-w-7xl mx-auto">
@@ -129,17 +129,17 @@ const ScrollPhoneShowcase = () => {
           {/* Center content */}
           <div className="relative flex flex-col items-center">
             {/* Text content */}
-            <div className="text-center mb-8 sm:mb-12 max-w-2xl px-4 transition-all duration-700 transform relative z-30">
-              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-serif text-[#2C2416] mb-3 sm:mb-4 leading-tight">
+            <div className="text-center mb-2 sm:mb-3 max-w-2xl px-4 transition-all duration-700 transform relative z-30">
+              <h2 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-serif text-white mb-6 sm:mb-8 leading-tight">
                 {features[activeSection].title}
               </h2>
-              <p className="text-[#5C4F3D] text-sm sm:text-base md:text-lg leading-relaxed">
+              {/* <p className="text-cyan-100 text-sm sm:text-base md:text-lg leading-relaxed">
                 {features[activeSection].description}
-              </p>
+              </p> */}
             </div>
 
-            {/* Cards layer - BEHIND phone (z-index lower) */}
-            <div className="absolute inset-0 pointer-events-none z-10">
+            {/* Cards layer - ABOVE phone on all screens (z-index higher) */}
+            <div className="absolute inset-0 pointer-events-none z-40">
               {features[activeSection].cards.map((card, idx) => {
                 const Icon = card.icon;
                 const colorMap = {
@@ -165,21 +165,21 @@ const ScrollPhoneShowcase = () => {
                       transitionDelay: `${idx * 150}ms`
                     }}
                   >
-                    <div className={`bg-white rounded-xl sm:rounded-2xl shadow-xl p-3 sm:p-4 md:p-6 border ${colors.border} 
-                      hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 w-32 sm:w-40 md:w-48`}>
-                      <div className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg sm:rounded-xl ${colors.bg} flex items-center justify-center mb-2 sm:mb-3`}>
-                        <Icon className={`w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 ${colors.icon}`} strokeWidth={2} />
+                    <div className={`bg-gradient-to-br from-[#0a3d5c]/90 to-[#0d5a8a]/90 rounded-xl sm:rounded-2xl shadow-xl p-3 sm:p-4 md:p-6 border border-cyan-400/40 
+                      hover:shadow-2xl hover:-translate-y-1 transition-all duration-300 w-32 sm:w-40 md:w-48 backdrop-blur-sm`}>
+                      <div className={`w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg sm:rounded-xl bg-cyan-500/20 flex items-center justify-center mb-2 sm:mb-3 border border-cyan-400/30`}>
+                        <Icon className={`w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-cyan-300`} strokeWidth={2} />
                       </div>
-                      <h4 className="text-[#2C2416] font-medium text-xs sm:text-sm md:text-base mb-1 leading-tight">{card.title}</h4>
-                      <p className={`${colors.value} font-bold text-base sm:text-lg md:text-xl`}>{card.value}</p>
+                      <h4 className="text-white font-medium text-xs sm:text-sm md:text-base mb-1 leading-tight">{card.title}</h4>
+                      <p className={`text-cyan-300 font-bold text-base sm:text-lg md:text-xl`}>{card.value}</p>
                     </div>
                   </div>
                 );
               })}
             </div>
 
-            {/* Phone mockup - IN FRONT of cards (z-index higher) */}
-            <div className="relative transform perspective-1000 z-20">
+            {/* Phone mockup - BEHIND cards (z-index lower) */}
+            <div className="relative transform perspective-1000 z-10">
               {/* Phone frame */}
               <div className="relative w-[240px] sm:w-[280px] md:w-[320px] lg:w-[340px] h-[480px] sm:h-[560px] md:h-[640px] lg:h-[680px] bg-slate-900 rounded-[2.5rem] sm:rounded-[3rem] md:rounded-[3.5rem] p-2 sm:p-3 shadow-2xl">
                 {/* Notch */}
