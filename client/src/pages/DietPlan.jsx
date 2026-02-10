@@ -30,6 +30,26 @@ export default function DietPlan() {
     fetchSupplementRecommendations();
   }, []);
 
+  // Check if plan is outdated when both nutritionGoal and personalizedPlan are loaded
+  useEffect(() => {
+    if (nutritionGoal && personalizedPlan && personalizedPlan.generatedAt) {
+      const planDate = new Date(personalizedPlan.generatedAt);
+      const goalDate = new Date(nutritionGoal.updatedAt || nutritionGoal.createdAt);
+      
+      console.log('🔍 Checking if plan is outdated...');
+      console.log('📅 Plan generated:', planDate);
+      console.log('📅 Goal updated:', goalDate);
+      
+      if (goalDate > planDate) {
+        setIsPlanOutdated(true);
+        console.log('⚠️ Diet plan is OUTDATED - goals were updated after plan generation');
+      } else {
+        setIsPlanOutdated(false);
+        console.log('✅ Diet plan is up-to-date');
+      }
+    }
+  }, [nutritionGoal, personalizedPlan]);
+
   useEffect(() => {
     if (selectedReportId) {
       fetchReportDietPlan(selectedReportId);
@@ -222,19 +242,7 @@ export default function DietPlan() {
       const data = await response.json();
       if (data.success && data.dietPlan) {
         setPersonalizedPlan(data.dietPlan);
-        
-        // Check if plan is outdated (goals updated after plan was generated)
-        if (nutritionGoal && data.dietPlan.generatedAt) {
-          const planDate = new Date(data.dietPlan.generatedAt);
-          const goalDate = new Date(nutritionGoal.updatedAt || nutritionGoal.createdAt);
-          
-          if (goalDate > planDate) {
-            setIsPlanOutdated(true);
-            console.log('⚠️ Diet plan is outdated - goals were updated after plan generation');
-          } else {
-            setIsPlanOutdated(false);
-          }
-        }
+        console.log('✅ Fetched diet plan:', data.dietPlan.generatedAt);
       }
     } catch (error) {
       console.error('Failed to fetch personalized plan:', error);
