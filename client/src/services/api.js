@@ -8,28 +8,40 @@ const getApiUrl = () => {
     return import.meta.env.VITE_API_URL;
   }
 
-  // For development, check if we're on mobile/different device
-  if (import.meta.env.DEV) {
-    // If accessing from a different host (mobile), use that host
-    const currentHost = window.location.hostname;
-    const currentPort = window.location.port;
-    
-    // If on localhost, try to use the same host for API
-    if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
-      return 'http://localhost:5000/api';
-    } else {
-      // On mobile or different device, use the same host with port 5000
-      return `http://${currentHost}:5000/api`;
-    }
+  // Check if we're in production (Vercel, Netlify, etc.)
+  const currentHost = window.location.hostname;
+  const isProduction = 
+    import.meta.env.PROD || 
+    currentHost.includes('vercel.app') || 
+    currentHost.includes('netlify.app') ||
+    (currentHost !== 'localhost' && currentHost !== '127.0.0.1');
+
+  // For production, use relative path (same domain)
+  if (isProduction) {
+    return '/api';
   }
 
-  // For production, use relative path
-  return '/api';
+  // For local development only
+  if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
+    return 'http://localhost:5000/api';
+  } else {
+    // On mobile or different device in dev, use the same host with port 5000
+    return `http://${currentHost}:5000/api`;
+  }
 };
 
 const api = axios.create({
   baseURL: getApiUrl(),
   headers: { 'Content-Type': 'application/json' }
+});
+
+// Log API configuration on startup
+console.log('🔧 API Configuration:', {
+  baseURL: api.defaults.baseURL,
+  hostname: window.location.hostname,
+  isProd: import.meta.env.PROD,
+  isDev: import.meta.env.DEV,
+  mode: import.meta.env.MODE
 });
 
 // Cached GET request wrapper
