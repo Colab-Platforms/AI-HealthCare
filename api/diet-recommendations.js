@@ -101,15 +101,29 @@ app.post('/api/diet-recommendations/diet-plan/generate', auth, async (req, res) 
     const userId = req.user._id;
     
     console.log('🔍 Generating diet plan for user:', userId);
+    console.log('🔍 User ID type:', typeof userId, userId);
 
     // Get nutrition goal from HealthGoal collection
     const HealthGoal = require('../server/models/HealthGoal');
-    const healthGoal = await HealthGoal.findOne({ userId }).sort({ createdAt: -1 });
+    
+    // Try to find health goal
+    console.log('🔍 Searching for health goal...');
+    const healthGoal = await HealthGoal.findOne({ userId });
+    console.log('🔍 Health goal found:', healthGoal ? 'YES' : 'NO');
     
     if (!healthGoal) {
+      // Check if any goals exist in database
+      const allGoals = await HealthGoal.find({}).limit(5);
+      console.log('📊 Total goals in DB:', await HealthGoal.countDocuments());
+      console.log('📊 Sample goals:', allGoals.map(g => ({ userId: g.userId, goalType: g.goalType })));
+      
       return res.status(404).json({ 
         success: false, 
-        message: 'No nutrition goal found. Please set your goals first.' 
+        message: 'No nutrition goal found. Please set your goals first.',
+        debug: {
+          searchedUserId: userId,
+          totalGoalsInDB: await HealthGoal.countDocuments()
+        }
       });
     }
 
