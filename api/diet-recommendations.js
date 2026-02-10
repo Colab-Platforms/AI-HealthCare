@@ -106,20 +106,13 @@ app.post('/api/diet-recommendations/diet-plan/generate', auth, async (req, res) 
     
     console.log('🔍 Generating diet plan for user:', userId);
     console.log('🔍 User ID type:', typeof userId, userId);
-    console.log('🔍 User ID string:', String(userId));
 
     // Get nutrition goal from HealthGoal collection
     const HealthGoal = require('../server/models/HealthGoal');
-    const mongoose = require('mongoose');
     
-    // Try to find health goal - convert to ObjectId if it's a string
+    // Try to find health goal - userId is already correct from auth middleware
     console.log('🔍 Searching for health goal...');
-    const userObjectId = typeof userId === 'string' ? mongoose.Types.ObjectId(userId) : userId;
-    console.log('🔍 Converted to ObjectId:', userObjectId);
-    
-    const healthGoal = await HealthGoal.findOne({ userId: userObjectId });
-    console.log('🔍 Health goal found:', healthGoal ? 'YES' : 'NO');
-    
+    const healthGoal = await HealthGoal.findOne({ userId });
     if (!healthGoal) {
       // Check if any goals exist in database
       const allGoals = await HealthGoal.find({}).limit(5);
@@ -129,13 +122,13 @@ app.post('/api/diet-recommendations/diet-plan/generate', auth, async (req, res) 
         userId: String(g.userId), 
         goalType: g.goalType 
       })));
-      console.log('📊 Searched userId:', String(userObjectId));
+      console.log('📊 Searched userId:', String(userId));
       
       return res.status(404).json({ 
         success: false, 
         message: 'No nutrition goal found. Please set your goals first.',
         debug: {
-          searchedUserId: String(userObjectId),
+          searchedUserId: String(userId),
           totalGoalsInDB: totalGoals,
           sampleUserIds: allGoals.map(g => String(g.userId))
         }
