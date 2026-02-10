@@ -99,131 +99,198 @@ app.get('/api/diet-recommendations/diet-plan/active', auth, async (req, res) => 
 app.post('/api/diet-recommendations/diet-plan/generate', auth, async (req, res) => {
   try {
     const userId = req.user._id;
+    
+    console.log('🔍 Generating diet plan for user:', userId);
 
-    // Get user profile
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ success: false, message: 'User not found' });
-    }
-
-    // Get latest health reports
-    const healthReports = await HealthReport.find({ userId })
-      .sort({ uploadDate: -1 })
-      .limit(5);
-
-    // Check if user has any reports
-    const hasReports = healthReports.length > 0;
-
-    // Extract lab report insights (only if reports exist)
-    const labReportInsights = [];
-    const deficiencies = [];
-    const reportConditions = [];
-
-    if (hasReports) {
-      healthReports.forEach(report => {
-        if (report.aiAnalysis?.deficiencies) {
-          report.aiAnalysis.deficiencies.forEach(def => {
-            deficiencies.push({
-              nutrient: def.name || def,
-              severity: def.severity || 'detected',
-              reportId: report._id
-            });
-          });
-        }
-
-        if (report.aiAnalysis?.metrics) {
-          Object.entries(report.aiAnalysis.metrics).forEach(([key, metric]) => {
-            labReportInsights.push({
-              parameter: key,
-              value: metric.value || '',
-              unit: metric.unit || '',
-              status: metric.status || 'noted',
-              reportId: report._id
-            });
-            
-            // Track abnormal conditions
-            if (metric.status !== 'normal') {
-              reportConditions.push({
-                parameter: key,
-                status: metric.status,
-                value: metric.value
-              });
-            }
-          });
-        }
-
-        // Extract key findings as conditions
-        if (report.aiAnalysis?.keyFindings) {
-          report.aiAnalysis.keyFindings.forEach(finding => {
-            reportConditions.push({ finding });
-          });
-        }
+    // Get nutrition goal from HealthGoal collection
+    const HealthGoal = require('../server/models/HealthGoal');
+    const healthGoal = await HealthGoal.findOne({ userId }).sort({ createdAt: -1 });
+    
+    if (!healthGoal) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'No nutrition goal found. Please set your goals first.' 
       });
     }
 
-    // Get BMI and nutrition goal
-    const bmiGoal = user.nutritionGoal?.goal || 'maintain';
-    const targetWeight = user.nutritionGoal?.targetWeight;
-    const currentWeight = user.profile?.weight || 70;
-    const height = user.profile?.height || 170;
+    console.log('✅ Found health goal:', healthGoal.goalType);
+
+    // Get user profile (optional - use healthGoal data if user not found)
+    let user = await User.findById(userId);
+    
+    // Use healthGoal data as primary source
+    const currentWeight = healthGoal.currentWeight || user?.profile?.weight || 70;
+    const targetWeight = healthGoal.targetWeight || currentWeight;
+    const height = healthGoal.height || user?.profile?.height || 170;
+    const age = healthGoal.age || user?.profile?.age || 25;
+    const gender = healthGoal.gender || user?.profile?.gender || 'male';
+    const activityLevel = healthGoal.activityLevel || user?.profile?.activityLevel || 'moderate';
+    const dietaryPreference = healthGoal.dietaryPreference || user?.profile?.dietaryPreference || 'non-vegetarian';
+    
     const heightInMeters = height / 100;
     const currentBMI = currentWeight / (heightInMeters * heightInMeters);
 
-    // Calculate user's nutrition goals based on BMI goal
-    let nutritionGoals = null;
-    try {
-      nutritionGoals = calculateNutritionGoals({
-        age: user.profile?.age || 25,
-        gender: user.profile?.gender || 'male',
-        weight: currentWeight,
-        height: height,
-        activityLevel: user.profile?.activityLevel || 'moderately_active',
-        goal: bmiGoal,
-        targetWeight: targetWeight
-      });
-    } catch (error) {
-      console.warn('Could not calculate nutrition goals:', error.message);
-      // Use default goals if calculation fails
-      nutritionGoals = {
-        calorieGoal: 2000,
-        proteinGoal: 150,
-        carbsGoal: 200,
-        fatGoal: 65
-      };
-    }
-
-    // Prepare user data for AI
-    const userData = {
-      age: user.profile?.age || 25,
-      gender: user.profile?.gender || 'male',
-      weight: currentWeight,
-      height: height,
-      currentBMI: currentBMI.toFixed(1),
-      bmiGoal: bmiGoal,
-      targetWeight: targetWeight,
-      dietaryPreference: user.profile?.dietaryPreference || 'non-vegetarian',
-      activityLevel: user.profile?.activityLevel || 'moderately_active',
-      fitnessGoals: user.profile?.fitnessGoals || [],
-      medicalConditions: user.profile?.medicalConditions || [],
-      allergies: user.profile?.allergies || [],
-      hasReports: hasReports,
-      labReports: labReportInsights,
-      reportConditions: reportConditions,
-      deficiencies: deficiencies,
-      healthParameters: {
-        bmi: currentBMI,
-        bloodPressure: user.profile?.bloodPressure
-      },
-      nutritionGoals: {
-        dailyCalories: nutritionGoals.calorieGoal,
-        protein: nutritionGoals.proteinGoal,
-        carbs: nutritionGoals.carbsGoal,
-        fat: nutritionGoals.fatGoal
-      }
+    // Use the calculated values from healthGoal if available
+    const dailyCalorieTarget = healthGoal.dailyCalorieTarget || 2500;
+    const macroTargets = healthGoal.macroTargets || {
+      protein: 112,
+      carbs: 300,
+      fats: 70
     };
 
-    // Generate AI-powered diet plan
-    const aiDietPlan = await dietRecommendationAI.generatePersonalizedDietPlan(userData);
+    console.log('📊 User stats:', { currentWeight, targetWeight, height, age, gender, dailyCalorieTarget });
+
+    // Generate simple meal plan based on goal
+    const goalType = healthGoal.goalType;
+    let mealPlan = {};
+
+    if (goalType === 'weight_gain') {
+      mealPlan = {
+        breakfast: [
+          {
+            name: 'Protein-Rich Oatmeal Bowl',
+            description: '1 cup oats, 2 scoops protein powder, 1 banana, 2 tbsp peanut butter, 1 cup milk',
+            calories: 650,
+            protein: 45,
+            benefits: 'High protein and complex carbs for muscle building'
+          },
+          {
+            name: 'Egg & Avocado Toast',
+            description: '3 whole eggs, 2 slices whole grain bread, 1/2 avocado, cheese',
+            calories: 580,
+            protein: 32,
+            benefits: 'Healthy fats and protein for sustained energy'
+          }
+        ],
+        lunch: [
+          {
+            name: 'Chicken & Rice Bowl',
+            description: '200g grilled chicken, 2 cups brown rice, mixed vegetables, olive oil',
+            calories: 750,
+            protein: 55,
+            benefits: 'Lean protein with complex carbs for muscle growth'
+          },
+          {
+            name: 'Salmon with Sweet Potato',
+            description: '200g salmon, 2 medium sweet potatoes, broccoli, butter',
+            calories: 720,
+            protein: 48,
+            benefits: 'Omega-3 fats and quality protein'
+          }
+        ],
+        dinner: [
+          {
+            name: 'Beef Stir-Fry',
+            description: '200g lean beef, 1.5 cups rice, mixed vegetables, sesame oil',
+            calories: 680,
+            protein: 50,
+            benefits: 'High protein and iron for muscle recovery'
+          },
+          {
+            name: 'Turkey & Quinoa',
+            description: '200g ground turkey, 1.5 cups quinoa, vegetables, olive oil',
+            calories: 650,
+            protein: 52,
+            benefits: 'Complete protein with all essential amino acids'
+          }
+        ],
+        snacks: [
+          {
+            name: 'Protein Shake',
+            description: '2 scoops whey protein, 1 banana, 2 tbsp peanut butter, milk',
+            calories: 450,
+            protein: 50,
+            benefits: 'Quick protein absorption post-workout'
+          },
+          {
+            name: 'Greek Yogurt & Nuts',
+            description: '2 cups Greek yogurt, 1/4 cup almonds, honey, berries',
+            calories: 420,
+            protein: 35,
+            benefits: 'Protein and healthy fats for muscle building'
+          }
+        ]
+      };
+    } else if (goalType === 'weight_loss') {
+      mealPlan = {
+        breakfast: [
+          {
+            name: 'Egg White Omelette',
+            description: '4 egg whites, vegetables, 1 slice whole grain toast',
+            calories: 280,
+            protein: 28,
+            benefits: 'High protein, low calorie to preserve muscle'
+          }
+        ],
+        lunch: [
+          {
+            name: 'Grilled Chicken Salad',
+            description: '150g chicken breast, mixed greens, olive oil dressing',
+            calories: 350,
+            protein: 40,
+            benefits: 'Lean protein with fiber for satiety'
+          }
+        ],
+        dinner: [
+          {
+            name: 'Baked Fish & Vegetables',
+            description: '150g white fish, steamed vegetables, lemon',
+            calories: 320,
+            protein: 38,
+            benefits: 'Low calorie, high protein meal'
+          }
+        ],
+        snacks: [
+          {
+            name: 'Protein Shake',
+            description: '1 scoop protein, water, berries',
+            calories: 150,
+            protein: 25,
+            benefits: 'Low calorie protein boost'
+          }
+        ]
+      };
+    } else {
+      // maintain or general health
+      mealPlan = {
+        breakfast: [
+          {
+            name: 'Balanced Breakfast Bowl',
+            description: '2 eggs, 1 cup oats, fruits, nuts',
+            calories: 450,
+            protein: 25,
+            benefits: 'Balanced macros for sustained energy'
+          }
+        ],
+        lunch: [
+          {
+            name: 'Chicken & Quinoa',
+            description: '150g chicken, 1 cup quinoa, vegetables',
+            calories: 520,
+            protein: 42,
+            benefits: 'Complete nutrition with all macros'
+          }
+        ],
+        dinner: [
+          {
+            name: 'Salmon & Brown Rice',
+            description: '150g salmon, 1 cup brown rice, vegetables',
+            calories: 550,
+            protein: 40,
+            benefits: 'Omega-3 and balanced nutrition'
+          }
+        ],
+        snacks: [
+          {
+            name: 'Greek Yogurt & Fruit',
+            description: '1 cup Greek yogurt, mixed berries, honey',
+            calories: 220,
+            protein: 20,
+            benefits: 'Protein and probiotics'
+          }
+        ]
+      };
+    }
 
     // Deactivate old diet plans
     await PersonalizedDietPlan.updateMany(
@@ -231,34 +298,31 @@ app.post('/api/diet-recommendations/diet-plan/generate', auth, async (req, res) 
       { isActive: false }
     );
 
-    // Save new diet plan with nutrition goals
+    // Save new diet plan
     const dietPlan = new PersonalizedDietPlan({
       userId,
       inputData: {
-        age: userData.age,
-        gender: userData.gender,
-        weight: userData.weight,
-        height: userData.height,
-        currentBMI: userData.currentBMI,
-        bmiGoal: userData.bmiGoal,
-        targetWeight: userData.targetWeight,
-        dietaryPreference: userData.dietaryPreference,
-        activityLevel: userData.activityLevel,
-        fitnessGoals: userData.fitnessGoals,
-        medicalConditions: userData.medicalConditions,
-        allergies: userData.allergies,
-        hasReports: hasReports
+        age,
+        gender,
+        weight: currentWeight,
+        height,
+        currentBMI: currentBMI.toFixed(1),
+        bmiGoal: goalType,
+        targetWeight,
+        dietaryPreference,
+        activityLevel,
+        hasReports: false
       },
-      labReportInsights,
-      nutritionGoals: {
-        dailyCalorieTarget: nutritionGoals.calorieGoal,
-        macroTargets: {
-          protein: nutritionGoals.proteinGoal,
-          carbs: nutritionGoals.carbsGoal,
-          fat: nutritionGoals.fatGoal
-        }
-      },
-      ...aiDietPlan,
+      dailyCalorieTarget,
+      macroTargets,
+      mealPlan,
+      lifestyleRecommendations: [
+        'Drink at least 3-4 liters of water daily',
+        'Get 7-8 hours of quality sleep',
+        'Exercise 4-5 times per week',
+        'Track your meals and progress weekly',
+        'Stay consistent with your nutrition plan'
+      ],
       generatedAt: new Date(),
       validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
       isActive: true
@@ -266,13 +330,12 @@ app.post('/api/diet-recommendations/diet-plan/generate', auth, async (req, res) 
 
     await dietPlan.save();
 
+    console.log('✅ Diet plan saved successfully');
+
     res.json({
       success: true,
-      message: hasReports 
-        ? 'Personalized diet plan generated based on your goal and health reports'
-        : 'Personalized diet plan generated based on your nutrition goal',
-      dietPlan,
-      basedOn: hasReports ? 'goal_and_reports' : 'goal_only'
+      message: 'Personalized diet plan generated successfully',
+      dietPlan
     });
 
   } catch (error) {
