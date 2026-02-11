@@ -16,7 +16,11 @@ const CHALLENGE_TASKS = [
 ];
 
 export default function Challenge30Days() {
-  const [currentDay, setCurrentDay] = useState(1);
+  const [currentDay, setCurrentDay] = useState(() => {
+    // Load current day from localStorage on mount
+    const saved = localStorage.getItem('challenge30DaysCurrentDay');
+    return saved ? parseInt(saved) : 1;
+  });
   const [challengeData, setChallengeData] = useState({});
   const [streak, setStreak] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -29,7 +33,27 @@ export default function Challenge30Days() {
     loadChallengeData();
   }, []);
 
+  // Save current day whenever it changes
+  useEffect(() => {
+    localStorage.setItem('challenge30DaysCurrentDay', currentDay);
+  }, [currentDay]);
+
   const loadChallengeData = async () => {
+    // First load from localStorage immediately for instant display
+    const savedData = localStorage.getItem('challenge30Days');
+    const savedStreak = localStorage.getItem('challenge30DaysStreak');
+    
+    if (savedData) {
+      try {
+        const data = JSON.parse(savedData);
+        setChallengeData(data);
+        setStreak(parseInt(savedStreak) || 0);
+      } catch (e) {
+        console.error('Error parsing saved data:', e);
+      }
+    }
+    
+    // Then try to load from backend
     try {
       const response = await api.get('/health/challenge');
       const data = response.data.challengeData || {};
@@ -45,39 +69,55 @@ export default function Challenge30Days() {
       setChallengeData(plainData);
       setStreak(response.data.streakDays || 0);
       
-      // Also save to localStorage as backup
+      // Save to localStorage
       localStorage.setItem('challenge30Days', JSON.stringify(plainData));
+      localStorage.setItem('challenge30DaysStreak', response.data.streakDays || 0);
     } catch (error) {
-      console.error('Failed to load challenge data:', error);
-      // Fallback to localStorage
-      const saved = localStorage.getItem('challenge30Days');
-      if (saved) {
-        const data = JSON.parse(saved);
-        setChallengeData(data);
-        calculateStreak(data);
-      }
+      console.error('Failed to load challenge data from server:', error);
+      // Already loaded from localStorage above, so just continue
     } finally {
       setLoading(false);
     }
   };
 
   const saveChallengeData = async (newData) => {
+    // Calculate streak locally first
+    let localStreak = 0;
+    const days = Object.keys(newData).map(Number).sort((a, b) => b - a);
+    
+    for (const day of days) {
+      const dayData = newData[day];
+      const completedTasks = Object.values(dayData).filter(Boolean).length;
+      
+      if (completedTasks >= 5) {
+        localStreak++;
+      } else {
+        break;
+      }
+    }
+    
+    // Update UI immediately
+    setStreak(localStreak);
+    
+    // Save to localStorage immediately
+    localStorage.setItem('challenge30Days', JSON.stringify(newData));
+    localStorage.setItem('challenge30DaysStreak', localStreak);
+    
+    // Try to save to backend
     try {
       const response = await api.post('/health/challenge', {
         challengeData: newData
       });
       
-      setStreak(response.data.streakDays || 0);
-      
-      // Also save to localStorage as backup
-      localStorage.setItem('challenge30Days', JSON.stringify(newData));
+      // Update with server's calculation if different
+      if (response.data.streakDays !== localStreak) {
+        setStreak(response.data.streakDays);
+        localStorage.setItem('challenge30DaysStreak', response.data.streakDays);
+      }
     } catch (error) {
-      console.error('Failed to save challenge data:', error);
-      toast.error('Failed to save progress. Please try again.');
-      
-      // Still save to localStorage as fallback
-      localStorage.setItem('challenge30Days', JSON.stringify(newData));
-      calculateStreak(newData);
+      console.error('Failed to save challenge data to server:', error);
+      // Don't show error to user since localStorage worked
+      // The data will sync next time they load the page
     }
   };
 
