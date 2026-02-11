@@ -578,7 +578,7 @@ export default function Profile() {
                     name="goalType"
                     value={goalFormData.goalType}
                     onChange={handleGoalChange}
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:outline-none"
+                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:outline-none text-slate-900 bg-white"
                     required
                   >
                     <option value="weight_loss">Weight Loss (Fat Loss)</option>
@@ -595,7 +595,7 @@ export default function Profile() {
                     name="activityLevel"
                     value={goalFormData.activityLevel}
                     onChange={handleGoalChange}
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:outline-none"
+                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:outline-none text-slate-900 bg-white"
                     required
                   >
                     <option value="sedentary">Sedentary (Little or no exercise)</option>
@@ -613,7 +613,7 @@ export default function Profile() {
                     name="currentWeight"
                     value={goalFormData.currentWeight}
                     onChange={handleGoalChange}
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:outline-none"
+                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:outline-none text-slate-900 bg-white"
                     required
                     min="30"
                     max="300"
@@ -628,7 +628,7 @@ export default function Profile() {
                     name="targetWeight"
                     value={goalFormData.targetWeight}
                     onChange={handleGoalChange}
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:outline-none"
+                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:outline-none text-slate-900 bg-white"
                     required
                     min="30"
                     max="300"
@@ -643,7 +643,7 @@ export default function Profile() {
                     name="height"
                     value={goalFormData.height}
                     onChange={handleGoalChange}
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:outline-none"
+                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:outline-none text-slate-900 bg-white"
                     required
                     min="100"
                     max="250"
@@ -657,7 +657,7 @@ export default function Profile() {
                     name="age"
                     value={goalFormData.age}
                     onChange={handleGoalChange}
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:outline-none"
+                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:outline-none text-slate-900 bg-white"
                     required
                     min="10"
                     max="120"
@@ -670,7 +670,7 @@ export default function Profile() {
                     name="gender"
                     value={goalFormData.gender}
                     onChange={handleGoalChange}
-                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:outline-none"
+                    className="w-full px-4 py-3 border-2 border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 focus:outline-none text-slate-900 bg-white"
                     required
                   >
                     <option value="male">Male</option>
