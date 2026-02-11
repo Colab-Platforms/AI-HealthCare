@@ -61,7 +61,7 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
   return (
     <div className={`min-h-screen flex ${bgColor}`}>
       {/* Sidebar - Slide from RIGHT on mobile, fixed on desktop */}
-      <aside className={`fixed inset-y-0 right-0 lg:left-0 lg:right-auto z-50 w-64 shadow-lg lg:shadow-sm transform transition-transform duration-300 hidden lg:flex lg:flex-col ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`} style={{ backgroundColor: '#8B7355', borderRight: '2px solid #6B5A45', borderLeft: '2px solid #6B5A45' }}>
+      <aside className={`fixed inset-y-0 right-0 lg:left-0 lg:right-auto z-50 w-64 shadow-lg lg:shadow-sm transform transition-transform duration-300 hidden lg:flex lg:flex-col bg-gradient-to-br from-cyan-500 to-blue-600 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
         <div className="flex flex-col h-full">
           {/* Logo - Fixed at top */}
           <div className="p-6 shrink-0" style={{ borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
@@ -140,7 +140,7 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
           <div className="p-4 shrink-0" style={{ borderTop: '1px solid rgba(255,255,255,0.2)' }}>
             <div className="flex items-center gap-3 p-3 rounded-xl bg-white/20">
               <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0 bg-white">
-                <span className="font-bold" style={{ color: '#8B7355' }}>{user?.name?.[0]?.toUpperCase()}</span>
+                <span className="font-bold text-cyan-600">{user?.name?.[0]?.toUpperCase()}</span>
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate text-white">
@@ -176,7 +176,7 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
       {/* Main Content - Add left margin for fixed sidebar on desktop */}
       <div className="flex-1 flex flex-col min-h-screen lg:ml-64">
         {/* Top Header */}
-        <header className="sticky top-0 z-30 backdrop-blur-xl" style={{ backgroundColor: '#8B7355', borderBottom: '1px solid rgba(255,255,255,0.2)' }}>
+        <header className="sticky top-0 z-30 backdrop-blur-xl bg-gradient-to-r from-cyan-500 to-blue-600 border-b border-white/20">
           <div className="flex items-center justify-between px-3 md:px-4 lg:px-8 py-3 md:py-4">
             <div className="flex items-center gap-2 md:gap-4 flex-1 md:flex-none">
               {/* Mobile Logo - Show on mobile, hide on desktop */}
