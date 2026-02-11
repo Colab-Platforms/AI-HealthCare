@@ -241,7 +241,7 @@ export default function DashboardEnhanced() {
       <div className="max-w-7xl mx-auto space-y-8 animate-fade-in pb-20 px-4">
         
         {/* Header */}
-        <div className="pt-6 flex items-start justify-between">
+        <div className="pt-6">
           <div>
             <h1 className="text-3xl font-bold text-slate-800 mb-1">
               Hi, <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-emerald-600">
@@ -250,16 +250,6 @@ export default function DashboardEnhanced() {
             </h1>
             <p className="text-slate-600">Welcome to your health journey</p>
           </div>
-          
-          {/* Sleep Tracker Icon */}
-          <button
-            onClick={() => setSleepTrackerOpen(true)}
-            className="group relative p-3 bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
-            title="Sleep Tracker"
-          >
-            <Moon className="w-6 h-6 text-white" />
-            <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-400 rounded-full animate-pulse" />
-          </button>
         </div>
 
         {/* Sleep Tracker Modal */}
@@ -304,22 +294,27 @@ export default function DashboardEnhanced() {
             </p>
           </button>
 
-          {/* Meals Logged Card - Navigates to Nutrition page */}
-          <Link
-            to="/nutrition#daily-target"
-            className="bg-white rounded-2xl p-5 shadow-md hover:shadow-lg transition-all cursor-pointer hover:scale-105 transform duration-200 block"
+          {/* Sleep Tracker Card - Opens Sleep Tracker Modal */}
+          <button
+            onClick={() => setSleepTrackerOpen(true)}
+            className="bg-white rounded-2xl p-5 shadow-md hover:shadow-lg transition-all cursor-pointer hover:scale-105 transform duration-200 block w-full text-left"
           >
             <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center">
-                <Utensils className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                <Moon className="w-6 h-6 text-white" />
               </div>
-              <Flame className="w-5 h-5 text-orange-500" />
+              <Sparkles className="w-5 h-5 text-indigo-500" />
             </div>
-            <p className="text-sm text-slate-600 mb-1">Meals Logged</p>
+            <p className="text-sm text-slate-600 mb-1">Sleep Tracker</p>
             <p className="text-3xl font-bold text-slate-800">
-              {dashboardData?.mealsLogged || 0}
+              {(() => {
+                const sleepHistory = JSON.parse(localStorage.getItem('sleep_history') || '[]');
+                const today = new Date().toDateString();
+                const todaySleep = sleepHistory.find(r => new Date(r.date).toDateString() === today);
+                return todaySleep ? `${todaySleep.hours}h ${todaySleep.minutes}m` : '0h 0m';
+              })()}
             </p>
-          </Link>
+          </button>
 
           {/* Streak Days Card - Redirects to 30 Days Challenge */}
           <Link
