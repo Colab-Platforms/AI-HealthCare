@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { healthService } from '../services/api';
-import { Activity, ArrowLeft, Upload, FileText, ChevronDown, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Activity, ArrowLeft, Upload, FileText, ChevronDown, TrendingUp, TrendingDown, Minus, AlertCircle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
 import HealthLoader from '../components/HealthLoader';
 import VitalDetailsPopup from '../components/VitalDetailsPopup';
