@@ -1,4 +1,5 @@
 const HealthReport = require('../models/HealthReport');
+const User = require('../models/User');
 const Doctor = require('../models/Doctor');
 const { analyzeHealthReport, compareReports, chatWithReport } = require('../services/aiService-fixed');
 const { generateMetricInfo } = require('../services/aiService');
@@ -293,6 +294,42 @@ exports.uploadReport = async (req, res) => {
     cache.delete(`reports:${req.user._id}`);
     cache.delete(`dashboard:${req.user._id}`);
 
+    // 🆕 AUTO-COMPARE WITH PREVIOUS REPORT
+    let comparisonData = null;
+    try {
+      // Find previous report of same type
+      const previousReport = await HealthReport.findOne({
+        user: req.user._id,
+        reportType: report.reportType,
+        _id: { $ne: report._id },
+        status: 'completed',
+        createdAt: { $lt: report.createdAt }
+      }).sort({ createdAt: -1 });
+
+      if (previousReport && previousReport.aiAnalysis) {
+        console.log('🔄 Found previous report, generating comparison...');
+        
+        // Use the real compareReports from aiService.js
+        const { compareReports: realCompareReports } = require('../services/aiService');
+        comparisonData = await realCompareReports(report, previousReport);
+        
+        // Save comparison to report
+        report.comparison = {
+          previousReportId: previousReport._id,
+          previousReportDate: previousReport.createdAt,
+          data: comparisonData
+        };
+        await report.save();
+        
+        console.log('✅ Comparison generated and saved');
+      } else {
+        console.log('ℹ️ No previous report found for comparison');
+      }
+    } catch (compError) {
+      console.error('⚠️ Comparison failed (non-critical):', compError.message);
+      // Don't fail the upload if comparison fails
+    }
+
     // Find recommended doctors from platform
     let recommendedDoctors = [];
     if (aiAnalysis.doctorConsultation?.recommended && aiAnalysis.doctorConsultation?.specializations?.length > 0) {
@@ -486,14 +523,26 @@ exports.getDashboardData = async (req, res) => {
       reportTypeCounts[r.reportType] = (reportTypeCounts[r.reportType] || 0) + 1;
     });
 
+    // 🆕 Get latest comparison data if available
+    let latestComparison = null;
+    if (latestReport && latestReport.comparison && latestReport.comparison.data) {
+      latestComparison = {
+        ...latestReport.comparison.data,
+        previousReportDate: latestReport.comparison.previousReportDate,
+        currentReportDate: latestReport.createdAt
+      };
+    }
+
     const dashboardData = {
       user: { ...req.user.toObject(), password: undefined },
       healthScores,
       latestAnalysis: latestReport?.aiAnalysis || null,
       latestReportId: latestReport?._id,
+      latestComparison, // 🆕 Add comparison data
       totalReports: await HealthReport.countDocuments({ user: req.user._id }),
       recentReports: reports.slice(0, 5),
-      reportTypeCounts
+      reportTypeCounts,
+      streakDays: req.user.streakDays || 0 // Add streak days
     };
 
     cache.set(cacheKey, dashboardData, 120); // Cache for 2 minutes
@@ -693,5 +742,67 @@ User Profile: ${req.user.name}`;
       message: 'Failed to process AI chat request',
       error: error.response?.data?.error?.message || error.message
     });
+  }
+};
+
+
+// Save challenge data
+exports.saveChallengeData = async (req, res) => {
+  try {
+    const { challengeData } = req.body;
+    
+    if (!challengeData) {
+      return res.status(400).json({ message: 'Challenge data is required' });
+    }
+
+    // Calculate streak
+    let streak = 0;
+    const days = Object.keys(challengeData).map(Number).sort((a, b) => b - a);
+    
+    for (const day of days) {
+      const dayData = challengeData[day];
+      const completedTasks = Object.values(dayData).filter(Boolean).length;
+      
+      // Day is considered complete if at least 5 tasks are done
+      if (completedTasks >= 5) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+
+    // Update user with challenge data and streak
+    const user = await User.findById(req.user._id);
+    user.challengeData = challengeData;
+    user.streakDays = streak;
+    
+    // Mark as modified for Mixed type
+    user.markModified('challengeData');
+    
+    await user.save();
+
+    res.json({
+      message: 'Challenge data saved successfully',
+      streakDays: streak,
+      challengeData: user.challengeData
+    });
+  } catch (error) {
+    console.error('Save challenge error:', error);
+    res.status(500).json({ message: 'Failed to save challenge data', error: error.message });
+  }
+};
+
+// Get challenge data
+exports.getChallengeData = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('challengeData streakDays');
+    
+    res.json({
+      challengeData: user.challengeData || {},
+      streakDays: user.streakDays || 0
+    });
+  } catch (error) {
+    console.error('Get challenge error:', error);
+    res.status(500).json({ message: 'Failed to get challenge data', error: error.message });
   }
 };

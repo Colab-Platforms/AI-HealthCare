@@ -15,8 +15,6 @@ export default function AIChat() {
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [userReports, setUserReports] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [chatSessions, setChatSessions] = useState([]);
-  const [currentSessionId, setCurrentSessionId] = useState(null);
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
 
@@ -39,42 +37,52 @@ export default function AIChat() {
   }, []);
 
   useEffect(() => {
-    const loadChatSessions = () => {
-      try {
-        const sessions = localStorage.getItem(`chat_sessions_${user?.id}`);
-        if (sessions) {
-          setChatSessions(JSON.parse(sessions));
-        }
-      } catch (error) {
-        console.error('Failed to load chat sessions:', error);
-      }
-    };
-    if (user) loadChatSessions();
-  }, [user?.id]);
-
-  useEffect(() => {
     const loadChatHistory = async () => {
       try {
-        const sessionId = currentSessionId || `session_${Date.now()}`;
-        setCurrentSessionId(sessionId);
-        const savedMessages = localStorage.getItem(`chat_history_${user?.id}_${sessionId}`);
+        // First try to load from backend
+        const token = localStorage.getItem('token');
+        const response = await fetch('/api/chat/history', {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.messages && data.messages.length > 0) {
+            setMessages(data.messages);
+            // Also save to localStorage as backup
+            localStorage.setItem(`chat_history_${user?.id}`, JSON.stringify(data.messages));
+            return;
+          }
+        }
+        
+        // Fallback to localStorage if backend fails
+        const savedMessages = localStorage.getItem(`chat_history_${user?.id}`);
+        if (savedMessages) {
+          const parsed = JSON.parse(savedMessages);
+          setMessages(parsed);
+        } else {
+          // Show greeting if no history
+          const greeting = generateGreetingWithReports();
+          setMessages([{ role: 'assistant', content: greeting, timestamp: new Date() }]);
+        }
+      } catch (error) {
+        console.error('Failed to load chat history:', error);
+        // Fallback to localStorage
+        const savedMessages = localStorage.getItem(`chat_history_${user?.id}`);
         if (savedMessages) {
           setMessages(JSON.parse(savedMessages));
         } else {
           const greeting = generateGreetingWithReports();
           setMessages([{ role: 'assistant', content: greeting, timestamp: new Date() }]);
         }
-      } catch (error) {
-        console.error('Failed to load chat history:', error);
-        const greeting = generateGreetingWithReports();
-        setMessages([{ role: 'assistant', content: greeting, timestamp: new Date() }]);
       }
     };
+    
     if (user) loadChatHistory();
     if (location.state?.selectedText) {
       setInput(`Can you explain this: "${location.state.selectedText}"`);
     }
-  }, [user?.id, location.state, user?.name, currentSessionId]);
+  }, [user?.id, location.state, user?.name]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -120,41 +128,62 @@ export default function AIChat() {
     return () => clearInterval(interval);
   };
 
+  const saveChatToBackend = async (updatedMessages) => {
+    try {
+      const token = localStorage.getItem('token');
+      // Save only new messages (last 2: user + assistant)
+      const newMessages = updatedMessages.slice(-2);
+      
+      await fetch('/api/chat/history', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ messages: newMessages })
+      });
+      
+      // Also save to localStorage as backup
+      localStorage.setItem(`chat_history_${user?.id}`, JSON.stringify(updatedMessages));
+    } catch (error) {
+      console.error('Failed to save chat to backend:', error);
+      // Still save to localStorage
+      localStorage.setItem(`chat_history_${user?.id}`, JSON.stringify(updatedMessages));
+    }
+  };
+
   const clearChat = async () => {
     if (confirm('Are you sure you want to clear the chat history?')) {
       try {
-        localStorage.removeItem(`chat_history_${user?.id}_${currentSessionId}`);
+        const token = localStorage.getItem('token');
+        // Clear from backend
+        await fetch('/api/chat/history', {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        // Clear from localStorage
+        localStorage.removeItem(`chat_history_${user?.id}`);
+        
         const greeting = generateGreetingWithReports();
         setMessages([{ role: 'assistant', content: greeting, timestamp: new Date() }]);
         toast.success('Chat cleared');
       } catch (error) {
         console.error('Failed to clear chat:', error);
-        toast.error('Failed to clear chat');
+        // Still clear localStorage
+        localStorage.removeItem(`chat_history_${user?.id}`);
+        const greeting = generateGreetingWithReports();
+        setMessages([{ role: 'assistant', content: greeting, timestamp: new Date() }]);
+        toast.error('Chat cleared locally');
       }
     }
   };
 
   const startNewSession = () => {
-    const newSessionId = `session_${Date.now()}`;
-    setCurrentSessionId(newSessionId);
     const greeting = generateGreetingWithReports();
     setMessages([{ role: 'assistant', content: greeting, timestamp: new Date() }]);
     setSidebarOpen(false);
     toast.success('New chat started');
-  };
-
-  const loadChatSession = (sessionId) => {
-    try {
-      const savedMessages = localStorage.getItem(`chat_history_${user?.id}_${sessionId}`);
-      if (savedMessages) {
-        setMessages(JSON.parse(savedMessages));
-        setCurrentSessionId(sessionId);
-        setSidebarOpen(false);
-      }
-    } catch (error) {
-      console.error('Failed to load session:', error);
-      toast.error('Failed to load chat session');
-    }
   };
 
   const handleSubmit = async (e) => {
@@ -193,30 +222,8 @@ export default function AIChat() {
           setMessages(updatedMessages);
           setStreamingText('');
           
-          // Save chat history
-          localStorage.setItem(`chat_history_${user?.id}_${currentSessionId}`, JSON.stringify(updatedMessages));
-          
-          // Update chat sessions list
-          const sessions = JSON.parse(localStorage.getItem(`chat_sessions_${user?.id}`) || '[]');
-          const existingSessionIndex = sessions.findIndex(s => s.id === currentSessionId);
-          const sessionData = {
-            id: currentSessionId,
-            title: messages.length === 1 ? currentInput.substring(0, 50) : sessions[existingSessionIndex]?.title || currentInput.substring(0, 50),
-            lastMessage: currentInput.substring(0, 100),
-            timestamp: new Date().toISOString(),
-            messageCount: updatedMessages.length
-          };
-          
-          if (existingSessionIndex >= 0) {
-            sessions[existingSessionIndex] = sessionData;
-          } else {
-            sessions.unshift(sessionData);
-          }
-          
-          // Keep only last 50 sessions
-          const limitedSessions = sessions.slice(0, 50);
-          localStorage.setItem(`chat_sessions_${user?.id}`, JSON.stringify(limitedSessions));
-          setChatSessions(limitedSessions);
+          // Save to backend and localStorage
+          saveChatToBackend(updatedMessages);
         });
       }
     } catch (error) {
@@ -229,8 +236,8 @@ export default function AIChat() {
         setMessages(updatedMessages);
         setStreamingText('');
         
-        // Save even fallback responses
-        localStorage.setItem(`chat_history_${user?.id}_${currentSessionId}`, JSON.stringify(updatedMessages));
+        // Save to backend and localStorage
+        saveChatToBackend(updatedMessages);
       });
     } finally {
       setLoading(false);
@@ -273,16 +280,10 @@ export default function AIChat() {
         </button>
 
         <div className="flex-1 overflow-y-auto px-2 space-y-1">
-          {chatSessions.length > 0 ? (
-            chatSessions.map((session) => (
-              <button key={session.id} onClick={() => loadChatSession(session.id)} className={`w-full text-left p-2 rounded-lg transition text-xs ${currentSessionId === session.id ? 'bg-blue-100 border-l-4 border-blue-600' : 'hover:bg-gray-100'}`}>
-                <p className="font-medium text-gray-900 truncate text-xs">{session.title}</p>
-                <p className="text-xs text-gray-500 truncate mt-0.5">{session.preview}</p>
-              </button>
-            ))
-          ) : (
-            <p className="text-xs text-gray-500 text-center py-6">No chat history yet</p>
-          )}
+          <div className="p-3 text-center">
+            <p className="text-xs text-gray-500">Chat history is saved automatically</p>
+            <p className="text-xs text-gray-400 mt-1">{messages.length} messages in current chat</p>
+          </div>
         </div>
 
         <div className="p-2 border-t border-gray-200 space-y-1 shrink-0">

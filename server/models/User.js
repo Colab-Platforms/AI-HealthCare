@@ -68,8 +68,13 @@ const userSchema = new mongoose.Schema({
     bmi: Number,
     lastCheckup: Date,
     healthScore: { type: Number, min: 0, max: 100 }
-  }
-}, { timestamps: true });
+  },
+  challengeData: {
+    type: mongoose.Schema.Types.Mixed,
+    default: {}
+  },
+  streakDays: { type: Number, default: 0 }
+}, { timestamps: true, strict: false });
 
 userSchema.pre('save', async function(next) {
   if (!this.isModified('password')) return next();

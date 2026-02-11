@@ -455,6 +455,17 @@ export default function Dashboard() {
   const data = dashboardData;
   const nutritionDataToUse = localNutritionData || cachedNutritionData;
 
+  // 🔍 DEBUG: Log comparison data
+  useEffect(() => {
+    if (data) {
+      console.log('📊 Dashboard Data:', {
+        hasLatestComparison: !!data.latestComparison,
+        latestComparison: data.latestComparison,
+        recentReports: data.recentReports?.length || 0
+      });
+    }
+  }, [data]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
@@ -691,6 +702,184 @@ export default function Dashboard() {
             </Link>
           </div>
         )}
+
+        {/* 🆕 AI Comparison Insights - Show below Health Score if comparison exists */}
+        {data?.latestComparison && (
+          <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl border-2 border-purple-200 p-6 shadow-sm">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-purple-900">AI Health Insights</h3>
+                <p className="text-purple-700 text-xs">Compared with your previous report</p>
+              </div>
+            </div>
+
+            {/* Overall Summary */}
+            <div className="mb-4 p-3 bg-white/60 rounded-lg">
+              <p className="text-sm text-purple-900 leading-relaxed">
+                {data.latestComparison.summary}
+              </p>
+            </div>
+
+            {/* Key Improvements */}
+            {data.latestComparison.improvements && data.latestComparison.improvements.length > 0 && (
+              <div className="mb-3">
+                <h4 className="text-sm font-bold text-green-900 mb-2 flex items-center gap-1">
+                  <TrendingUp className="w-4 h-4" />
+                  What's Improved
+                </h4>
+                <div className="space-y-1">
+                  {data.latestComparison.improvements.slice(0, 2).map((item, idx) => (
+                    <div key={idx} className="text-xs text-green-800 flex items-start gap-2 bg-green-50 p-2 rounded">
+                      <span className="text-green-600 mt-0.5">✓</span>
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Areas to Watch */}
+            {data.latestComparison.concerns && data.latestComparison.concerns.length > 0 && (
+              <div>
+                <h4 className="text-sm font-bold text-amber-900 mb-2 flex items-center gap-1">
+                  <AlertTriangle className="w-4 h-4" />
+                  Areas to Watch
+                </h4>
+                <div className="space-y-1">
+                  {data.latestComparison.concerns.slice(0, 2).map((item, idx) => (
+                    <div key={idx} className="text-xs text-amber-800 flex items-start gap-2 bg-amber-50 p-2 rounded">
+                      <span className="text-amber-600 mt-0.5">!</span>
+                      <span>{item}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+      {/* 🆕 Health Progress Comparison Card - Show if comparison data exists */}
+      {data?.latestComparison ? (
+        <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl border-2 border-cyan-200 p-6 shadow-lg">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-12 h-12 bg-cyan-500 rounded-full flex items-center justify-center">
+              <TrendingUp className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h3 className="text-xl font-bold text-cyan-900">Health Progress Report</h3>
+              <p className="text-cyan-700 text-sm">
+                Compared with {new Date(data.latestComparison.previousReportDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+              </p>
+            </div>
+          </div>
+
+          {/* Overall Trend */}
+          <div className={`p-4 rounded-xl mb-4 ${
+            data.latestComparison.overallTrend === 'improved' 
+              ? 'bg-green-100 border-2 border-green-300' 
+              : data.latestComparison.overallTrend === 'declined'
+              ? 'bg-red-100 border-2 border-red-300'
+              : 'bg-blue-100 border-2 border-blue-300'
+          }`}>
+            <div className="flex items-center gap-2 mb-2">
+              {data.latestComparison.overallTrend === 'improved' ? (
+                <CheckCircle className="w-5 h-5 text-green-700" />
+              ) : data.latestComparison.overallTrend === 'declined' ? (
+                <AlertTriangle className="w-5 h-5 text-red-700" />
+              ) : (
+                <Minus className="w-5 h-5 text-blue-700" />
+              )}
+              <span className={`font-bold text-lg ${
+                data.latestComparison.overallTrend === 'improved' 
+                  ? 'text-green-900' 
+                  : data.latestComparison.overallTrend === 'declined'
+                  ? 'text-red-900'
+                  : 'text-blue-900'
+              }`}>
+                {data.latestComparison.overallTrend === 'improved' ? '✨ Health Improved!' : 
+                 data.latestComparison.overallTrend === 'declined' ? '⚠️ Needs Attention' : 
+                 '📊 Stable Progress'}
+              </span>
+            </div>
+            <p className={`text-sm ${
+              data.latestComparison.overallTrend === 'improved' 
+                ? 'text-green-800' 
+                : data.latestComparison.overallTrend === 'declined'
+                ? 'text-red-800'
+                : 'text-blue-800'
+            }`}>
+              {data.latestComparison.summary}
+            </p>
+          </div>
+
+          {/* Improvements */}
+          {data.latestComparison.improvements && data.latestComparison.improvements.length > 0 && (
+            <div className="mb-4">
+              <h4 className="font-bold text-green-900 mb-2 flex items-center gap-2">
+                <CheckCircle className="w-4 h-4" />
+                Improvements
+              </h4>
+              <ul className="space-y-1">
+                {data.latestComparison.improvements.slice(0, 3).map((item, idx) => (
+                  <li key={idx} className="text-sm text-green-800 flex items-start gap-2">
+                    <span className="text-green-600 mt-0.5">✓</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Concerns */}
+          {data.latestComparison.concerns && data.latestComparison.concerns.length > 0 && (
+            <div className="mb-4">
+              <h4 className="font-bold text-red-900 mb-2 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                Areas to Focus
+              </h4>
+              <ul className="space-y-1">
+                {data.latestComparison.concerns.slice(0, 3).map((item, idx) => (
+                  <li key={idx} className="text-sm text-red-800 flex items-start gap-2">
+                    <span className="text-red-600 mt-0.5">!</span>
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {/* Recommendations */}
+          {data.latestComparison.recommendations && data.latestComparison.recommendations.length > 0 && (
+            <div className="p-3 bg-white rounded-lg border border-cyan-200">
+              <h4 className="font-bold text-cyan-900 mb-2 text-sm">💡 Recommendations</h4>
+              <ul className="space-y-1">
+                {data.latestComparison.recommendations.slice(0, 2).map((item, idx) => (
+                  <li key={idx} className="text-xs text-cyan-800">• {item}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </div>
+      ) : (
+        /* Debug card to show why comparison is not appearing */
+        recentReports && recentReports.length > 1 && (
+          <div className="bg-amber-50 rounded-2xl border-2 border-amber-200 p-6">
+            <div className="flex items-center gap-3 mb-2">
+              <AlertTriangle className="w-6 h-6 text-amber-600" />
+              <h3 className="text-lg font-bold text-amber-900">Comparison Not Available</h3>
+            </div>
+            <p className="text-amber-800 text-sm mb-3">
+              You have {recentReports.length} reports, but comparison data is not available yet.
+            </p>
+            <p className="text-amber-700 text-xs">
+              Upload a new report to generate automatic comparison with your previous report.
+            </p>
+          </div>
+        )
+      )}
 
         {/* Nutrition Tracker */}
         <div className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6">

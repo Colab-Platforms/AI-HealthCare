@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Generate PWA Icons</title>
+  <style>
+    body { font-family: Arial; padding: 20px; background: #f5f5f5; }
+    .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; }
+    h1 { color: #06b6d4; }
+    button { background: linear-gradient(to right, #06b6d4, #0891b2); color: white; border: none; 
+             padding: 15px 30px; border-radius: 8px; cursor: pointer; font-size: 16px; margin: 10px 5px; }
+    button:hover { opacity: 0.9; }
+    #preview { margin: 20px 0; }
+    canvas { border: 2px solid #ddd; margin: 10px; border-radius: 8px; }
+    .info { background: #e0f2fe; padding: 15px; border-radius: 8px; margin: 20px 0; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>🎨 FitCure PWA Icon Generator</h1>
+    
+    <div class="info">
+      <strong>Instructions:</strong>
+      <ol>
+        <li>Click "Generate All Icons" button below</li>
+        <li>Right-click each icon and "Save image as..."</li>
+        <li>Save with the exact filename shown (e.g., icon-72x72.png)</li>
+        <li>Place all icons in the <code>client/public/</code> folder</li>
+      </ol>
+    </div>
+
+    <button onclick="generateAllIcons()">Generate All Icons</button>
+    <button onclick="downloadAll()">Download All (as ZIP)</button>
+    
+    <div id="preview"></div>
+  </div>
+
+  <script>
+    const sizes = [72, 96, 128, 144, 152, 192, 384, 512];
+    
+    function createIcon(size) {
+      const canvas = document.createElement('canvas');
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      
+      // Background gradient
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#06b6d4');
+      gradient.addColorStop(1, '#0891b2');
+      
+      // Rounded rectangle background
+      const radius = size * 0.225;
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.roundRect(0, 0, size, size, radius);
+      ctx.fill();
+      
+      // Heart shape
+      const centerX = size / 2;
+      const centerY = size / 2;
+      const scale = size / 512;
+      
+      ctx.save();
+      ctx.translate(centerX, centerY);
+      ctx.scale(scale, scale);
+      
+      // Draw heart
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.95)';
+      ctx.beginPath();
+      ctx.moveTo(0, -60);
+      ctx.bezierCurveTo(-20, -80, -50, -80, -70, -60);
+      ctx.bezierCurveTo(-90, -40, -90, -10, -70, 10);
+      ctx.lineTo(0, 80);
+      ctx.lineTo(70, 10);
+      ctx.bezierCurveTo(90, -10, 90, -40, 70, -60);
+      ctx.bezierCurveTo(50, -80, 20, -80, 0, -60);
+      ctx.closePath();
+      ctx.fill();
+      
+      // Draw pulse line
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.lineWidth = 8;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-100, 20);
+      ctx.lineTo(-60, 20);
+      ctx.lineTo(-40, 0);
+      ctx.lineTo(-20, 40);
+      ctx.lineTo(0, 20);
+      ctx.lineTo(20, 0);
+      ctx.lineTo(40, 20);
+      ctx.lineTo(60, 20);
+      ctx.lineTo(100, 20);
+      ctx.stroke();
+      
+      // Draw medical cross
+      ctx.fillStyle = '#06b6d4';
+      ctx.translate(0, -20);
+      // Vertical bar
+      ctx.beginPath();
+      ctx.roundRect(-8, -30, 16, 60, 4);
+      ctx.fill();
+      // Horizontal bar
+      ctx.beginPath();
+      ctx.roundRect(-30, -8, 60, 16, 4);
+      ctx.fill();
+      
+      ctx.restore();
+      
+      return canvas;
+    }
+    
+    function generateAllIcons() {
+      const preview = document.getElementById('preview');
+      preview.innerHTML = '<h2>Generated Icons (Right-click to save):</h2>';
+      
+      sizes.forEach(size => {
+        const canvas = createIcon(size);
+        const container = document.createElement('div');
+        container.style.display = 'inline-block';
+        container.style.textAlign = 'center';
+        container.style.margin = '10px';
+        
+        const label = document.createElement('div');
+        label.textContent = `icon-${size}x${size}.png`;
+        label.style.marginTop = '5px';
+        label.style.fontSize = '12px';
+        label.style.fontWeight = 'bold';
+        
+        container.appendChild(canvas);
+        container.appendChild(label);
+        preview.appendChild(container);
+      });
+    }
+    
+    async function downloadAll() {
+      // Simple download one by one
+      for (const size of sizes) {
+        const canvas = createIcon(size);
+        const blob = await new Promise(resolve => canvas.toBlob(resolve));
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `icon-${size}x${size}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+      alert('All icons downloaded! Place them in client/public/ folder');
+    }
+  </script>
+</body>
+</html>
