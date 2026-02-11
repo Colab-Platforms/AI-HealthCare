@@ -114,6 +114,80 @@ export default function VitalSigns() {
     return { direction, change: change.toFixed(2), percentChange };
   };
 
+  // Interpret vital trend - is it good or bad?
+  const interpretVitalTrend = (vitalName, chartData) => {
+    if (chartData.length < 2) {
+      return {
+        message: 'Not enough data to analyze trend. Upload more reports to track progress.',
+        color: 'text-slate-600',
+        bgColor: 'bg-slate-50',
+        icon: 'info'
+      };
+    }
+
+    const trend = calculateTrend(chartData);
+    const latest = chartData[chartData.length - 1];
+    const isNormal = latest.status === 'normal';
+    
+    // Metrics where LOWER is better
+    const lowerIsBetter = [
+      'Cholesterol', 'LDL', 'Triglycerides', 'Blood Sugar', 'Glucose', 
+      'HbA1c', 'Blood Pressure', 'Systolic', 'Diastolic', 'Weight', 'BMI'
+    ];
+    
+    // Metrics where HIGHER is better
+    const higherIsBetter = [
+      'HDL', 'Hemoglobin', 'RBC', 'Vitamin D', 'Vitamin B12', 'Iron', 'Calcium'
+    ];
+    
+    const isLowerBetter = lowerIsBetter.some(m => vitalName.toLowerCase().includes(m.toLowerCase()));
+    const isHigherBetter = higherIsBetter.some(m => vitalName.toLowerCase().includes(m.toLowerCase()));
+    
+    // Determine if trend is good or bad
+    let isGoodTrend = false;
+    let message = '';
+    
+    if (trend.direction === 'stable') {
+      if (isNormal) {
+        message = `✅ Your ${vitalName} is stable and within normal range. Great job maintaining your health!`;
+        isGoodTrend = true;
+      } else {
+        message = `⚠️ Your ${vitalName} remains outside normal range. Consider consulting your doctor for guidance.`;
+        isGoodTrend = false;
+      }
+    } else if (trend.direction === 'up') {
+      if (isHigherBetter) {
+        message = `📈 Your ${vitalName} is increasing (${trend.change} ${latest.unit}). This is a positive trend! Keep up the good work.`;
+        isGoodTrend = true;
+      } else if (isLowerBetter) {
+        message = `⚠️ Your ${vitalName} is rising (${trend.change} ${latest.unit}). Consider lifestyle changes to bring it down.`;
+        isGoodTrend = false;
+      } else {
+        message = `📊 Your ${vitalName} increased by ${trend.change} ${latest.unit}. ${isNormal ? 'Still within normal range.' : 'Monitor this closely.'}`;
+        isGoodTrend = isNormal;
+      }
+    } else { // down
+      if (isLowerBetter) {
+        message = `📉 Your ${vitalName} is decreasing (${trend.change} ${latest.unit}). Excellent progress! Keep it up.`;
+        isGoodTrend = true;
+      } else if (isHigherBetter) {
+        message = `⚠️ Your ${vitalName} is dropping (${trend.change} ${latest.unit}). You may need to improve this value.`;
+        isGoodTrend = false;
+      } else {
+        message = `📊 Your ${vitalName} decreased by ${Math.abs(trend.change)} ${latest.unit}. ${isNormal ? 'Still within normal range.' : 'Monitor this closely.'}`;
+        isGoodTrend = isNormal;
+      }
+    }
+    
+    return {
+      message,
+      color: isGoodTrend ? 'text-green-700' : 'text-amber-700',
+      bgColor: isGoodTrend ? 'bg-green-50' : 'bg-amber-50',
+      borderColor: isGoodTrend ? 'border-green-200' : 'border-amber-200',
+      icon: isGoodTrend ? 'good' : 'warning'
+    };
+  };
+
   if (loading) {
     return <HealthLoader message="Loading vital signs..." />;
   }
@@ -153,6 +227,7 @@ export default function VitalSigns() {
   const allMetrics = getAllMetrics();
   const chartData = selectedVitalForGraph ? getVitalChartData(selectedVitalForGraph) : [];
   const trend = chartData.length > 0 ? calculateTrend(chartData) : null;
+  const interpretation = selectedVitalForGraph && chartData.length > 0 ? interpretVitalTrend(selectedVitalForGraph, chartData) : null;
 
   return (
     <div className="max-w-6xl mx-auto space-y-6 animate-fade-in p-4 pb-20">
@@ -343,6 +418,39 @@ export default function VitalSigns() {
                   </div>
                 ))}
               </div>
+
+              {/* Interpretation - What does this trend mean? */}
+              {interpretation && (
+                <div className={`p-4 rounded-xl border-2 ${interpretation.borderColor} ${interpretation.bgColor}`}>
+                  <div className="flex items-start gap-3">
+                    <div className="flex-shrink-0 mt-0.5">
+                      {interpretation.icon === 'good' ? (
+                        <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                          <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </div>
+                      ) : interpretation.icon === 'warning' ? (
+                        <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center">
+                          <AlertCircle className="w-5 h-5 text-white" />
+                        </div>
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-slate-400 flex items-center justify-center">
+                          <Activity className="w-5 h-5 text-white" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <h4 className={`font-semibold mb-1 ${interpretation.color}`}>
+                        Health Insight
+                      </h4>
+                      <p className={`text-sm ${interpretation.color} leading-relaxed`}>
+                        {interpretation.message}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           ) : selectedVitalForGraph ? (
             <div className="text-center py-12 text-slate-400">
