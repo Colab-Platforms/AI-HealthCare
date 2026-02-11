@@ -772,14 +772,14 @@ exports.saveChallengeData = async (req, res) => {
     }
 
     // Update user with challenge data and streak
-    const user = await User.findByIdAndUpdate(
-      req.user._id,
-      {
-        challengeData: challengeData,
-        streakDays: streak
-      },
-      { new: true }
-    );
+    const user = await User.findById(req.user._id);
+    user.challengeData = challengeData;
+    user.streakDays = streak;
+    
+    // Mark as modified for Mixed type
+    user.markModified('challengeData');
+    
+    await user.save();
 
     res.json({
       message: 'Challenge data saved successfully',
