@@ -88,10 +88,10 @@ export default function RadialOrbitalTimeline({
     if (autoRotate && viewMode === "orbital") {
       rotationTimer = setInterval(() => {
         setRotationAngle((prev) => {
-          const newAngle = (prev + 0.3) % 360;
-          return Number(newAngle.toFixed(3));
+          const newAngle = (prev + 0.5) % 360;
+          return newAngle;
         });
-      }, 50);
+      }, 30);
     }
 
     return () => {
@@ -184,10 +184,11 @@ export default function RadialOrbitalTimeline({
           </div>
 
           {/* Right Side - Timeline Spinner with Ocean Blue Background */}
-          <div className="flex-1 h-full relative rounded-3xl overflow-visible" style={{background: 'linear-gradient(135deg, rgba(10, 61, 92, 0.4) 0%, rgba(13, 90, 138, 0.4) 100%)'}}>
-            <div className="absolute inset-0 rounded-3xl border border-cyan-500/30"></div>
+          <div className="flex-1 h-full relative rounded-3xl overflow-visible bg-gradient-to-br from-[#0a3d5c] via-[#0d5a8a] to-[#051f2e] border border-cyan-400/20 shadow-2xl shadow-cyan-600/20">
+            
+            {/* Spinner Container */}
         <div
-          className="absolute w-full h-full flex items-center justify-center"
+          className="absolute w-full h-full flex items-center justify-center z-10"
           ref={orbitRef}
           style={{
             perspective: "1000px",

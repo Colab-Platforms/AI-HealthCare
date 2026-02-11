@@ -581,7 +581,7 @@ export function Component() {
         <span className="slide-total" id="slideTotal">06</span>
         
         <div className="slide-content">
-            <h1 className="slide-title" id="mainTitle"></h1>
+            {/* <h1 className="slide-title" id="mainTitle"></h1> */}
             <p className="slide-description" id="mainDesc"></p>
         </div>
        
