@@ -280,16 +280,10 @@ export default function AIChat() {
         </button>
 
         <div className="flex-1 overflow-y-auto px-2 space-y-1">
-          {chatSessions.length > 0 ? (
-            chatSessions.map((session) => (
-              <button key={session.id} onClick={() => loadChatSession(session.id)} className={`w-full text-left p-2 rounded-lg transition text-xs ${currentSessionId === session.id ? 'bg-blue-100 border-l-4 border-blue-600' : 'hover:bg-gray-100'}`}>
-                <p className="font-medium text-gray-900 truncate text-xs">{session.title}</p>
-                <p className="text-xs text-gray-500 truncate mt-0.5">{session.preview}</p>
-              </button>
-            ))
-          ) : (
-            <p className="text-xs text-gray-500 text-center py-6">No chat history yet</p>
-          )}
+          <div className="p-3 text-center">
+            <p className="text-xs text-gray-500">Chat history is saved automatically</p>
+            <p className="text-xs text-gray-400 mt-1">{messages.length} messages in current chat</p>
+          </div>
         </div>
 
         <div className="p-2 border-t border-gray-200 space-y-1 shrink-0">
