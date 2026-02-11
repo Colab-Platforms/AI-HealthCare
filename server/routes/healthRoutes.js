@@ -10,7 +10,9 @@ const {
   getHealthHistory,
   aiChat,
   getMetricInfo,
-  deleteReport
+  deleteReport,
+  saveChallengeData,
+  getChallengeData
 } = require('../controllers/healthController');
 const { protect } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -25,5 +27,7 @@ router.get('/reports/:id/compare', protect, compareWithPrevious);
 router.post('/reports/:id/chat', protect, chatAboutReport);
 router.post('/ai-chat', protect, aiChat);
 router.post('/metric-info', protect, getMetricInfo);
+router.post('/challenge', protect, saveChallengeData);
+router.get('/challenge', protect, getChallengeData);
 
 module.exports = router;

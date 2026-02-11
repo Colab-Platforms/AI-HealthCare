@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Trophy, Flame, CheckCircle, Circle, Calendar, Target, Award } from 'lucide-react';
 import toast from 'react-hot-toast';
+import api from '../services/api';
 
 const CHALLENGE_TASKS = [
   { id: 'water', label: 'Drink 8 glasses of water', icon: '💧' },
@@ -18,19 +19,67 @@ export default function Challenge30Days() {
   const [currentDay, setCurrentDay] = useState(1);
   const [challengeData, setChallengeData] = useState({});
   const [streak, setStreak] = useState(0);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     // Scroll to top when component mounts
     window.scrollTo(0, 0);
     
-    // Load challenge data from localStorage
-    const saved = localStorage.getItem('challenge30Days');
-    if (saved) {
-      const data = JSON.parse(saved);
-      setChallengeData(data);
-      calculateStreak(data);
-    }
+    // Load challenge data from backend
+    loadChallengeData();
   }, []);
+
+  const loadChallengeData = async () => {
+    try {
+      const response = await api.get('/api/health/challenge');
+      const data = response.data.challengeData || {};
+      
+      // Convert Map to plain object if needed
+      const plainData = {};
+      if (data && typeof data === 'object') {
+        Object.keys(data).forEach(day => {
+          plainData[day] = data[day];
+        });
+      }
+      
+      setChallengeData(plainData);
+      setStreak(response.data.streakDays || 0);
+      
+      // Also save to localStorage as backup
+      localStorage.setItem('challenge30Days', JSON.stringify(plainData));
+    } catch (error) {
+      console.error('Failed to load challenge data:', error);
+      // Fallback to localStorage
+      const saved = localStorage.getItem('challenge30Days');
+      if (saved) {
+        const data = JSON.parse(saved);
+        setChallengeData(data);
+        calculateStreak(data);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const saveChallengeData = async (newData) => {
+    try {
+      const response = await api.post('/api/health/challenge', {
+        challengeData: newData
+      });
+      
+      setStreak(response.data.streakDays || 0);
+      
+      // Also save to localStorage as backup
+      localStorage.setItem('challenge30Days', JSON.stringify(newData));
+    } catch (error) {
+      console.error('Failed to save challenge data:', error);
+      toast.error('Failed to save progress. Please try again.');
+      
+      // Still save to localStorage as fallback
+      localStorage.setItem('challenge30Days', JSON.stringify(newData));
+      calculateStreak(newData);
+    }
+  };
 
   const calculateStreak = (data) => {
     let currentStreak = 0;
@@ -54,8 +103,9 @@ export default function Challenge30Days() {
       }
     };
     setChallengeData(newData);
-    localStorage.setItem('challenge30Days', JSON.stringify(newData));
-    calculateStreak(newData);
+    
+    // Save to backend
+    saveChallengeData(newData);
     
     // Show encouragement
     const completed = Object.values(newData[day]).filter(Boolean).length;
@@ -94,6 +144,15 @@ export default function Challenge30Days() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-fade-in p-4">
+      {loading ? (
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <div className="w-16 h-16 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-slate-600">Loading your challenge...</p>
+          </div>
+        </div>
+      ) : (
+        <>
       {/* Header */}
       <div>
         <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-cyan-400 font-medium transition-colors mb-2">
@@ -313,6 +372,8 @@ export default function Challenge30Days() {
           </li>
         </ul>
       </div>
+        </>
+      )}
     </div>
   );
 }

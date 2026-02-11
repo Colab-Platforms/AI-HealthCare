@@ -68,7 +68,16 @@ const userSchema = new mongoose.Schema({
     bmi: Number,
     lastCheckup: Date,
     healthScore: { type: Number, min: 0, max: 100 }
-  }
+  },
+  challengeData: {
+    type: Map,
+    of: {
+      type: Map,
+      of: Boolean
+    },
+    default: {}
+  },
+  streakDays: { type: Number, default: 0 }
 }, { timestamps: true });
 
 userSchema.pre('save', async function(next) {

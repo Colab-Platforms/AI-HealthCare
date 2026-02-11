@@ -1,4 +1,5 @@
 const HealthReport = require('../models/HealthReport');
+const User = require('../models/User');
 const Doctor = require('../models/Doctor');
 const { analyzeHealthReport, compareReports, chatWithReport } = require('../services/aiService-fixed');
 const { generateMetricInfo } = require('../services/aiService');
@@ -540,7 +541,8 @@ exports.getDashboardData = async (req, res) => {
       latestComparison, // 🆕 Add comparison data
       totalReports: await HealthReport.countDocuments({ user: req.user._id }),
       recentReports: reports.slice(0, 5),
-      reportTypeCounts
+      reportTypeCounts,
+      streakDays: req.user.streakDays || 0 // Add streak days
     };
 
     cache.set(cacheKey, dashboardData, 120); // Cache for 2 minutes
@@ -740,5 +742,67 @@ User Profile: ${req.user.name}`;
       message: 'Failed to process AI chat request',
       error: error.response?.data?.error?.message || error.message
     });
+  }
+};
+
+
+// Save challenge data
+exports.saveChallengeData = async (req, res) => {
+  try {
+    const { challengeData } = req.body;
+    
+    if (!challengeData) {
+      return res.status(400).json({ message: 'Challenge data is required' });
+    }
+
+    // Calculate streak
+    let streak = 0;
+    const days = Object.keys(challengeData).map(Number).sort((a, b) => b - a);
+    
+    for (const day of days) {
+      const dayData = challengeData[day];
+      const completedTasks = Object.values(dayData).filter(Boolean).length;
+      
+      // Day is considered complete if at least 5 tasks are done
+      if (completedTasks >= 5) {
+        streak++;
+      } else {
+        break;
+      }
+    }
+
+    // Update user with challenge data and streak
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      {
+        challengeData: challengeData,
+        streakDays: streak
+      },
+      { new: true }
+    );
+
+    res.json({
+      message: 'Challenge data saved successfully',
+      streakDays: streak,
+      challengeData: user.challengeData
+    });
+  } catch (error) {
+    console.error('Save challenge error:', error);
+    res.status(500).json({ message: 'Failed to save challenge data', error: error.message });
+  }
+};
+
+// Get challenge data
+exports.getChallengeData = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('challengeData streakDays');
+    
+    res.json({
+      challengeData: user.challengeData || {},
+      streakDays: user.streakDays || 0
+    });
+  } catch (error) {
+    console.error('Get challenge error:', error);
+    res.status(500).json({ message: 'Failed to get challenge data', error: error.message });
   }
 };
