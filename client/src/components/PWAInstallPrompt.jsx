@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { Download, X } from 'lucide-react';
+import { Download, X, Smartphone } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
     // Check if app is already installed
@@ -14,14 +15,27 @@ export default function PWAInstallPrompt() {
       return;
     }
 
+    // Check if user dismissed it before
+    const dismissed = localStorage.getItem('pwa_install_dismissed');
+    if (dismissed) {
+      const dismissedTime = parseInt(dismissed);
+      const daysSinceDismissed = (Date.now() - dismissedTime) / (1000 * 60 * 60 * 24);
+      
+      // Show again after 3 days
+      if (daysSinceDismissed < 3) {
+        setIsDismissed(true);
+        return;
+      }
+    }
+
     // Listen for beforeinstallprompt event
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
       
-      // Show prompt immediately on mobile, after 3 seconds on desktop
+      // Show prompt immediately on mobile, after 5 seconds on desktop
       const isMobile = window.innerWidth < 768;
-      const delay = isMobile ? 500 : 3000;
+      const delay = isMobile ? 1000 : 5000;
       
       const timer = setTimeout(() => {
         setShowPrompt(true);
@@ -35,7 +49,8 @@ export default function PWAInstallPrompt() {
       setIsInstalled(true);
       setShowPrompt(false);
       setDeferredPrompt(null);
-      toast.success('App installed successfully!');
+      localStorage.removeItem('pwa_install_dismissed');
+      toast.success('🎉 FitCure app installed successfully!');
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
@@ -54,7 +69,10 @@ export default function PWAInstallPrompt() {
     const { outcome } = await deferredPrompt.userChoice;
     
     if (outcome === 'accepted') {
-      toast.success('Installing HealthAI app...');
+      toast.success('Installing FitCure app...');
+      localStorage.removeItem('pwa_install_dismissed');
+    } else {
+      toast('You can install later from browser menu', { icon: '💡' });
     }
     
     setDeferredPrompt(null);
@@ -63,52 +81,89 @@ export default function PWAInstallPrompt() {
 
   const handleDismiss = () => {
     setShowPrompt(false);
+    localStorage.setItem('pwa_install_dismissed', Date.now().toString());
   };
 
-  if (isInstalled || !showPrompt || !deferredPrompt) {
+  if (isInstalled || !showPrompt || !deferredPrompt || isDismissed) {
     return null;
   }
 
   return (
-    <div className="fixed bottom-24 md:bottom-8 right-4 md:right-8 z-40 animate-slide-up">
-      <div className="bg-white rounded-2xl shadow-2xl border border-[#E5DFD3] p-4 md:p-6 max-w-sm">
-        <div className="flex items-start justify-between mb-3">
+    <>
+      {/* Mobile - Bottom sticky banner */}
+      <div className="md:hidden fixed bottom-20 left-0 right-0 z-50 px-3 animate-slide-up">
+        <div className="bg-gradient-to-r from-cyan-500 to-blue-600 rounded-2xl shadow-2xl p-4">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center flex-shrink-0">
-              <Download className="w-6 h-6 text-white" />
+            <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
+              <Smartphone className="w-6 h-6 text-white" />
             </div>
-            <div>
-              <h3 className="font-bold text-[#2C2416] text-sm md:text-base">Install HealthAI</h3>
-              <p className="text-xs md:text-sm text-[#5C4F3D]">Add to your home screen</p>
+            <div className="flex-1 min-w-0">
+              <h3 className="font-bold text-white text-sm">Install FitCure App</h3>
+              <p className="text-xs text-white/90">Quick access from home screen</p>
+            </div>
+            <div className="flex gap-2 flex-shrink-0">
+              <button
+                onClick={handleInstall}
+                className="px-4 py-2 bg-white text-cyan-600 rounded-xl font-bold hover:bg-white/90 transition-all text-sm shadow-lg"
+              >
+                Install
+              </button>
+              <button
+                onClick={handleDismiss}
+                className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
           </div>
-          <button
-            onClick={handleDismiss}
-            className="text-[#5C4F3D] hover:text-[#2C2416] flex-shrink-0"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        <p className="text-xs md:text-sm text-[#5C4F3D] mb-4">
-          Get quick access to your health data and features offline
-        </p>
-
-        <div className="flex gap-3">
-          <button
-            onClick={handleInstall}
-            className="flex-1 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-medium hover:shadow-lg transition-all text-sm md:text-base"
-          >
-            Install
-          </button>
-          <button
-            onClick={handleDismiss}
-            className="flex-1 px-4 py-2 bg-[#F5F1EA] text-[#2C2416] rounded-xl font-medium hover:bg-[#E5DFD3] transition-all text-sm md:text-base"
-          >
-            Later
-          </button>
         </div>
       </div>
-    </div>
+
+      {/* Desktop - Bottom right card */}
+      <div className="hidden md:block fixed bottom-8 right-8 z-40 animate-slide-up">
+        <div className="bg-white rounded-2xl shadow-2xl border-2 border-cyan-200 p-6 max-w-sm">
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center flex-shrink-0">
+                <Download className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 text-lg">Install FitCure</h3>
+                <p className="text-sm text-slate-600">Progressive Web App</p>
+              </div>
+            </div>
+            <button
+              onClick={handleDismiss}
+              className="text-slate-400 hover:text-slate-600 flex-shrink-0"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <p className="text-sm text-slate-600 mb-4">
+            ✨ Install FitCure for quick access to your health data
+            <br />
+            📱 Works offline with cached data
+            <br />
+            🚀 Faster loading and better performance
+          </p>
+
+          <div className="flex gap-3">
+            <button
+              onClick={handleInstall}
+              className="flex-1 px-5 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
+            >
+              Install Now
+            </button>
+            <button
+              onClick={handleDismiss}
+              className="px-5 py-3 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200 transition-all"
+            >
+              Later
+            </button>
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
