@@ -9,9 +9,10 @@ import {
   Heart, Upload, Utensils, FileText, Activity, TrendingUp, User,
   Calendar, MessageSquare, Pill, Apple, Dumbbell, Brain, Shield, Sparkles,
   CheckCircle, Target, Award, ChevronRight, Zap, Sun, Droplets,
-  BarChart3, ArrowRight, Star, Flame, Trophy
+  BarChart3, ArrowRight, Star, Flame, Trophy, Moon
 } from 'lucide-react';
 import BMIWidget from '../components/BMIWidget';
+import SleepTracker from '../components/SleepTracker';
 
 // Animated Progress Ring Component
 const ProgressRing = ({ progress, size = 120, strokeWidth = 8 }) => {
@@ -186,6 +187,7 @@ export default function DashboardEnhanced() {
   const { dashboardData, loading, fetchDashboard } = useData();
   const [completionProgress, setCompletionProgress] = useState(0);
   const [isInitialLoad, setIsInitialLoad] = useState(!dashboardData);
+  const [sleepTrackerOpen, setSleepTrackerOpen] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -239,14 +241,29 @@ export default function DashboardEnhanced() {
       <div className="max-w-7xl mx-auto space-y-8 animate-fade-in pb-20 px-4">
         
         {/* Header */}
-        <div className="pt-6">
-          <h1 className="text-3xl font-bold text-slate-800 mb-1">
-            Hi, <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-emerald-600">
-              {user?.name?.split(' ')[0] || 'there'}
-            </span>! 👋
-          </h1>
-          <p className="text-slate-600">Welcome to your health journey</p>
+        <div className="pt-6 flex items-start justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-slate-800 mb-1">
+              Hi, <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-emerald-600">
+                {user?.name?.split(' ')[0] || 'there'}
+              </span>! 👋
+            </h1>
+            <p className="text-slate-600">Welcome to your health journey</p>
+          </div>
+          
+          {/* Sleep Tracker Icon */}
+          <button
+            onClick={() => setSleepTrackerOpen(true)}
+            className="group relative p-3 bg-gradient-to-br from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 rounded-2xl shadow-lg hover:shadow-xl transition-all duration-300 hover:scale-105"
+            title="Sleep Tracker"
+          >
+            <Moon className="w-6 h-6 text-white" />
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-400 rounded-full animate-pulse" />
+          </button>
         </div>
+
+        {/* Sleep Tracker Modal */}
+        <SleepTracker isOpen={sleepTrackerOpen} onClose={() => setSleepTrackerOpen(false)} />
 
         {/* BMI Widget - Right below welcome message */}
         <BMIWidget />
