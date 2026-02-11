@@ -31,7 +31,7 @@ export default function Challenge30Days() {
 
   const loadChallengeData = async () => {
     try {
-      const response = await api.get('/api/health/challenge');
+      const response = await api.get('/health/challenge');
       const data = response.data.challengeData || {};
       
       // Convert Map to plain object if needed
@@ -63,7 +63,7 @@ export default function Challenge30Days() {
 
   const saveChallengeData = async (newData) => {
     try {
-      const response = await api.post('/api/health/challenge', {
+      const response = await api.post('/health/challenge', {
         challengeData: newData
       });
       
