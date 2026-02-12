@@ -134,15 +134,34 @@ export default function QuickFoodCheck() {
       
       let imageBase64 = null;
       if (image) {
+        // Compress image before sending
         const reader = new FileReader();
         imageBase64 = await new Promise((resolve, reject) => {
           reader.onloadend = () => {
-            resolve(reader.result.split(',')[1]);
+            const base64String = reader.result.split(',')[1];
+            
+            // Check size and compress if needed
+            const sizeInMB = (base64String.length * 0.75) / (1024 * 1024);
+            console.log('Image size:', sizeInMB.toFixed(2), 'MB');
+            
+            if (sizeInMB > 3) {
+              toast.error('Image too large. Please use a smaller image (max 3MB)');
+              reject(new Error('Image too large'));
+              return;
+            }
+            
+            resolve(base64String);
           };
           reader.onerror = reject;
           reader.readAsDataURL(image);
         });
       }
+
+      console.log('Sending request with:', { 
+        hasFood: !!foodInput, 
+        hasImage: !!imageBase64,
+        imageSize: imageBase64 ? `${(imageBase64.length * 0.75 / 1024).toFixed(2)} KB` : 'N/A'
+      });
 
       const response = await axios.post(
         '/api/nutrition/quick-check',
@@ -151,7 +170,10 @@ export default function QuickFoodCheck() {
           imageBase64,
           additionalContext: foodInput || undefined
         },
-        { headers: { Authorization: `Bearer ${token}` } }
+        { 
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 60000 // 60 second timeout for image analysis
+        }
       );
 
       setResult(response.data.data);
@@ -163,7 +185,15 @@ export default function QuickFoodCheck() {
       fetchHistory();
     } catch (error) {
       console.error('Quick check error:', error);
-      toast.error(error.response?.data?.message || 'Failed to analyze food');
+      console.error('Error response:', error.response?.data);
+      
+      if (error.message === 'Image too large') {
+        // Already showed toast
+      } else if (error.code === 'ECONNABORTED') {
+        toast.error('Request timeout. Please try with a smaller image or text description.');
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to analyze food. Try text description instead.');
+      }
     } finally {
       setLoading(false);
     }

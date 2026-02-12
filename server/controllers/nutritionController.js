@@ -598,10 +598,24 @@ exports.quickFoodCheck = async (req, res) => {
   try {
     const { foodDescription, imageBase64, additionalContext } = req.body;
 
+    console.log('Quick check request:', {
+      hasDescription: !!foodDescription,
+      hasImage: !!imageBase64,
+      imageSize: imageBase64 ? `${(imageBase64.length * 0.75 / 1024).toFixed(2)} KB` : 'N/A'
+    });
+
     if (!foodDescription && !imageBase64) {
       return res.status(400).json({
         success: false,
         message: 'Please provide a food description or image'
+      });
+    }
+
+    // Check image size limit (3MB)
+    if (imageBase64 && imageBase64.length > 4000000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Image too large. Please use a smaller image (max 3MB)'
       });
     }
 
@@ -610,8 +624,11 @@ exports.quickFoodCheck = async (req, res) => {
     // Get AI analysis
     if (imageBase64) {
       try {
+        console.log('Attempting image analysis...');
         // Use image analysis
         const imageAnalysis = await nutritionAI.analyzeFromImage(imageBase64, additionalContext || foodDescription || 'Food from image');
+        
+        console.log('Image analysis successful');
         
         // Transform image analysis to match quickFoodCheck format
         if (imageAnalysis.success && imageAnalysis.data) {
@@ -644,11 +661,13 @@ exports.quickFoodCheck = async (req, res) => {
           };
         }
       } catch (imageError) {
-        console.error('Image analysis failed, falling back to text:', imageError.message);
+        console.error('Image analysis failed:', imageError.message);
+        console.error('Falling back to text analysis');
         // Fallback to text analysis if image fails
         analysis = await nutritionAI.quickFoodCheck(additionalContext || foodDescription || 'Food from image');
       }
     } else {
+      console.log('Using text analysis');
       analysis = await nutritionAI.quickFoodCheck(foodDescription);
     }
 
@@ -680,6 +699,8 @@ exports.quickFoodCheck = async (req, res) => {
 
     await foodCheck.save();
 
+    console.log('Food check saved successfully');
+
     res.json({
       success: true,
       data: analysis.data,
@@ -688,10 +709,12 @@ exports.quickFoodCheck = async (req, res) => {
     });
   } catch (error) {
     console.error('Quick food check error:', error);
+    console.error('Error stack:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Failed to analyze food',
-      error: error.message
+      error: error.message,
+      details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };
