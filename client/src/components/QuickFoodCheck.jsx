@@ -237,6 +237,7 @@ export default function QuickFoodCheck() {
                 <input
                   type="file"
                   accept="image/*"
+                  capture="environment"
                   onChange={handleImageSelect}
                   className="hidden"
                 />
@@ -245,7 +246,7 @@ export default function QuickFoodCheck() {
                 </div>
                 {/* Tooltip */}
                 <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                  Upload food image
+                  Upload or capture food
                 </div>
               </label>
               {foodInput && (

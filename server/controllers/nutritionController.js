@@ -609,7 +609,7 @@ exports.quickFoodCheck = async (req, res) => {
     
     // Get AI analysis
     if (imageBase64) {
-      analysis = await nutritionAI.quickFoodCheck(additionalContext || 'Food from image');
+      analysis = await nutritionAI.analyzeFromImage(imageBase64, additionalContext || foodDescription || 'Food from image');
     } else {
       analysis = await nutritionAI.quickFoodCheck(foodDescription);
     }
