@@ -4,7 +4,7 @@ import { healthService } from '../services/api';
 import { ArrowLeft, Download, Share2, AlertTriangle, CheckCircle, TrendingDown, Apple, Pill, Heart, Activity, X } from 'lucide-react';
 import toast from 'react-hot-toast';
 import VitalDetailsPopup from '../components/VitalDetailsPopup';
-import HealthLoader from '../components/HealthLoader';
+import GenericSkeleton from '../components/skeletons/GenericSkeleton';
 
 export default function ReportSummary() {
   const { id } = useParams();
@@ -51,7 +51,7 @@ export default function ReportSummary() {
     setSelectedMetric(null);
   };
 
-  if (loading) return <HealthLoader message="Loading your health report..." />;
+  if (loading) return <GenericSkeleton />;
   if (!report) return <div className="text-center py-12 text-slate-400">Report not found</div>;
 
   const { aiAnalysis } = report;

@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { healthService } from '../services/api';
 import { FileText, ArrowLeft, Calendar, Eye, TrendingUp, AlertCircle, Upload, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import HealthLoader from '../components/HealthLoader';
+import ReportsSkeleton from '../components/skeletons/ReportsSkeleton';
 
 export default function AllReports() {
   const [reports, setReports] = useState([]);
@@ -51,7 +51,7 @@ export default function AllReports() {
   const reportTypes = ['all', ...new Set(reports.map(r => r.reportType))];
 
   if (loading) {
-    return <HealthLoader message="Loading your health reports..." />;
+    return <ReportsSkeleton />;
   }
 
   return (

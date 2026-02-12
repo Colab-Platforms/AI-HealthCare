@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { healthService } from '../services/api';
 import { FileText, Activity, ArrowLeft, X, Droplets, Eye, Pill, UtensilsCrossed, Heart, TrendingUp, BarChart3 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import GenericSkeleton from '../components/skeletons/GenericSkeleton';
 
 const translations = {
   en: {
@@ -295,7 +296,7 @@ export default function ReportDetails() {
     }
   };
 
-  if (loading) return <div className="flex items-center justify-center h-[60vh]"><div className="text-center"><div className="w-16 h-16 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4" /><p className="text-slate-400">Loading report...</p></div></div>;
+  if (loading) return <GenericSkeleton />;
   if (!report) return <div className="text-center py-12 text-slate-400">Report not found</div>;
 
   const { aiAnalysis } = report;

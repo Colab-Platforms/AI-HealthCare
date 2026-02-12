@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { healthService } from '../services/api';
 import { Activity, ArrowLeft, Upload, FileText, ChevronDown, TrendingUp, TrendingDown, Minus, AlertCircle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart } from 'recharts';
-import HealthLoader from '../components/HealthLoader';
+import GenericSkeleton from '../components/skeletons/GenericSkeleton';
 import VitalDetailsPopup from '../components/VitalDetailsPopup';
 
 export default function VitalSigns() {
@@ -189,7 +189,7 @@ export default function VitalSigns() {
   };
 
   if (loading) {
-    return <HealthLoader message="Loading vital signs..." />;
+    return <GenericSkeleton />;
   }
 
   // No reports uploaded

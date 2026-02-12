@@ -2,7 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import Layout from './components/Layout';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
-import HealthLoader from './components/HealthLoader';
+import GenericSkeleton from './components/skeletons/GenericSkeleton';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -35,7 +35,7 @@ import Supplements from './pages/Supplements';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
-  if (loading) return <HealthLoader message="Verifying your credentials..." />;
+  if (loading) return <GenericSkeleton />;
   if (!user) return <Navigate to="/login" />;
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     // Redirect to appropriate dashboard based on role
@@ -48,14 +48,14 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 
 const AdminRoute = ({ children }) => {
   const { user, loading, isAdmin } = useAuth();
-  if (loading) return <HealthLoader message="Checking admin access..." />;
+  if (loading) return <GenericSkeleton />;
   if (!user) return <Navigate to="/login" />;
   return isAdmin() ? children : <Navigate to="/dashboard" />;
 };
 
 const DoctorRoute = ({ children }) => {
   const { user, loading, isDoctor } = useAuth();
-  if (loading) return <HealthLoader message="Verifying doctor credentials..." />;
+  if (loading) return <GenericSkeleton />;
   if (!user) return <Navigate to="/login" />;
   return isDoctor() ? children : <Navigate to="/dashboard" />;
 };

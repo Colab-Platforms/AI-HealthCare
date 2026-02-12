@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, useSearchParams, Link } from 'react-router-dom';
 import { doctorService } from '../services/api';
 import { User, Heart, FileText, Calendar, Activity, Watch, AlertCircle, Clock, Phone, Mail, ArrowLeft } from 'lucide-react';
+import GenericSkeleton from '../components/skeletons/GenericSkeleton';
 
 export default function PatientProfile() {
   const { patientId } = useParams();
@@ -18,7 +19,7 @@ export default function PatientProfile() {
     fetchProfile();
   }, [patientId, appointmentId]);
 
-  if (loading) return <div className="flex items-center justify-center h-[60vh]"><div className="text-center"><div className="w-16 h-16 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4" /><p className="text-slate-400">Loading patient profile...</p></div></div>;
+  if (loading) return <GenericSkeleton />;
   if (!data) return <div className="bg-[#111827] rounded-2xl border border-slate-700 p-6 text-center py-16"><p className="text-slate-400">Patient not found or access denied.</p><Link to="/doctors" className="mt-4 inline-block px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold rounded-xl">Go Back</Link></div>;
 
   const { patient, healthSummary, healthReports, wearableSummary, appointmentHistory } = data;

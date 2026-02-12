@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { subscriptionService } from '../services/api';
 import { Crown, Check, Calendar, CreditCard, Zap, Star } from 'lucide-react';
+import GenericSkeleton from '../components/skeletons/GenericSkeleton';
 
 const plans = [
   { id: 'free', name: 'Free', price: 0, period: 'forever', features: ['1 Report analysis per month', 'Basic AI insights', 'View doctor listings', 'Email support'], color: 'slate', icon: Star },
@@ -23,7 +24,7 @@ export default function Subscription() {
 
   const currentPlan = subscription?.plan || user?.subscription?.plan || 'free';
 
-  if (loading) return <div className="flex items-center justify-center h-[60vh]"><div className="w-12 h-12 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" /></div>;
+  if (loading) return <GenericSkeleton />;
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">

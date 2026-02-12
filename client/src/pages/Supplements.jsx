@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { healthService } from '../services/api';
 import { Pill, ArrowLeft, Upload, AlertCircle, CheckCircle, Info, ChevronDown, FileText } from 'lucide-react';
-import HealthLoader from '../components/HealthLoader';
+import GenericSkeleton from '../components/skeletons/GenericSkeleton';
 
 export default function Supplements() {
   const [reports, setReports] = useState([]);
@@ -65,7 +65,7 @@ export default function Supplements() {
   };
 
   if (loading) {
-    return <HealthLoader message="Loading supplement recommendations..." />;
+    return <GenericSkeleton />;
   }
 
   // No reports uploaded

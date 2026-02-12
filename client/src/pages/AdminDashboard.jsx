@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { adminService } from '../services/api';
 import { Users, FileText, Activity, AlertCircle, CheckCircle, XCircle, UserCog, Calendar, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
+import GenericSkeleton from '../components/skeletons/GenericSkeleton';
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
@@ -134,7 +135,7 @@ function DoctorsTab() {
   const filteredDoctors = doctors.filter(d => filter === 'all' ? true : d.approvalStatus === filter);
   const pendingCount = doctors.filter(d => d.approvalStatus === 'pending').length;
 
-  if (loading) return <div className="bg-white rounded-2xl border border-slate-200 p-6 animate-pulse h-64" />;
+  if (loading) return <GenericSkeleton />;
 
   return (
     <div className="space-y-4">
