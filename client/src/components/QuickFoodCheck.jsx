@@ -3,7 +3,7 @@ import axios from 'axios';
 import toast from 'react-hot-toast';
 import {
   Loader2, Trash2, AlertCircle, CheckCircle, Lightbulb,
-  Camera, Upload, X, TrendingUp, TrendingDown, ChefHat, ShoppingBag,
+  Camera, X, ChefHat,
   Flame, Zap, Heart, Info, History
 } from 'lucide-react';
 
@@ -19,7 +19,12 @@ export default function QuickFoodCheck() {
   const [prepMethod, setPrepMethod] = useState(null);
   const [history, setHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
-  const [showImageTooltip, setShowImageTooltip] = useState(false);
+  const [showImageDetailsForm, setShowImageDetailsForm] = useState(false);
+  const [imageDetails, setImageDetails] = useState({
+    quantity: '',
+    prepMethod: '',
+    additionalInfo: ''
+  });
 
   useEffect(() => {
     fetchHistory();
@@ -117,6 +122,7 @@ export default function QuickFoodCheck() {
       const reader = new FileReader();
       reader.onloadend = () => {
         setImagePreview(reader.result);
+        setShowImageDetailsForm(true); // Show form when image is selected
       };
       reader.readAsDataURL(file);
     }
@@ -132,47 +138,30 @@ export default function QuickFoodCheck() {
     try {
       const token = localStorage.getItem('token');
       
-      let imageBase64 = null;
-      if (image) {
-        // Compress image before sending
-        const reader = new FileReader();
-        imageBase64 = await new Promise((resolve, reject) => {
-          reader.onloadend = () => {
-            const base64String = reader.result.split(',')[1];
-            
-            // Check size and compress if needed
-            const sizeInMB = (base64String.length * 0.75) / (1024 * 1024);
-            console.log('Image size:', sizeInMB.toFixed(2), 'MB');
-            
-            if (sizeInMB > 3) {
-              toast.error('Image too large. Please use a smaller image (max 3MB)');
-              reject(new Error('Image too large'));
-              return;
-            }
-            
-            resolve(base64String);
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(image);
-        });
+      // Build description from image details if image is present
+      let finalDescription = foodInput;
+      if (image && showImageDetailsForm) {
+        const parts = [];
+        if (imageDetails.quantity) parts.push(imageDetails.quantity);
+        if (imageDetails.prepMethod) parts.push(imageDetails.prepMethod);
+        if (imageDetails.additionalInfo) parts.push(imageDetails.additionalInfo);
+        if (foodInput) parts.push(foodInput);
+        
+        finalDescription = parts.join(', ') || 'Food from image';
       }
 
-      console.log('Sending request with:', { 
-        hasFood: !!foodInput, 
-        hasImage: !!imageBase64,
-        imageSize: imageBase64 ? `${(imageBase64.length * 0.75 / 1024).toFixed(2)} KB` : 'N/A'
-      });
+      console.log('Sending request with description:', finalDescription);
 
       const response = await axios.post(
         '/api/nutrition/quick-check',
         {
-          foodDescription: foodInput || undefined,
-          imageBase64,
-          additionalContext: foodInput || undefined
+          foodDescription: finalDescription,
+          imageBase64: null, // Don't send image, use text description instead
+          additionalContext: finalDescription
         },
         { 
           headers: { Authorization: `Bearer ${token}` },
-          timeout: 60000 // 60 second timeout for image analysis
+          timeout: 30000
         }
       );
 
@@ -181,18 +170,18 @@ export default function QuickFoodCheck() {
       setImage(null);
       setImagePreview(null);
       setShowQuantitySuggestion(false);
+      setShowImageDetailsForm(false);
+      setImageDetails({ quantity: '', prepMethod: '', additionalInfo: '' });
       toast.success('Food analyzed and saved!');
       fetchHistory();
     } catch (error) {
       console.error('Quick check error:', error);
       console.error('Error response:', error.response?.data);
       
-      if (error.message === 'Image too large') {
-        // Already showed toast
-      } else if (error.code === 'ECONNABORTED') {
-        toast.error('Request timeout. Please try with a smaller image or text description.');
+      if (error.code === 'ECONNABORTED') {
+        toast.error('Request timeout. Please try again.');
       } else {
-        toast.error(error.response?.data?.message || 'Failed to analyze food. Try text description instead.');
+        toast.error(error.response?.data?.message || 'Failed to analyze food');
       }
     } finally {
       setLoading(false);
@@ -305,7 +294,7 @@ export default function QuickFoodCheck() {
                 />
                 <div className="flex-1">
                   <p className="text-sm font-semibold text-cyan-900 mb-1">📸 Image Ready</p>
-                  <p className="text-xs text-cyan-700">AI will analyze this food image</p>
+                  <p className="text-xs text-cyan-700">Please provide details for accurate analysis</p>
                   {foodInput && (
                     <p className="text-xs text-gray-600 mt-2">
                       💡 Your text will be used as additional context
@@ -316,11 +305,89 @@ export default function QuickFoodCheck() {
                   onClick={() => {
                     setImage(null);
                     setImagePreview(null);
+                    setShowImageDetailsForm(false);
+                    setImageDetails({ quantity: '', prepMethod: '', additionalInfo: '' });
                   }}
                   className="p-2 hover:bg-red-50 rounded-lg transition text-red-500"
                 >
                   <X className="w-5 h-5" />
                 </button>
+              </div>
+            </div>
+          )}
+
+          {/* Image Details Form */}
+          {showImageDetailsForm && imagePreview && (
+            <div className="bg-white border-2 border-purple-200 rounded-2xl p-5 animate-in fade-in slide-in-from-top-2">
+              <p className="text-sm font-bold text-purple-900 mb-4 flex items-center gap-2">
+                <ChefHat className="w-5 h-5" />
+                Tell us more for accurate results
+              </p>
+              
+              {/* Quantity Input */}
+              <div className="mb-4">
+                <label className="block text-xs font-semibold text-gray-700 mb-2">
+                  Quantity (e.g., "2 pieces", "1 bowl", "100g")
+                </label>
+                <input
+                  type="text"
+                  value={imageDetails.quantity}
+                  onChange={(e) => setImageDetails({ ...imageDetails, quantity: e.target.value })}
+                  placeholder="How much did you eat?"
+                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 text-gray-900 placeholder-gray-500"
+                />
+              </div>
+
+              {/* Preparation Method */}
+              <div className="mb-4">
+                <label className="block text-xs font-semibold text-gray-700 mb-2">
+                  How was it prepared?
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: 'Fried', icon: '🍳' },
+                    { label: 'Baked', icon: '🥐' },
+                    { label: 'Grilled', icon: '🔥' },
+                    { label: 'Homemade', icon: '🏠' },
+                    { label: 'Restaurant', icon: '🍽️' },
+                    { label: 'Packaged', icon: '📦' }
+                  ].map((method) => (
+                    <button
+                      key={method.label}
+                      type="button"
+                      onClick={() => setImageDetails({ ...imageDetails, prepMethod: method.label })}
+                      className={`px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                        imageDetails.prepMethod === method.label
+                          ? 'bg-purple-500 text-white shadow-md'
+                          : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
+                      }`}
+                    >
+                      {method.icon} {method.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Additional Info */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-2">
+                  Additional details (optional)
+                </label>
+                <input
+                  type="text"
+                  value={imageDetails.additionalInfo}
+                  onChange={(e) => setImageDetails({ ...imageDetails, additionalInfo: e.target.value })}
+                  placeholder="e.g., with cheese, extra spicy, etc."
+                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 text-gray-900 placeholder-gray-500"
+                />
+              </div>
+
+              {/* Info Note */}
+              <div className="mt-4 flex items-start gap-2 bg-purple-50 rounded-xl p-3">
+                <Info className="w-4 h-4 text-purple-600 flex-shrink-0 mt-0.5" />
+                <p className="text-xs text-purple-700">
+                  These details help AI provide more accurate nutritional information
+                </p>
               </div>
             </div>
           )}
