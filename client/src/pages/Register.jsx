@@ -374,7 +374,7 @@ export default function Register() {
   if (step === 3) {
     return (
       <div className="min-h-screen flex bg-gradient-to-br from-cyan-50 to-blue-50">
-        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden" style={{ background: 'linear-gradient(to bottom right, #8B7355, #A0826D, #8B7355)' }}>
+        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-cyan-500 via-blue-500 to-cyan-600">
           <div className="absolute inset-0">
             <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
             <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
