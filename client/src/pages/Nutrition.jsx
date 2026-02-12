@@ -541,8 +541,23 @@ export default function Nutrition() {
 
       {/* Add Meal Modal */}
       {showAddMeal && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center md:justify-center">
-          <div className="bg-white w-full md:w-full md:max-w-2xl rounded-t-3xl md:rounded-3xl p-6 max-h-[85vh] md:max-h-[90vh] overflow-y-auto md:mb-0">
+        <div 
+          className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center md:justify-center"
+          onClick={() => {
+            setShowAddMeal(false);
+            setFoodDescription('');
+            setAnalysisResult(null);
+            setFoodItems([]);
+            setQuantity('');
+            setServingSize('medium');
+            setPreparationMethod('homemade');
+            setShowQuantitySuggestions(false);
+          }}
+        >
+          <div 
+            className="bg-white w-full md:w-full md:max-w-2xl rounded-t-3xl md:rounded-3xl p-6 max-h-[85vh] md:max-h-[90vh] overflow-y-auto md:mb-0"
+            onClick={(e) => e.stopPropagation()}
+          >
             <div className="flex items-center justify-between mb-6">
               <h2 className="text-2xl font-bold text-gray-900">Add {mealType.charAt(0).toUpperCase() + mealType.slice(1)}</h2>
               <button
