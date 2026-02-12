@@ -77,10 +77,7 @@ export default function PWAInstallPrompt() {
   const handleDismiss = () => {
     setShowPrompt(false);
     // Don't save to localStorage - let it show again after 2 minutes
-    toast('Install prompt will appear again in 2 minutes', { 
-      icon: '⏰',
-      duration: 3000 
-    });
+    // No toast notification - silent dismiss
   };
 
   if (isInstalled || !showPrompt || !deferredPrompt) {
