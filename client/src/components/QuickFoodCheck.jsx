@@ -134,34 +134,60 @@ export default function QuickFoodCheck() {
       return;
     }
 
+    // If image is uploaded but no details provided, show warning
+    if (image && !imageDetails.quantity && !imageDetails.prepMethod) {
+      toast.error('Please provide quantity and preparation method for the image');
+      return;
+    }
+
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
       
-      // Build description from image details if image is present
-      let finalDescription = foodInput;
-      if (image && showImageDetailsForm) {
-        const parts = [];
-        if (imageDetails.quantity) parts.push(imageDetails.quantity);
-        if (imageDetails.prepMethod) parts.push(imageDetails.prepMethod);
-        if (imageDetails.additionalInfo) parts.push(imageDetails.additionalInfo);
-        if (foodInput) parts.push(foodInput);
-        
-        finalDescription = parts.join(', ') || 'Food from image';
+      // Convert image to base64 if present
+      let imageBase64 = null;
+      if (image) {
+        const reader = new FileReader();
+        imageBase64 = await new Promise((resolve, reject) => {
+          reader.onloadend = () => {
+            // Remove the data:image/...;base64, prefix
+            const base64 = reader.result.split(',')[1];
+            resolve(base64);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(image);
+        });
       }
 
-      console.log('Sending request with description:', finalDescription);
+      // Build context from image details
+      let contextText = '';
+      if (image && (imageDetails.quantity || imageDetails.prepMethod || imageDetails.additionalInfo)) {
+        const parts = [];
+        if (imageDetails.quantity) parts.push(`Quantity: ${imageDetails.quantity}`);
+        if (imageDetails.prepMethod) parts.push(`Preparation: ${imageDetails.prepMethod}`);
+        if (imageDetails.additionalInfo) parts.push(imageDetails.additionalInfo);
+        if (foodInput) parts.push(`Additional info: ${foodInput}`);
+        contextText = parts.join(', ');
+      } else {
+        contextText = foodInput;
+      }
+
+      console.log('Sending request:', {
+        hasImage: !!imageBase64,
+        imageSize: imageBase64 ? `${(imageBase64.length * 0.75 / 1024).toFixed(2)} KB` : 'N/A',
+        context: contextText
+      });
 
       const response = await axios.post(
         '/api/nutrition/quick-check',
         {
-          foodDescription: finalDescription,
-          imageBase64: null, // Don't send image, use text description instead
-          additionalContext: finalDescription
+          foodDescription: foodInput || 'Food from image',
+          imageBase64: imageBase64,
+          additionalContext: contextText
         },
         { 
           headers: { Authorization: `Bearer ${token}` },
-          timeout: 30000
+          timeout: 60000 // 60 seconds for image analysis
         }
       );
 
@@ -179,9 +205,11 @@ export default function QuickFoodCheck() {
       console.error('Error response:', error.response?.data);
       
       if (error.code === 'ECONNABORTED') {
-        toast.error('Request timeout. Please try again.');
+        toast.error('Request timeout. The image analysis took too long. Please try again or use text description.');
+      } else if (error.response?.status === 413) {
+        toast.error('Image too large. Please use a smaller image.');
       } else {
-        toast.error(error.response?.data?.message || 'Failed to analyze food');
+        toast.error(error.response?.data?.message || 'Failed to analyze food. Please try again.');
       }
     } finally {
       setLoading(false);
@@ -293,13 +321,11 @@ export default function QuickFoodCheck() {
                   className="w-24 h-24 object-cover rounded-xl border-2 border-cyan-300"
                 />
                 <div className="flex-1">
-                  <p className="text-sm font-semibold text-cyan-900 mb-1">📸 Image Ready</p>
-                  <p className="text-xs text-cyan-700">Please provide details for accurate analysis</p>
-                  {foodInput && (
-                    <p className="text-xs text-gray-600 mt-2">
-                      💡 Your text will be used as additional context
-                    </p>
-                  )}
+                  <p className="text-sm font-semibold text-cyan-900 mb-1">📸 Image Ready for AI Analysis</p>
+                  <p className="text-xs text-cyan-700">AI will analyze the food in this image</p>
+                  <p className="text-xs text-purple-600 font-semibold mt-2">
+                    👇 Add details below for better accuracy
+                  </p>
                 </div>
                 <button
                   onClick={() => {
