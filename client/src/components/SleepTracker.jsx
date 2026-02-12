@@ -265,14 +265,6 @@ export default function SleepTracker({ isOpen, onClose }) {
                 </div>
                 <p className="text-sm text-slate-400">Time in bed</p>
               </div>
-              
-              <div>
-                <span className="text-xl font-semibold text-white">
-                  {isTracking ? `${currentHours}h ${currentMinutes}m` : 
-                   todaySleep ? `${todaySleep.hours}h ${Math.floor(todaySleep.minutes * 0.9)}m` : '0h 0m'}
-                </span>
-                <p className="text-sm text-slate-400">Time asleep</p>
-              </div>
             </div>
           </div>
 
