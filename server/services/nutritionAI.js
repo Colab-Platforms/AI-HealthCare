@@ -28,22 +28,26 @@ CRITICAL INSTRUCTIONS:
 2. DO NOT guess or assume - Only identify what you can clearly see
 3. If the image shows samosa, say "Samosa" - not paneer butter masala or anything else
 4. If the image shows pizza, say "Pizza" - be specific about toppings if visible
-5. Provide accurate portion estimates based on what's visible in the image
+5. PAY ATTENTION TO QUANTITY - If user says "3 pieces", calculate nutrition for 3 pieces, not 1
+6. Provide RANGES for nutrition values (e.g., "250-300" not "275") to account for variations
+7. If health score is below 70, MUST provide 3-5 healthier alternatives
+
+QUANTITY HANDLING:
+- If user mentions quantity (e.g., "3 pieces", "2 bowls"), multiply nutrition by that amount
+- If no quantity mentioned, assume standard serving size
+- Be explicit about the quantity in your response
+
+NUTRITION VALUE FORMAT:
+- Use RANGES for all values: "250-300" not "275"
+- Format: calories: "250-300", protein: "15-18", carbs: "30-35"
+- This accounts for natural variations in food preparation
 
 Please provide:
 1. Accurate identification of ALL food items visible in the image
-2. Estimated quantities based on visual assessment
-3. Detailed nutrition breakdown for EACH item:
-   - Calories (kcal)
-   - Protein (g)
-   - Carbohydrates (g)
-   - Fats (g)
-   - Fiber (g)
-   - Sugar (g)
-   - Sodium (mg)
-   - Key vitamins and minerals
-
-4. Total nutrition for the entire meal
+2. Estimated quantities based on visual assessment AND user input
+3. Detailed nutrition breakdown with RANGES for EACH item
+4. Total nutrition for the entire meal (considering user-specified quantity)
+5. If unhealthy (score < 70), provide 3-5 healthier Indian alternatives
 
 Return the response in this EXACT JSON format (no markdown, just pure JSON):
 {
@@ -51,48 +55,48 @@ Return the response in this EXACT JSON format (no markdown, just pure JSON):
     {
       "name": "Exact food name as seen in image",
       "description": "Brief description of what you see",
-      "quantity": "Estimated quantity (e.g., 2 pieces, 1 bowl, 150g)",
+      "quantity": "Quantity from user input or visual estimate (e.g., 3 pieces, 2 bowls)",
       "nutrition": {
-        "calories": 0,
-        "protein": 0,
-        "carbs": 0,
-        "fats": 0,
-        "fiber": 0,
-        "sugar": 0,
-        "sodium": 0,
-        "vitamins": {
-          "vitaminA": 0,
-          "vitaminC": 0,
-          "vitaminD": 0,
-          "vitaminB12": 0,
-          "iron": 0,
-          "calcium": 0
-        }
+        "calories": "250-300",
+        "protein": "15-18",
+        "carbs": "30-35",
+        "fats": "12-17",
+        "fiber": "3-5",
+        "sugar": "5-8",
+        "sodium": "400-500"
       }
     }
   ],
   "totalNutrition": {
-    "calories": 0,
-    "protein": 0,
-    "carbs": 0,
-    "fats": 0,
-    "fiber": 0,
-    "sugar": 0,
-    "sodium": 0,
-    "vitamins": {
-      "vitaminA": 0,
-      "vitaminC": 0,
-      "vitaminD": 0,
-      "vitaminB12": 0,
-      "iron": 0,
-      "calcium": 0
-    }
+    "calories": "750-900",
+    "protein": "45-54",
+    "carbs": "90-105",
+    "fats": "36-51",
+    "fiber": "9-15",
+    "sugar": "15-24",
+    "sodium": "1200-1500"
   },
   "analysis": "Brief analysis of the meal's nutritional value based on what you see in the image",
-  "recommendations": "Suggestions based on the actual food visible in the image"
+  "recommendations": "Suggestions based on the actual food visible in the image",
+  "alternatives": [
+    {
+      "name": "Healthier Indian alternative",
+      "description": "Why this is better",
+      "calories": "150-200",
+      "protein": "20-25",
+      "carbs": "20-25",
+      "fats": "5-8",
+      "benefits": "Key health benefits"
+    }
+  ]
 }
 
-IMPORTANT: Be accurate with food identification. If you see samosa, say samosa. If you see pizza, say pizza. Don't confuse different foods.`;
+IMPORTANT: 
+- Be accurate with food identification
+- Use RANGES for all nutrition values
+- Consider user-provided quantity in calculations
+- Provide alternatives ONLY if food is unhealthy (high calories, high fat, low nutrition)
+- If food is already healthy, return empty alternatives array`;
 
       const response = await axios.post(
         this.apiUrl,

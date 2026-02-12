@@ -639,13 +639,25 @@ exports.quickFoodCheck = async (req, res) => {
           const firstItem = imageAnalysis.data.foodItems?.[0] || {};
           const totalNutrition = imageAnalysis.data.totalNutrition || {};
           
-          // Calculate health score based on nutrition
-          const calories = totalNutrition.calories || 0;
-          const protein = totalNutrition.protein || 0;
-          const fiber = totalNutrition.fiber || 0;
-          const sugar = totalNutrition.sugar || 0;
-          const sodium = totalNutrition.sodium || 0;
+          // Helper function to parse range values (e.g., "250-300" -> 275)
+          const parseRange = (value) => {
+            if (typeof value === 'string' && value.includes('-')) {
+              const [min, max] = value.split('-').map(Number);
+              return Math.round((min + max) / 2);
+            }
+            return Number(value) || 0;
+          };
           
+          // Parse nutrition values
+          const calories = parseRange(totalNutrition.calories);
+          const protein = parseRange(totalNutrition.protein);
+          const carbs = parseRange(totalNutrition.carbs);
+          const fats = parseRange(totalNutrition.fats);
+          const fiber = parseRange(totalNutrition.fiber);
+          const sugar = parseRange(totalNutrition.sugar);
+          const sodium = parseRange(totalNutrition.sodium);
+          
+          // Calculate health score based on nutrition
           let healthScore = 70; // Base score
           if (calories > 500) healthScore -= 10;
           if (calories > 700) healthScore -= 10;
@@ -655,6 +667,22 @@ exports.quickFoodCheck = async (req, res) => {
           if (sodium > 500) healthScore -= 10;
           healthScore = Math.max(0, Math.min(100, healthScore));
           
+          // Transform alternatives from image analysis
+          const alternatives = Array.isArray(imageAnalysis.data.alternatives) 
+            ? imageAnalysis.data.alternatives.map(alt => ({
+                name: alt.name || '',
+                description: alt.description || '',
+                nutrition: {
+                  calories: parseRange(alt.calories),
+                  protein: parseRange(alt.protein),
+                  carbs: parseRange(alt.carbs),
+                  fats: parseRange(alt.fats),
+                  fiber: parseRange(alt.fiber || 0)
+                },
+                benefits: alt.benefits || ''
+              }))
+            : [];
+          
           analysis = {
             success: true,
             data: {
@@ -662,25 +690,27 @@ exports.quickFoodCheck = async (req, res) => {
                 name: firstItem.name || 'Food from image',
                 quantity: firstItem.quantity || 'See image',
                 nutrition: {
-                  calories: totalNutrition.calories || 0,
-                  protein: totalNutrition.protein || 0,
-                  carbs: totalNutrition.carbs || 0,
-                  fats: totalNutrition.fats || 0,
-                  fiber: totalNutrition.fiber || 0,
-                  sugar: totalNutrition.sugar || 0,
-                  sodium: totalNutrition.sodium || 0
+                  calories: calories,
+                  protein: protein,
+                  carbs: carbs,
+                  fats: fats,
+                  fiber: fiber,
+                  sugar: sugar,
+                  sodium: sodium
                 }
               },
               healthScore: healthScore,
               isHealthy: healthScore >= 70,
               analysis: imageAnalysis.data.analysis || 'Food analyzed from image',
-              warnings: [],
-              benefits: [],
-              alternatives: [] // Empty array for image analysis
+              warnings: healthScore < 70 ? ['High calorie content', 'Consider healthier alternatives'] : [],
+              benefits: healthScore >= 70 ? ['Good nutritional balance'] : [],
+              alternatives: alternatives
             }
           };
           
           console.log('Analysis transformed successfully');
+          console.log('Health score:', healthScore);
+          console.log('Alternatives count:', alternatives.length);
         }
       } catch (imageError) {
         console.error('Image analysis failed:', imageError.message);
