@@ -444,27 +444,26 @@ export default function Register() {
         
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="w-full max-w-md">
-            <button onClick={prevStep} className="flex items-center gap-2 mb-6" style={{ color: '#5C4F3D' }}>
+            <button onClick={prevStep} className="flex items-center gap-2 mb-6 text-cyan-700 hover:text-cyan-800">
               <ArrowLeft className="w-4 h-4" /> Back
             </button>
 
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-2" style={{ color: '#2C2416' }}>Health Profile</h2>
-              <p style={{ color: '#5C4F3D' }}>Step 2 of 4 - Your body metrics</p>
+              <h2 className="text-3xl font-bold mb-2 text-gray-900">Health Profile</h2>
+              <p className="text-cyan-700">Step 2 of 4 - Your body metrics</p>
             </div>
             
             <form onSubmit={(e) => { e.preventDefault(); nextStep(); }} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#2C2416' }}>Height (cm) *</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-900">Height (cm) *</label>
                   <div className="relative">
-                    <Ruler className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: '#5C4F3D' }} />
+                    <Ruler className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-600" />
                     <input
                       type="number"
                       value={formData.height}
                       onChange={(e) => setFormData({ ...formData, height: e.target.value })}
-                      className="w-full bg-white rounded-xl py-3 pl-12 pr-4 focus:outline-none"
-                      style={{ border: '1px solid #E5DFD3', color: '#2C2416' }}
+                      className="w-full bg-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
                       placeholder="170"
                       min="100"
                       max="250"
@@ -474,15 +473,14 @@ export default function Register() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#2C2416' }}>Weight (kg) *</label>
+                  <label className="block text-sm font-medium mb-2 text-gray-900">Weight (kg) *</label>
                   <div className="relative">
-                    <Scale className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: '#5C4F3D' }} />
+                    <Scale className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-600" />
                     <input
                       type="number"
                       value={formData.weight}
                       onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                      className="w-full bg-white rounded-xl py-3 pl-12 pr-4 focus:outline-none"
-                      style={{ border: '1px solid #E5DFD3', color: '#2C2416' }}
+                      className="w-full bg-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
                       placeholder="70"
                       min="30"
                       max="300"
@@ -494,14 +492,13 @@ export default function Register() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: '#2C2416' }}>Blood Group</label>
+                <label className="block text-sm font-medium mb-2 text-gray-900">Blood Group</label>
                 <div className="relative">
-                  <Droplet className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5" style={{ color: '#5C4F3D' }} />
+                  <Droplet className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-600" />
                   <select
                     value={formData.bloodGroup}
                     onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
-                    className="w-full bg-white rounded-xl py-3 pl-12 pr-4 focus:outline-none"
-                    style={{ border: '1px solid #E5DFD3', color: '#2C2416' }}
+                    className="w-full bg-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
                   >
                     <option value="">Select (Optional)</option>
                     <option value="A+">A+</option>
@@ -517,12 +514,11 @@ export default function Register() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: '#2C2416' }}>Dietary Preference *</label>
+                <label className="block text-sm font-medium mb-2 text-gray-900">Dietary Preference *</label>
                 <select
                   value={formData.dietaryPreference}
                   onChange={(e) => setFormData({ ...formData, dietaryPreference: e.target.value })}
-                  className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none"
-                  style={{ border: '1px solid #E5DFD3', color: '#2C2416' }}
+                  className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
                   required
                 >
                   <option value="non-vegetarian">Non-Vegetarian</option>
@@ -530,16 +526,15 @@ export default function Register() {
                   <option value="vegan">Vegan</option>
                   <option value="eggetarian">Eggetarian</option>
                 </select>
-                <p className="text-xs mt-1" style={{ color: '#5C4F3D' }}>This helps us recommend suitable diet plans</p>
+                <p className="text-xs mt-1 text-cyan-700">This helps us recommend suitable diet plans</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2" style={{ color: '#2C2416' }}>Activity Level *</label>
+                <label className="block text-sm font-medium mb-2 text-gray-900">Activity Level *</label>
                 <select
                   value={formData.activityLevel}
                   onChange={(e) => setFormData({ ...formData, activityLevel: e.target.value })}
-                  className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none"
-                  style={{ border: '1px solid #E5DFD3', color: '#2C2416' }}
+                  className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
                   required
                 >
                   <option value="sedentary">Sedentary (Little or no exercise)</option>
@@ -548,13 +543,12 @@ export default function Register() {
                   <option value="very_active">Very Active (6-7 days/week)</option>
                   <option value="extremely_active">Extremely Active (Athlete)</option>
                 </select>
-                <p className="text-xs mt-1" style={{ color: '#5C4F3D' }}>Used to calculate your daily calorie needs</p>
+                <p className="text-xs mt-1 text-cyan-700">Used to calculate your daily calorie needs</p>
               </div>
             
               <button 
                 type="submit"
-                className="w-full py-3 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                style={{ backgroundColor: '#8B7355' }}
+                className="w-full py-3 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
               >
                 Continue <ArrowRight className="w-5 h-5" />
               </button>
