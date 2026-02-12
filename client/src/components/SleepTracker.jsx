@@ -223,8 +223,8 @@ export default function SleepTracker({ isOpen, onClose }) {
 
           {/* Bar Graph for Sleep Hours */}
           <div className="mt-4 pt-4 border-t border-slate-700/50">
-            <p className="text-xs text-slate-400 mb-2 font-medium">Weekly Sleep Pattern</p>
-            <div className="flex items-end justify-between gap-1.5 h-20">
+            <p className="text-xs text-slate-400 mb-3 font-medium">Weekly Sleep Pattern</p>
+            <div className="flex items-end justify-between gap-1 sm:gap-1.5 h-20">
               {weekDays.map((day, index) => {
                 const dayRecord = sleepHistory.find(r => 
                   new Date(r.date).toDateString() === day.toDateString()
@@ -234,13 +234,17 @@ export default function SleepTracker({ isOpen, onClose }) {
                 
                 return (
                   <div key={index} className="flex-1 flex flex-col items-center gap-1">
-                    <div className="w-full bg-slate-800 rounded-t-lg overflow-hidden relative h-full">
-                      <div 
-                        className="absolute bottom-0 w-full bg-gradient-to-t from-orange-500 to-orange-400 rounded-t-lg transition-all duration-500"
-                        style={{ height: heightPercent > 0 ? `${heightPercent}%` : '0%' }}
-                      />
+                    <div className="w-full bg-slate-800 rounded-t-lg overflow-hidden relative h-full min-w-[8px]">
+                      {heightPercent > 0 && (
+                        <div 
+                          className="absolute bottom-0 w-full bg-gradient-to-t from-orange-500 to-orange-400 rounded-t-lg transition-all duration-500 ease-out"
+                          style={{ height: `${heightPercent}%` }}
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-t from-transparent to-white/20" />
+                        </div>
+                      )}
                     </div>
-                    <span className="text-[10px] text-slate-500">
+                    <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium">
                       {day.toLocaleDateString('en-US', { weekday: 'short' })[0]}
                     </span>
                   </div>
@@ -256,13 +260,13 @@ export default function SleepTracker({ isOpen, onClose }) {
         </div>
 
         {/* Main Sleep Display */}
-        <div className="p-6">
+        <div className="p-4 sm:p-6">
           {/* Quality Circle & Time */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row items-center sm:items-center justify-between gap-4 sm:gap-0 mb-6">
             {/* Quality Circle */}
-            <div className="relative w-32 h-32">
+            <div className="relative w-28 h-28 sm:w-32 sm:h-32">
               <svg className="w-full h-full transform -rotate-90">
-                <circle cx="64" cy="64" r="56" stroke="#1e293b" strokeWidth="12" fill="none" />
+                <circle cx="64" cy="64" r="56" stroke="#1e293b" strokeWidth="12" fill="none" className="scale-[0.875] sm:scale-100 origin-center" />
                 <circle 
                   cx="64" 
                   cy="64" 
@@ -272,7 +276,7 @@ export default function SleepTracker({ isOpen, onClose }) {
                   fill="none"
                   strokeDasharray={`${(todaySleep?.quality || 0) * 3.51} 351`}
                   strokeLinecap="round"
-                  className="transition-all duration-1000"
+                  className="transition-all duration-1000 scale-[0.875] sm:scale-100 origin-center"
                 />
                 <defs>
                   <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -282,21 +286,21 @@ export default function SleepTracker({ isOpen, onClose }) {
                 </defs>
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-3xl font-bold text-white">{todaySleep?.quality || 0}%</span>
+                <span className="text-2xl sm:text-3xl font-bold text-white">{todaySleep?.quality || 0}%</span>
                 <span className="text-xs text-slate-400">Quality</span>
               </div>
             </div>
 
             {/* Time Stats */}
-            <div className="flex-1 ml-6 space-y-3">
+            <div className="flex-1 sm:ml-6 text-center sm:text-left">
               <div>
-                <div className="flex items-center justify-between">
-                  <span className="text-2xl font-bold text-white">
+                <div className="flex flex-col sm:flex-row items-center sm:items-center sm:justify-between">
+                  <span className="text-3xl sm:text-2xl font-bold text-white">
                     {isTracking ? `${currentHours}h ${currentMinutes}m` : 
                      todaySleep ? `${todaySleep.hours}h ${todaySleep.minutes}m` : '0h 0m'}
                   </span>
                 </div>
-                <p className="text-sm text-slate-400">Time in bed</p>
+                <p className="text-sm text-slate-400 mt-1">Time in bed</p>
               </div>
             </div>
           </div>
@@ -340,8 +344,8 @@ export default function SleepTracker({ isOpen, onClose }) {
                       type="number"
                       value={editHours}
                       onChange={(e) => setEditHours(e.target.value)}
-                      placeholder="Hours"
-                      className="w-full px-4 py-3 bg-slate-900 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="0"
+                      className="w-full px-4 py-3 bg-slate-700 text-white placeholder-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center text-lg font-semibold"
                       min="0"
                       max="24"
                     />
@@ -352,8 +356,8 @@ export default function SleepTracker({ isOpen, onClose }) {
                       type="number"
                       value={editMinutes}
                       onChange={(e) => setEditMinutes(e.target.value)}
-                      placeholder="Minutes"
-                      className="w-full px-4 py-3 bg-slate-900 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                      placeholder="0"
+                      className="w-full px-4 py-3 bg-slate-700 text-white placeholder-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center text-lg font-semibold"
                       min="0"
                       max="59"
                     />
