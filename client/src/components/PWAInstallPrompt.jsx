@@ -6,26 +6,12 @@ export default function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
-  const [isDismissed, setIsDismissed] = useState(false);
 
   useEffect(() => {
     // Check if app is already installed
     if (window.matchMedia('(display-mode: standalone)').matches) {
       setIsInstalled(true);
       return;
-    }
-
-    // Check if user dismissed it before
-    const dismissed = localStorage.getItem('pwa_install_dismissed');
-    if (dismissed) {
-      const dismissedTime = parseInt(dismissed);
-      const daysSinceDismissed = (Date.now() - dismissedTime) / (1000 * 60 * 60 * 24);
-      
-      // Show again after 3 days
-      if (daysSinceDismissed < 3) {
-        setIsDismissed(true);
-        return;
-      }
     }
 
     // Listen for beforeinstallprompt event
@@ -49,7 +35,6 @@ export default function PWAInstallPrompt() {
       setIsInstalled(true);
       setShowPrompt(false);
       setDeferredPrompt(null);
-      localStorage.removeItem('pwa_install_dismissed');
       toast.success('🎉 FitCure app installed successfully!');
     };
 
@@ -62,6 +47,17 @@ export default function PWAInstallPrompt() {
     };
   }, []);
 
+  // Show prompt every 2 minutes if dismissed
+  useEffect(() => {
+    if (!deferredPrompt || isInstalled) return;
+
+    const interval = setInterval(() => {
+      setShowPrompt(true);
+    }, 2 * 60 * 1000); // 2 minutes in milliseconds
+
+    return () => clearInterval(interval);
+  }, [deferredPrompt, isInstalled]);
+
   const handleInstall = async () => {
     if (!deferredPrompt) return;
 
@@ -70,7 +66,6 @@ export default function PWAInstallPrompt() {
     
     if (outcome === 'accepted') {
       toast.success('Installing FitCure app...');
-      localStorage.removeItem('pwa_install_dismissed');
     } else {
       toast('You can install later from browser menu', { icon: '💡' });
     }
@@ -81,10 +76,14 @@ export default function PWAInstallPrompt() {
 
   const handleDismiss = () => {
     setShowPrompt(false);
-    localStorage.setItem('pwa_install_dismissed', Date.now().toString());
+    // Don't save to localStorage - let it show again after 2 minutes
+    toast('Install prompt will appear again in 2 minutes', { 
+      icon: '⏰',
+      duration: 3000 
+    });
   };
 
-  if (isInstalled || !showPrompt || !deferredPrompt || isDismissed) {
+  if (isInstalled || !showPrompt || !deferredPrompt) {
     return null;
   }
 
