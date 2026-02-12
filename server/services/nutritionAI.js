@@ -19,84 +19,70 @@ class NutritionAI {
    */
   async analyzeFromImage(imageBase64, additionalContext = '') {
     try {
-      const prompt = `You are a professional nutritionist AI with expertise in food recognition. Carefully analyze this food image and provide accurate identification and nutrition breakdown.
+      const prompt = `You are a professional nutritionist AI with expertise in Indian food recognition and accurate nutrition data. Carefully analyze this food image.
 
 ${additionalContext ? `User provided context: ${additionalContext}` : ''}
 
-CRITICAL INSTRUCTIONS:
+CRITICAL INSTRUCTIONS FOR ACCURACY:
 1. LOOK AT THE IMAGE CAREFULLY - Identify the EXACT food items visible
-2. DO NOT guess or assume - Only identify what you can clearly see
-3. If the image shows samosa, say "Samosa" - not paneer butter masala or anything else
-4. If the image shows pizza, say "Pizza" - be specific about toppings if visible
-5. PAY ATTENTION TO QUANTITY - If user says "3 pieces", calculate nutrition for 3 pieces, not 1
-6. Provide RANGES for nutrition values (e.g., "250-300" not "275") to account for variations
-7. If health score is below 70, MUST provide 3-5 healthier alternatives
+2. USE ACCURATE INDIAN FOOD NUTRITION DATA:
+   - Plain roti/chapati (1 medium): 70-80 kcal, 2-3g protein, 14-15g carbs, 0.5-1g fat
+   - Samosa (1 medium): 250-300 kcal, 5-7g protein, 30-35g carbs, 12-17g fat
+   - Rice (1 cup cooked): 200-240 kcal, 4-5g protein, 45-50g carbs, 0.5-1g fat
+3. PAY ATTENTION TO QUANTITY - If user says "3 pieces", multiply nutrition by 3
+4. ALWAYS provide RANGES (e.g., "210-240" not "225")
+5. DO NOT OVERESTIMATE - Plain roti is low calorie, don't confuse with paratha
 
 QUANTITY HANDLING:
-- If user mentions quantity (e.g., "3 pieces", "2 bowls"), multiply nutrition by that amount
-- If no quantity mentioned, assume standard serving size
-- Be explicit about the quantity in your response
+- If user mentions "3 pieces", calculate for 3 pieces
+- Example: 3 plain rotis = 210-240 kcal (NOT 720 kcal)
+- Example: 3 samosas = 750-900 kcal
 
-NUTRITION VALUE FORMAT:
-- Use RANGES for all values: "250-300" not "275"
-- Format: calories: "250-300", protein: "15-18", carbs: "30-35"
-- This accounts for natural variations in food preparation
+NUTRITION VALUE FORMAT - MANDATORY RANGES:
+- ALWAYS use ranges: "210-240" never single values
+- Format: "calories": "210-240", "protein": "6-9", "carbs": "42-45"
+- This is REQUIRED for all nutrition values
 
-Please provide:
-1. Accurate identification of ALL food items visible in the image
-2. Estimated quantities based on visual assessment AND user input
-3. Detailed nutrition breakdown with RANGES for EACH item
-4. Total nutrition for the entire meal (considering user-specified quantity)
-5. If unhealthy (score < 70), provide 3-5 healthier Indian alternatives
+COMMON INDIAN FOODS (per piece/serving):
+- Plain roti: 70-80 kcal, 2-3g protein, 14-15g carbs, 0.5-1g fat
+- Paratha (with oil): 150-200 kcal, 3-4g protein, 20-25g carbs, 7-10g fat
+- Samosa: 250-300 kcal, 5-7g protein, 30-35g carbs, 12-17g fat
+- Idli (2 pieces): 80-100 kcal, 3-4g protein, 16-20g carbs, 0.5-1g fat
+- Dosa (1 plain): 120-150 kcal, 3-4g protein, 22-28g carbs, 2-4g fat
 
-Return the response in this EXACT JSON format (no markdown, just pure JSON):
+Return response in EXACT JSON format (no markdown):
 {
   "foodItems": [
     {
-      "name": "Exact food name as seen in image",
-      "description": "Brief description of what you see",
-      "quantity": "Quantity from user input or visual estimate (e.g., 3 pieces, 2 bowls)",
+      "name": "Exact food name",
+      "description": "What you see",
+      "quantity": "User quantity or visual estimate",
       "nutrition": {
-        "calories": "250-300",
-        "protein": "15-18",
-        "carbs": "30-35",
-        "fats": "12-17",
-        "fiber": "3-5",
-        "sugar": "5-8",
-        "sodium": "400-500"
+        "calories": "210-240",
+        "protein": "6-9",
+        "carbs": "42-45",
+        "fats": "1.5-3",
+        "fiber": "6-9",
+        "sugar": "0-1",
+        "sodium": "0-10"
       }
     }
   ],
   "totalNutrition": {
-    "calories": "750-900",
-    "protein": "45-54",
-    "carbs": "90-105",
-    "fats": "36-51",
-    "fiber": "9-15",
-    "sugar": "15-24",
-    "sodium": "1200-1500"
+    "calories": "210-240",
+    "protein": "6-9",
+    "carbs": "42-45",
+    "fats": "1.5-3",
+    "fiber": "6-9",
+    "sugar": "0-1",
+    "sodium": "0-10"
   },
-  "analysis": "Brief analysis of the meal's nutritional value based on what you see in the image",
-  "recommendations": "Suggestions based on the actual food visible in the image",
-  "alternatives": [
-    {
-      "name": "Healthier Indian alternative",
-      "description": "Why this is better",
-      "calories": "150-200",
-      "protein": "20-25",
-      "carbs": "20-25",
-      "fats": "5-8",
-      "benefits": "Key health benefits"
-    }
-  ]
+  "analysis": "Brief analysis",
+  "recommendations": "Suggestions",
+  "alternatives": []
 }
 
-IMPORTANT: 
-- Be accurate with food identification
-- Use RANGES for all nutrition values
-- Consider user-provided quantity in calculations
-- Provide alternatives ONLY if food is unhealthy (high calories, high fat, low nutrition)
-- If food is already healthy, return empty alternatives array`;
+CRITICAL: Use accurate Indian food nutrition data. Plain roti is LOW calorie (70-80 each), not high!`;
 
       const response = await axios.post(
         this.apiUrl,

@@ -648,7 +648,15 @@ exports.quickFoodCheck = async (req, res) => {
             return Number(value) || 0;
           };
           
-          // Parse nutrition values
+          // Helper to format range for display
+          const formatRange = (value) => {
+            if (typeof value === 'string' && value.includes('-')) {
+              return value; // Keep as range string
+            }
+            return String(value);
+          };
+          
+          // Parse nutrition values for calculations
           const calories = parseRange(totalNutrition.calories);
           const protein = parseRange(totalNutrition.protein);
           const carbs = parseRange(totalNutrition.carbs);
@@ -683,6 +691,7 @@ exports.quickFoodCheck = async (req, res) => {
               }))
             : [];
           
+          // Create analysis with both numeric and range values
           analysis = {
             success: true,
             data: {
@@ -697,6 +706,16 @@ exports.quickFoodCheck = async (req, res) => {
                   fiber: fiber,
                   sugar: sugar,
                   sodium: sodium
+                },
+                // Store range strings for display
+                nutritionRanges: {
+                  calories: formatRange(totalNutrition.calories),
+                  protein: formatRange(totalNutrition.protein),
+                  carbs: formatRange(totalNutrition.carbs),
+                  fats: formatRange(totalNutrition.fats),
+                  fiber: formatRange(totalNutrition.fiber),
+                  sugar: formatRange(totalNutrition.sugar),
+                  sodium: formatRange(totalNutrition.sodium)
                 }
               },
               healthScore: healthScore,
@@ -710,6 +729,7 @@ exports.quickFoodCheck = async (req, res) => {
           
           console.log('Analysis transformed successfully');
           console.log('Health score:', healthScore);
+          console.log('Nutrition ranges:', analysis.data.foodItem.nutritionRanges);
           console.log('Alternatives count:', alternatives.length);
         }
       } catch (imageError) {

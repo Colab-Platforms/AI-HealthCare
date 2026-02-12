@@ -537,22 +537,31 @@ export default function QuickFoodCheck() {
             <div className="bg-white rounded-2xl p-4 border-2 border-orange-100 text-center">
               <Flame className="w-6 h-6 text-orange-500 mx-auto mb-2" />
               <p className="text-xs text-gray-600 font-medium">Calories</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{result.foodItem?.nutrition?.calories || 0}</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">
+                {result.foodItem?.nutritionRanges?.calories || result.foodItem?.nutrition?.calories || 0}
+              </p>
+              {result.foodItem?.nutritionRanges?.calories && <p className="text-xs text-gray-500">kcal</p>}
             </div>
             <div className="bg-white rounded-2xl p-4 border-2 border-red-100 text-center">
               <Heart className="w-6 h-6 text-red-500 mx-auto mb-2" />
               <p className="text-xs text-gray-600 font-medium">Protein</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{result.foodItem?.nutrition?.protein || 0}g</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">
+                {result.foodItem?.nutritionRanges?.protein || result.foodItem?.nutrition?.protein || 0}g
+              </p>
             </div>
             <div className="bg-white rounded-2xl p-4 border-2 border-yellow-100 text-center">
               <Zap className="w-6 h-6 text-yellow-500 mx-auto mb-2" />
               <p className="text-xs text-gray-600 font-medium">Carbs</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{result.foodItem?.nutrition?.carbs || 0}g</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">
+                {result.foodItem?.nutritionRanges?.carbs || result.foodItem?.nutrition?.carbs || 0}g
+              </p>
             </div>
             <div className="bg-white rounded-2xl p-4 border-2 border-blue-100 text-center">
               <Lightbulb className="w-6 h-6 text-blue-500 mx-auto mb-2" />
               <p className="text-xs text-gray-600 font-medium">Fats</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">{result.foodItem?.nutrition?.fats || 0}g</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">
+                {result.foodItem?.nutritionRanges?.fats || result.foodItem?.nutrition?.fats || 0}g
+              </p>
             </div>
           </div>
 
