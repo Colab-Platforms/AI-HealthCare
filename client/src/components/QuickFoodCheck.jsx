@@ -117,8 +117,17 @@ export default function QuickFoodCheck() {
   };
 
   const handleImageSelect = (e) => {
+    e.preventDefault(); // Prevent form submission/page refresh
+    e.stopPropagation(); // Stop event bubbling
+    
     const file = e.target.files[0];
     if (file) {
+      // Validate file size (max 3MB)
+      if (file.size > 3 * 1024 * 1024) {
+        toast.error('Image too large. Please use a smaller image (max 3MB)');
+        return;
+      }
+      
       setImage(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -127,6 +136,9 @@ export default function QuickFoodCheck() {
       };
       reader.readAsDataURL(file);
     }
+    
+    // Reset the input value so the same file can be selected again
+    e.target.value = '';
   };
 
   const handleQuickCheck = async () => {
@@ -709,23 +721,36 @@ export default function QuickFoodCheck() {
 
       {/* Camera/Gallery Modal */}
       {showCameraModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+        <div 
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
+          onClick={(e) => {
+            // Close modal when clicking backdrop
+            if (e.target === e.currentTarget) {
+              setShowCameraModal(false);
+            }
+          }}
+        >
           <div className="bg-white rounded-3xl p-6 max-w-sm w-full animate-in fade-in slide-in-from-bottom-4">
             <h3 className="text-xl font-bold text-gray-900 mb-4">Choose Image Source</h3>
             <div className="space-y-3">
               {/* Camera Option */}
-              <label className="block">
+              <label className="block cursor-pointer">
                 <input
                   type="file"
                   accept="image/*"
                   capture="environment"
                   onChange={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     handleImageSelect(e);
                     setShowCameraModal(false);
                   }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
                   className="hidden"
                 />
-                <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-cyan-50 to-blue-50 border-2 border-cyan-200 rounded-2xl cursor-pointer hover:border-cyan-400 transition-all">
+                <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-cyan-50 to-blue-50 border-2 border-cyan-200 rounded-2xl hover:border-cyan-400 transition-all">
                   <div className="w-12 h-12 bg-cyan-500 rounded-xl flex items-center justify-center">
                     <Camera className="w-6 h-6 text-white" />
                   </div>
@@ -737,17 +762,22 @@ export default function QuickFoodCheck() {
               </label>
 
               {/* Gallery Option */}
-              <label className="block">
+              <label className="block cursor-pointer">
                 <input
                   type="file"
                   accept="image/*"
                   onChange={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
                     handleImageSelect(e);
                     setShowCameraModal(false);
                   }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
                   className="hidden"
                 />
-                <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl cursor-pointer hover:border-purple-400 transition-all">
+                <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl hover:border-purple-400 transition-all">
                   <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center">
                     <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
@@ -763,7 +793,11 @@ export default function QuickFoodCheck() {
 
             {/* Cancel Button */}
             <button
-              onClick={() => setShowCameraModal(false)}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowCameraModal(false);
+              }}
               className="w-full mt-4 py-3 bg-gray-200 text-gray-900 rounded-2xl font-bold hover:bg-gray-300 transition-all"
             >
               Cancel
