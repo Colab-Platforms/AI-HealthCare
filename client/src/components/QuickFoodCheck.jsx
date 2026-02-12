@@ -726,16 +726,39 @@ export default function QuickFoodCheck() {
           onClick={(e) => {
             // Close modal when clicking backdrop
             if (e.target === e.currentTarget) {
+              e.preventDefault();
+              e.stopPropagation();
               setShowCameraModal(false);
             }
           }}
+          onTouchStart={(e) => {
+            // Prevent any touch events from bubbling
+            if (e.target === e.currentTarget) {
+              e.stopPropagation();
+            }
+          }}
         >
-          <div className="bg-white rounded-3xl p-6 max-w-sm w-full animate-in fade-in slide-in-from-bottom-4">
+          <div 
+            className="bg-white rounded-3xl p-6 max-w-sm w-full animate-in fade-in slide-in-from-bottom-4"
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+          >
             <h3 className="text-xl font-bold text-gray-900 mb-4">Choose Image Source</h3>
             <div className="space-y-3">
               {/* Camera Option */}
-              <label className="block cursor-pointer">
+              <div 
+                className="cursor-pointer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  // Trigger file input click
+                  const input = document.getElementById('camera-input');
+                  if (input) input.click();
+                }}
+              >
                 <input
+                  id="camera-input"
                   type="file"
                   accept="image/*"
                   capture="environment"
@@ -749,6 +772,7 @@ export default function QuickFoodCheck() {
                     e.stopPropagation();
                   }}
                   className="hidden"
+                  style={{ display: 'none' }}
                 />
                 <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-cyan-50 to-blue-50 border-2 border-cyan-200 rounded-2xl hover:border-cyan-400 transition-all">
                   <div className="w-12 h-12 bg-cyan-500 rounded-xl flex items-center justify-center">
@@ -759,11 +783,21 @@ export default function QuickFoodCheck() {
                     <p className="text-sm text-gray-600">Use camera to capture food</p>
                   </div>
                 </div>
-              </label>
+              </div>
 
               {/* Gallery Option */}
-              <label className="block cursor-pointer">
+              <div 
+                className="cursor-pointer"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  // Trigger file input click
+                  const input = document.getElementById('gallery-input');
+                  if (input) input.click();
+                }}
+              >
                 <input
+                  id="gallery-input"
                   type="file"
                   accept="image/*"
                   onChange={(e) => {
@@ -776,6 +810,7 @@ export default function QuickFoodCheck() {
                     e.stopPropagation();
                   }}
                   className="hidden"
+                  style={{ display: 'none' }}
                 />
                 <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl hover:border-purple-400 transition-all">
                   <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center">
@@ -788,11 +823,12 @@ export default function QuickFoodCheck() {
                     <p className="text-sm text-gray-600">Select existing photo</p>
                   </div>
                 </div>
-              </label>
+              </div>
             </div>
 
             {/* Cancel Button */}
             <button
+              type="button"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
