@@ -220,6 +220,39 @@ export default function SleepTracker({ isOpen, onClose }) {
               );
             })}
           </div>
+
+          {/* Bar Graph for Sleep Hours */}
+          <div className="mt-4 pt-4 border-t border-slate-700/50">
+            <p className="text-xs text-slate-400 mb-2 font-medium">Weekly Sleep Pattern</p>
+            <div className="flex items-end justify-between gap-1.5 h-20">
+              {weekDays.map((day, index) => {
+                const dayRecord = sleepHistory.find(r => 
+                  new Date(r.date).toDateString() === day.toDateString()
+                );
+                const hours = dayRecord?.hours || 0;
+                const heightPercent = Math.min((hours / 10) * 100, 100);
+                
+                return (
+                  <div key={index} className="flex-1 flex flex-col items-center gap-1">
+                    <div className="w-full bg-slate-800 rounded-t-lg overflow-hidden relative h-full">
+                      <div 
+                        className="absolute bottom-0 w-full bg-gradient-to-t from-orange-500 to-orange-400 rounded-t-lg transition-all duration-500"
+                        style={{ height: heightPercent > 0 ? `${heightPercent}%` : '0%' }}
+                      />
+                    </div>
+                    <span className="text-[10px] text-slate-500">
+                      {day.toLocaleDateString('en-US', { weekday: 'short' })[0]}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+            {sleepHistory.length === 0 && (
+              <p className="text-xs text-slate-500 text-center mt-3">
+                📊 Add sleep data to see your weekly pattern
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Main Sleep Display */}
