@@ -609,7 +609,45 @@ exports.quickFoodCheck = async (req, res) => {
     
     // Get AI analysis
     if (imageBase64) {
-      analysis = await nutritionAI.analyzeFromImage(imageBase64, additionalContext || foodDescription || 'Food from image');
+      try {
+        // Use image analysis
+        const imageAnalysis = await nutritionAI.analyzeFromImage(imageBase64, additionalContext || foodDescription || 'Food from image');
+        
+        // Transform image analysis to match quickFoodCheck format
+        if (imageAnalysis.success && imageAnalysis.data) {
+          const firstItem = imageAnalysis.data.foodItems?.[0] || {};
+          const totalNutrition = imageAnalysis.data.totalNutrition || {};
+          
+          analysis = {
+            success: true,
+            data: {
+              foodItem: {
+                name: firstItem.name || 'Food from image',
+                quantity: firstItem.quantity || 'See image',
+                nutrition: {
+                  calories: totalNutrition.calories || 0,
+                  protein: totalNutrition.protein || 0,
+                  carbs: totalNutrition.carbs || 0,
+                  fats: totalNutrition.fats || 0,
+                  fiber: totalNutrition.fiber || 0,
+                  sugar: totalNutrition.sugar || 0,
+                  sodium: totalNutrition.sodium || 0
+                }
+              },
+              healthScore: totalNutrition.calories > 500 ? 60 : 75,
+              isHealthy: totalNutrition.calories < 500,
+              analysis: imageAnalysis.data.analysis || 'Food analyzed from image',
+              warnings: [],
+              benefits: [],
+              alternatives: imageAnalysis.data.recommendations ? [imageAnalysis.data.recommendations] : []
+            }
+          };
+        }
+      } catch (imageError) {
+        console.error('Image analysis failed, falling back to text:', imageError.message);
+        // Fallback to text analysis if image fails
+        analysis = await nutritionAI.quickFoodCheck(additionalContext || foodDescription || 'Food from image');
+      }
     } else {
       analysis = await nutritionAI.quickFoodCheck(foodDescription);
     }
