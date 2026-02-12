@@ -164,9 +164,9 @@ export default function SleepTracker({ isOpen, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl w-full max-w-md max-h-[90vh] overflow-y-auto overflow-x-hidden shadow-2xl border border-slate-700">
+      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl border border-slate-700">
         {/* Header */}
-        <div className="sticky top-0 bg-slate-900/95 backdrop-blur-sm p-4 border-b border-slate-700 flex items-center justify-between">
+        <div className="flex-shrink-0 bg-slate-900/95 backdrop-blur-sm p-4 border-b border-slate-700 flex items-center justify-between rounded-t-3xl">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
               <Moon className="w-5 h-5 text-white" />
@@ -180,6 +180,9 @@ export default function SleepTracker({ isOpen, onClose }) {
             <X className="w-5 h-5 text-slate-400" />
           </button>
         </div>
+
+        {/* Scrollable Content */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden"
 
         {/* Date & Week View */}
         <div className="p-3 sm:p-4 border-b border-slate-700">
@@ -260,13 +263,25 @@ export default function SleepTracker({ isOpen, onClose }) {
         </div>
 
         {/* Main Sleep Display */}
-        <div className="p-4 sm:p-6">
+        <div className="p-3 sm:p-6">
           {/* Quality Circle & Time */}
-          <div className="flex flex-col sm:flex-row items-center sm:items-center justify-between gap-4 sm:gap-0 mb-6">
+          <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
             {/* Quality Circle */}
-            <div className="relative w-28 h-28 sm:w-32 sm:h-32">
+            <div className="relative w-24 h-24 sm:w-32 sm:h-32 flex-shrink-0">
               <svg className="w-full h-full transform -rotate-90">
-                <circle cx="64" cy="64" r="56" stroke="#1e293b" strokeWidth="12" fill="none" className="scale-[0.875] sm:scale-100 origin-center" />
+                <circle cx="48" cy="48" r="42" stroke="#1e293b" strokeWidth="10" fill="none" className="sm:hidden" />
+                <circle cx="64" cy="64" r="56" stroke="#1e293b" strokeWidth="12" fill="none" className="hidden sm:block" />
+                <circle 
+                  cx="48" 
+                  cy="48" 
+                  r="42" 
+                  stroke="url(#gradient)" 
+                  strokeWidth="10" 
+                  fill="none"
+                  strokeDasharray={`${(todaySleep?.quality || 0) * 2.64} 264`}
+                  strokeLinecap="round"
+                  className="transition-all duration-1000 sm:hidden"
+                />
                 <circle 
                   cx="64" 
                   cy="64" 
@@ -276,7 +291,7 @@ export default function SleepTracker({ isOpen, onClose }) {
                   fill="none"
                   strokeDasharray={`${(todaySleep?.quality || 0) * 3.51} 351`}
                   strokeLinecap="round"
-                  className="transition-all duration-1000 scale-[0.875] sm:scale-100 origin-center"
+                  className="transition-all duration-1000 hidden sm:block"
                 />
                 <defs>
                   <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -292,14 +307,12 @@ export default function SleepTracker({ isOpen, onClose }) {
             </div>
 
             {/* Time Stats */}
-            <div className="flex-1 sm:ml-6 text-center sm:text-left">
-              <div>
-                <div className="flex flex-col sm:flex-row items-center sm:items-center sm:justify-between">
-                  <span className="text-3xl sm:text-2xl font-bold text-white">
-                    {isTracking ? `${currentHours}h ${currentMinutes}m` : 
-                     todaySleep ? `${todaySleep.hours}h ${todaySleep.minutes}m` : '0h 0m'}
-                  </span>
-                </div>
+            <div className="flex-1 min-w-0">
+              <div className="text-center sm:text-left">
+                <span className="text-2xl sm:text-3xl font-bold text-white block">
+                  {isTracking ? `${currentHours}h ${currentMinutes}m` : 
+                   todaySleep ? `${todaySleep.hours}h ${todaySleep.minutes}m` : '0h 0m'}
+                </span>
                 <p className="text-sm text-slate-400 mt-1">Time in bed</p>
               </div>
             </div>
@@ -307,30 +320,30 @@ export default function SleepTracker({ isOpen, onClose }) {
 
           {/* Control Buttons */}
           {!editMode ? (
-            <div className="space-y-2 sm:space-y-3">
+            <div className="space-y-2">
               {!isTracking ? (
-                <>
+                <div className="flex gap-2">
                   <button
                     onClick={startSleep}
-                    className="w-full py-3 sm:py-4 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl sm:rounded-2xl font-semibold flex items-center justify-center gap-2 transition shadow-lg text-sm sm:text-base"
+                    className="flex-1 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-semibold flex items-center justify-center gap-1.5 transition shadow-lg text-xs"
                   >
-                    <Play className="w-4 h-4 sm:w-5 sm:h-5" />
-                    Start Sleep Tracking
+                    <Play className="w-3.5 h-3.5" />
+                    Start Sleep
                   </button>
                   <button
                     onClick={() => setEditMode(true)}
-                    className="w-full py-2.5 sm:py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-xl sm:rounded-2xl font-medium flex items-center justify-center gap-2 transition text-sm sm:text-base"
+                    className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-medium flex items-center justify-center gap-1.5 transition text-xs"
                   >
-                    <Edit2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                    <Edit2 className="w-3.5 h-3.5" />
                     Manual Edit
                   </button>
-                </>
+                </div>
               ) : (
                 <button
                   onClick={stopSleep}
-                  className="w-full py-3 sm:py-4 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white rounded-xl sm:rounded-2xl font-semibold flex items-center justify-center gap-2 transition shadow-lg animate-pulse text-sm sm:text-base"
+                  className="w-full py-3 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition shadow-lg animate-pulse text-sm"
                 >
-                  <Pause className="w-4 h-4 sm:w-5 sm:h-5" />
+                  <Pause className="w-4 h-4" />
                   Stop & Save Sleep
                 </button>
               )}
@@ -413,6 +426,7 @@ export default function SleepTracker({ isOpen, onClose }) {
               </div>
             </div>
           )}
+        </div>
         </div>
       </div>
     </div>
