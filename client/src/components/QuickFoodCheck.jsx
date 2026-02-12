@@ -228,20 +228,26 @@ export default function QuickFoodCheck() {
               type="text"
               value={foodInput}
               onChange={handleFoodInputChange}
-              placeholder="What did you eat? e.g., Pizza, Chicken..."
+              placeholder="What did you eat? e.g., Pizza, Chicken... or upload image"
               className="w-full px-5 py-4 pr-14 bg-white border-2 border-blue-200 rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-900 placeholder-gray-500 font-medium transition-all"
             />
-            {/* Camera Icon - Disabled */}
+            {/* Camera Icon - Now Active */}
             <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-              <div className="relative group">
-                <div className="p-2 text-gray-300 cursor-not-allowed opacity-50">
+              <label className="relative group cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageSelect}
+                  className="hidden"
+                />
+                <div className="p-2 text-cyan-600 hover:bg-cyan-50 rounded-lg transition">
                   <Camera className="w-5 h-5" />
                 </div>
                 {/* Tooltip */}
-                <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none">
-                  Coming soon
+                <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                  Upload food image
                 </div>
-              </div>
+              </label>
               {foodInput && (
                 <button
                   onClick={() => {
@@ -256,6 +262,37 @@ export default function QuickFoodCheck() {
               )}
             </div>
           </div>
+
+          {/* Image Preview */}
+          {imagePreview && (
+            <div className="relative bg-white border-2 border-cyan-200 rounded-2xl p-4 animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-start gap-4">
+                <img 
+                  src={imagePreview} 
+                  alt="Food preview" 
+                  className="w-24 h-24 object-cover rounded-xl border-2 border-cyan-300"
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold text-cyan-900 mb-1">📸 Image Ready</p>
+                  <p className="text-xs text-cyan-700">AI will analyze this food image</p>
+                  {foodInput && (
+                    <p className="text-xs text-gray-600 mt-2">
+                      💡 Your text will be used as additional context
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={() => {
+                    setImage(null);
+                    setImagePreview(null);
+                  }}
+                  className="p-2 hover:bg-red-50 rounded-lg transition text-red-500"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Quantity Suggestion */}
           {showQuantitySuggestion && (
