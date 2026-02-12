@@ -182,7 +182,7 @@ export default function SleepTracker({ isOpen, onClose }) {
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto overflow-x-hidden"
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
 
         {/* Date & Week View */}
         <div className="p-3 sm:p-4 border-b border-slate-700">
