@@ -635,6 +635,22 @@ exports.quickFoodCheck = async (req, res) => {
           const firstItem = imageAnalysis.data.foodItems?.[0] || {};
           const totalNutrition = imageAnalysis.data.totalNutrition || {};
           
+          // Calculate health score based on nutrition
+          const calories = totalNutrition.calories || 0;
+          const protein = totalNutrition.protein || 0;
+          const fiber = totalNutrition.fiber || 0;
+          const sugar = totalNutrition.sugar || 0;
+          const sodium = totalNutrition.sodium || 0;
+          
+          let healthScore = 70; // Base score
+          if (calories > 500) healthScore -= 10;
+          if (calories > 700) healthScore -= 10;
+          if (protein > 15) healthScore += 10;
+          if (fiber > 5) healthScore += 10;
+          if (sugar > 20) healthScore -= 10;
+          if (sodium > 500) healthScore -= 10;
+          healthScore = Math.max(0, Math.min(100, healthScore));
+          
           analysis = {
             success: true,
             data: {
@@ -651,12 +667,12 @@ exports.quickFoodCheck = async (req, res) => {
                   sodium: totalNutrition.sodium || 0
                 }
               },
-              healthScore: totalNutrition.calories > 500 ? 60 : 75,
-              isHealthy: totalNutrition.calories < 500,
+              healthScore: healthScore,
+              isHealthy: healthScore >= 70,
               analysis: imageAnalysis.data.analysis || 'Food analyzed from image',
               warnings: [],
               benefits: [],
-              alternatives: imageAnalysis.data.recommendations ? [imageAnalysis.data.recommendations] : []
+              alternatives: [] // Empty array for image analysis
             }
           };
         }
@@ -677,6 +693,11 @@ exports.quickFoodCheck = async (req, res) => {
 
     const QuickFoodCheck = require('../models/QuickFoodCheck');
     
+    // Ensure alternatives is always an array
+    const alternativesArray = Array.isArray(analysis.data.alternatives) 
+      ? analysis.data.alternatives 
+      : [];
+    
     // Save to database for permanent storage with ALL details
     const foodCheck = new QuickFoodCheck({
       userId: req.user._id,
@@ -690,9 +711,9 @@ exports.quickFoodCheck = async (req, res) => {
       healthScore: analysis.data.healthScore || 50,
       isHealthy: analysis.data.isHealthy || false,
       analysis: analysis.data.analysis || '',
-      warnings: analysis.data.warnings || [],
-      benefits: analysis.data.benefits || [],
-      alternatives: analysis.data.alternatives || [],
+      warnings: Array.isArray(analysis.data.warnings) ? analysis.data.warnings : [],
+      benefits: Array.isArray(analysis.data.benefits) ? analysis.data.benefits : [],
+      alternatives: alternativesArray,
       imageUrl: imageBase64 ? `data:image/jpeg;base64,${imageBase64.substring(0, 100)}...` : null,
       timestamp: new Date()
     });
