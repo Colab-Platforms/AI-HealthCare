@@ -205,7 +205,28 @@ export default function QuickFoodCheck() {
       console.error('Quick check error:', error);
       console.error('Error response:', error.response?.data);
       
-      if (error.code === 'ECONNABORTED') {
+      // Check if AI couldn't detect food in image
+      if (error.response?.status === 400 && error.response?.data?.error === 'UNABLE_TO_DETECT_FOOD') {
+        // Clear image and show helpful message
+        setImage(null);
+        setImagePreview(null);
+        setShowImageDetailsForm(false);
+        
+        // Keep quantity and prep method if user provided them
+        // (don't reset imageDetails completely)
+        
+        toast.error('Could not detect food in image. Please type the food name above for accurate results.', {
+          duration: 5000
+        });
+        
+        // Focus the food input field
+        setTimeout(() => {
+          const foodInputElement = document.querySelector('input[placeholder*="What did you eat"]');
+          if (foodInputElement) {
+            foodInputElement.focus();
+          }
+        }, 100);
+      } else if (error.code === 'ECONNABORTED') {
         toast.error('Request timeout. The image analysis took too long. Please try again or use text description.');
       } else if (error.response?.status === 413) {
         toast.error('Image too large. Please use a smaller image.');
