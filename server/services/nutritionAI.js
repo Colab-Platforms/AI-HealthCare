@@ -25,13 +25,24 @@ ${additionalContext ? `User provided context: ${additionalContext}` : ''}
 
 CRITICAL INSTRUCTIONS FOR ACCURACY:
 1. LOOK AT THE IMAGE CAREFULLY - Identify the EXACT food items visible
-2. USE ACCURATE INDIAN FOOD NUTRITION DATA:
+2. IF YOU CANNOT CLEARLY SEE FOOD IN THE IMAGE:
+   - Return error JSON with "error": "UNABLE_TO_DETECT_FOOD"
+   - Do NOT make up food names
+   - Do NOT return random food like "paneer butter masala" if you don't see it
+3. USE ACCURATE INDIAN FOOD NUTRITION DATA:
    - Plain roti/chapati (1 medium): 70-80 kcal, 2-3g protein, 14-15g carbs, 0.5-1g fat
    - Samosa (1 medium): 250-300 kcal, 5-7g protein, 30-35g carbs, 12-17g fat
    - Rice (1 cup cooked): 200-240 kcal, 4-5g protein, 45-50g carbs, 0.5-1g fat
-3. PAY ATTENTION TO QUANTITY - If user says "3 pieces", multiply nutrition by 3
-4. ALWAYS provide RANGES (e.g., "210-240" not "225")
-5. DO NOT OVERESTIMATE - Plain roti is low calorie, don't confuse with paratha
+4. PAY ATTENTION TO QUANTITY - If user says "3 pieces", multiply nutrition by 3
+5. ALWAYS provide RANGES (e.g., "210-240" not "225")
+6. DO NOT OVERESTIMATE - Plain roti is low calorie, don't confuse with paratha
+
+IF IMAGE IS UNCLEAR OR NO FOOD VISIBLE:
+Return this exact JSON:
+{
+  "error": "UNABLE_TO_DETECT_FOOD",
+  "message": "Could not clearly identify food in the image. Please try again with a clearer photo showing the food."
+}
 
 QUANTITY HANDLING:
 - If user mentions "3 pieces", calculate for 3 pieces

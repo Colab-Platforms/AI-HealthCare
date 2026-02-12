@@ -632,7 +632,16 @@ exports.quickFoodCheck = async (req, res) => {
         const imageAnalysis = await nutritionAI.analyzeFromImage(imageBase64, additionalContext || foodDescription || 'Food from image');
         
         console.log('Image analysis successful');
-        console.log('Identified food:', imageAnalysis.data?.foodItems?.[0]?.name);
+        console.log('AI Response:', JSON.stringify(imageAnalysis.data).substring(0, 200));
+        
+        // Check if AI couldn't detect food
+        if (imageAnalysis.data?.error === 'UNABLE_TO_DETECT_FOOD') {
+          return res.status(400).json({
+            success: false,
+            message: imageAnalysis.data.message || 'Could not detect food in the image. Please try again with a clearer photo.',
+            error: 'UNABLE_TO_DETECT_FOOD'
+          });
+        }
         
         // Transform image analysis to match quickFoodCheck format
         if (imageAnalysis.success && imageAnalysis.data) {

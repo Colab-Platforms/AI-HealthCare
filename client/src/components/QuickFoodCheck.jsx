@@ -20,6 +20,7 @@ export default function QuickFoodCheck() {
   const [history, setHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
   const [showImageDetailsForm, setShowImageDetailsForm] = useState(false);
+  const [showCameraModal, setShowCameraModal] = useState(false);
   const [imageDetails, setImageDetails] = useState({
     quantity: '',
     prepMethod: '',
@@ -278,23 +279,18 @@ export default function QuickFoodCheck() {
               placeholder="What did you eat? e.g., Pizza, Chicken... or upload image"
               className="w-full px-5 py-4 pr-14 bg-white border-2 border-blue-200 rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-900 placeholder-gray-500 font-medium transition-all"
             />
-            {/* Camera Icon - Now Active */}
+            {/* Camera Icon - Opens Modal */}
             <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
-              <label className="relative group cursor-pointer">
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageSelect}
-                  className="hidden"
-                />
-                <div className="p-2 text-cyan-600 hover:bg-cyan-50 rounded-lg transition">
-                  <Camera className="w-5 h-5" />
-                </div>
+              <button
+                onClick={() => setShowCameraModal(true)}
+                className="p-2 text-cyan-600 hover:bg-cyan-50 rounded-lg transition relative group"
+              >
+                <Camera className="w-5 h-5" />
                 {/* Tooltip */}
                 <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
                   Upload or capture food
                 </div>
-              </label>
+              </button>
               {foodInput && (
                 <button
                   onClick={() => {
@@ -689,6 +685,71 @@ export default function QuickFoodCheck() {
           </div>
         )}
       </div>
+
+      {/* Camera/Gallery Modal */}
+      {showCameraModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-3xl p-6 max-w-sm w-full animate-in fade-in slide-in-from-bottom-4">
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Choose Image Source</h3>
+            <div className="space-y-3">
+              {/* Camera Option */}
+              <label className="block">
+                <input
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={(e) => {
+                    handleImageSelect(e);
+                    setShowCameraModal(false);
+                  }}
+                  className="hidden"
+                />
+                <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-cyan-50 to-blue-50 border-2 border-cyan-200 rounded-2xl cursor-pointer hover:border-cyan-400 transition-all">
+                  <div className="w-12 h-12 bg-cyan-500 rounded-xl flex items-center justify-center">
+                    <Camera className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-900">Take Photo</p>
+                    <p className="text-sm text-gray-600">Use camera to capture food</p>
+                  </div>
+                </div>
+              </label>
+
+              {/* Gallery Option */}
+              <label className="block">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => {
+                    handleImageSelect(e);
+                    setShowCameraModal(false);
+                  }}
+                  className="hidden"
+                />
+                <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl cursor-pointer hover:border-purple-400 transition-all">
+                  <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-900">Choose from Gallery</p>
+                    <p className="text-sm text-gray-600">Select existing photo</p>
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            {/* Cancel Button */}
+            <button
+              onClick={() => setShowCameraModal(false)}
+              className="w-full mt-4 py-3 bg-gray-200 text-gray-900 rounded-2xl font-bold hover:bg-gray-300 transition-all"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
