@@ -19,14 +19,21 @@ class NutritionAI {
    */
   async analyzeFromImage(imageBase64, additionalContext = '') {
     try {
-      const prompt = `You are a professional nutritionist AI. Analyze this food image and provide a detailed nutrition breakdown.
+      const prompt = `You are a professional nutritionist AI with expertise in food recognition. Carefully analyze this food image and provide accurate identification and nutrition breakdown.
 
-${additionalContext ? `Additional context: ${additionalContext}` : ''}
+${additionalContext ? `User provided context: ${additionalContext}` : ''}
 
-Please identify all food items visible in the image and provide:
+CRITICAL INSTRUCTIONS:
+1. LOOK AT THE IMAGE CAREFULLY - Identify the EXACT food items visible
+2. DO NOT guess or assume - Only identify what you can clearly see
+3. If the image shows samosa, say "Samosa" - not paneer butter masala or anything else
+4. If the image shows pizza, say "Pizza" - be specific about toppings if visible
+5. Provide accurate portion estimates based on what's visible in the image
 
-1. List of food items with estimated quantities
-2. Detailed nutrition breakdown for EACH item:
+Please provide:
+1. Accurate identification of ALL food items visible in the image
+2. Estimated quantities based on visual assessment
+3. Detailed nutrition breakdown for EACH item:
    - Calories (kcal)
    - Protein (g)
    - Carbohydrates (g)
@@ -34,17 +41,17 @@ Please identify all food items visible in the image and provide:
    - Fiber (g)
    - Sugar (g)
    - Sodium (mg)
-   - Key vitamins and minerals (Vitamin A, C, D, B12, Iron, Calcium)
+   - Key vitamins and minerals
 
-3. Total nutrition for the entire meal
+4. Total nutrition for the entire meal
 
 Return the response in this EXACT JSON format (no markdown, just pure JSON):
 {
   "foodItems": [
     {
-      "name": "Food name",
-      "description": "Brief description",
-      "quantity": "Estimated quantity (e.g., 1 cup, 150g, 2 pieces)",
+      "name": "Exact food name as seen in image",
+      "description": "Brief description of what you see",
+      "quantity": "Estimated quantity (e.g., 2 pieces, 1 bowl, 150g)",
       "nutrition": {
         "calories": 0,
         "protein": 0,
@@ -81,11 +88,11 @@ Return the response in this EXACT JSON format (no markdown, just pure JSON):
       "calcium": 0
     }
   },
-  "analysis": "Brief analysis of the meal's nutritional value and health impact",
-  "recommendations": "Suggestions for improving the meal or what to eat next"
+  "analysis": "Brief analysis of the meal's nutritional value based on what you see in the image",
+  "recommendations": "Suggestions based on the actual food visible in the image"
 }
 
-Be accurate with portion sizes and nutrition values. If uncertain about exact quantities, provide reasonable estimates based on standard serving sizes.`;
+IMPORTANT: Be accurate with food identification. If you see samosa, say samosa. If you see pizza, say pizza. Don't confuse different foods.`;
 
       const response = await axios.post(
         this.apiUrl,

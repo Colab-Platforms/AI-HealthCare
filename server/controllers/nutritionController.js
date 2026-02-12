@@ -625,10 +625,14 @@ exports.quickFoodCheck = async (req, res) => {
     if (imageBase64) {
       try {
         console.log('Attempting image analysis...');
+        console.log('Image size:', `${(imageBase64.length * 0.75 / 1024).toFixed(2)} KB`);
+        console.log('Additional context:', additionalContext);
+        
         // Use image analysis
         const imageAnalysis = await nutritionAI.analyzeFromImage(imageBase64, additionalContext || foodDescription || 'Food from image');
         
         console.log('Image analysis successful');
+        console.log('Identified food:', imageAnalysis.data?.foodItems?.[0]?.name);
         
         // Transform image analysis to match quickFoodCheck format
         if (imageAnalysis.success && imageAnalysis.data) {
@@ -675,9 +679,12 @@ exports.quickFoodCheck = async (req, res) => {
               alternatives: [] // Empty array for image analysis
             }
           };
+          
+          console.log('Analysis transformed successfully');
         }
       } catch (imageError) {
         console.error('Image analysis failed:', imageError.message);
+        console.error('Error details:', imageError.response?.data || imageError);
         console.error('Falling back to text analysis');
         // Fallback to text analysis if image fails
         analysis = await nutritionAI.quickFoodCheck(additionalContext || foodDescription || 'Food from image');
