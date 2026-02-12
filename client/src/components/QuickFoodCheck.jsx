@@ -287,40 +287,40 @@ export default function QuickFoodCheck() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3 sm:space-y-4">
       {/* Main Quick Check Card */}
-      <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-3xl p-6 shadow-lg border border-blue-100">
+      <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl sm:rounded-3xl p-4 sm:p-6 shadow-lg border border-blue-100">
         {/* Header */}
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center">
-            <Lightbulb className="w-6 h-6 text-white" />
+        <div className="flex items-center gap-3 mb-4 sm:mb-6">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-xl sm:rounded-2xl flex items-center justify-center flex-shrink-0">
+            <Lightbulb className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
           </div>
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Quick Check</h2>
-            <p className="text-sm text-gray-600">Analyze any food instantly</p>
+            <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Quick Check</h2>
+            <p className="text-xs sm:text-sm text-gray-600">Analyze any food instantly</p>
           </div>
         </div>
 
         {/* Food Input Section */}
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {/* Main Input with Camera Icon */}
           <div className="relative">
             <input
               type="text"
               value={foodInput}
               onChange={handleFoodInputChange}
-              placeholder="What did you eat? e.g., Pizza, Chicken... or upload image"
-              className="w-full px-5 py-4 pr-14 bg-white border-2 border-blue-200 rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-900 placeholder-gray-500 font-medium transition-all"
+              placeholder="What did you eat? e.g., Pizza, Chicken..."
+              className="w-full px-4 sm:px-5 py-3 sm:py-4 pr-12 sm:pr-14 bg-white border-2 border-blue-200 rounded-xl sm:rounded-2xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-gray-900 placeholder-gray-500 text-sm sm:text-base font-medium transition-all"
             />
             {/* Camera Icon - Opens Modal */}
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+            <div className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 flex items-center gap-1 sm:gap-2">
               <button
                 onClick={() => setShowCameraModal(true)}
-                className="p-2 text-cyan-600 hover:bg-cyan-50 rounded-lg transition relative group"
+                className="p-1.5 sm:p-2 text-cyan-600 hover:bg-cyan-50 rounded-lg transition relative group"
               >
                 <Camera className="w-5 h-5" />
-                {/* Tooltip */}
-                <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                {/* Tooltip - Hidden on mobile */}
+                <div className="hidden sm:block absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
                   Upload or capture food
                 </div>
               </button>
@@ -331,27 +331,27 @@ export default function QuickFoodCheck() {
                     setShowQuantitySuggestion(false);
                     setShowPrepMethod(false);
                   }}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition"
+                  className="p-1.5 sm:p-2 hover:bg-gray-100 rounded-lg transition"
                 >
-                  <X className="w-5 h-5 text-gray-400" />
+                  <X className="w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
                 </button>
               )}
             </div>
           </div>
 
-          {/* Image Preview */}
+          {/* Image Preview - Mobile Optimized */}
           {imagePreview && (
-            <div className="relative bg-white border-2 border-cyan-200 rounded-2xl p-4 animate-in fade-in slide-in-from-top-2">
-              <div className="flex items-start gap-4">
+            <div className="relative bg-white border-2 border-cyan-200 rounded-xl sm:rounded-2xl p-3 sm:p-4 animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-start gap-3 sm:gap-4">
                 <img 
                   src={imagePreview} 
                   alt="Food preview" 
-                  className="w-24 h-24 object-cover rounded-xl border-2 border-cyan-300"
+                  className="w-20 h-20 sm:w-24 sm:h-24 object-cover rounded-lg sm:rounded-xl border-2 border-cyan-300 flex-shrink-0"
                 />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold text-cyan-900 mb-1">📸 Image Ready for AI Analysis</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs sm:text-sm font-semibold text-cyan-900 mb-1">📸 Image Ready for AI Analysis</p>
                   <p className="text-xs text-cyan-700">AI will analyze the food in this image</p>
-                  <p className="text-xs text-purple-600 font-semibold mt-2">
+                  <p className="text-xs text-purple-600 font-semibold mt-1 sm:mt-2">
                     👇 Add details below for better accuracy
                   </p>
                 </div>
@@ -362,24 +362,24 @@ export default function QuickFoodCheck() {
                     setShowImageDetailsForm(false);
                     setImageDetails({ quantity: '', prepMethod: '', additionalInfo: '' });
                   }}
-                  className="p-2 hover:bg-red-50 rounded-lg transition text-red-500"
+                  className="p-1.5 sm:p-2 hover:bg-red-50 rounded-lg transition text-red-500 flex-shrink-0"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
             </div>
           )}
 
-          {/* Image Details Form */}
+          {/* Image Details Form - Mobile Optimized */}
           {showImageDetailsForm && imagePreview && (
-            <div className="bg-white border-2 border-purple-200 rounded-2xl p-5 animate-in fade-in slide-in-from-top-2">
-              <p className="text-sm font-bold text-purple-900 mb-4 flex items-center gap-2">
-                <ChefHat className="w-5 h-5" />
+            <div className="bg-white border-2 border-purple-200 rounded-xl sm:rounded-2xl p-4 sm:p-5 animate-in fade-in slide-in-from-top-2">
+              <p className="text-sm font-bold text-purple-900 mb-3 sm:mb-4 flex items-center gap-2">
+                <ChefHat className="w-4 h-4 sm:w-5 sm:h-5" />
                 Tell us more for accurate results
               </p>
               
               {/* Quantity Input */}
-              <div className="mb-4">
+              <div className="mb-3 sm:mb-4">
                 <label className="block text-xs font-semibold text-gray-700 mb-2">
                   Quantity (e.g., "2 pieces", "1 bowl", "100g")
                 </label>
@@ -388,12 +388,12 @@ export default function QuickFoodCheck() {
                   value={imageDetails.quantity}
                   onChange={(e) => setImageDetails({ ...imageDetails, quantity: e.target.value })}
                   placeholder="How much did you eat?"
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 text-gray-900 placeholder-gray-500"
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-50 border-2 border-gray-200 rounded-lg sm:rounded-xl focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 text-sm sm:text-base text-gray-900 placeholder-gray-500"
                 />
               </div>
 
               {/* Preparation Method */}
-              <div className="mb-4">
+              <div className="mb-3 sm:mb-4">
                 <label className="block text-xs font-semibold text-gray-700 mb-2">
                   How was it prepared?
                 </label>
@@ -410,13 +410,14 @@ export default function QuickFoodCheck() {
                       key={method.label}
                       type="button"
                       onClick={() => setImageDetails({ ...imageDetails, prepMethod: method.label })}
-                      className={`px-3 py-2 rounded-xl text-xs font-medium transition-all ${
+                      className={`flex flex-col items-center justify-center gap-1 px-2 py-2.5 rounded-xl text-xs font-medium transition-all ${
                         imageDetails.prepMethod === method.label
                           ? 'bg-purple-500 text-white shadow-md'
                           : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
                       }`}
                     >
-                      {method.icon} {method.label}
+                      <span className="text-lg">{method.icon}</span>
+                      <span className="text-[10px] sm:text-xs leading-tight">{method.label}</span>
                     </button>
                   ))}
                 </div>
@@ -432,14 +433,14 @@ export default function QuickFoodCheck() {
                   value={imageDetails.additionalInfo}
                   onChange={(e) => setImageDetails({ ...imageDetails, additionalInfo: e.target.value })}
                   placeholder="e.g., with cheese, extra spicy, etc."
-                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 text-gray-900 placeholder-gray-500"
+                  className="w-full px-3 sm:px-4 py-2.5 sm:py-3 bg-gray-50 border-2 border-gray-200 rounded-lg sm:rounded-xl focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100 text-sm sm:text-base text-gray-900 placeholder-gray-500"
                 />
               </div>
 
               {/* Info Note */}
-              <div className="mt-4 flex items-start gap-2 bg-purple-50 rounded-xl p-3">
+              <div className="mt-3 sm:mt-4 flex items-start gap-2 bg-purple-50 rounded-lg sm:rounded-xl p-2.5 sm:p-3">
                 <Info className="w-4 h-4 text-purple-600 flex-shrink-0 mt-0.5" />
-                <p className="text-xs text-purple-700">
+                <p className="text-[11px] sm:text-xs text-purple-700 leading-snug">
                   These details help AI provide more accurate nutritional information
                 </p>
               </div>
