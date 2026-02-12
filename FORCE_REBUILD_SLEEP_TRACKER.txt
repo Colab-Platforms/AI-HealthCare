@@ -1,0 +1,11 @@
+Force Vercel Rebuild - Sleep Tracker Updates
+============================================
+
+Changes Made:
+1. ✅ Removed "Time asleep" display from Sleep Tracker popup
+2. ✅ Added "Weekly Sleep Pattern" bar graph showing sleep hours for the past 7 days
+
+Timestamp: 2026-02-12
+Commit: 06203c8
+
+These changes are now on GitHub and need to be deployed to Vercel.
