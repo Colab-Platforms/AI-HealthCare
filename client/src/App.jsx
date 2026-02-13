@@ -6,7 +6,6 @@ import GenericSkeleton from './components/skeletons/GenericSkeleton';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
-import DiabetesRegister from './pages/DiabetesRegister';
 import DoctorRegister from './pages/DoctorRegister';
 import Dashboard from './pages/Dashboard';
 import DashboardEnhanced from './pages/DashboardEnhanced';
@@ -15,7 +14,6 @@ import UploadReport from './pages/UploadReport';
 import ReportDetails from './pages/ReportDetails';
 import Doctors from './pages/Doctors';
 import Profile from './pages/Profile';
-import ProfileModern from './pages/ProfileModern';
 import DemoPreview from './pages/DemoPreview';
 import AdminDashboard from './pages/AdminDashboard';
 import Subscription from './pages/Subscription';
@@ -82,8 +80,7 @@ export default function App() {
       <Routes>
       <Route path="/" element={<Landing />} />
       <Route path="/login" element={getLoginRedirect()} />
-      <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <DiabetesRegister />} />
-      <Route path="/register/old" element={user ? <Navigate to="/dashboard" /> : <Register />} />
+      <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Register />} />
       <Route path="/register/doctor" element={user ? <Navigate to="/doctor/dashboard" /> : <DoctorRegister />} />
       
       {/* Patient Routes */}
@@ -111,8 +108,7 @@ export default function App() {
       <Route path="/patient/:patientId" element={<DoctorRoute><Layout isDoctor><PatientProfile /></Layout></DoctorRoute>} />
       
       {/* Shared Routes */}
-      <Route path="/profile" element={<ProtectedRoute><Layout><ProfileModern /></Layout></ProtectedRoute>} />
-      <Route path="/profile/old" element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
+      <Route path="/profile" element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
       
       {/* Admin Routes */}
       <Route path="/admin" element={<AdminRoute><Layout isAdmin><AdminDashboard /></Layout></AdminRoute>} />
