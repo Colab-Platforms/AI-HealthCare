@@ -496,7 +496,7 @@ export default function Register() {
                     <input
                       type="number"
                       value={formData.height}
-                      onChange={(e) => setFormData({ ...formData, height: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, height: e.target.value }))}
                       className="w-full bg-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
                       placeholder="170"
                       min="100"
@@ -513,7 +513,7 @@ export default function Register() {
                     <input
                       type="number"
                       value={formData.weight}
-                      onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                      onChange={(e) => setFormData(prev => ({ ...prev, weight: e.target.value }))}
                       className="w-full bg-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
                       placeholder="70"
                       min="30"
@@ -531,7 +531,7 @@ export default function Register() {
                   <Droplet className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-600" />
                   <select
                     value={formData.bloodGroup}
-                    onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
+                    onChange={(e) => setFormData(prev => ({ ...prev, bloodGroup: e.target.value }))}
                     className="w-full bg-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
                   >
                     <option value="">Select (Optional)</option>
@@ -551,7 +551,7 @@ export default function Register() {
                 <label className="block text-sm font-medium mb-2 text-gray-900">Dietary Preference *</label>
                 <select
                   value={formData.dietaryPreference}
-                  onChange={(e) => setFormData({ ...formData, dietaryPreference: e.target.value })}
+                  onChange={(e) => setFormData(prev => ({ ...prev, dietaryPreference: e.target.value }))}
                   className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
                   required
                 >
@@ -567,7 +567,7 @@ export default function Register() {
                 <label className="block text-sm font-medium mb-2 text-gray-900">Activity Level *</label>
                 <select
                   value={formData.activityLevel}
-                  onChange={(e) => setFormData({ ...formData, activityLevel: e.target.value })}
+                  onChange={(e) => setFormData(prev => ({ ...prev, activityLevel: e.target.value }))}
                   className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
                   required
                 >

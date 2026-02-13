@@ -1,8 +1,8 @@
-import { Heart, Activity, Stethoscope, Target } from 'lucide-react';
+import { Heart, Activity, Stethoscope, Target, Utensils, Dumbbell } from 'lucide-react';
 
 export default function HealthProgressAnimation({ step }) {
-  // Calculate progress percentage based on step (2-5 maps to 25%-100%)
-  const progress = ((step - 1) / 4) * 100;
+  // Calculate progress percentage based on step (2-7 maps to 16%-100%)
+  const progress = ((step - 1) / 6) * 100;
   
   // Select icon based on step
   const getIcon = () => {
@@ -10,7 +10,9 @@ export default function HealthProgressAnimation({ step }) {
       case 2: return <Heart className="w-12 h-12" />;
       case 3: return <Activity className="w-12 h-12" />;
       case 4: return <Stethoscope className="w-12 h-12" />;
-      case 5: return <Target className="w-12 h-12" />;
+      case 5: return <Utensils className="w-12 h-12" />;
+      case 6: return <Dumbbell className="w-12 h-12" />;
+      case 7: return <Target className="w-12 h-12" />;
       default: return <Heart className="w-12 h-12" />;
     }
   };
@@ -19,8 +21,10 @@ export default function HealthProgressAnimation({ step }) {
     switch(step) {
       case 2: return "Building Your Profile";
       case 3: return "Analyzing Your Health";
-      case 4: return "Understanding Your Lifestyle";
-      case 5: return "Almost Complete!";
+      case 4: return "Understanding Diabetes";
+      case 5: return "Diet Preferences";
+      case 6: return "Fitness & Goals";
+      case 7: return "Almost Complete!";
       default: return "Getting Started";
     }
   };
@@ -75,7 +79,7 @@ export default function HealthProgressAnimation({ step }) {
       
       {/* Step Dots */}
       <div className="flex items-center gap-2 mt-4">
-        {[1, 2, 3, 4].map((dot) => (
+        {[2, 3, 4, 5, 6, 7].map((dot) => (
           <div
             key={dot}
             className={`w-2 h-2 rounded-full transition-all duration-300 ${
