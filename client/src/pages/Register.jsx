@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Activity, Mail, Lock, User, Eye, EyeOff, ArrowRight, Stethoscope, Heart, ArrowLeft, Scale, Ruler, Droplet, Cigarette, Wine, Moon, Dumbbell, Target, TrendingUp, TrendingDown, Minus, Plus, X, CheckCircle2, Loader2 } from 'lucide-react';
+import { Activity, Mail, Lock, User, Eye, EyeOff, ArrowRight, Stethoscope, Heart, ArrowLeft, Scale, Ruler, Droplet, Cigarette, Wine, Moon, Dumbbell, Target, TrendingUp, TrendingDown, Minus, Plus, X, CheckCircle2, Loader2, Syringe, Utensils, Calendar } from 'lucide-react';
 import toast from 'react-hot-toast';
 import HealthProgressAnimation from '../components/HealthProgressAnimation';
 
@@ -69,10 +69,11 @@ export default function Register() {
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  // Step 4 state variables
+  // Step state variables
   const [customCondition, setCustomCondition] = useState('');
   const [customMedication, setCustomMedication] = useState('');
   const [customAllergy, setCustomAllergy] = useState('');
+  const [customFoodRestriction, setCustomFoodRestriction] = useState('');
   const { register } = useAuth();
   const navigate = useNavigate();
 
@@ -220,8 +221,6 @@ export default function Register() {
     }));
   };
 
-  // Step 1 is completely removed - we start at step 2
-
   // Step 2: Patient Registration Form - Basic Info
   if (step === 2) {
     return (
@@ -253,7 +252,7 @@ export default function Register() {
                   strokeWidth="4" 
                   fill="none"
                   strokeDasharray="377"
-                  strokeDashoffset={377 - (377 * 0.25)}
+                  strokeDashoffset={377 - (377 * 0.16)}
                   className="transition-all duration-500"
                   strokeLinecap="round"
                 />
@@ -266,50 +265,64 @@ export default function Register() {
             </p>
             
             {/* Progress Steps */}
-            <div className="flex items-center gap-3 mt-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                </div>
-                <span className="text-sm font-medium">Step 1</span>
-              </div>
-              <div className="w-12 h-0.5 bg-white/40"></div>
-              <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 mt-4">
+              <div className="flex items-center gap-1">
                 <div className="w-8 h-8 rounded-full bg-white/40 flex items-center justify-center">
-                  <span className="text-sm font-bold">2</span>
+                  <span className="text-sm font-bold">1</span>
                 </div>
-                <span className="text-sm">Step 2</span>
+                <span className="text-xs">Basic</span>
               </div>
-              <div className="w-12 h-0.5 bg-white/20"></div>
-              <div className="flex items-center gap-2">
+              <div className="w-8 h-0.5 bg-white/20"></div>
+              <div className="flex items-center gap-1">
                 <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                  <span className="text-sm">3</span>
+                  <span className="text-xs">2</span>
                 </div>
-                <span className="text-sm text-white/60">Step 3</span>
+                <span className="text-xs text-white/60">Health</span>
               </div>
-              <div className="w-12 h-0.5 bg-white/20"></div>
-              <div className="flex items-center gap-2">
+              <div className="w-8 h-0.5 bg-white/20"></div>
+              <div className="flex items-center gap-1">
                 <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                  <span className="text-sm">4</span>
+                  <span className="text-xs">3</span>
                 </div>
-                <span className="text-sm text-white/60">Step 4</span>
+                <span className="text-xs text-white/60">Diabetes</span>
+              </div>
+              <div className="w-8 h-0.5 bg-white/20"></div>
+              <div className="flex items-center gap-1">
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                  <span className="text-xs">4</span>
+                </div>
+                <span className="text-xs text-white/60">Diet</span>
+              </div>
+              <div className="w-8 h-0.5 bg-white/20"></div>
+              <div className="flex items-center gap-1">
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                  <span className="text-xs">5</span>
+                </div>
+                <span className="text-xs text-white/60">Fitness</span>
+              </div>
+              <div className="w-8 h-0.5 bg-white/20"></div>
+              <div className="flex items-center gap-1">
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                  <span className="text-xs">6</span>
+                </div>
+                <span className="text-xs text-white/60">Goals</span>
               </div>
             </div>
             
-            <p className="text-sm text-white/70 mt-6">25% Complete - Almost there!</p>
+            <p className="text-sm text-white/70 mt-6">Step 1 of 6 - Let's begin!</p>
           </div>
         </div>
         
         {/* Right Panel - Form */}
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="w-full max-w-md">
-            <button onClick={() => setStep(1)} className="flex items-center gap-2 mb-6 text-cyan-600 hover:text-cyan-700">
+            <button onClick={() => navigate('/')} className="flex items-center gap-2 mb-6 text-cyan-600 hover:text-cyan-700">
               <ArrowLeft className="w-4 h-4" /> Back
             </button>
 
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold mb-2 text-gray-900">Basic Information</h2>
-              <p className="text-gray-600">Step 1 of 4 - Let's start with the basics</p>
+              <p className="text-gray-600">Step 1 of 6 - Let's start with the basics</p>
             </div>
             
             <form onSubmit={(e) => { e.preventDefault(); nextStep(); }} className="space-y-4">
@@ -434,13 +447,11 @@ export default function Register() {
             <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
           </div>
           <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
-            {/* Animated Medical Icon */}
             <div className="relative w-32 h-32 mb-8">
               <div className="absolute inset-0 bg-white/20 backdrop-blur-xl rounded-full animate-pulse"></div>
               <div className="absolute inset-4 bg-white/30 backdrop-blur-xl rounded-full flex items-center justify-center">
                 <Scale className="w-12 h-12 animate-bounce" style={{ animationDuration: '2s' }} />
               </div>
-              {/* Progress Ring */}
               <svg className="absolute inset-0 w-full h-full -rotate-90">
                 <circle cx="64" cy="64" r="60" stroke="white" strokeOpacity="0.2" strokeWidth="4" fill="none" />
                 <circle 
@@ -449,7 +460,7 @@ export default function Register() {
                   strokeWidth="4" 
                   fill="none"
                   strokeDasharray="377"
-                  strokeDashoffset={377 - (377 * 0.50)}
+                  strokeDashoffset={377 - (377 * 0.33)}
                   className="transition-all duration-500"
                   strokeLinecap="round"
                 />
@@ -461,38 +472,7 @@ export default function Register() {
               Help us calculate your personalized nutrition goals based on your body metrics.
             </p>
             
-            {/* Progress Steps */}
-            <div className="flex items-center gap-3 mt-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                </div>
-                <span className="text-sm font-medium">Step 1</span>
-              </div>
-              <div className="w-12 h-0.5 bg-white"></div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                </div>
-                <span className="text-sm font-medium">Step 2</span>
-              </div>
-              <div className="w-12 h-0.5 bg-white/40"></div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-white/40 flex items-center justify-center">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                </div>
-                <span className="text-sm">Step 3</span>
-              </div>
-              <div className="w-12 h-0.5 bg-white/20"></div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
-                  <span className="text-sm">4</span>
-                </div>
-                <span className="text-sm text-white/60">Step 4</span>
-              </div>
-            </div>
-            
-            <p className="text-sm text-white/70 mt-6">50% Complete - Halfway there!</p>
+            <p className="text-sm text-white/70 mt-6">Step 2 of 6</p>
           </div>
         </div>
         
@@ -504,7 +484,7 @@ export default function Register() {
 
             <div className="text-center mb-8">
               <h2 className="text-3xl font-bold mb-2 text-gray-900">Health Profile</h2>
-              <p className="text-cyan-700">Step 2 of 4 - Your body metrics</p>
+              <p className="text-cyan-700">Step 2 of 6 - Your body metrics</p>
             </div>
             
             <form onSubmit={(e) => { e.preventDefault(); nextStep(); }} className="space-y-4">
@@ -613,11 +593,8 @@ export default function Register() {
     );
   }
 
-  // Step 4: Lifestyle & Medical History
+  // Step 4: Diabetes Profile (NEW STEP)
   if (step === 4) {
-    const commonConditions = ['Diabetes', 'Hypertension', 'Thyroid', 'Asthma', 'Heart Disease', 'Arthritis'];
-    const commonAllergies = ['Peanuts', 'Dairy', 'Gluten', 'Shellfish', 'Eggs', 'Soy'];
-
     return (
       <div className="min-h-screen flex bg-gradient-to-br from-cyan-50 to-blue-50">
         <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-cyan-500 via-blue-500 to-cyan-600">
@@ -626,13 +603,11 @@ export default function Register() {
             <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
           </div>
           <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
-            {/* Animated Medical Icon */}
             <div className="relative w-32 h-32 mb-8">
               <div className="absolute inset-0 bg-white/20 backdrop-blur-xl rounded-full animate-pulse"></div>
               <div className="absolute inset-4 bg-white/30 backdrop-blur-xl rounded-full flex items-center justify-center">
-                <Heart className="w-12 h-12" />
+                <Activity className="w-12 h-12" />
               </div>
-              {/* Progress Ring */}
               <svg className="absolute inset-0 w-full h-full -rotate-90">
                 <circle cx="64" cy="64" r="60" stroke="white" strokeOpacity="0.2" strokeWidth="4" fill="none" />
                 <circle 
@@ -641,157 +616,529 @@ export default function Register() {
                   strokeWidth="4" 
                   fill="none"
                   strokeDasharray="377"
-                  strokeDashoffset={377 - (377 * 0.75)}
+                  strokeDashoffset={377 - (377 * 0.50)}
                   className="transition-all duration-500"
                   strokeLinecap="round"
                 />
               </svg>
             </div>
             
-            <h1 className="text-4xl font-bold mb-4 text-center">Lifestyle & Health History</h1>
+            <h1 className="text-4xl font-bold mb-4 text-center">Diabetes Profile</h1>
             <p className="text-xl text-white/80 text-center max-w-md mb-6">
-              Help us understand your lifestyle and medical background for better recommendations.
+              Help us provide personalized diabetes management recommendations.
             </p>
             
-            {/* Progress Steps */}
-            <div className="flex items-center gap-3 mt-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                </div>
-                <span className="text-sm font-medium">Step 1</span>
-              </div>
-              <div className="w-12 h-0.5 bg-white"></div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                </div>
-                <span className="text-sm font-medium">Step 2</span>
-              </div>
-              <div className="w-12 h-0.5 bg-white"></div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                </div>
-                <span className="text-sm font-medium">Step 3</span>
-              </div>
-              <div className="w-12 h-0.5 bg-white/40"></div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-white/40 flex items-center justify-center">
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                </div>
-                <span className="text-sm">Step 4</span>
-              </div>
-            </div>
-            
-            <p className="text-sm text-white/70 mt-6">75% Complete - Almost done!</p>
+            <p className="text-sm text-white/70 mt-6">Step 3 of 6 - Optional</p>
           </div>
         </div>
         
         <div className="flex-1 flex items-center justify-center p-8 overflow-y-auto">
           <div className="w-full max-w-md py-8">
-            <button onClick={prevStep} className="flex items-center gap-2 mb-6" style={{ color: '#5C4F3D' }}>
+            <button onClick={prevStep} className="flex items-center gap-2 mb-6 text-cyan-700 hover:text-cyan-800">
               <ArrowLeft className="w-4 h-4" /> Back
             </button>
 
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-2" style={{ color: '#2C2416' }}>Lifestyle & Medical History</h2>
-              <p style={{ color: '#5C4F3D' }}>Step 3 of 4 - Optional but recommended</p>
+              <h2 className="text-3xl font-bold mb-2 text-gray-900">Diabetes Profile</h2>
+              <p className="text-cyan-700">Step 3 of 6 - Optional but recommended for diabetes management</p>
             </div>
             
             <form onSubmit={(e) => { e.preventDefault(); nextStep(); }} className="space-y-6">
-              {/* Lifestyle Section */}
-              <div className="bg-white rounded-xl p-4" style={{ border: '1px solid #E5DFD3' }}>
-                <h3 className="font-semibold mb-4" style={{ color: '#2C2416' }}>Lifestyle Habits</h3>
+              {/* Diabetes Type */}
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-900">Do you have diabetes?</label>
+                <select
+                  value={formData.diabetesType}
+                  onChange={(e) => setFormData({ ...formData, diabetesType: e.target.value })}
+                  className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
+                >
+                  <option value="">No / Prefer not to say</option>
+                  <option value="Type 1">Type 1 Diabetes</option>
+                  <option value="Type 2">Type 2 Diabetes</option>
+                  <option value="Prediabetes">Prediabetes</option>
+                  <option value="Gestational">Gestational Diabetes</option>
+                </select>
+              </div>
+
+              {/* Show additional fields only if diabetes type is selected */}
+              {formData.diabetesType && (
+                <>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-900">Year of Diagnosis</label>
+                      <input
+                        type="number"
+                        value={formData.diagnosisYear}
+                        onChange={(e) => setFormData({ ...formData, diagnosisYear: e.target.value })}
+                        className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
+                        placeholder="2020"
+                        min="1900"
+                        max={new Date().getFullYear()}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-900">Current Status</label>
+                      <select
+                        value={formData.diabetesStatus}
+                        onChange={(e) => setFormData({ ...formData, diabetesStatus: e.target.value })}
+                        className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
+                      >
+                        <option value="">Select</option>
+                        <option value="Controlled">Controlled</option>
+                        <option value="Uncontrolled">Uncontrolled</option>
+                        <option value="Newly diagnosed">Newly diagnosed</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-900">Latest HbA1c (%)</label>
+                    <input
+                      type="number"
+                      value={formData.hba1c}
+                      onChange={(e) => setFormData({ ...formData, hba1c: e.target.value })}
+                      className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
+                      placeholder="6.5"
+                      min="4"
+                      max="15"
+                      step="0.1"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-900">Glucose Monitoring Method</label>
+                    <select
+                      value={formData.glucoseMonitoring}
+                      onChange={(e) => setFormData({ ...formData, glucoseMonitoring: e.target.value })}
+                      className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
+                    >
+                      <option value="">Select</option>
+                      <option value="Finger prick">Finger prick (Glucometer)</option>
+                      <option value="CGM">Continuous Glucose Monitor (CGM)</option>
+                      <option value="Flash glucose monitor">Flash Glucose Monitor</option>
+                      <option value="Lab tests only">Lab tests only</option>
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-900">Fasting Glucose (mg/dL)</label>
+                      <input
+                        type="number"
+                        value={formData.fastingGlucose}
+                        onChange={(e) => setFormData({ ...formData, fastingGlucose: e.target.value })}
+                        className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
+                        placeholder="100"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-2 text-gray-900">Post-Meal Glucose (mg/dL)</label>
+                      <input
+                        type="number"
+                        value={formData.postMealGlucose}
+                        onChange={(e) => setFormData({ ...formData, postMealGlucose: e.target.value })}
+                        className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
+                        placeholder="140"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium mb-2 text-gray-900">Testing Frequency</label>
+                    <select
+                      value={formData.testingFrequency}
+                      onChange={(e) => setFormData({ ...formData, testingFrequency: e.target.value })}
+                      className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
+                    >
+                      <option value="">Select</option>
+                      <option value="Multiple times daily">Multiple times daily</option>
+                      <option value="Once daily">Once daily</option>
+                      <option value="Few times a week">Few times a week</option>
+                      <option value="Weekly">Weekly</option>
+                      <option value="Monthly">Monthly</option>
+                    </select>
+                  </div>
+
+                  {/* Medication Section */}
+                  <div className="bg-white rounded-xl p-4 border border-cyan-200">
+                    <label className="flex items-center gap-2 text-sm font-medium mb-3 text-gray-900">
+                      <Pill className="w-5 h-5 text-cyan-600" />
+                      Are you on diabetes medication?
+                    </label>
+                    <div className="flex gap-4 mb-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          checked={!formData.onMedication}
+                          onChange={() => setFormData({ ...formData, onMedication: false, medicationType: [], insulinTiming: '' })}
+                          className="text-cyan-500"
+                        />
+                        <span className="text-sm text-gray-900">No</span>
+                      </label>
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="radio"
+                          checked={formData.onMedication}
+                          onChange={() => setFormData({ ...formData, onMedication: true })}
+                          className="text-cyan-500"
+                        />
+                        <span className="text-sm text-gray-900">Yes</span>
+                      </label>
+                    </div>
+
+                    {formData.onMedication && (
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-sm font-medium mb-2 text-gray-900">Medication Type (select all that apply)</label>
+                          <div className="space-y-2">
+                            {['Metformin', 'Insulin', 'Sulfonylureas', 'DPP-4 inhibitors', 'SGLT2 inhibitors', 'GLP-1 agonists'].map(med => (
+                              <label key={med} className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="checkbox"
+                                  checked={formData.medicationType.includes(med)}
+                                  onChange={() => toggleArrayItem('medicationType', med)}
+                                  className="text-cyan-500"
+                                />
+                                <span className="text-sm text-gray-900">{med}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        {formData.medicationType.includes('Insulin') && (
+                          <div>
+                            <label className="block text-sm font-medium mb-2 text-gray-900">Insulin Timing</label>
+                            <select
+                              value={formData.insulinTiming}
+                              onChange={(e) => setFormData({ ...formData, insulinTiming: e.target.value })}
+                              className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
+                            >
+                              <option value="">Select</option>
+                              <option value="Before meals">Before meals</option>
+                              <option value="After meals">After meals</option>
+                              <option value="Bedtime">Bedtime</option>
+                              <option value="Multiple times">Multiple times daily</option>
+                            </select>
+                          </div>
+                        )}
+
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={formData.recentDosageChange}
+                            onChange={(e) => setFormData({ ...formData, recentDosageChange: e.target.checked })}
+                            className="text-cyan-500"
+                          />
+                          <span className="text-sm text-gray-900">Recent dosage change (within last 3 months)</span>
+                        </label>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            
+              <button 
+                type="submit"
+                className="w-full py-3 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
+              >
+                Continue <ArrowRight className="w-5 h-5" />
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Step 5: Diet Preferences (NEW STEP)
+  if (step === 5) {
+    const commonFoodRestrictions = ['Gluten', 'Dairy', 'Nuts', 'Shellfish', 'Eggs', 'Soy', 'Sugar', 'Processed foods'];
+    
+    return (
+      <div className="min-h-screen flex bg-gradient-to-br from-cyan-50 to-blue-50">
+        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-cyan-500 via-blue-500 to-cyan-600">
+          <div className="absolute inset-0">
+            <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
+            <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+          </div>
+          <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
+            <div className="relative w-32 h-32 mb-8">
+              <div className="absolute inset-0 bg-white/20 backdrop-blur-xl rounded-full animate-pulse"></div>
+              <div className="absolute inset-4 bg-white/30 backdrop-blur-xl rounded-full flex items-center justify-center">
+                <Utensils className="w-12 h-12" />
+              </div>
+              <svg className="absolute inset-0 w-full h-full -rotate-90">
+                <circle cx="64" cy="64" r="60" stroke="white" strokeOpacity="0.2" strokeWidth="4" fill="none" />
+                <circle 
+                  cx="64" cy="64" r="60" 
+                  stroke="white" 
+                  strokeWidth="4" 
+                  fill="none"
+                  strokeDasharray="377"
+                  strokeDashoffset={377 - (377 * 0.66)}
+                  className="transition-all duration-500"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+            
+            <h1 className="text-4xl font-bold mb-4 text-center">Diet Preferences</h1>
+            <p className="text-xl text-white/80 text-center max-w-md mb-6">
+              Tell us about your food preferences for personalized meal plans.
+            </p>
+            
+            <p className="text-sm text-white/70 mt-6">Step 4 of 6</p>
+          </div>
+        </div>
+        
+        <div className="flex-1 flex items-center justify-center p-8 overflow-y-auto">
+          <div className="w-full max-w-md py-8">
+            <button onClick={prevStep} className="flex items-center gap-2 mb-6 text-cyan-700 hover:text-cyan-800">
+              <ArrowLeft className="w-4 h-4" /> Back
+            </button>
+
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold mb-2 text-gray-900">Diet Preferences</h2>
+              <p className="text-cyan-700">Step 4 of 6 - Customize your meal plans</p>
+            </div>
+            
+            <form onSubmit={(e) => { e.preventDefault(); nextStep(); }} className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-900">Cuisine Preference</label>
+                <select
+                  value={formData.cuisinePreference}
+                  onChange={(e) => setFormData({ ...formData, cuisinePreference: e.target.value })}
+                  className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
+                >
+                  <option value="indian">Indian</option>
+                  <option value="continental">Continental</option>
+                  <option value="chinese">Chinese</option>
+                  <option value="mediterranean">Mediterranean</option>
+                  <option value="mixed">Mixed / International</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-900">Meals Per Day</label>
+                <select
+                  value={formData.mealsPerDay}
+                  onChange={(e) => setFormData({ ...formData, mealsPerDay: e.target.value })}
+                  className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
+                >
+                  <option value="2">2 meals</option>
+                  <option value="3">3 meals</option>
+                  <option value="4">4 meals</option>
+                  <option value="5">5-6 small meals</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-3 text-gray-900">Food Restrictions / Allergies</label>
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {commonFoodRestrictions.map(restriction => (
+                    <button
+                      key={restriction}
+                      type="button"
+                      onClick={() => toggleArrayItem('foodRestrictions', restriction)}
+                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                        formData.foodRestrictions.includes(restriction)
+                          ? 'bg-cyan-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {restriction}
+                    </button>
+                  ))}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={customFoodRestriction}
+                    onChange={(e) => setCustomFoodRestriction(e.target.value)}
+                    placeholder="Add custom restriction"
+                    className="flex-1 bg-white rounded-xl py-2 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900 text-sm"
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        addCustomItem('foodRestrictions', customFoodRestriction);
+                        setCustomFoodRestriction('');
+                      }
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      addCustomItem('foodRestrictions', customFoodRestriction);
+                      setCustomFoodRestriction('');
+                    }}
+                    className="px-4 py-2 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+                {formData.foodRestrictions.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-3">
+                    {formData.foodRestrictions.map(item => (
+                      <span key={item} className="inline-flex items-center gap-1 px-3 py-1 bg-cyan-100 text-cyan-700 rounded-full text-xs">
+                        {item}
+                        <button type="button" onClick={() => removeItem('foodRestrictions', item)}>
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            
+              <button 
+                type="submit"
+                className="w-full py-3 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
+              >
+                Continue <ArrowRight className="w-5 h-5" />
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Step 6: Fitness & Goals (NEW STEP)
+  if (step === 6) {
+    const exerciseOptions = ['Walking', 'Running', 'Cycling', 'Swimming', 'Yoga', 'Gym/Weights', 'Sports', 'Dancing', 'Home workouts'];
+    const challenges = ['Lack of time', 'Lack of motivation', 'Physical limitations', 'No gym access', 'Dietary restrictions', 'Stress management'];
+    
+    return (
+      <div className="min-h-screen flex bg-gradient-to-br from-cyan-50 to-blue-50">
+        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-cyan-500 via-blue-500 to-cyan-600">
+          <div className="absolute inset-0">
+            <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
+            <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+          </div>
+          <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
+            <div className="relative w-32 h-32 mb-8">
+              <div className="absolute inset-0 bg-white/20 backdrop-blur-xl rounded-full animate-pulse"></div>
+              <div className="absolute inset-4 bg-white/30 backdrop-blur-xl rounded-full flex items-center justify-center">
+                <Dumbbell className="w-12 h-12" />
+              </div>
+              <svg className="absolute inset-0 w-full h-full -rotate-90">
+                <circle cx="64" cy="64" r="60" stroke="white" strokeOpacity="0.2" strokeWidth="4" fill="none" />
+                <circle 
+                  cx="64" cy="64" r="60" 
+                  stroke="white" 
+                  strokeWidth="4" 
+                  fill="none"
+                  strokeDasharray="377"
+                  strokeDashoffset={377 - (377 * 0.83)}
+                  className="transition-all duration-500"
+                  strokeLinecap="round"
+                />
+              </svg>
+            </div>
+            
+            <h1 className="text-4xl font-bold mb-4 text-center">Fitness & Goals</h1>
+            <p className="text-xl text-white/80 text-center max-w-md mb-6">
+              Share your fitness preferences and health goals with us.
+            </p>
+            
+            <p className="text-sm text-white/70 mt-6">Step 5 of 6 - Almost there!</p>
+          </div>
+        </div>
+        
+        <div className="flex-1 flex items-center justify-center p-8 overflow-y-auto">
+          <div className="w-full max-w-md py-8">
+            <button onClick={prevStep} className="flex items-center gap-2 mb-6 text-cyan-700 hover:text-cyan-800">
+              <ArrowLeft className="w-4 h-4" /> Back
+            </button>
+
+            <div className="text-center mb-8">
+              <h2 className="text-3xl font-bold mb-2 text-gray-900">Fitness & Goals</h2>
+              <p className="text-cyan-700">Step 5 of 6 - Define your fitness journey</p>
+            </div>
+            
+            <form onSubmit={(e) => { e.preventDefault(); nextStep(); }} className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium mb-3 text-gray-900">Exercise Preferences (select all that apply)</label>
+                <div className="flex flex-wrap gap-2">
+                  {exerciseOptions.map(exercise => (
+                    <button
+                      key={exercise}
+                      type="button"
+                      onClick={() => toggleArrayItem('exercisePreference', exercise)}
+                      className={`px-3 py-2 rounded-xl text-sm font-medium transition-colors ${
+                        formData.exercisePreference.includes(exercise)
+                          ? 'bg-cyan-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                    >
+                      {exercise}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-900">Primary Health Goal</label>
+                <select
+                  value={formData.primaryGoal}
+                  onChange={(e) => setFormData({ ...formData, primaryGoal: e.target.value })}
+                  className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
+                >
+                  <option value="">Select your goal</option>
+                  <option value="weight_loss">Weight Loss</option>
+                  <option value="weight_gain">Weight Gain</option>
+                  <option value="muscle_gain">Muscle Gain</option>
+                  <option value="maintain">Maintain Current Weight</option>
+                  <option value="general_health">General Health & Wellness</option>
+                  <option value="diabetes_management">Diabetes Management</option>
+                  <option value="heart_health">Heart Health</option>
+                  <option value="energy_boost">Increase Energy Levels</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2 text-gray-900">Timeframe to Achieve Goal</label>
+                <select
+                  value={formData.timeframe}
+                  onChange={(e) => setFormData({ ...formData, timeframe: e.target.value })}
+                  className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
+                >
+                  <option value="1">1 month</option>
+                  <option value="3">3 months</option>
+                  <option value="6">6 months</option>
+                  <option value="12">1 year</option>
+                  <option value="24">2 years</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-3 text-gray-900">Biggest Challenge</label>
+                <div className="space-y-2">
+                  {challenges.map(challenge => (
+                    <label key={challenge} className="flex items-center gap-2 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="challenge"
+                        value={challenge}
+                        checked={formData.biggestChallenge === challenge}
+                        onChange={(e) => setFormData({ ...formData, biggestChallenge: e.target.value })}
+                        className="text-cyan-500"
+                      />
+                      <span className="text-sm text-gray-900">{challenge}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/* Lifestyle Habits */}
+              <div className="bg-white rounded-xl p-4 border border-cyan-200">
+                <h3 className="font-semibold mb-4 text-gray-900">Lifestyle Habits</h3>
                 
                 <div className="space-y-4">
-                  {/* Smoking */}
                   <div>
-                    <label className="flex items-center gap-2 text-sm font-medium mb-2" style={{ color: '#2C2416' }}>
-                      <Cigarette className="w-4 h-4" />
-                      Do you smoke?
-                    </label>
-                    <div className="flex gap-4">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          checked={!formData.smoker}
-                          onChange={() => setFormData({ ...formData, smoker: false, smokingFrequency: '' })}
-                          className="text-cyan-500"
-                        />
-                        <span className="text-sm" style={{ color: '#2C2416' }}>No</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          checked={formData.smoker}
-                          onChange={() => setFormData({ ...formData, smoker: true })}
-                          className="text-cyan-500"
-                        />
-                        <span className="text-sm" style={{ color: '#2C2416' }}>Yes</span>
-                      </label>
-                    </div>
-                    {formData.smoker && (
-                      <select
-                        value={formData.smokingFrequency}
-                        onChange={(e) => setFormData({ ...formData, smokingFrequency: e.target.value })}
-                        className="mt-2 w-full rounded-lg py-2 px-3 text-sm"
-                        style={{ backgroundColor: '#F5F1EA', border: '1px solid #E5DFD3', color: '#2C2416' }}
-                      >
-                        <option value="">Select frequency</option>
-                        <option value="occasional">Occasional (1-2 times/week)</option>
-                        <option value="regular">Regular (3-6 times/week)</option>
-                        <option value="heavy">Heavy (Daily)</option>
-                      </select>
-                    )}
-                  </div>
-
-                  {/* Alcohol */}
-                  <div>
-                    <label className="flex items-center gap-2 text-sm font-medium mb-2" style={{ color: '#2C2416' }}>
-                      <Wine className="w-4 h-4" />
-                      Do you consume alcohol?
-                    </label>
-                    <div className="flex gap-4">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          checked={!formData.alcohol}
-                          onChange={() => setFormData({ ...formData, alcohol: false, alcoholFrequency: '' })}
-                          className="text-cyan-500"
-                        />
-                        <span className="text-sm" style={{ color: '#2C2416' }}>No</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="radio"
-                          checked={formData.alcohol}
-                          onChange={() => setFormData({ ...formData, alcohol: true })}
-                          className="text-cyan-500"
-                        />
-                        <span className="text-sm" style={{ color: '#2C2416' }}>Yes</span>
-                      </label>
-                    </div>
-                    {formData.alcohol && (
-                      <select
-                        value={formData.alcoholFrequency}
-                        onChange={(e) => setFormData({ ...formData, alcoholFrequency: e.target.value })}
-                        className="mt-2 w-full rounded-lg py-2 px-3 text-sm"
-                        style={{ backgroundColor: '#F5F1EA', border: '1px solid #E5DFD3', color: '#2C2416' }}
-                      >
-                        <option value="">Select frequency</option>
-                        <option value="occasional">Occasional (1-2 drinks/week)</option>
-                        <option value="moderate">Moderate (3-7 drinks/week)</option>
-                        <option value="heavy">Heavy (8+ drinks/week)</option>
-                      </select>
-                    )}
-                  </div>
-
-                  {/* Sleep */}
-                  <div>
-                    <label className="flex items-center gap-2 text-sm font-medium mb-2" style={{ color: '#2C2416' }}>
+                    <label className="flex items-center gap-2 text-sm font-medium mb-2 text-gray-900">
                       <Moon className="w-4 h-4" />
-                      Average sleep hours per night: {formData.sleepHours}h
+                      Average sleep hours: {formData.sleepHours}h
                     </label>
                     <input
                       type="range"
@@ -801,15 +1148,14 @@ export default function Register() {
                       onChange={(e) => setFormData({ ...formData, sleepHours: e.target.value })}
                       className="w-full"
                     />
-                    <div className="flex justify-between text-xs mt-1" style={{ color: '#5C4F3D' }}>
+                    <div className="flex justify-between text-xs mt-1 text-gray-600">
                       <span>4h</span>
                       <span>12h</span>
                     </div>
                   </div>
 
-                  {/* Water Intake */}
                   <div>
-                    <label className="flex items-center gap-2 text-sm font-medium mb-2" style={{ color: '#2C2416' }}>
+                    <label className="flex items-center gap-2 text-sm font-medium mb-2 text-gray-900">
                       <Droplet className="w-4 h-4" />
                       Water intake (glasses/day): {formData.waterIntake}
                     </label>
@@ -821,211 +1167,51 @@ export default function Register() {
                       onChange={(e) => setFormData({ ...formData, waterIntake: e.target.value })}
                       className="w-full"
                     />
-                    <div className="flex justify-between text-xs mt-1" style={{ color: '#5C4F3D' }}>
+                    <div className="flex justify-between text-xs mt-1 text-gray-600">
                       <span>1</span>
                       <span>15</span>
                     </div>
                   </div>
 
-                  {/* Stress Level */}
                   <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: '#2C2416' }}>Stress Level</label>
+                    <label className="block text-sm font-medium mb-2 text-gray-900">Stress Level</label>
                     <select
                       value={formData.stressLevel}
                       onChange={(e) => setFormData({ ...formData, stressLevel: e.target.value })}
-                      className="w-full rounded-lg py-2 px-3 text-sm"
-                      style={{ backgroundColor: '#F5F1EA', border: '1px solid #E5DFD3', color: '#2C2416' }}
+                      className="w-full bg-white rounded-xl py-2 px-3 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900 text-sm"
                     >
                       <option value="low">Low</option>
                       <option value="moderate">Moderate</option>
                       <option value="high">High</option>
                     </select>
                   </div>
-                </div>
-              </div>
 
-              {/* Medical History Section */}
-              <div className="bg-white rounded-xl p-4" style={{ border: '1px solid #E5DFD3' }}>
-                <h3 className="font-semibold mb-4" style={{ color: '#2C2416' }}>Medical History (Optional)</h3>
-                
-                <div className="space-y-4">
-                  {/* Chronic Conditions */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: '#2C2416' }}>Chronic Conditions</label>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {commonConditions.map(condition => (
-                        <button
-                          key={condition}
-                          type="button"
-                          onClick={() => toggleArrayItem('chronicConditions', condition)}
-                          className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
-                            formData.chronicConditions.includes(condition)
-                              ? 'text-white'
-                              : ''
-                          }`}
-                          style={{
-                            backgroundColor: formData.chronicConditions.includes(condition) ? '#8B7355' : '#F5F1EA',
-                            color: formData.chronicConditions.includes(condition) ? 'white' : '#5C4F3D'
-                          }}
-                        >
-                          {condition}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
+                  <div className="flex items-center gap-4">
+                    <label className="flex items-center gap-2 cursor-pointer">
                       <input
-                        type="text"
-                        value={customCondition}
-                        onChange={(e) => setCustomCondition(e.target.value)}
-                        placeholder="Add custom condition"
-                        className="flex-1 rounded-lg py-2 px-3 text-sm"
-                        style={{ backgroundColor: '#F5F1EA', border: '1px solid #E5DFD3', color: '#2C2416' }}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            addCustomItem('chronicConditions', customCondition);
-                            setCustomCondition('');
-                          }
-                        }}
+                        type="checkbox"
+                        checked={formData.smoker}
+                        onChange={(e) => setFormData({ ...formData, smoker: e.target.checked })}
+                        className="text-cyan-500"
                       />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          addCustomItem('chronicConditions', customCondition);
-                          setCustomCondition('');
-                        }}
-                        className="px-3 py-2 text-white rounded-lg text-sm"
-                        style={{ backgroundColor: '#8B7355' }}
-                      >
-                        <Plus className="w-4 h-4" />
-                      </button>
-                    </div>
-                    {formData.chronicConditions.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {formData.chronicConditions.map(item => (
-                          <span key={item} className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs" style={{ backgroundColor: '#F5F1EA', color: '#8B7355' }}>
-                            {item}
-                            <button type="button" onClick={() => removeItem('chronicConditions', item)}>
-                              <X className="w-3 h-3" />
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Allergies */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: '#2C2416' }}>Allergies</label>
-                    <div className="flex flex-wrap gap-2 mb-2">
-                      {commonAllergies.map(allergy => (
-                        <button
-                          key={allergy}
-                          type="button"
-                          onClick={() => toggleArrayItem('allergies', allergy)}
-                          className={`px-3 py-1 rounded-full text-xs font-medium transition-colors`}
-                          style={{
-                            backgroundColor: formData.allergies.includes(allergy) ? '#8B7355' : '#F5F1EA',
-                            color: formData.allergies.includes(allergy) ? 'white' : '#5C4F3D'
-                          }}
-                        >
-                          {allergy}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="flex gap-2">
+                      <span className="text-sm text-gray-900">Smoker</span>
+                    </label>
+                    <label className="flex items-center gap-2 cursor-pointer">
                       <input
-                        type="text"
-                        value={customAllergy}
-                        onChange={(e) => setCustomAllergy(e.target.value)}
-                        placeholder="Add custom allergy"
-                        className="flex-1 rounded-lg py-2 px-3 text-sm"
-                        style={{ backgroundColor: '#F5F1EA', border: '1px solid #E5DFD3', color: '#2C2416' }}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            addCustomItem('allergies', customAllergy);
-                            setCustomAllergy('');
-                          }
-                        }}
+                        type="checkbox"
+                        checked={formData.alcohol}
+                        onChange={(e) => setFormData({ ...formData, alcohol: e.target.checked })}
+                        className="text-cyan-500"
                       />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          addCustomItem('allergies', customAllergy);
-                          setCustomAllergy('');
-                        }}
-                        className="px-3 py-2 text-white rounded-lg text-sm"
-                        style={{ backgroundColor: '#8B7355' }}
-                      >
-                        <Plus className="w-4 h-4" />
-                      </button>
-                    </div>
-                    {formData.allergies.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {formData.allergies.map(item => (
-                          <span key={item} className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs" style={{ backgroundColor: '#F5F1EA', color: '#8B7355' }}>
-                            {item}
-                            <button type="button" onClick={() => removeItem('allergies', item)}>
-                              <X className="w-3 h-3" />
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Current Medications */}
-                  <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: '#2C2416' }}>Current Medications</label>
-                    <div className="flex gap-2">
-                      <input
-                        type="text"
-                        value={customMedication}
-                        onChange={(e) => setCustomMedication(e.target.value)}
-                        placeholder="Add medication"
-                        className="flex-1 rounded-lg py-2 px-3 text-sm"
-                        style={{ backgroundColor: '#F5F1EA', border: '1px solid #E5DFD3', color: '#2C2416' }}
-                        onKeyPress={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            addCustomItem('currentMedications', customMedication);
-                            setCustomMedication('');
-                          }
-                        }}
-                      />
-                      <button
-                        type="button"
-                        onClick={() => {
-                          addCustomItem('currentMedications', customMedication);
-                          setCustomMedication('');
-                        }}
-                        className="px-3 py-2 text-white rounded-lg text-sm"
-                        style={{ backgroundColor: '#8B7355' }}
-                      >
-                        <Plus className="w-4 h-4" />
-                      </button>
-                    </div>
-                    {formData.currentMedications.length > 0 && (
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {formData.currentMedications.map(item => (
-                          <span key={item} className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs" style={{ backgroundColor: '#F5F1EA', color: '#8B7355' }}>
-                            {item}
-                            <button type="button" onClick={() => removeItem('currentMedications', item)}>
-                              <X className="w-3 h-3" />
-                            </button>
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                      <span className="text-sm text-gray-900">Alcohol</span>
+                    </label>
                   </div>
                 </div>
               </div>
             
               <button 
                 type="submit"
-                className="w-full py-3 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2"
-                style={{ backgroundColor: '#8B7355' }}
+                className="w-full py-3 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
               >
                 Continue <ArrowRight className="w-5 h-5" />
               </button>
@@ -1036,8 +1222,8 @@ export default function Register() {
     );
   }
 
-  // Step 5: Nutrition Goals
-  if (step === 5) {
+  // Step 7: Final - Nutrition Goals
+  if (step === 7) {
     const calculateEstimate = () => {
       if (!formData.targetWeight || !formData.weight) return null;
       const diff = Math.abs(parseFloat(formData.targetWeight) - parseFloat(formData.weight));
@@ -1055,13 +1241,11 @@ export default function Register() {
             <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
           </div>
           <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
-            {/* Animated Medical Icon - Final Step */}
             <div className="relative w-32 h-32 mb-8">
               <div className="absolute inset-0 bg-white/20 backdrop-blur-xl rounded-full animate-pulse"></div>
               <div className="absolute inset-4 bg-white/30 backdrop-blur-xl rounded-full flex items-center justify-center">
                 <Target className="w-12 h-12" />
               </div>
-              {/* Progress Ring - Almost Complete */}
               <svg className="absolute inset-0 w-full h-full -rotate-90">
                 <circle cx="64" cy="64" r="60" stroke="white" strokeOpacity="0.2" strokeWidth="4" fill="none" />
                 <circle 
@@ -1070,55 +1254,23 @@ export default function Register() {
                   strokeWidth="4" 
                   fill="none"
                   strokeDasharray="377"
-                  strokeDashoffset={377 - (377 * 0.95)}
+                  strokeDashoffset={377 - (377 * 1.0)}
                   className="transition-all duration-500"
                   strokeLinecap="round"
                 />
               </svg>
-              {/* Checkmark overlay */}
               <div className="absolute inset-0 flex items-center justify-center">
                 <CheckCircle2 className="w-16 h-16 text-white/80 animate-pulse" />
               </div>
             </div>
             
-            <h1 className="text-4xl font-bold mb-4 text-center">Set Your Goals</h1>
+            <h1 className="text-4xl font-bold mb-4 text-center">Final Step!</h1>
             <p className="text-xl text-white/80 text-center max-w-md mb-6">
               We'll calculate your personalized nutrition plan based on your goals.
             </p>
             
-            {/* Progress Steps - All Complete */}
-            <div className="flex items-center gap-3 mt-4">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                </div>
-                <span className="text-sm font-medium">Step 1</span>
-              </div>
-              <div className="w-12 h-0.5 bg-white"></div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                </div>
-                <span className="text-sm font-medium">Step 2</span>
-              </div>
-              <div className="w-12 h-0.5 bg-white"></div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                </div>
-                <span className="text-sm font-medium">Step 3</span>
-              </div>
-              <div className="w-12 h-0.5 bg-white"></div>
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center">
-                  <CheckCircle2 className="w-5 h-5 text-green-600" />
-                </div>
-                <span className="text-sm font-medium">Step 4</span>
-              </div>
-            </div>
-            
             <div className="mt-6 text-center">
-              <p className="text-lg font-bold text-white mb-2">🎉 95% Complete!</p>
+              <p className="text-lg font-bold text-white mb-2">🎉 Almost Complete!</p>
               <p className="text-sm text-white/70">One more step to unlock your personalized health plan</p>
             </div>
           </div>
@@ -1126,117 +1278,115 @@ export default function Register() {
         
         <div className="flex-1 flex items-center justify-center p-8 overflow-y-auto">
           <div className="w-full max-w-md py-8">
-            <button onClick={prevStep} className="flex items-center gap-2 mb-6" style={{ color: '#5C4F3D' }}>
+            <button onClick={prevStep} className="flex items-center gap-2 mb-6 text-cyan-700 hover:text-cyan-800">
               <ArrowLeft className="w-4 h-4" /> Back
             </button>
 
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-2" style={{ color: '#2C2416' }}>Your Nutrition Goals</h2>
-              <p style={{ color: '#5C4F3D' }}>Step 4 of 4 - Almost done!</p>
+              <h2 className="text-3xl font-bold mb-2 text-gray-900">Nutrition Goals</h2>
+              <p className="text-cyan-700">Step 6 of 6 - Final step!</p>
             </div>
             
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Goal Selection */}
               <div>
-                <label className="block text-sm font-medium mb-3" style={{ color: '#2C2416' }}>What's your primary goal?</label>
+                <label className="block text-sm font-medium mb-3 text-gray-900">What's your primary nutrition goal?</label>
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, nutritionGoal: 'weight_loss' })}
-                    className={`p-4 rounded-xl border-2 transition-all`}
-                    style={{
-                      borderColor: formData.nutritionGoal === 'weight_loss' ? '#8B7355' : '#E5DFD3',
-                      backgroundColor: formData.nutritionGoal === 'weight_loss' ? '#F5F1EA' : 'white'
-                    }}
+                    className={`p-4 rounded-xl border-2 transition-all ${
+                      formData.nutritionGoal === 'weight_loss'
+                        ? 'border-cyan-600 bg-cyan-50'
+                        : 'border-gray-200 bg-white hover:border-cyan-300'
+                    }`}
                   >
-                    <TrendingDown className={`w-8 h-8 mx-auto mb-2`} style={{ color: formData.nutritionGoal === 'weight_loss' ? '#8B7355' : '#5C4F3D' }} />
-                    <p className="text-sm font-medium" style={{ color: '#2C2416' }}>Weight Loss</p>
+                    <TrendingDown className={`w-8 h-8 mx-auto mb-2 ${formData.nutritionGoal === 'weight_loss' ? 'text-cyan-600' : 'text-gray-600'}`} />
+                    <p className="text-sm font-medium text-gray-900">Weight Loss</p>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, nutritionGoal: 'weight_gain' })}
-                    className={`p-4 rounded-xl border-2 transition-all`}
-                    style={{
-                      borderColor: formData.nutritionGoal === 'weight_gain' ? '#8B7355' : '#E5DFD3',
-                      backgroundColor: formData.nutritionGoal === 'weight_gain' ? '#F5F1EA' : 'white'
-                    }}
+                    className={`p-4 rounded-xl border-2 transition-all ${
+                      formData.nutritionGoal === 'weight_gain'
+                        ? 'border-cyan-600 bg-cyan-50'
+                        : 'border-gray-200 bg-white hover:border-cyan-300'
+                    }`}
                   >
-                    <TrendingUp className={`w-8 h-8 mx-auto mb-2`} style={{ color: formData.nutritionGoal === 'weight_gain' ? '#8B7355' : '#5C4F3D' }} />
-                    <p className="text-sm font-medium" style={{ color: '#2C2416' }}>Weight Gain</p>
+                    <TrendingUp className={`w-8 h-8 mx-auto mb-2 ${formData.nutritionGoal === 'weight_gain' ? 'text-cyan-600' : 'text-gray-600'}`} />
+                    <p className="text-sm font-medium text-gray-900">Weight Gain</p>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, nutritionGoal: 'muscle_gain' })}
-                    className={`p-4 rounded-xl border-2 transition-all`}
-                    style={{
-                      borderColor: formData.nutritionGoal === 'muscle_gain' ? '#8B7355' : '#E5DFD3',
-                      backgroundColor: formData.nutritionGoal === 'muscle_gain' ? '#F5F1EA' : 'white'
-                    }}
+                    className={`p-4 rounded-xl border-2 transition-all ${
+                      formData.nutritionGoal === 'muscle_gain'
+                        ? 'border-cyan-600 bg-cyan-50'
+                        : 'border-gray-200 bg-white hover:border-cyan-300'
+                    }`}
                   >
-                    <Dumbbell className={`w-8 h-8 mx-auto mb-2`} style={{ color: formData.nutritionGoal === 'muscle_gain' ? '#8B7355' : '#5C4F3D' }} />
-                    <p className="text-sm font-medium" style={{ color: '#2C2416' }}>Muscle Gain</p>
+                    <Dumbbell className={`w-8 h-8 mx-auto mb-2 ${formData.nutritionGoal === 'muscle_gain' ? 'text-cyan-600' : 'text-gray-600'}`} />
+                    <p className="text-sm font-medium text-gray-900">Muscle Gain</p>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, nutritionGoal: 'maintain' })}
-                    className={`p-4 rounded-xl border-2 transition-all`}
-                    style={{
-                      borderColor: formData.nutritionGoal === 'maintain' ? '#8B7355' : '#E5DFD3',
-                      backgroundColor: formData.nutritionGoal === 'maintain' ? '#F5F1EA' : 'white'
-                    }}
+                    className={`p-4 rounded-xl border-2 transition-all ${
+                      formData.nutritionGoal === 'maintain'
+                        ? 'border-cyan-600 bg-cyan-50'
+                        : 'border-gray-200 bg-white hover:border-cyan-300'
+                    }`}
                   >
-                    <Minus className={`w-8 h-8 mx-auto mb-2`} style={{ color: formData.nutritionGoal === 'maintain' ? '#8B7355' : '#5C4F3D' }} />
-                    <p className="text-sm font-medium" style={{ color: '#2C2416' }}>Maintain</p>
+                    <Minus className={`w-8 h-8 mx-auto mb-2 ${formData.nutritionGoal === 'maintain' ? 'text-cyan-600' : 'text-gray-600'}`} />
+                    <p className="text-sm font-medium text-gray-900">Maintain</p>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, nutritionGoal: 'general_health' })}
-                    className={`p-4 rounded-xl border-2 transition-all col-span-2`}
-                    style={{
-                      borderColor: formData.nutritionGoal === 'general_health' ? '#8B7355' : '#E5DFD3',
-                      backgroundColor: formData.nutritionGoal === 'general_health' ? '#F5F1EA' : 'white'
-                    }}
+                    className={`p-4 rounded-xl border-2 transition-all col-span-2 ${
+                      formData.nutritionGoal === 'general_health'
+                        ? 'border-cyan-600 bg-cyan-50'
+                        : 'border-gray-200 bg-white hover:border-cyan-300'
+                    }`}
                   >
-                    <Heart className={`w-8 h-8 mx-auto mb-2`} style={{ color: formData.nutritionGoal === 'general_health' ? '#8B7355' : '#5C4F3D' }} />
-                    <p className="text-sm font-medium" style={{ color: '#2C2416' }}>General Health</p>
+                    <Heart className={`w-8 h-8 mx-auto mb-2 ${formData.nutritionGoal === 'general_health' ? 'text-cyan-600' : 'text-gray-600'}`} />
+                    <p className="text-sm font-medium text-gray-900">General Health</p>
                   </button>
                 </div>
               </div>
 
               {/* Target Weight & Weekly Goal */}
               {(formData.nutritionGoal === 'weight_loss' || formData.nutritionGoal === 'weight_gain') && (
-                <div className="bg-white rounded-xl p-4 space-y-4" style={{ border: '1px solid #E5DFD3' }}>
+                <div className="bg-white rounded-xl p-4 space-y-4 border border-cyan-200">
                   <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: '#2C2416' }}>
+                    <label className="block text-sm font-medium mb-2 text-gray-900">
                       Target Weight (kg)
                     </label>
                     <input
                       type="number"
                       value={formData.targetWeight}
                       onChange={(e) => setFormData({ ...formData, targetWeight: e.target.value })}
-                      className="w-full rounded-lg py-2 px-3 text-sm"
-                      style={{ backgroundColor: '#F5F1EA', border: '1px solid #E5DFD3', color: '#2C2416' }}
+                      className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
                       placeholder={formData.weight}
                       min="30"
                       max="300"
                       step="0.1"
                     />
-                    <p className="text-xs mt-1" style={{ color: '#5C4F3D' }}>Current: {formData.weight} kg</p>
+                    <p className="text-xs mt-1 text-gray-600">Current: {formData.weight} kg</p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2" style={{ color: '#2C2416' }}>
+                    <label className="block text-sm font-medium mb-2 text-gray-900">
                       Weekly Goal
                     </label>
                     <select
                       value={formData.weeklyGoal}
                       onChange={(e) => setFormData({ ...formData, weeklyGoal: e.target.value })}
-                      className="w-full rounded-lg py-2 px-3 text-sm"
-                      style={{ backgroundColor: '#F5F1EA', border: '1px solid #E5DFD3', color: '#2C2416' }}
+                      className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-gray-900"
                     >
                       <option value="0.25">0.25 kg/week (Slow & Steady)</option>
                       <option value="0.5">0.5 kg/week (Recommended)</option>
@@ -1245,8 +1395,8 @@ export default function Register() {
                   </div>
 
                   {estimatedWeeks && (
-                    <div className="rounded-lg p-3" style={{ backgroundColor: '#F5F1EA' }}>
-                      <p className="text-sm" style={{ color: '#8B7355' }}>
+                    <div className="bg-cyan-50 rounded-xl p-3 border border-cyan-200">
+                      <p className="text-sm text-cyan-900">
                         <strong>Estimated time:</strong> {estimatedWeeks} weeks ({Math.ceil(estimatedWeeks / 4)} months)
                       </p>
                     </div>
@@ -1255,20 +1405,19 @@ export default function Register() {
               )}
 
               {/* Info Box */}
-              <div className="rounded-xl p-4" style={{ backgroundColor: '#F5F1EA', border: '1px solid #E5DFD3' }}>
-                <p className="text-sm" style={{ color: '#5C4F3D' }}>
-                  <strong style={{ color: '#2C2416' }}>What happens next?</strong> We'll calculate your personalized daily calorie and macro goals based on your profile and goals. You can adjust these anytime from your nutrition dashboard.
+              <div className="bg-cyan-50 rounded-xl p-4 border border-cyan-200">
+                <p className="text-sm text-cyan-900">
+                  <strong className="text-cyan-900">What happens next?</strong> We'll calculate your personalized daily calorie and macro goals based on your profile and goals. You can adjust these anytime from your nutrition dashboard.
                 </p>
               </div>
             
               <button 
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                style={{ backgroundColor: '#8B7355' }}
+                className="w-full py-3 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
               >
                 {loading ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <Loader2 className="w-5 h-5 animate-spin" />
                 ) : (
                   <>Create Account & Calculate Goals <ArrowRight className="w-5 h-5" /></>
                 )}
@@ -1283,4 +1432,3 @@ export default function Register() {
   // Fallback - should not reach here
   return null;
 }
-
