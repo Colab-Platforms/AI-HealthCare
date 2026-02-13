@@ -40,6 +40,37 @@ const userSchema = new mongoose.Schema({
       sleepHours: Number,
       stressLevel: { type: String, enum: ['low', 'moderate', 'high'] },
       waterIntake: Number // glasses per day
+    },
+    diabetesProfile: {
+      type: {
+        type: String,
+        enum: ['Type 1', 'Type 2', 'Prediabetes', 'Gestational']
+      },
+      diagnosisYear: Number,
+      status: {
+        type: String,
+        enum: ['Controlled', 'Uncontrolled', 'Newly diagnosed']
+      },
+      hba1c: Number,
+      glucoseMonitoring: String,
+      fastingGlucose: String,
+      postMealGlucose: String,
+      testingFrequency: String,
+      onMedication: Boolean,
+      medicationType: [String],
+      insulinTiming: String,
+      recentDosageChange: Boolean
+    },
+    dietPreferences: {
+      cuisinePreference: String,
+      mealsPerDay: String,
+      restrictions: [String]
+    },
+    fitnessProfile: {
+      exercisePreference: [String],
+      primaryGoal: String,
+      timeframe: String,
+      biggestChallenge: String
     }
   },
   nutritionGoal: {
