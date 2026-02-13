@@ -20,12 +20,31 @@ export default function Register() {
     confirmPassword: '',
     age: '',
     gender: '',
+    // Diabetes Profile (NEW)
+    diabetesType: '',
+    diagnosisYear: '',
+    diabetesStatus: '',
+    hba1c: '',
+    glucoseMonitoring: '',
+    fastingGlucose: '',
+    postMealGlucose: '',
+    testingFrequency: '',
+    onMedication: false,
+    medicationType: [],
+    insulinTiming: '',
+    recentDosageChange: false,
     // Health Profile
     height: '', // cm
     weight: '', // kg
     bloodGroup: '',
-    dietaryPreference: 'non-vegetarian',
+    bloodPressure: '',
+    otherConditions: [],
+    dietaryPreference: 'vegetarian',
     activityLevel: 'sedentary',
+    // Diet Preferences (NEW)
+    cuisinePreference: 'indian',
+    mealsPerDay: '3',
+    foodRestrictions: [],
     // Medical History
     chronicConditions: [],
     allergies: [],
@@ -38,6 +57,11 @@ export default function Register() {
     sleepHours: '7',
     stressLevel: 'moderate',
     waterIntake: '8',
+    // Fitness & Goals (NEW)
+    exercisePreference: [],
+    primaryGoal: '',
+    timeframe: '3',
+    biggestChallenge: '',
     // Nutrition Goals
     nutritionGoal: 'general_health',
     targetWeight: '',
@@ -77,11 +101,16 @@ export default function Register() {
         height: formData.height ? parseFloat(formData.height) : undefined,
         weight: formData.weight ? parseFloat(formData.weight) : undefined,
         bloodGroup: formData.bloodGroup || undefined,
+        bloodPressure: formData.bloodPressure || undefined,
         dietaryPreference: formData.dietaryPreference,
         activityLevel: formData.activityLevel,
         medicalHistory: {
-          conditions: formData.chronicConditions,
-          currentMedications: formData.currentMedications
+          conditions: [
+            formData.diabetesType ? `Diabetes ${formData.diabetesType}` : '',
+            ...formData.chronicConditions,
+            ...formData.otherConditions
+          ].filter(Boolean),
+          currentMedications: [...formData.currentMedications, ...formData.medicationType].filter(Boolean)
         },
         lifestyle: {
           smoker: formData.smoker,
@@ -92,17 +121,42 @@ export default function Register() {
           stressLevel: formData.stressLevel,
           waterIntake: parseInt(formData.waterIntake)
         },
-        allergies: formData.allergies
+        allergies: [...formData.allergies, ...formData.foodRestrictions].filter(Boolean),
+        diabetesProfile: formData.diabetesType ? {
+          type: formData.diabetesType,
+          diagnosisYear: formData.diagnosisYear,
+          status: formData.diabetesStatus,
+          hba1c: formData.hba1c,
+          glucoseMonitoring: formData.glucoseMonitoring,
+          fastingGlucose: formData.fastingGlucose,
+          postMealGlucose: formData.postMealGlucose,
+          testingFrequency: formData.testingFrequency,
+          onMedication: formData.onMedication,
+          medicationType: formData.medicationType,
+          insulinTiming: formData.insulinTiming,
+          recentDosageChange: formData.recentDosageChange
+        } : undefined,
+        dietPreferences: {
+          cuisinePreference: formData.cuisinePreference,
+          mealsPerDay: formData.mealsPerDay,
+          restrictions: formData.foodRestrictions
+        },
+        fitnessProfile: {
+          exercisePreference: formData.exercisePreference,
+          primaryGoal: formData.primaryGoal,
+          timeframe: formData.timeframe,
+          biggestChallenge: formData.biggestChallenge
+        }
       };
 
       const nutritionGoal = {
-        goal: formData.nutritionGoal,
+        goal: formData.primaryGoal || formData.nutritionGoal,
         targetWeight: formData.targetWeight ? parseFloat(formData.targetWeight) : null,
         weeklyGoal: parseFloat(formData.weeklyGoal)
       };
 
       await register(formData.name, formData.email, formData.password, profileData, nutritionGoal);
-      toast.success('Account created successfully! Your personalized nutrition plan is ready.');
+      toast.success('Account created successfully! Your personalized health plan is ready.');
       navigate('/dashboard');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Registration failed');
