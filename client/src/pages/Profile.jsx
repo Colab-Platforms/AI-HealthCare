@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { 
   User, Activity, Heart, Mail, Calendar, Ruler, Scale, Droplet, 
   Pill, Apple, Dumbbell, Moon, Target, TrendingUp, Edit2, Save, X,
-  CheckCircle, AlertCircle, Syringe, Utensils, Award, ChevronRight
+  CheckCircle, AlertCircle, Syringe, Utensils, Award, ChevronRight, TrendingDown
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
@@ -12,12 +12,23 @@ export default function Profile() {
   const { user, updateUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [editMode, setEditMode] = useState(false);
-  const [activeSection, setActiveSection] = useState('overview');
+  const [activeSection, setActiveSection] = useState('profile');
+  const [goalLoading, setGoalLoading] = useState(false);
   
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
     profile: user?.profile || {}
+  });
+
+  const [goalData, setGoalData] = useState({
+    primaryGoal: '',
+    targetWeight: '',
+    timeframe: '',
+    activityLevel: '',
+    exercisePreference: [],
+    biggestChallenge: '',
+    motivation: ''
   });
 
   useEffect(() => {
@@ -26,6 +37,18 @@ export default function Profile() {
         name: user.name || '',
         email: user.email || '',
         profile: user.profile || {}
+      });
+      
+      // Load existing fitness goals
+      const fitnessProfile = user.profile?.fitnessProfile || {};
+      setGoalData({
+        primaryGoal: fitnessProfile.primaryGoal || '',
+        targetWeight: fitnessProfile.targetWeight || '',
+        timeframe: fitnessProfile.timeframe || '',
+        activityLevel: user.profile?.activityLevel || '',
+        exercisePreference: fitnessProfile.exercisePreference || [],
+        biggestChallenge: fitnessProfile.biggestChallenge || '',
+        motivation: fitnessProfile.motivation || ''
       });
     }
   }, [user]);
@@ -45,6 +68,45 @@ export default function Profile() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleGoalSave = async () => {
+    setGoalLoading(true);
+    try {
+      const updatedProfile = {
+        ...formData.profile,
+        activityLevel: goalData.activityLevel,
+        fitnessProfile: {
+          primaryGoal: goalData.primaryGoal,
+          targetWeight: goalData.targetWeight,
+          timeframe: goalData.timeframe,
+          exercisePreference: goalData.exercisePreference,
+          biggestChallenge: goalData.biggestChallenge,
+          motivation: goalData.motivation
+        }
+      };
+
+      const response = await api.put('/auth/profile', {
+        name: formData.name,
+        profile: updatedProfile
+      });
+      
+      updateUser(response.data);
+      toast.success('Fitness goals updated successfully!');
+    } catch (error) {
+      toast.error('Failed to update fitness goals');
+    } finally {
+      setGoalLoading(false);
+    }
+  };
+
+  const toggleExercise = (exercise) => {
+    setGoalData(prev => ({
+      ...prev,
+      exercisePreference: prev.exercisePreference.includes(exercise)
+        ? prev.exercisePreference.filter(e => e !== exercise)
+        : [...prev.exercisePreference, exercise]
+    }));
   };
 
   const bmi = formData.profile?.height && formData.profile?.weight
@@ -103,13 +165,10 @@ export default function Profile() {
       {/* Navigation Tabs */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4">
-          <div className="flex gap-8 overflow-x-auto">
+          <div className="flex gap-8">
             {[
-              { id: 'overview', label: 'Overview', icon: User },
-              { id: 'diabetes', label: 'Diabetes Profile', icon: Activity },
-              { id: 'body', label: 'Body Metrics', icon: Scale },
-              { id: 'diet', label: 'Diet & Nutrition', icon: Apple },
-              { id: 'fitness', label: 'Fitness & Goals', icon: Target }
+              { id: 'profile', label: 'Profile', icon: User },
+              { id: 'goal', label: 'Set Goal', icon: Target }
             ].map(tab => (
               <button
                 key={tab.id}
@@ -130,62 +189,60 @@ export default function Profile() {
 
       {/* Content */}
       <div className="max-w-6xl mx-auto px-4 py-8">
-        {/* Overview Section */}
-        {activeSection === 'overview' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {/* Quick Stats */}
-            <div className="bg-white rounded-2xl p-6 shadow-sm">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-xl bg-cyan-100 flex items-center justify-center">
-                  <Scale className="w-6 h-6 text-cyan-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">BMI</p>
-                  <p className="text-2xl font-bold text-gray-900">{bmi || '--'}</p>
-                </div>
-              </div>
-              <p className="text-xs text-gray-500">
-                {bmi ? (bmi < 18.5 ? 'Underweight' : bmi < 25 ? 'Normal' : bmi < 30 ? 'Overweight' : 'Obese') : 'Not calculated'}
-              </p>
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 shadow-sm">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
-                  <Activity className="w-6 h-6 text-blue-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Diabetes Type</p>
-                  <p className="text-2xl font-bold text-gray-900">{diabetesProfile.type || '--'}</p>
-                </div>
-              </div>
-              <p className="text-xs text-gray-500">
-                {diabetesProfile.status || 'Not specified'}
-              </p>
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 shadow-sm">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
-                  <Target className="w-6 h-6 text-green-600" />
-                </div>
-                <div>
-                  <p className="text-sm text-gray-600">Primary Goal</p>
-                  <p className="text-lg font-bold text-gray-900">
-                    {fitnessProfile.primaryGoal?.replace('_', ' ') || 'Not set'}
-                  </p>
-                </div>
-              </div>
-              <p className="text-xs text-gray-500">
-                {fitnessProfile.timeframe ? `${fitnessProfile.timeframe} months` : ''}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* Diabetes Profile Section */}
-        {activeSection === 'diabetes' && diabetesProfile && (
+        {/* Profile Section */}
+        {activeSection === 'profile' && (
           <div className="space-y-6">
+            {/* Quick Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-cyan-100 flex items-center justify-center">
+                    <Scale className="w-6 h-6 text-cyan-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">BMI</p>
+                    <p className="text-2xl font-bold text-gray-900">{bmi || '--'}</p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">
+                  {bmi ? (bmi < 18.5 ? 'Underweight' : bmi < 25 ? 'Normal' : bmi < 30 ? 'Overweight' : 'Obese') : 'Not calculated'}
+                </p>
+              </div>
+
+              <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
+                    <Activity className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Diabetes Type</p>
+                    <p className="text-2xl font-bold text-gray-900">{diabetesProfile.type || '--'}</p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">
+                  {diabetesProfile.status || 'Not specified'}
+                </p>
+              </div>
+
+              <div className="bg-white rounded-2xl p-6 shadow-sm">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center">
+                    <Target className="w-6 h-6 text-green-600" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-gray-600">Primary Goal</p>
+                    <p className="text-lg font-bold text-gray-900">
+                      {fitnessProfile.primaryGoal?.replace('_', ' ') || 'Not set'}
+                    </p>
+                  </div>
+                </div>
+                <p className="text-xs text-gray-500">
+                  {fitnessProfile.timeframe ? `${fitnessProfile.timeframe} months` : ''}
+                </p>
+              </div>
+            </div>
+
+            {/* Diabetes Profile */}
             <div className="bg-white rounded-2xl p-6 shadow-sm">
               <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
                 <Activity className="w-6 h-6 text-cyan-600" />
@@ -199,19 +256,44 @@ export default function Profile() {
               </div>
             </div>
 
+            {/* Body Metrics */}
             <div className="bg-white rounded-2xl p-6 shadow-sm">
               <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <Droplet className="w-6 h-6 text-blue-600" />
-                Glucose Monitoring
+                <Scale className="w-6 h-6 text-cyan-600" />
+                Physical Measurements
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <InfoCard label="Monitoring Method" value={diabetesProfile.glucoseMonitoring} icon={Droplet} />
-                <InfoCard label="Testing Frequency" value={diabetesProfile.testingFrequency} icon={Calendar} />
-                <InfoCard label="Fasting Glucose" value={diabetesProfile.fastingGlucose || 'Not recorded'} icon={TrendingUp} />
-                <InfoCard label="Post-Meal Glucose" value={diabetesProfile.postMealGlucose || 'Not recorded'} icon={TrendingUp} />
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <InfoCard label="Height" value={formData.profile.height ? `${formData.profile.height} cm` : '--'} icon={Ruler} />
+                <InfoCard label="Weight" value={formData.profile.weight ? `${formData.profile.weight} kg` : '--'} icon={Scale} />
+                <InfoCard label="Blood Group" value={formData.profile.bloodGroup || 'Not specified'} icon={Droplet} />
               </div>
             </div>
 
+            {/* Diet & Nutrition */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm">
+              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
+                <Apple className="w-6 h-6 text-green-600" />
+                Dietary Preferences
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <InfoCard label="Diet Type" value={formData.profile.dietaryPreference || 'Not specified'} icon={Apple} />
+                <InfoCard label="Cuisine Preference" value={dietPreferences.cuisinePreference || 'Not specified'} icon={Utensils} />
+              </div>
+              {formData.profile.allergies?.length > 0 && (
+                <div className="mt-4">
+                  <p className="text-sm text-gray-600 mb-2">Food Restrictions & Allergies</p>
+                  <div className="flex flex-wrap gap-2">
+                    {formData.profile.allergies.map((allergy, idx) => (
+                      <span key={idx} className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm">
+                        {allergy}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Medication */}
             {diabetesProfile.onMedication && (
               <div className="bg-white rounded-2xl p-6 shadow-sm">
                 <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
@@ -229,145 +311,207 @@ export default function Profile() {
                       ))}
                     </div>
                   </div>
-                  {diabetesProfile.insulinTiming && (
-                    <InfoCard label="Insulin Timing" value={diabetesProfile.insulinTiming} icon={Syringe} />
-                  )}
-                  {diabetesProfile.recentDosageChange && (
-                    <div className="flex items-center gap-2 text-amber-600 bg-amber-50 p-3 rounded-xl">
-                      <AlertCircle className="w-5 h-5" />
-                      <span className="text-sm">Recent dosage change recorded</span>
-                    </div>
-                  )}
                 </div>
               </div>
             )}
           </div>
         )}
 
-        {/* Body Metrics Section */}
-        {activeSection === 'body' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-2xl p-6 shadow-sm">
-              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <Scale className="w-6 h-6 text-cyan-600" />
-                Physical Measurements
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <InfoCard label="Height" value={formData.profile.height ? `${formData.profile.height} cm` : '--'} icon={Ruler} />
-                <InfoCard label="Weight" value={formData.profile.weight ? `${formData.profile.weight} kg` : '--'} icon={Scale} />
-                <InfoCard label="BMI" value={bmi || '--'} icon={Activity} />
-              </div>
-            </div>
-
-            <div className="bg-white rounded-2xl p-6 shadow-sm">
-              <h3 className="text-xl font-bold text-gray-900 mb-6">Health Metrics</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <InfoCard label="Blood Group" value={formData.profile.bloodGroup || 'Not specified'} icon={Droplet} />
-                <InfoCard label="Blood Pressure" value={formData.profile.bloodPressure || 'Not recorded'} icon={Heart} />
-              </div>
-            </div>
-
-            {formData.profile.otherConditions?.length > 0 && (
-              <div className="bg-white rounded-2xl p-6 shadow-sm">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Other Health Conditions</h3>
-                <div className="flex flex-wrap gap-2">
-                  {formData.profile.otherConditions.map((condition, idx) => (
-                    <span key={idx} className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm">
-                      {condition}
-                    </span>
-                  ))}
+        {/* Set Goal Section */}
+        {activeSection === 'goal' && (
+          <div className="max-w-3xl mx-auto">
+            <div className="bg-white rounded-2xl p-8 shadow-sm">
+              <div className="flex items-center gap-3 mb-8">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center">
+                  <Target className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900">Set Your Fitness Goals</h2>
+                  <p className="text-gray-600">Define your health and fitness objectives</p>
                 </div>
               </div>
-            )}
-          </div>
-        )}
 
-        {/* Diet & Nutrition Section */}
-        {activeSection === 'diet' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-2xl p-6 shadow-sm">
-              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <Apple className="w-6 h-6 text-green-600" />
-                Dietary Preferences
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <InfoCard label="Diet Type" value={formData.profile.dietaryPreference || 'Not specified'} icon={Apple} />
-                <InfoCard label="Cuisine Preference" value={dietPreferences.cuisinePreference || 'Not specified'} icon={Utensils} />
-                <InfoCard label="Meals Per Day" value={dietPreferences.mealsPerDay || 'Not specified'} icon={Utensils} />
-              </div>
-            </div>
-
-            {formData.profile.allergies?.length > 0 && (
-              <div className="bg-white rounded-2xl p-6 shadow-sm">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Food Restrictions & Allergies</h3>
-                <div className="flex flex-wrap gap-2">
-                  {formData.profile.allergies.map((allergy, idx) => (
-                    <span key={idx} className="px-3 py-1 bg-orange-100 text-orange-700 rounded-full text-sm">
-                      {allergy}
-                    </span>
-                  ))}
+              <div className="space-y-6">
+                {/* Primary Goal */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-3">
+                    What is your primary fitness goal?
+                  </label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {[
+                      { value: 'weight_loss', label: 'Weight Loss', icon: TrendingDown },
+                      { value: 'weight_gain', label: 'Weight Gain', icon: TrendingUp },
+                      { value: 'muscle_building', label: 'Muscle Building', icon: Dumbbell },
+                      { value: 'maintain_health', label: 'Maintain Health', icon: Heart },
+                      { value: 'improve_fitness', label: 'Improve Fitness', icon: Activity },
+                      { value: 'diabetes_management', label: 'Diabetes Management', icon: Activity }
+                    ].map(goal => (
+                      <button
+                        key={goal.value}
+                        onClick={() => setGoalData({ ...goalData, primaryGoal: goal.value })}
+                        className={`p-4 rounded-xl border-2 transition-all flex items-center gap-3 ${
+                          goalData.primaryGoal === goal.value
+                            ? 'border-cyan-500 bg-cyan-50 text-cyan-700'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <goal.icon className="w-5 h-5" />
+                        <span className="font-medium">{goal.label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
-          </div>
-        )}
 
-        {/* Fitness & Goals Section */}
-        {activeSection === 'fitness' && (
-          <div className="space-y-6">
-            <div className="bg-white rounded-2xl p-6 shadow-sm">
-              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <Dumbbell className="w-6 h-6 text-cyan-600" />
-                Activity & Exercise
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <InfoCard label="Activity Level" value={formData.profile.activityLevel?.replace('_', ' ') || 'Not specified'} icon={Activity} />
-                <InfoCard label="Sleep Duration" value={formData.profile.lifestyle?.sleepHours ? `${formData.profile.lifestyle.sleepHours} hours` : 'Not recorded'} icon={Moon} />
-              </div>
-            </div>
+                {/* Target Weight */}
+                {(goalData.primaryGoal === 'weight_loss' || goalData.primaryGoal === 'weight_gain') && (
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-900 mb-2">
+                      Target Weight (kg)
+                    </label>
+                    <input
+                      type="number"
+                      value={goalData.targetWeight}
+                      onChange={(e) => setGoalData({ ...goalData, targetWeight: e.target.value })}
+                      placeholder="Enter your target weight"
+                      className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    />
+                    {formData.profile.weight && goalData.targetWeight && (
+                      <p className="text-sm text-gray-600 mt-2">
+                        Current: {formData.profile.weight} kg → Target: {goalData.targetWeight} kg 
+                        ({Math.abs(formData.profile.weight - goalData.targetWeight).toFixed(1)} kg difference)
+                      </p>
+                    )}
+                  </div>
+                )}
 
-            {fitnessProfile.exercisePreference?.length > 0 && (
-              <div className="bg-white rounded-2xl p-6 shadow-sm">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Exercise Preferences</h3>
-                <div className="flex flex-wrap gap-2">
-                  {fitnessProfile.exercisePreference.map((exercise, idx) => (
-                    <span key={idx} className="px-3 py-1 bg-cyan-100 text-cyan-700 rounded-full text-sm">
-                      {exercise}
-                    </span>
-                  ))}
+                {/* Timeframe */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    Timeframe to achieve your goal
+                  </label>
+                  <select
+                    value={goalData.timeframe}
+                    onChange={(e) => setGoalData({ ...goalData, timeframe: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  >
+                    <option value="">Select timeframe</option>
+                    <option value="1">1 month</option>
+                    <option value="2">2 months</option>
+                    <option value="3">3 months</option>
+                    <option value="6">6 months</option>
+                    <option value="12">1 year</option>
+                    <option value="24">2 years</option>
+                  </select>
                 </div>
-              </div>
-            )}
 
-            <div className="bg-white rounded-2xl p-6 shadow-sm">
-              <h3 className="text-xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-                <Target className="w-6 h-6 text-green-600" />
-                Health Goals
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <InfoCard label="Primary Goal" value={fitnessProfile.primaryGoal?.replace('_', ' ') || 'Not set'} icon={Target} />
-                <InfoCard label="Timeframe" value={fitnessProfile.timeframe ? `${fitnessProfile.timeframe} months` : 'Not set'} icon={Calendar} />
-                <InfoCard label="Biggest Challenge" value={fitnessProfile.biggestChallenge?.replace('_', ' ') || 'Not specified'} icon={AlertCircle} />
-              </div>
-            </div>
+                {/* Activity Level */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-3">
+                    Current Activity Level
+                  </label>
+                  <div className="space-y-2">
+                    {[
+                      { value: 'sedentary', label: 'Sedentary', desc: 'Little or no exercise' },
+                      { value: 'lightly_active', label: 'Lightly Active', desc: 'Light exercise 1-3 days/week' },
+                      { value: 'moderately_active', label: 'Moderately Active', desc: 'Moderate exercise 3-5 days/week' },
+                      { value: 'very_active', label: 'Very Active', desc: 'Hard exercise 6-7 days/week' },
+                      { value: 'extremely_active', label: 'Extremely Active', desc: 'Very hard exercise & physical job' }
+                    ].map(level => (
+                      <button
+                        key={level.value}
+                        onClick={() => setGoalData({ ...goalData, activityLevel: level.value })}
+                        className={`w-full p-4 rounded-xl border-2 transition-all text-left ${
+                          goalData.activityLevel === level.value
+                            ? 'border-cyan-500 bg-cyan-50'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        <div className="font-medium text-gray-900">{level.label}</div>
+                        <div className="text-sm text-gray-600">{level.desc}</div>
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-            {(formData.profile.lifestyle?.smoker || formData.profile.lifestyle?.alcohol) && (
-              <div className="bg-white rounded-2xl p-6 shadow-sm">
-                <h3 className="text-xl font-bold text-gray-900 mb-4">Lifestyle Factors</h3>
-                <div className="flex flex-wrap gap-2">
-                  {formData.profile.lifestyle.smoker && (
-                    <span className="px-3 py-1 bg-red-100 text-red-700 rounded-full text-sm">
-                      Smoker
-                    </span>
+                {/* Exercise Preferences */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-3">
+                    Preferred Exercise Types (Select all that apply)
+                  </label>
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {[
+                      'Walking', 'Running', 'Cycling', 'Swimming', 
+                      'Yoga', 'Gym', 'Sports', 'Dancing', 'Home Workouts'
+                    ].map(exercise => (
+                      <button
+                        key={exercise}
+                        onClick={() => toggleExercise(exercise)}
+                        className={`p-3 rounded-xl border-2 transition-all ${
+                          goalData.exercisePreference.includes(exercise)
+                            ? 'border-cyan-500 bg-cyan-50 text-cyan-700'
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                      >
+                        {exercise}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Biggest Challenge */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    What's your biggest challenge?
+                  </label>
+                  <select
+                    value={goalData.biggestChallenge}
+                    onChange={(e) => setGoalData({ ...goalData, biggestChallenge: e.target.value })}
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  >
+                    <option value="">Select challenge</option>
+                    <option value="time_management">Time Management</option>
+                    <option value="motivation">Staying Motivated</option>
+                    <option value="diet_control">Diet Control</option>
+                    <option value="exercise_routine">Sticking to Exercise Routine</option>
+                    <option value="stress">Managing Stress</option>
+                    <option value="sleep">Getting Enough Sleep</option>
+                  </select>
+                </div>
+
+                {/* Motivation */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">
+                    What motivates you? (Optional)
+                  </label>
+                  <textarea
+                    value={goalData.motivation}
+                    onChange={(e) => setGoalData({ ...goalData, motivation: e.target.value })}
+                    placeholder="Share what drives you to achieve your fitness goals..."
+                    rows="3"
+                    className="w-full px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none"
+                  />
+                </div>
+
+                {/* Save Button */}
+                <button
+                  onClick={handleGoalSave}
+                  disabled={goalLoading || !goalData.primaryGoal}
+                  className="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-semibold hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                >
+                  {goalLoading ? (
+                    <>
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-5 h-5" />
+                      Save Fitness Goals
+                    </>
                   )}
-                  {formData.profile.lifestyle.alcohol && (
-                    <span className="px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-sm">
-                      Alcohol Consumer
-                    </span>
-                  )}
-                </div>
+                </button>
               </div>
-            )}
+            </div>
           </div>
         )}
       </div>
