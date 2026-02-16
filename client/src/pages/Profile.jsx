@@ -4,7 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import axios from 'axios';
 import { 
-  User, Save, Heart, AlertCircle, Camera, Mail, Phone, Target
+  User, Save, Heart, AlertCircle, Camera, Mail, Phone, Target,
+  Activity, Droplet, Cigarette, Wine, Moon, Apple, Dumbbell, Pill
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -371,6 +372,181 @@ export default function Profile() {
                 </div>
               </div>
             </div>
+
+            {/* Diabetes Profile */}
+            {user?.profile?.diabetesProfile && (
+              <div className="bg-white rounded-2xl border border-slate-200 p-3 md:p-6 shadow-sm">
+                <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                  <Pill className="w-5 h-5 text-purple-500" />
+                  Diabetes Profile
+                </h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="p-3 bg-slate-50 rounded-xl">
+                    <p className="text-xs text-slate-500 mb-1">Diabetes Type</p>
+                    <p className="text-sm font-semibold text-slate-800 capitalize">{user.profile.diabetesProfile.type}</p>
+                  </div>
+                  {user.profile.diabetesProfile.status && (
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <p className="text-xs text-slate-500 mb-1">Status</p>
+                      <p className="text-sm font-semibold text-slate-800 capitalize">{user.profile.diabetesProfile.status}</p>
+                    </div>
+                  )}
+                  {user.profile.diabetesProfile.hba1c && (
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <p className="text-xs text-slate-500 mb-1">HbA1c Level</p>
+                      <p className="text-sm font-semibold text-slate-800">{user.profile.diabetesProfile.hba1c}%</p>
+                    </div>
+                  )}
+                  {user.profile.diabetesProfile.glucoseMonitoring && (
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <p className="text-xs text-slate-500 mb-1">Glucose Monitoring</p>
+                      <p className="text-sm font-semibold text-slate-800 capitalize">{user.profile.diabetesProfile.glucoseMonitoring.replace('_', ' ')}</p>
+                    </div>
+                  )}
+                  {user.profile.diabetesProfile.medicationType && user.profile.diabetesProfile.medicationType.length > 0 && (
+                    <div className="p-3 bg-slate-50 rounded-xl md:col-span-2">
+                      <p className="text-xs text-slate-500 mb-2">Medications</p>
+                      <div className="flex flex-wrap gap-2">
+                        {user.profile.diabetesProfile.medicationType.map((med, idx) => (
+                          <span key={idx} className="px-2 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-medium capitalize">
+                            {med}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Lifestyle Habits */}
+            {user?.profile?.lifestyle && (
+              <div className="bg-white rounded-2xl border border-slate-200 p-3 md:p-6 shadow-sm">
+                <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-green-500" />
+                  Lifestyle Habits
+                </h3>
+                <div className="grid md:grid-cols-3 gap-4">
+                  <div className="p-3 bg-slate-50 rounded-xl flex items-center gap-3">
+                    <Moon className="w-5 h-5 text-indigo-500" />
+                    <div>
+                      <p className="text-xs text-slate-500">Sleep Hours</p>
+                      <p className="text-sm font-semibold text-slate-800">{user.profile.lifestyle.sleepHours} hours</p>
+                    </div>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-xl flex items-center gap-3">
+                    <Droplet className="w-5 h-5 text-blue-500" />
+                    <div>
+                      <p className="text-xs text-slate-500">Water Intake</p>
+                      <p className="text-sm font-semibold text-slate-800">{user.profile.lifestyle.waterIntake} glasses</p>
+                    </div>
+                  </div>
+                  <div className="p-3 bg-slate-50 rounded-xl flex items-center gap-3">
+                    <AlertCircle className="w-5 h-5 text-amber-500" />
+                    <div>
+                      <p className="text-xs text-slate-500">Stress Level</p>
+                      <p className="text-sm font-semibold text-slate-800 capitalize">{user.profile.lifestyle.stressLevel}</p>
+                    </div>
+                  </div>
+                  {user.profile.lifestyle.smoker && (
+                    <div className="p-3 bg-slate-50 rounded-xl flex items-center gap-3">
+                      <Cigarette className="w-5 h-5 text-red-500" />
+                      <div>
+                        <p className="text-xs text-slate-500">Smoking</p>
+                        <p className="text-sm font-semibold text-slate-800 capitalize">{user.profile.lifestyle.smokingFrequency || 'Yes'}</p>
+                      </div>
+                    </div>
+                  )}
+                  {user.profile.lifestyle.alcohol && (
+                    <div className="p-3 bg-slate-50 rounded-xl flex items-center gap-3">
+                      <Wine className="w-5 h-5 text-purple-500" />
+                      <div>
+                        <p className="text-xs text-slate-500">Alcohol</p>
+                        <p className="text-sm font-semibold text-slate-800 capitalize">{user.profile.lifestyle.alcoholFrequency || 'Yes'}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Diet Preferences */}
+            {user?.profile?.dietPreferences && (
+              <div className="bg-white rounded-2xl border border-slate-200 p-3 md:p-6 shadow-sm">
+                <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                  <Apple className="w-5 h-5 text-red-500" />
+                  Diet Preferences
+                </h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {user.profile.dietPreferences.cuisinePreference && (
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <p className="text-xs text-slate-500 mb-1">Cuisine Preference</p>
+                      <p className="text-sm font-semibold text-slate-800 capitalize">{user.profile.dietPreferences.cuisinePreference}</p>
+                    </div>
+                  )}
+                  {user.profile.dietPreferences.mealsPerDay && (
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <p className="text-xs text-slate-500 mb-1">Meals Per Day</p>
+                      <p className="text-sm font-semibold text-slate-800">{user.profile.dietPreferences.mealsPerDay}</p>
+                    </div>
+                  )}
+                  {user.profile.dietPreferences.restrictions && user.profile.dietPreferences.restrictions.length > 0 && (
+                    <div className="p-3 bg-slate-50 rounded-xl md:col-span-2">
+                      <p className="text-xs text-slate-500 mb-2">Food Restrictions</p>
+                      <div className="flex flex-wrap gap-2">
+                        {user.profile.dietPreferences.restrictions.map((restriction, idx) => (
+                          <span key={idx} className="px-2 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-medium capitalize">
+                            {restriction}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Fitness Profile */}
+            {user?.profile?.fitnessProfile && (
+              <div className="bg-white rounded-2xl border border-slate-200 p-3 md:p-6 shadow-sm">
+                <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                  <Dumbbell className="w-5 h-5 text-orange-500" />
+                  Fitness Profile
+                </h3>
+                <div className="grid md:grid-cols-2 gap-4">
+                  {user.profile.fitnessProfile.primaryGoal && (
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <p className="text-xs text-slate-500 mb-1">Primary Goal</p>
+                      <p className="text-sm font-semibold text-slate-800 capitalize">{user.profile.fitnessProfile.primaryGoal.replace('_', ' ')}</p>
+                    </div>
+                  )}
+                  {user.profile.fitnessProfile.timeframe && (
+                    <div className="p-3 bg-slate-50 rounded-xl">
+                      <p className="text-xs text-slate-500 mb-1">Timeframe</p>
+                      <p className="text-sm font-semibold text-slate-800">{user.profile.fitnessProfile.timeframe} months</p>
+                    </div>
+                  )}
+                  {user.profile.fitnessProfile.biggestChallenge && (
+                    <div className="p-3 bg-slate-50 rounded-xl md:col-span-2">
+                      <p className="text-xs text-slate-500 mb-1">Biggest Challenge</p>
+                      <p className="text-sm font-semibold text-slate-800 capitalize">{user.profile.fitnessProfile.biggestChallenge.replace('_', ' ')}</p>
+                    </div>
+                  )}
+                  {user.profile.fitnessProfile.exercisePreference && user.profile.fitnessProfile.exercisePreference.length > 0 && (
+                    <div className="p-3 bg-slate-50 rounded-xl md:col-span-2">
+                      <p className="text-xs text-slate-500 mb-2">Exercise Preferences</p>
+                      <div className="flex flex-wrap gap-2">
+                        {user.profile.fitnessProfile.exercisePreference.map((exercise, idx) => (
+                          <span key={idx} className="px-2 py-1 bg-orange-100 text-orange-700 rounded-lg text-xs font-medium capitalize">
+                            {exercise.replace('_', ' ')}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <button 
               type="submit" 
