@@ -78,6 +78,8 @@ export default function QuickFoodScan() {
   };
   
   const [quantitySuggestions, setQuantitySuggestions] = useState([]);
+  const [showMealTypeModal, setShowMealTypeModal] = useState(false);
+  const [selectedMealType, setSelectedMealType] = useState('breakfast');
 
   // Check for persisted result on mount (for mobile memory recovery)
   useEffect(() => {
@@ -599,6 +601,8 @@ export default function QuickFoodScan() {
     setImage(null);
     setImagePreview(null);
     setImageDetails({ quantity: '', prepMethod: '', additionalInfo: '' });
+    setShowMealTypeModal(false);
+    setSelectedMealType('breakfast');
     
     // Clear persisted data from both storages
     sessionStorage.removeItem('foodScanResult');
@@ -608,6 +612,53 @@ export default function QuickFoodScan() {
     
     // Clear any stored data
     if (window.gc) window.gc(); // Hint for garbage collection
+  };
+
+  const handleLogMeal = () => {
+    // Show meal type selector modal
+    setShowMealTypeModal(true);
+  };
+
+  const logMealToNutrition = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      
+      // Prepare food item data
+      const foodItem = {
+        name: result.foodItem?.name || 'Food from scan',
+        quantity: imageDetails.quantity || result.foodItem?.quantity || '1 serving',
+        nutrition: result.foodItem?.nutrition || {},
+        notes: imageDetails.prepMethod ? `Preparation: ${imageDetails.prepMethod}` : ''
+      };
+
+      // Log meal to nutrition page
+      const response = await axios.post(
+        '/api/nutrition/log-meal',
+        {
+          mealType: selectedMealType,
+          foodItems: [foodItem],
+          notes: `Logged from Quick Food Scan`,
+          timestamp: new Date()
+        },
+        { 
+          headers: { Authorization: `Bearer ${token}` },
+          skipAutoLogout: true
+        }
+      );
+
+      if (response.data.success) {
+        toast.success(`Meal logged to ${selectedMealType}! 🎉`);
+        setShowMealTypeModal(false);
+        resetForm();
+        // Navigate to nutrition page
+        setTimeout(() => {
+          navigate('/nutrition#daily-target');
+        }, 1000);
+      }
+    } catch (error) {
+      console.error('Log meal error:', error);
+      toast.error('Failed to log meal. Please try again.');
+    }
   };
 
   return (
@@ -765,12 +816,15 @@ export default function QuickFoodScan() {
 
                 {/* Compact Details */}
                 <div className="space-y-2 bg-blue-50 rounded-xl p-3">
+                  <label className="block text-xs font-semibold text-gray-700 mb-1">
+                    How much did you eat?
+                  </label>
                   <input
                     type="text"
                     value={imageDetails.quantity}
                     onChange={(e) => setImageDetails({ ...imageDetails, quantity: e.target.value })}
                     placeholder="Quantity (e.g., 1 bowl)"
-                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-400"
+                    className="w-full px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:border-blue-400"
                   />
                   
                   <div className="grid grid-cols-3 gap-1.5">
@@ -1063,12 +1117,12 @@ export default function QuickFoodScan() {
                       {result.alternatives.slice(0, 3).map((alt, i) => (
                         <div key={i} className="bg-white rounded-lg p-2.5 border border-green-200">
                           <div className="flex items-start justify-between mb-1">
-                            <p className="font-semibold text-green-900 text-xs flex-1">{alt.name}</p>
-                            <span className="text-[10px] font-bold bg-green-100 text-green-700 px-2 py-0.5 rounded ml-2">
+                            <p className="font-semibold text-gray-900 text-xs flex-1">{alt.name}</p>
+                            <span className="text-[10px] font-bold bg-green-100 text-green-800 px-2 py-0.5 rounded ml-2">
                               {alt.nutrition?.calories} cal
                             </span>
                           </div>
-                          <p className="text-[10px] text-green-700">{alt.description}</p>
+                          <p className="text-[10px] text-gray-700">{alt.description}</p>
                         </div>
                       ))}
                     </div>
@@ -1084,9 +1138,7 @@ export default function QuickFoodScan() {
                     Close
                   </button>
                   <button
-                    onClick={() => {
-                      toast.success('Feature coming soon!');
-                    }}
+                    onClick={handleLogMeal}
                     className="flex-1 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-semibold text-sm hover:shadow-lg transition-all"
                   >
                     Log Meal
@@ -1094,6 +1146,63 @@ export default function QuickFoodScan() {
                 </div>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Meal Type Selector Modal */}
+      {showMealTypeModal && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-[10001] flex items-end sm:items-center justify-center"
+          onClick={() => setShowMealTypeModal(false)}
+        >
+          <div 
+            className="bg-white w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl p-6"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-bold text-gray-900">Select Meal Type</h3>
+              <button
+                onClick={() => setShowMealTypeModal(false)}
+                className="p-2 hover:bg-gray-100 rounded-full"
+              >
+                <X className="w-5 h-5 text-gray-700" />
+              </button>
+            </div>
+
+            <div className="space-y-3 mb-6">
+              {[
+                { type: 'breakfast', icon: '🌅', label: 'Breakfast', color: 'from-orange-400 to-yellow-400' },
+                { type: 'lunch', icon: '☀️', label: 'Lunch', color: 'from-yellow-400 to-amber-400' },
+                { type: 'dinner', icon: '🌙', label: 'Dinner', color: 'from-indigo-400 to-purple-400' },
+                { type: 'snack', icon: '🍎', label: 'Snacks', color: 'from-green-400 to-emerald-400' }
+              ].map((meal) => (
+                <button
+                  key={meal.type}
+                  onClick={() => setSelectedMealType(meal.type)}
+                  className={`w-full p-4 rounded-xl flex items-center gap-4 transition-all ${
+                    selectedMealType === meal.type
+                      ? `bg-gradient-to-r ${meal.color} text-white shadow-lg scale-105`
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  }`}
+                >
+                  <span className="text-3xl">{meal.icon}</span>
+                  <div className="flex-1 text-left">
+                    <p className="font-bold text-lg">{meal.label}</p>
+                  </div>
+                  {selectedMealType === meal.type && (
+                    <CheckCircle className="w-6 h-6" />
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <button
+              onClick={logMealToNutrition}
+              className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-bold hover:shadow-lg transition-all"
+            >
+              Log to {selectedMealType.charAt(0).toUpperCase() + selectedMealType.slice(1)}
+            </button>
           </div>
         </div>
       )}
