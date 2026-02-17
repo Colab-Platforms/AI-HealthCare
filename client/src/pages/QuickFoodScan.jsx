@@ -623,13 +623,19 @@ export default function QuickFoodScan() {
     try {
       const token = localStorage.getItem('token');
       
-      // Prepare food item data
+      // Prepare food item data - ALWAYS use user input for quantity and prep method
       const foodItem = {
         name: result.foodItem?.name || 'Food from scan',
-        quantity: imageDetails.quantity || result.foodItem?.quantity || '1 serving',
+        quantity: imageDetails.quantity || '1 serving', // User input quantity
         nutrition: result.foodItem?.nutrition || {},
-        notes: imageDetails.prepMethod ? `Preparation: ${imageDetails.prepMethod}` : ''
+        notes: imageDetails.prepMethod ? `Preparation: ${imageDetails.prepMethod}` : '' // User input prep method
       };
+
+      console.log('Logging meal with user input:', {
+        quantity: imageDetails.quantity,
+        prepMethod: imageDetails.prepMethod,
+        foodItem
+      });
 
       // Log meal to nutrition page
       const response = await axios.post(
@@ -684,39 +690,41 @@ export default function QuickFoodScan() {
         <div className="w-full px-4 py-4 space-y-4">
           {/* Food Input Card */}
           <div className="bg-white rounded-2xl shadow-lg p-4 space-y-4">
-            {/* Input Field with Suggestions */}
-            <div className="relative">
-              <label className="block text-xs font-semibold text-gray-700 mb-2">
-                What did you eat?
-              </label>
-              <input
-                type="text"
-                value={foodInput}
-                onChange={handleFoodInputChange}
-                onFocus={() => {
-                  if (foodInput.trim() && filteredSuggestions.length > 0) {
-                    setShowSuggestions(true);
-                  }
-                }}
-                placeholder="Type food name..."
-                className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-base text-gray-900 placeholder-gray-400"
-              />
-              
-              {/* Suggestions Dropdown */}
-              {showSuggestions && filteredSuggestions.length > 0 && (
-                <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
-                  {filteredSuggestions.map((suggestion, index) => (
-                    <button
-                      key={index}
-                      onClick={() => selectSuggestion(suggestion)}
-                      className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition text-sm text-gray-900 border-b border-gray-100 last:border-b-0"
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
+            {/* Input Field with Suggestions - Hide when image is selected */}
+            {!imagePreview && (
+              <div className="relative">
+                <label className="block text-xs font-semibold text-gray-700 mb-2">
+                  What did you eat?
+                </label>
+                <input
+                  type="text"
+                  value={foodInput}
+                  onChange={handleFoodInputChange}
+                  onFocus={() => {
+                    if (foodInput.trim() && filteredSuggestions.length > 0) {
+                      setShowSuggestions(true);
+                    }
+                  }}
+                  placeholder="Type food name..."
+                  className="w-full px-4 py-3 bg-gray-50 border border-gray-300 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-base text-gray-900 placeholder-gray-400"
+                />
+                
+                {/* Suggestions Dropdown */}
+                {showSuggestions && filteredSuggestions.length > 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-48 overflow-y-auto">
+                    {filteredSuggestions.map((suggestion, index) => (
+                      <button
+                        key={index}
+                        onClick={() => selectSuggestion(suggestion)}
+                        className="w-full px-4 py-2.5 text-left hover:bg-blue-50 transition text-sm text-gray-900 border-b border-gray-100 last:border-b-0"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Preparation Method - Show for Text Input */}
             {foodInput.trim() && !image && (
@@ -857,35 +865,37 @@ export default function QuickFoodScan() {
               </div>
             )}
 
-            {/* Camera Button */}
-            <div>
-              <input
-                id="camera-input"
-                type="file"
-                accept="image/*"
-                capture="environment"
-                onChange={handleImageSelect}
-                className="hidden"
-                disabled={compressing}
-              />
-              <button
-                onClick={() => document.getElementById('camera-input').click()}
-                disabled={compressing}
-                className="w-full py-3.5 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-semibold text-sm hover:shadow-lg disabled:opacity-50 transition-all flex items-center justify-center gap-2"
-              >
-                {compressing ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    <span>Compressing...</span>
-                  </>
-                ) : (
-                  <>
-                    <Camera className="w-4 h-4" />
-                    <span>Scan with Camera</span>
-                  </>
-                )}
-              </button>
-            </div>
+            {/* Camera Button - Hide when image is selected */}
+            {!imagePreview && (
+              <div>
+                <input
+                  id="camera-input"
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={handleImageSelect}
+                  className="hidden"
+                  disabled={compressing}
+                />
+                <button
+                  onClick={() => document.getElementById('camera-input').click()}
+                  disabled={compressing}
+                  className="w-full py-3.5 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl font-semibold text-sm hover:shadow-lg disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                >
+                  {compressing ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Compressing...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Camera className="w-4 h-4" />
+                      <span>Scan with Camera</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            )}
 
             {/* Analyze Button */}
             <button
