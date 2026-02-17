@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mobile Upload Test</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 16px;
+            margin: 10px 0;
+            width: 100%;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        button:disabled {
+            background: #ccc;
+        }
+        #log {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-top: 20px;
+            max-height: 400px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+            border-left: 3px solid #4CAF50;
+            padding-left: 10px;
+        }
+        .log-error {
+            border-left-color: #f44336;
+            color: #f44336;
+        }
+        .log-success {
+            border-left-color: #4CAF50;
+            color: #4CAF50;
+        }
+        img {
+            max-width: 100%;
+            margin-top: 10px;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔍 Mobile Upload Debug Test</h1>
+    <p>This will help us find the exact problem with image upload on mobile.</p>
+    
+    <input type="file" id="imageInput" accept="image/*" capture="environment" style="display: none;">
+    <button onclick="selectImage()">📸 Select Image</button>
+    <button id="analyzeBtn" onclick="analyzeImage()" disabled>🔬 Analyze Image</button>
+    <button onclick="clearLog()">🗑️ Clear Log</button>
+    
+    <div id="preview"></div>
+    <div id="log"></div>
+
+    <script>
+        let selectedFile = null;
+        const API_URL = window.location.origin + '/api';
+        
+        function log(message, type = 'info') {
+            const logDiv = document.getElementById('log');
+            const entry = document.createElement('div');
+            entry.className = 'log-entry' + (type === 'error' ? ' log-error' : type === 'success' ? ' log-success' : '');
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logDiv.appendChild(entry);
+            logDiv.scrollTop = logDiv.scrollHeight;
+            console.log(message);
+        }
+
+        function clearLog() {
+            document.getElementById('log').innerHTML = '';
+            log('Log cleared');
+        }
+
+        function selectImage() {
+            log('Opening camera/gallery...');
+            document.getElementById('imageInput').click();
+        }
+
+        document.getElementById('imageInput').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) {
+                log('No file selected', 'error');
+                return;
+            }
+
+            log(`File selected: ${file.name}`);
+            log(`File size: ${(file.size / 1024).toFixed(2)} KB`);
+            log(`File type: ${file.type}`);
+
+            selectedFile = file;
+            document.getElementById('analyzeBtn').disabled = false;
+
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                document.getElementById('preview').innerHTML = `<img src="${e.target.result}" alt="Preview">`;
+                log('Preview loaded', 'success');
+            };
+            reader.readAsDataURL(file);
+        });
+
+        async function analyzeImage() {
+            if (!selectedFile) {
+                log('No image selected', 'error');
+                return;
+            }
+
+            const btn = document.getElementById('analyzeBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Analyzing...';
+
+            try {
+                // Step 1: Check token
+                log('Step 1: Checking token...');
+                const token = localStorage.getItem('token');
+                if (!token) {
+                    throw new Error('No token found. Please login first.');
+                }
+                log('✅ Token found', 'success');
+
+                // Step 2: Convert to base64
+                log('Step 2: Converting image to base64...');
+                const base64 = await new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        const result = reader.result.split(',')[1];
+                        log(`✅ Base64 size: ${(result.length * 0.75 / 1024).toFixed(2)} KB`, 'success');
+                        resolve(result);
+                    };
+                    reader.onerror = reject;
+                    reader.readAsDataURL(selectedFile);
+                });
+
+                // Step 3: Send to API
+                log('Step 3: Sending to API...');
+                log(`API URL: ${API_URL}/nutrition/quick-check`);
+                
+                const startTime = Date.now();
+                
+                const response = await fetch(`${API_URL}/nutrition/quick-check`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        foodDescription: 'Food from test',
+                        imageBase64: base64,
+                        additionalContext: 'Test upload from mobile debug tool'
+                    })
+                });
+
+                const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+                log(`✅ Response received in ${duration}s`, 'success');
+                log(`Status: ${response.status} ${response.statusText}`);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
+                }
+
+                const data = await response.json();
+                log('✅ Response parsed successfully', 'success');
+                log(`Food detected: ${data.data?.foodItem?.name || 'Unknown'}`);
+                log(`Health score: ${data.data?.healthScore || 'N/A'}`);
+                log(`Calories: ${data.data?.foodItem?.nutrition?.calories || 'N/A'}`);
+
+                alert(`✅ SUCCESS!\n\nFood: ${data.data?.foodItem?.name}\nCalories: ${data.data?.foodItem?.nutrition?.calories}\nHealth Score: ${data.data?.healthScore}`);
+
+            } catch (error) {
+                log(`❌ ERROR: ${error.message}`, 'error');
+                log(`Error stack: ${error.stack}`, 'error');
+                alert(`❌ Error: ${error.message}\n\nCheck the log for details.`);
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔬 Analyze Image';
+            }
+        }
+
+        // Global error handlers
+        window.addEventListener('error', (e) => {
+            log(`❌ Global error: ${e.error?.message || e.message}`, 'error');
+        });
+
+        window.addEventListener('unhandledrejection', (e) => {
+            log(`❌ Unhandled rejection: ${e.reason}`, 'error');
+        });
+
+        // Log initial state
+        log('=== Mobile Upload Debug Tool Started ===');
+        log(`User Agent: ${navigator.userAgent}`);
+        log(`Screen: ${window.screen.width}x${window.screen.height}`);
+        log(`Viewport: ${window.innerWidth}x${window.innerHeight}`);
+        log(`Token exists: ${!!localStorage.getItem('token')}`);
+        log(`API URL: ${API_URL}`);
+        log('Ready to test!', 'success');
+    </script>
+</body>
+</html>

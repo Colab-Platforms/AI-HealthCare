@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, MessageSquare, Utensils, FileText, MoreVertical, Settings, LogOut, Heart, Watch, X, Calendar } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, Utensils, FileText, MoreVertical, Settings, LogOut, Heart, Watch, X, Calendar, ScanLine } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function MobileBottomNav() {
@@ -56,8 +56,8 @@ export default function MobileBottomNav() {
 
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Home' },
-    { path: '/ai-chat', icon: MessageSquare, label: 'AI' },
-    { path: '/nutrition', icon: Utensils, label: 'Nutrition', isCenter: true },
+    { path: '/nutrition', icon: Utensils, label: 'Nutrition' },
+    { path: '/quick-food-scan', icon: ScanLine, label: 'Scan Food', isCenter: true },
     { path: '/upload', icon: FileText, label: 'Reports' }
   ];
 

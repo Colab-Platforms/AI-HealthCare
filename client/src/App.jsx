@@ -32,6 +32,7 @@ import Challenge30Days from './pages/Challenge30Days';
 import ReportSummary from './pages/ReportSummary';
 import VitalSigns from './pages/VitalSigns';
 import Supplements from './pages/Supplements';
+import QuickFoodScan from './pages/QuickFoodScan';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -96,6 +97,7 @@ export default function App() {
       <Route path="/consultation-summary/:appointmentId" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><ConsultationSummary /></Layout></ProtectedRoute>} />
       <Route path="/wearables" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Wearables /></Layout></ProtectedRoute>} />
       <Route path="/nutrition" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Nutrition /></Layout></ProtectedRoute>} />
+      <Route path="/quick-food-scan" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><QuickFoodScan /></Layout></ProtectedRoute>} />
       <Route path="/vital-signs" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><VitalSigns /></Layout></ProtectedRoute>} />
       <Route path="/supplements" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Supplements /></Layout></ProtectedRoute>} />
       <Route path="/subscription" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Subscription /></Layout></ProtectedRoute>} />

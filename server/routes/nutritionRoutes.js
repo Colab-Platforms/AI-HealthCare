@@ -38,4 +38,7 @@ router.get('/activity/week', nutritionController.getActivityWeek);
 // AI Recommendations
 router.get('/recommendations', nutritionController.getRecommendations);
 
+// Food Images
+router.get('/food-image', nutritionController.getFoodImage);
+
 module.exports = router;

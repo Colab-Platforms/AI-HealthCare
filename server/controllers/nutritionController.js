@@ -1079,3 +1079,62 @@ exports.getWeeklyFoodCheckSummary = async (req, res) => {
     });
   }
 };
+
+// Get food image from SerpAPI
+exports.getFoodImage = async (req, res) => {
+  try {
+    const { foodName } = req.query;
+
+    if (!foodName) {
+      return res.status(400).json({
+        success: false,
+        message: 'Food name is required'
+      });
+    }
+
+    const axios = require('axios');
+    const serpApiKey = process.env.SERP_API_KEY;
+
+    if (!serpApiKey) {
+      console.warn('SERP_API_KEY not configured');
+      return res.json({
+        success: false,
+        message: 'Image search not configured'
+      });
+    }
+
+    // Search for food image using SerpAPI Google Images
+    const response = await axios.get('https://serpapi.com/search', {
+      params: {
+        engine: 'google_images',
+        q: `${foodName} food dish`,
+        api_key: serpApiKey,
+        num: 1,
+        safe: 'active'
+      },
+      timeout: 5000
+    });
+
+    if (response.data && response.data.images_results && response.data.images_results.length > 0) {
+      const imageUrl = response.data.images_results[0].original;
+      
+      res.json({
+        success: true,
+        imageUrl,
+        source: 'SerpAPI'
+      });
+    } else {
+      res.json({
+        success: false,
+        message: 'No image found'
+      });
+    }
+  } catch (error) {
+    console.error('Get food image error:', error);
+    res.json({
+      success: false,
+      message: 'Failed to fetch food image',
+      error: error.message
+    });
+  }
+};

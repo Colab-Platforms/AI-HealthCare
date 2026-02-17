@@ -79,10 +79,16 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    // Check if this request should skip auto-logout
+    const skipAutoLogout = error.config?.skipAutoLogout;
+    
+    if (error.response?.status === 401 && !skipAutoLogout) {
+      console.log('401 Unauthorized - Logging out');
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.href = '/login';
+    } else if (error.response?.status === 401 && skipAutoLogout) {
+      console.log('401 Unauthorized - Skipping auto-logout (skipAutoLogout flag set)');
     }
     
     // Better error handling for network issues on mobile

@@ -7,7 +7,6 @@ import {
   Loader2, Plus, Trash2, X, Droplets, Flame, Zap, Heart,
   AlertCircle, CheckCircle, ChevronLeft, ChevronRight
 } from 'lucide-react';
-import QuickFoodCheck from '../components/QuickFoodCheck';
 
 export default function Nutrition() {
   const navigate = useNavigate();
@@ -470,12 +469,6 @@ export default function Nutrition() {
           >
             + Add Water
           </button>
-        </div>
-
-        {/* Quick Food Check */}
-        <div>
-          <h2 className="text-lg font-bold text-gray-900 mb-3">Quick Check</h2>
-          <QuickFoodCheck />
         </div>
 
         {/* Meals Section */}
