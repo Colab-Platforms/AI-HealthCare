@@ -8,6 +8,7 @@ import {
   Activity, Droplet, Cigarette, Wine, Moon, Apple, Dumbbell, Pill
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import BMIWidget from '../components/BMIWidget';
 
 export default function Profile() {
   const { user, updateUser } = useAuth();
@@ -191,6 +192,9 @@ export default function Profile() {
           </div>
         </div>
       </div>
+
+      {/* BMI Widget */}
+      <BMIWidget />
 
       {/* Tabs */}
       <div className="flex gap-1 md:gap-2 p-1 bg-slate-100 rounded-xl w-full md:w-fit overflow-x-auto">

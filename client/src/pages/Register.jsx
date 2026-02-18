@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Activity, Mail, Lock, User, Eye, EyeOff, ArrowRight, Stethoscope, Heart, ArrowLeft, Scale, Ruler, Droplet, Cigarette, Wine, Moon, Dumbbell, Target, TrendingUp, TrendingDown, Minus, Plus, X, CheckCircle2, Loader2, Syringe, Utensils, Calendar, Pill } from 'lucide-react';
+import { Activity, Mail, Lock, User, Eye, EyeOff, ArrowRight, Stethoscope, Heart, ArrowLeft, Scale, Ruler, Droplet, Cigarette, Wine, Moon, Dumbbell, Target, TrendingUp, TrendingDown, Minus, Plus, X, CheckCircle2, Loader2, Syringe, Utensils, Calendar, Tablets } from 'lucide-react';
 import toast from 'react-hot-toast';
 import HealthProgressAnimation from '../components/HealthProgressAnimation';
 

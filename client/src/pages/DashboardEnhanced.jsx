@@ -9,7 +9,7 @@ import {
   Heart, Upload, Utensils, FileText, Activity, TrendingUp, User,
   Calendar, MessageSquare, Pill, Apple, Dumbbell, Brain, Shield, Sparkles,
   CheckCircle, Target, Award, ChevronRight, Zap, Sun, Droplets,
-  BarChart3, ArrowRight, Star, Flame, Trophy, Moon
+  BarChart3, ArrowRight, Star, Flame, Trophy, Moon, Wind
 } from 'lucide-react';
 import BMIWidget from '../components/BMIWidget';
 import SleepTracker from '../components/SleepTracker';
@@ -255,82 +255,102 @@ export default function DashboardEnhanced() {
         {/* Sleep Tracker Modal */}
         <SleepTracker isOpen={sleepTrackerOpen} onClose={() => setSleepTrackerOpen(false)} />
 
-        {/* BMI Widget - Right below welcome message */}
-        <BMIWidget />
-
-        {/* Health Stats - Always show cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {/* Health Score Card - Scrolls to graph */}
-          <button
-            onClick={() => hasReports && document.getElementById('health-score-graph')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-            className="bg-white rounded-2xl p-5 shadow-md hover:shadow-lg transition-all cursor-pointer text-left hover:scale-105 transform duration-200"
+        {/* 4 Main Health Cards - Nutrition, Sleep, Movement, Mind */}
+        <div className="grid grid-cols-2 gap-4 sm:gap-6">
+          {/* Nutrition Card */}
+          <Link 
+            to="/nutrition"
+            className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 hover:shadow-lg transition-all cursor-pointer group"
           >
             <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-400 to-pink-500 flex items-center justify-center">
-                <Heart className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-orange-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Flame className="w-6 h-6 sm:w-7 sm:h-7 text-orange-500" />
               </div>
-              <TrendingUp className="w-5 h-5 text-emerald-500" />
             </div>
-            <p className="text-sm text-slate-600 mb-1">Health Score</p>
-            <p className="text-3xl font-bold text-slate-800">
-              {dashboardData?.user?.healthMetrics?.healthScore || '--'}
+            <h3 className="text-slate-500 text-xs sm:text-sm font-medium mb-1 uppercase tracking-wide">Nutrition</h3>
+            <p className="text-2xl sm:text-3xl font-bold text-slate-800 mb-1">
+              {dashboardData?.nutritionData?.totalCalories || 0} <span className="text-base sm:text-lg text-slate-400">kcal</span>
             </p>
-          </button>
-
-          {/* Total Reports Card - Scrolls to recent reports */}
-          <button
-            onClick={() => hasReports && document.getElementById('recent-reports')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-            className="bg-white rounded-2xl p-5 shadow-md hover:shadow-lg transition-all cursor-pointer text-left hover:scale-105 transform duration-200"
-          >
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center">
-                <FileText className="w-6 h-6 text-white" />
-              </div>
-              <ArrowRight className="w-5 h-5 text-slate-400" />
-            </div>
-            <p className="text-sm text-slate-600 mb-1">Total Reports</p>
-            <p className="text-3xl font-bold text-slate-800">
-              {dashboardData?.totalReports || dashboardData?.recentReports?.length || 0}
+            <p className="text-xs sm:text-sm text-slate-400">
+              {dashboardData?.nutritionData?.calorieGoal 
+                ? `${Math.round((dashboardData.nutritionData.totalCalories / dashboardData.nutritionData.calorieGoal) * 100)}% Goal`
+                : 'Track your meals'}
             </p>
-          </button>
+          </Link>
 
-          {/* Sleep Tracker Card - Opens Sleep Tracker Modal */}
+          {/* Sleep Card */}
           <button
             onClick={() => setSleepTrackerOpen(true)}
-            className="bg-white rounded-2xl p-5 shadow-md hover:shadow-lg transition-all cursor-pointer hover:scale-105 transform duration-200 block w-full text-left"
+            className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 hover:shadow-lg transition-all cursor-pointer group text-left"
           >
             <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                <Moon className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-indigo-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Moon className="w-6 h-6 sm:w-7 sm:h-7 text-indigo-500" />
               </div>
-              <Sparkles className="w-5 h-5 text-indigo-500" />
             </div>
-            <p className="text-sm text-slate-600 mb-1">Sleep Tracker</p>
-            <p className="text-3xl font-bold text-slate-800">
+            <h3 className="text-slate-500 text-xs sm:text-sm font-medium mb-1 uppercase tracking-wide">Sleep</h3>
+            <p className="text-2xl sm:text-3xl font-bold text-slate-800 mb-1">
               {(() => {
                 const sleepHistory = JSON.parse(localStorage.getItem('sleep_history') || '[]');
                 const today = new Date().toDateString();
                 const todaySleep = sleepHistory.find(r => new Date(r.date).toDateString() === today);
-                return todaySleep ? `${todaySleep.hours}h ${todaySleep.minutes}m` : '0h 0m';
+                if (todaySleep) {
+                  return `${todaySleep.hours}h ${todaySleep.minutes}m`;
+                }
+                return '0h 0m';
+              })()}
+            </p>
+            <p className="text-xs sm:text-sm text-slate-400">
+              {(() => {
+                const sleepHistory = JSON.parse(localStorage.getItem('sleep_history') || '[]');
+                const today = new Date().toDateString();
+                const todaySleep = sleepHistory.find(r => new Date(r.date).toDateString() === today);
+                if (todaySleep) {
+                  const totalMinutes = todaySleep.hours * 60 + todaySleep.minutes;
+                  const efficiency = Math.round((totalMinutes / 480) * 100); // 8 hours = 480 minutes
+                  return `${efficiency}% Efficiency`;
+                }
+                return 'Track your sleep';
               })()}
             </p>
           </button>
 
-          {/* Streak Days Card - Redirects to 30 Days Challenge */}
+          {/* Movement Card */}
           <Link
-            to="/challenge"
-            className="bg-white rounded-2xl p-5 shadow-md hover:shadow-lg transition-all cursor-pointer hover:scale-105 transform duration-200 block"
+            to="/wearables"
+            className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 hover:shadow-lg transition-all cursor-pointer group"
           >
             <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-400 to-indigo-500 flex items-center justify-center">
-                <Award className="w-6 h-6 text-white" />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-blue-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Activity className="w-6 h-6 sm:w-7 sm:h-7 text-blue-500" />
               </div>
-              <Star className="w-5 h-5 text-amber-400" />
             </div>
-            <p className="text-sm text-slate-600 mb-1">Streak Days</p>
-            <p className="text-3xl font-bold text-slate-800">
-              {dashboardData?.streakDays || 0}
+            <h3 className="text-slate-500 text-xs sm:text-sm font-medium mb-1 uppercase tracking-wide">Movement</h3>
+            <p className="text-2xl sm:text-3xl font-bold text-slate-800 mb-1">
+              {dashboardData?.wearableData?.todayMetrics?.activeMinutes || 0} <span className="text-base sm:text-lg text-slate-400">mins</span>
             </p>
+            <p className="text-xs sm:text-sm text-slate-400">
+              {dashboardData?.wearableData?.todayMetrics?.steps > 0 
+                ? `${dashboardData.wearableData.todayMetrics.steps.toLocaleString()} steps` 
+                : 'Start moving'}
+            </p>
+          </Link>
+
+          {/* Mind Card */}
+          <Link
+            to="/challenge"
+            className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 hover:shadow-lg transition-all cursor-pointer group"
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-emerald-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <Wind className="w-6 h-6 sm:w-7 sm:h-7 text-emerald-500" />
+              </div>
+            </div>
+            <h3 className="text-slate-500 text-xs sm:text-sm font-medium mb-1 uppercase tracking-wide">Mind</h3>
+            <p className="text-2xl sm:text-3xl font-bold text-slate-800 mb-1">
+              {dashboardData?.streakDays || user?.challengeStreak || 0} <span className="text-base sm:text-lg text-slate-400">days</span>
+            </p>
+            <p className="text-xs sm:text-sm text-slate-400">Daily Streak</p>
           </Link>
         </div>
 

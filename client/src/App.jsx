@@ -7,7 +7,6 @@ import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import DoctorRegister from './pages/DoctorRegister';
-import Dashboard from './pages/Dashboard';
 import DashboardEnhanced from './pages/DashboardEnhanced';
 import DoctorDashboard from './pages/DoctorDashboard';
 import UploadReport from './pages/UploadReport';
@@ -86,7 +85,6 @@ export default function App() {
       
       {/* Patient Routes */}
       <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><DashboardEnhanced /></Layout></ProtectedRoute>} />
-      <Route path="/dashboard/classic" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Dashboard /></Layout></ProtectedRoute>} />
       <Route path="/upload" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><UploadReport /></Layout></ProtectedRoute>} />
       <Route path="/reports" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><AllReports /></Layout></ProtectedRoute>} />
       <Route path="/reports/:id" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><ReportDetails /></Layout></ProtectedRoute>} />
