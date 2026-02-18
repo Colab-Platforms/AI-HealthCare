@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import {
@@ -9,7 +9,7 @@ import {
   Heart, Upload, Utensils, FileText, Activity, TrendingUp, User,
   Calendar, MessageSquare, Pill, Apple, Dumbbell, Brain, Shield, Sparkles,
   CheckCircle, Target, Award, ChevronRight, Zap, Sun, Droplets,
-  BarChart3, ArrowRight, Star, Flame, Trophy, Moon, Wind
+  BarChart3, ArrowRight, Star, Flame, Trophy, Moon, Wind, Bell, ChevronLeft, ArrowUp
 } from 'lucide-react';
 import BMIWidget from '../components/BMIWidget';
 import SleepTracker from '../components/SleepTracker';
@@ -184,10 +184,28 @@ const GetStartedStep = ({ number, title, description, completed, active, icon: I
 
 export default function DashboardEnhanced() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const { dashboardData, loading, fetchDashboard } = useData();
   const [completionProgress, setCompletionProgress] = useState(0);
   const [isInitialLoad, setIsInitialLoad] = useState(!dashboardData);
   const [sleepTrackerOpen, setSleepTrackerOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Get time-based greeting
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Morning';
+    if (hour < 18) return 'Afternoon';
+    return 'Evening';
+  };
+
+  // Handle search submit
+  const handleSearchSubmit = (e) => {
+    e.preventDefault();
+    if (searchQuery.trim()) {
+      navigate(`/ai-chat?query=${encodeURIComponent(searchQuery)}`);
+    }
+  };
 
   useEffect(() => {
     const loadData = async () => {
@@ -238,17 +256,142 @@ export default function DashboardEnhanced() {
         </div>
       )}
       
-      <div className="max-w-7xl mx-auto space-y-8 animate-fade-in pb-20 px-4">
+      <div className="max-w-7xl mx-auto space-y-6 animate-fade-in pb-20 px-4">
         
-        {/* Header */}
-        <div className="pt-6">
-          <div>
-            <h1 className="text-3xl font-bold text-slate-800 mb-1">
-              Hi, <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-emerald-600">
-                {user?.name?.split(' ')[0] || 'there'}
-              </span>! 👋
-            </h1>
-            <p className="text-slate-600">Welcome to your health journey</p>
+        {/* Enhanced Header with Greeting, Stats, and Search */}
+        <div className="pt-4 space-y-3">
+          {/* Top Row: Profile, Greeting, Stats, Notification */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {/* Profile Picture - Smaller */}
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-lg font-bold shadow-md">
+                {user?.name?.[0]?.toUpperCase() || 'U'}
+              </div>
+              
+              {/* Greeting and Stats - One Line, Smaller */}
+              <div>
+                <h1 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                  {getGreeting()}, <span className="text-slate-900">{user?.name?.split(' ')[0] || 'there'}!</span>
+                </h1>
+                <div className="flex items-center gap-2 text-xs text-slate-600">
+                  <span className="font-semibold">{dashboardData?.nutritionData?.totalCalories || 800} cal</span>
+                  <span className="text-slate-400">.</span>
+                  <span className="font-semibold text-emerald-600">
+                    {dashboardData?.user?.healthMetrics?.healthScore || 82}% Healthy
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            {/* Notification Bell */}
+            <button className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center hover:shadow-lg transition-all">
+              <Bell className="w-5 h-5 text-slate-700" />
+            </button>
+          </div>
+
+          {/* Ask Coach Search Bar - Smaller */}
+          <form onSubmit={handleSearchSubmit} className="relative">
+            <div className="flex items-center gap-2 bg-white rounded-full px-4 py-2.5 shadow-md border-2 border-purple-200 hover:border-purple-300 transition-all">
+              <Sparkles className="w-4 h-4 text-purple-500 flex-shrink-0" />
+              <input
+                type="text"
+                placeholder="Ask coach"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 bg-transparent outline-none text-sm text-slate-700 placeholder-slate-400"
+              />
+              <button 
+                type="submit"
+                className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center hover:bg-purple-600 transition-all flex-shrink-0"
+              >
+                <ArrowUp className="w-4 h-4 text-white" />
+              </button>
+            </div>
+          </form>
+
+          {/* Quick Action Buttons - Smaller */}
+          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <button className="px-4 py-2 bg-white rounded-full text-xs font-medium text-slate-700 shadow-sm hover:shadow-md transition-all whitespace-nowrap border border-slate-200">
+              Book a health checkup
+            </button>
+            <button className="px-4 py-2 bg-white rounded-full text-xs font-medium text-slate-700 shadow-sm hover:shadow-md transition-all whitespace-nowrap border border-slate-200">
+              Analyze my vitals
+            </button>
+            <button className="px-4 py-2 bg-white rounded-full text-xs font-medium text-slate-700 shadow-sm hover:shadow-md transition-all whitespace-nowrap border border-slate-200">
+              Give me a health tip
+            </button>
+          </div>
+
+          {/* Calendar Widget - Smaller, Mobile Optimized */}
+          <div className="bg-gradient-to-br from-purple-200 to-purple-300 rounded-2xl p-4 shadow-lg">
+            <div className="flex items-center justify-between mb-3">
+              <button className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center hover:bg-white/50 transition-all">
+                <ChevronLeft className="w-4 h-4 text-slate-800" />
+              </button>
+              <h3 className="text-sm font-bold text-slate-800">
+                Today, {new Date().toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' })}
+              </h3>
+              <button className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center hover:bg-white/50 transition-all">
+                <ChevronRight className="w-4 h-4 text-slate-800" />
+              </button>
+            </div>
+            
+            {/* Week Days - Dynamic Circles Based on Nutrition Goal */}
+            <div className="grid grid-cols-7 gap-1.5">
+              {['Tu', 'We', 'Th', 'Fr', 'Sa', 'Su', 'Mo'].map((day, index) => {
+                const isToday = index === 4; // Saturday is today in the example
+                // Calculate completion percentage for each day (mock data - replace with real data)
+                const completionPercentage = isToday ? 
+                  (dashboardData?.nutritionData?.totalCalories && dashboardData?.nutritionData?.calorieGoal 
+                    ? Math.min((dashboardData.nutritionData.totalCalories / dashboardData.nutritionData.calorieGoal) * 100, 100)
+                    : 80) 
+                  : (index < 4 ? 100 : 0);
+                
+                return (
+                  <div key={day} className="text-center">
+                    <div className="text-xs font-medium text-slate-700 mb-1.5">{day}</div>
+                    <div className={`w-10 h-10 mx-auto rounded-full flex items-center justify-center relative ${
+                      isToday 
+                        ? 'bg-white shadow-md' 
+                        : 'bg-white/40'
+                    }`}>
+                      {isToday ? (
+                        <Flame className="w-5 h-5 text-orange-500 relative z-10" />
+                      ) : completionPercentage === 100 ? (
+                        <div className="w-7 h-7 rounded-full border-4 border-yellow-400" />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full border-4 border-yellow-400 border-t-transparent" 
+                             style={{ 
+                               transform: `rotate(${(completionPercentage / 100) * 360}deg)`,
+                               borderTopColor: completionPercentage > 0 ? 'transparent' : '#facc15'
+                             }} 
+                        />
+                      )}
+                      {/* Progress ring for today */}
+                      {isToday && completionPercentage < 100 && (
+                        <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 40 40">
+                          <circle
+                            cx="20"
+                            cy="20"
+                            r="18"
+                            fill="none"
+                            stroke="#fbbf24"
+                            strokeWidth="3"
+                            strokeDasharray={`${(completionPercentage / 100) * 113} 113`}
+                            strokeLinecap="round"
+                          />
+                        </svg>
+                      )}
+                    </div>
+                    {index >= 5 && (
+                      <div className="text-xs font-medium text-slate-700 mt-1">
+                        {index === 5 ? '09' : '10'}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
