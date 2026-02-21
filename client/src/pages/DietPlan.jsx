@@ -5,7 +5,7 @@ import { healthService } from '../services/api';
 import { 
   Apple, Coffee, Sun, Moon, Utensils, 
   CheckCircle, Lightbulb, ChevronDown, ChevronUp, Leaf, Sparkles,
-  Target, TrendingUp, Zap, Heart, ArrowRight, Calendar, Clock, FileText, AlertCircle
+  Target, TrendingUp, Zap, Heart, ArrowRight, Calendar, Clock, FileText, AlertCircle, Bell
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -320,6 +320,26 @@ export default function DietPlan() {
     <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-cyan-100 pb-20">
       <div className="max-w-7xl mx-auto space-y-6 animate-fade-in p-4">
         
+        {/* Welcome Message - Mobile Only */}
+        <div className="md:hidden flex items-center justify-between">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-md flex-shrink-0">
+              {user?.name?.[0]?.toUpperCase() || 'U'}
+            </div>
+            <h1 className="text-sm font-bold text-slate-800 truncate">
+              {(() => {
+                const hour = new Date().getHours();
+                if (hour < 12) return 'Good Morning';
+                if (hour < 18) return 'Good Afternoon';
+                return 'Good Evening';
+              })()}, {user?.name?.split(' ')[0] || 'there'}!
+            </h1>
+          </div>
+          <button className="w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center hover:shadow-lg transition-all flex-shrink-0">
+            <Bell className="w-4 h-4 text-slate-700" />
+          </button>
+        </div>
+
         {/* Hero Header */}
         <div className="relative overflow-hidden bg-gradient-to-br from-emerald-500 via-green-500 to-teal-500 rounded-3xl p-8 text-white shadow-2xl">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-32 -mt-32" />

@@ -16,7 +16,7 @@ exports.analyzeFood = async (req, res) => {
     }
 
     let analysis;
-    
+
     if (imageBase64) {
       // Analyze from image
       analysis = await nutritionAI.analyzeFromImage(imageBase64, additionalContext);
@@ -122,7 +122,7 @@ exports.getTodayLogs = async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
@@ -358,7 +358,7 @@ exports.getWeeklySummary = async (req, res) => {
   try {
     const endDate = new Date();
     endDate.setHours(23, 59, 59, 999);
-    
+
     const startDate = new Date(endDate);
     startDate.setDate(startDate.getDate() - 6);
     startDate.setHours(0, 0, 0, 0);
@@ -411,7 +411,7 @@ exports.getActivityWeek = async (req, res) => {
   try {
     const endDate = new Date();
     endDate.setHours(23, 59, 59, 999);
-    
+
     const startDate = new Date(endDate);
     startDate.setDate(startDate.getDate() - 6);
     startDate.setHours(0, 0, 0, 0);
@@ -427,7 +427,7 @@ exports.getActivityWeek = async (req, res) => {
       const date = new Date(startDate);
       date.setDate(date.getDate() + i);
       date.setHours(0, 0, 0, 0);
-      
+
       const summary = summaries.find(s => {
         const sDate = new Date(s.date);
         sDate.setHours(0, 0, 0, 0);
@@ -461,7 +461,7 @@ exports.getActivityWeek = async (req, res) => {
 exports.getRecommendations = async (req, res) => {
   try {
     const healthGoal = await HealthGoal.findOne({ userId: req.user._id });
-    
+
     if (!healthGoal) {
       return res.status(404).json({
         success: false,
@@ -620,20 +620,20 @@ exports.quickFoodCheck = async (req, res) => {
     }
 
     let analysis;
-    
+
     // Get AI analysis
     if (imageBase64) {
       try {
         console.log('Attempting image analysis...');
         console.log('Image size:', `${(imageBase64.length * 0.75 / 1024).toFixed(2)} KB`);
         console.log('Additional context:', additionalContext);
-        
+
         // Use image analysis
         const imageAnalysis = await nutritionAI.analyzeFromImage(imageBase64, additionalContext || foodDescription || 'Food from image');
-        
+
         console.log('Image analysis successful');
         console.log('AI Response:', JSON.stringify(imageAnalysis.data).substring(0, 200));
-        
+
         // Check if AI couldn't detect food
         if (imageAnalysis.data?.error === 'UNABLE_TO_DETECT_FOOD') {
           return res.status(400).json({
@@ -642,12 +642,12 @@ exports.quickFoodCheck = async (req, res) => {
             error: 'UNABLE_TO_DETECT_FOOD'
           });
         }
-        
+
         // Transform image analysis to match quickFoodCheck format
         if (imageAnalysis.success && imageAnalysis.data) {
           const firstItem = imageAnalysis.data.foodItems?.[0] || {};
           const totalNutrition = imageAnalysis.data.totalNutrition || {};
-          
+
           // Helper function to parse range values (e.g., "250-300" -> 275)
           const parseRange = (value) => {
             if (typeof value === 'string' && value.includes('-')) {
@@ -656,7 +656,7 @@ exports.quickFoodCheck = async (req, res) => {
             }
             return Number(value) || 0;
           };
-          
+
           // Helper to format range for display
           const formatRange = (value) => {
             if (typeof value === 'string' && value.includes('-')) {
@@ -664,7 +664,7 @@ exports.quickFoodCheck = async (req, res) => {
             }
             return String(value);
           };
-          
+
           // Parse nutrition values for calculations
           const calories = parseRange(totalNutrition.calories);
           const protein = parseRange(totalNutrition.protein);
@@ -673,7 +673,7 @@ exports.quickFoodCheck = async (req, res) => {
           const fiber = parseRange(totalNutrition.fiber);
           const sugar = parseRange(totalNutrition.sugar);
           const sodium = parseRange(totalNutrition.sodium);
-          
+
           // Calculate health score based on nutrition
           let healthScore = 70; // Base score
           if (calories > 500) healthScore -= 10;
@@ -683,23 +683,23 @@ exports.quickFoodCheck = async (req, res) => {
           if (sugar > 20) healthScore -= 10;
           if (sodium > 500) healthScore -= 10;
           healthScore = Math.max(0, Math.min(100, healthScore));
-          
+
           // Transform alternatives from image analysis
-          const alternatives = Array.isArray(imageAnalysis.data.alternatives) 
+          const alternatives = Array.isArray(imageAnalysis.data.alternatives)
             ? imageAnalysis.data.alternatives.map(alt => ({
-                name: alt.name || '',
-                description: alt.description || '',
-                nutrition: {
-                  calories: parseRange(alt.calories),
-                  protein: parseRange(alt.protein),
-                  carbs: parseRange(alt.carbs),
-                  fats: parseRange(alt.fats),
-                  fiber: parseRange(alt.fiber || 0)
-                },
-                benefits: alt.benefits || ''
-              }))
+              name: alt.name || '',
+              description: alt.description || '',
+              nutrition: {
+                calories: parseRange(alt.calories),
+                protein: parseRange(alt.protein),
+                carbs: parseRange(alt.carbs),
+                fats: parseRange(alt.fats),
+                fiber: parseRange(alt.fiber || 0)
+              },
+              benefits: alt.benefits || ''
+            }))
             : [];
-          
+
           // Create analysis with both numeric and range values
           analysis = {
             success: true,
@@ -728,14 +728,17 @@ exports.quickFoodCheck = async (req, res) => {
                 }
               },
               healthScore: healthScore,
+              healthScore10: imageAnalysis.data.healthScore10 || (healthScore / 10),
               isHealthy: healthScore >= 70,
               analysis: imageAnalysis.data.analysis || 'Food analyzed from image',
+              micronutrients: imageAnalysis.data.micronutrients || [],
+              enhancementTips: imageAnalysis.data.enhancementTips || [],
               warnings: healthScore < 70 ? ['High calorie content', 'Consider healthier alternatives'] : [],
               benefits: healthScore >= 70 ? ['Good nutritional balance'] : [],
               alternatives: alternatives
             }
           };
-          
+
           console.log('Analysis transformed successfully');
           console.log('Health score:', healthScore);
           console.log('Nutrition ranges:', analysis.data.foodItem.nutritionRanges);
@@ -758,12 +761,12 @@ exports.quickFoodCheck = async (req, res) => {
     }
 
     const QuickFoodCheck = require('../models/QuickFoodCheck');
-    
+
     // Ensure alternatives is always an array
-    const alternativesArray = Array.isArray(analysis.data.alternatives) 
-      ? analysis.data.alternatives 
+    const alternativesArray = Array.isArray(analysis.data.alternatives)
+      ? analysis.data.alternatives
       : [];
-    
+
     // Save to database for permanent storage with ALL details
     const foodCheck = new QuickFoodCheck({
       userId: req.user._id,
@@ -775,8 +778,11 @@ exports.quickFoodCheck = async (req, res) => {
       fats: analysis.data.foodItem?.nutrition?.fats || 0,
       nutrition: analysis.data.foodItem?.nutrition || {},
       healthScore: analysis.data.healthScore || 50,
+      healthScore10: analysis.data.healthScore10 || (analysis.data.healthScore ? analysis.data.healthScore / 10 : 5),
       isHealthy: analysis.data.isHealthy || false,
       analysis: analysis.data.analysis || '',
+      micronutrients: Array.isArray(analysis.data.micronutrients) ? analysis.data.micronutrients : [],
+      enhancementTips: Array.isArray(analysis.data.enhancementTips) ? analysis.data.enhancementTips : [],
       warnings: Array.isArray(analysis.data.warnings) ? analysis.data.warnings : [],
       benefits: Array.isArray(analysis.data.benefits) ? analysis.data.benefits : [],
       alternatives: alternativesArray,
@@ -834,8 +840,8 @@ exports.getHealthyAlternatives = async (req, res) => {
       dietaryPreference: healthGoal?.dietaryPreference || user.profile?.dietaryPreference,
       allergies: healthGoal?.allergies || user.profile?.allergies || [],
       goal: healthGoal?.goalType,
-      remainingCalories: healthGoal && todaySummary 
-        ? healthGoal.dailyCalorieTarget - todaySummary.totalCalories 
+      remainingCalories: healthGoal && todaySummary
+        ? healthGoal.dailyCalorieTarget - todaySummary.totalCalories
         : null
     };
 
@@ -999,7 +1005,7 @@ exports.getFoodCheckHistory = async (req, res) => {
       totalChecks: checks.length,
       healthyCount: checks.filter(c => c.isHealthy).length,
       unhealthyCount: checks.filter(c => !c.isHealthy).length,
-      avgHealthScore: checks.length > 0 
+      avgHealthScore: checks.length > 0
         ? Math.round(checks.reduce((sum, c) => sum + (c.healthScore || 0), 0) / checks.length)
         : 0,
       checks
@@ -1026,7 +1032,7 @@ exports.getWeeklyFoodCheckSummary = async (req, res) => {
 
     const endDate = new Date();
     endDate.setHours(23, 59, 59, 999);
-    
+
     const startDate = new Date(endDate);
     startDate.setDate(startDate.getDate() - 6);
     startDate.setHours(0, 0, 0, 0);
@@ -1117,7 +1123,7 @@ exports.getFoodImage = async (req, res) => {
 
     if (response.data && response.data.images_results && response.data.images_results.length > 0) {
       const imageUrl = response.data.images_results[0].original;
-      
+
       res.json({
         success: true,
         imageUrl,

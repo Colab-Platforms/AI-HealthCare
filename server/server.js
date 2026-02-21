@@ -27,8 +27,8 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use('/uploads', express.static(uploadsDir));
 
 app.get('/api/health-check', (req, res) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     message: 'FitCure API',
     timestamp: new Date().toISOString()
   });
@@ -37,6 +37,7 @@ app.get('/api/health-check', (req, res) => {
 try {
   app.use('/api/auth', require('./routes/authRoutes'));
   app.use('/api/health', require('./routes/healthRoutes'));
+  app.use('/api/metrics', require('./routes/metricRoutes'));
   app.use('/api/doctors', require('./routes/doctorRoutes'));
   app.use('/api/admin', require('./routes/adminRoutes'));
   app.use('/api/wearables', require('./routes/wearableRoutes'));
@@ -50,7 +51,7 @@ try {
 
 app.use((err, req, res, next) => {
   console.error('Error:', err.stack);
-  res.status(500).json({ 
+  res.status(500).json({
     message: err.message || 'Something went wrong!',
     error: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });

@@ -89,7 +89,7 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
                   >
                     <Icon className="w-5 h-5" />
                     <span>{label}</span>
-                    <span 
+                    <span
                       className="ml-auto text-xs px-2 py-0.5 rounded-full font-semibold bg-white/20 text-white"
                     >
                       Soon
@@ -104,11 +104,10 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
                   key={path}
                   to={path}
                   onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${
-                    location.pathname === path
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${location.pathname === path
                       ? 'border'
                       : ''
-                  }`}
+                    }`}
                   style={location.pathname === path ? {
                     backgroundColor: 'rgba(255,255,255,0.2)',
                     color: 'white',
@@ -175,8 +174,8 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
 
       {/* Main Content - Add left margin for fixed sidebar on desktop */}
       <div className="flex-1 flex flex-col min-h-screen lg:ml-64">
-        {/* Top Header */}
-        <header className="sticky top-0 z-30 backdrop-blur-xl bg-gradient-to-r from-cyan-500 to-blue-600 border-b border-white/20">
+        {/* Top Header - Hidden on mobile for all pages */}
+        <header className="sticky top-0 z-30 backdrop-blur-xl bg-gradient-to-r from-cyan-500 to-blue-600 border-b border-white/20 hidden md:block">
           <div className="flex items-center justify-between px-3 md:px-4 lg:px-8 py-3 md:py-4">
             <div className="flex items-center gap-2 md:gap-4 flex-1 md:flex-none">
               {/* Mobile Logo - Show on mobile, hide on desktop */}
@@ -186,7 +185,7 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
                 </div>
                 <span className="text-sm font-bold text-white">FitCure</span>
               </Link>
-              
+
               {/* Desktop Title - Hide on mobile */}
               <h1 className="text-base md:text-lg font-semibold hidden sm:block text-white">
                 {navItems.find(item => item.path === location.pathname)?.label || 'Dashboard'}
@@ -217,11 +216,11 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
 
         {/* Page Content */}
         <main className="flex-1 main-content-mobile overflow-x-hidden w-full" style={
-          location.pathname === '/nutrition' || location.pathname === '/ai-chat' 
-            ? { padding: 0, backgroundColor: 'white' } 
-            : location.pathname === '/dashboard'
-            ? { padding: 0 }
-            : { padding: '0.75rem' }
+          location.pathname === '/nutrition' || location.pathname === '/ai-chat'
+            ? { padding: 0, backgroundColor: 'white' }
+            : location.pathname === '/dashboard' || location.pathname === '/glucose-log'
+              ? { padding: 0 }
+              : { padding: 0 }
         }>
           {children}
         </main>

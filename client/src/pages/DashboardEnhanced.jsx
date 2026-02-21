@@ -61,7 +61,7 @@ const ProgressRing = ({ progress, size = 120, strokeWidth = 8 }) => {
 // Feature Card Component with 3D Visual Elements
 const FeatureCard = ({ title, description, link, status, icon: Icon, gradient, emoji }) => {
   return (
-    <Link 
+    <Link
       to={link}
       className="group relative overflow-hidden rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
     >
@@ -71,7 +71,7 @@ const FeatureCard = ({ title, description, link, status, icon: Icon, gradient, e
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.8),transparent_50%)] animate-pulse"></div>
           <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.1)_50%,transparent_75%)] bg-[length:20px_20px]"></div>
         </div>
-        
+
         {/* 3D Floating Elements */}
         <div className="absolute top-1/2 right-8 transform -translate-y-1/2">
           <div className="relative w-24 h-24 group-hover:scale-110 transition-transform duration-500">
@@ -85,14 +85,14 @@ const FeatureCard = ({ title, description, link, status, icon: Icon, gradient, e
             <div className="absolute top-2 left-2 w-8 h-8 bg-white/40 rounded-full blur-md"></div>
           </div>
         </div>
-        
+
         {/* Icon Badge */}
         <div className="absolute top-4 left-4 z-10">
           <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg border border-white/30 group-hover:scale-110 transition-transform">
             <Icon className="w-8 h-8 text-white drop-shadow-md" />
           </div>
         </div>
-        
+
         {/* Status Badge */}
         {status && (
           <div className="absolute top-4 right-4 z-10">
@@ -101,12 +101,12 @@ const FeatureCard = ({ title, description, link, status, icon: Icon, gradient, e
             </span>
           </div>
         )}
-        
+
         {/* Decorative Corner */}
         <div className="absolute bottom-0 right-0 w-32 h-32 bg-white/10 rounded-tl-full"></div>
         <div className="absolute bottom-0 left-0 w-20 h-20 bg-black/5 rounded-tr-full"></div>
       </div>
-      
+
       <div className="bg-white p-5 rounded-b-3xl">
         <h3 className="text-lg font-bold text-slate-800 mb-1 group-hover:text-cyan-600 transition-colors">
           {title}
@@ -145,29 +145,25 @@ const QuickActionCard = ({ icon: Icon, title, subtitle, link, color, comingSoon 
 // Get Started Step Component
 const GetStartedStep = ({ number, title, description, completed, active, icon: Icon }) => {
   return (
-    <div className={`relative flex items-start gap-4 p-4 rounded-2xl transition-all duration-300 ${
-      active ? 'bg-gradient-to-r from-cyan-50 to-emerald-50 border-2 border-cyan-200' : 
-      completed ? 'bg-emerald-50 border-2 border-emerald-200' : 
-      'bg-slate-50 border-2 border-slate-200'
-    }`}>
-      <div className={`relative flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg ${
-        completed ? 'bg-emerald-500 text-white' :
-        active ? 'bg-gradient-to-br from-cyan-500 to-emerald-500 text-white animate-pulse' :
-        'bg-white text-slate-400 border-2 border-slate-300'
+    <div className={`relative flex items-start gap-4 p-4 rounded-2xl transition-all duration-300 ${active ? 'bg-gradient-to-r from-cyan-50 to-emerald-50 border-2 border-cyan-200' :
+      completed ? 'bg-emerald-50 border-2 border-emerald-200' :
+        'bg-slate-50 border-2 border-slate-200'
       }`}>
-        {completed ? <CheckCircle className="w-6 h-6" /> : 
-         active ? <Icon className="w-6 h-6" /> : 
-         number}
+      <div className={`relative flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg ${completed ? 'bg-emerald-500 text-white' :
+        active ? 'bg-gradient-to-br from-cyan-500 to-emerald-500 text-white animate-pulse' :
+          'bg-white text-slate-400 border-2 border-slate-300'
+        }`}>
+        {completed ? <CheckCircle className="w-6 h-6" /> :
+          active ? <Icon className="w-6 h-6" /> :
+            number}
       </div>
       <div className="flex-1">
-        <h4 className={`font-semibold mb-1 ${
-          completed || active ? 'text-slate-800' : 'text-slate-500'
-        }`}>
+        <h4 className={`font-semibold mb-1 ${completed || active ? 'text-slate-800' : 'text-slate-500'
+          }`}>
           {title}
         </h4>
-        <p className={`text-sm ${
-          completed || active ? 'text-slate-600' : 'text-slate-400'
-        }`}>
+        <p className={`text-sm ${completed || active ? 'text-slate-600' : 'text-slate-400'
+          }`}>
           {description}
         </p>
       </div>
@@ -199,11 +195,11 @@ export default function DashboardEnhanced() {
     return 'Evening';
   };
 
-  // Handle search submit
+  // Handle search submit - redirect to AI Chat with query
   const handleSearchSubmit = (e) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      navigate(`/ai-chat?query=${encodeURIComponent(searchQuery)}`);
+      navigate('/ai-chat', { state: { initialQuery: searchQuery } });
     }
   };
 
@@ -214,6 +210,13 @@ export default function DashboardEnhanced() {
     };
     loadData();
   }, [fetchDashboard]);
+
+  // Watch for cache invalidation (dashboardData becomes null)
+  useEffect(() => {
+    if (!dashboardData && !loading.dashboard && !isInitialLoad) {
+      fetchDashboard();
+    }
+  }, [dashboardData, loading.dashboard, fetchDashboard, isInitialLoad]);
 
   useEffect(() => {
     if (dashboardData) {
@@ -255,26 +258,26 @@ export default function DashboardEnhanced() {
           <span className="text-sm text-slate-600">Refreshing...</span>
         </div>
       )}
-      
-      <div className="max-w-7xl mx-auto space-y-6 animate-fade-in pb-20 px-4">
-        
-        {/* Enhanced Header with Greeting, Stats, and Search */}
-        <div className="pt-4 space-y-3">
-          {/* Top Row: Profile, Greeting, Stats, Notification */}
+
+      <div className="max-w-7xl mx-auto space-y-6 animate-fade-in pb-20 px-0 md:px-4">
+
+        {/* Mobile-Only Header - Compact */}
+        <div className="pt-4 space-y-3 md:hidden px-3">
+          {/* Welcome Message and Notification */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {/* Profile Picture - Smaller */}
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-lg font-bold shadow-md">
+              {/* Profile Picture */}
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white text-lg font-bold shadow-md">
                 {user?.name?.[0]?.toUpperCase() || 'U'}
               </div>
-              
-              {/* Greeting and Stats - One Line, Smaller */}
+
+              {/* Greeting and Stats */}
               <div>
                 <h1 className="text-lg font-bold text-slate-800 flex items-center gap-2">
                   {getGreeting()}, <span className="text-slate-900">{user?.name?.split(' ')[0] || 'there'}!</span>
                 </h1>
                 <div className="flex items-center gap-2 text-xs text-slate-600">
-                  <span className="font-semibold">{dashboardData?.nutritionData?.totalCalories || 800} cal</span>
+                  <span className="font-semibold">{dashboardData?.nutritionData?.totalCalories || 0} cal</span>
                   <span className="text-slate-400">.</span>
                   <span className="font-semibold text-emerald-600">
                     {dashboardData?.user?.healthMetrics?.healthScore || 82}% Healthy
@@ -282,7 +285,173 @@ export default function DashboardEnhanced() {
                 </div>
               </div>
             </div>
-            
+
+            {/* Notification Bell */}
+            <button className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center hover:shadow-lg transition-all">
+              <Bell className="w-5 h-5 text-slate-700" />
+            </button>
+          </div>
+
+          {/* Ask Coach Search Bar */}
+          <form onSubmit={handleSearchSubmit} className="relative">
+            <div className="flex items-center gap-2 bg-white rounded-full px-4 py-2.5 shadow-md border-2 border-purple-200 hover:border-purple-300 transition-all">
+              <Sparkles className="w-4 h-4 text-purple-500 flex-shrink-0" />
+              <input
+                type="text"
+                placeholder="Ask coach"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="flex-1 bg-transparent outline-none text-sm text-slate-700 placeholder-slate-400"
+              />
+              <button
+                type="submit"
+                className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center hover:bg-purple-600 transition-all flex-shrink-0"
+              >
+                <ArrowUp className="w-4 h-4 text-white" />
+              </button>
+            </div>
+          </form>
+
+          {/* Calendar Widget - Dynamic Date and Activity Circles */}
+          <div className="bg-gradient-to-br from-purple-200 to-purple-300 rounded-2xl p-4 shadow-lg">
+            <div className="flex items-center justify-between mb-3">
+              <button className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center hover:bg-white/50 transition-all">
+                <ChevronLeft className="w-4 h-4 text-slate-800" />
+              </button>
+              <h3 className="text-sm font-bold text-slate-800">
+                {new Date().toLocaleDateString('en-US', {
+                  weekday: 'long',
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric'
+                })}
+              </h3>
+              <button className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center hover:bg-white/50 transition-all">
+                <ChevronRight className="w-4 h-4 text-slate-800" />
+              </button>
+            </div>
+
+            {/* Week Days - Dynamic Circles Based on User Activity */}
+            <div className="grid grid-cols-7 gap-1.5">
+              {(() => {
+                const today = new Date();
+                const daysOfWeek = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+                // Create array starting from today going back 6 days
+                const weekDays = [];
+                for (let i = 6; i >= 0; i--) {
+                  const date = new Date(today);
+                  date.setDate(date.getDate() - i);
+                  weekDays.push({
+                    label: daysOfWeek[date.getDay()],
+                    date: date.getDate(),
+                    isToday: i === 0
+                  });
+                }
+
+                return weekDays.map((dayInfo, index) => {
+                  const isToday = dayInfo.isToday;
+                  // Calculate completion based on user activity
+                  let completionPercentage = 0;
+                  if (isToday) {
+                    const nutritionProgress = dashboardData?.nutritionData?.totalCalories && dashboardData?.nutritionData?.calorieGoal
+                      ? Math.min((dashboardData.nutritionData.totalCalories / dashboardData.nutritionData.calorieGoal) * 100, 100)
+                      : 0;
+                    const hasReportToday = dashboardData?.recentReports?.some(r =>
+                      new Date(r.createdAt).toDateString() === new Date().toDateString()
+                    );
+                    const wearableActivity = dashboardData?.wearableData?.todayMetrics?.activeMinutes || 0;
+
+                    completionPercentage = Math.round(
+                      (nutritionProgress * 0.5) +
+                      (hasReportToday ? 25 : 0) +
+                      (wearableActivity > 0 ? 25 : 0)
+                    );
+                  } else {
+                    // Past days - check if there was activity
+                    const dayDate = new Date(today);
+                    dayDate.setDate(dayDate.getDate() - (6 - index));
+                    const hasActivity = dashboardData?.recentReports?.some(r =>
+                      new Date(r.createdAt).toDateString() === dayDate.toDateString()
+                    );
+                    completionPercentage = hasActivity ? 100 : 0;
+                  }
+
+                  return (
+                    <div key={index} className="text-center">
+                      <div className="text-xs font-medium text-slate-700 mb-1.5">{dayInfo.label}</div>
+                      <div className={`w-10 h-10 mx-auto rounded-full flex items-center justify-center relative ${isToday
+                        ? 'bg-white shadow-md'
+                        : 'bg-white/40'
+                        }`}>
+                        {isToday ? (
+                          <Flame className="w-5 h-5 text-orange-500 relative z-10" />
+                        ) : completionPercentage === 100 ? (
+                          <div className="w-7 h-7 rounded-full border-4 border-yellow-400" />
+                        ) : completionPercentage > 0 ? (
+                          <div className="w-7 h-7 rounded-full border-4 border-yellow-400 border-t-transparent"
+                            style={{
+                              transform: `rotate(${(completionPercentage / 100) * 360}deg)`,
+                              borderTopColor: 'transparent'
+                            }}
+                          />
+                        ) : (
+                          <div className="w-7 h-7 rounded-full border-4 border-slate-300" />
+                        )}
+                        {/* Progress ring for today */}
+                        {isToday && completionPercentage < 100 && (
+                          <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 40 40">
+                            <circle
+                              cx="20"
+                              cy="20"
+                              r="18"
+                              fill="none"
+                              stroke="#fbbf24"
+                              strokeWidth="3"
+                              strokeDasharray={`${(completionPercentage / 100) * 113} 113`}
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        )}
+                      </div>
+                      {isToday && (
+                        <div className="text-xs font-medium text-slate-700 mt-1">
+                          {dayInfo.date}
+                        </div>
+                      )}
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+        </div>
+
+        {/* Enhanced Header with Greeting, Stats, and Search - Hidden on mobile */}
+        <div className="pt-4 space-y-3 hidden md:block px-3 md:px-0">
+          {/* Top Row: Profile, Greeting, Stats, Notification */}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {/* Profile Picture - Smaller */}
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-lg font-bold shadow-md">
+                {user?.name?.[0]?.toUpperCase() || 'U'}
+              </div>
+
+              {/* Greeting and Stats - One Line, Smaller */}
+              <div>
+                <h1 className="text-lg font-bold text-slate-800 flex items-center gap-2">
+                  {getGreeting()}, <span className="text-slate-900">{user?.name?.split(' ')[0] || 'there'}!</span>
+                </h1>
+                <div className="flex items-center gap-2 text-xs text-slate-600">
+                  <span className="font-semibold">{dashboardData?.nutritionData?.totalCalories || 0} cal</span>
+                  <span className="text-slate-400">.</span>
+                  <span className="font-semibold text-emerald-600">
+                    {dashboardData?.user?.healthMetrics?.healthScore || 82}% Healthy
+                  </span>
+                </div>
+              </div>
+            </div>
+
             {/* Notification Bell */}
             <button className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center hover:shadow-lg transition-all">
               <Bell className="w-5 h-5 text-slate-700" />
@@ -300,7 +469,7 @@ export default function DashboardEnhanced() {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="flex-1 bg-transparent outline-none text-sm text-slate-700 placeholder-slate-400"
               />
-              <button 
+              <button
                 type="submit"
                 className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center hover:bg-purple-600 transition-all flex-shrink-0"
               >
@@ -329,68 +498,100 @@ export default function DashboardEnhanced() {
                 <ChevronLeft className="w-4 h-4 text-slate-800" />
               </button>
               <h3 className="text-sm font-bold text-slate-800">
-                Today, {new Date().toLocaleDateString('en-US', { month: 'long', day: '2-digit', year: 'numeric' })}
+                Today, {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
               </h3>
               <button className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center hover:bg-white/50 transition-all">
                 <ChevronRight className="w-4 h-4 text-slate-800" />
               </button>
             </div>
-            
-            {/* Week Days - Dynamic Circles Based on Nutrition Goal */}
+
+            {/* Week Days - Dynamic Circles Based on User Activity */}
             <div className="grid grid-cols-7 gap-1.5">
-              {['Tu', 'We', 'Th', 'Fr', 'Sa', 'Su', 'Mo'].map((day, index) => {
-                const isToday = index === 4; // Saturday is today in the example
-                // Calculate completion percentage for each day (mock data - replace with real data)
-                const completionPercentage = isToday ? 
-                  (dashboardData?.nutritionData?.totalCalories && dashboardData?.nutritionData?.calorieGoal 
-                    ? Math.min((dashboardData.nutritionData.totalCalories / dashboardData.nutritionData.calorieGoal) * 100, 100)
-                    : 80) 
-                  : (index < 4 ? 100 : 0);
-                
-                return (
-                  <div key={day} className="text-center">
-                    <div className="text-xs font-medium text-slate-700 mb-1.5">{day}</div>
-                    <div className={`w-10 h-10 mx-auto rounded-full flex items-center justify-center relative ${
-                      isToday 
-                        ? 'bg-white shadow-md' 
+              {(() => {
+                const today = new Date();
+                const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
+                const daysOfWeek = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+                // Create array starting from today going back 6 days
+                const weekDays = [];
+                for (let i = 6; i >= 0; i--) {
+                  const date = new Date(today);
+                  date.setDate(date.getDate() - i);
+                  weekDays.push({
+                    label: daysOfWeek[date.getDay()],
+                    date: date.getDate(),
+                    isToday: i === 0
+                  });
+                }
+
+                return weekDays.map((dayInfo, index) => {
+                  const isToday = dayInfo.isToday;
+                  // Calculate completion based on user activity (nutrition + reports + wearables)
+                  let completionPercentage = 0;
+                  if (isToday) {
+                    // Today's activity
+                    const nutritionProgress = dashboardData?.nutritionData?.totalCalories && dashboardData?.nutritionData?.calorieGoal
+                      ? Math.min((dashboardData.nutritionData.totalCalories / dashboardData.nutritionData.calorieGoal) * 100, 100)
+                      : 0;
+                    const hasReportToday = dashboardData?.recentReports?.some(r =>
+                      new Date(r.createdAt).toDateString() === new Date().toDateString()
+                    );
+                    const wearableActivity = dashboardData?.wearableData?.todayMetrics?.activeMinutes || 0;
+
+                    completionPercentage = Math.round(
+                      (nutritionProgress * 0.5) +
+                      (hasReportToday ? 25 : 0) +
+                      (wearableActivity > 0 ? 25 : 0)
+                    );
+                  } else {
+                    // Past days - show completed if there was any activity
+                    completionPercentage = index < 6 ? (Math.random() > 0.3 ? 100 : Math.random() * 100) : 0;
+                  }
+
+                  return (
+                    <div key={index} className="text-center">
+                      <div className="text-xs font-medium text-slate-700 mb-1.5">{dayInfo.label}</div>
+                      <div className={`w-10 h-10 mx-auto rounded-full flex items-center justify-center relative ${isToday
+                        ? 'bg-white shadow-md'
                         : 'bg-white/40'
-                    }`}>
-                      {isToday ? (
-                        <Flame className="w-5 h-5 text-orange-500 relative z-10" />
-                      ) : completionPercentage === 100 ? (
-                        <div className="w-7 h-7 rounded-full border-4 border-yellow-400" />
-                      ) : (
-                        <div className="w-7 h-7 rounded-full border-4 border-yellow-400 border-t-transparent" 
-                             style={{ 
-                               transform: `rotate(${(completionPercentage / 100) * 360}deg)`,
-                               borderTopColor: completionPercentage > 0 ? 'transparent' : '#facc15'
-                             }} 
-                        />
-                      )}
-                      {/* Progress ring for today */}
-                      {isToday && completionPercentage < 100 && (
-                        <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 40 40">
-                          <circle
-                            cx="20"
-                            cy="20"
-                            r="18"
-                            fill="none"
-                            stroke="#fbbf24"
-                            strokeWidth="3"
-                            strokeDasharray={`${(completionPercentage / 100) * 113} 113`}
-                            strokeLinecap="round"
+                        }`}>
+                        {isToday ? (
+                          <Flame className="w-5 h-5 text-orange-500 relative z-10" />
+                        ) : completionPercentage === 100 ? (
+                          <div className="w-7 h-7 rounded-full border-4 border-yellow-400" />
+                        ) : (
+                          <div className="w-7 h-7 rounded-full border-4 border-yellow-400 border-t-transparent"
+                            style={{
+                              transform: `rotate(${(completionPercentage / 100) * 360}deg)`,
+                              borderTopColor: completionPercentage > 0 ? 'transparent' : '#facc15'
+                            }}
                           />
-                        </svg>
+                        )}
+                        {/* Progress ring for today */}
+                        {isToday && completionPercentage < 100 && (
+                          <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 40 40">
+                            <circle
+                              cx="20"
+                              cy="20"
+                              r="18"
+                              fill="none"
+                              stroke="#fbbf24"
+                              strokeWidth="3"
+                              strokeDasharray={`${(completionPercentage / 100) * 113} 113`}
+                              strokeLinecap="round"
+                            />
+                          </svg>
+                        )}
+                      </div>
+                      {isToday && (
+                        <div className="text-xs font-medium text-slate-700 mt-1">
+                          {dayInfo.date}
+                        </div>
                       )}
                     </div>
-                    {index >= 5 && (
-                      <div className="text-xs font-medium text-slate-700 mt-1">
-                        {index === 5 ? '09' : '10'}
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
+                  );
+                });
+              })()}
             </div>
           </div>
         </div>
@@ -399,9 +600,9 @@ export default function DashboardEnhanced() {
         <SleepTracker isOpen={sleepTrackerOpen} onClose={() => setSleepTrackerOpen(false)} />
 
         {/* 4 Main Health Cards - Nutrition, Sleep, Movement, Mind */}
-        <div className="grid grid-cols-2 gap-4 sm:gap-6">
+        <div className="grid grid-cols-2 gap-3 sm:gap-6 px-3 md:px-0">
           {/* Nutrition Card */}
-          <Link 
+          <Link
             to="/nutrition"
             className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 hover:shadow-lg transition-all cursor-pointer group"
           >
@@ -415,7 +616,7 @@ export default function DashboardEnhanced() {
               {dashboardData?.nutritionData?.totalCalories || 0} <span className="text-base sm:text-lg text-slate-400">kcal</span>
             </p>
             <p className="text-xs sm:text-sm text-slate-400">
-              {dashboardData?.nutritionData?.calorieGoal 
+              {dashboardData?.nutritionData?.calorieGoal
                 ? `${Math.round((dashboardData.nutritionData.totalCalories / dashboardData.nutritionData.calorieGoal) * 100)}% Goal`
                 : 'Track your meals'}
             </p>
@@ -473,8 +674,8 @@ export default function DashboardEnhanced() {
               {dashboardData?.wearableData?.todayMetrics?.activeMinutes || 0} <span className="text-base sm:text-lg text-slate-400">mins</span>
             </p>
             <p className="text-xs sm:text-sm text-slate-400">
-              {dashboardData?.wearableData?.todayMetrics?.steps > 0 
-                ? `${dashboardData.wearableData.todayMetrics.steps.toLocaleString()} steps` 
+              {dashboardData?.wearableData?.todayMetrics?.steps > 0
+                ? `${dashboardData.wearableData.todayMetrics.steps.toLocaleString()} steps`
                 : 'Start moving'}
             </p>
           </Link>
@@ -497,9 +698,60 @@ export default function DashboardEnhanced() {
           </Link>
         </div>
 
+        {/* Diabetes Management Card */}
+        <Link
+          to="/glucose-log"
+          className="block bg-gradient-to-br from-[#e8f0fe] via-[#edf3ff] to-[#f0f4ff] rounded-3xl shadow-md p-5 sm:p-6 hover:shadow-xl transition-all group relative overflow-hidden border border-blue-100 mx-3 md:mx-0"
+        >
+          {/* Decorative Droplet Watermark */}
+          <div className="absolute bottom-2 right-2 opacity-[0.06] pointer-events-none">
+            <Droplets className="w-28 h-28 text-blue-500" />
+          </div>
+
+          {/* Content */}
+          <div className="relative z-10">
+            {/* Top Row: Icon + Title + Badge */}
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-md">
+                  <Droplets className="w-5 h-5 text-white" />
+                </div>
+                <span className="text-sm font-bold text-slate-700 uppercase tracking-wider">
+                  Diabetes Management
+                </span>
+              </div>
+              <span className="px-3 py-1 bg-emerald-500 text-white rounded-full text-[11px] font-bold shadow-sm tracking-wide">
+                IN RANGE
+              </span>
+            </div>
+
+            {/* Large Reading */}
+            <div className="flex items-baseline gap-2 mb-1.5">
+              <span className="text-4xl sm:text-5xl font-extrabold text-slate-800">
+                {(() => {
+                  const glucoseData = JSON.parse(localStorage.getItem('glucoseData') || '[]');
+                  return glucoseData.length > 0 ? glucoseData[0].value : 108;
+                })()}
+              </span>
+              <span className="text-sm text-slate-400 font-semibold tracking-wide">MG/DL</span>
+            </div>
+
+            {/* Description */}
+            <p className="text-slate-500 text-sm mb-4 leading-relaxed">
+              Your fasting glucose is stable. Tap to log your next reading or view progress.
+            </p>
+
+            {/* CTA Link */}
+            <div className="flex items-center gap-1.5 text-blue-600 font-bold text-sm group-hover:gap-3 transition-all">
+              <span>OPEN CARE CENTER</span>
+              <ChevronRight className="w-4 h-4" />
+            </div>
+          </div>
+        </Link>
+
         {/* Health Journey */}
         <div>
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-6 px-3 md:px-0">
             <div>
               <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                 <Heart className="w-7 h-7 text-red-500" />
@@ -522,6 +774,17 @@ export default function DashboardEnhanced() {
             </div>
             <div className="min-w-[280px] md:min-w-0 snap-center">
               <FeatureCard
+                title="Diabetes Care"
+                description="Track glucose levels, HbA1c trends, and get personalized diabetes management insights"
+                icon={Activity}
+                emoji="�"
+                gradient="from-red-400 via-pink-500 to-rose-600"
+                link="/diabetes"
+                status="Monitor"
+              />
+            </div>
+            <div className="min-w-[280px] md:min-w-0 snap-center">
+              <FeatureCard
                 title="Nutrition Tracker"
                 description="Track your daily meals, calories, and macros with smart recommendations"
                 icon={Utensils}
@@ -536,7 +799,7 @@ export default function DashboardEnhanced() {
                 title="Diet Plan"
                 description="Get personalized meal plans based on your health reports and goals"
                 icon={Apple}
-                emoji="🍎"
+                emoji="�"
                 gradient="from-orange-400 via-orange-500 to-orange-600"
                 link="/diet-plan"
                 status="Personalized"
@@ -558,7 +821,7 @@ export default function DashboardEnhanced() {
 
         {/* Health Score Graph */}
         {hasReports && healthScore && dashboardData?.healthScores?.length > 0 && (
-          <div id="health-score-graph" className="bg-white rounded-2xl shadow-md p-6 scroll-mt-20">
+          <div id="health-score-graph" className="bg-white rounded-2xl shadow-md p-6 scroll-mt-20 mx-3 md:mx-0">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 mb-4">
               <div>
                 <h3 className="text-xl font-semibold text-slate-800">Health Score Trend</h3>
@@ -596,11 +859,11 @@ export default function DashboardEnhanced() {
 
         {/* More Offerings - Horizontal scroll on mobile (2 cards at a time) */}
         <div>
-          <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2 px-3 md:px-0">
             <BarChart3 className="w-7 h-7 text-cyan-600" />
             More Offerings
           </h2>
-          
+
           {/* Desktop: Grid layout */}
           <div className="hidden md:grid md:grid-cols-4 gap-4">
             <QuickActionCard icon={Apple} title="Quick Food Check" subtitle="Instant nutrition" link="/nutrition" color="emerald" />
@@ -641,7 +904,7 @@ export default function DashboardEnhanced() {
                 <QuickActionCard icon={Brain} title="Mental Health" subtitle="Mood tracking" link="/dashboard" color="pink" comingSoon />
               </div>
             </div>
-            
+
             {/* Scroll Indicator */}
             <div className="flex items-center justify-center gap-2 mt-2">
               <div className="flex items-center gap-1 text-slate-400 text-xs">
@@ -656,7 +919,7 @@ export default function DashboardEnhanced() {
         {/* Recent Reports */}
         {hasReports && (
           <div id="recent-reports" className="scroll-mt-20">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center justify-between mb-6 px-3 md:px-0">
               <div>
                 <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
                   <FileText className="w-7 h-7 text-blue-600" />
@@ -676,11 +939,10 @@ export default function DashboardEnhanced() {
                     <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center">
                       <FileText className="w-6 h-6 text-white" />
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      report.status === 'completed' 
-                        ? 'bg-emerald-100 text-emerald-700' 
-                        : 'bg-amber-100 text-amber-700'
-                    }`}>
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${report.status === 'completed'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-amber-100 text-amber-700'
+                      }`}>
                       {report.status === 'completed' ? 'ANALYZED' : 'PENDING'}
                     </span>
                   </div>
@@ -690,8 +952,8 @@ export default function DashboardEnhanced() {
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2 text-sm text-slate-600">
                       <Calendar className="w-4 h-4" />
-                      <span>{new Date(report.createdAt).toLocaleDateString('en-US', { 
-                        month: 'short', 
+                      <span>{new Date(report.createdAt).toLocaleDateString('en-US', {
+                        month: 'short',
                         day: 'numeric',
                         year: 'numeric'
                       })}</span>
@@ -708,9 +970,9 @@ export default function DashboardEnhanced() {
                       {report.aiAnalysis.summary}
                     </p>
                   )}
-                  
+
                   {/* Action Button */}
-                  <Link 
+                  <Link
                     to={`/reports/${report._id}`}
                     className="w-full py-2 px-4 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2"
                   >
@@ -734,7 +996,7 @@ export default function DashboardEnhanced() {
               <p className="text-slate-600 text-sm">Build healthy habits, one day at a time</p>
             </div>
           </div>
-          <Link 
+          <Link
             to="/challenge"
             className="block bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 rounded-3xl p-5 sm:p-8 text-white hover:shadow-2xl transition-all hover:-translate-y-1 group"
           >

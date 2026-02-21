@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { healthService } from '../services/api';
-import { FileText, ArrowLeft, Calendar, Eye, TrendingUp, AlertCircle, Upload, Trash2 } from 'lucide-react';
+import { FileText, ArrowLeft, Calendar, Eye, TrendingUp, AlertCircle, Upload, Trash2, Bell } from 'lucide-react';
 import toast from 'react-hot-toast';
 import ReportsSkeleton from '../components/skeletons/ReportsSkeleton';
 
 export default function AllReports() {
+  const { user } = useAuth();
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all'); // all, blood, comprehensive, etc.
@@ -56,6 +58,26 @@ export default function AllReports() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6 animate-fade-in p-4">
+      {/* Welcome Message - Mobile Only */}
+      <div className="md:hidden flex items-center justify-between">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-md flex-shrink-0">
+            {user?.name?.[0]?.toUpperCase() || 'U'}
+          </div>
+          <h1 className="text-sm font-bold text-slate-800 truncate">
+            {(() => {
+              const hour = new Date().getHours();
+              if (hour < 12) return 'Good Morning';
+              if (hour < 18) return 'Good Afternoon';
+              return 'Good Evening';
+            })()}, {user?.name?.split(' ')[0] || 'there'}!
+          </h1>
+        </div>
+        <button className="w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center hover:shadow-lg transition-all flex-shrink-0">
+          <Bell className="w-4 h-4 text-slate-700" />
+        </button>
+      </div>
+
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
         <div>

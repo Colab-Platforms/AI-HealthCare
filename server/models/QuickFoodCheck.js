@@ -30,8 +30,15 @@ const quickFoodCheckSchema = new mongoose.Schema({
     min: 0,
     max: 100
   },
+  healthScore10: {
+    type: Number,
+    min: 0,
+    max: 10
+  },
   isHealthy: Boolean,
   analysis: String,
+  micronutrients: [String],
+  enhancementTips: [String],
   warnings: [String],
   benefits: [String],
   alternatives: [{

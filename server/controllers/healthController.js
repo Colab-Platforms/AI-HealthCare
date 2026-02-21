@@ -5,6 +5,7 @@ const { analyzeHealthReport, compareReports, chatWithReport } = require('../serv
 const { generateMetricInfo } = require('../services/aiService');
 const pdfParse = require('pdf-parse');
 const fs = require('fs');
+const NutritionSummary = require('../models/NutritionSummary');
 const cache = require('../utils/cache');
 
 exports.uploadReport = async (req, res) => {
@@ -55,24 +56,24 @@ exports.uploadReport = async (req, res) => {
       console.log('---PDF-START---');
       console.log(extractedText.substring(0, 1000));
       console.log('---PDF-END---');
-      
+
       console.log('\n🔄 Analyzing report...');
       aiAnalysis = await analyzeHealthReport(extractedText, userProfile);
-      
+
       console.log('\n📦 ========== FULL AI ANALYSIS OBJECT ==========');
       console.log('Type:', typeof aiAnalysis);
       console.log('Keys:', Object.keys(aiAnalysis));
       console.log('\n📊 COMPLETE AI ANALYSIS:');
       console.log(JSON.stringify(aiAnalysis, null, 2).substring(0, 3000));
       console.log('========================================\n');
-      
+
       console.log('\n✅ ========== AI ANALYSIS RECEIVED ==========');
       console.log('📊 Patient Name:', aiAnalysis.patientName || 'NOT FOUND');
       console.log('📊 Health Score:', aiAnalysis.healthScore);
       console.log('📊 Summary:', aiAnalysis.summary?.substring(0, 200) || 'NO SUMMARY');
       console.log('📊 Key Findings:', aiAnalysis.keyFindings?.length || 0, 'items');
       console.log('📊 Metrics:', Object.keys(aiAnalysis.metrics || {}).length, 'metrics found');
-      
+
       if (aiAnalysis.metrics && Object.keys(aiAnalysis.metrics).length > 0) {
         console.log('\n📊 SAMPLE METRICS (first 3):');
         Object.entries(aiAnalysis.metrics).slice(0, 3).forEach(([key, metric]) => {
@@ -81,7 +82,7 @@ exports.uploadReport = async (req, res) => {
       } else {
         console.log('⚠️  NO METRICS EXTRACTED!');
       }
-      
+
       console.log('\n📊 Diet Plan:');
       console.log('   Breakfast:', aiAnalysis.dietPlan?.breakfast?.length || 0, 'meals');
       console.log('   Lunch:', aiAnalysis.dietPlan?.lunch?.length || 0, 'meals');
@@ -96,7 +97,7 @@ exports.uploadReport = async (req, res) => {
       await report.save();
       return res.status(500).json({ message: `AI Analysis failed: ${aiError.message}` });
     }
-    
+
     // ✅ CRITICAL FIX: Validate and fix healthScore
     if (aiAnalysis.healthScore) {
       // If it's a string, convert to number
@@ -116,7 +117,7 @@ exports.uploadReport = async (req, res) => {
       console.log('⚠️ No healthScore, using default: 75');
     }
     console.log('✅ Final healthScore:', aiAnalysis.healthScore, '(type:', typeof aiAnalysis.healthScore, ')');
-    
+
     // ✅ CRITICAL FIX: Validate deficiencies array
     if (!Array.isArray(aiAnalysis.deficiencies)) {
       console.warn('⚠️ deficiencies is not an array, fixing...');
@@ -136,7 +137,7 @@ exports.uploadReport = async (req, res) => {
         aiAnalysis.deficiencies = [];
       }
     }
-    
+
     // ✅ CRITICAL FIX: Validate supplements array
     console.log('🔍 Checking supplements:', typeof aiAnalysis.supplements, '=', aiAnalysis.supplements);
     if (!Array.isArray(aiAnalysis.supplements)) {
@@ -160,7 +161,7 @@ exports.uploadReport = async (req, res) => {
       }
     }
     console.log('✅ Supplements after validation:', Array.isArray(aiAnalysis.supplements), 'length:', aiAnalysis.supplements?.length);
-    
+
     // ✅ Validate keyFindings array
     if (!Array.isArray(aiAnalysis.keyFindings)) {
       console.warn('⚠️ keyFindings is not an array, fixing...');
@@ -170,7 +171,7 @@ exports.uploadReport = async (req, res) => {
         aiAnalysis.keyFindings = [];
       }
     }
-    
+
     // ✅ Validate riskFactors array
     if (aiAnalysis.riskFactors && !Array.isArray(aiAnalysis.riskFactors)) {
       console.warn('⚠️ riskFactors is not an array, fixing...');
@@ -180,7 +181,7 @@ exports.uploadReport = async (req, res) => {
         aiAnalysis.riskFactors = [];
       }
     }
-    
+
     // ✅ Validate dietPlan arrays
     if (aiAnalysis.dietPlan) {
       ['breakfast', 'lunch', 'dinner', 'snacks'].forEach(meal => {
@@ -200,7 +201,7 @@ exports.uploadReport = async (req, res) => {
         }
       });
     }
-    
+
     // ✅ Validate recommendations arrays
     if (aiAnalysis.recommendations) {
       ['immediate', 'shortTerm', 'longTerm', 'lifestyle', 'tests'].forEach(field => {
@@ -214,10 +215,10 @@ exports.uploadReport = async (req, res) => {
         }
       });
     }
-    
+
     // ✅ Validate doctorConsultation.specializations array
-    if (aiAnalysis.doctorConsultation && aiAnalysis.doctorConsultation.specializations && 
-        !Array.isArray(aiAnalysis.doctorConsultation.specializations)) {
+    if (aiAnalysis.doctorConsultation && aiAnalysis.doctorConsultation.specializations &&
+      !Array.isArray(aiAnalysis.doctorConsultation.specializations)) {
       console.warn('⚠️ doctorConsultation.specializations is not an array, fixing...');
       if (typeof aiAnalysis.doctorConsultation.specializations === 'string') {
         aiAnalysis.doctorConsultation.specializations = [aiAnalysis.doctorConsultation.specializations];
@@ -225,9 +226,9 @@ exports.uploadReport = async (req, res) => {
         aiAnalysis.doctorConsultation.specializations = [];
       }
     }
-    
+
     console.log('✅ Validated all arrays - deficiencies:', aiAnalysis.deficiencies?.length, 'supplements:', aiAnalysis.supplements?.length);
-    
+
     // ✅ CRITICAL: Check if arrays contain strings instead of objects
     if (Array.isArray(aiAnalysis.deficiencies) && aiAnalysis.deficiencies.length > 0) {
       if (typeof aiAnalysis.deficiencies[0] === 'string') {
@@ -242,7 +243,7 @@ exports.uploadReport = async (req, res) => {
         console.log('✅ Converted deficiencies to objects:', aiAnalysis.deficiencies.length);
       }
     }
-    
+
     if (Array.isArray(aiAnalysis.supplements) && aiAnalysis.supplements.length > 0) {
       if (typeof aiAnalysis.supplements[0] === 'string') {
         console.warn('⚠️ supplements array contains strings, converting to objects...');
@@ -255,11 +256,11 @@ exports.uploadReport = async (req, res) => {
         console.log('✅ Converted supplements to objects:', aiAnalysis.supplements.length);
       }
     }
-    
+
     console.log('✅ FINAL CHECK - deficiencies:', aiAnalysis.deficiencies?.length, 'supplements:', aiAnalysis.supplements?.length);
-    
+
     report.aiAnalysis = aiAnalysis;
-    
+
     // Extract and save report date from AI analysis
     if (aiAnalysis.reportDate) {
       try {
@@ -271,12 +272,12 @@ exports.uploadReport = async (req, res) => {
     } else {
       report.reportDate = new Date(); // Fallback to current date
     }
-    
+
     // Extract and save patient name from AI analysis
     if (aiAnalysis.patientName) {
       report.patientName = aiAnalysis.patientName.trim();
     }
-    
+
     report.status = 'completed';
     await report.save();
 
@@ -308,11 +309,11 @@ exports.uploadReport = async (req, res) => {
 
       if (previousReport && previousReport.aiAnalysis) {
         console.log('🔄 Found previous report, generating comparison...');
-        
+
         // Use the real compareReports from aiService.js
         const { compareReports: realCompareReports } = require('../services/aiService');
         comparisonData = await realCompareReports(report, previousReport);
-        
+
         // Save comparison to report
         report.comparison = {
           previousReportId: previousReport._id,
@@ -320,7 +321,7 @@ exports.uploadReport = async (req, res) => {
           data: comparisonData
         };
         await report.save();
-        
+
         console.log('✅ Comparison generated and saved');
       } else {
         console.log('ℹ️ No previous report found for comparison');
@@ -339,7 +340,7 @@ exports.uploadReport = async (req, res) => {
       })
         .sort({ rating: -1 })
         .limit(3);
-      
+
       recommendedDoctors = doctors.map(doc => ({
         ...doc.toObject(),
         user: { name: doc.name, email: doc.email }
@@ -357,7 +358,7 @@ exports.getReports = async (req, res) => {
   try {
     const cacheKey = `reports:${req.user._id}`;
     const cached = cache.get(cacheKey);
-    
+
     if (cached) {
       return res.json(cached);
     }
@@ -365,7 +366,7 @@ exports.getReports = async (req, res) => {
     const reports = await HealthReport.find({ user: req.user._id })
       .sort({ createdAt: -1 })
       .limit(50);
-    
+
     cache.set(cacheKey, reports, 180); // Cache for 3 minutes
     res.json(reports);
   } catch (error) {
@@ -390,7 +391,7 @@ exports.getReportById = async (req, res) => {
       })
         .sort({ rating: -1 })
         .limit(3);
-      
+
       recommendedDoctors = doctors.map(doc => ({
         ...doc.toObject(),
         user: { name: doc.name, email: doc.email }
@@ -424,7 +425,7 @@ exports.compareWithPrevious = async (req, res) => {
     }
 
     const comparison = await compareReports(currentReport, previousReport, req.user.profile);
-    
+
     res.json({
       comparison,
       currentReport: {
@@ -500,7 +501,7 @@ exports.getDashboardData = async (req, res) => {
   try {
     const cacheKey = `dashboard:${req.user._id}`;
     const cached = cache.get(cacheKey);
-    
+
     if (cached) {
       return res.json(cached);
     }
@@ -516,7 +517,7 @@ exports.getDashboardData = async (req, res) => {
     })).reverse();
 
     const latestReport = reports[0];
-    
+
     // Get report type counts for comparison availability
     const reportTypeCounts = {};
     reports.forEach(r => {
@@ -533,6 +534,14 @@ exports.getDashboardData = async (req, res) => {
       };
     }
 
+    // 🆕 Get today's nutrition summary
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const nutritionData = await NutritionSummary.findOne({
+      userId: req.user._id,
+      date: today
+    });
+
     const dashboardData = {
       user: { ...req.user.toObject(), password: undefined },
       healthScores,
@@ -542,7 +551,15 @@ exports.getDashboardData = async (req, res) => {
       totalReports: await HealthReport.countDocuments({ user: req.user._id }),
       recentReports: reports.slice(0, 5),
       reportTypeCounts,
-      streakDays: req.user.streakDays || 0 // Add streak days
+      streakDays: req.user.streakDays || 0, // Add streak days
+      nutritionData: nutritionData ? {
+        totalCalories: nutritionData.totalCalories,
+        calorieGoal: nutritionData.calorieGoal,
+        protein: nutritionData.totalProtein,
+        carbs: nutritionData.totalCarbs,
+        fats: nutritionData.totalFats,
+        waterIntake: nutritionData.waterIntake
+      } : null
     };
 
     cache.set(cacheKey, dashboardData, 120); // Cache for 2 minutes
@@ -559,7 +576,7 @@ exports.getMetricInfo = async (req, res) => {
     console.log('getMetricInfo endpoint called');
     console.log('Request body:', req.body);
     console.log('User:', req.user?._id);
-    
+
     const { metricName, metricValue, normalRange, unit } = req.body;
 
     if (!metricName) {
@@ -567,9 +584,9 @@ exports.getMetricInfo = async (req, res) => {
     }
 
     console.log('Calling generateMetricInfo with:', { metricName, metricValue, normalRange, unit });
-    
+
     const metricInfo = await generateMetricInfo(metricName, metricValue, normalRange, unit);
-    
+
     console.log('Generated metric info:', metricInfo);
     res.json({ metricInfo });
   } catch (error) {
@@ -582,7 +599,7 @@ exports.getMetricInfo = async (req, res) => {
 exports.deleteReport = async (req, res) => {
   try {
     const report = await HealthReport.findOne({ _id: req.params.id, user: req.user._id });
-    
+
     if (!report) {
       return res.status(404).json({ message: 'Report not found' });
     }
@@ -625,7 +642,7 @@ exports.aiChat = async (req, res) => {
     // Check if API key is configured
     if (!process.env.OPENROUTER_API_KEY) {
       console.error('OPENROUTER_API_KEY not configured');
-      return res.status(500).json({ 
+      return res.status(500).json({
         success: false,
         message: 'AI service not configured. Please contact administrator.',
         error: 'Missing API key'
@@ -635,7 +652,7 @@ exports.aiChat = async (req, res) => {
     // Ensure user exists
     if (!req.user) {
       console.error('User not found in request');
-      return res.status(401).json({ 
+      return res.status(401).json({
         success: false,
         message: 'Authentication required',
         error: 'User not found.'
@@ -648,9 +665,9 @@ exports.aiChat = async (req, res) => {
     let latestReport = null;
     try {
       const HealthReport = require('../models/HealthReport');
-      latestReport = await HealthReport.findOne({ 
-        user: req.user._id, 
-        status: 'completed' 
+      latestReport = await HealthReport.findOne({
+        user: req.user._id,
+        status: 'completed'
       }).sort({ createdAt: -1 });
     } catch (dbError) {
       console.error('Error fetching health report:', dbError.message);
@@ -661,7 +678,7 @@ exports.aiChat = async (req, res) => {
     let systemPrompt = `You are a helpful medical AI assistant specializing in health and wellness. 
     
 User Profile: ${req.user.name}`;
-    
+
     if (req.user.profile) {
       systemPrompt += `, Age: ${req.user.profile.age || 'N/A'}, Gender: ${req.user.profile.gender || 'N/A'}`;
     }
@@ -725,7 +742,7 @@ User Profile: ${req.user.name}`;
     const aiResponse = response.data.choices[0].message.content;
     console.log('OpenRouter API success');
 
-    res.json({ 
+    res.json({
       success: true,
       response: aiResponse,
       timestamp: new Date()
@@ -736,8 +753,8 @@ User Profile: ${req.user.name}`;
       response: error.response?.data,
       status: error.response?.status
     });
-    
-    res.status(500).json({ 
+
+    res.status(500).json({
       success: false,
       message: 'Failed to process AI chat request',
       error: error.response?.data?.error?.message || error.message
@@ -750,7 +767,7 @@ User Profile: ${req.user.name}`;
 exports.saveChallengeData = async (req, res) => {
   try {
     const { challengeData } = req.body;
-    
+
     if (!challengeData) {
       return res.status(400).json({ message: 'Challenge data is required' });
     }
@@ -758,11 +775,11 @@ exports.saveChallengeData = async (req, res) => {
     // Calculate streak
     let streak = 0;
     const days = Object.keys(challengeData).map(Number).sort((a, b) => b - a);
-    
+
     for (const day of days) {
       const dayData = challengeData[day];
       const completedTasks = Object.values(dayData).filter(Boolean).length;
-      
+
       // Day is considered complete if at least 5 tasks are done
       if (completedTasks >= 5) {
         streak++;
@@ -775,10 +792,10 @@ exports.saveChallengeData = async (req, res) => {
     const user = await User.findById(req.user._id);
     user.challengeData = challengeData;
     user.streakDays = streak;
-    
+
     // Mark as modified for Mixed type
     user.markModified('challengeData');
-    
+
     await user.save();
 
     res.json({
@@ -796,7 +813,7 @@ exports.saveChallengeData = async (req, res) => {
 exports.getChallengeData = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('challengeData streakDays');
-    
+
     res.json({
       challengeData: user.challengeData || {},
       streakDays: user.streakDays || 0

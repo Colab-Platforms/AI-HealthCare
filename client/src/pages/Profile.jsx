@@ -5,7 +5,7 @@ import api from '../services/api';
 import axios from 'axios';
 import { 
   User, Save, Heart, AlertCircle, Camera, Mail, Phone, Target,
-  Activity, Droplet, Cigarette, Wine, Moon, Apple, Dumbbell, Pill
+  Activity, Droplet, Cigarette, Wine, Moon, Apple, Dumbbell, Pill, Bell
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import BMIWidget from '../components/BMIWidget';
@@ -150,7 +150,27 @@ export default function Profile() {
 
   return (
     <div className="w-full overflow-x-hidden space-y-6 animate-fade-in px-3 md:px-6">
-      <div>
+      {/* Welcome Message - Mobile Only */}
+      <div className="md:hidden flex items-center justify-between">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-md flex-shrink-0">
+            {user?.name?.[0]?.toUpperCase() || 'U'}
+          </div>
+          <h1 className="text-sm font-bold text-slate-800 truncate">
+            {(() => {
+              const hour = new Date().getHours();
+              if (hour < 12) return 'Good Morning';
+              if (hour < 18) return 'Good Afternoon';
+              return 'Good Evening';
+            })()}, {user?.name?.split(' ')[0] || 'there'}!
+          </h1>
+        </div>
+        <button className="w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center hover:shadow-lg transition-all flex-shrink-0">
+          <Bell className="w-4 h-4 text-slate-700" />
+        </button>
+      </div>
+
+      <div className="hidden md:block">
         <h1 className="text-2xl font-bold text-slate-800">My Profile</h1>
         <p className="text-slate-500 mt-1">Manage your information and track health progress</p>
       </div>

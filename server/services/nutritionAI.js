@@ -89,6 +89,9 @@ Return response in EXACT JSON format (no markdown):
     "sodium": "0-10"
   },
   "analysis": "Brief analysis",
+  "healthScore10": 7.5,
+  "micronutrients": ["Vitamin C", "Iron", "Calcium"],
+  "enhancementTips": ["Add a side of green salad", "Include 1/2 cup of sprouts for extra protein"],
   "recommendations": "Suggestions",
   "alternatives": []
 }
@@ -131,7 +134,7 @@ CRITICAL: Use accurate Indian food nutrition data. Plain roti is LOW calorie (70
       );
 
       const aiResponse = response.data.choices[0].message.content;
-      
+
       // Parse JSON response
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -220,6 +223,9 @@ Return the response in this EXACT JSON format (no markdown, just pure JSON):
     }
   },
   "analysis": "Brief analysis of the meal's nutritional value and health impact",
+  "healthScore10": 0,
+  "micronutrients": ["Vitamin A", "Vitamin C", "Iron"],
+  "enhancementTips": ["Add more vegetables", "Reduce oil usage"],
   "recommendations": "Suggestions for improving the meal or what to eat next"
 }
 
@@ -250,7 +256,7 @@ Be accurate with portion sizes and nutrition values. Use standard serving sizes 
       );
 
       const aiResponse = response.data.choices[0].message.content;
-      
+
       // Parse JSON response
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
@@ -348,7 +354,7 @@ Return response in JSON format:
 
       const aiResponse = response.data.choices[0].message.content;
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-      
+
       if (jsonMatch) {
         return {
           success: true,
@@ -402,8 +408,11 @@ Return in this EXACT JSON format:
     }
   },
   "healthScore": 0-100,
+  "healthScore10": 0.0-10.0,
   "isHealthy": true/false,
   "analysis": "Brief health impact analysis",
+  "micronutrients": ["Vitamin C", "Iron", "Calcium"],
+  "enhancementTips": ["Add a side salad", "Squeeze some lime for Vitamin C"],
   "warnings": ["Warning 1", "Warning 2"],
   "benefits": ["Benefit 1", "Benefit 2"],
   "alternatives": [
@@ -445,7 +454,7 @@ If the food is already healthy, return empty alternatives array.`;
 
       const aiResponse = response.data.choices[0].message.content;
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-      
+
       if (jsonMatch) {
         return {
           success: true,
@@ -525,7 +534,7 @@ Return in JSON format:
 
       const aiResponse = response.data.choices[0].message.content;
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-      
+
       if (jsonMatch) {
         return {
           success: true,

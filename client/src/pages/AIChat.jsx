@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
-import { Send, Bot, User, Loader2, Copy, Check, Trash2, Menu, X } from 'lucide-react';
+import { Send, Bot, User, Loader2, Copy, Check, Trash2, Menu, X, Bell } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -79,7 +79,16 @@ export default function AIChat() {
     };
     
     if (user) loadChatHistory();
-    if (location.state?.selectedText) {
+    
+    // Handle incoming query from Ask Coach
+    if (location.state?.initialQuery) {
+      setInput(location.state.initialQuery);
+      // Auto-submit the query
+      setTimeout(() => {
+        const form = document.querySelector('form');
+        if (form) form.requestSubmit();
+      }, 500);
+    } else if (location.state?.selectedText) {
       setInput(`Can you explain this: "${location.state.selectedText}"`);
     }
   }, [user?.id, location.state, user?.name]);
@@ -264,6 +273,26 @@ export default function AIChat() {
 
   return (
     <div className="w-full h-full bg-white flex flex-col md:flex-row">
+      {/* Welcome Message - Mobile Only - Fixed at top */}
+      <div className="md:hidden fixed top-0 left-0 right-0 z-30 bg-white border-b border-gray-200 px-4 py-2.5 flex items-center justify-between">
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-md flex-shrink-0">
+            {user?.name?.[0]?.toUpperCase() || 'U'}
+          </div>
+          <h1 className="text-sm font-bold text-slate-800 truncate">
+            {(() => {
+              const hour = new Date().getHours();
+              if (hour < 12) return 'Good Morning';
+              if (hour < 18) return 'Good Afternoon';
+              return 'Good Evening';
+            })()}, {user?.name?.split(' ')[0] || 'there'}!
+          </h1>
+        </div>
+        <button className="w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center hover:shadow-lg transition-all border border-gray-200 flex-shrink-0">
+          <Bell className="w-4 h-4 text-slate-700" />
+        </button>
+      </div>
+
       {sidebarOpen && <div className="fixed inset-0 bg-black/30 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />}
 
       {/* Sidebar - Hidden on mobile by default, visible on desktop */}
@@ -296,8 +325,8 @@ export default function AIChat() {
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Bar */}
-        <div className="flex items-center px-3 py-2 border-b border-gray-200 bg-white shrink-0">
+        {/* Top Bar - with padding for mobile welcome message */}
+        <div className="flex items-center px-3 py-2 border-b border-gray-200 bg-white shrink-0 mt-16 md:mt-0">
           <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1.5 hover:bg-gray-100 rounded-lg transition md:hidden" title="Toggle chat history">
             <Menu className="w-5 h-5 text-gray-700" />
           </button>
