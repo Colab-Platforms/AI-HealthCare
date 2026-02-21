@@ -218,6 +218,19 @@ export default function DashboardEnhanced() {
     }
   }, [dashboardData, loading.dashboard, fetchDashboard, isInitialLoad]);
 
+  // Refetch data when user returns to dashboard (page becomes visible)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden && dashboardData) {
+        // Force refresh when page becomes visible again
+        fetchDashboard(true);
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [fetchDashboard, dashboardData]);
+
   useEffect(() => {
     if (dashboardData) {
       let completed = 0;
