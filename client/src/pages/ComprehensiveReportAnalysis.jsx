@@ -3,12 +3,71 @@ import { useParams, Link } from 'react-router-dom';
 import { healthService } from '../services/api';
 import { ArrowLeft, AlertTriangle, CheckCircle, TrendingDown, Apple, Dumbbell, Heart, Activity, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import toast from 'react-hot-toast';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import { Download, Printer } from 'lucide-react';
 
 export default function ComprehensiveReportAnalysis() {
   const { id } = useParams();
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expandedMetric, setExpandedMetric] = useState(null);
+
+  const handleDownload = async () => {
+    const reportElement = document.getElementById('comprehensive-report-content');
+    if (!reportElement) {
+      toast.error('Could not find report content');
+      return;
+    }
+
+    const toastId = toast.loading('Generating PDF...');
+
+    try {
+      // Temporarily hide elements that shouldn't be in the PDF
+      const actionButtons = reportElement.querySelectorAll('.no-pdf');
+      actionButtons.forEach(btn => btn.style.display = 'none');
+
+      const canvas = await html2canvas(reportElement, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff',
+        windowWidth: 1200 // Ensure desktop layout
+      });
+
+      // Restore hidden elements
+      actionButtons.forEach(btn => btn.style.display = '');
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+
+      const ratio = pdfWidth / imgWidth;
+      let heightLeft = imgHeight * ratio;
+      let position = 0;
+
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight * ratio);
+      heightLeft -= pdfHeight;
+
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight * ratio;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight * ratio);
+        heightLeft -= pdfHeight;
+      }
+
+      pdf.save(`Comprehensive_Analysis_${id.substring(0, 8)}.pdf`);
+      toast.success('Report downloaded successfully!', { id: toastId });
+    } catch (error) {
+      console.error('PDF Generation Error:', error);
+      toast.error('Failed to generate PDF. Falling back to print...', { id: toastId });
+      window.print();
+    }
+  };
 
   useEffect(() => {
     const fetchReport = async () => {
@@ -57,11 +116,19 @@ export default function ComprehensiveReportAnalysis() {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-8 p-4 pb-12">
+    <div id="comprehensive-report-content" className="max-w-7xl mx-auto space-y-8 p-4 pb-12 bg-white">
       {/* Back Button */}
-      <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-cyan-400 font-medium transition-colors">
-        <ArrowLeft className="w-4 h-4" /> Back to Dashboard
-      </Link>
+      <div className="flex items-center justify-between no-pdf">
+        <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-cyan-400 font-medium transition-colors">
+          <ArrowLeft className="w-4 h-4" /> Back to Dashboard
+        </Link>
+        <button
+          onClick={handleDownload}
+          className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition-all flex items-center gap-2 text-sm font-medium border border-slate-200"
+        >
+          <Download className="w-4 h-4" /> Save as PDF
+        </button>
+      </div>
 
       {/* Header with Health Score */}
       <div className={`bg-gradient-to-r ${getHealthScoreColor(healthScore)} rounded-3xl p-8 text-white shadow-lg`}>
@@ -129,7 +196,7 @@ export default function ComprehensiveReportAnalysis() {
                     <div>
                       <h3 className="text-lg font-bold text-slate-800">{key}</h3>
                       <p className="text-sm text-slate-600 mt-1">
-                        Current: <span className="font-bold">{metric.value} {metric.unit}</span> | 
+                        Current: <span className="font-bold">{metric.value} {metric.unit}</span> |
                         Normal: <span className="font-bold">{metric.normalRange}</span>
                       </p>
                     </div>
@@ -252,24 +319,22 @@ export default function ComprehensiveReportAnalysis() {
             {aiAnalysis.deficiencies.map((def, i) => (
               <div
                 key={i}
-                className={`p-6 rounded-xl border-2 ${
-                  def.severity === 'Severe'
-                    ? 'bg-red-50 border-red-200'
-                    : def.severity === 'Moderate'
+                className={`p-6 rounded-xl border-2 ${def.severity === 'Severe'
+                  ? 'bg-red-50 border-red-200'
+                  : def.severity === 'Moderate'
                     ? 'bg-amber-50 border-amber-200'
                     : 'bg-yellow-50 border-yellow-200'
-                }`}
+                  }`}
               >
                 <div className="flex items-start justify-between mb-3">
                   <h3 className="text-lg font-bold text-slate-800">{def.name}</h3>
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-bold ${
-                      def.severity === 'Severe'
-                        ? 'bg-red-100 text-red-700'
-                        : def.severity === 'Moderate'
+                    className={`px-3 py-1 rounded-full text-xs font-bold ${def.severity === 'Severe'
+                      ? 'bg-red-100 text-red-700'
+                      : def.severity === 'Moderate'
                         ? 'bg-amber-100 text-amber-700'
                         : 'bg-yellow-100 text-yellow-700'
-                    }`}
+                      }`}
                   >
                     {def.severity}
                   </span>
@@ -308,56 +373,60 @@ export default function ComprehensiveReportAnalysis() {
             {aiAnalysis.dietPlan.breakfast?.length > 0 && (
               <div className="p-6 bg-orange-50 rounded-xl border-2 border-orange-200">
                 <h3 className="font-bold text-orange-700 mb-3 text-lg">🌅 Breakfast</h3>
-                <ul className="space-y-2">
+                <div className="space-y-4">
                   {aiAnalysis.dietPlan.breakfast.map((item, i) => (
-                    <li key={i} className="text-sm text-orange-700 flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 bg-orange-500 rounded-full mt-1.5 flex-shrink-0" />
-                      {item}
-                    </li>
+                    <div key={i} className="p-3 bg-white rounded-lg border border-orange-100">
+                      <p className="font-semibold text-orange-800">{item.meal}</p>
+                      {item.nutrients && <p className="text-xs text-orange-600/80 mt-1">Nutrients: {Array.isArray(item.nutrients) ? item.nutrients.join(', ') : item.nutrients}</p>}
+                      {item.tip && <p className="text-xs text-orange-500 italic mt-1">💡 {item.tip}</p>}
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
 
             {aiAnalysis.dietPlan.lunch?.length > 0 && (
               <div className="p-6 bg-blue-50 rounded-xl border-2 border-blue-200">
                 <h3 className="font-bold text-blue-700 mb-3 text-lg">☀️ Lunch</h3>
-                <ul className="space-y-2">
+                <div className="space-y-4">
                   {aiAnalysis.dietPlan.lunch.map((item, i) => (
-                    <li key={i} className="text-sm text-blue-700 flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-1.5 flex-shrink-0" />
-                      {item}
-                    </li>
+                    <div key={i} className="p-3 bg-white rounded-lg border border-blue-100">
+                      <p className="font-semibold text-blue-800">{item.meal}</p>
+                      {item.nutrients && <p className="text-xs text-blue-600/80 mt-1">Nutrients: {Array.isArray(item.nutrients) ? item.nutrients.join(', ') : item.nutrients}</p>}
+                      {item.tip && <p className="text-xs text-blue-500 italic mt-1">💡 {item.tip}</p>}
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
 
             {aiAnalysis.dietPlan.dinner?.length > 0 && (
               <div className="p-6 bg-purple-50 rounded-xl border-2 border-purple-200">
                 <h3 className="font-bold text-purple-700 mb-3 text-lg">🌙 Dinner</h3>
-                <ul className="space-y-2">
+                <div className="space-y-4">
                   {aiAnalysis.dietPlan.dinner.map((item, i) => (
-                    <li key={i} className="text-sm text-purple-700 flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 bg-purple-500 rounded-full mt-1.5 flex-shrink-0" />
-                      {item}
-                    </li>
+                    <div key={i} className="p-3 bg-white rounded-lg border border-purple-100">
+                      <p className="font-semibold text-purple-800">{item.meal}</p>
+                      {item.nutrients && <p className="text-xs text-purple-600/80 mt-1">Nutrients: {Array.isArray(item.nutrients) ? item.nutrients.join(', ') : item.nutrients}</p>}
+                      {item.tip && <p className="text-xs text-purple-500 italic mt-1">💡 {item.tip}</p>}
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
 
             {aiAnalysis.dietPlan.snacks?.length > 0 && (
               <div className="p-6 bg-green-50 rounded-xl border-2 border-green-200">
                 <h3 className="font-bold text-green-700 mb-3 text-lg">🍎 Healthy Snacks</h3>
-                <ul className="space-y-2">
+                <div className="space-y-4">
                   {aiAnalysis.dietPlan.snacks.map((item, i) => (
-                    <li key={i} className="text-sm text-green-700 flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 bg-green-500 rounded-full mt-1.5 flex-shrink-0" />
-                      {item}
-                    </li>
+                    <div key={i} className="p-3 bg-white rounded-lg border border-green-100">
+                      <p className="font-semibold text-green-800">{item.meal}</p>
+                      {item.nutrients && <p className="text-xs text-green-600/80 mt-1">Nutrients: {Array.isArray(item.nutrients) ? item.nutrients.join(', ') : item.nutrients}</p>}
+                      {item.tip && <p className="text-xs text-green-500 italic mt-1">💡 {item.tip}</p>}
+                    </div>
                   ))}
-                </ul>
+                </div>
               </div>
             )}
 

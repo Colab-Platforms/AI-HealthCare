@@ -12,7 +12,7 @@ const nutritionSummarySchema = new mongoose.Schema({
     required: true,
     index: true
   },
-  
+
   // Totals for the day
   totalCalories: { type: Number, default: 0 },
   totalProtein: { type: Number, default: 0 },
@@ -21,7 +21,8 @@ const nutritionSummarySchema = new mongoose.Schema({
   totalFiber: { type: Number, default: 0 },
   totalSugar: { type: Number, default: 0 },
   totalSodium: { type: Number, default: 0 },
-  
+  averageHealthScore: { type: Number, default: 0 },
+
   // Meal breakdown
   mealsLogged: {
     breakfast: { type: Boolean, default: false },
@@ -29,23 +30,23 @@ const nutritionSummarySchema = new mongoose.Schema({
     dinner: { type: Boolean, default: false },
     snacks: { type: Number, default: 0 }
   },
-  
+
   // Water intake
   waterIntake: { type: Number, default: 0 }, // in ml
-  
+
   // Goals for the day (from HealthGoal)
   calorieGoal: Number,
   proteinGoal: Number,
   carbsGoal: Number,
   fatsGoal: Number,
-  
+
   // Status
   status: {
     type: String,
     enum: ['under', 'on_track', 'over'],
     default: 'under'
   },
-  
+
   // Percentage of goals met
   caloriePercentage: { type: Number, default: 0 },
   proteinPercentage: { type: Number, default: 0 },
@@ -59,7 +60,7 @@ const nutritionSummarySchema = new mongoose.Schema({
 nutritionSummarySchema.index({ userId: 1, date: 1 }, { unique: true });
 
 // Calculate percentages and status
-nutritionSummarySchema.methods.calculateStatus = function() {
+nutritionSummarySchema.methods.calculateStatus = function () {
   if (this.calorieGoal) {
     this.caloriePercentage = Math.round((this.totalCalories / this.calorieGoal) * 100);
   }
@@ -72,7 +73,7 @@ nutritionSummarySchema.methods.calculateStatus = function() {
   if (this.fatsGoal) {
     this.fatsPercentage = Math.round((this.totalFats / this.fatsGoal) * 100);
   }
-  
+
   // Determine overall status
   if (this.caloriePercentage < 80) {
     this.status = 'under';
@@ -81,12 +82,12 @@ nutritionSummarySchema.methods.calculateStatus = function() {
   } else {
     this.status = 'over';
   }
-  
+
   return this.status;
 };
 
 // Update summary before saving
-nutritionSummarySchema.pre('save', function(next) {
+nutritionSummarySchema.pre('save', function (next) {
   this.calculateStatus();
   next();
 });

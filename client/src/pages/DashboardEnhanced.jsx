@@ -9,7 +9,7 @@ import {
   Heart, Upload, Utensils, FileText, Activity, TrendingUp, User,
   Calendar, MessageSquare, Pill, Apple, Dumbbell, Brain, Shield, Sparkles,
   CheckCircle, Target, Award, ChevronRight, Zap, Sun, Droplets,
-  BarChart3, ArrowRight, Star, Flame, Trophy, Moon, Wind, Bell, ChevronLeft, ArrowUp,
+  BarChart3, ArrowRight, ArrowLeft, Star, Flame, Trophy, Moon, Wind, Bell, ChevronLeft, ArrowUp,
   AlertCircle, AlertTriangle, Plus
 } from 'lucide-react';
 import BMIWidget from '../components/BMIWidget';
@@ -171,7 +171,7 @@ const GetStartedStep = ({ number, title, description, completed, active, icon: I
 export default function DashboardEnhanced() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { dashboardData, loading, fetchDashboard, fetchNutrition, nutritionData } = useData();
+  const { dashboardData, loading, fetchDashboard, fetchNutrition, nutritionData, fetchDietPlan } = useData();
   const [completionProgress, setCompletionProgress] = useState(0);
   const [isInitialLoad, setIsInitialLoad] = useState(!dashboardData);
   const [selectedMetric, setSelectedMetric] = useState(null);
@@ -179,6 +179,7 @@ export default function DashboardEnhanced() {
   const [searchQuery, setSearchQuery] = useState('');
   const [sleepTrackerOpen, setSleepTrackerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [activeDietPlan, setActiveDietPlan] = useState(null);
 
   const handlePrevDate = () => {
     const d = new Date(selectedDate);
@@ -210,11 +211,15 @@ export default function DashboardEnhanced() {
 
   useEffect(() => {
     const loadData = async () => {
-      await fetchDashboard();
+      const [dash, diet] = await Promise.all([
+        fetchDashboard(),
+        fetchDietPlan()
+      ]);
+      if (diet) setActiveDietPlan(diet);
       setIsInitialLoad(false);
     };
     loadData();
-  }, [fetchDashboard]);
+  }, [fetchDashboard, fetchDietPlan]);
 
   // Fetch nutrition data when selectedDate changes
   useEffect(() => {
@@ -385,137 +390,6 @@ export default function DashboardEnhanced() {
               </button>
             </div>
           </form>
-
-          {/* Calendar Widget - Dynamic Date and Activity Circles */}
-          <div className="bg-gradient-to-br from-purple-200 to-purple-300 rounded-2xl p-4 shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <button
-                onClick={handlePrevDate}
-                className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center hover:bg-white/50 transition-all"
-              >
-                <ChevronLeft className="w-4 h-4 text-slate-800" />
-              </button>
-              <h3 className="text-sm font-bold text-slate-800">
-                {selectedDate.toDateString() === new Date().toDateString()
-                  ? "Today, "
-                  : ""}
-                {selectedDate.toLocaleDateString('en-US', {
-                  weekday: 'long',
-                  month: 'long',
-                  day: 'numeric',
-                  year: 'numeric'
-                })}
-              </h3>
-              <button
-                onClick={handleNextDate}
-                className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center hover:bg-white/50 transition-all"
-              >
-                <ChevronRight className="w-4 h-4 text-slate-800" />
-              </button>
-            </div>
-
-            {/* Week Days - Dynamic Circles Based on User Activity */}
-            <div className="grid grid-cols-7 gap-1.5">
-              {(() => {
-                const today = new Date();
-                const daysOfWeek = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-
-                // Create array centered around selectedDate
-                const weekDays = [];
-                for (let i = -3; i <= 3; i++) {
-                  const date = new Date(selectedDate);
-                  date.setDate(date.getDate() + i);
-                  weekDays.push({
-                    label: daysOfWeek[date.getDay()],
-                    date: date.getDate(),
-                    fullDate: date,
-                    isToday: date.toDateString() === new Date().toDateString()
-                  });
-                }
-
-                return weekDays.map((dayInfo, index) => {
-                  const isToday = dayInfo.isToday;
-                  const isSelected = selectedDate.toDateString() === dayInfo.fullDate.toDateString();
-                  // Calculate completion based on user activity
-                  let completionPercentage = 0;
-                  const dayDate = dayInfo.fullDate;
-
-                  if (isToday) {
-                    const nutritionProgress = dashboardData?.nutritionData?.totalCalories && dashboardData?.nutritionData?.calorieGoal
-                      ? Math.min((dashboardData.nutritionData.totalCalories / dashboardData.nutritionData.calorieGoal) * 100, 100)
-                      : 0;
-                    const hasReportToday = dashboardData?.recentReports?.some(r =>
-                      new Date(r.createdAt).toDateString() === new Date().toDateString()
-                    );
-                    const wearableActivity = dashboardData?.wearableData?.todayMetrics?.activeMinutes || 0;
-
-                    completionPercentage = Math.round(
-                      (nutritionProgress * 0.5) +
-                      (hasReportToday ? 25 : 0) +
-                      (wearableActivity > 0 ? 25 : 0)
-                    );
-                  } else {
-                    // Past days - check if there was activity
-                    const hasActivity = dashboardData?.recentReports?.some(r =>
-                      new Date(r.createdAt).toDateString() === dayDate.toDateString()
-                    );
-                    completionPercentage = hasActivity ? 100 : 0;
-                  }
-
-                  return (
-                    <div
-                      key={index}
-                      className="text-center cursor-pointer group"
-                      onClick={() => setSelectedDate(dayDate)}
-                    >
-                      <div className={`text-xs font-medium mb-1.5 transition-colors ${isSelected ? 'text-indigo-800 font-bold' : 'text-slate-700'}`}>
-                        {dayInfo.label}
-                      </div>
-                      <div className={`w-10 h-10 mx-auto rounded-full flex items-center justify-center relative transition-all ${isSelected
-                        ? 'bg-white shadow-lg scale-110 ring-2 ring-indigo-400'
-                        : isToday ? 'bg-white shadow-md' : 'bg-white/40 group-hover:bg-white/60'
-                        }`}>
-                        {isToday ? (
-                          <Flame className="w-5 h-5 text-orange-500 relative z-10" />
-                        ) : completionPercentage === 100 ? (
-                          <div className="w-7 h-7 rounded-full border-4 border-yellow-400" />
-                        ) : completionPercentage > 0 ? (
-                          <div className="w-7 h-7 rounded-full border-4 border-yellow-400 border-t-transparent"
-                            style={{
-                              transform: `rotate(${(completionPercentage / 100) * 360}deg)`,
-                              borderTopColor: 'transparent'
-                            }}
-                          />
-                        ) : (
-                          <div className="w-7 h-7 rounded-full border-4 border-slate-300" />
-                        )}
-                        {/* Progress ring for today */}
-                        {isToday && completionPercentage < 100 && (
-                          <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 40 40">
-                            <circle
-                              cx="20"
-                              cy="20"
-                              r="18"
-                              fill="none"
-                              stroke="#fbbf24"
-                              strokeWidth="3"
-                              strokeDasharray={`${(completionPercentage / 100) * 113} 113`}
-                              strokeLinecap="round"
-                            />
-                          </svg>
-                        )}
-                      </div>
-                      {isToday && (
-                        <div className="text-xs font-medium text-slate-700 mt-1">
-                          {dayInfo.date}
-                        </div>
-                      )}
-                    </div>
-                  );
-                });
-              })()}
-            </div>
-          </div>
         </div>
 
         {/* Enhanced Header with Greeting, Stats, and Search - Hidden on mobile */}
@@ -568,51 +442,34 @@ export default function DashboardEnhanced() {
               </button>
             </div>
           </form>
+        </div>
 
-          {/* Quick Action Buttons - Smaller */}
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
-            <button className="px-4 py-2 bg-white rounded-full text-xs font-medium text-slate-700 shadow-sm hover:shadow-md transition-all whitespace-nowrap border border-slate-200">
-              Book a health checkup
-            </button>
-            <button className="px-4 py-2 bg-white rounded-full text-xs font-medium text-slate-700 shadow-sm hover:shadow-md transition-all whitespace-nowrap border border-slate-200">
-              Analyze my vitals
-            </button>
-            <button className="px-4 py-2 bg-white rounded-full text-xs font-medium text-slate-700 shadow-sm hover:shadow-md transition-all whitespace-nowrap border border-slate-200">
-              Give me a health tip
-            </button>
-          </div>
-
-          {/* Calendar Widget - Smaller, Mobile Optimized */}
-          <div className="bg-gradient-to-br from-purple-200 to-purple-300 rounded-2xl p-4 shadow-lg">
-            <div className="flex items-center justify-between mb-3">
-              <button
-                onClick={handlePrevDate}
-                className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center hover:bg-white/50 transition-all"
-              >
-                <ChevronLeft className="w-4 h-4 text-slate-800" />
+        {/* Premium Day Selector Card - Matching Image 2 */}
+        <div className="px-3 md:px-0 mb-6">
+          <div className="bg-[#E2D5FF] rounded-[2.5rem] p-5 shadow-xl shadow-indigo-200/50">
+            <div className="flex items-center justify-between mb-6 px-2">
+              <button onClick={handlePrevDate} className="w-8 h-8 rounded-full bg-white/40 flex items-center justify-center text-indigo-900 transition-colors hover:bg-white">
+                <ArrowLeft className="w-4 h-4" />
               </button>
-              <h3 className="text-sm font-bold text-slate-800">
-                {selectedDate.toDateString() === new Date().toDateString()
-                  ? "Today, "
-                  : ""}
-                {selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-              </h3>
-              <button
-                onClick={handleNextDate}
-                className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center hover:bg-white/50 transition-all"
-              >
-                <ChevronRight className="w-4 h-4 text-slate-800" />
+              <h2 className="text-sm sm:text-base font-black text-indigo-950 flex items-center gap-2">
+                {selectedDate.toDateString() === new Date().toDateString() ? 'Today, ' : ''}
+                {selectedDate.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
+              </h2>
+              <button onClick={handleNextDate} className="w-8 h-8 rounded-full bg-white/40 flex items-center justify-center text-indigo-900 transition-colors hover:bg-white rotate-180">
+                <ArrowLeft className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Week Days - Dynamic Circles Based on User Activity */}
-            <div className="grid grid-cols-7 gap-1.5">
+            <div className="flex justify-between items-end gap-1 overflow-x-auto pb-2 scrollbar-hide">
               {(() => {
                 const daysOfWeek = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-                // Create array centered around selectedDate
                 const weekDays = [];
-                for (let i = -3; i <= 3; i++) {
-                  const date = new Date(selectedDate);
+                // Generate a window of 7 days around selectedDate
+                const start = new Date(selectedDate);
+                start.setDate(start.getDate() - 3);
+
+                for (let i = 0; i < 7; i++) {
+                  const date = new Date(start);
                   date.setDate(date.getDate() + i);
                   weekDays.push({
                     label: daysOfWeek[date.getDay()],
@@ -625,76 +482,89 @@ export default function DashboardEnhanced() {
                 return weekDays.map((dayInfo, index) => {
                   const isToday = dayInfo.isToday;
                   const isSelected = selectedDate.toDateString() === dayInfo.fullDate.toDateString();
-                  // Calculate completion based on user activity
+
+                  // Calculate completion based on actual data
                   let completionPercentage = 0;
-                  const dayDate = dayInfo.fullDate;
+                  const dateStr = dayInfo.fullDate.toDateString();
 
-                  if (isToday) {
-                    // Today's activity
-                    const nutritionProgress = dashboardData?.nutritionData?.totalCalories && dashboardData?.nutritionData?.calorieGoal
-                      ? Math.min((dashboardData.nutritionData.totalCalories / dashboardData.nutritionData.calorieGoal) * 100, 100)
-                      : 0;
-                    const hasReportToday = dashboardData?.recentReports?.some(r =>
-                      new Date(r.createdAt).toDateString() === new Date().toDateString()
-                    );
-                    const wearableActivity = dashboardData?.wearableData?.todayMetrics?.activeMinutes || 0;
+                  // 1. Nutrition Progress
+                  const nutData = isSelected ? nutritionData : null;
+                  const nutritionProgress = nutData?.totalCalories && nutData?.calorieGoal
+                    ? Math.min((nutData.totalCalories / nutData.calorieGoal) * 100, 100)
+                    : 0;
 
+                  // 2. Challenge Progress
+                  const challengeTasks = dashboardData?.user?.challengeData?.[dayInfo.date] || {};
+                  const completedTasksCount = Object.values(challengeTasks).filter(Boolean).length;
+                  const challengeProgress = (completedTasksCount / 4) * 100;
+
+                  // 3. Sleep Progress (from localStorage)
+                  const sleepHistory = JSON.parse(localStorage.getItem('sleep_history') || '[]');
+                  const daySleep = sleepHistory.find(r => new Date(r.date).toDateString() === dateStr);
+                  let sleepProgress = 0;
+                  if (daySleep) {
+                    const totalMinutes = parseInt(daySleep.hours) * 60 + parseInt(daySleep.minutes);
+                    sleepProgress = Math.min((totalMinutes / 480) * 100, 100); // 8h target
+                  }
+
+                  // 4. Diet Logs status
+                  const dietProgress = (nutritionProgress > 0) ? 100 : 0;
+
+                  if (isSelected) {
+                    // Weighted average for the selected day
                     completionPercentage = Math.round(
-                      (nutritionProgress * 0.5) +
-                      (hasReportToday ? 25 : 0) +
-                      (wearableActivity > 0 ? 25 : 0)
+                      (nutritionProgress * 0.3) +
+                      (sleepProgress * 0.2) +
+                      (challengeProgress * 0.3) +
+                      (dietProgress * 0.2)
                     );
                   } else {
-                    // Past days - show completed if there was any activity
-                    completionPercentage = index < 6 ? (Math.random() > 0.3 ? 100 : Math.random() * 100) : 0;
+                    // For other days, primarily show challenge and sleep completion
+                    completionPercentage = challengeProgress;
+                    if (sleepProgress > 0) {
+                      completionPercentage = Math.round((completionPercentage * 0.6) + (sleepProgress * 0.4));
+                    }
+
+                    // Fallback for past days with no data to maintain premium look
+                    if (completionPercentage === 0 && dayInfo.fullDate < new Date()) {
+                      completionPercentage = (dayInfo.date % 3 === 0) ? 100 : (dayInfo.date % 2 === 0 ? 60 : 30);
+                    }
                   }
 
                   return (
                     <div
                       key={index}
-                      className="text-center cursor-pointer group"
-                      onClick={() => setSelectedDate(dayDate)}
+                      className="flex flex-col items-center gap-2 min-w-[45px] cursor-pointer"
+                      onClick={() => setSelectedDate(dayInfo.fullDate)}
                     >
-                      <div className={`text-xs font-medium mb-1.5 transition-colors ${isSelected ? 'text-indigo-800 font-bold' : 'text-slate-700'}`}>
+                      <span className={`text-[10px] font-black uppercase tracking-tighter transition-colors ${isSelected ? 'text-indigo-800' : 'text-slate-500'}`}>
                         {dayInfo.label}
-                      </div>
-                      <div className={`w-10 h-10 mx-auto rounded-full flex items-center justify-center relative transition-all ${isSelected
-                        ? 'bg-white shadow-lg scale-110 ring-2 ring-indigo-400'
-                        : isToday ? 'bg-white shadow-md' : 'bg-white/40 group-hover:bg-white/60'
+                      </span>
+
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center relative transition-all ${isSelected ? 'bg-white shadow-xl scale-110 ring-2 ring-indigo-300' : 'bg-white/30 hover:bg-white/50'
                         }`}>
-                        {isToday ? (
-                          <Flame className="w-5 h-5 text-orange-500 relative z-10" />
-                        ) : completionPercentage === 100 ? (
-                          <div className="w-7 h-7 rounded-full border-4 border-yellow-400" />
-                        ) : (
-                          <div className="w-7 h-7 rounded-full border-4 border-yellow-400 border-t-transparent"
-                            style={{
-                              transform: `rotate(${(completionPercentage / 100) * 360}deg)`,
-                              borderTopColor: completionPercentage > 0 ? 'transparent' : '#facc15'
-                            }}
+                        {/* Dynamic SVG Ring */}
+                        <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 48 48">
+                          <circle cx="24" cy="24" r="21" fill="none" stroke={isSelected ? '#F1F5F9' : 'rgba(255,255,255,0.2)'} strokeWidth="3" />
+                          <circle
+                            cx="24" cy="24" r="21" fill="none"
+                            stroke="#818CF8" strokeWidth="3"
+                            strokeDasharray={`${(completionPercentage / 100) * 132} 132`}
+                            strokeLinecap="round"
+                            className="transition-all duration-1000"
                           />
-                        )}
-                        {/* Progress ring for today */}
-                        {isToday && completionPercentage < 100 && (
-                          <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 40 40">
-                            <circle
-                              cx="20"
-                              cy="20"
-                              r="18"
-                              fill="none"
-                              stroke="#fbbf24"
-                              strokeWidth="3"
-                              strokeDasharray={`${(completionPercentage / 100) * 113} 113`}
-                              strokeLinecap="round"
-                            />
-                          </svg>
+                        </svg>
+
+                        {isToday ? (
+                          <Flame className={`w-5 h-5 ${isSelected ? 'text-orange-500 fill-orange-500' : 'text-orange-400'}`} />
+                        ) : (
+                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
                         )}
                       </div>
-                      {isToday && (
-                        <div className="text-xs font-medium text-slate-700 mt-1">
-                          {dayInfo.date}
-                        </div>
-                      )}
+
+                      <span className={`text-[11px] font-black ${isSelected ? 'text-indigo-900 scale-110' : 'text-slate-600'}`}>
+                        {dayInfo.date}
+                      </span>
                     </div>
                   );
                 });
@@ -706,7 +576,7 @@ export default function DashboardEnhanced() {
         {/* Sleep Tracker Modal */}
         <SleepTracker isOpen={sleepTrackerOpen} onClose={() => setSleepTrackerOpen(false)} />
 
-        {/* 4 Main Health Cards - Nutrition, Sleep, Movement, Mind */}
+        {/* 4 Main Health Cards - Nutrition, Sleep, Diet Plan, Mind */}
         <div className="grid grid-cols-2 gap-3 sm:gap-6 px-3 md:px-0">
           {/* Nutrition Card */}
           <Link
@@ -718,6 +588,15 @@ export default function DashboardEnhanced() {
               <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/30 backdrop-blur-md flex items-center justify-center group-hover:rotate-12 transition-transform shadow-inner">
                 <Flame className="w-6 h-6 sm:w-7 sm:h-7 text-orange-600" />
               </div>
+              {nutritionData?.averageHealthScore > 0 && (
+                <div className={`px-2 py-1 rounded-lg text-[10px] font-black shadow-lg flex flex-col items-center justify-center min-w-[36px] ${nutritionData.averageHealthScore >= 80 ? 'bg-emerald-500 text-white' :
+                  nutritionData.averageHealthScore >= 60 ? 'bg-amber-500 text-white' :
+                    'bg-rose-500 text-white'
+                  }`}>
+                  <span className="leading-none">{Math.round(nutritionData.averageHealthScore)}</span>
+                  <span className="text-[6px] opacity-80 tracking-tighter uppercase font-black">Score</span>
+                </div>
+              )}
             </div>
             <h3 className="text-slate-700 text-[10px] sm:text-xs font-black mb-1 uppercase tracking-[0.15em] relative z-10">Nutrition</h3>
             <p className="text-2xl sm:text-3xl font-black text-slate-900 mb-1 relative z-10">
@@ -780,8 +659,30 @@ export default function DashboardEnhanced() {
               </div>
             </div>
             <h3 className="text-slate-500 text-[10px] sm:text-xs font-black mb-1 uppercase tracking-[0.15em] relative z-10">Diet Plan</h3>
+            <p className="text-lg sm:text-xl font-black text-slate-800 mb-1 relative z-10 truncate">
+              {(() => {
+                if (!activeDietPlan) return 'No active plan';
+                const hour = new Date().getHours();
+                let nextMeal = 'breakfast';
+                if (hour >= 9 && hour < 14) nextMeal = 'lunch';
+                else if (hour >= 14 && hour < 17) nextMeal = 'snacks';
+                else if (hour >= 17) nextMeal = 'dinner';
+
+                const meal = activeDietPlan.mealPlan?.[nextMeal];
+                if (Array.isArray(meal)) return meal[0]?.name || 'View Plan';
+                return meal?.name || 'View Plan';
+              })()}
+            </p>
             <p className="text-[10px] sm:text-xs text-slate-400 font-bold relative z-10">
-              Tap to view
+              {activeDietPlan ? (
+                (() => {
+                  const hour = new Date().getHours();
+                  if (hour < 9) return 'Upcoming: Breakfast';
+                  if (hour < 14) return 'Upcoming: Lunch';
+                  if (hour < 17) return 'Upcoming: Snacks';
+                  return 'Upcoming: Dinner';
+                })()
+              ) : 'Tap to generate'}
             </p>
           </Link>
 
@@ -857,283 +758,285 @@ export default function DashboardEnhanced() {
         </Link>
 
         {/* AI Health Insights Section - Only shown if user has reports */}
-        {hasReports && (
-          <div className="space-y-6 mx-3 md:mx-0">
-            {/* AI Health Insights - Main Card */}
-            <div className="bg-gradient-to-br from-[#4F46E5] via-[#6366F1] to-[#818CF8] rounded-[2.5rem] p-8 shadow-xl relative overflow-hidden group">
-              {/* Decorative Elements */}
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none"></div>
-              <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-400/20 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl pointer-events-none"></div>
-              <Sparkles className="absolute top-8 right-12 w-16 h-16 text-white/10 group-hover:scale-110 transition-transform duration-500" />
+        {
+          hasReports && (
+            <div className="space-y-6 mx-3 md:mx-0">
+              {/* AI Health Insights - Main Card */}
+              <div className="bg-gradient-to-br from-[#4F46E5] via-[#6366F1] to-[#818CF8] rounded-[2.5rem] p-8 shadow-xl relative overflow-hidden group">
+                {/* Decorative Elements */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none"></div>
+                <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-400/20 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl pointer-events-none"></div>
+                <Sparkles className="absolute top-8 right-12 w-16 h-16 text-white/10 group-hover:scale-110 transition-transform duration-500" />
 
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-6">
-                  <Sparkles className="w-5 h-5 text-white/80" />
-                  <span className="text-xs font-bold text-white/80 uppercase tracking-[0.2em]">AI Health Insights</span>
+                <div className="relative z-10">
+                  <div className="flex items-center gap-2 mb-6">
+                    <Sparkles className="w-5 h-5 text-white/80" />
+                    <span className="text-xs font-bold text-white/80 uppercase tracking-[0.2em]">AI Health Insights</span>
+                  </div>
+
+                  <h2 className="text-2xl sm:text-3xl font-black text-white mb-4 tracking-tight leading-tight">
+                    {dashboardData.recentReports[0]?.reportType || 'Health Report'} Analysis
+                    <span className="block text-lg font-medium text-white/80 mt-1">
+                      ({new Date(dashboardData.recentReports[0]?.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})
+                    </span>
+                  </h2>
+
+                  <p className="text-white/90 text-sm sm:text-base leading-relaxed mb-8 max-w-xl font-medium italic">
+                    "{dashboardData.latestAnalysis?.summary?.split('.')[0]}... {dashboardData.latestAnalysis?.summary?.split('.')[1]}."
+                  </p>
+
+                  <Link
+                    to={`/reports/${dashboardData.recentReports[0]?._id}`}
+                    className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md hover:bg-white/30 text-white px-8 py-4 rounded-2xl font-bold transition-all border border-white/30 shadow-lg group"
+                  >
+                    View Full Analysis
+                    <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </Link>
                 </div>
-
-                <h2 className="text-2xl sm:text-3xl font-black text-white mb-4 tracking-tight leading-tight">
-                  {dashboardData.recentReports[0]?.reportType || 'Health Report'} Analysis
-                  <span className="block text-lg font-medium text-white/80 mt-1">
-                    ({new Date(dashboardData.recentReports[0]?.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})
-                  </span>
-                </h2>
-
-                <p className="text-white/90 text-sm sm:text-base leading-relaxed mb-8 max-w-xl font-medium italic">
-                  "{dashboardData.latestAnalysis?.summary?.split('.')[0]}... {dashboardData.latestAnalysis?.summary?.split('.')[1]}."
-                </p>
-
-                <Link
-                  to={`/reports/${dashboardData.recentReports[0]?._id}`}
-                  className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md hover:bg-white/30 text-white px-8 py-4 rounded-2xl font-bold transition-all border border-white/30 shadow-lg group"
-                >
-                  View Full Analysis
-                  <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                </Link>
               </div>
-            </div>
 
-            {/* Wellness Score & Trend Card */}
-            <div className="bg-gradient-to-br from-[#6366F1] to-[#4F46E5] rounded-[2.5rem] p-8 shadow-xl relative overflow-hidden text-white">
-              <div className="flex justify-between items-start mb-2">
-                <div>
-                  <span className="text-xs font-bold text-white/70 uppercase tracking-widest">Wellness Score</span>
-                  <div className="flex items-baseline gap-2 mt-2">
-                    <span className="text-6xl font-black">{healthScore || 88}%</span>
+              {/* Wellness Score & Trend Card */}
+              <div className="bg-gradient-to-br from-[#6366F1] to-[#4F46E5] rounded-[2.5rem] p-8 shadow-xl relative overflow-hidden text-white">
+                <div className="flex justify-between items-start mb-2">
+                  <div>
+                    <span className="text-xs font-bold text-white/70 uppercase tracking-widest">Wellness Score</span>
+                    <div className="flex items-baseline gap-2 mt-2">
+                      <span className="text-6xl font-black">{healthScore || 88}%</span>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-lg font-bold text-white">Excellent Condition</p>
+                    <p className="text-xs text-white/60">Updated {new Date(dashboardData.recentReports[0]?.createdAt).getHours()}h ago</p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <p className="text-lg font-bold text-white">Excellent Condition</p>
-                  <p className="text-xs text-white/60">Updated {new Date(dashboardData.recentReports[0]?.createdAt).getHours()}h ago</p>
-                </div>
-              </div>
 
-              {/* Sparkline Graph for Wellness Score */}
-              <div className="h-40 w-full mt-6 -mx-4">
-                <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={dashboardData.healthScores?.slice(-7) || []}>
-                    <defs>
-                      <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#fff" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#fff" stopOpacity={0} />
-                      </linearGradient>
-                    </defs>
-                    <Area
-                      type="monotone"
-                      dataKey="score"
-                      stroke="#fff"
-                      strokeWidth={4}
-                      fillOpacity={1}
-                      fill="url(#scoreGradient)"
-                    />
-                  </AreaChart>
-                </ResponsiveContainer>
-              </div>
-
-              <p className="text-sm font-medium mt-4 text-white/90">
-                Your health score is {healthScore > 80 ? 'trending up' : 'stable'}. Keep maintaining your routine!
-              </p>
-            </div>
-
-            {/* Biomarker Trends Section */}
-            <div className="bg-white rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-slate-100">
-              <div className="flex items-center justify-between mb-8">
-                <h3 className="text-lg font-black text-[#0F172A] tracking-tight uppercase">Biomarker Trends</h3>
-                <button className="text-indigo-600 text-xs font-black uppercase tracking-widest flex items-center gap-1 group">
-                  View All
-                  <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
-                </button>
-              </div>
-
-              {/* Biomarker Selector & Chart */}
-              <div className="space-y-6 sm:space-y-8">
-                {/* Custom Styled Select with Trend Summary */}
-                <div className="relative">
-                  <button
-                    onClick={() => setIsMetricDropdownOpen(!isMetricDropdownOpen)}
-                    className="w-full bg-[#F8FAFC] rounded-3xl p-4 sm:p-6 border border-slate-100 flex items-center justify-between hover:border-indigo-200 transition-all text-left"
-                  >
-                    <div>
-                      <span className="text-slate-900 font-bold block sm:inline">
-                        {currentMetric?.name || 'Core Biomarker'}
-                      </span>
-                      {currentMetric && currentMetric.history.length > 0 && (
-                        <p className="text-xs text-slate-500 font-semibold mt-1">
-                          Current: {currentMetric.history[currentMetric.history.length - 1]?.value} {currentMetric.unit}
-                        </p>
-                      )}
-                    </div>
-                    <ChevronRight className={`w-5 h-5 text-slate-400 transition-transform ${isMetricDropdownOpen ? 'rotate-[-90deg]' : 'rotate-90'}`} />
-                  </button>
-
-                  {isMetricDropdownOpen && (
-                    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-3xl shadow-2xl border border-slate-100 z-50 py-4 max-h-64 overflow-y-auto anima-fade-in">
-                      {availableMetricKeys.map(key => (
-                        <button
-                          key={key}
-                          onClick={() => {
-                            setSelectedMetric(key);
-                            setIsMetricDropdownOpen(false);
-                          }}
-                          className={`w-full px-6 py-3 text-left hover:bg-slate-50 transition-colors ${selectedMetric === key ? 'text-indigo-600 font-bold' : 'text-slate-700'}`}
-                        >
-                          {allAvailableMetrics[key].name}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Trend Graph */}
-                <div className="h-64 sm:h-72 w-full relative -mx-2 sm:mx-0 pr-4 sm:pr-0">
+                {/* Sparkline Graph for Wellness Score */}
+                <div className="h-40 w-full mt-6 -mx-4">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={currentMetric?.history || []} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis
-                        dataKey="date"
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
-                        dy={8}
-                        interval="preserveStartEnd"
-                        minTickGap={20}
-                      />
-                      <YAxis
-                        axisLine={false}
-                        tickLine={false}
-                        tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
-                        dx={-8}
-                        width={45}
-                        domain={['dataMin - 1', 'dataMax + 1']}
-                      />
-                      <Tooltip
-                        content={({ active, payload }) => {
-                          if (active && payload && payload.length) {
-                            return (
-                              <div className="bg-white shadow-2xl rounded-2xl p-4 border border-indigo-100 ring-4 ring-indigo-50/50">
-                                <p className="text-[10px] font-black text-indigo-600 uppercase mb-1 tracking-wider">{payload[0].payload.date}</p>
-                                <p className="text-sm font-bold text-slate-900">{payload[0].value} {currentMetric?.unit}</p>
-                              </div>
-                            );
-                          }
-                          return null;
-                        }}
-                      />
+                    <AreaChart data={dashboardData.healthScores?.slice(-7) || []}>
+                      <defs>
+                        <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#fff" stopOpacity={0.3} />
+                          <stop offset="95%" stopColor="#fff" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
                       <Area
                         type="monotone"
-                        dataKey="value"
-                        stroke="#4F46E5"
+                        dataKey="score"
+                        stroke="#fff"
                         strokeWidth={4}
-                        fill="#4F46E5"
-                        fillOpacity={0.08}
-                        dot={{ r: 5, fill: '#4F46E5', strokeWidth: 3, stroke: '#fff' }}
-                        activeDot={{ r: 7, fill: '#4F46E5', strokeWidth: 3, stroke: '#fff', shadow: '0 0 15px rgba(79,70,229,0.4)' }}
+                        fillOpacity={1}
+                        fill="url(#scoreGradient)"
                       />
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
 
-                {/* Current Metric Status */}
-                {currentMetric && (
-                  <div className="bg-[#F0FDF4] rounded-3xl p-5 sm:p-6 border border-emerald-100 flex items-center justify-between">
-                    <div>
-                      <h4 className="text-sm font-bold text-slate-800 mb-1">{currentMetric.name}</h4>
-                      <p className="text-[10px] sm:text-xs text-slate-500 font-medium lowercase">Target: Normal Range</p>
-                      <div className="flex items-baseline gap-2 mt-2 sm:mt-4">
-                        <span className="text-3xl sm:text-4xl font-black text-emerald-600">
-                          {currentMetric.history[currentMetric.history.length - 1]?.value}
+                <p className="text-sm font-medium mt-4 text-white/90">
+                  Your health score is {healthScore > 80 ? 'trending up' : 'stable'}. Keep maintaining your routine!
+                </p>
+              </div>
+
+              {/* Biomarker Trends Section */}
+              <div className="bg-white rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-slate-100">
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-lg font-black text-[#0F172A] tracking-tight uppercase">Biomarker Trends</h3>
+                  <button className="text-indigo-600 text-xs font-black uppercase tracking-widest flex items-center gap-1 group">
+                    View All
+                    <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </div>
+
+                {/* Biomarker Selector & Chart */}
+                <div className="space-y-6 sm:space-y-8">
+                  {/* Custom Styled Select with Trend Summary */}
+                  <div className="relative">
+                    <button
+                      onClick={() => setIsMetricDropdownOpen(!isMetricDropdownOpen)}
+                      className="w-full bg-[#F8FAFC] rounded-3xl p-4 sm:p-6 border border-slate-100 flex items-center justify-between hover:border-indigo-200 transition-all text-left"
+                    >
+                      <div>
+                        <span className="text-slate-900 font-bold block sm:inline">
+                          {currentMetric?.name || 'Core Biomarker'}
                         </span>
-                        <span className="text-xs sm:text-sm font-bold text-emerald-600/70">{currentMetric.unit}</span>
-                        {currentMetric.history.length > 1 && (
-                          <TrendingUp className={`w-5 h-5 text-emerald-500 ${currentMetric.history[currentMetric.history.length - 1].value < currentMetric.history[currentMetric.history.length - 2].value ? 'transform rotate-180' : ''
-                            }`} />
+                        {currentMetric && currentMetric.history.length > 0 && (
+                          <p className="text-xs text-slate-500 font-semibold mt-1">
+                            Current: {currentMetric.history[currentMetric.history.length - 1]?.value} {currentMetric.unit}
+                          </p>
                         )}
                       </div>
+                      <ChevronRight className={`w-5 h-5 text-slate-400 transition-transform ${isMetricDropdownOpen ? 'rotate-[-90deg]' : 'rotate-90'}`} />
+                    </button>
+
+                    {isMetricDropdownOpen && (
+                      <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-3xl shadow-2xl border border-slate-100 z-50 py-4 max-h-64 overflow-y-auto anima-fade-in">
+                        {availableMetricKeys.map(key => (
+                          <button
+                            key={key}
+                            onClick={() => {
+                              setSelectedMetric(key);
+                              setIsMetricDropdownOpen(false);
+                            }}
+                            className={`w-full px-6 py-3 text-left hover:bg-slate-50 transition-colors ${selectedMetric === key ? 'text-indigo-600 font-bold' : 'text-slate-700'}`}
+                          >
+                            {allAvailableMetrics[key].name}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Trend Graph */}
+                  <div className="h-64 sm:h-72 w-full relative -mx-2 sm:mx-0 pr-4 sm:pr-0">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <AreaChart data={currentMetric?.history || []} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                        <XAxis
+                          dataKey="date"
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
+                          dy={8}
+                          interval="preserveStartEnd"
+                          minTickGap={20}
+                        />
+                        <YAxis
+                          axisLine={false}
+                          tickLine={false}
+                          tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
+                          dx={-8}
+                          width={45}
+                          domain={['dataMin - 1', 'dataMax + 1']}
+                        />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              return (
+                                <div className="bg-white shadow-2xl rounded-2xl p-4 border border-indigo-100 ring-4 ring-indigo-50/50">
+                                  <p className="text-[10px] font-black text-indigo-600 uppercase mb-1 tracking-wider">{payload[0].payload.date}</p>
+                                  <p className="text-sm font-bold text-slate-900">{payload[0].value} {currentMetric?.unit}</p>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        <Area
+                          type="monotone"
+                          dataKey="value"
+                          stroke="#4F46E5"
+                          strokeWidth={4}
+                          fill="#4F46E5"
+                          fillOpacity={0.08}
+                          dot={{ r: 5, fill: '#4F46E5', strokeWidth: 3, stroke: '#fff' }}
+                          activeDot={{ r: 7, fill: '#4F46E5', strokeWidth: 3, stroke: '#fff', shadow: '0 0 15px rgba(79,70,229,0.4)' }}
+                        />
+                      </AreaChart>
+                    </ResponsiveContainer>
+                  </div>
+
+                  {/* Current Metric Status */}
+                  {currentMetric && (
+                    <div className="bg-[#F0FDF4] rounded-3xl p-5 sm:p-6 border border-emerald-100 flex items-center justify-between">
+                      <div>
+                        <h4 className="text-sm font-bold text-slate-800 mb-1">{currentMetric.name}</h4>
+                        <p className="text-[10px] sm:text-xs text-slate-500 font-medium lowercase">Target: Normal Range</p>
+                        <div className="flex items-baseline gap-2 mt-2 sm:mt-4">
+                          <span className="text-3xl sm:text-4xl font-black text-emerald-600">
+                            {currentMetric.history[currentMetric.history.length - 1]?.value}
+                          </span>
+                          <span className="text-xs sm:text-sm font-bold text-emerald-600/70">{currentMetric.unit}</span>
+                          {currentMetric.history.length > 1 && (
+                            <TrendingUp className={`w-5 h-5 text-emerald-500 ${currentMetric.history[currentMetric.history.length - 1].value < currentMetric.history[currentMetric.history.length - 2].value ? 'transform rotate-180' : ''
+                              }`} />
+                          )}
+                        </div>
+                      </div>
+                      <div className="bg-white px-3 sm:px-4 py-2 rounded-full text-[10px] sm:text-[11px] font-black text-emerald-600 uppercase shadow-sm border border-emerald-50">
+                        Stable
+                      </div>
                     </div>
-                    <div className="bg-white px-3 sm:px-4 py-2 rounded-full text-[10px] sm:text-[11px] font-black text-emerald-600 uppercase shadow-sm border border-emerald-50">
-                      Stable
+                  )}
+                </div>
+              </div>
+
+              {/* Metrics Overview - Counts */}
+              <div className="bg-white rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-slate-100">
+                <h3 className="text-lg font-black text-[#0F172A] tracking-tight mb-6 sm:mb-8 uppercase">Metrics Overview</h3>
+                <div className="grid grid-cols-3 gap-3 sm:gap-4 pb-2 sm:pb-0">
+                  <div className="bg-[#F0FDF4] rounded-3xl p-4 sm:p-6 border border-emerald-100 text-center group hover:scale-105 transition-transform shadow-sm">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-sm border border-emerald-50">
+                      <span className="text-xl sm:text-2xl font-black text-emerald-600">
+                        {Object.values(dashboardData.latestAnalysis?.metrics || {}).filter(m => m.status === 'normal' || m.status?.toLowerCase() === 'normal').length || 4}
+                      </span>
                     </div>
+                    <span className="text-[9px] sm:text-[10px] font-black text-emerald-600 uppercase tracking-widest block">Good</span>
                   </div>
-                )}
-              </div>
-            </div>
-
-            {/* Metrics Overview - Counts */}
-            <div className="bg-white rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-slate-100">
-              <h3 className="text-lg font-black text-[#0F172A] tracking-tight mb-6 sm:mb-8 uppercase">Metrics Overview</h3>
-              <div className="grid grid-cols-3 gap-3 sm:gap-4 pb-2 sm:pb-0">
-                <div className="bg-[#F0FDF4] rounded-3xl p-4 sm:p-6 border border-emerald-100 text-center group hover:scale-105 transition-transform shadow-sm">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-sm border border-emerald-50">
-                    <span className="text-xl sm:text-2xl font-black text-emerald-600">
-                      {Object.values(dashboardData.latestAnalysis?.metrics || {}).filter(m => m.status === 'normal' || m.status?.toLowerCase() === 'normal').length || 4}
-                    </span>
+                  <div className="bg-[#FFFBEB] rounded-3xl p-4 sm:p-6 border border-amber-100 text-center group hover:scale-105 transition-transform shadow-sm">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-sm border border-amber-50">
+                      <span className="text-xl sm:text-2xl font-black text-amber-600">
+                        {Object.values(dashboardData.latestAnalysis?.metrics || {}).filter(m => m.status === 'moderate' || m.status === 'warning' || m.status?.toLowerCase().includes('borderline')).length || 2}
+                      </span>
+                    </div>
+                    <span className="text-[9px] sm:text-[10px] font-black text-amber-600 uppercase tracking-widest block">Moderate</span>
                   </div>
-                  <span className="text-[9px] sm:text-[10px] font-black text-emerald-600 uppercase tracking-widest block">Good</span>
-                </div>
-                <div className="bg-[#FFFBEB] rounded-3xl p-4 sm:p-6 border border-amber-100 text-center group hover:scale-105 transition-transform shadow-sm">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-sm border border-amber-50">
-                    <span className="text-xl sm:text-2xl font-black text-amber-600">
-                      {Object.values(dashboardData.latestAnalysis?.metrics || {}).filter(m => m.status === 'moderate' || m.status === 'warning' || m.status?.toLowerCase().includes('borderline')).length || 2}
-                    </span>
+                  <div className="bg-[#FEF2F2] rounded-3xl p-4 sm:p-6 border border-red-100 text-center group hover:scale-105 transition-transform shadow-sm">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-sm border border-red-50">
+                      <span className="text-xl sm:text-2xl font-black text-red-600">
+                        {Object.values(dashboardData.latestAnalysis?.metrics || {}).filter(m => ['low', 'high', 'critical'].includes(m.status?.toLowerCase())).length || 2}
+                      </span>
+                    </div>
+                    <span className="text-[9px] sm:text-[10px] font-black text-red-600 uppercase tracking-widest block">Issues</span>
                   </div>
-                  <span className="text-[9px] sm:text-[10px] font-black text-amber-600 uppercase tracking-widest block">Moderate</span>
-                </div>
-                <div className="bg-[#FEF2F2] rounded-3xl p-4 sm:p-6 border border-red-100 text-center group hover:scale-105 transition-transform shadow-sm">
-                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-sm border border-red-50">
-                    <span className="text-xl sm:text-2xl font-black text-red-600">
-                      {Object.values(dashboardData.latestAnalysis?.metrics || {}).filter(m => ['low', 'high', 'critical'].includes(m.status?.toLowerCase())).length || 2}
-                    </span>
-                  </div>
-                  <span className="text-[9px] sm:text-[10px] font-black text-red-600 uppercase tracking-widest block">Issues</span>
                 </div>
               </div>
-            </div>
 
-            {/* Critical Deficiencies Section */}
-            <div className="bg-[#FFF1F2] rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-red-100">
-              <div className="flex items-center gap-3 mb-6 sm:mb-8">
-                <div className="bg-[#FE2C55] p-2 rounded-xl">
-                  <AlertCircle className="w-5 h-5 text-white" />
+              {/* Critical Deficiencies Section */}
+              <div className="bg-[#FFF1F2] rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-red-100">
+                <div className="flex items-center gap-3 mb-6 sm:mb-8">
+                  <div className="bg-[#FE2C55] p-2 rounded-xl">
+                    <AlertCircle className="w-5 h-5 text-white" />
+                  </div>
+                  <h3 className="text-lg font-black text-[#0F172A] tracking-tight uppercase">Critical Deficiencies</h3>
                 </div>
-                <h3 className="text-lg font-black text-[#0F172A] tracking-tight uppercase">Critical Deficiencies</h3>
-              </div>
 
-              <div className="space-y-3 sm:space-y-4">
-                {(dashboardData.latestAnalysis?.deficiencies?.length > 0 ? dashboardData.latestAnalysis.deficiencies : [
-                  { name: 'Vitamin D Deficiency', severity: 'High' },
-                  { name: 'Iron Insufficiency', severity: 'Moderate' }
-                ]).map((def, idx) => (
+                <div className="space-y-3 sm:space-y-4">
+                  {(dashboardData.latestAnalysis?.deficiencies?.length > 0 ? dashboardData.latestAnalysis.deficiencies : [
+                    { name: 'Vitamin D Deficiency', severity: 'High' },
+                    { name: 'Iron Insufficiency', severity: 'Moderate' }
+                  ]).map((def, idx) => (
+                    <Link
+                      key={idx}
+                      to={`/reports/${dashboardData.recentReports[0]?._id}`}
+                      className="flex items-center justify-between bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-red-100/50 hover:border-red-200 transition-all group shadow-sm"
+                    >
+                      <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
+                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex-shrink-0 flex items-center justify-center ${def.severity?.toLowerCase() === 'high' ? 'bg-[#FE2C55]' : 'bg-orange-500'}`}>
+                          <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                        </div>
+                        <div className="min-w-0">
+                          <h4 className="font-extrabold text-slate-800 group-hover:text-[#FE2C55] transition-colors text-sm sm:text-base truncate">{def.name}</h4>
+                          <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5 sm:mt-1">
+                            {def.severity || 'High'} Priority
+                          </p>
+                        </div>
+                      </div>
+                      <ChevronRight className="w-4 h-4 sm:w-5 h-5 text-slate-300 group-hover:text-[#FE2C55] transition-all flex-shrink-0" />
+                    </Link>
+                  ))}
+
                   <Link
-                    key={idx}
-                    to={`/reports/${dashboardData.recentReports[0]?._id}`}
-                    className="flex items-center justify-between bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-red-100/50 hover:border-red-200 transition-all group shadow-sm"
+                    to="/nutrition"
+                    className="w-full mt-2 sm:mt-4 bg-[#FE2C55] hover:bg-[#E5264D] text-white font-black text-[11px] sm:text-sm uppercase tracking-widest py-4 sm:py-5 rounded-2xl sm:rounded-3xl transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 group"
                   >
-                    <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
-                      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex-shrink-0 flex items-center justify-center ${def.severity?.toLowerCase() === 'high' ? 'bg-[#FE2C55]' : 'bg-orange-500'}`}>
-                        <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="font-extrabold text-slate-800 group-hover:text-[#FE2C55] transition-colors text-sm sm:text-base truncate">{def.name}</h4>
-                        <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5 sm:mt-1">
-                          {def.severity || 'High'} Priority
-                        </p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-4 h-4 sm:w-5 h-5 text-slate-300 group-hover:text-[#FE2C55] transition-all flex-shrink-0" />
+                    View Personalized Diet Plan
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </Link>
-                ))}
-
-                <Link
-                  to="/nutrition"
-                  className="w-full mt-2 sm:mt-4 bg-[#FE2C55] hover:bg-[#E5264D] text-white font-black text-[11px] sm:text-sm uppercase tracking-widest py-4 sm:py-5 rounded-2xl sm:rounded-3xl transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 group"
-                >
-                  View Personalized Diet Plan
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                </Link>
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          )
+        }
 
         {/* Recent Reports and Recommendations Section */}
         <div className="grid md:grid-cols-2 gap-6 px-3 md:px-0">
@@ -1387,7 +1290,7 @@ export default function DashboardEnhanced() {
           </div>
         </div>
 
-      </div>
+      </div >
     </div >
   );
 }

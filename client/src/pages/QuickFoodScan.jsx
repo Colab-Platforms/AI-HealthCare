@@ -4,7 +4,8 @@ import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import {
   Loader2, X, Camera, ChefHat, Info, Flame, Heart, Zap, Droplets,
-  CheckCircle, AlertCircle, Lightbulb, ArrowLeft, ScanLine, Plus, Activity, Brain, Sparkles
+  CheckCircle, AlertCircle, Lightbulb, ArrowLeft, ScanLine, Plus, Activity, Brain, Sparkles,
+  ShieldCheck, TrendingUp, TrendingDown, ChevronRight
 } from 'lucide-react';
 
 export default function QuickFoodScan() {
@@ -644,6 +645,11 @@ export default function QuickFoodScan() {
           mealType: selectedMealType,
           foodItems: [foodItem],
           notes: `Logged from Quick Food Scan`,
+          healthScore: result.healthScore,
+          healthScore10: result.healthScore10,
+          micronutrients: result.micronutrients,
+          enhancementTips: result.enhancementTips,
+          healthBenefitsSummary: result.healthBenefitsSummary,
           timestamp: new Date()
         },
         {
@@ -997,16 +1003,16 @@ export default function QuickFoodScan() {
                         strokeWidth="10"
                         fill="none"
                         strokeDasharray={364.4}
-                        strokeDashoffset={364.4 - (result.healthScore10 || (result.healthScore / 10)) * 36.44}
+                        strokeDashoffset={364.4 - (Math.round((result.healthScore10 || (result.healthScore / 10)) * 10) / 100) * 364.4}
                         strokeLinecap="round"
                         className="transition-all duration-1000 ease-out"
                       />
                     </svg>
                     <div className="absolute inset-0 flex flex-col items-center justify-center">
                       <span className="text-4xl font-black text-slate-800">
-                        {result.healthScore10 || (result.healthScore / 10).toFixed(1)}
+                        {Math.round((result.healthScore10 || (result.healthScore / 10)) * 10)}
                       </span>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Score</span>
+                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">out of 100</span>
                     </div>
                   </div>
 
@@ -1082,67 +1088,102 @@ export default function QuickFoodScan() {
 
             {/* Health Intelligence */}
             <div className="px-8 py-10 space-y-10">
-              {/* AI Analysis */}
-              <div className="relative group">
-                <div className="absolute -inset-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-[2.5rem] opacity-0 group-hover:opacity-100 transition-opacity" />
-                <div className="relative">
-                  <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                    <Brain className="w-4 h-4 text-blue-500" />
-                    Medical Analysis
-                  </h3>
-                  <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
-                    <p className="text-slate-600 font-medium leading-relaxed">
-                      {result.analysis}
-                    </p>
+
+              {/* Micronutrients Section - New Detailed Design */}
+              <div className="bg-blue-50/40 rounded-[2.5rem] p-7 border border-blue-100 shadow-sm">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-8 h-8 rounded-xl bg-blue-100/50 flex items-center justify-center text-blue-600">
+                    <Activity className="w-4 h-4" />
                   </div>
+                  <h4 className="text-sm font-black text-slate-700 tracking-tight uppercase">Micronutrients Breakdown</h4>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  {(result.micronutrients || []).map((micro, i) => (
+                    <div key={i} className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-blue-100 shadow-sm">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-[11px] font-black text-slate-700 truncate">{typeof micro === 'object' ? micro.name : micro}</span>
+                        <span className="text-[10px] font-black text-blue-600">{typeof micro === 'object' ? micro.percentage : '--'}%</span>
+                      </div>
+                      <p className="text-xl font-black text-slate-800 mb-2">{typeof micro === 'object' ? micro.value : '--'}</p>
+                      <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-blue-500 rounded-full transition-all duration-1000"
+                          style={{ width: `${typeof micro === 'object' ? micro.percentage : 0}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                  {(!result.micronutrients || result.micronutrients.length === 0) && (
+                    <p className="text-slate-400 text-xs italic p-4 text-center col-span-2">No micronutrient data available</p>
+                  )}
                 </div>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-8">
-                {/* Optimization Section */}
-                {result.enhancementTips && result.enhancementTips.length > 0 && (
-                  <div>
-                    <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-amber-500" />
-                      Optimize Meal
-                    </h3>
-                    <div className="space-y-3">
-                      {result.enhancementTips.map((tip, i) => (
-                        <div key={i} className="flex items-start gap-4 p-4 bg-amber-50/50 rounded-2xl border border-amber-100 group hover:bg-amber-50 transition-colors">
-                          <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-sm">
-                            <Plus className="w-4 h-4 text-amber-600" />
-                          </div>
-                          <p className="text-xs font-bold text-amber-900 leading-tight pt-1.5">{tip}</p>
-                        </div>
-                      ))}
-                    </div>
+              {/* Health Benefits Card */}
+              <div className="bg-emerald-50/50 rounded-[2.5rem] p-7 border border-emerald-100 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl -mr-10 -mt-10" />
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-200 group-hover:rotate-12 transition-transform">
+                    <Brain className="w-5 h-5" />
                   </div>
-                )}
+                  <h4 className="text-sm font-black text-emerald-900 tracking-tight uppercase">Health Benefits</h4>
+                </div>
+                <p className="text-xs font-bold text-emerald-800/80 leading-relaxed">
+                  {result.healthBenefitsSummary || result.analysis || "This meal provides essential nutrients for your daily requirements."}
+                </p>
+              </div>
 
-                {/* Micronutrients Section */}
-                {result.micronutrients && result.micronutrients.length > 0 && (
-                  <div>
-                    <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
-                      <Activity className="w-4 h-4 text-emerald-500" />
-                      Essential Nutrients
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {result.micronutrients.map((micro, i) => (
-                        <div key={i} className="px-4 py-3 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-center gap-2">
-                          <CheckCircle className="w-3 h-3 text-emerald-500" />
-                          <span className="text-[11px] font-black text-emerald-800 uppercase tracking-wider">{micro}</span>
-                        </div>
-                      ))}
-                    </div>
+              {/* Enhancement Section */}
+              <div className="bg-amber-50/40 rounded-[2.5rem] p-7 border border-amber-100 group">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="w-10 h-10 rounded-2xl bg-white border border-amber-100 flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform">
+                    <Sparkles className="w-5 h-5" />
                   </div>
-                )}
+                  <h4 className="text-sm font-black text-amber-900 tracking-tight uppercase">Make it even Healthier</h4>
+                </div>
+
+                <div className="space-y-3">
+                  {(result.enhancementTips || []).map((tip, i) => (
+                    <div key={i} className="bg-white rounded-[1.5rem] p-4 flex items-center gap-4 border border-amber-100 shadow-sm hover:shadow-md transition-all">
+                      <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center text-white shrink-0">
+                        <Plus className="w-5 h-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-black text-slate-800 mb-0.5">{typeof tip === 'object' ? tip.name : tip}</p>
+                        <p className="text-[10px] font-bold text-slate-500 truncate">{typeof tip === 'object' ? tip.benefit : 'Adds nutritional value'}</p>
+                      </div>
+                    </div>
+                  ))}
+                  {(!result.enhancementTips || result.enhancementTips.length === 0) && (
+                    <div className="text-center py-4 text-slate-400 text-xs font-bold uppercase tracking-widest italic">
+                      Already optimal!
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Original Analysis Box (Optional) */}
+              <div className="relative group p-1">
+                <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                  <Info className="w-4 h-4 text-blue-500" />
+                  Analysis Detail
+                </h3>
+                <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+                  <p className="text-slate-600 font-medium leading-relaxed">
+                    {result.analysis}
+                  </p>
+                </div>
               </div>
             </div>
 
             {/* Challenges & Alerts */}
             {result.warnings && result.warnings.length > 0 && (
-              <div className="space-y-4">
-                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">Nutritional Alerts</h3>
+              <div className="px-8 pb-10 space-y-4">
+                <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
+                  <AlertCircle className="w-4 h-4 text-rose-500" />
+                  Nutritional Alerts
+                </h3>
                 <div className="grid gap-3">
                   {result.warnings.map((w, i) => (
                     <div key={i} className="bg-rose-50/50 border border-rose-100 rounded-2xl p-4 flex items-center gap-4 group">

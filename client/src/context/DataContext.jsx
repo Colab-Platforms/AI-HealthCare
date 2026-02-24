@@ -80,7 +80,7 @@ export const DataProvider = ({ children }) => {
   // Fetch nutrition data with caching
   const fetchNutrition = useCallback(async (date, forceRefresh = false) => {
     const cacheKey = `nutrition_${date}`;
-    
+
     // Check cache first
     if (!forceRefresh) {
       const cached = cache.get(cacheKey);
@@ -108,6 +108,34 @@ export const DataProvider = ({ children }) => {
     }
   }, []);
 
+  // Fetch active diet plan with caching
+  const fetchDietPlan = useCallback(async (forceRefresh = false) => {
+    // Check cache first
+    if (!forceRefresh) {
+      const cached = cache.get('diet_plan');
+      if (cached) {
+        return cached;
+      }
+    }
+
+    try {
+      const token = localStorage.getItem('token');
+      const res = await fetch('/api/diet-recommendations/diet-plan/active', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.status === 404) return null;
+      const data = await res.json();
+      if (data.success && data.dietPlan) {
+        cache.set('diet_plan', data.dietPlan, 15 * 60 * 1000); // Cache for 15 minutes
+        return data.dietPlan;
+      }
+      return null;
+    } catch (error) {
+      console.error('Failed to fetch diet plan:', error);
+      return null;
+    }
+  }, []);
+
   // Invalidate cache when data changes
   const invalidateCache = useCallback((keys = []) => {
     if (keys.length === 0) {
@@ -132,11 +160,12 @@ export const DataProvider = ({ children }) => {
     wearableData,
     nutritionData,
     loading,
-    
+
     // Methods
     fetchDashboard,
     fetchWearable,
     fetchNutrition,
+    fetchDietPlan,
     invalidateCache
   };
 

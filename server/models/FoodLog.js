@@ -39,6 +39,26 @@ const foodLogSchema = new mongoose.Schema({
   },
   foodItems: [foodItemSchema],
   totalNutrition: nutritionSchema,
+  healthScore: {
+    type: Number,
+    min: 0,
+    max: 100
+  },
+  healthScore10: {
+    type: Number,
+    min: 0,
+    max: 10
+  },
+  micronutrients: [{
+    name: String,
+    value: String,
+    percentage: Number
+  }],
+  enhancementTips: [{
+    name: String,
+    benefit: String
+  }],
+  healthBenefitsSummary: String,
   imageUrl: String, // Cloudinary or base64
   aiAnalysis: String, // Full AI response
   notes: String,
@@ -55,7 +75,7 @@ const foodLogSchema = new mongoose.Schema({
 foodLogSchema.index({ userId: 1, timestamp: -1 });
 
 // Calculate total nutrition before saving
-foodLogSchema.pre('save', function(next) {
+foodLogSchema.pre('save', function (next) {
   if (this.foodItems && this.foodItems.length > 0) {
     const total = {
       calories: 0,

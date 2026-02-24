@@ -2,9 +2,9 @@ import { useState, useEffect } from 'react';
 import axios from 'axios';
 import toast from 'react-hot-toast';
 import {
-  Loader2, Trash2, AlertCircle, CheckCircle, Lightbulb,
-  Camera, X, ChefHat,
-  Flame, Zap, Heart, Info, History
+  Loader2, Trash2, AlertCircle, CheckCircle, Camera, X, ChefHat,
+  Flame, Zap, Heart, Info, History, Brain, Sparkles, Activity, Plus, ShieldCheck,
+  ChevronRight, Lightbulb, Target, Droplets
 } from 'lucide-react';
 
 export default function QuickFoodCheck() {
@@ -47,11 +47,11 @@ export default function QuickFoodCheck() {
 
   const getQuantitySuggestion = (text) => {
     const lowerText = text.toLowerCase();
-    
+
     // Check if quantity already mentioned
-    const hasQuantity = /\d+/.test(lowerText) || 
-                       ['bowl', 'plate', 'cup', 'glass', 'slice', 'piece', 'gram', 'kg', 'ml', 'litre'].some(q => lowerText.includes(q));
-    
+    const hasQuantity = /\d+/.test(lowerText) ||
+      ['bowl', 'plate', 'cup', 'glass', 'slice', 'piece', 'gram', 'kg', 'ml', 'litre'].some(q => lowerText.includes(q));
+
     if (hasQuantity) return { show: false, text: '' };
 
     // Liquids
@@ -83,10 +83,10 @@ export default function QuickFoodCheck() {
 
   const getPrepMethodSuggestion = (text) => {
     const lowerText = text.toLowerCase();
-    
+
     // Check if prep method already mentioned
     const hasPrepMethod = ['grilled', 'fried', 'baked', 'boiled', 'steamed', 'roasted', 'raw', 'cooked', 'homemade', 'restaurant', 'packaged', 'frozen'].some(m => lowerText.includes(m));
-    
+
     if (hasPrepMethod) return { show: false };
 
     // Foods that benefit from prep method info
@@ -101,7 +101,7 @@ export default function QuickFoodCheck() {
   const handleFoodInputChange = (e) => {
     const value = e.target.value;
     setFoodInput(value);
-    
+
     if (value.length >= 3) {
       const suggestion = getQuantitySuggestion(value);
       setShowQuantitySuggestion(suggestion.show);
@@ -119,7 +119,7 @@ export default function QuickFoodCheck() {
   const handleImageSelect = (e) => {
     e.preventDefault(); // Prevent form submission/page refresh
     e.stopPropagation(); // Stop event bubbling
-    
+
     const file = e.target.files[0];
     if (file) {
       // Validate file size (max 3MB)
@@ -127,7 +127,7 @@ export default function QuickFoodCheck() {
         toast.error('Image too large. Please use a smaller image (max 3MB)');
         return;
       }
-      
+
       setImage(file);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -136,7 +136,7 @@ export default function QuickFoodCheck() {
       };
       reader.readAsDataURL(file);
     }
-    
+
     // Reset the input value so the same file can be selected again
     e.target.value = '';
   };
@@ -156,7 +156,7 @@ export default function QuickFoodCheck() {
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
-      
+
       // Convert image to base64 if present
       let imageBase64 = null;
       if (image) {
@@ -198,7 +198,7 @@ export default function QuickFoodCheck() {
           imageBase64: imageBase64,
           additionalContext: contextText
         },
-        { 
+        {
           headers: { Authorization: `Bearer ${token}` },
           timeout: 60000 // 60 seconds for image analysis
         }
@@ -216,21 +216,21 @@ export default function QuickFoodCheck() {
     } catch (error) {
       console.error('Quick check error:', error);
       console.error('Error response:', error.response?.data);
-      
+
       // Check if AI couldn't detect food in image
       if (error.response?.status === 400 && error.response?.data?.error === 'UNABLE_TO_DETECT_FOOD') {
         // Clear image and show helpful message
         setImage(null);
         setImagePreview(null);
         setShowImageDetailsForm(false);
-        
+
         // Keep quantity and prep method if user provided them
         // (don't reset imageDetails completely)
-        
+
         toast.error('Could not detect food in image. Please type the food name above for accurate results.', {
           duration: 5000
         });
-        
+
         // Focus the food input field
         setTimeout(() => {
           const foodInputElement = document.querySelector('input[placeholder*="What did you eat"]');
@@ -259,12 +259,19 @@ export default function QuickFoodCheck() {
           calories: check.calories || 0,
           protein: check.protein || 0,
           carbs: check.carbs || 0,
-          fats: check.fats || 0
+          fats: check.fats || 0,
+          fiber: check.nutrition?.fiber || 0,
+          sugar: check.nutrition?.sugar || 0,
+          sodium: check.nutrition?.sodium || 0
         }
       },
       isHealthy: check.isHealthy,
       healthScore: check.healthScore,
+      healthScore10: check.healthScore10,
       analysis: check.analysis || 'Previously analyzed food item',
+      micronutrients: check.micronutrients || [],
+      enhancementTips: check.enhancementTips || [],
+      healthBenefitsSummary: check.healthBenefitsSummary || check.analysis || '',
       warnings: check.warnings || [],
       alternatives: check.alternatives || []
     });
@@ -343,9 +350,9 @@ export default function QuickFoodCheck() {
           {imagePreview && (
             <div className="relative bg-white border-2 border-cyan-200 rounded-2xl p-4 animate-in fade-in slide-in-from-top-2">
               <div className="flex items-start gap-4">
-                <img 
-                  src={imagePreview} 
-                  alt="Food preview" 
+                <img
+                  src={imagePreview}
+                  alt="Food preview"
                   className="w-24 h-24 object-cover rounded-xl border-2 border-cyan-300"
                 />
                 <div className="flex-1">
@@ -377,7 +384,7 @@ export default function QuickFoodCheck() {
                 <ChefHat className="w-5 h-5" />
                 Tell us more for accurate results
               </p>
-              
+
               {/* Quantity Input */}
               <div className="mb-4">
                 <label className="block text-xs font-semibold text-gray-700 mb-2">
@@ -410,11 +417,10 @@ export default function QuickFoodCheck() {
                       key={method.label}
                       type="button"
                       onClick={() => setImageDetails({ ...imageDetails, prepMethod: method.label })}
-                      className={`px-3 py-2 rounded-xl text-xs font-medium transition-all ${
-                        imageDetails.prepMethod === method.label
-                          ? 'bg-purple-500 text-white shadow-md'
-                          : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
-                      }`}
+                      className={`px-3 py-2 rounded-xl text-xs font-medium transition-all ${imageDetails.prepMethod === method.label
+                        ? 'bg-purple-500 text-white shadow-md'
+                        : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
+                        }`}
                     >
                       {method.icon} {method.label}
                     </button>
@@ -479,11 +485,10 @@ export default function QuickFoodCheck() {
                       setPrepMethod(method.label);
                       setShowPrepMethod(false);
                     }}
-                    className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${
-                      prepMethod === method.label
-                        ? 'bg-purple-500 text-white'
-                        : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
-                    }`}
+                    className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${prepMethod === method.label
+                      ? 'bg-purple-500 text-white'
+                      : 'bg-purple-50 text-purple-700 hover:bg-purple-100'
+                      }`}
                   >
                     {method.icon} {method.label}
                   </button>
@@ -517,86 +522,181 @@ export default function QuickFoodCheck() {
         </div>
       </div>
 
-      {/* Result Display */}
+      {/* Result Display - Premium Medical UI */}
       {result && (
-        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-4">
-          {/* Health Score Card */}
-          <div className={`rounded-3xl p-6 shadow-lg border-2 ${
-            result.isHealthy 
-              ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200' 
-              : 'bg-gradient-to-br from-red-50 to-orange-50 border-red-200'
-          }`}>
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <h3 className="text-2xl font-bold text-gray-900">{result.foodItem?.name}</h3>
-                <p className="text-sm text-gray-600 mt-1">{result.foodItem?.quantity}</p>
-                {prepMethod && <p className="text-xs text-gray-500 mt-1">📍 {prepMethod}</p>}
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_50px_rgba(0,0,0,0.04)] relative overflow-hidden group">
+            {/* Animated Background Gradient */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-purple-500/5 to-blue-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl group-hover:scale-110 transition-transform duration-700" />
+
+            <div className="relative z-10">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-slate-900 text-white rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg mb-2">
+                    <Sparkles className="w-3 h-3 text-purple-400" />
+                    AI Health Analysis Result
+                  </div>
+                  <h3 className="text-3xl font-black text-slate-800 tracking-tighter leading-tight">
+                    {result.foodItem?.name}
+                  </h3>
+                  <div className="flex items-center gap-4">
+                    <p className="text-slate-500 font-bold flex items-center gap-1.5 uppercase text-[11px] tracking-widest">
+                      <Target className="w-4 h-4 text-purple-500" />
+                      {result.foodItem?.quantity || '1 Serving'}
+                    </p>
+                    {prepMethod && (
+                      <p className="text-slate-500 font-bold flex items-center gap-1.5 uppercase text-[11px] tracking-widest">
+                        <ChefHat className="w-4 h-4 text-orange-500" />
+                        {prepMethod}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Health Score Circle */}
+                <div className="relative flex-shrink-0 flex items-center justify-center">
+                  <svg className="w-24 h-24 transform -rotate-90">
+                    <circle
+                      cx="48"
+                      cy="48"
+                      r="42"
+                      stroke="#f1f5f9"
+                      strokeWidth="8"
+                      fill="none"
+                    />
+                    <circle
+                      cx="48"
+                      cy="48"
+                      r="42"
+                      stroke={result.isHealthy ? "#10b981" : "#f59e0b"}
+                      strokeWidth="8"
+                      fill="none"
+                      strokeDasharray={263.89}
+                      strokeDashoffset={263.89 - (result.healthScore / 100) * 263.89}
+                      strokeLinecap="round"
+                      className="transition-all duration-1000 ease-out"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-2xl font-black text-slate-800 leading-none">
+                      {Math.round(result.healthScore)}
+                    </span>
+                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-0.5">SCORE</span>
+                  </div>
+                </div>
               </div>
-              <div className={`w-16 h-16 rounded-2xl flex items-center justify-center font-bold text-xl ${
-                result.isHealthy 
-                  ? 'bg-green-500 text-white' 
-                  : 'bg-red-500 text-white'
-              }`}>
-                {result.healthScore}
+
+              {/* Status Indicator */}
+              <div className={`flex items-center gap-3 p-4 rounded-2xl border ${result.isHealthy
+                ? 'bg-emerald-50/50 border-emerald-100 text-emerald-800'
+                : 'bg-amber-50/50 border-amber-100 text-amber-800'
+                }`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${result.isHealthy ? 'bg-emerald-500 text-white' : 'bg-amber-500 text-white'
+                  }`}>
+                  {result.isHealthy ? <CheckCircle className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}
+                </div>
+                <div className="flex-1">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Health Status</p>
+                  <p className="font-bold text-sm tracking-tight">
+                    {result.isHealthy ? 'Recommended for your diet' : 'Recommended in moderate portions'}
+                  </p>
+                </div>
               </div>
             </div>
+          </div>
 
-            {/* Status Badge */}
-            <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-sm ${
-              result.isHealthy
-                ? 'bg-green-200 text-green-800'
-                : 'bg-red-200 text-red-800'
-            }`}>
-              {result.isHealthy ? (
-                <>
-                  <CheckCircle className="w-4 h-4" />
-                  Healthy Choice
-                </>
-              ) : (
-                <>
-                  <AlertCircle className="w-4 h-4" />
-                  Not Ideal
-                </>
+          {/* Nutrition Grid - Premium Style */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Calories', value: result.foodItem?.nutritionRanges?.calories || result.foodItem?.nutrition?.calories || 0, unit: 'kcal', icon: Flame, color: 'text-orange-500', bg: 'bg-orange-50/50', border: 'border-orange-100' },
+              { label: 'Protein', value: result.foodItem?.nutritionRanges?.protein || result.foodItem?.nutrition?.protein || 0, unit: 'g', icon: Heart, color: 'text-rose-500', bg: 'bg-rose-50/50', border: 'border-rose-100' },
+              { label: 'Carbs', value: result.foodItem?.nutritionRanges?.carbs || result.foodItem?.nutrition?.carbs || 0, unit: 'g', icon: Zap, color: 'text-amber-500', bg: 'bg-amber-50/50', border: 'border-amber-100' },
+              { label: 'Fats', value: result.foodItem?.nutritionRanges?.fats || result.foodItem?.nutrition?.fats || 0, unit: 'g', icon: Lightbulb, color: 'text-blue-500', bg: 'bg-blue-50/50', border: 'border-blue-100' }
+            ].map((macro) => (
+              <div key={macro.label} className={`bg-white rounded-[2rem] p-5 border ${macro.border} shadow-sm group hover:scale-[1.02] transition-transform duration-300`}>
+                <div className={`w-10 h-10 rounded-xl ${macro.bg} flex items-center justify-center mb-3 group-hover:rotate-6 transition-transform`}>
+                  <macro.icon className={`w-5 h-5 ${macro.color}`} />
+                </div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{macro.label}</p>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <p className="text-xl font-black text-slate-800 tracking-tight">{macro.value}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">{macro.unit}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Health Analysis Card */}
+          <div className="bg-slate-900 rounded-[2rem] p-6 shadow-xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl -mr-16 -mt-16" />
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center text-blue-400">
+                  <Brain className="w-5 h-5" />
+                </div>
+                <h4 className="text-xs font-black text-white tracking-widest uppercase">AI Health Insights</h4>
+              </div>
+              <p className="text-sm text-slate-300 font-medium leading-relaxed italic border-l-2 border-blue-500 pl-4 py-1">
+                {result.healthBenefitsSummary || result.analysis}
+              </p>
+            </div>
+          </div>
+
+          {/* Micronutrients Section */}
+          <div className="bg-blue-50/40 rounded-3xl p-6 border border-blue-100">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-8 h-8 rounded-xl bg-blue-100/50 flex items-center justify-center text-blue-600">
+                <Activity className="w-4 h-4" />
+              </div>
+              <h4 className="text-xs font-black text-slate-700 tracking-tight uppercase">Key Micronutrients</h4>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {(result.micronutrients || []).map((micro, i) => (
+                <div key={i} className="bg-white/80 rounded-xl p-3 border border-blue-100 shadow-sm">
+                  <div className="flex justify-between items-center mb-1.5">
+                    <span className="text-[10px] font-black text-slate-700 truncate">{typeof micro === 'object' ? micro.name : micro}</span>
+                    <span className="text-[10px] font-black text-blue-600">{typeof micro === 'object' ? micro.percentage : '--'}%</span>
+                  </div>
+                  <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-blue-500 rounded-full"
+                      style={{ width: `${typeof micro === 'object' ? micro.percentage : 20}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+              {(!result.micronutrients || result.micronutrients.length === 0) && (
+                <p className="text-[10px] font-bold text-slate-400 italic text-center col-span-2">Micronutrient analysis pending...</p>
               )}
             </div>
           </div>
 
-          {/* Nutrition Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            <div className="bg-white rounded-2xl p-4 border-2 border-orange-100 text-center">
-              <Flame className="w-6 h-6 text-orange-500 mx-auto mb-2" />
-              <p className="text-xs text-gray-600 font-medium">Calories</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">
-                {result.foodItem?.nutritionRanges?.calories || result.foodItem?.nutrition?.calories || 0}
-              </p>
-              {result.foodItem?.nutritionRanges?.calories && <p className="text-xs text-gray-500">kcal</p>}
+          {/* Enhancement Section */}
+          <div className="bg-amber-50/40 rounded-3xl p-6 border border-amber-100">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-8 h-8 rounded-xl bg-white border border-amber-100 flex items-center justify-center text-orange-500">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <h4 className="text-xs font-black text-amber-900 tracking-tight uppercase">Make it even Healthier</h4>
             </div>
-            <div className="bg-white rounded-2xl p-4 border-2 border-red-100 text-center">
-              <Heart className="w-6 h-6 text-red-500 mx-auto mb-2" />
-              <p className="text-xs text-gray-600 font-medium">Protein</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">
-                {result.foodItem?.nutritionRanges?.protein || result.foodItem?.nutrition?.protein || 0}g
-              </p>
-            </div>
-            <div className="bg-white rounded-2xl p-4 border-2 border-yellow-100 text-center">
-              <Zap className="w-6 h-6 text-yellow-500 mx-auto mb-2" />
-              <p className="text-xs text-gray-600 font-medium">Carbs</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">
-                {result.foodItem?.nutritionRanges?.carbs || result.foodItem?.nutrition?.carbs || 0}g
-              </p>
-            </div>
-            <div className="bg-white rounded-2xl p-4 border-2 border-blue-100 text-center">
-              <Lightbulb className="w-6 h-6 text-blue-500 mx-auto mb-2" />
-              <p className="text-xs text-gray-600 font-medium">Fats</p>
-              <p className="text-2xl font-bold text-gray-900 mt-1">
-                {result.foodItem?.nutritionRanges?.fats || result.foodItem?.nutrition?.fats || 0}g
-              </p>
-            </div>
-          </div>
 
-          {/* Analysis */}
-          <div className="bg-white rounded-2xl p-5 border-2 border-gray-200">
-            <p className="text-gray-700 leading-relaxed">{result.analysis}</p>
+            <div className="space-y-2">
+              {(result.enhancementTips || []).map((tip, i) => (
+                <div key={i} className="bg-white rounded-xl p-3 flex items-center gap-3 border border-amber-50 shadow-sm">
+                  <div className="w-6 h-6 rounded-full bg-orange-500 flex items-center justify-center text-white shrink-0">
+                    <Plus className="w-3 h-3 font-bold" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs font-black text-slate-800">{typeof tip === 'object' ? tip.name : tip}</p>
+                    <p className="text-[9px] font-bold text-slate-500 truncate">{typeof tip === 'object' ? tip.benefit : 'Adds nutritional value'}</p>
+                  </div>
+                </div>
+              ))}
+              {(!result.enhancementTips || result.enhancementTips.length === 0) && (
+                <p className="text-[10px] font-bold text-slate-400 italic text-center col-span-2">Analyzing optimization paths...</p>
+              )}
+            </div>
           </div>
 
           {/* Warnings */}
@@ -644,15 +744,22 @@ export default function QuickFoodCheck() {
             </div>
           )}
 
-          <button
-            onClick={() => {
-              setResult(null);
-              setPrepMethod(null);
-            }}
-            className="w-full py-3 bg-gray-200 text-gray-900 rounded-2xl font-bold hover:bg-gray-300 transition-all"
-          >
-            Clear
-          </button>
+          {/* Final Action - New Analysis */}
+          <div className="pt-4 border-t border-slate-100">
+            <button
+              onClick={() => {
+                setResult(null);
+                setPrepMethod(null);
+                setFoodInput('');
+                setImage(null);
+                setImagePreview(null);
+              }}
+              className="w-full py-5 bg-slate-900 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:shadow-2xl hover:bg-slate-800 transition-all active:scale-[0.98] flex items-center justify-center gap-2 group"
+            >
+              <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />
+              Analyze Another Food
+            </button>
+          </div>
         </div>
       )}
 
@@ -690,9 +797,8 @@ export default function QuickFoodCheck() {
                   <div className="flex-1">
                     <p className="font-semibold text-gray-900">{check.foodName}</p>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className={`text-xs font-bold px-2 py-1 rounded-lg ${
-                        check.isHealthy ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                      }`}>
+                      <span className={`text-xs font-bold px-2 py-1 rounded-lg ${check.isHealthy ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                        }`}>
                         {check.healthScore}/100
                       </span>
                       <span className="text-xs text-gray-500">
@@ -721,7 +827,7 @@ export default function QuickFoodCheck() {
 
       {/* Camera/Gallery Modal */}
       {showCameraModal && (
-        <div 
+        <div
           className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4"
           onClick={(e) => {
             // Close modal when clicking backdrop
@@ -738,7 +844,7 @@ export default function QuickFoodCheck() {
             }
           }}
         >
-          <div 
+          <div
             className="bg-white rounded-3xl p-6 max-w-sm w-full animate-in fade-in slide-in-from-bottom-4"
             onClick={(e) => {
               e.stopPropagation();
@@ -747,7 +853,7 @@ export default function QuickFoodCheck() {
             <h3 className="text-xl font-bold text-gray-900 mb-4">Choose Image Source</h3>
             <div className="space-y-3">
               {/* Camera Option */}
-              <div 
+              <div
                 className="cursor-pointer"
                 onClick={(e) => {
                   e.preventDefault();
@@ -786,7 +892,7 @@ export default function QuickFoodCheck() {
               </div>
 
               {/* Gallery Option */}
-              <div 
+              <div
                 className="cursor-pointer"
                 onClick={(e) => {
                   e.preventDefault();

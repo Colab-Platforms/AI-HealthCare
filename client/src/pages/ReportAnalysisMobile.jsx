@@ -85,13 +85,10 @@ export default function ReportAnalysisMobile() {
         }
     };
 
-    const handleEmailShare = () => {
-        const subject = `Health Report Analysis: ${report.reportType}`;
-        const body = `Hi,\n\nI've analyzed my ${report.reportType} report.\n\nSummary: ${aiAnalysis?.summary}\n\nHealth Score: ${aiAnalysis?.healthScore}/100\n\nView details: ${window.location.href}`;
-        window.location.href = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-    };
-
     const handleDownload = () => {
+        // Use browser's built-in print to PDF functionality as it is the most reliable
+        // without adding heavy external dependencies like jspdf/html2canvas.
+        // We will hide non-essential elements using @media print in CSS if needed.
         window.print();
     };
 
@@ -116,13 +113,6 @@ export default function ReportAnalysisMobile() {
                         title="Share on WhatsApp"
                     >
                         <Share2 className="w-5 h-5" />
-                    </button>
-                    <button
-                        onClick={handleEmailShare}
-                        className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-100 text-blue-600 hover:bg-blue-50 transition-colors"
-                        title="Share via Email"
-                    >
-                        <Mail className="w-5 h-5" />
                     </button>
                     <button
                         onClick={handleDownload}

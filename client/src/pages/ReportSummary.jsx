@@ -1,10 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { healthService } from '../services/api';
-import { ArrowLeft, Download, Share2, AlertTriangle, CheckCircle, TrendingDown, Apple, Pill, Heart, Activity, X } from 'lucide-react';
+import { ArrowLeft, Download, Share2, AlertTriangle, CheckCircle, TrendingDown, Apple, Pill, Heart, Activity, X, UtensilsCrossed } from 'lucide-react';
 import toast from 'react-hot-toast';
 import VitalDetailsPopup from '../components/VitalDetailsPopup';
 import GenericSkeleton from '../components/skeletons/GenericSkeleton';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
 
 export default function ReportSummary() {
   const { id } = useParams();
@@ -51,6 +53,51 @@ export default function ReportSummary() {
     setSelectedMetric(null);
   };
 
+  const handleDownload = async () => {
+    const reportElement = document.getElementById('report-content');
+    if (!reportElement) {
+      toast.error('Could not find report content');
+      return;
+    }
+
+    const toastId = toast.loading('Generating PDF...');
+
+    try {
+      // Temporarily hide elements that shouldn't be in the PDF
+      const actionButtons = reportElement.querySelectorAll('.no-pdf');
+      actionButtons.forEach(btn => btn.style.display = 'none');
+
+      const canvas = await html2canvas(reportElement, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+
+      // Restore hidden elements
+      actionButtons.forEach(btn => btn.style.display = '');
+
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF('p', 'mm', 'a4');
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      const imgX = (pdfWidth - imgWidth * ratio) / 2;
+      const imgY = 0;
+
+      pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      pdf.save(`Health_Report_${report.reportType}_${id.substring(0, 8)}.pdf`);
+
+      toast.success('Report downloaded successfully!', { id: toastId });
+    } catch (error) {
+      console.error('PDF Generation Error:', error);
+      toast.error('Failed to generate PDF. Falling back to print...', { id: toastId });
+      window.print();
+    }
+  };
+
   if (loading) return <GenericSkeleton />;
   if (!report) return <div className="text-center py-12 text-slate-400">Report not found</div>;
 
@@ -58,8 +105,8 @@ export default function ReportSummary() {
   const healthScore = aiAnalysis?.healthScore || 0;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 animate-fade-in p-4">
-      <div className="flex items-center justify-between">
+    <div id="report-content" className="max-w-6xl mx-auto space-y-6 animate-fade-in p-4 bg-white">
+      <div className="flex items-center justify-between no-pdf">
         <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-cyan-400 font-medium transition-colors">
           <ArrowLeft className="w-4 h-4" /> Back to Dashboard
         </Link>
@@ -93,6 +140,14 @@ export default function ReportSummary() {
           <div className="text-center">
             <div className="text-5xl font-bold mb-2">{healthScore}</div>
             <div className="text-sm text-white/70">Health Score</div>
+          </div>
+          <div className="no-pdf flex flex-col gap-2">
+            <button
+              onClick={handleDownload}
+              className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-all flex items-center gap-2 text-sm font-medium border border-white/20"
+            >
+              <Download className="w-4 h-4" /> Download PDF
+            </button>
           </div>
         </div>
       </div>
@@ -135,13 +190,12 @@ export default function ReportSummary() {
               <button
                 key={key}
                 onClick={() => handleMetricClick(key, metric)}
-                className={`p-5 rounded-xl border-2 text-left transition-all hover:scale-105 hover:shadow-lg cursor-pointer ${
-                  metric.status === 'normal'
-                    ? 'bg-emerald-50 border-emerald-200 hover:border-emerald-300'
-                    : metric.status === 'high'
+                className={`p-5 rounded-xl border-2 text-left transition-all hover:scale-105 hover:shadow-lg cursor-pointer ${metric.status === 'normal'
+                  ? 'bg-emerald-50 border-emerald-200 hover:border-emerald-300'
+                  : metric.status === 'high'
                     ? 'bg-red-50 border-red-200 hover:border-red-300'
                     : 'bg-amber-50 border-amber-200 hover:border-amber-300'
-                }`}
+                  }`}
               >
                 <p className="text-sm text-slate-600 font-medium mb-2">{key}</p>
                 <p className="text-2xl font-bold text-slate-800 mb-2">
@@ -149,13 +203,12 @@ export default function ReportSummary() {
                 </p>
                 <p className="text-xs text-slate-600 mb-3">Normal: {metric.normalRange}</p>
                 <span
-                  className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                    metric.status === 'normal'
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : metric.status === 'high'
+                  className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${metric.status === 'normal'
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : metric.status === 'high'
                       ? 'bg-red-100 text-red-700'
                       : 'bg-amber-100 text-amber-700'
-                  }`}
+                    }`}
                 >
                   {metric.status.toUpperCase()}
                 </span>
@@ -175,24 +228,22 @@ export default function ReportSummary() {
             {aiAnalysis.deficiencies.map((def, i) => (
               <div
                 key={i}
-                className={`p-5 rounded-xl border-2 ${
-                  def.severity === 'Severe'
-                    ? 'bg-red-50 border-red-200'
-                    : def.severity === 'Moderate'
+                className={`p-5 rounded-xl border-2 ${def.severity === 'Severe'
+                  ? 'bg-red-50 border-red-200'
+                  : def.severity === 'Moderate'
                     ? 'bg-amber-50 border-amber-200'
                     : 'bg-yellow-50 border-yellow-200'
-                }`}
+                  }`}
               >
                 <div className="flex items-start justify-between mb-3">
                   <h3 className="text-lg font-bold text-slate-800">{def.name}</h3>
                   <span
-                    className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                      def.severity === 'Severe'
-                        ? 'bg-red-100 text-red-700'
-                        : def.severity === 'Moderate'
+                    className={`px-3 py-1 rounded-full text-xs font-semibold ${def.severity === 'Severe'
+                      ? 'bg-red-100 text-red-700'
+                      : def.severity === 'Moderate'
                         ? 'bg-amber-100 text-amber-700'
                         : 'bg-yellow-100 text-yellow-700'
-                    }`}
+                      }`}
                   >
                     {def.severity}
                   </span>
@@ -225,7 +276,7 @@ export default function ReportSummary() {
       {aiAnalysis?.foodRecommendations && Object.keys(aiAnalysis.foodRecommendations).length > 0 && (
         <div className="bg-white rounded-2xl border-2 border-slate-200 p-8 shadow-sm">
           <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <Apple className="w-6 h-6 text-emerald-500" /> Recommended Foods
+            <Apple className="w-6 h-6 text-emerald-500" /> Recommended Food Categories
           </h2>
           <div className="grid md:grid-cols-2 gap-6">
             {Object.entries(aiAnalysis.foodRecommendations).map(([category, rec]) => (
@@ -245,6 +296,123 @@ export default function ReportSummary() {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Personalized Diet Plan */}
+      {aiAnalysis?.dietPlan && (
+        <div className="bg-white rounded-2xl border-l-4 border-green-500 border-t-2 border-r-2 border-b-2 border-t-slate-200 border-r-slate-200 border-b-slate-200 p-8 shadow-sm">
+          <h2 className="text-2xl font-bold text-slate-800 mb-4 flex items-center gap-2">
+            <UtensilsCrossed className="w-6 h-6 text-green-500" /> Personalized Meal Plan (4 Options Per Meal)
+          </h2>
+          <p className="text-slate-700 mb-8 font-medium text-lg">{aiAnalysis.dietPlan.overview}</p>
+
+          <div className="grid md:grid-cols-2 gap-8 mb-8">
+            {aiAnalysis.dietPlan.breakfast?.length > 0 && (
+              <div className="p-6 bg-orange-50 rounded-2xl border-2 border-orange-200 shadow-sm transition-all hover:shadow-md">
+                <h3 className="font-bold text-orange-700 mb-4 text-xl flex items-center gap-2">🌅 Breakfast</h3>
+                <div className="space-y-4">
+                  {aiAnalysis.dietPlan.breakfast.map((meal, i) => (
+                    <div key={i} className="bg-white/60 p-4 rounded-xl border border-orange-100">
+                      <p className="font-bold text-slate-800 text-base">{meal.meal}</p>
+                      {meal.nutrients && <p className="text-xs text-slate-500 mt-1 uppercase tracking-wider font-semibold">Nutrients: {Array.isArray(meal.nutrients) ? meal.nutrients.join(', ') : meal.nutrients}</p>}
+                      {meal.tip && <p className="text-sm text-orange-600 italic mt-2">💡 {meal.tip}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {aiAnalysis.dietPlan.lunch?.length > 0 && (
+              <div className="p-6 bg-blue-50 rounded-2xl border-2 border-blue-200 shadow-sm transition-all hover:shadow-md">
+                <h3 className="font-bold text-blue-700 mb-4 text-xl flex items-center gap-2">🥗 Lunch</h3>
+                <div className="space-y-4">
+                  {aiAnalysis.dietPlan.lunch.map((meal, i) => (
+                    <div key={i} className="bg-white/60 p-4 rounded-xl border border-blue-100">
+                      <p className="font-bold text-slate-800 text-base">{meal.meal}</p>
+                      {meal.nutrients && <p className="text-xs text-slate-500 mt-1 uppercase tracking-wider font-semibold">Nutrients: {Array.isArray(meal.nutrients) ? meal.nutrients.join(', ') : meal.nutrients}</p>}
+                      {meal.tip && <p className="text-sm text-blue-600 italic mt-2">💡 {meal.tip}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {aiAnalysis.dietPlan.dinner?.length > 0 && (
+              <div className="p-6 bg-indigo-50 rounded-2xl border-2 border-indigo-200 shadow-sm transition-all hover:shadow-md">
+                <h3 className="font-bold text-indigo-700 mb-4 text-xl flex items-center gap-2">🌙 Dinner</h3>
+                <div className="space-y-4">
+                  {aiAnalysis.dietPlan.dinner.map((meal, i) => (
+                    <div key={i} className="bg-white/60 p-4 rounded-xl border border-indigo-100">
+                      <p className="font-bold text-slate-800 text-base">{meal.meal}</p>
+                      {meal.nutrients && <p className="text-xs text-slate-500 mt-1 uppercase tracking-wider font-semibold">Nutrients: {Array.isArray(meal.nutrients) ? meal.nutrients.join(', ') : meal.nutrients}</p>}
+                      {meal.tip && <p className="text-sm text-indigo-600 italic mt-2">💡 {meal.tip}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {aiAnalysis.dietPlan.snacks?.length > 0 && (
+              <div className="p-6 bg-pink-50 rounded-2xl border-2 border-pink-200 shadow-sm transition-all hover:shadow-md">
+                <h3 className="font-bold text-pink-700 mb-4 text-xl flex items-center gap-2">🍎 Snacks</h3>
+                <div className="space-y-4">
+                  {aiAnalysis.dietPlan.snacks.map((meal, i) => (
+                    <div key={i} className="bg-white/60 p-4 rounded-xl border border-pink-100">
+                      <p className="font-bold text-slate-800 text-base">{meal.meal}</p>
+                      {meal.nutrients && <p className="text-xs text-slate-500 mt-1 uppercase tracking-wider font-semibold">Nutrients: {Array.isArray(meal.nutrients) ? meal.nutrients.join(', ') : meal.nutrients}</p>}
+                      {meal.tip && <p className="text-sm text-pink-600 italic mt-2">💡 {meal.tip}</p>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-6 mb-6">
+            {aiAnalysis.dietPlan.foodsToIncrease?.length > 0 && (
+              <div className="p-6 bg-emerald-50 rounded-2xl border-2 border-emerald-200">
+                <h3 className="font-bold text-emerald-700 mb-4 text-lg">✅ Foods to Increase</h3>
+                <div className="flex flex-wrap gap-2">
+                  {aiAnalysis.dietPlan.foodsToIncrease.map((food, i) => (
+                    <span key={i} className="bg-white px-3 py-1.5 rounded-lg border border-emerald-200 text-sm font-semibold text-emerald-800 shadow-sm">{food}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {aiAnalysis.dietPlan.foodsToLimit?.length > 0 && (
+              <div className="p-6 bg-red-50 rounded-2xl border-2 border-red-200">
+                <h3 className="font-bold text-red-700 mb-4 text-lg">⚠️ Foods to Limit</h3>
+                <div className="flex flex-wrap gap-2">
+                  {aiAnalysis.dietPlan.foodsToLimit.map((food, i) => (
+                    <span key={i} className="bg-white px-3 py-1.5 rounded-lg border border-red-200 text-sm font-semibold text-red-800 shadow-sm">{food}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {aiAnalysis.dietPlan.hydration && (
+            <div className="p-6 bg-cyan-50 rounded-2xl border-2 border-cyan-200 mb-6">
+              <h3 className="font-bold text-cyan-700 mb-2 flex items-center gap-2">💧 Hydration</h3>
+              <p className="text-slate-700 font-medium">{aiAnalysis.dietPlan.hydration}</p>
+            </div>
+          )}
+
+          {aiAnalysis.dietPlan.tips?.length > 0 && (
+            <div className="p-6 bg-yellow-50 rounded-2xl border-2 border-yellow-200">
+              <h3 className="font-bold text-yellow-700 mb-4 flex items-center gap-2">💡 Health Tips</h3>
+              <ul className="space-y-3">
+                {aiAnalysis.dietPlan.tips.map((tip, i) => (
+                  <li key={i} className="text-slate-700 flex items-start gap-3">
+                    <span className="bg-yellow-200 text-yellow-700 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">{i + 1}</span>
+                    <span className="font-medium">{tip}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
         </div>
       )}
 

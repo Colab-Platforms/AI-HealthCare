@@ -43,7 +43,18 @@ exports.analyzeFood = async (req, res) => {
 // Log a meal
 exports.logMeal = async (req, res) => {
   try {
-    const { mealType, foodItems, imageUrl, notes, timestamp } = req.body;
+    const {
+      mealType,
+      foodItems,
+      imageUrl,
+      notes,
+      timestamp,
+      healthScore,
+      healthScore10,
+      micronutrients,
+      enhancementTips,
+      healthBenefitsSummary
+    } = req.body;
 
     if (!mealType || !foodItems || foodItems.length === 0) {
       return res.status(400).json({
@@ -58,6 +69,11 @@ exports.logMeal = async (req, res) => {
       foodItems,
       imageUrl,
       notes,
+      healthScore,
+      healthScore10,
+      micronutrients: micronutrients || [],
+      enhancementTips: enhancementTips || [],
+      healthBenefitsSummary,
       timestamp: timestamp || new Date()
     });
 
@@ -531,7 +547,8 @@ async function updateDailySummary(userId, date) {
     totalFats: 0,
     totalFiber: 0,
     totalSugar: 0,
-    totalSodium: 0
+    totalSodium: 0,
+    averageHealthScore: 0
   };
 
   const mealsLogged = {
@@ -541,15 +558,24 @@ async function updateDailySummary(userId, date) {
     snacks: 0
   };
 
+  let totalWeight = 0;
+  let weightedHealthScoreSum = 0;
+
   foodLogs.forEach(log => {
     if (log.totalNutrition) {
-      totals.totalCalories += log.totalNutrition.calories || 0;
+      const calories = log.totalNutrition.calories || 0;
+      totals.totalCalories += calories;
       totals.totalProtein += log.totalNutrition.protein || 0;
       totals.totalCarbs += log.totalNutrition.carbs || 0;
       totals.totalFats += log.totalNutrition.fats || 0;
       totals.totalFiber += log.totalNutrition.fiber || 0;
       totals.totalSugar += log.totalNutrition.sugar || 0;
       totals.totalSodium += log.totalNutrition.sodium || 0;
+
+      // Weight the health score by calories of the item
+      const healthScore = log.healthScore10 !== undefined ? log.healthScore10 * 10 : (log.healthScore || 50);
+      weightedHealthScoreSum += healthScore * (calories || 100); // at least 100 to avoid 0 weight
+      totalWeight += (calories || 100);
     }
 
     if (log.mealType === 'snack') {
@@ -558,6 +584,14 @@ async function updateDailySummary(userId, date) {
       mealsLogged[log.mealType] = true;
     }
   });
+
+  if (totalWeight > 0) {
+    totals.averageHealthScore = Math.round(weightedHealthScoreSum / totalWeight);
+  } else if (foodLogs.length > 0) {
+    // Fallback to simple average if no calories
+    const totalScore = foodLogs.reduce((sum, log) => sum + (log.healthScore10 !== undefined ? log.healthScore10 * 10 : (log.healthScore || 50)), 0);
+    totals.averageHealthScore = Math.round(totalScore / foodLogs.length);
+  }
 
   // Get user's health goal
   const healthGoal = await HealthGoal.findOne({ userId });
@@ -727,14 +761,15 @@ exports.quickFoodCheck = async (req, res) => {
                   sodium: formatRange(totalNutrition.sodium)
                 }
               },
-              healthScore: healthScore,
-              healthScore10: imageAnalysis.data.healthScore10 || (healthScore / 10),
-              isHealthy: healthScore >= 70,
+              healthScore: imageAnalysis.data.healthScore || healthScore,
+              healthScore10: imageAnalysis.data.healthScore10 || (imageAnalysis.data.healthScore ? imageAnalysis.data.healthScore / 10 : healthScore / 10),
+              isHealthy: imageAnalysis.data.isHealthy !== undefined ? imageAnalysis.data.isHealthy : healthScore >= 70,
               analysis: imageAnalysis.data.analysis || 'Food analyzed from image',
               micronutrients: imageAnalysis.data.micronutrients || [],
               enhancementTips: imageAnalysis.data.enhancementTips || [],
-              warnings: healthScore < 70 ? ['High calorie content', 'Consider healthier alternatives'] : [],
-              benefits: healthScore >= 70 ? ['Good nutritional balance'] : [],
+              warnings: imageAnalysis.data.warnings || (healthScore < 70 ? ['High calorie content', 'Consider healthier alternatives'] : []),
+              benefits: imageAnalysis.data.benefits || (healthScore >= 70 ? ['Good nutritional balance'] : []),
+              healthBenefitsSummary: imageAnalysis.data.healthBenefitsSummary || '',
               alternatives: alternatives
             }
           };
@@ -785,6 +820,7 @@ exports.quickFoodCheck = async (req, res) => {
       enhancementTips: Array.isArray(analysis.data.enhancementTips) ? analysis.data.enhancementTips : [],
       warnings: Array.isArray(analysis.data.warnings) ? analysis.data.warnings : [],
       benefits: Array.isArray(analysis.data.benefits) ? analysis.data.benefits : [],
+      healthBenefitsSummary: analysis.data.healthBenefitsSummary || '',
       alternatives: alternativesArray,
       imageUrl: imageBase64 ? `data:image/jpeg;base64,${imageBase64.substring(0, 100)}...` : null,
       timestamp: new Date()

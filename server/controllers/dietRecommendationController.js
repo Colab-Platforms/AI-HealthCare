@@ -183,7 +183,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
 
     // Save new diet plan with nutrition goals
     const dietPlan = new PersonalizedDietPlan({
-      user: userId,
+      userId: userId,
       inputData: {
         age: userData.age,
         gender: userData.gender,

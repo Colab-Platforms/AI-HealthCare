@@ -96,14 +96,17 @@ function LogFoodModal({ meal, mealType, onClose, onLogged }) {
     setLogging(true);
     try {
       await nutritionService.logMeal({
-        foodName: form.name,
-        calories: Number(form.calories),
-        protein: Number(form.protein),
-        carbs: Number(form.carbs),
-        fats: Number(form.fats),
         mealType: form.mealType,
-        quantity: Number(form.quantity),
-        unit: form.unit,
+        foodItems: [{
+          name: form.name,
+          quantity: `${form.quantity} ${form.unit}`,
+          nutrition: {
+            calories: Number(form.calories),
+            protein: Number(form.protein),
+            carbs: Number(form.carbs),
+            fats: Number(form.fats)
+          }
+        }],
         source: 'meal_plan',
       });
       toast.success(`${form.name} logged to ${form.mealType}! 🎉`);
@@ -286,11 +289,18 @@ export default function DietPlan() {
         const gd = await gr.json();
         if (gd.healthGoal) { dailyCalorieTarget = gd.healthGoal.dailyCalorieTarget || 2000; macroTargets = gd.healthGoal.macroTargets || macroTargets; hasGoals = true; }
       } catch { }
+      const snacks = [
+        ...(Array.isArray(dp.breakfast) ? [] : []), // placeholder/dummy to maintain structure if needed, but snacks is what we want
+        ...(Array.isArray(dp.snacks) ? dp.snacks : []),
+        ...(Array.isArray(dp.midMorningSnack) ? dp.midMorningSnack : []),
+        ...(Array.isArray(dp.eveningSnack) ? dp.eveningSnack : [])
+      ];
+
       setPersonalizedPlan({
         mealPlan: {
           breakfast: Array.isArray(dp.breakfast) ? dp.breakfast : [],
           lunch: Array.isArray(dp.lunch) ? dp.lunch : [],
-          snacks: Array.isArray(dp.snacks) ? dp.snacks : [],
+          snacks,
           dinner: Array.isArray(dp.dinner) ? dp.dinner : [],
         },
         dailyCalorieTarget, macroTargets, hasGoals,
@@ -308,7 +318,17 @@ export default function DietPlan() {
       const res = await fetch('/api/diet-recommendations/diet-plan/active', { headers: { Authorization: `Bearer ${token}` } });
       if (res.status === 404) return;
       const data = await res.json();
-      if (data.success && data.dietPlan) setPersonalizedPlan(data.dietPlan);
+      if (data.success && data.dietPlan) {
+        const dp = data.dietPlan;
+        // Map snack categories to 'snacks' array for display
+        if (dp.mealPlan && !dp.mealPlan.snacks) {
+          dp.mealPlan.snacks = [
+            ...(Array.isArray(dp.mealPlan.midMorningSnack) ? dp.mealPlan.midMorningSnack : []),
+            ...(Array.isArray(dp.mealPlan.eveningSnack) ? dp.mealPlan.eveningSnack : [])
+          ];
+        }
+        setPersonalizedPlan(dp);
+      }
     } catch { }
   };
 

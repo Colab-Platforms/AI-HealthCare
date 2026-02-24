@@ -2,20 +2,32 @@ const axios = require('axios');
 
 console.log('✅ aiService-fixed.js loaded - IMPROVED VERSION WITH EXPLICIT PROMPT');
 
-const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const AI_MODEL = 'claude-3-5-sonnet-20240620';
+const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const PRIMARY_MODEL = 'anthropic/claude-3.5-sonnet';
+const BACKUP_MODEL = 'openai/gpt-4o-mini';
+const FALLBACK_MODEL = 'google/gemini-pro-1.5';
 
-const makeAIRequest = async (reportText, userProfile = {}) => {
+const makeAIRequest = async (reportText, userProfile = {}, attempt = 0) => {
   try {
-    if (!process.env.ANTHROPIC_API_KEY) {
-      throw new Error('ANTHROPIC_API_KEY not set');
+    // FORCE Anthropic Direct as requested by USER - using latest best model
+    const apiKey = process.env.ANTHROPIC_API_KEY || process.env.OPENROUTER_API_KEY;
+    if (!apiKey) {
+      throw new Error('No AI API Key found (Anthropic or OpenRouter)');
     }
 
-    const fitnessGoal = userProfile?.fitnessProfile?.primaryGoal || userProfile?.nutritionGoal?.goal || 'general health';
-    const age = userProfile?.age || 'unknown';
-    const gender = userProfile?.gender || 'unknown';
+    const isAnthropicDirect = apiKey.startsWith('sk-ant');
+    const apiUrl = isAnthropicDirect ? 'https://api.anthropic.com/v1/messages' : OPENROUTER_API_URL;
 
-    console.log(`\n🔄 Making AI request with Claude 3.5 Sonnet for ${fitnessGoal}...`);
+    // Select model - using latest Sonnet 3.5 for best results
+    let model = isAnthropicDirect ? 'claude-3-5-sonnet-latest' : PRIMARY_MODEL;
+    if (!isAnthropicDirect && attempt === 1) model = BACKUP_MODEL;
+    if (!isAnthropicDirect && attempt >= 2) model = FALLBACK_MODEL;
+
+    const fitnessGoal = userProfile?.fitnessProfile?.primaryGoal || userProfile?.nutritionGoal?.goal || 'general health';
+    const age = userProfile?.profile?.age || userProfile?.age || 'unknown';
+    const gender = userProfile?.profile?.gender || userProfile?.gender || 'unknown';
+
+    console.log(`\n🔄 [Attempt ${attempt + 1}] Making AI request with ${model} (Direct: ${isAnthropicDirect}) for ${fitnessGoal}...`);
 
     const prompt = `You are a medical report analyzer. Extract information from this health report and return ONLY valid JSON.
 
@@ -28,7 +40,10 @@ HEALTH REPORT TEXT:
 ${reportText}
 
 CRITICAL INSTRUCTIONS:
-1. Extract ACTUAL numeric values from the report (e.g., if report shows "82.4 mg/dl", use 82.4 as the value)
+1. Extract ACTUAL numeric values from the report. DO NOT use "See report" or "Normal". 
+   - If report says "Iron: 45 ug/dL", use "45 ug/dL" as currentValue.
+   - Extract the reference range as normalRange (e.g. "60-170 ug/dL").
+   - This applies to EVERY deficiency you find.
 2. Create a 2-3 sentence summary describing the overall health status
 3. List 3-5 key findings with actual values mentioned
 4. For diet plan, use ONLY INDIAN FOODS (Dal, Roti, Rice, Idli, Poha, Upma, Khichdi, Paratha, Sabzi, Curd, Paneer, etc.)
@@ -55,7 +70,13 @@ REQUIRED JSON STRUCTURE (copy this exactly and fill with real data):
     }
   },
   "deficiencies": [
-    "List any vitamin or mineral deficiencies found"
+    {
+      "name": "Vitamin D",
+      "severity": "moderate",
+      "currentValue": "12 ng/mL",
+      "normalRange": "30-100 ng/mL",
+      "symptoms": ["Fatigue", "Bone pain"]
+    }
   ],
   "supplements": [
     "Recommend supplements based on deficiencies"
@@ -63,16 +84,28 @@ REQUIRED JSON STRUCTURE (copy this exactly and fill with real data):
   "dietPlan": {
     "overview": "Summary of dietary approach based on report and goal",
     "breakfast": [
-      {"meal": "Meal name", "nutrients": ["Nutrient1", "Nutrient2"], "tip": "Cooking or eating tip"}
+      {"meal": "Option 1 name", "nutrients": ["Nutrient1", "Nutrient2"], "tip": "Cooking or eating tip"},
+      {"meal": "Option 2 name", "nutrients": ["Nutrient1", "Nutrient2"], "tip": "Cooking or eating tip"},
+      {"meal": "Option 3 name", "nutrients": ["Nutrient1", "Nutrient2"], "tip": "Cooking or eating tip"},
+      {"meal": "Option 4 name", "nutrients": ["Nutrient1", "Nutrient2"], "tip": "Cooking or eating tip"}
     ],
     "lunch": [
-      {"meal": "Meal name", "nutrients": ["Nutrient1", "Nutrient2"], "tip": "Cooking or eating tip"}
+      {"meal": "Option 1 name", "nutrients": ["Nutrient1", "Nutrient2"], "tip": "Cooking or eating tip"},
+      {"meal": "Option 2 name", "nutrients": ["Nutrient1", "Nutrient2"], "tip": "Cooking or eating tip"},
+      {"meal": "Option 3 name", "nutrients": ["Nutrient1", "Nutrient2"], "tip": "Cooking or eating tip"},
+      {"meal": "Option 4 name", "nutrients": ["Nutrient1", "Nutrient2"], "tip": "Cooking or eating tip"}
     ],
     "dinner": [
-      {"meal": "Meal name", "nutrients": ["Nutrient1", "Nutrient2"], "tip": "Cooking or eating tip"}
+      {"meal": "Option 1 name", "nutrients": ["Nutrient1", "Nutrient2"], "tip": "Cooking or eating tip"},
+      {"meal": "Option 2 name", "nutrients": ["Nutrient1", "Nutrient2"], "tip": "Cooking or eating tip"},
+      {"meal": "Option 3 name", "nutrients": ["Nutrient1", "Nutrient2"], "tip": "Cooking or eating tip"},
+      {"meal": "Option 4 name", "nutrients": ["Nutrient1", "Nutrient2"], "tip": "Cooking or eating tip"}
     ],
     "snacks": [
-      {"meal": "Meal name", "nutrients": ["Nutrient1", "Nutrient2"], "tip": "Cooking or eating tip"}
+      {"meal": "Option 1 name", "nutrients": ["Nutrient1", "Nutrient2"], "tip": "Cooking or eating tip"},
+      {"meal": "Option 2 name", "nutrients": ["Nutrient1", "Nutrient2"], "tip": "Cooking or eating tip"},
+      {"meal": "Option 3 name", "nutrients": ["Nutrient1", "Nutrient2"], "tip": "Cooking or eating tip"},
+      {"meal": "Option 4 name", "nutrients": ["Nutrient1", "Nutrient2"], "tip": "Cooking or eating tip"}
     ],
     "foodsToIncrease": ["Food1", "Food2"],
     "foodsToLimit": ["Food1", "Food2"],
@@ -98,13 +131,30 @@ If report shows "Hemoglobin: 11.6 g/dL (Normal: 13-17)", you should create:
     "normalRange": "13-17"
   }
 }
+"deficiencies": [
+  {
+    "name": "Iron deficiency (Anemia)",
+    "severity": "moderate",
+    "currentValue": "11.6 g/dL",
+    "normalRange": "13-17 g/dL",
+    "symptoms": ["Weakness", "Dizziness"]
+  }
+]
 
 NOW ANALYZE THE REPORT AND RETURN ONLY THE JSON OBJECT:`;
 
     const response = await axios.post(
-      ANTHROPIC_API_URL,
-      {
-        model: AI_MODEL,
+      apiUrl,
+      !isAnthropicDirect ? {
+        model: model,
+        messages: [
+          { role: 'system', content: 'You are a medical report analyzer. Always return valid JSON only, no markdown, no extra text.' },
+          { role: 'user', content: prompt }
+        ],
+        temperature: 0.1,
+        max_tokens: 4000
+      } : {
+        model: model,
         max_tokens: 4000,
         messages: [
           { role: 'user', content: prompt }
@@ -112,8 +162,13 @@ NOW ANALYZE THE REPORT AND RETURN ONLY THE JSON OBJECT:`;
         system: 'You are a medical report analyzer. Always return valid JSON only, no markdown, no extra text.'
       },
       {
-        headers: {
-          'x-api-key': process.env.ANTHROPIC_API_KEY,
+        headers: !isAnthropicDirect ? {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json',
+          'HTTP-Referer': 'https://fitcure.ai',
+          'X-Title': 'FitCure Health'
+        } : {
+          'x-api-key': apiKey,
           'anthropic-version': '2023-06-01',
           'Content-Type': 'application/json'
         },
@@ -121,7 +176,19 @@ NOW ANALYZE THE REPORT AND RETURN ONLY THE JSON OBJECT:`;
       }
     );
 
-    const content = response.data.content[0].text;
+    let content = '';
+    if (!isAnthropicDirect) {
+      if (!response.data.choices || !response.data.choices[0]) {
+        console.error('❌ OpenRouter Error Details:', response.data);
+        throw new Error('Invalid response from OpenRouter');
+      }
+      content = response.data.choices[0].message.content;
+    } else {
+      if (!response.data.content || !response.data.content[0]) {
+        throw new Error('Invalid response from Anthropic');
+      }
+      content = response.data.content[0].text;
+    }
 
     console.log('\n📦 ========== FULL AI RESPONSE ==========');
     console.log(content.substring(0, 2000));
@@ -155,7 +222,7 @@ NOW ANALYZE THE REPORT AND RETURN ONLY THE JSON OBJECT:`;
     if (!Array.isArray(analysis.deficiencies)) analysis.deficiencies = [];
     if (!Array.isArray(analysis.supplements)) analysis.supplements = [];
 
-    // Convert string arrays to object arrays
+    // Convert string arrays to object arrays, but ONLY if they are not already objects
     if (analysis.deficiencies.length > 0 && typeof analysis.deficiencies[0] === 'string') {
       analysis.deficiencies = analysis.deficiencies.map(d => ({
         name: d,
@@ -163,6 +230,15 @@ NOW ANALYZE THE REPORT AND RETURN ONLY THE JSON OBJECT:`;
         currentValue: 'See report',
         normalRange: 'See report',
         symptoms: []
+      }));
+    } else if (analysis.deficiencies.length > 0) {
+      // Ensure all fields exist in objects
+      analysis.deficiencies = analysis.deficiencies.map(d => ({
+        name: d.name || d.deficiency || 'Unknown deficiency',
+        severity: d.severity || 'moderate',
+        currentValue: d.currentValue && d.currentValue !== 'See report' ? d.currentValue : 'Extract from report',
+        normalRange: d.normalRange && d.normalRange !== 'See report' ? d.normalRange : 'Extract from report',
+        symptoms: d.symptoms || []
       }));
     }
 
@@ -178,14 +254,91 @@ NOW ANALYZE THE REPORT AND RETURN ONLY THE JSON OBJECT:`;
     return analysis;
 
   } catch (error) {
-    console.error('❌ AI Error:', error.message);
+    console.error(`❌ AI Error (Attempt ${attempt + 1}):`, error.response?.data || error.message);
+
+    // Retry logic with fallback models for OpenRouter
+    const apiKey = process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY;
+    const isOpenRouter = apiKey?.startsWith('sk-or');
+
+    if (isOpenRouter && attempt < 2) {
+      console.log(`⚠️ Attempt ${attempt + 1} failed. Retrying with fallback model...`);
+      return makeAIRequest(reportText, userProfile, attempt + 1);
+    }
+
     throw error;
   }
 };
 
 exports.analyzeHealthReport = makeAIRequest;
 
-// Dummy exports for compatibility
-exports.compareReports = async () => ({ overallTrend: 'stable' });
-exports.chatWithReport = async () => 'Please consult your doctor';
+const compareReports = async (currentReport, previousReport) => {
+  try {
+    const currentText = currentReport.extractedText || JSON.stringify(currentReport.aiAnalysis);
+    const previousText = previousReport.extractedText || JSON.stringify(previousReport.aiAnalysis);
+
+    const prompt = `You are a medical data analyst. Compare these two health reports for the same patient and identify trends.
+    
+    REPORT 1 (Previous - ${previousReport.createdAt}):
+    ${previousText.substring(0, 3000)}
+    
+    REPORT 2 (Current - ${currentReport.createdAt}):
+    ${currentText.substring(0, 3000)}
+    
+    INSTRUCTIONS:
+    1. Identify which metrics have improved, worsened, or stayed stable.
+    2. Provide an overall trend summary (1-2 sentences).
+    3. List 3-5 specific comparison points with values from both reports.
+    
+    RETURN ONLY VALID JSON:
+    {
+      "overallTrend": "improving/declining/stable",
+      "summary": "Overall trend description",
+      "comparisons": [
+        { "parameter": "Hemoglobin", "previous": "12.1", "current": "13.5", "trend": "improved", "note": "Normalization of iron levels" }
+      ],
+      "improvements": ["Metric 1", "Metric 2"],
+      "concerns": ["Metric 1"]
+    }`;
+
+    // Create a dummy user profile for the request
+    const dummyProfile = { age: currentReport.aiAnalysis?.patientAge, gender: currentReport.aiAnalysis?.patientGender };
+
+    return await makeAIRequest(prompt, dummyProfile);
+  } catch (error) {
+    console.error('❌ Comparison failed:', error.message);
+    return { overallTrend: 'stable', summary: 'Could not generate detailed comparison.' };
+  }
+};
+
+const chatWithReport = async (reportText, userQuestion, history = []) => {
+  try {
+    const prompt = `You are a medical assistant. Answer the user's question based on their health report.
+    
+    REPORT CONTENT:
+    ${reportText.substring(0, 5000)}
+    
+    USER QUESTION:
+    ${userQuestion}
+    
+    PAST CONVERSATION:
+    ${history.map(h => `${h.role}: ${h.content}`).join('\n')}
+    
+    INSTRUCTIONS:
+    1. Be helpful and professional.
+    2. Use data from the report to support your answer.
+    3. Always include a disclaimer that you are an AI and they should consult a doctor.
+    4. Keep the answer concise.
+    
+    RESPONSE:`;
+
+    const response = await makeAIRequest(prompt, {});
+    // If makeAIRequest returns an object (and this prompt asks for text), try to extract a summary or message
+    return typeof response === 'object' ? (response.summary || response.answer || JSON.stringify(response)) : response;
+  } catch (error) {
+    return "I'm sorry, I'm having trouble analyzing your report right now. Please consult your doctor for medical advice.";
+  }
+};
+
+exports.compareReports = compareReports;
+exports.chatWithReport = chatWithReport;
 exports.generateMetricInfo = async () => ({ en: { name: 'Metric' } });

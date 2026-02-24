@@ -11,24 +11,26 @@ export default function SleepTracker({ isOpen, onClose }) {
   const [editHours, setEditHours] = useState('');
   const [editMinutes, setEditMinutes] = useState('');
   const [selectedDate, setSelectedDate] = useState(new Date());
+  const [usualSleepTime, setUsualSleepTime] = useState(localStorage.getItem('usual_sleep_time') || '22:00');
+  const [usualWakeupTime, setUsualWakeupTime] = useState(localStorage.getItem('usual_wakeup_time') || '06:00');
 
   // Load sleep data from localStorage
   useEffect(() => {
     const savedTracking = localStorage.getItem('sleep_tracking');
     const savedHistory = localStorage.getItem('sleep_history');
-    
+
     if (savedTracking) {
       const data = JSON.parse(savedTracking);
       setIsTracking(data.isTracking);
       setStartTime(data.startTime ? new Date(data.startTime) : null);
-      
+
       // Calculate elapsed time if tracking
       if (data.isTracking && data.startTime) {
         const elapsed = Date.now() - new Date(data.startTime).getTime();
         setElapsedTime(elapsed);
       }
     }
-    
+
     if (savedHistory) {
       setSleepHistory(JSON.parse(savedHistory));
     }
@@ -58,22 +60,22 @@ export default function SleepTracker({ isOpen, onClose }) {
     setIsTracking(true);
     setStartTime(now);
     setElapsedTime(0);
-    
+
     localStorage.setItem('sleep_tracking', JSON.stringify({
       isTracking: true,
       startTime: now.toISOString()
     }));
-    
+
     toast.success('Sleep tracking started 😴');
   };
 
   const stopSleep = () => {
     if (!startTime) return;
-    
+
     const endTime = new Date();
     const duration = endTime.getTime() - startTime.getTime();
     const { hours, minutes } = formatTime(duration);
-    
+
     const sleepRecord = {
       id: Date.now(),
       date: startTime.toISOString(),
@@ -84,16 +86,16 @@ export default function SleepTracker({ isOpen, onClose }) {
       minutes: minutes,
       quality: calculateQuality(hours)
     };
-    
+
     const updatedHistory = [sleepRecord, ...sleepHistory].slice(0, 7); // Keep last 7 days
     setSleepHistory(updatedHistory);
     localStorage.setItem('sleep_history', JSON.stringify(updatedHistory));
-    
+
     setIsTracking(false);
     setStartTime(null);
     setElapsedTime(0);
     localStorage.removeItem('sleep_tracking');
-    
+
     toast.success(`Sleep recorded: ${hours}h ${minutes}m 🌙`);
   };
 
@@ -107,16 +109,16 @@ export default function SleepTracker({ isOpen, onClose }) {
   const saveManualEdit = () => {
     const hours = parseInt(editHours) || 0;
     const minutes = parseInt(editMinutes) || 0;
-    
+
     if (hours === 0 && minutes === 0) {
       toast.error('Please enter valid time');
       return;
     }
-    
+
     const duration = (hours * 3600 + minutes * 60) * 1000;
     const endTime = new Date(selectedDate);
     const startTime = new Date(endTime.getTime() - duration);
-    
+
     const sleepRecord = {
       id: Date.now(),
       date: selectedDate.toISOString(),
@@ -128,20 +130,27 @@ export default function SleepTracker({ isOpen, onClose }) {
       quality: calculateQuality(hours),
       manual: true
     };
-    
+
     const updatedHistory = [sleepRecord, ...sleepHistory].slice(0, 7);
     setSleepHistory(updatedHistory);
     localStorage.setItem('sleep_history', JSON.stringify(updatedHistory));
-    
+
     setEditMode(false);
     setEditHours('');
     setEditMinutes('');
     toast.success('Sleep data saved manually ✅');
   };
 
+  const saveUsualTimes = (sleep, wakeup) => {
+    setUsualSleepTime(sleep);
+    setUsualWakeupTime(wakeup);
+    localStorage.setItem('usual_sleep_time', sleep);
+    localStorage.setItem('usual_wakeup_time', wakeup);
+  };
+
   const getTodaySleep = () => {
     const today = new Date().toDateString();
-    return sleepHistory.find(record => 
+    return sleepHistory.find(record =>
       new Date(record.date).toDateString() === today
     );
   };
@@ -184,250 +193,269 @@ export default function SleepTracker({ isOpen, onClose }) {
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto overflow-x-hidden">
           {/* Date & Week View */}
-        <div className="p-3 sm:p-4 border-b border-slate-700">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-xl sm:text-2xl font-bold text-white truncate">
-                {new Date().toLocaleDateString('en-US', { weekday: 'long' })}
-              </p>
-              <p className="text-xs sm:text-sm text-slate-400">
-                {new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}
-              </p>
+          <div className="p-3 sm:p-4 border-b border-slate-700">
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex-1 min-w-0">
+                <p className="text-xl sm:text-2xl font-bold text-white truncate">
+                  {new Date().toLocaleDateString('en-US', { weekday: 'long' })}
+                </p>
+                <p className="text-xs sm:text-sm text-slate-400">
+                  {new Date().toLocaleDateString('en-US', { day: 'numeric', month: 'long' })}
+                </p>
+              </div>
+              <button onClick={() => setEditMode(!editMode)} className="p-2 hover:bg-slate-800 rounded-lg transition flex-shrink-0">
+                <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
+              </button>
             </div>
-            <button onClick={() => setEditMode(!editMode)} className="p-2 hover:bg-slate-800 rounded-lg transition flex-shrink-0">
-              <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-slate-400" />
-            </button>
-          </div>
 
-          {/* Week Days */}
-          <div className="flex justify-between gap-1.5 sm:gap-2">
-            {weekDays.map((day, index) => {
-              const dayRecord = sleepHistory.find(r => 
-                new Date(r.date).toDateString() === day.toDateString()
-              );
-              const isToday = day.toDateString() === new Date().toDateString();
-              
-              return (
-                <div key={index} className={`flex-1 text-center ${isToday ? 'opacity-100' : 'opacity-60'}`}>
-                  <div className={`w-8 h-8 sm:w-10 sm:h-10 mx-auto rounded-full flex items-center justify-center mb-1 ${
-                    dayRecord 
-                      ? 'bg-gradient-to-br from-orange-500 to-orange-600 ring-2 ring-orange-400/30' 
-                      : 'bg-slate-800'
-                  } ${isToday ? 'ring-2 ring-white/30' : ''}`}>
-                    <span className="text-[10px] sm:text-xs font-medium text-white">
-                      {day.toLocaleDateString('en-US', { weekday: 'short' })[0]}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Bar Graph for Sleep Hours */}
-          <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-700/50">
-            <p className="text-xs text-slate-400 mb-3 font-medium">Weekly Sleep Pattern</p>
-            <div className="flex items-end justify-between gap-1.5 sm:gap-2 h-24">
+            {/* Week Days */}
+            <div className="flex justify-between gap-1.5 sm:gap-2">
               {weekDays.map((day, index) => {
-                const dayRecord = sleepHistory.find(r => 
+                const dayRecord = sleepHistory.find(r =>
                   new Date(r.date).toDateString() === day.toDateString()
                 );
-                const hours = dayRecord?.hours || 0;
-                const heightPercent = hours > 0 ? Math.max(Math.min((hours / 10) * 100, 100), 10) : 0;
-                
+                const isToday = day.toDateString() === new Date().toDateString();
+
                 return (
-                  <div key={index} className="flex-1 flex flex-col items-center gap-1 min-w-[10px]">
-                    <div className="w-full bg-slate-800 rounded-t-lg overflow-hidden relative" style={{ height: '80px' }}>
-                      {heightPercent > 0 && (
-                        <div 
-                          className="absolute bottom-0 w-full bg-gradient-to-t from-orange-500 to-orange-400 rounded-t-lg transition-all duration-700 ease-out"
-                          style={{ height: `${heightPercent}%` }}
-                        >
-                          <div className="absolute inset-0 bg-gradient-to-t from-transparent to-white/20" />
-                        </div>
-                      )}
+                  <div key={index} className={`flex-1 text-center ${isToday ? 'opacity-100' : 'opacity-60'}`}>
+                    <div className={`w-8 h-8 sm:w-10 sm:h-10 mx-auto rounded-full flex items-center justify-center mb-1 ${dayRecord
+                      ? 'bg-gradient-to-br from-orange-500 to-orange-600 ring-2 ring-orange-400/30'
+                      : 'bg-slate-800'
+                      } ${isToday ? 'ring-2 ring-white/30' : ''}`}>
+                      <span className="text-[10px] sm:text-xs font-medium text-white">
+                        {day.toLocaleDateString('en-US', { weekday: 'short' })[0]}
+                      </span>
                     </div>
-                    <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium">
-                      {day.toLocaleDateString('en-US', { weekday: 'short' })[0]}
-                    </span>
                   </div>
                 );
               })}
             </div>
-            {sleepHistory.length === 0 && (
-              <p className="text-xs text-slate-500 text-center mt-3">
-                📊 Add sleep data to see your weekly pattern
-              </p>
+
+            {/* Bar Graph for Sleep Hours */}
+            <div className="mt-3 sm:mt-4 pt-3 sm:pt-4 border-t border-slate-700/50">
+              <p className="text-xs text-slate-400 mb-3 font-medium">Weekly Sleep Pattern</p>
+              <div className="flex items-end justify-between gap-1.5 sm:gap-2 h-24">
+                {weekDays.map((day, index) => {
+                  const dayRecord = sleepHistory.find(r =>
+                    new Date(r.date).toDateString() === day.toDateString()
+                  );
+                  const hours = dayRecord?.hours || 0;
+                  const heightPercent = hours > 0 ? Math.max(Math.min((hours / 10) * 100, 100), 10) : 0;
+
+                  return (
+                    <div key={index} className="flex-1 flex flex-col items-center gap-1 min-w-[10px]">
+                      <div className="w-full bg-slate-800 rounded-t-lg overflow-hidden relative" style={{ height: '80px' }}>
+                        {heightPercent > 0 && (
+                          <div
+                            className="absolute bottom-0 w-full bg-gradient-to-t from-orange-500 to-orange-400 rounded-t-lg transition-all duration-700 ease-out"
+                            style={{ height: `${heightPercent}%` }}
+                          >
+                            <div className="absolute inset-0 bg-gradient-to-t from-transparent to-white/20" />
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-[9px] sm:text-[10px] text-slate-500 font-medium">
+                        {day.toLocaleDateString('en-US', { weekday: 'short' })[0]}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Usual Sleep/Wakeup Times Setting */}
+            <div className="p-3 sm:p-4 border-b border-slate-700/50">
+              <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-3">Sleep Preferences</h3>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-800/50 p-3 rounded-2xl border border-slate-700">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase mb-2">Usual Sleep</p>
+                  <input
+                    type="time"
+                    value={usualSleepTime}
+                    onChange={(e) => saveUsualTimes(e.target.value, usualWakeupTime)}
+                    className="bg-transparent text-white text-sm font-bold outline-none w-full"
+                  />
+                </div>
+                <div className="bg-slate-800/50 p-3 rounded-2xl border border-slate-700">
+                  <p className="text-[10px] font-bold text-slate-500 uppercase mb-2">Usual Wakeup</p>
+                  <input
+                    type="time"
+                    value={usualWakeupTime}
+                    onChange={(e) => saveUsualTimes(usualSleepTime, e.target.value)}
+                    className="bg-transparent text-white text-sm font-bold outline-none w-full"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Main Sleep Display */}
+          <div className="p-3 sm:p-6">
+            {/* Quality Circle & Time */}
+            <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
+              {/* Quality Circle */}
+              <div className="relative w-24 h-24 sm:w-32 sm:h-32 flex-shrink-0">
+                <svg className="w-full h-full transform -rotate-90">
+                  <circle cx="48" cy="48" r="42" stroke="#1e293b" strokeWidth="10" fill="none" className="sm:hidden" />
+                  <circle cx="64" cy="64" r="56" stroke="#1e293b" strokeWidth="12" fill="none" className="hidden sm:block" />
+                  <circle
+                    cx="48"
+                    cy="48"
+                    r="42"
+                    stroke="url(#gradient)"
+                    strokeWidth="10"
+                    fill="none"
+                    strokeDasharray={`${(todaySleep?.quality || 0) * 2.64} 264`}
+                    strokeLinecap="round"
+                    className="transition-all duration-1000 sm:hidden"
+                  />
+                  <circle
+                    cx="64"
+                    cy="64"
+                    r="56"
+                    stroke="url(#gradient)"
+                    strokeWidth="12"
+                    fill="none"
+                    strokeDasharray={`${(todaySleep?.quality || 0) * 3.51} 351`}
+                    strokeLinecap="round"
+                    className="transition-all duration-1000 hidden sm:block"
+                  />
+                  <defs>
+                    <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#f97316" />
+                      <stop offset="100%" stopColor="#fb923c" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-2xl sm:text-3xl font-bold text-white">{todaySleep?.quality || 0}%</span>
+                  <span className="text-xs text-slate-400">Quality</span>
+                </div>
+              </div>
+
+              {/* Time Stats */}
+              <div className="flex-1 min-w-0">
+                <div className="text-center sm:text-left">
+                  <span className="text-2xl sm:text-3xl font-bold text-white block">
+                    {isTracking ? `${currentHours}h ${currentMinutes}m` :
+                      todaySleep ? `${todaySleep.hours}h ${todaySleep.minutes}m` : '0h 0m'}
+                  </span>
+                  <p className="text-sm text-slate-400 mt-1">Time in bed</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Control Buttons */}
+            {!editMode ? (
+              <div className="space-y-2">
+                {!isTracking ? (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={startSleep}
+                      className="flex-1 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-semibold flex items-center justify-center gap-1.5 transition shadow-lg text-xs"
+                    >
+                      <Play className="w-3.5 h-3.5" />
+                      Start Sleep
+                    </button>
+                    <button
+                      onClick={() => setEditMode(true)}
+                      className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-medium flex items-center justify-center gap-1.5 transition text-xs"
+                    >
+                      <Edit2 className="w-3.5 h-3.5" />
+                      Manual Edit
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={stopSleep}
+                    className="w-full py-3 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition shadow-lg animate-pulse text-sm"
+                  >
+                    <Pause className="w-4 h-4" />
+                    Stop & Save Sleep
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="bg-slate-800 rounded-2xl p-4">
+                  <p className="text-sm text-slate-400 mb-3">Enter sleep duration</p>
+                  <div className="flex gap-3">
+                    <div className="flex-1">
+                      <input
+                        type="number"
+                        value={editHours}
+                        onChange={(e) => setEditHours(e.target.value)}
+                        placeholder="0"
+                        className="w-full px-4 py-3 bg-slate-700 text-white placeholder-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center text-lg font-semibold"
+                        min="0"
+                        max="24"
+                      />
+                      <p className="text-xs text-slate-500 mt-1 text-center">Hours</p>
+                    </div>
+                    <div className="flex-1">
+                      <input
+                        type="number"
+                        value={editMinutes}
+                        onChange={(e) => setEditMinutes(e.target.value)}
+                        placeholder="0"
+                        className="w-full px-4 py-3 bg-slate-700 text-white placeholder-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center text-lg font-semibold"
+                        min="0"
+                        max="59"
+                      />
+                      <p className="text-xs text-slate-500 mt-1 text-center">Minutes</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={saveManualEdit}
+                    className="flex-1 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-2xl font-semibold flex items-center justify-center gap-2 transition"
+                  >
+                    <Check className="w-4 h-4" />
+                    Save
+                  </button>
+                  <button
+                    onClick={() => {
+                      setEditMode(false);
+                      setEditHours('');
+                      setEditMinutes('');
+                    }}
+                    className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-medium transition"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Sleep History */}
+            {sleepHistory.length > 0 && (
+              <div className="mt-6 pt-6 border-t border-slate-700">
+                <h3 className="text-sm font-semibold text-slate-400 mb-3">Recent Sleep History</h3>
+                <div className="space-y-2">
+                  {sleepHistory.slice(0, 3).map((record) => (
+                    <div key={record.id} className="bg-slate-800/50 rounded-xl p-3 flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium text-white">
+                          {new Date(record.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                        </p>
+                        <p className="text-xs text-slate-400">
+                          {record.hours}h {record.minutes}m {record.manual && '(Manual)'}
+                        </p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-bold text-orange-400">{record.quality}%</p>
+                        <p className="text-xs text-slate-500">Quality</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
           </div>
         </div>
-
-        {/* Main Sleep Display */}
-        <div className="p-3 sm:p-6">
-          {/* Quality Circle & Time */}
-          <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
-            {/* Quality Circle */}
-            <div className="relative w-24 h-24 sm:w-32 sm:h-32 flex-shrink-0">
-              <svg className="w-full h-full transform -rotate-90">
-                <circle cx="48" cy="48" r="42" stroke="#1e293b" strokeWidth="10" fill="none" className="sm:hidden" />
-                <circle cx="64" cy="64" r="56" stroke="#1e293b" strokeWidth="12" fill="none" className="hidden sm:block" />
-                <circle 
-                  cx="48" 
-                  cy="48" 
-                  r="42" 
-                  stroke="url(#gradient)" 
-                  strokeWidth="10" 
-                  fill="none"
-                  strokeDasharray={`${(todaySleep?.quality || 0) * 2.64} 264`}
-                  strokeLinecap="round"
-                  className="transition-all duration-1000 sm:hidden"
-                />
-                <circle 
-                  cx="64" 
-                  cy="64" 
-                  r="56" 
-                  stroke="url(#gradient)" 
-                  strokeWidth="12" 
-                  fill="none"
-                  strokeDasharray={`${(todaySleep?.quality || 0) * 3.51} 351`}
-                  strokeLinecap="round"
-                  className="transition-all duration-1000 hidden sm:block"
-                />
-                <defs>
-                  <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#f97316" />
-                    <stop offset="100%" stopColor="#fb923c" />
-                  </linearGradient>
-                </defs>
-              </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
-                <span className="text-2xl sm:text-3xl font-bold text-white">{todaySleep?.quality || 0}%</span>
-                <span className="text-xs text-slate-400">Quality</span>
-              </div>
-            </div>
-
-            {/* Time Stats */}
-            <div className="flex-1 min-w-0">
-              <div className="text-center sm:text-left">
-                <span className="text-2xl sm:text-3xl font-bold text-white block">
-                  {isTracking ? `${currentHours}h ${currentMinutes}m` : 
-                   todaySleep ? `${todaySleep.hours}h ${todaySleep.minutes}m` : '0h 0m'}
-                </span>
-                <p className="text-sm text-slate-400 mt-1">Time in bed</p>
-              </div>
-            </div>
-          </div>
-
-          {/* Control Buttons */}
-          {!editMode ? (
-            <div className="space-y-2">
-              {!isTracking ? (
-                <div className="flex gap-2">
-                  <button
-                    onClick={startSleep}
-                    className="flex-1 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-semibold flex items-center justify-center gap-1.5 transition shadow-lg text-xs"
-                  >
-                    <Play className="w-3.5 h-3.5" />
-                    Start Sleep
-                  </button>
-                  <button
-                    onClick={() => setEditMode(true)}
-                    className="flex-1 py-2.5 bg-slate-800 hover:bg-slate-700 text-white rounded-xl font-medium flex items-center justify-center gap-1.5 transition text-xs"
-                  >
-                    <Edit2 className="w-3.5 h-3.5" />
-                    Manual Edit
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={stopSleep}
-                  className="w-full py-3 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition shadow-lg animate-pulse text-sm"
-                >
-                  <Pause className="w-4 h-4" />
-                  Stop & Save Sleep
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              <div className="bg-slate-800 rounded-2xl p-4">
-                <p className="text-sm text-slate-400 mb-3">Enter sleep duration</p>
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <input
-                      type="number"
-                      value={editHours}
-                      onChange={(e) => setEditHours(e.target.value)}
-                      placeholder="0"
-                      className="w-full px-4 py-3 bg-slate-700 text-white placeholder-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center text-lg font-semibold"
-                      min="0"
-                      max="24"
-                    />
-                    <p className="text-xs text-slate-500 mt-1 text-center">Hours</p>
-                  </div>
-                  <div className="flex-1">
-                    <input
-                      type="number"
-                      value={editMinutes}
-                      onChange={(e) => setEditMinutes(e.target.value)}
-                      placeholder="0"
-                      className="w-full px-4 py-3 bg-slate-700 text-white placeholder-slate-400 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 text-center text-lg font-semibold"
-                      min="0"
-                      max="59"
-                    />
-                    <p className="text-xs text-slate-500 mt-1 text-center">Minutes</p>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex gap-3">
-                <button
-                  onClick={saveManualEdit}
-                  className="flex-1 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-2xl font-semibold flex items-center justify-center gap-2 transition"
-                >
-                  <Check className="w-4 h-4" />
-                  Save
-                </button>
-                <button
-                  onClick={() => {
-                    setEditMode(false);
-                    setEditHours('');
-                    setEditMinutes('');
-                  }}
-                  className="flex-1 py-3 bg-slate-800 hover:bg-slate-700 text-white rounded-2xl font-medium transition"
-                >
-                  Cancel
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Sleep History */}
-          {sleepHistory.length > 0 && (
-            <div className="mt-6 pt-6 border-t border-slate-700">
-              <h3 className="text-sm font-semibold text-slate-400 mb-3">Recent Sleep History</h3>
-              <div className="space-y-2">
-                {sleepHistory.slice(0, 3).map((record) => (
-                  <div key={record.id} className="bg-slate-800/50 rounded-xl p-3 flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-white">
-                        {new Date(record.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
-                      </p>
-                      <p className="text-xs text-slate-400">
-                        {record.hours}h {record.minutes}m {record.manual && '(Manual)'}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-lg font-bold text-orange-400">{record.quality}%</p>
-                      <p className="text-xs text-slate-500">Quality</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-        </div>
       </div>
-    </div>
+    </div >
   );
 }

@@ -58,7 +58,7 @@ exports.uploadReport = async (req, res) => {
       console.log('---PDF-END---');
 
       console.log('\n🔄 Analyzing report...');
-      aiAnalysis = await analyzeHealthReport(extractedText, userProfile);
+      aiAnalysis = await analyzeHealthReport(extractedText, req.user);
 
       console.log('\n📦 ========== FULL AI ANALYSIS OBJECT ==========');
       console.log('Type:', typeof aiAnalysis);
@@ -234,11 +234,11 @@ exports.uploadReport = async (req, res) => {
       if (typeof aiAnalysis.deficiencies[0] === 'string') {
         console.warn('⚠️ deficiencies array contains strings, converting to objects...');
         aiAnalysis.deficiencies = aiAnalysis.deficiencies.map(def => ({
-          name: def,
-          severity: 'moderate',
-          currentValue: 'N/A',
-          normalRange: 'N/A',
-          symptoms: []
+          name: typeof def === 'string' ? def : (def.name || def.deficiency || 'Unknown Deficiency'),
+          severity: (typeof def === 'object' && def.severity) ? def.severity : 'moderate',
+          currentValue: (typeof def === 'object' && def.currentValue) ? def.currentValue : 'N/A',
+          normalRange: (typeof def === 'object' && def.normalRange) ? def.normalRange : 'N/A',
+          symptoms: (typeof def === 'object' && def.symptoms) ? def.symptoms : []
         }));
         console.log('✅ Converted deficiencies to objects:', aiAnalysis.deficiencies.length);
       }
@@ -316,9 +316,8 @@ exports.uploadReport = async (req, res) => {
       if (previousReport && previousReport.aiAnalysis) {
         console.log('🔄 Found previous report, generating comparison...');
 
-        // Use the real compareReports from aiService.js
-        const { compareReports: realCompareReports } = require('../services/aiService');
-        comparisonData = await realCompareReports(report, previousReport);
+        // Use the robust compareReports from aiService-fixed.js
+        comparisonData = await compareReports(report, previousReport);
 
         // Save comparison to report
         report.comparison = {
@@ -786,8 +785,8 @@ exports.saveChallengeData = async (req, res) => {
       const dayData = challengeData[day];
       const completedTasks = Object.values(dayData).filter(Boolean).length;
 
-      // Day is considered complete if at least 5 tasks are done
-      if (completedTasks >= 5) {
+      // Day is considered complete if all tasks are done (4 habits)
+      if (completedTasks >= 4) {
         streak++;
       } else {
         break;
