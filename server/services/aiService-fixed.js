@@ -9,25 +9,24 @@ const FALLBACK_MODEL = 'google/gemini-pro-1.5';
 
 const makeAIRequest = async (reportText, userProfile = {}, attempt = 0) => {
   try {
-    // FORCE Anthropic Direct as requested by USER - using latest best model
-    const apiKey = process.env.ANTHROPIC_API_KEY || process.env.OPENROUTER_API_KEY;
+    // Use OpenRouter with Claude - more reliable than direct Anthropic API
+    const apiKey = process.env.OPENROUTER_API_KEY;
     if (!apiKey) {
-      throw new Error('No AI API Key found (Anthropic or OpenRouter)');
+      throw new Error('OPENROUTER_API_KEY not found');
     }
 
-    const isAnthropicDirect = apiKey.startsWith('sk-ant');
-    const apiUrl = isAnthropicDirect ? 'https://api.anthropic.com/v1/messages' : OPENROUTER_API_URL;
+    const apiUrl = OPENROUTER_API_URL;
 
-    // Select model - using latest Sonnet 3.5 for best results
-    let model = isAnthropicDirect ? 'claude-3-5-sonnet-latest' : PRIMARY_MODEL;
-    if (!isAnthropicDirect && attempt === 1) model = BACKUP_MODEL;
-    if (!isAnthropicDirect && attempt >= 2) model = FALLBACK_MODEL;
+    // Select model - try Claude first, then fallback to GPT-4
+    let model = PRIMARY_MODEL; // anthropic/claude-3.5-sonnet
+    if (attempt === 1) model = BACKUP_MODEL; // openai/gpt-4o-mini
+    if (attempt >= 2) model = FALLBACK_MODEL; // google/gemini-pro-1.5
 
     const fitnessGoal = userProfile?.fitnessProfile?.primaryGoal || userProfile?.nutritionGoal?.goal || 'general health';
     const age = userProfile?.profile?.age || userProfile?.age || 'unknown';
     const gender = userProfile?.profile?.gender || userProfile?.gender || 'unknown';
 
-    console.log(`\n🔄 [Attempt ${attempt + 1}] Making AI request with ${model} (Direct: ${isAnthropicDirect}) for ${fitnessGoal}...`);
+    console.log(`\n🔄 [Attempt ${attempt + 1}] Making AI request with ${model} via OpenRouter for ${fitnessGoal}...`);
 
     const prompt = `You are a medical report analyzer. Extract information from this health report and return ONLY valid JSON.
 
@@ -145,7 +144,7 @@ NOW ANALYZE THE REPORT AND RETURN ONLY THE JSON OBJECT:`;
 
     const response = await axios.post(
       apiUrl,
-      !isAnthropicDirect ? {
+      {
         model: model,
         messages: [
           { role: 'system', content: 'You are a medical report analyzer. Always return valid JSON only, no markdown, no extra text.' },
@@ -153,42 +152,24 @@ NOW ANALYZE THE REPORT AND RETURN ONLY THE JSON OBJECT:`;
         ],
         temperature: 0.1,
         max_tokens: 4000
-      } : {
-        model: model,
-        max_tokens: 4000,
-        messages: [
-          { role: 'user', content: prompt }
-        ],
-        system: 'You are a medical report analyzer. Always return valid JSON only, no markdown, no extra text.'
       },
       {
-        headers: !isAnthropicDirect ? {
+        headers: {
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
           'HTTP-Referer': 'https://fitcure.ai',
           'X-Title': 'FitCure Health'
-        } : {
-          'x-api-key': apiKey,
-          'anthropic-version': '2023-06-01',
-          'Content-Type': 'application/json'
         },
         timeout: 120000
       }
     );
 
     let content = '';
-    if (!isAnthropicDirect) {
-      if (!response.data.choices || !response.data.choices[0]) {
-        console.error('❌ OpenRouter Error Details:', response.data);
-        throw new Error('Invalid response from OpenRouter');
-      }
-      content = response.data.choices[0].message.content;
-    } else {
-      if (!response.data.content || !response.data.content[0]) {
-        throw new Error('Invalid response from Anthropic');
-      }
-      content = response.data.content[0].text;
+    if (!response.data.choices || !response.data.choices[0]) {
+      console.error('❌ OpenRouter Error Details:', response.data);
+      throw new Error('Invalid response from OpenRouter');
     }
+    content = response.data.choices[0].message.content;
 
     console.log('\n📦 ========== FULL AI RESPONSE ==========');
     console.log(content.substring(0, 2000));
