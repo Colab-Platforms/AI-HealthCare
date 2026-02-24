@@ -7,8 +7,9 @@ const axios = require('axios');
 
 class NutritionAI {
   constructor() {
-    this.apiKey = process.env.OPENROUTER_API_KEY;
-    this.apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+    this.apiKey = process.env.ANTHROPIC_API_KEY;
+    this.apiUrl = 'https://api.anthropic.com/v1/messages';
+    this.model = 'claude-3-5-sonnet-20240620';
   }
 
   /**
@@ -101,7 +102,9 @@ CRITICAL: Use accurate Indian food nutrition data. Plain roti is LOW calorie (70
       const response = await axios.post(
         this.apiUrl,
         {
-          model: 'openai/gpt-4o',
+          model: this.model,
+          max_tokens: 2000,
+          system: 'You are a professional nutritionist AI with expertise in Indian food recognition and accurate nutrition data.',
           messages: [
             {
               role: 'user',
@@ -111,29 +114,29 @@ CRITICAL: Use accurate Indian food nutrition data. Plain roti is LOW calorie (70
                   text: prompt
                 },
                 {
-                  type: 'image_url',
-                  image_url: {
-                    url: `data:image/jpeg;base64,${imageBase64}`
+                  type: 'image',
+                  source: {
+                    type: 'base64',
+                    media_type: 'image/jpeg',
+                    data: imageBase64
                   }
                 }
               ]
             }
           ],
-          temperature: 0.3, // Lower temperature for more consistent results
-          max_tokens: 2000
+          temperature: 0.3
         },
         {
           headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': process.env.APP_URL || 'http://localhost:5173',
-            'X-Title': 'HealthAI Nutrition Analyzer'
+            'x-api-key': this.apiKey,
+            'anthropic-version': '2023-06-01',
+            'Content-Type': 'application/json'
           },
-          timeout: 30000
+          timeout: 45000
         }
       );
 
-      const aiResponse = response.data.choices[0].message.content;
+      const aiResponse = response.data.content[0].text;
 
       // Parse JSON response
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
@@ -234,28 +237,28 @@ Be accurate with portion sizes and nutrition values. Use standard serving sizes 
       const response = await axios.post(
         this.apiUrl,
         {
-          model: 'openai/gpt-4o',
+          model: this.model,
+          max_tokens: 2000,
+          system: 'You are a professional nutritionist AI.',
           messages: [
             {
               role: 'user',
               content: prompt
             }
           ],
-          temperature: 0.3,
-          max_tokens: 2000
+          temperature: 0.3
         },
         {
           headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': process.env.APP_URL || 'http://localhost:5173',
-            'X-Title': 'HealthAI Nutrition Analyzer'
+            'x-api-key': this.apiKey,
+            'anthropic-version': '2023-06-01',
+            'Content-Type': 'application/json'
           },
           timeout: 30000
         }
       );
 
-      const aiResponse = response.data.choices[0].message.content;
+      const aiResponse = response.data.content[0].text;
 
       // Parse JSON response
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
@@ -336,23 +339,23 @@ Return response in JSON format:
       const response = await axios.post(
         this.apiUrl,
         {
-          model: 'openai/gpt-4o',
+          model: this.model,
+          max_tokens: 1500,
+          system: 'You are a professional nutritionist AI specializing in Indian cuisine and dietary habits.',
           messages: [{ role: 'user', content: prompt }],
-          temperature: 0.7,
-          max_tokens: 1500
+          temperature: 0.7
         },
         {
           headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': process.env.APP_URL || 'http://localhost:5173',
-            'X-Title': 'HealthAI Nutrition Analyzer'
+            'x-api-key': this.apiKey,
+            'anthropic-version': '2023-06-01',
+            'Content-Type': 'application/json'
           },
           timeout: 30000
         }
       );
 
-      const aiResponse = response.data.choices[0].message.content;
+      const aiResponse = response.data.content[0].text;
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
 
       if (jsonMatch) {
@@ -436,23 +439,23 @@ If the food is already healthy, return empty alternatives array.`;
       const response = await axios.post(
         this.apiUrl,
         {
-          model: 'openai/gpt-4o',
+          model: this.model,
+          max_tokens: 1500,
+          system: 'You are a professional nutritionist AI specializing in Indian cuisine and dietary habits.',
           messages: [{ role: 'user', content: prompt }],
-          temperature: 0.3,
-          max_tokens: 1500
+          temperature: 0.3
         },
         {
           headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': process.env.APP_URL || 'http://localhost:5173',
-            'X-Title': 'HealthAI Nutrition Analyzer'
+            'x-api-key': this.apiKey,
+            'anthropic-version': '2023-06-01',
+            'Content-Type': 'application/json'
           },
           timeout: 30000
         }
       );
 
-      const aiResponse = response.data.choices[0].message.content;
+      const aiResponse = response.data.content[0].text;
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
 
       if (jsonMatch) {
@@ -516,23 +519,23 @@ Return in JSON format:
       const response = await axios.post(
         this.apiUrl,
         {
-          model: 'openai/gpt-4o',
+          model: this.model,
+          max_tokens: 1500,
+          system: 'You are a professional nutritionist AI.',
           messages: [{ role: 'user', content: prompt }],
-          temperature: 0.7,
-          max_tokens: 1500
+          temperature: 0.7
         },
         {
           headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': process.env.APP_URL || 'http://localhost:5173',
-            'X-Title': 'HealthAI Nutrition Analyzer'
+            'x-api-key': this.apiKey,
+            'anthropic-version': '2023-06-01',
+            'Content-Type': 'application/json'
           },
           timeout: 30000
         }
       );
 
-      const aiResponse = response.data.choices[0].message.content;
+      const aiResponse = response.data.content[0].text;
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
 
       if (jsonMatch) {

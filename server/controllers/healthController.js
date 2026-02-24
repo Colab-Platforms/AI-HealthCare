@@ -273,9 +273,15 @@ exports.uploadReport = async (req, res) => {
       report.reportDate = new Date(); // Fallback to current date
     }
 
-    // Extract and save patient name from AI analysis
+    // Extract and save patient information from AI analysis
     if (aiAnalysis.patientName) {
       report.patientName = aiAnalysis.patientName.trim();
+    }
+    if (aiAnalysis.patientAge) {
+      report.patientAge = Number(aiAnalysis.patientAge);
+    }
+    if (aiAnalysis.patientGender) {
+      report.patientGender = aiAnalysis.patientGender.trim();
     }
 
     report.status = 'completed';

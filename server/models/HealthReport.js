@@ -4,6 +4,8 @@ const healthReportSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   reportType: { type: String, required: true },
   patientName: { type: String, description: 'Patient name extracted from report for validation' },
+  patientAge: { type: Number, description: 'Patient age extracted from report' },
+  patientGender: { type: String, description: 'Patient gender extracted from report' },
   originalFile: { filename: String, path: String, mimetype: String },
   extractedText: String,
   reportDate: { type: Date, description: 'Date mentioned in the report (Reported On)' },
@@ -79,9 +81,9 @@ const healthReportSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // ✅ PRE-SAVE HOOK: Fix array validation issues BEFORE MongoDB validation
-healthReportSchema.pre('save', function(next) {
+healthReportSchema.pre('save', function (next) {
   console.log('🔧 [PRE-SAVE HOOK] Running validation fixes...');
-  
+
   if (this.aiAnalysis) {
     // Fix deficiencies - check if it's an array of strings instead of objects
     if (Array.isArray(this.aiAnalysis.deficiencies)) {
@@ -110,7 +112,7 @@ healthReportSchema.pre('save', function(next) {
         this.aiAnalysis.deficiencies = [];
       }
     }
-    
+
     // Fix supplements - check if it's an array of strings instead of objects
     if (Array.isArray(this.aiAnalysis.supplements)) {
       // Check if array contains strings instead of objects
@@ -136,7 +138,7 @@ healthReportSchema.pre('save', function(next) {
         this.aiAnalysis.supplements = [];
       }
     }
-    
+
     // Fix keyFindings
     if (!Array.isArray(this.aiAnalysis.keyFindings)) {
       console.log('🔧 [PRE-SAVE] Fixing keyFindings');
@@ -146,7 +148,7 @@ healthReportSchema.pre('save', function(next) {
         this.aiAnalysis.keyFindings = [];
       }
     }
-    
+
     // Fix riskFactors
     if (this.aiAnalysis.riskFactors && !Array.isArray(this.aiAnalysis.riskFactors)) {
       console.log('🔧 [PRE-SAVE] Fixing riskFactors');
@@ -156,12 +158,12 @@ healthReportSchema.pre('save', function(next) {
         this.aiAnalysis.riskFactors = [];
       }
     }
-    
+
     console.log('✅ [PRE-SAVE] Validation fixes complete');
     console.log('✅ [PRE-SAVE] Deficiencies:', this.aiAnalysis.deficiencies?.length, 'items');
     console.log('✅ [PRE-SAVE] Supplements:', this.aiAnalysis.supplements?.length, 'items');
   }
-  
+
   next();
 });
 

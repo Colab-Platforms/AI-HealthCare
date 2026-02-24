@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, MessageSquare, Utensils, FileText, MoreVertical, Settings, LogOut, Heart, Watch, X, Calendar, ScanLine } from 'lucide-react';
+import { LayoutDashboard, MessageSquare, Utensils, FileText, MoreVertical, Settings, LogOut, Heart, Watch, X, Calendar, ScanLine, Activity, Bell } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function MobileBottomNav() {
@@ -17,37 +17,37 @@ export default function MobileBottomNav() {
       // Check for any fixed overlay with high z-index (modal backdrop)
       const fixedElements = document.querySelectorAll('.fixed');
       let hasModal = false;
-      
+
       fixedElements.forEach(el => {
         // Check if it's a modal (has bg-black/50 or similar backdrop)
         const classList = el.className;
         const hasBackdrop = classList.includes('bg-black') || classList.includes('inset-0');
         const hasHighZ = classList.includes('z-50') || classList.includes('z-40');
-        
+
         // If it has both backdrop and high z-index, it's likely a modal
         if (hasBackdrop && hasHighZ && el.offsetHeight > 0) {
           hasModal = true;
         }
       });
-      
+
       // Also check for AI Chat page
       if (location.pathname === '/ai-chat') {
         hasModal = true;
       }
-      
+
       setHideNavbar(hasModal || showMoreMenu);
     };
 
     // Check immediately
     checkModal();
-    
+
     // Check on a small delay to catch modals that render after this effect
     const timer = setTimeout(checkModal, 100);
-    
+
     // Watch for changes
     const observer = new MutationObserver(checkModal);
     observer.observe(document.body, { childList: true, subtree: true });
-    
+
     return () => {
       clearTimeout(timer);
       observer.disconnect();
@@ -56,7 +56,7 @@ export default function MobileBottomNav() {
 
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Home' },
-    { path: '/nutrition', icon: Utensils, label: 'Nutrition' },
+    { path: '/nutrition', icon: Activity, label: 'Nutrition' },
     { path: '/quick-food-scan', icon: ScanLine, label: 'Scan Food', isCenter: true },
     { path: '/upload', icon: FileText, label: 'Reports' }
   ];
@@ -141,17 +141,15 @@ export default function MobileBottomNav() {
                   key={item.path}
                   to={item.path}
                   onClick={() => setShowMoreMenu(false)}
-                  className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all text-sm group ${
-                    active
-                      ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg'
-                      : 'text-slate-700 hover:bg-cyan-50'
-                  }`}
+                  className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all text-sm group ${active
+                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg'
+                    : 'text-slate-700 hover:bg-cyan-50'
+                    }`}
                 >
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
-                    active 
-                      ? 'bg-white/20' 
-                      : 'bg-cyan-100 group-hover:bg-cyan-200'
-                  }`}>
+                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${active
+                    ? 'bg-white/20'
+                    : 'bg-cyan-100 group-hover:bg-cyan-200'
+                    }`}>
                     <Icon className={`w-5 h-5 ${active ? 'text-white' : 'text-cyan-600'}`} />
                   </div>
                   <span className="font-medium">{item.label}</span>
@@ -218,15 +216,14 @@ export default function MobileBottomNav() {
             );
           })}
 
-          {/* More Button */}
           <button
             onClick={() => setShowMoreMenu(!showMoreMenu)}
             className={`nav-item-modern flex flex-col items-center justify-center gap-0.5 ${showMoreMenu ? 'active' : ''}`}
-            aria-label="More options"
-            title="More options"
+            aria-label="More"
+            title="More"
           >
             <MoreVertical className="w-5 h-5" />
-            <span className="text-[9px] font-medium">More</span>
+            <span className="text-[11px] font-medium">More</span>
           </button>
         </div>
       </nav>

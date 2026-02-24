@@ -32,7 +32,7 @@ export default function AllReports() {
   const handleDeleteReport = async (reportId, e) => {
     e.preventDefault(); // Prevent navigation
     e.stopPropagation();
-    
+
     if (!window.confirm('Are you sure you want to delete this report? This action cannot be undone.')) {
       return;
     }
@@ -46,8 +46,8 @@ export default function AllReports() {
     }
   };
 
-  const filteredReports = filter === 'all' 
-    ? reports 
+  const filteredReports = filter === 'all'
+    ? reports
     : reports.filter(r => r.reportType.toLowerCase().includes(filter.toLowerCase()));
 
   const reportTypes = ['all', ...new Set(reports.map(r => r.reportType))];
@@ -57,7 +57,7 @@ export default function AllReports() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-4 sm:space-y-6 animate-fade-in p-4">
+    <div className="max-w-6xl mx-auto space-y-8 animate-fade-in p-6 pb-24">
       {/* Welcome Message - Mobile Only */}
       <div className="md:hidden flex items-center justify-between">
         <div className="flex items-center gap-2 flex-1 min-w-0">
@@ -78,66 +78,71 @@ export default function AllReports() {
         </button>
       </div>
 
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
-        <div>
-          <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-cyan-400 font-medium transition-colors mb-2 text-sm">
-            <ArrowLeft className="w-4 h-4" /> Back to Dashboard
+      {/* Header Section */}
+      <div className="card card-gradient p-8 text-slate-800 shadow-2xl relative overflow-hidden ring-1 ring-white/50 border-none">
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-3xl -mr-20 -mt-20"></div>
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div>
+            <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-500 hover:text-purple-600 font-black transition-all mb-4 text-[10px] uppercase tracking-widest group">
+              <div className="p-1.5 bg-white/50 rounded-lg group-hover:scale-110 transition-transform shadow-sm border border-white">
+                <ArrowLeft className="w-3.5 h-3.5" />
+              </div>
+              Back to Dashboard
+            </Link>
+            <h1 className="text-3xl font-black text-slate-900 tracking-tight mb-2 uppercase">Your Health Archive</h1>
+            <p className="text-slate-500 text-sm font-bold opacity-80">Track your progress across {reports.length} diagnostic reports</p>
+          </div>
+          <Link
+            to="/upload"
+            className="px-6 py-4 bg-slate-900 text-white rounded-[1.5rem] font-black hover:shadow-2xl transition-all flex items-center justify-center gap-3 text-sm uppercase tracking-widest active:scale-95 group shadow-xl"
+          >
+            <Upload className="w-4 h-4 group-hover:-translate-y-1 transition-transform" />
+            Upload New Report
           </Link>
-          <h1 className="text-2xl sm:text-3xl font-bold text-slate-800">All Health Reports</h1>
-          <p className="text-slate-500 mt-1 text-sm">View and manage all your uploaded health reports</p>
         </div>
-        <Link 
-          to="/upload" 
-          className="px-4 py-2.5 sm:px-6 sm:py-3 text-white rounded-xl font-medium hover:shadow-lg transition-all flex items-center justify-center gap-2 text-sm sm:text-base whitespace-nowrap"
-          style={{ backgroundColor: '#8B7355' }}
-        >
-          <Upload className="w-4 h-4" />
-          Upload Report
-        </Link>
       </div>
 
-      {/* Stats Summary - Above filters */}
+      {/* Stats Summary - Premium Grid */}
       {reports.length > 0 && (
-        <div className="grid grid-cols-3 gap-2 sm:gap-4">
-          <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-6">
-            <div className="flex flex-col sm:flex-row items-center sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-cyan-100 flex items-center justify-center mb-2 sm:mb-0">
-                <FileText className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-500" />
+        <div className="grid grid-cols-3 gap-4">
+          <div className="card p-5 group hover:scale-[1.02] transition-all duration-300">
+            <div className="flex flex-col items-center sm:items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center shadow-inner group-hover:rotate-12 transition-transform">
+                <FileText className="w-5 h-5 text-purple-600" />
               </div>
-              <div className="text-center sm:text-left">
-                <p className="text-xl sm:text-2xl font-bold text-slate-800">{reports.length}</p>
-                <p className="text-slate-500 text-[10px] sm:text-sm">Total Reports</p>
+              <div>
+                <p className="text-3xl font-black text-slate-900 tracking-tighter leading-none">{reports.length}</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">Reports</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-6">
-            <div className="flex flex-col sm:flex-row items-center sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-emerald-100 flex items-center justify-center mb-2 sm:mb-0">
-                <TrendingUp className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-500" />
+          <div className="card p-5 group hover:scale-[1.02] transition-all duration-300">
+            <div className="flex flex-col items-center sm:items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center shadow-inner group-hover:rotate-12 transition-transform">
+                <TrendingUp className="w-5 h-5 text-emerald-600" />
               </div>
-              <div className="text-center sm:text-left">
-                <p className="text-xl sm:text-2xl font-bold text-slate-800">
+              <div>
+                <p className="text-3xl font-black text-slate-900 tracking-tighter leading-none">
                   {reports.filter(r => r.status === 'completed').length}
                 </p>
-                <p className="text-slate-500 text-[10px] sm:text-sm">Analyzed</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">Analyzed</p>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl border border-slate-200 p-3 sm:p-6">
-            <div className="flex flex-col sm:flex-row items-center sm:gap-3">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-amber-100 flex items-center justify-center mb-2 sm:mb-0">
-                <Calendar className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500" />
+          <div className="card p-5 group hover:scale-[1.02] transition-all duration-300">
+            <div className="flex flex-col items-center sm:items-start gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center shadow-inner group-hover:rotate-12 transition-transform">
+                <Calendar className="w-5 h-5 text-amber-600" />
               </div>
-              <div className="text-center sm:text-left">
-                <p className="text-xs sm:text-base font-bold text-slate-800 leading-tight">
-                  {reports.length > 0 
+              <div>
+                <p className="text-xl sm:text-2xl font-black text-slate-900 tracking-tighter leading-none pt-1">
+                  {reports.length > 0
                     ? new Date(reports[0].createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
                     : 'N/A'}
                 </p>
-                <p className="text-slate-500 text-[10px] sm:text-sm">Latest</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-2">Latest</p>
               </div>
             </div>
           </div>
@@ -145,18 +150,17 @@ export default function AllReports() {
       )}
 
       {/* Filter Tabs - Horizontal scroll on mobile */}
-      <div className="flex gap-2 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
+      <div className="flex gap-3 overflow-x-auto pb-4 snap-x snap-mandatory scrollbar-hide -mx-6 px-6 sm:mx-0 sm:px-0">
         {reportTypes.map((type) => (
           <button
             key={type}
             onClick={() => setFilter(type)}
-            className={`px-3 py-1.5 sm:px-4 sm:py-2 rounded-xl font-medium whitespace-nowrap transition-all text-sm snap-start ${
-              filter === type
-                ? 'bg-cyan-500 text-white shadow-md'
-                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-            }`}
+            className={`px-5 py-2.5 rounded-2xl font-black whitespace-nowrap transition-all text-[11px] uppercase tracking-widest leading-none snap-start border-2 ${filter === type
+              ? 'bg-slate-900 border-slate-900 text-white shadow-xl scale-105'
+              : 'bg-white/50 backdrop-blur-sm text-slate-600 border-white hover:border-purple-200 hover:bg-white'
+              }`}
           >
-            {type === 'all' ? 'All Reports' : type}
+            {type === 'all' ? 'All Diagnostics' : type}
           </button>
         ))}
       </div>
@@ -169,86 +173,56 @@ export default function AllReports() {
             {filteredReports.map((report) => (
               <div
                 key={report._id}
-                className="bg-white rounded-2xl border-2 border-slate-200 p-4 sm:p-6 hover:border-cyan-400 hover:shadow-lg transition-all group relative"
+                className="card p-6 border-none hover:shadow-2xl transition-all duration-300 group relative ring-1 ring-white/50"
               >
-                {/* Delete Button - Top Right */}
+                {/* Delete Button */}
                 <button
                   onClick={(e) => handleDeleteReport(report._id, e)}
-                  className="absolute top-4 right-4 w-8 h-8 rounded-lg bg-red-100 hover:bg-red-200 flex items-center justify-center transition-colors z-10"
-                  title="Delete report"
+                  className="absolute top-4 right-4 w-9 h-9 rounded-xl bg-red-50 hover:bg-red-500 hover:text-white flex items-center justify-center transition-all z-10 shadow-sm opacity-0 group-hover:opacity-100"
                 >
-                  <Trash2 className="w-4 h-4 text-red-600" />
+                  <Trash2 className="w-4 h-4" />
                 </button>
 
-                {/* Report Icon */}
-                <div className="flex items-start justify-between mb-4">
-                  <div className="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center group-hover:bg-red-200 transition-colors">
-                    <FileText className="w-6 h-6 text-red-500" />
+                <div className="flex items-start gap-5 mb-6">
+                  <div className="w-16 h-16 rounded-[1.25rem] bg-indigo-50 flex items-center justify-center shadow-inner group-hover:bg-indigo-100 transition-colors">
+                    <FileText className="w-8 h-8 text-indigo-600" />
                   </div>
-                  <span className={`text-xs px-3 py-1 rounded-full font-medium ${
-                    report.status === 'completed' 
-                      ? 'bg-emerald-100 text-emerald-600' 
-                      : report.status === 'processing'
-                      ? 'bg-amber-100 text-amber-600'
-                      : 'bg-slate-100 text-slate-600'
-                  }`}>
-                    {report.status === 'completed' ? 'ANALYZED' : report.status.toUpperCase()}
-                  </span>
-                </div>
-
-                {/* Report Info */}
-                <h3 className="text-lg font-bold text-slate-800 mb-2 group-hover:text-cyan-600 transition-colors">
-                  {report.reportType}
-                </h3>
-                
-                {/* Patient Name */}
-                {(report.patientName || report.aiAnalysis?.patientName) && (
-                  <p className="text-sm text-slate-600 mb-2">
-                    Patient: {report.patientName || report.aiAnalysis?.patientName}
-                  </p>
-                )}
-
-                {/* Date */}
-                <div className="flex items-center gap-2 text-slate-500 text-sm mb-3">
-                  <Calendar className="w-4 h-4" />
-                  <span>
-                    {new Date(report.reportDate || report.createdAt).toLocaleDateString('en-US', {
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric'
-                    })}
-                  </span>
-                </div>
-
-                {/* Health Score */}
-                {report.aiAnalysis?.healthScore && (
-                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl mb-3">
-                    <span className="text-sm text-slate-600">Health Score</span>
-                    <div className="flex items-center gap-2">
-                      <span className="text-2xl font-bold text-slate-800">
-                        {report.aiAnalysis.healthScore}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`text-[9px] font-black px-2.5 py-1 rounded-lg uppercase tracking-widest ${report.status === 'completed'
+                        ? 'bg-emerald-100 text-emerald-700'
+                        : 'bg-amber-100 text-amber-700'
+                        }`}>
+                        {report.status}
                       </span>
-                      <span className="text-slate-400 text-sm">/100</span>
+                    </div>
+                    <h3 className="text-xl font-black text-slate-800 leading-tight uppercase group-hover:text-purple-600 transition-colors mb-1">
+                      {report.reportType}
+                    </h3>
+                    <div className="flex items-center gap-2 text-slate-400 text-[10px] font-black uppercase tracking-widest font-mono">
+                      <Calendar className="w-3 h-3" />
+                      {new Date(report.reportDate || report.createdAt).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+
+                {report.aiAnalysis?.healthScore && (
+                  <div className="bg-slate-50/50 backdrop-blur-md rounded-2xl p-4 border border-white/50 mb-6 shadow-inner flex items-center justify-between">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Health Score</span>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-3xl font-black text-slate-900 tracking-tighter">{report.aiAnalysis.healthScore}</span>
+                      <span className="text-slate-400 font-bold text-xs">/100</span>
                     </div>
                   </div>
                 )}
 
-                {/* Key Findings Count */}
-                {report.aiAnalysis?.keyFindings?.length > 0 && (
-                  <div className="flex items-center gap-2 text-sm text-slate-600 mb-3">
-                    <AlertCircle className="w-4 h-4" />
-                    <span>{report.aiAnalysis.keyFindings.length} key findings</span>
-                  </div>
-                )}
-
-                {/* View Details Button */}
                 <Link
                   to={`/reports/${report._id}`}
                   onClick={() => window.scrollTo(0, 0)}
-                  className="block w-full mt-3 py-2 bg-cyan-500 text-white rounded-lg font-medium text-sm hover:bg-cyan-600 transition-colors flex items-center justify-center gap-2"
+                  className="w-full py-4 bg-white border-2 border-slate-100 text-slate-800 rounded-2xl font-black text-xs uppercase tracking-widest hover:border-purple-600 hover:text-purple-600 transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95"
                 >
                   <Eye className="w-4 h-4" />
-                  View Details
+                  Analysis Details
                 </Link>
               </div>
             ))}
@@ -257,41 +231,42 @@ export default function AllReports() {
           {/* Mobile: Horizontal scroll if more than 3 reports */}
           <div className="sm:hidden">
             {filteredReports.length <= 3 ? (
-              <div className="grid grid-cols-1 gap-3">
+              <div className="grid grid-cols-1 gap-4">
                 {filteredReports.map((report) => (
                   <div
                     key={report._id}
-                    className="bg-white rounded-xl border-2 border-slate-200 p-4 hover:border-cyan-400 transition-all relative"
+                    className="card p-5 relative border-none ring-1 ring-white/50"
                   >
                     {/* Delete Button */}
                     <button
                       onClick={(e) => handleDeleteReport(report._id, e)}
-                      className="absolute top-3 right-3 w-7 h-7 rounded-lg bg-red-100 hover:bg-red-200 flex items-center justify-center transition-colors z-10"
+                      className="absolute top-3 right-3 w-8 h-8 rounded-xl bg-red-50 hover:bg-red-500 hover:text-white flex items-center justify-center transition-all z-10"
                     >
-                      <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
 
-                    <div className="flex items-start gap-3 mb-3">
-                      <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
-                        <FileText className="w-5 h-5 text-red-500" />
+                    <div className="flex items-start gap-4 mb-4">
+                      <div className="w-12 h-12 rounded-[1rem] bg-indigo-50 flex items-center justify-center flex-shrink-0 shadow-inner">
+                        <FileText className="w-6 h-6 text-indigo-600" />
                       </div>
                       <div className="flex-1 min-w-0 pr-8">
                         <div className="flex items-start justify-between gap-2 mb-1">
-                          <h3 className="text-sm font-bold text-slate-800 truncate">{report.reportType}</h3>
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium whitespace-nowrap ${
-                            report.status === 'completed' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'
-                          }`}>
-                            {report.status === 'completed' ? 'DONE' : 'PENDING'}
+                          <h3 className="text-sm font-black text-slate-800 truncate uppercase">{report.reportType}</h3>
+                        </div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className={`text-[8px] font-black px-2 py-0.5 rounded-md uppercase tracking-widest whitespace-nowrap ${report.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                            }`}>
+                            {report.status}
                           </span>
                         </div>
-                        <p className="text-xs text-slate-500 mb-2">
-                          {new Date(report.reportDate || report.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 font-mono mb-2">
+                          {new Date(report.reportDate || report.createdAt).toLocaleDateString()}
                         </p>
                         {report.aiAnalysis?.healthScore && (
                           <div className="flex items-center gap-2 mb-2">
-                            <span className="text-xs text-slate-600">Score:</span>
-                            <span className="text-lg font-bold text-slate-800">{report.aiAnalysis.healthScore}</span>
-                            <span className="text-xs text-slate-400">/100</span>
+                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Score:</span>
+                            <span className="text-lg font-black text-slate-900 tracking-tighter">{report.aiAnalysis.healthScore}</span>
+                            <span className="text-[10px] text-slate-400 font-bold">/100</span>
                           </div>
                         )}
                       </div>
@@ -299,93 +274,94 @@ export default function AllReports() {
                     <Link
                       to={`/reports/${report._id}`}
                       onClick={() => window.scrollTo(0, 0)}
-                      className="block w-full py-2 bg-cyan-500 text-white rounded-lg font-medium text-xs hover:bg-cyan-600 transition-colors flex items-center justify-center gap-2"
+                      className="w-full py-3 bg-white border-2 border-slate-100 text-slate-800 rounded-xl font-black text-[10px] uppercase tracking-widest hover:border-purple-600 hover:text-purple-600 transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95"
                     >
-                      <Eye className="w-3.5 h-3.5" />
-                      View Details
+                      <Eye className="w-3 h-3" />
+                      Details
                     </Link>
                   </div>
                 ))}
               </div>
+
             ) : (
               <>
-                <div className="flex overflow-x-auto gap-3 pb-4 snap-x snap-mandatory scrollbar-hide -mx-4 px-4">
+                <div className="flex overflow-x-auto gap-4 pb-6 snap-x snap-mandatory scrollbar-hide -mx-6 px-6">
                   {filteredReports.map((report) => (
                     <div
                       key={report._id}
-                      className="min-w-[280px] bg-white rounded-xl border-2 border-slate-200 p-4 hover:border-cyan-400 transition-all snap-start flex-shrink-0 relative"
+                      className="min-w-[280px] card p-5 relative snap-start flex-shrink-0 border-none ring-1 ring-white/50"
                     >
                       {/* Delete Button */}
                       <button
                         onClick={(e) => handleDeleteReport(report._id, e)}
-                        className="absolute top-3 right-3 w-7 h-7 rounded-lg bg-red-100 hover:bg-red-200 flex items-center justify-center transition-colors z-10"
+                        className="absolute top-3 right-3 w-8 h-8 rounded-xl bg-red-50 hover:bg-red-500 hover:text-white flex items-center justify-center transition-all z-10"
                       >
-                        <Trash2 className="w-3.5 h-3.5 text-red-600" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
 
-                      <div className="flex items-start gap-3 mb-3 pr-8">
-                        <div className="w-10 h-10 rounded-lg bg-red-100 flex items-center justify-center flex-shrink-0">
-                          <FileText className="w-5 h-5 text-red-500" />
+                      <div className="flex items-start gap-4 mb-4 pr-8">
+                        <div className="w-12 h-12 rounded-[1rem] bg-indigo-50 flex items-center justify-center flex-shrink-0 shadow-inner">
+                          <FileText className="w-6 h-6 text-indigo-600" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <h3 className="text-sm font-bold text-slate-800 mb-1">{report.reportType}</h3>
-                          <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
-                            report.status === 'completed' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'
-                          }`}>
-                            {report.status === 'completed' ? 'ANALYZED' : 'PENDING'}
+                          <h3 className="text-sm font-black text-slate-800 mb-1 uppercase truncate">{report.reportType}</h3>
+                          <span className={`text-[8px] px-2 py-0.5 rounded-md font-black uppercase tracking-widest inline-block ${report.status === 'completed' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                            }`}>
+                            {report.status}
                           </span>
                         </div>
                       </div>
-                      <p className="text-xs text-slate-500 mb-3">
-                        {new Date(report.reportDate || report.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest font-mono mb-4">
+                        {new Date(report.reportDate || report.createdAt).toLocaleDateString()}
                       </p>
                       {report.aiAnalysis?.healthScore && (
-                        <div className="flex items-center justify-between p-2 bg-slate-50 rounded-lg mb-3">
-                          <span className="text-xs text-slate-600">Health Score</span>
-                          <div className="flex items-center gap-1">
-                            <span className="text-xl font-bold text-slate-800">{report.aiAnalysis.healthScore}</span>
-                            <span className="text-xs text-slate-400">/100</span>
+                        <div className="flex items-center justify-between p-3 bg-slate-50/50 backdrop-blur-md border border-white/50 rounded-xl mb-4 shadow-inner">
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Health Score</span>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-2xl font-black text-slate-900 tracking-tighter">{report.aiAnalysis.healthScore}</span>
+                            <span className="text-[10px] text-slate-400 font-bold">/100</span>
                           </div>
                         </div>
                       )}
                       <Link
                         to={`/reports/${report._id}`}
                         onClick={() => window.scrollTo(0, 0)}
-                        className="block w-full py-2 bg-cyan-500 text-white rounded-lg font-medium text-xs hover:bg-cyan-600 transition-colors flex items-center justify-center gap-2"
+                        className="w-full py-3 bg-white border-2 border-slate-100 text-slate-800 rounded-xl font-black text-[10px] uppercase tracking-widest hover:border-purple-600 hover:text-purple-600 transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95"
                       >
-                        <Eye className="w-3.5 h-3.5" />
-                        View Details
+                        <Eye className="w-3 h-3" />
+                        Details
                       </Link>
                     </div>
                   ))}
                 </div>
-                <div className="flex items-center justify-center gap-2 text-slate-400 text-xs">
-                  <span>← Scroll for more →</span>
+                <div className="flex items-center justify-center gap-2 text-slate-400 text-[10px] font-black uppercase tracking-widest mt-2">
+                  <span>← Swipe for more →</span>
                 </div>
               </>
             )}
           </div>
         </>
       ) : (
-        <div className="text-center py-12">
-          <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <FileText className="w-10 h-10 text-slate-400" />
+        <div className="text-center py-16 px-6 card border-none shadow-xl flex flex-col items-center max-w-lg mx-auto mt-12">
+          <div className="w-24 h-24 bg-purple-50 rounded-3xl flex items-center justify-center mb-6 shadow-inner relative">
+            <div className="absolute inset-0 bg-white/20 rounded-3xl blur" />
+            <FileText className="w-12 h-12 text-purple-300 relative z-10" />
           </div>
-          <h3 className="text-xl font-semibold text-slate-800 mb-2">No Reports Found</h3>
-          <p className="text-slate-500 mb-6 text-sm">
-            {filter === 'all' 
-              ? 'Upload your first health report to get started' 
-              : `No ${filter} reports found`}
+          <h3 className="text-xl font-black text-slate-800 tracking-tight mb-2 uppercase">No Data Found</h3>
+          <p className="text-slate-500 mb-8 text-sm font-bold opacity-80 max-w-xs leading-relaxed">
+            {filter === 'all'
+              ? 'Start your health journey by uploading your first diagnostic report.'
+              : `No ${filter} diagnostic records exist yet.`}
           </p>
-          <Link 
-            to="/upload" 
-            className="inline-flex items-center gap-2 px-6 py-3 text-white rounded-xl font-medium hover:shadow-lg transition-all"
-            style={{ backgroundColor: '#8B7355' }}
+          <Link
+            to="/upload"
+            className="w-full sm:w-auto px-8 py-4 bg-slate-900 text-white rounded-[1.5rem] font-black hover:shadow-2xl transition-all flex items-center justify-center gap-3 text-sm uppercase tracking-widest active:scale-95 shadow-xl"
           >
-            <FileText className="w-4 h-4" />
+            <Upload className="w-4 h-4" />
             Upload Report
           </Link>
         </div>
+
       )}
     </div>
   );

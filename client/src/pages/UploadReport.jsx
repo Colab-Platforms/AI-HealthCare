@@ -1,10 +1,10 @@
-import { useState, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useCallback, useEffect } from 'react';
+import { useNavigate, Link } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import { healthService } from '../services/api';
 import {
   Upload, FileText, X, Loader2, CheckCircle, Shield,
-  Cloud, ChevronDown, Trash2, ArrowLeft, Info, Lock
+  Cloud, ChevronDown, Trash2, ArrowLeft, Info, Lock, Eye, Calendar
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -23,7 +23,23 @@ export default function UploadReport() {
   const [files, setFiles] = useState([]);
   const [loading, setLoading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [recentReports, setRecentReports] = useState([]);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    fetchRecentReports();
+  }, []);
+
+  const fetchRecentReports = async () => {
+    try {
+      const { data } = await healthService.getReports();
+      setRecentReports(data.slice(0, 3)); // Display only top 3 recent reports
+    } catch (error) {
+      // Quietly fail or log
+      console.error('Failed to fetch recent reports', error);
+    }
+  };
 
   const onDrop = useCallback((acceptedFiles) => {
     const newFiles = acceptedFiles.map(file => ({
@@ -245,6 +261,53 @@ export default function UploadReport() {
             Our AI analysis provides deep insights but is for educational purposes only. Always consult with a healthcare professional before making medical decisions.
           </p>
         </div>
+
+        {/* Recent Tests Section */}
+        {recentReports.length > 0 && (
+          <div className="mt-12 space-y-6 animate-fade-in">
+            <div className="flex items-center justify-between px-2">
+              <h2 className="text-xl font-black text-slate-800 tracking-tight">Recent Tests</h2>
+              <Link to="/reports" className="text-sm font-bold text-blue-600 hover:text-blue-700">View All</Link>
+            </div>
+
+            <div className="grid gap-4">
+              {recentReports.map((report) => (
+                <div key={report._id} className="card p-5 relative border-none ring-1 ring-white/50">
+                  <div className="flex items-start gap-4 mb-4">
+                    <div className="w-12 h-12 rounded-[1rem] bg-indigo-50 flex items-center justify-center flex-shrink-0 shadow-inner">
+                      <FileText className="w-6 h-6 text-indigo-600" />
+                    </div>
+                    <div className="flex-1 mt-1">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className={`text-[9px] font-black px-2.5 py-1 rounded-lg uppercase tracking-widest ${report.status === 'completed'
+                          ? 'bg-emerald-100 text-emerald-700'
+                          : 'bg-amber-100 text-amber-700'
+                          }`}>
+                          {report.status}
+                        </span>
+                      </div>
+                      <h3 className="text-base font-black text-slate-800 leading-tight uppercase mb-1">
+                        {report.reportType}
+                      </h3>
+                      <div className="flex items-center gap-2 text-slate-400 text-[10px] font-black uppercase tracking-widest font-mono">
+                        <Calendar className="w-3 h-3" />
+                        {new Date(report.reportDate || report.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                  <Link
+                    to={`/reports/${report._id}`}
+                    onClick={() => window.scrollTo(0, 0)}
+                    className="w-full py-3 bg-white border-2 border-slate-100 text-slate-800 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:border-purple-600 hover:text-purple-600 transition-all flex items-center justify-center gap-2 shadow-sm active:scale-95"
+                  >
+                    <Eye className="w-4 h-4" />
+                    Analysis Details
+                  </Link>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

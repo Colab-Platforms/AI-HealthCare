@@ -96,17 +96,17 @@ export default function ReportDetailsEnhanced() {
 
           {/* Extracted Text */}
           <div className="bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-              <FileText className="w-5 h-5 text-cyan-500" /> Report Content
+            <h2 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+              <FileText className="w-5 h-5 text-cyan-600" /> Report Content
             </h2>
             <div className="bg-slate-50 rounded-xl p-4 border border-slate-200 max-h-96 overflow-y-auto">
-              <p className="text-slate-700 whitespace-pre-wrap text-sm leading-relaxed">{report.extractedText}</p>
+              <p className="text-slate-800 whitespace-pre-wrap text-sm leading-relaxed font-medium">{report.extractedText}</p>
             </div>
           </div>
 
           <div className="bg-blue-50 rounded-2xl border-2 border-blue-200 p-6">
             <p className="text-blue-800">
-              <strong>Note:</strong> This is an older report that was uploaded before AI analysis was available. 
+              <strong>Note:</strong> This is an older report that was uploaded before AI analysis was available.
               The extracted text from the report is shown above. For AI-powered analysis, please upload a new report.
             </p>
           </div>
@@ -130,60 +130,91 @@ export default function ReportDetailsEnhanced() {
     );
   }
 
-  console.log('✅ Rendering main report with AI analysis');
-  
   return (
-    <div className="max-w-5xl mx-auto space-y-6 pb-12">
+    <div className="max-w-5xl mx-auto space-y-8 pb-20 px-4 pt-10">
       {/* Back Button */}
-      <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-cyan-400 font-medium transition-colors">
-        <ArrowLeft className="w-4 h-4" /> Back to Dashboard
+      <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-500 hover:text-purple-600 font-black text-[10px] uppercase tracking-widest transition-all group">
+        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" /> Back to Dashboard
       </Link>
 
       {/* Header Card */}
-      <div className="bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl p-6 text-white relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -translate-y-1/2 translate-x-1/2" />
+      <div className="card card-gradient p-8 text-slate-900 relative overflow-hidden ring-1 ring-white/50 border-none">
+        <div className="absolute inset-0 opacity-20">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl" />
         </div>
-        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-center gap-5">
-            <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
-              <FileText className="w-8 h-8" />
+        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-8 z-10">
+          <div className="flex-1">
+            <div className="flex flex-wrap items-center gap-3 mb-4">
+              <h1 className="text-3xl md:text-4xl font-black tracking-tight">{report.reportType} Report</h1>
+              <div className="flex items-center gap-2 px-3 py-1 bg-white/40 backdrop-blur-md rounded-full border border-white/50 shadow-sm">
+                <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-800">Analyzed</span>
+              </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold">{report.reportType} Report</h1>
-              <p className="text-white/70">
-                Analyzed on {new Date(report.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-              </p>
+
+            <p className="text-slate-700/80 text-sm md:text-base font-bold mb-6 flex items-center gap-2">
+              <FileText className="w-4 h-4" /> Lab Report • {new Date(report.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+            </p>
+
+            {/* Patient Details Row */}
+            <div className="flex flex-wrap gap-6 p-4 bg-white/30 backdrop-blur-sm rounded-2xl border border-white/40 shadow-inner">
+              <div className="flex flex-col">
+                <span className="text-[9px] uppercase tracking-[0.2em] text-slate-500 font-black mb-1">Patient</span>
+                <span className="text-sm font-black text-slate-800">{report.patientName || 'Anonymous'}</span>
+              </div>
+              <div className="w-px h-8 bg-slate-200 hidden sm:block"></div>
+              <div className="flex flex-col">
+                <span className="text-[9px] uppercase tracking-[0.2em] text-slate-500 font-black mb-1">Age</span>
+                <span className="text-sm font-black text-slate-800">{report.patientAge ? `${report.patientAge} Years` : 'N/A'}</span>
+              </div>
+              <div className="w-px h-8 bg-slate-200 hidden sm:block"></div>
+              <div className="flex flex-col">
+                <span className="text-[9px] uppercase tracking-[0.2em] text-slate-500 font-black mb-1">Gender</span>
+                <span className="text-sm font-black text-slate-800 capitalize">{report.patientGender || 'N/A'}</span>
+              </div>
             </div>
           </div>
-          <div className="text-center p-4 bg-white/10 backdrop-blur-sm rounded-xl">
-            <p className="text-4xl font-bold">{healthScore}</p>
-            <p className="text-sm text-white/70">Health Score</p>
+
+          <div className="flex flex-col items-center justify-center p-6 bg-white/40 backdrop-blur-md rounded-[2rem] border border-white/60 shadow-2xl min-w-[140px] transform hover:scale-105 transition-transform duration-300">
+            <div className="relative">
+              <span className="text-5xl md:text-6xl font-black text-slate-900">{healthScore}</span>
+              <div className="absolute -top-2 -right-4 w-4 h-4 bg-emerald-400 rounded-full blur-sm opacity-50"></div>
+            </div>
+            <span className="text-[10px] uppercase tracking-[0.2em] text-slate-600 font-black mt-2">Health Score</span>
           </div>
         </div>
       </div>
 
-      {/* Summary - 5-6 lines */}
+      {/* Summary */}
       {aiAnalysis?.summary && (
-        <div className="bg-gradient-to-r from-blue-50 to-cyan-50 rounded-2xl border-2 border-blue-200 p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-800 mb-3 flex items-center gap-2">
-            <Activity className="w-5 h-5 text-cyan-500" /> Report Summary
+        <div className="card p-8 relative overflow-hidden group">
+          <div className="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-purple-500 to-indigo-600"></div>
+          <h2 className="text-xl font-black text-slate-800 mb-4 flex items-center gap-3">
+            <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center shadow-inner">
+              <Activity className="w-5 h-5 text-purple-600" />
+            </div>
+            REPORT SUMMARY
           </h2>
-          <p className="text-slate-700 leading-relaxed text-base">{aiAnalysis.summary}</p>
+          <p className="text-slate-700 leading-relaxed text-base font-bold italic">
+            "{aiAnalysis.summary}"
+          </p>
         </div>
       )}
 
       {/* Key Findings & Risk Factors */}
-      <div className="grid md:grid-cols-2 gap-6">
+      <div className="grid md:grid-cols-2 gap-8">
         {aiAnalysis?.keyFindings?.length > 0 && (
-          <div className="bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-              <Heart className="w-5 h-5 text-blue-500" /> Key Findings
+          <div className="card p-8">
+            <h2 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-3">
+              <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+                <Heart className="w-5 h-5 text-blue-600" />
+              </div>
+              KEY FINDINGS
             </h2>
-            <ul className="space-y-2">
+            <ul className="space-y-4">
               {aiAnalysis.keyFindings.map((finding, i) => (
-                <li key={i} className="flex items-start gap-3 text-sm text-slate-700">
-                  <span className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0" />
+                <li key={i} className="flex items-start gap-3 text-sm text-slate-700 font-bold">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0 animate-pulse" />
                   {finding}
                 </li>
               ))}
@@ -191,14 +222,17 @@ export default function ReportDetailsEnhanced() {
           </div>
         )}
         {aiAnalysis?.riskFactors?.length > 0 && (
-          <div className="bg-white rounded-2xl border-l-4 border-amber-500 border-t-2 border-r-2 border-b-2 border-t-slate-200 border-r-slate-200 border-b-slate-200 p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-500" /> Risk Factors
+          <div className="card p-8 ring-1 ring-amber-200">
+            <h2 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-3">
+              <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center">
+                <AlertTriangle className="w-5 h-5 text-amber-600" />
+              </div>
+              RISK FACTORS
             </h2>
-            <ul className="space-y-2">
+            <ul className="space-y-4">
               {aiAnalysis.riskFactors.map((risk, i) => (
-                <li key={i} className="flex items-start gap-3 text-sm text-slate-700">
-                  <span className="w-2 h-2 bg-amber-500 rounded-full mt-2 flex-shrink-0" />
+                <li key={i} className="flex items-start gap-3 text-sm text-slate-700 font-bold">
+                  <div className="w-2 h-2 bg-amber-500 rounded-full mt-2 flex-shrink-0" />
                   {risk}
                 </li>
               ))}
@@ -209,130 +243,119 @@ export default function ReportDetailsEnhanced() {
 
       {/* Health Metrics - Expandable Cards */}
       {aiAnalysis?.metrics && Object.keys(aiAnalysis.metrics).length > 0 && (
-        <div className="bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <Activity className="w-5 h-5 text-cyan-500" /> Health Metrics
+        <div className="card p-8 border-none">
+          <h2 className="text-xl font-black text-slate-800 mb-8 flex items-center gap-3">
+            <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center">
+              <Activity className="w-5 h-5 text-purple-600" />
+            </div>
+            HEALTH METRICS
           </h2>
-          <div className="space-y-3">
+          <div className="grid gap-4">
             {Object.entries(aiAnalysis.metrics).map(([key, metric]) => (
               <div
                 key={key}
-                className={`rounded-xl border-2 overflow-hidden transition-all ${
-                  metric.status === 'normal'
-                    ? 'bg-emerald-50 border-emerald-200'
-                    : metric.status === 'borderline'
-                    ? 'bg-amber-50 border-amber-200'
-                    : 'bg-red-50 border-red-200'
-                }`}
+                className={`rounded-3xl border-2 overflow-hidden transition-all duration-300 ${metric.status === 'normal'
+                  ? 'bg-emerald-50/30 border-emerald-100 hover:border-emerald-300'
+                  : metric.status === 'borderline'
+                    ? 'bg-amber-50/30 border-amber-100 hover:border-amber-300'
+                    : 'bg-red-50/30 border-red-100 hover:border-red-300'
+                  }`}
               >
                 <button
                   onClick={() => toggleMetricExpand(key)}
-                  className="w-full p-4 flex items-center justify-between hover:opacity-80 transition-opacity"
+                  className="w-full p-6 flex items-center justify-between hover:bg-white/40 transition-all"
                 >
-                  <div className="flex items-center gap-4 flex-1 text-left">
+                  <div className="flex items-center gap-6 flex-1 text-left">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner ${metric.status === 'normal' ? 'bg-emerald-100 text-emerald-600' : metric.status === 'borderline' ? 'bg-amber-100 text-amber-600' : 'bg-red-100 text-red-600'}`}>
+                      <Activity className="w-6 h-6" />
+                    </div>
                     <div>
-                      <p className="text-sm text-slate-600 capitalize font-medium">
+                      <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">
                         {key.replace(/([A-Z])/g, ' $1')}
                       </p>
-                      <p className="text-2xl font-bold text-slate-800 mt-1">
-                        {metric.value} <span className="text-sm font-normal text-slate-500">{metric.unit}</span>
+                      <p className="text-2xl font-black text-slate-800">
+                        {metric.value} <span className="text-xs font-bold text-slate-400 ml-1">{metric.unit}</span>
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-4">
                     <span
-                      className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                        metric.status === 'normal'
-                          ? 'bg-emerald-100 text-emerald-700'
-                          : metric.status === 'borderline'
-                          ? 'bg-amber-100 text-amber-700'
-                          : 'bg-red-100 text-red-700'
-                      }`}
+                      className={`px-3 py-1 rounded-full text-[10px] font-black tracking-tighter ${metric.status === 'normal'
+                        ? 'bg-emerald-500 text-white shadow-emerald-200'
+                        : metric.status === 'borderline'
+                          ? 'bg-amber-500 text-white shadow-amber-200'
+                          : 'bg-red-500 text-white shadow-red-200'
+                        } shadow-lg`}
                     >
                       {metric.status.toUpperCase()}
                     </span>
-                    {expandedMetrics[key] ? (
-                      <ChevronUp className="w-5 h-5 text-slate-600" />
-                    ) : (
-                      <ChevronDown className="w-5 h-5 text-slate-600" />
-                    )}
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center bg-white/50 border border-slate-200 transition-transform duration-300 ${expandedMetrics[key] ? 'rotate-180' : ''}`}>
+                      <ChevronDown className="w-4 h-4 text-slate-600" />
+                    </div>
                   </div>
                 </button>
 
                 {/* Expanded Details */}
                 {expandedMetrics[key] && (
-                  <div className="border-t-2 border-inherit p-4 space-y-4 bg-white/50">
-                    <div>
-                      <p className="text-sm font-semibold text-slate-700 mb-1">Normal Range</p>
-                      <p className="text-slate-600">{metric.normalRange}</p>
+                  <div className="border-t border-inherit p-6 space-y-6 bg-white/60 backdrop-blur-sm animate-in fade-in slide-in-from-top-4 duration-300">
+                    <div className="grid md:grid-cols-2 gap-6">
+                      <div className="p-4 bg-white/40 rounded-2xl border border-white/60">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Normal Range</p>
+                        <p className="text-slate-800 font-bold">{metric.normalRange}</p>
+                      </div>
+                      {metric.description && (
+                        <div className="p-4 bg-white/40 rounded-2xl border border-white/60">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">What is it?</p>
+                          <p className="text-slate-700 text-sm font-medium leading-relaxed">{metric.description}</p>
+                        </div>
+                      )}
                     </div>
-                    {metric.description && (
-                      <div>
-                        <p className="text-sm font-semibold text-slate-700 mb-1">What is it?</p>
-                        <p className="text-slate-600 text-sm">{metric.description}</p>
-                      </div>
-                    )}
+
                     {metric.whyAbnormal && (
-                      <div>
-                        <p className="text-sm font-semibold text-slate-700 mb-1">Why is it abnormal?</p>
-                        <p className="text-slate-600 text-sm">{metric.whyAbnormal}</p>
+                      <div className="p-4 bg-amber-50/40 rounded-2xl border border-amber-100">
+                        <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-2 flex items-center gap-2">
+                          <AlertTriangle className="w-3 h-3" /> Analysis
+                        </p>
+                        <p className="text-slate-700 text-sm font-bold">{metric.whyAbnormal}</p>
                       </div>
                     )}
-                    {metric.consequences && (
-                      <div>
-                        <p className="text-sm font-semibold text-slate-700 mb-1">Potential Consequences</p>
-                        <p className="text-slate-600 text-sm">{metric.consequences}</p>
-                      </div>
-                    )}
-                    {metric.recommendations && (
-                      <div>
-                        <p className="text-sm font-semibold text-slate-700 mb-2">How to Fix</p>
-                        <ul className="space-y-1">
-                          {Array.isArray(metric.recommendations) ? (
-                            metric.recommendations.map((rec, i) => (
-                              <li key={i} className="text-sm text-slate-600 flex items-start gap-2">
-                                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full mt-1.5 flex-shrink-0" />
-                                {rec}
-                              </li>
-                            ))
-                          ) : (
-                            <li className="text-sm text-slate-600">{metric.recommendations}</li>
-                          )}
-                        </ul>
-                      </div>
-                    )}
-                    {metric.foodsToConsume && (
-                      <div>
-                        <p className="text-sm font-semibold text-slate-700 mb-2">Foods to Consume</p>
-                        <div className="flex flex-wrap gap-2">
-                          {Array.isArray(metric.foodsToConsume) ? (
-                            metric.foodsToConsume.map((food, i) => (
-                              <span key={i} className="text-xs bg-emerald-100 text-emerald-700 px-2 py-1 rounded-full">
-                                {food}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-sm text-slate-600">{metric.foodsToConsume}</span>
-                          )}
+
+                    <div className="grid md:grid-cols-2 gap-6">
+                      {metric.recommendations && (
+                        <div className="p-4 bg-blue-50/40 rounded-2xl border border-blue-100">
+                          <p className="text-[10px] font-black text-blue-600 uppercase tracking-widest mb-3">Recommendations</p>
+                          <ul className="space-y-2">
+                            {Array.isArray(metric.recommendations) ? (
+                              metric.recommendations.map((rec, i) => (
+                                <li key={i} className="text-xs text-slate-700 font-bold flex items-start gap-3">
+                                  <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mt-1.5 shrink-0" />
+                                  {rec}
+                                </li>
+                              ))
+                            ) : (
+                              <li className="text-xs text-slate-700 font-bold">{metric.recommendations}</li>
+                            )}
+                          </ul>
                         </div>
-                      </div>
-                    )}
-                    {metric.supplements && (
-                      <div>
-                        <p className="text-sm font-semibold text-slate-700 mb-2">Supplements</p>
-                        <div className="flex flex-wrap gap-2">
-                          {Array.isArray(metric.supplements) ? (
-                            metric.supplements.map((supp, i) => (
-                              <span key={i} className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">
-                                {supp}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="text-sm text-slate-600">{metric.supplements}</span>
-                          )}
+                      )}
+
+                      {metric.foodsToConsume && (
+                        <div className="p-4 bg-emerald-50/40 rounded-2xl border border-emerald-100">
+                          <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-3">Foods to Increase</p>
+                          <div className="flex flex-wrap gap-2">
+                            {Array.isArray(metric.foodsToConsume) ? (
+                              metric.foodsToConsume.map((food, i) => (
+                                <span key={i} className="text-[10px] bg-white/80 text-emerald-700 px-3 py-1.5 rounded-xl font-bold border border-emerald-100 shadow-sm">
+                                  {food}
+                                </span>
+                              ))
+                            ) : (
+                              <span className="text-xs text-slate-700 font-bold">{metric.foodsToConsume}</span>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
@@ -343,40 +366,63 @@ export default function ReportDetailsEnhanced() {
 
       {/* Deficiencies */}
       {aiAnalysis?.deficiencies?.length > 0 && (
-        <div className="bg-white rounded-2xl border-l-4 border-amber-500 border-t-2 border-r-2 border-b-2 border-t-slate-200 border-r-slate-200 border-b-slate-200 p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <Droplets className="w-5 h-5 text-amber-500" /> Detected Deficiencies
+        <div className="card p-8 ring-1 ring-red-100">
+          <h2 className="text-xl font-black text-slate-800 mb-8 flex items-center gap-3">
+            <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
+              <Droplets className="w-5 h-5 text-red-600" />
+            </div>
+            DETECTED DEFICIENCIES
           </h2>
-          <div className="grid md:grid-cols-2 gap-4">
+          <div className="grid md:grid-cols-2 gap-6">
             {aiAnalysis.deficiencies.map((def, i) => (
               <div
                 key={i}
-                className={`p-4 rounded-xl border-2 ${
-                  def.severity === 'severe'
-                    ? 'bg-red-50 border-red-200'
-                    : def.severity === 'moderate'
-                    ? 'bg-amber-50 border-amber-200'
-                    : 'bg-yellow-50 border-yellow-200'
-                }`}
+                className={`group p-6 rounded-[2rem] border-2 transition-all duration-300 hover:shadow-xl ${def.severity === 'severe'
+                  ? 'bg-red-50/40 border-red-100 hover:border-red-300'
+                  : def.severity === 'moderate'
+                    ? 'bg-amber-50/40 border-amber-100 hover:border-amber-300'
+                    : 'bg-yellow-50/40 border-yellow-100 hover:border-yellow-300'
+                  }`}
               >
-                <div className="flex items-center justify-between mb-2">
-                  <span className="font-bold text-slate-800">{def.name}</span>
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-inner ${def.severity === 'severe' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
+                      <Droplets className="w-5 h-5" />
+                    </div>
+                    <span className="font-black text-slate-800 tracking-tight">{def.name}</span>
+                  </div>
                   <span
-                    className={`px-2 py-0.5 rounded text-xs font-medium ${
-                      def.severity === 'severe'
-                        ? 'bg-red-100 text-red-700'
-                        : def.severity === 'moderate'
-                        ? 'bg-amber-100 text-amber-700'
-                        : 'bg-yellow-100 text-yellow-700'
-                    }`}
+                    className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${def.severity === 'severe'
+                      ? 'bg-red-600 text-white shadow-red-200'
+                      : 'bg-amber-500 text-white shadow-amber-200'
+                      } shadow-lg`}
                   >
                     {def.severity}
                   </span>
                 </div>
-                <p className="text-sm text-slate-700 font-medium">Current: {def.currentValue}</p>
-                <p className="text-sm text-slate-600">Normal: {def.normalRange}</p>
+
+                <div className="grid grid-cols-2 gap-3 mb-6">
+                  <div className="bg-white/60 p-3 rounded-2xl border border-white">
+                    <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest mb-1">Current</p>
+                    <p className="text-base font-black text-slate-800">{def.currentValue}</p>
+                  </div>
+                  <div className="bg-white/60 p-3 rounded-2xl border border-white">
+                    <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest mb-1">Normal</p>
+                    <p className="text-base font-black text-slate-500">{def.normalRange}</p>
+                  </div>
+                </div>
+
                 {def.symptoms?.length > 0 && (
-                  <p className="text-xs text-slate-600 mt-2">Symptoms: {def.symptoms.join(', ')}</p>
+                  <div className="pt-4 border-t border-slate-200">
+                    <p className="text-[9px] text-slate-400 uppercase font-black tracking-widest mb-3">Potential Symptoms</p>
+                    <div className="flex flex-wrap gap-2">
+                      {def.symptoms.map((symptom, si) => (
+                        <span key={si} className="text-[10px] bg-white/80 text-slate-700 px-3 py-1.5 rounded-xl font-bold border border-slate-100 shadow-sm">
+                          {symptom}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 )}
               </div>
             ))}
@@ -386,34 +432,41 @@ export default function ReportDetailsEnhanced() {
 
       {/* Diet Plan */}
       {aiAnalysis?.dietPlan && (
-        <div className="bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <Apple className="w-5 h-5 text-emerald-500" /> Personalized Diet Plan
+        <div className="card p-8">
+          <h2 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-3">
+            <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center">
+              <Apple className="w-5 h-5 text-emerald-600" />
+            </div>
+            PERSONALIZED DIET PLAN
           </h2>
           {aiAnalysis.dietPlan.overview && (
-            <p className="text-slate-700 mb-6 text-sm">{aiAnalysis.dietPlan.overview}</p>
+            <p className="text-slate-700 mb-8 text-sm font-bold leading-relaxed bg-white/40 p-5 rounded-[2rem] border border-white/60 italic shadow-inner">
+              "{aiAnalysis.dietPlan.overview}"
+            </p>
           )}
 
           {/* Meal Plan */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
             {[
-              { key: 'breakfast', label: 'Breakfast', icon: '🌅', bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700' },
-              { key: 'lunch', label: 'Lunch', icon: '☀️', bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700' },
-              { key: 'dinner', label: 'Dinner', icon: '🌙', bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-700' },
-              { key: 'snacks', label: 'Snacks', icon: '🍎', bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700' }
+              { key: 'breakfast', label: 'Breakfast', icon: '🌅', bg: 'bg-emerald-50/50', border: 'border-emerald-100', text: 'text-emerald-700' },
+              { key: 'lunch', label: 'Lunch', icon: '☀️', bg: 'bg-blue-50/50', border: 'border-blue-100', text: 'text-blue-700' },
+              { key: 'dinner', label: 'Dinner', icon: '🌙', bg: 'bg-purple-50/50', border: 'border-purple-100', text: 'text-purple-700' },
+              { key: 'snacks', label: 'Snacks', icon: '🍎', bg: 'bg-amber-50/50', border: 'border-amber-100', text: 'text-amber-700' }
             ].map(({ key, label, icon, bg, border, text }) =>
               aiAnalysis.dietPlan[key]?.length > 0 && (
-                <div key={key} className={`p-4 rounded-xl ${bg} border-2 ${border}`}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <span className="text-xl">{icon}</span>
-                    <span className={`font-bold ${text}`}>{label}</span>
+                <div key={key} className={`p-5 rounded-3xl ${bg} border-2 ${border} shadow-sm group hover:scale-[1.02] transition-transform duration-300`}>
+                  <div className="flex items-center gap-3 mb-4">
+                    <span className="text-2xl filter drop-shadow-sm">{icon}</span>
+                    <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${text}`}>{label}</span>
                   </div>
-                  {aiAnalysis.dietPlan[key].map((meal, i) => (
-                    <div key={i} className="mb-2">
-                      <p className={`text-sm ${text} font-medium`}>{meal.meal || meal}</p>
-                      {meal.tip && <p className="text-xs text-slate-600 italic">{meal.tip}</p>}
-                    </div>
-                  ))}
+                  <div className="space-y-3">
+                    {aiAnalysis.dietPlan[key].map((meal, i) => (
+                      <div key={i} className="bg-white/60 p-3 rounded-2xl border border-white/80">
+                        <p className={`text-xs ${text} font-black`}>{meal.meal || meal}</p>
+                        {meal.tip && <p className="text-[10px] text-slate-500 italic mt-1 font-medium">{meal.tip}</p>}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )
             )}
@@ -421,13 +474,13 @@ export default function ReportDetailsEnhanced() {
 
           {/* Foods to Increase/Limit */}
           {(aiAnalysis.dietPlan.foodsToIncrease?.length > 0 || aiAnalysis.dietPlan.foodsToLimit?.length > 0) && (
-            <div className="grid md:grid-cols-2 gap-4 mb-4">
+            <div className="grid md:grid-cols-2 gap-6 mb-8">
               {aiAnalysis.dietPlan.foodsToIncrease?.length > 0 && (
-                <div className="p-4 bg-emerald-50 rounded-xl border-2 border-emerald-200">
-                  <h3 className="font-bold text-emerald-700 mb-3">✅ Foods to Increase</h3>
+                <div className="p-6 bg-emerald-50/40 rounded-3xl border-2 border-emerald-100">
+                  <h3 className="text-[10px] font-black tracking-widest text-emerald-700 mb-4 uppercase">✅ Foods to Increase</h3>
                   <div className="flex flex-wrap gap-2">
                     {aiAnalysis.dietPlan.foodsToIncrease.map((food, i) => (
-                      <span key={i} className="text-xs bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full font-medium">
+                      <span key={i} className="text-[10px] bg-white text-emerald-700 px-4 py-2 rounded-xl font-black border border-emerald-100 shadow-sm">
                         {food}
                       </span>
                     ))}
@@ -435,11 +488,11 @@ export default function ReportDetailsEnhanced() {
                 </div>
               )}
               {aiAnalysis.dietPlan.foodsToLimit?.length > 0 && (
-                <div className="p-4 bg-red-50 rounded-xl border-2 border-red-200">
-                  <h3 className="font-bold text-red-700 mb-3">⚠️ Foods to Limit</h3>
+                <div className="p-6 bg-red-50/40 rounded-3xl border-2 border-red-100">
+                  <h3 className="text-[10px] font-black tracking-widest text-red-700 mb-4 uppercase">⚠️ Foods to Limit</h3>
                   <div className="flex flex-wrap gap-2">
                     {aiAnalysis.dietPlan.foodsToLimit.map((food, i) => (
-                      <span key={i} className="text-xs bg-red-100 text-red-700 px-3 py-1 rounded-full font-medium">
+                      <span key={i} className="text-[10px] bg-white text-red-700 px-4 py-2 rounded-xl font-black border border-red-100 shadow-sm">
                         {food}
                       </span>
                     ))}
@@ -451,18 +504,20 @@ export default function ReportDetailsEnhanced() {
 
           {/* Diet Tips */}
           {aiAnalysis.dietPlan.tips?.length > 0 && (
-            <div className="p-4 bg-slate-50 border-2 border-slate-200 rounded-xl">
-              <h3 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
+            <div className="p-6 bg-slate-50 border-none rounded-3xl shadow-inner">
+              <h3 className="text-[10px] font-black text-slate-800 mb-4 flex items-center gap-2 uppercase tracking-widest">
                 <Sparkles className="w-4 h-4 text-amber-500" /> Diet Tips
               </h3>
-              <ul className="space-y-2">
+              <div className="grid sm:grid-cols-2 gap-4">
                 {aiAnalysis.dietPlan.tips.map((tip, i) => (
-                  <li key={i} className="text-sm text-slate-700 flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 bg-cyan-500 rounded-full mt-2" />
-                    {tip}
-                  </li>
+                  <div key={i} className="flex items-start gap-4 p-4 bg-white/60 rounded-2xl border border-white">
+                    <div className="w-6 h-6 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
+                      <span className="text-amber-600 text-[10px] font-black">{i + 1}</span>
+                    </div>
+                    <p className="text-[11px] text-slate-700 font-bold leading-relaxed">{tip}</p>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           )}
         </div>
@@ -470,23 +525,39 @@ export default function ReportDetailsEnhanced() {
 
       {/* Fitness Plan */}
       {aiAnalysis?.fitnessPlan && (
-        <div className="bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <Dumbbell className="w-5 h-5 text-blue-600" /> Fitness Plan
+        <div className="card p-8">
+          <h2 className="text-xl font-black text-slate-800 mb-8 flex items-center gap-3">
+            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
+              <Dumbbell className="w-5 h-5 text-blue-600" />
+            </div>
+            FITNESS REGIMEN
           </h2>
           {aiAnalysis.fitnessPlan.overview && (
-            <p className="text-slate-700 mb-6 text-sm">{aiAnalysis.fitnessPlan.overview}</p>
+            <p className="text-slate-700 mb-8 text-sm font-bold leading-relaxed bg-blue-50/30 p-5 rounded-[2rem] border border-blue-100 shadow-inner">
+              {aiAnalysis.fitnessPlan.overview}
+            </p>
           )}
 
           {/* Exercise Recommendations */}
           {aiAnalysis.fitnessPlan.exercises?.length > 0 && (
-            <div className="space-y-3">
+            <div className="grid md:grid-cols-2 gap-6 mb-8">
               {aiAnalysis.fitnessPlan.exercises.map((exercise, i) => (
-                <div key={i} className="p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
-                  <p className="font-bold text-blue-700 mb-2">{exercise.name}</p>
-                  {exercise.duration && <p className="text-sm text-blue-600">Duration: {exercise.duration}</p>}
-                  {exercise.frequency && <p className="text-sm text-blue-600">Frequency: {exercise.frequency}</p>}
-                  {exercise.description && <p className="text-sm text-slate-700 mt-2">{exercise.description}</p>}
+                <div key={i} className="p-6 bg-white/60 rounded-3xl border border-blue-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-full -mr-12 -mt-12 opacity-50 group-hover:scale-110 transition-transform"></div>
+                  <p className="text-base font-black text-blue-800 mb-4 relative z-1">{exercise.name}</p>
+                  <div className="flex gap-4 mb-4 relative z-1">
+                    {exercise.duration && (
+                      <div className="bg-blue-50 px-3 py-1 rounded-lg">
+                        <span className="text-[10px] text-blue-600 font-black uppercase">{exercise.duration}</span>
+                      </div>
+                    )}
+                    {exercise.frequency && (
+                      <div className="bg-indigo-50 px-3 py-1 rounded-lg">
+                        <span className="text-[10px] text-indigo-600 font-black uppercase">{exercise.frequency}</span>
+                      </div>
+                    )}
+                  </div>
+                  {exercise.description && <p className="text-[11px] text-slate-600 font-bold leading-relaxed relative z-1">{exercise.description}</p>}
                 </div>
               ))}
             </div>
@@ -494,16 +565,16 @@ export default function ReportDetailsEnhanced() {
 
           {/* Fitness Tips */}
           {aiAnalysis.fitnessPlan.tips?.length > 0 && (
-            <div className="p-4 bg-slate-50 border-2 border-slate-200 rounded-xl mt-4">
-              <h3 className="font-bold text-slate-800 mb-3">Fitness Tips</h3>
-              <ul className="space-y-2">
+            <div className="p-6 bg-slate-50 border-none rounded-3xl shadow-inner">
+              <h3 className="text-[10px] font-black text-slate-800 mb-4 uppercase tracking-widest">Fitness Strategy</h3>
+              <div className="space-y-3">
                 {aiAnalysis.fitnessPlan.tips.map((tip, i) => (
-                  <li key={i} className="text-sm text-slate-700 flex items-start gap-2">
-                    <span className="w-1.5 h-1.5 bg-blue-500 rounded-full mt-2" />
-                    {tip}
-                  </li>
+                  <div key={i} className="bg-white/60 p-4 rounded-2xl border border-white flex gap-3 italic">
+                    <span className="text-blue-500 font-black">#</span>
+                    <p className="text-xs text-slate-700 font-bold">{tip}</p>
+                  </div>
                 ))}
-              </ul>
+              </div>
             </div>
           )}
         </div>
@@ -511,20 +582,27 @@ export default function ReportDetailsEnhanced() {
 
       {/* Recommendations */}
       {aiAnalysis?.recommendations && Object.keys(aiAnalysis.recommendations).length > 0 && (
-        <div className="bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <Heart className="w-5 h-5 text-red-500" /> Health Recommendations
+        <div className="card p-8 ring-1 ring-red-100">
+          <h2 className="text-xl font-black text-slate-800 mb-8 flex items-center gap-3">
+            <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center">
+              <Heart className="w-5 h-5 text-red-500" />
+            </div>
+            HEALTH RECOMMENDATIONS
           </h2>
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid lg:grid-cols-3 gap-6">
             {aiAnalysis.recommendations.immediate && Array.isArray(aiAnalysis.recommendations.immediate) && aiAnalysis.recommendations.immediate.length > 0 && (
-              <div className="p-5 bg-red-50 rounded-xl border-2 border-red-200">
-                <h3 className="font-bold text-red-700 mb-3 flex items-center gap-2">
-                  <AlertTriangle className="w-4 h-4" /> Immediate Actions
+              <div className="p-6 bg-red-50/40 rounded-3xl border-2 border-red-100 relative overflow-hidden group">
+                <div className="absolute top-0 right-0 p-2 opacity-10">
+                  <AlertTriangle className="w-12 h-12 text-red-600" />
+                </div>
+                <h3 className="text-[10px] font-black text-red-700 mb-5 uppercase tracking-widest flex items-center gap-2">
+                  <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
+                  Immediate Actions
                 </h3>
-                <ul className="space-y-2">
+                <ul className="space-y-4">
                   {aiAnalysis.recommendations.immediate.map((action, i) => (
-                    <li key={i} className="text-sm text-red-700 flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 bg-red-500 rounded-full mt-1.5 flex-shrink-0" />
+                    <li key={i} className="text-[11px] text-slate-800 font-black flex items-start gap-3 bg-white/40 p-3 rounded-2xl border border-white">
+                      <div className="w-1.5 h-1.5 bg-red-500 rounded-full mt-1.5 shrink-0" />
                       {action}
                     </li>
                   ))}
@@ -533,12 +611,12 @@ export default function ReportDetailsEnhanced() {
             )}
 
             {aiAnalysis.recommendations.shortTerm && Array.isArray(aiAnalysis.recommendations.shortTerm) && aiAnalysis.recommendations.shortTerm.length > 0 && (
-              <div className="p-5 bg-amber-50 rounded-xl border-2 border-amber-200">
-                <h3 className="font-bold text-amber-700 mb-3">Short-Term (2-4 weeks)</h3>
-                <ul className="space-y-2">
+              <div className="p-6 bg-amber-50/40 rounded-3xl border-2 border-amber-100 relative overflow-hidden">
+                <h3 className="text-[10px] font-black text-amber-700 mb-5 uppercase tracking-widest">Short-Term (2-4 Weeks)</h3>
+                <ul className="space-y-4">
                   {aiAnalysis.recommendations.shortTerm.map((action, i) => (
-                    <li key={i} className="text-sm text-amber-700 flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-1.5 flex-shrink-0" />
+                    <li key={i} className="text-[11px] text-slate-800 font-black flex items-start gap-3 bg-white/40 p-3 rounded-2xl border border-white">
+                      <div className="w-1.5 h-1.5 bg-amber-500 rounded-full mt-1.5 shrink-0" />
                       {action}
                     </li>
                   ))}
@@ -547,12 +625,12 @@ export default function ReportDetailsEnhanced() {
             )}
 
             {aiAnalysis.recommendations.longTerm && Array.isArray(aiAnalysis.recommendations.longTerm) && aiAnalysis.recommendations.longTerm.length > 0 && (
-              <div className="p-5 bg-emerald-50 rounded-xl border-2 border-emerald-200">
-                <h3 className="font-bold text-emerald-700 mb-3">Long-Term (Ongoing)</h3>
-                <ul className="space-y-2">
+              <div className="p-6 bg-emerald-50/40 rounded-3xl border-2 border-emerald-100 relative overflow-hidden">
+                <h3 className="text-[10px] font-black text-emerald-700 mb-5 uppercase tracking-widest">Long-Term Lifestyle</h3>
+                <ul className="space-y-4">
                   {aiAnalysis.recommendations.longTerm.map((action, i) => (
-                    <li key={i} className="text-sm text-emerald-700 flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 bg-emerald-500 rounded-full mt-1.5 flex-shrink-0" />
+                    <li key={i} className="text-[11px] text-slate-800 font-black flex items-start gap-3 bg-white/40 p-3 rounded-2xl border border-white">
+                      <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full mt-1.5 shrink-0" />
                       {action}
                     </li>
                   ))}
@@ -563,5 +641,5 @@ export default function ReportDetailsEnhanced() {
         </div>
       )}
     </div>
-    );
+  );
 }

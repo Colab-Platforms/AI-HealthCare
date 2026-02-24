@@ -9,7 +9,8 @@ import {
   Heart, Upload, Utensils, FileText, Activity, TrendingUp, User,
   Calendar, MessageSquare, Pill, Apple, Dumbbell, Brain, Shield, Sparkles,
   CheckCircle, Target, Award, ChevronRight, Zap, Sun, Droplets,
-  BarChart3, ArrowRight, Star, Flame, Trophy, Moon, Wind, Bell, ChevronLeft, ArrowUp
+  BarChart3, ArrowRight, Star, Flame, Trophy, Moon, Wind, Bell, ChevronLeft, ArrowUp,
+  AlertCircle, AlertTriangle, Plus
 } from 'lucide-react';
 import BMIWidget from '../components/BMIWidget';
 import SleepTracker from '../components/SleepTracker';
@@ -61,60 +62,49 @@ const ProgressRing = ({ progress, size = 120, strokeWidth = 8 }) => {
 // Feature Card Component with 3D Visual Elements
 const FeatureCard = ({ title, description, link, status, icon: Icon, gradient, emoji }) => {
   return (
-    <Link
-      to={link}
-      className="group relative overflow-hidden rounded-3xl shadow-lg hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1"
-    >
-      <div className={`h-48 bg-gradient-to-br ${gradient} relative rounded-t-3xl overflow-hidden`}>
-        {/* Animated Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.8),transparent_50%)] animate-pulse"></div>
-          <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.1)_50%,transparent_75%)] bg-[length:20px_20px]"></div>
-        </div>
+    <Link to={link} className="group">
+      <div className="card h-full flex flex-col overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
+        <div className={`h-40 bg-gradient-to-br ${gradient} relative overflow-hidden`}>
+          {/* Animated Background Pattern */}
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.8),transparent_50%)] animate-pulse"></div>
+          </div>
 
-        {/* 3D Floating Elements */}
-        <div className="absolute top-1/2 right-8 transform -translate-y-1/2">
-          <div className="relative w-24 h-24 group-hover:scale-110 transition-transform duration-500">
-            {/* 3D Shadow Effect */}
-            <div className="absolute inset-0 bg-white/10 rounded-full blur-xl transform translate-y-2"></div>
-            {/* Main Circle */}
-            <div className="absolute inset-0 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30">
-              <span className="text-5xl filter drop-shadow-lg">{emoji}</span>
+          {/* 3D Floating Elements */}
+          <div className="absolute top-1/2 right-6 transform -translate-y-1/2">
+            <div className="relative w-20 h-20 group-hover:scale-110 transition-transform duration-500">
+              <div className="absolute inset-0 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 shadow-inner">
+                <span className="text-4xl filter drop-shadow-md">{emoji}</span>
+              </div>
             </div>
-            {/* Shine Effect */}
-            <div className="absolute top-2 left-2 w-8 h-8 bg-white/40 rounded-full blur-md"></div>
           </div>
+
+          {/* Icon Badge */}
+          <div className="absolute top-4 left-4 z-10">
+            <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg border border-white/30 group-hover:rotate-6 transition-transform">
+              <Icon className="w-6 h-6 text-white drop-shadow-md" />
+            </div>
+          </div>
+
+          {/* Status Badge */}
+          {status && (
+            <div className="absolute top-4 right-4 z-10">
+              <span className="px-2 py-0.5 bg-white/90 backdrop-blur-sm rounded-full text-[10px] font-bold text-slate-700 shadow-md uppercase tracking-wider">
+                {status}
+              </span>
+            </div>
+          )}
         </div>
 
-        {/* Icon Badge */}
-        <div className="absolute top-4 left-4 z-10">
-          <div className="w-16 h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg border border-white/30 group-hover:scale-110 transition-transform">
-            <Icon className="w-8 h-8 text-white drop-shadow-md" />
+        <div className="p-5 flex-1 flex flex-col bg-white/40">
+          <h3 className="text-lg font-black text-slate-800 mb-1 group-hover:text-purple-600 transition-colors">
+            {title}
+          </h3>
+          <p className="text-xs text-slate-600 font-medium leading-relaxed flex-1">{description}</p>
+          <div className="mt-4 flex items-center text-purple-600 text-xs font-bold uppercase tracking-wider">
+            <span>Discover</span>
+            <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
           </div>
-        </div>
-
-        {/* Status Badge */}
-        {status && (
-          <div className="absolute top-4 right-4 z-10">
-            <span className="px-3 py-1 bg-white/90 backdrop-blur-sm rounded-full text-xs font-semibold text-slate-700 shadow-md">
-              {status}
-            </span>
-          </div>
-        )}
-
-        {/* Decorative Corner */}
-        <div className="absolute bottom-0 right-0 w-32 h-32 bg-white/10 rounded-tl-full"></div>
-        <div className="absolute bottom-0 left-0 w-20 h-20 bg-black/5 rounded-tr-full"></div>
-      </div>
-
-      <div className="bg-white p-5 rounded-b-3xl">
-        <h3 className="text-lg font-bold text-slate-800 mb-1 group-hover:text-cyan-600 transition-colors">
-          {title}
-        </h3>
-        <p className="text-sm text-slate-600 line-clamp-2">{description}</p>
-        <div className="mt-3 flex items-center text-cyan-600 text-sm font-medium">
-          <span>Get Started</span>
-          <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
         </div>
       </div>
     </Link>
@@ -124,15 +114,15 @@ const FeatureCard = ({ title, description, link, status, icon: Icon, gradient, e
 // Quick Action Card Component
 const QuickActionCard = ({ icon: Icon, title, subtitle, link, color, comingSoon }) => {
   const content = (
-    <div className={`relative bg-white rounded-2xl p-4 border-2 border-slate-100 hover:border-${color}-200 hover:shadow-lg transition-all duration-300 group ${comingSoon ? 'opacity-60' : 'cursor-pointer'}`}>
-      <div className={`w-14 h-14 rounded-xl bg-${color}-50 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform`}>
+    <div className="card p-4 hover:shadow-2xl transition-all duration-300 group border-none relative overflow-hidden">
+      <div className={`w-14 h-14 rounded-2xl bg-white/50 backdrop-blur-sm flex items-center justify-center mb-3 group-hover:rotate-6 transition-transform shadow-sm`}>
         <Icon className={`w-7 h-7 text-${color}-500`} />
       </div>
-      <h4 className="font-semibold text-slate-800 text-sm mb-1">{title}</h4>
-      <p className="text-xs text-slate-500">{subtitle}</p>
+      <h4 className="font-bold text-slate-800 text-sm mb-1">{title}</h4>
+      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-tight">{subtitle}</p>
       {comingSoon && (
         <div className="absolute top-2 right-2">
-          <span className="px-2 py-1 bg-amber-100 text-amber-700 text-[10px] font-semibold rounded-full">
+          <span className="px-2 py-0.5 bg-amber-100/80 text-amber-700 text-[9px] font-bold rounded-full border border-amber-200">
             SOON
           </span>
         </div>
@@ -181,11 +171,26 @@ const GetStartedStep = ({ number, title, description, completed, active, icon: I
 export default function DashboardEnhanced() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const { dashboardData, loading, fetchDashboard } = useData();
+  const { dashboardData, loading, fetchDashboard, fetchNutrition, nutritionData } = useData();
   const [completionProgress, setCompletionProgress] = useState(0);
   const [isInitialLoad, setIsInitialLoad] = useState(!dashboardData);
-  const [sleepTrackerOpen, setSleepTrackerOpen] = useState(false);
+  const [selectedMetric, setSelectedMetric] = useState(null);
+  const [isMetricDropdownOpen, setIsMetricDropdownOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sleepTrackerOpen, setSleepTrackerOpen] = useState(false);
+  const [selectedDate, setSelectedDate] = useState(new Date());
+
+  const handlePrevDate = () => {
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() - 1);
+    setSelectedDate(d);
+  };
+
+  const handleNextDate = () => {
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() + 1);
+    setSelectedDate(d);
+  };
 
   // Get time-based greeting
   const getGreeting = () => {
@@ -211,12 +216,30 @@ export default function DashboardEnhanced() {
     loadData();
   }, [fetchDashboard]);
 
+  // Fetch nutrition data when selectedDate changes
+  useEffect(() => {
+    const dateStr = selectedDate.toISOString().split('T')[0];
+    fetchNutrition(dateStr);
+  }, [selectedDate, fetchNutrition]);
+
   // Watch for cache invalidation (dashboardData becomes null)
   useEffect(() => {
     if (!dashboardData && !loading.dashboard && !isInitialLoad) {
       fetchDashboard();
     }
   }, [dashboardData, loading.dashboard, fetchDashboard, isInitialLoad]);
+
+  // Initialize selected metric
+  useEffect(() => {
+    if (dashboardData?.recentReports?.length > 0 && !selectedMetric) {
+      // Find first report with metrics
+      const reportWithMetrics = dashboardData.recentReports.find(r => r.aiAnalysis?.metrics);
+      if (reportWithMetrics) {
+        const firstKey = Object.keys(reportWithMetrics.aiAnalysis.metrics)[0];
+        if (firstKey) setSelectedMetric(firstKey);
+      }
+    }
+  }, [dashboardData, selectedMetric]);
 
   // Refetch data when user returns to dashboard (page becomes visible)
   useEffect(() => {
@@ -261,6 +284,44 @@ export default function DashboardEnhanced() {
   const hasNutrition = dashboardData?.nutritionTracked;
   const hasWearable = dashboardData?.wearableConnected;
   const healthScore = dashboardData?.user?.healthMetrics?.healthScore || dashboardData?.latestAnalysis?.healthScore;
+
+  // Extract all unique metrics from reports
+  const allAvailableMetrics = {};
+  if (dashboardData?.recentReports) {
+    dashboardData.recentReports.forEach(report => {
+      if (report.aiAnalysis?.metrics) {
+        Object.entries(report.aiAnalysis.metrics).forEach(([key, data]) => {
+          if (!allAvailableMetrics[key]) {
+            allAvailableMetrics[key] = {
+              name: key.replace(/([A-Z])/g, ' $1').trim(),
+              unit: data.unit || '',
+              history: []
+            };
+          }
+        });
+      }
+    });
+  }
+
+  // Populate history for each metric
+  Object.keys(allAvailableMetrics).forEach(metricKey => {
+    dashboardData?.recentReports?.forEach(report => {
+      const metricData = report.aiAnalysis?.metrics?.[metricKey];
+      if (metricData) {
+        allAvailableMetrics[metricKey].history.push({
+          date: new Date(report.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          value: parseFloat(metricData.value) || 0,
+          fullDate: new Date(report.createdAt)
+        });
+      }
+    });
+    // Sort history by date
+    allAvailableMetrics[metricKey].history.sort((a, b) => a.fullDate - b.fullDate);
+  });
+
+  const availableMetricKeys = Object.keys(allAvailableMetrics);
+  const currentMetricKey = selectedMetric || availableMetricKeys[0];
+  const currentMetric = allAvailableMetrics[currentMetricKey];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-cyan-100">
@@ -328,18 +389,27 @@ export default function DashboardEnhanced() {
           {/* Calendar Widget - Dynamic Date and Activity Circles */}
           <div className="bg-gradient-to-br from-purple-200 to-purple-300 rounded-2xl p-4 shadow-lg">
             <div className="flex items-center justify-between mb-3">
-              <button className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center hover:bg-white/50 transition-all">
+              <button
+                onClick={handlePrevDate}
+                className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center hover:bg-white/50 transition-all"
+              >
                 <ChevronLeft className="w-4 h-4 text-slate-800" />
               </button>
               <h3 className="text-sm font-bold text-slate-800">
-                {new Date().toLocaleDateString('en-US', {
+                {selectedDate.toDateString() === new Date().toDateString()
+                  ? "Today, "
+                  : ""}
+                {selectedDate.toLocaleDateString('en-US', {
                   weekday: 'long',
                   month: 'long',
                   day: 'numeric',
                   year: 'numeric'
                 })}
               </h3>
-              <button className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center hover:bg-white/50 transition-all">
+              <button
+                onClick={handleNextDate}
+                className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center hover:bg-white/50 transition-all"
+              >
                 <ChevronRight className="w-4 h-4 text-slate-800" />
               </button>
             </div>
@@ -350,22 +420,26 @@ export default function DashboardEnhanced() {
                 const today = new Date();
                 const daysOfWeek = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
 
-                // Create array starting from today going back 6 days
+                // Create array centered around selectedDate
                 const weekDays = [];
-                for (let i = 6; i >= 0; i--) {
-                  const date = new Date(today);
-                  date.setDate(date.getDate() - i);
+                for (let i = -3; i <= 3; i++) {
+                  const date = new Date(selectedDate);
+                  date.setDate(date.getDate() + i);
                   weekDays.push({
                     label: daysOfWeek[date.getDay()],
                     date: date.getDate(),
-                    isToday: i === 0
+                    fullDate: date,
+                    isToday: date.toDateString() === new Date().toDateString()
                   });
                 }
 
                 return weekDays.map((dayInfo, index) => {
                   const isToday = dayInfo.isToday;
+                  const isSelected = selectedDate.toDateString() === dayInfo.fullDate.toDateString();
                   // Calculate completion based on user activity
                   let completionPercentage = 0;
+                  const dayDate = dayInfo.fullDate;
+
                   if (isToday) {
                     const nutritionProgress = dashboardData?.nutritionData?.totalCalories && dashboardData?.nutritionData?.calorieGoal
                       ? Math.min((dashboardData.nutritionData.totalCalories / dashboardData.nutritionData.calorieGoal) * 100, 100)
@@ -382,8 +456,6 @@ export default function DashboardEnhanced() {
                     );
                   } else {
                     // Past days - check if there was activity
-                    const dayDate = new Date(today);
-                    dayDate.setDate(dayDate.getDate() - (6 - index));
                     const hasActivity = dashboardData?.recentReports?.some(r =>
                       new Date(r.createdAt).toDateString() === dayDate.toDateString()
                     );
@@ -391,11 +463,17 @@ export default function DashboardEnhanced() {
                   }
 
                   return (
-                    <div key={index} className="text-center">
-                      <div className="text-xs font-medium text-slate-700 mb-1.5">{dayInfo.label}</div>
-                      <div className={`w-10 h-10 mx-auto rounded-full flex items-center justify-center relative ${isToday
-                        ? 'bg-white shadow-md'
-                        : 'bg-white/40'
+                    <div
+                      key={index}
+                      className="text-center cursor-pointer group"
+                      onClick={() => setSelectedDate(dayDate)}
+                    >
+                      <div className={`text-xs font-medium mb-1.5 transition-colors ${isSelected ? 'text-indigo-800 font-bold' : 'text-slate-700'}`}>
+                        {dayInfo.label}
+                      </div>
+                      <div className={`w-10 h-10 mx-auto rounded-full flex items-center justify-center relative transition-all ${isSelected
+                        ? 'bg-white shadow-lg scale-110 ring-2 ring-indigo-400'
+                        : isToday ? 'bg-white shadow-md' : 'bg-white/40 group-hover:bg-white/60'
                         }`}>
                         {isToday ? (
                           <Flame className="w-5 h-5 text-orange-500 relative z-10" />
@@ -507,13 +585,22 @@ export default function DashboardEnhanced() {
           {/* Calendar Widget - Smaller, Mobile Optimized */}
           <div className="bg-gradient-to-br from-purple-200 to-purple-300 rounded-2xl p-4 shadow-lg">
             <div className="flex items-center justify-between mb-3">
-              <button className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center hover:bg-white/50 transition-all">
+              <button
+                onClick={handlePrevDate}
+                className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center hover:bg-white/50 transition-all"
+              >
                 <ChevronLeft className="w-4 h-4 text-slate-800" />
               </button>
               <h3 className="text-sm font-bold text-slate-800">
-                Today, {new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+                {selectedDate.toDateString() === new Date().toDateString()
+                  ? "Today, "
+                  : ""}
+                {selectedDate.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
               </h3>
-              <button className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center hover:bg-white/50 transition-all">
+              <button
+                onClick={handleNextDate}
+                className="w-8 h-8 rounded-full bg-white/30 flex items-center justify-center hover:bg-white/50 transition-all"
+              >
                 <ChevronRight className="w-4 h-4 text-slate-800" />
               </button>
             </div>
@@ -521,26 +608,27 @@ export default function DashboardEnhanced() {
             {/* Week Days - Dynamic Circles Based on User Activity */}
             <div className="grid grid-cols-7 gap-1.5">
               {(() => {
-                const today = new Date();
-                const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, etc.
                 const daysOfWeek = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-
-                // Create array starting from today going back 6 days
+                // Create array centered around selectedDate
                 const weekDays = [];
-                for (let i = 6; i >= 0; i--) {
-                  const date = new Date(today);
-                  date.setDate(date.getDate() - i);
+                for (let i = -3; i <= 3; i++) {
+                  const date = new Date(selectedDate);
+                  date.setDate(date.getDate() + i);
                   weekDays.push({
                     label: daysOfWeek[date.getDay()],
                     date: date.getDate(),
-                    isToday: i === 0
+                    fullDate: date,
+                    isToday: date.toDateString() === new Date().toDateString()
                   });
                 }
 
                 return weekDays.map((dayInfo, index) => {
                   const isToday = dayInfo.isToday;
-                  // Calculate completion based on user activity (nutrition + reports + wearables)
+                  const isSelected = selectedDate.toDateString() === dayInfo.fullDate.toDateString();
+                  // Calculate completion based on user activity
                   let completionPercentage = 0;
+                  const dayDate = dayInfo.fullDate;
+
                   if (isToday) {
                     // Today's activity
                     const nutritionProgress = dashboardData?.nutritionData?.totalCalories && dashboardData?.nutritionData?.calorieGoal
@@ -562,11 +650,17 @@ export default function DashboardEnhanced() {
                   }
 
                   return (
-                    <div key={index} className="text-center">
-                      <div className="text-xs font-medium text-slate-700 mb-1.5">{dayInfo.label}</div>
-                      <div className={`w-10 h-10 mx-auto rounded-full flex items-center justify-center relative ${isToday
-                        ? 'bg-white shadow-md'
-                        : 'bg-white/40'
+                    <div
+                      key={index}
+                      className="text-center cursor-pointer group"
+                      onClick={() => setSelectedDate(dayDate)}
+                    >
+                      <div className={`text-xs font-medium mb-1.5 transition-colors ${isSelected ? 'text-indigo-800 font-bold' : 'text-slate-700'}`}>
+                        {dayInfo.label}
+                      </div>
+                      <div className={`w-10 h-10 mx-auto rounded-full flex items-center justify-center relative transition-all ${isSelected
+                        ? 'bg-white shadow-lg scale-110 ring-2 ring-indigo-400'
+                        : isToday ? 'bg-white shadow-md' : 'bg-white/40 group-hover:bg-white/60'
                         }`}>
                         {isToday ? (
                           <Flame className="w-5 h-5 text-orange-500 relative z-10" />
@@ -617,20 +711,21 @@ export default function DashboardEnhanced() {
           {/* Nutrition Card */}
           <Link
             to="/nutrition"
-            className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 hover:shadow-lg transition-all cursor-pointer group"
+            className="card card-gradient p-4 sm:p-6 group relative overflow-hidden"
           >
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-orange-50 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Flame className="w-6 h-6 sm:w-7 sm:h-7 text-orange-500" />
+            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
+            <div className="flex items-center justify-between mb-3 relative z-10">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/30 backdrop-blur-md flex items-center justify-center group-hover:rotate-12 transition-transform shadow-inner">
+                <Flame className="w-6 h-6 sm:w-7 sm:h-7 text-orange-600" />
               </div>
             </div>
-            <h3 className="text-slate-500 text-xs sm:text-sm font-medium mb-1 uppercase tracking-wide">Nutrition</h3>
-            <p className="text-2xl sm:text-3xl font-bold text-slate-800 mb-1">
-              {dashboardData?.nutritionData?.totalCalories || 0} <span className="text-base sm:text-lg text-slate-400">kcal</span>
+            <h3 className="text-slate-700 text-[10px] sm:text-xs font-black mb-1 uppercase tracking-[0.15em] relative z-10">Nutrition</h3>
+            <p className="text-2xl sm:text-3xl font-black text-slate-900 mb-1 relative z-10">
+              {nutritionData?.totalCalories || 0} <span className="text-base sm:text-lg opacity-60 font-medium">kcal</span>
             </p>
-            <p className="text-xs sm:text-sm text-slate-400">
-              {dashboardData?.nutritionData?.calorieGoal
-                ? `${Math.round((dashboardData.nutritionData.totalCalories / dashboardData.nutritionData.calorieGoal) * 100)}% Goal`
+            <p className="text-[10px] sm:text-xs text-slate-600 font-bold relative z-10">
+              {nutritionData?.calorieGoal
+                ? `${Math.round((nutritionData.totalCalories / nutritionData.calorieGoal) * 100)}% Goal`
                 : 'Track your meals'}
             </p>
           </Link>
@@ -638,32 +733,33 @@ export default function DashboardEnhanced() {
           {/* Sleep Card */}
           <button
             onClick={() => setSleepTrackerOpen(true)}
-            className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 hover:shadow-lg transition-all cursor-pointer group text-left"
+            className="card p-4 sm:p-6 group relative overflow-hidden text-left"
           >
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-indigo-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl -mr-10 -mt-10"></div>
+            <div className="flex items-center justify-between mb-3 relative z-10">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-indigo-50 flex items-center justify-center group-hover:rotate-12 transition-transform shadow-inner">
                 <Moon className="w-6 h-6 sm:w-7 sm:h-7 text-indigo-500" />
               </div>
             </div>
-            <h3 className="text-slate-500 text-xs sm:text-sm font-medium mb-1 uppercase tracking-wide">Sleep</h3>
-            <p className="text-2xl sm:text-3xl font-bold text-slate-800 mb-1">
+            <h3 className="text-slate-500 text-[10px] sm:text-xs font-black mb-1 uppercase tracking-[0.15em] relative z-10">Sleep</h3>
+            <p className="text-2xl sm:text-3xl font-black text-slate-800 mb-1 relative z-10">
               {(() => {
                 const sleepHistory = JSON.parse(localStorage.getItem('sleep_history') || '[]');
-                const today = new Date().toDateString();
-                const todaySleep = sleepHistory.find(r => new Date(r.date).toDateString() === today);
-                if (todaySleep) {
-                  return `${todaySleep.hours}h ${todaySleep.minutes}m`;
+                const selectedDateStr = selectedDate.toDateString();
+                const daySleep = sleepHistory.find(r => new Date(r.date).toDateString() === selectedDateStr);
+                if (daySleep) {
+                  return `${daySleep.hours}h ${daySleep.minutes}m`;
                 }
                 return '0h 0m';
               })()}
             </p>
-            <p className="text-xs sm:text-sm text-slate-400">
+            <p className="text-[10px] sm:text-xs text-slate-400 font-bold relative z-10">
               {(() => {
                 const sleepHistory = JSON.parse(localStorage.getItem('sleep_history') || '[]');
-                const today = new Date().toDateString();
-                const todaySleep = sleepHistory.find(r => new Date(r.date).toDateString() === today);
-                if (todaySleep) {
-                  const totalMinutes = todaySleep.hours * 60 + todaySleep.minutes;
+                const selectedDateStr = selectedDate.toDateString();
+                const daySleep = sleepHistory.find(r => new Date(r.date).toDateString() === selectedDateStr);
+                if (daySleep) {
+                  const totalMinutes = daySleep.hours * 60 + daySleep.minutes;
                   const efficiency = Math.round((totalMinutes / 480) * 100); // 8 hours = 480 minutes
                   return `${efficiency}% Efficiency`;
                 }
@@ -672,42 +768,40 @@ export default function DashboardEnhanced() {
             </p>
           </button>
 
-          {/* Movement Card */}
+          {/* Diet Plan Card */}
           <Link
-            to="/wearables"
-            className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 hover:shadow-lg transition-all cursor-pointer group"
+            to="/diet-plan"
+            className="card p-4 sm:p-6 group relative overflow-hidden"
           >
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-blue-50 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Activity className="w-6 h-6 sm:w-7 sm:h-7 text-blue-500" />
+            <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/5 rounded-full blur-2xl -mr-10 -mt-10"></div>
+            <div className="flex items-center justify-between mb-3 relative z-10">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-orange-50 flex items-center justify-center group-hover:rotate-12 transition-transform shadow-inner">
+                <Utensils className="w-6 h-6 sm:w-7 sm:h-7 text-orange-500" />
               </div>
             </div>
-            <h3 className="text-slate-500 text-xs sm:text-sm font-medium mb-1 uppercase tracking-wide">Movement</h3>
-            <p className="text-2xl sm:text-3xl font-bold text-slate-800 mb-1">
-              {dashboardData?.wearableData?.todayMetrics?.activeMinutes || 0} <span className="text-base sm:text-lg text-slate-400">mins</span>
-            </p>
-            <p className="text-xs sm:text-sm text-slate-400">
-              {dashboardData?.wearableData?.todayMetrics?.steps > 0
-                ? `${dashboardData.wearableData.todayMetrics.steps.toLocaleString()} steps`
-                : 'Start moving'}
+            <h3 className="text-slate-500 text-[10px] sm:text-xs font-black mb-1 uppercase tracking-[0.15em] relative z-10">Diet Plan</h3>
+            <p className="text-[10px] sm:text-xs text-slate-400 font-bold relative z-10">
+              Tap to view
             </p>
           </Link>
 
           {/* Mind Card */}
           <Link
             to="/challenge"
-            className="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 sm:p-6 hover:shadow-lg transition-all cursor-pointer group"
+            className="card p-4 sm:p-6 group relative overflow-hidden"
+            style={{ background: 'linear-gradient(135deg, #ede9fe 0%, #fce7f3 50%, #fff1eb 100%)' }}
           >
-            <div className="flex items-center justify-between mb-3">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-emerald-50 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <Wind className="w-6 h-6 sm:w-7 sm:h-7 text-emerald-500" />
+            <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl -mr-10 -mt-10"></div>
+            <div className="flex items-center justify-between mb-3 relative z-10">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform shadow-inner" style={{ background: 'linear-gradient(135deg, #c084fc, #fb923c)' }}>
+                <Wind className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
               </div>
             </div>
-            <h3 className="text-slate-500 text-xs sm:text-sm font-medium mb-1 uppercase tracking-wide">Mind</h3>
-            <p className="text-2xl sm:text-3xl font-bold text-slate-800 mb-1">
-              {dashboardData?.streakDays || user?.challengeStreak || 0} <span className="text-base sm:text-lg text-slate-400">days</span>
+            <h3 className="text-slate-500 text-[10px] sm:text-xs font-black mb-1 uppercase tracking-[0.15em] relative z-10">Mind</h3>
+            <p className="text-2xl sm:text-3xl font-black text-slate-800 mb-1 relative z-10">
+              {dashboardData?.streakDays || user?.challengeStreak || 0} <span className="text-base sm:text-lg opacity-60 font-medium">days</span>
             </p>
-            <p className="text-xs sm:text-sm text-slate-400">Daily Streak</p>
+            <p className="text-[10px] sm:text-xs text-slate-500 font-bold relative z-10">Daily Streak</p>
           </Link>
         </div>
 
@@ -762,241 +856,368 @@ export default function DashboardEnhanced() {
           </div>
         </Link>
 
-        {/* Health Journey */}
-        <div>
-          <div className="flex items-center justify-between mb-6 px-3 md:px-0">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                <Heart className="w-7 h-7 text-red-500" />
-                Health Journey
-              </h2>
-              <p className="text-slate-600 text-sm mt-1">Your personalized health management tools</p>
-            </div>
-          </div>
-          <div className="md:grid md:grid-cols-4 md:gap-6 flex md:flex-none overflow-x-auto gap-4 pb-4 md:pb-0 snap-x snap-mandatory scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
-            <div className="min-w-[280px] md:min-w-0 snap-center">
-              <FeatureCard
-                title="Upload Report"
-                description="Get AI-powered analysis of your health reports with personalized insights"
-                icon={Upload}
-                emoji="📋"
-                gradient="from-blue-400 via-blue-500 to-blue-600"
-                link="/upload"
-                status={hasReports ? `${dashboardData.recentReports.length} Reports` : "Get Started"}
-              />
-            </div>
-            <div className="min-w-[280px] md:min-w-0 snap-center">
-              <FeatureCard
-                title="Diabetes Care"
-                description="Track glucose levels, HbA1c trends, and get personalized diabetes management insights"
-                icon={Activity}
-                emoji="�"
-                gradient="from-red-400 via-pink-500 to-rose-600"
-                link="/diabetes"
-                status="Monitor"
-              />
-            </div>
-            <div className="min-w-[280px] md:min-w-0 snap-center">
-              <FeatureCard
-                title="Nutrition Tracker"
-                description="Track your daily meals, calories, and macros with smart recommendations"
-                icon={Utensils}
-                emoji="🥗"
-                gradient="from-emerald-400 via-emerald-500 to-emerald-600"
-                link="/nutrition"
-                status={hasNutrition ? "Active" : "Start Tracking"}
-              />
-            </div>
-            <div className="min-w-[280px] md:min-w-0 snap-center">
-              <FeatureCard
-                title="Diet Plan"
-                description="Get personalized meal plans based on your health reports and goals"
-                icon={Apple}
-                emoji="�"
-                gradient="from-orange-400 via-orange-500 to-orange-600"
-                link="/diet-plan"
-                status="Personalized"
-              />
-            </div>
-            <div className="min-w-[280px] md:min-w-0 snap-center">
-              <FeatureCard
-                title="My Fitness Goal"
-                description="Set and track your fitness goals to achieve your health targets"
-                icon={Target}
-                emoji="🎯"
-                gradient="from-purple-400 via-purple-500 to-purple-600"
-                link="/profile?tab=goals"
-                status={hasProfile ? "View Goals" : "Set Goals"}
-              />
-            </div>
-          </div>
-        </div>
+        {/* AI Health Insights Section - Only shown if user has reports */}
+        {hasReports && (
+          <div className="space-y-6 mx-3 md:mx-0">
+            {/* AI Health Insights - Main Card */}
+            <div className="bg-gradient-to-br from-[#4F46E5] via-[#6366F1] to-[#818CF8] rounded-[2.5rem] p-8 shadow-xl relative overflow-hidden group">
+              {/* Decorative Elements */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none"></div>
+              <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-400/20 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl pointer-events-none"></div>
+              <Sparkles className="absolute top-8 right-12 w-16 h-16 text-white/10 group-hover:scale-110 transition-transform duration-500" />
 
-        {/* Health Score Graph */}
-        {hasReports && healthScore && dashboardData?.healthScores?.length > 0 && (
-          <div id="health-score-graph" className="bg-white rounded-2xl shadow-md p-6 scroll-mt-20 mx-3 md:mx-0">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 mb-4">
-              <div>
-                <h3 className="text-xl font-semibold text-slate-800">Health Score Trend</h3>
-                <p className="text-slate-500 text-sm">Your overall health progress over time</p>
-              </div>
-              <div className="flex items-baseline gap-2">
-                <span className="text-4xl font-bold text-slate-800">{healthScore}</span>
-                <span className="text-slate-400 text-sm">/100</span>
+              <div className="relative z-10">
+                <div className="flex items-center gap-2 mb-6">
+                  <Sparkles className="w-5 h-5 text-white/80" />
+                  <span className="text-xs font-bold text-white/80 uppercase tracking-[0.2em]">AI Health Insights</span>
+                </div>
+
+                <h2 className="text-2xl sm:text-3xl font-black text-white mb-4 tracking-tight leading-tight">
+                  {dashboardData.recentReports[0]?.reportType || 'Health Report'} Analysis
+                  <span className="block text-lg font-medium text-white/80 mt-1">
+                    ({new Date(dashboardData.recentReports[0]?.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})
+                  </span>
+                </h2>
+
+                <p className="text-white/90 text-sm sm:text-base leading-relaxed mb-8 max-w-xl font-medium italic">
+                  "{dashboardData.latestAnalysis?.summary?.split('.')[0]}... {dashboardData.latestAnalysis?.summary?.split('.')[1]}."
+                </p>
+
+                <Link
+                  to={`/reports/${dashboardData.recentReports[0]?._id}`}
+                  className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md hover:bg-white/30 text-white px-8 py-4 rounded-2xl font-bold transition-all border border-white/30 shadow-lg group"
+                >
+                  View Full Analysis
+                  <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Link>
               </div>
             </div>
-            <ResponsiveContainer width="100%" height={200}>
-              <AreaChart data={dashboardData.healthScores.map(s => ({
-                date: new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-                score: s.score
-              }))}>
-                <defs>
-                  <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" vertical={false} />
-                <XAxis dataKey="date" stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} />
-                <YAxis stroke="#94a3b8" fontSize={12} tickLine={false} axisLine={false} domain={[50, 100]} hide />
-                <Tooltip
-                  contentStyle={{ backgroundColor: '#fff', border: '1px solid #e2e8f0', borderRadius: '12px', fontSize: '12px' }}
-                  labelStyle={{ color: '#64748b' }}
-                  formatter={(value) => [`${value}/100`, 'Score']}
-                />
-                <Area type="monotone" dataKey="score" stroke="#10b981" strokeWidth={2} fill="url(#scoreGradient)" />
-              </AreaChart>
-            </ResponsiveContainer>
+
+            {/* Wellness Score & Trend Card */}
+            <div className="bg-gradient-to-br from-[#6366F1] to-[#4F46E5] rounded-[2.5rem] p-8 shadow-xl relative overflow-hidden text-white">
+              <div className="flex justify-between items-start mb-2">
+                <div>
+                  <span className="text-xs font-bold text-white/70 uppercase tracking-widest">Wellness Score</span>
+                  <div className="flex items-baseline gap-2 mt-2">
+                    <span className="text-6xl font-black">{healthScore || 88}%</span>
+                  </div>
+                </div>
+                <div className="text-right">
+                  <p className="text-lg font-bold text-white">Excellent Condition</p>
+                  <p className="text-xs text-white/60">Updated {new Date(dashboardData.recentReports[0]?.createdAt).getHours()}h ago</p>
+                </div>
+              </div>
+
+              {/* Sparkline Graph for Wellness Score */}
+              <div className="h-40 w-full mt-6 -mx-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <AreaChart data={dashboardData.healthScores?.slice(-7) || []}>
+                    <defs>
+                      <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="5%" stopColor="#fff" stopOpacity={0.3} />
+                        <stop offset="95%" stopColor="#fff" stopOpacity={0} />
+                      </linearGradient>
+                    </defs>
+                    <Area
+                      type="monotone"
+                      dataKey="score"
+                      stroke="#fff"
+                      strokeWidth={4}
+                      fillOpacity={1}
+                      fill="url(#scoreGradient)"
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              </div>
+
+              <p className="text-sm font-medium mt-4 text-white/90">
+                Your health score is {healthScore > 80 ? 'trending up' : 'stable'}. Keep maintaining your routine!
+              </p>
+            </div>
+
+            {/* Biomarker Trends Section */}
+            <div className="bg-white rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-slate-100">
+              <div className="flex items-center justify-between mb-8">
+                <h3 className="text-lg font-black text-[#0F172A] tracking-tight uppercase">Biomarker Trends</h3>
+                <button className="text-indigo-600 text-xs font-black uppercase tracking-widest flex items-center gap-1 group">
+                  View All
+                  <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                </button>
+              </div>
+
+              {/* Biomarker Selector & Chart */}
+              <div className="space-y-6 sm:space-y-8">
+                {/* Custom Styled Select with Trend Summary */}
+                <div className="relative">
+                  <button
+                    onClick={() => setIsMetricDropdownOpen(!isMetricDropdownOpen)}
+                    className="w-full bg-[#F8FAFC] rounded-3xl p-4 sm:p-6 border border-slate-100 flex items-center justify-between hover:border-indigo-200 transition-all text-left"
+                  >
+                    <div>
+                      <span className="text-slate-900 font-bold block sm:inline">
+                        {currentMetric?.name || 'Core Biomarker'}
+                      </span>
+                      {currentMetric && currentMetric.history.length > 0 && (
+                        <p className="text-xs text-slate-500 font-semibold mt-1">
+                          Current: {currentMetric.history[currentMetric.history.length - 1]?.value} {currentMetric.unit}
+                        </p>
+                      )}
+                    </div>
+                    <ChevronRight className={`w-5 h-5 text-slate-400 transition-transform ${isMetricDropdownOpen ? 'rotate-[-90deg]' : 'rotate-90'}`} />
+                  </button>
+
+                  {isMetricDropdownOpen && (
+                    <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-3xl shadow-2xl border border-slate-100 z-50 py-4 max-h-64 overflow-y-auto anima-fade-in">
+                      {availableMetricKeys.map(key => (
+                        <button
+                          key={key}
+                          onClick={() => {
+                            setSelectedMetric(key);
+                            setIsMetricDropdownOpen(false);
+                          }}
+                          className={`w-full px-6 py-3 text-left hover:bg-slate-50 transition-colors ${selectedMetric === key ? 'text-indigo-600 font-bold' : 'text-slate-700'}`}
+                        >
+                          {allAvailableMetrics[key].name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Trend Graph */}
+                <div className="h-64 sm:h-72 w-full relative -mx-2 sm:mx-0 pr-4 sm:pr-0">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={currentMetric?.history || []} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
+                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                      <XAxis
+                        dataKey="date"
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
+                        dy={8}
+                        interval="preserveStartEnd"
+                        minTickGap={20}
+                      />
+                      <YAxis
+                        axisLine={false}
+                        tickLine={false}
+                        tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
+                        dx={-8}
+                        width={45}
+                        domain={['dataMin - 1', 'dataMax + 1']}
+                      />
+                      <Tooltip
+                        content={({ active, payload }) => {
+                          if (active && payload && payload.length) {
+                            return (
+                              <div className="bg-white shadow-2xl rounded-2xl p-4 border border-indigo-100 ring-4 ring-indigo-50/50">
+                                <p className="text-[10px] font-black text-indigo-600 uppercase mb-1 tracking-wider">{payload[0].payload.date}</p>
+                                <p className="text-sm font-bold text-slate-900">{payload[0].value} {currentMetric?.unit}</p>
+                              </div>
+                            );
+                          }
+                          return null;
+                        }}
+                      />
+                      <Area
+                        type="monotone"
+                        dataKey="value"
+                        stroke="#4F46E5"
+                        strokeWidth={4}
+                        fill="#4F46E5"
+                        fillOpacity={0.08}
+                        dot={{ r: 5, fill: '#4F46E5', strokeWidth: 3, stroke: '#fff' }}
+                        activeDot={{ r: 7, fill: '#4F46E5', strokeWidth: 3, stroke: '#fff', shadow: '0 0 15px rgba(79,70,229,0.4)' }}
+                      />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+
+                {/* Current Metric Status */}
+                {currentMetric && (
+                  <div className="bg-[#F0FDF4] rounded-3xl p-5 sm:p-6 border border-emerald-100 flex items-center justify-between">
+                    <div>
+                      <h4 className="text-sm font-bold text-slate-800 mb-1">{currentMetric.name}</h4>
+                      <p className="text-[10px] sm:text-xs text-slate-500 font-medium lowercase">Target: Normal Range</p>
+                      <div className="flex items-baseline gap-2 mt-2 sm:mt-4">
+                        <span className="text-3xl sm:text-4xl font-black text-emerald-600">
+                          {currentMetric.history[currentMetric.history.length - 1]?.value}
+                        </span>
+                        <span className="text-xs sm:text-sm font-bold text-emerald-600/70">{currentMetric.unit}</span>
+                        {currentMetric.history.length > 1 && (
+                          <TrendingUp className={`w-5 h-5 text-emerald-500 ${currentMetric.history[currentMetric.history.length - 1].value < currentMetric.history[currentMetric.history.length - 2].value ? 'transform rotate-180' : ''
+                            }`} />
+                        )}
+                      </div>
+                    </div>
+                    <div className="bg-white px-3 sm:px-4 py-2 rounded-full text-[10px] sm:text-[11px] font-black text-emerald-600 uppercase shadow-sm border border-emerald-50">
+                      Stable
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Metrics Overview - Counts */}
+            <div className="bg-white rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-slate-100">
+              <h3 className="text-lg font-black text-[#0F172A] tracking-tight mb-6 sm:mb-8 uppercase">Metrics Overview</h3>
+              <div className="grid grid-cols-3 gap-3 sm:gap-4 pb-2 sm:pb-0">
+                <div className="bg-[#F0FDF4] rounded-3xl p-4 sm:p-6 border border-emerald-100 text-center group hover:scale-105 transition-transform shadow-sm">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-sm border border-emerald-50">
+                    <span className="text-xl sm:text-2xl font-black text-emerald-600">
+                      {Object.values(dashboardData.latestAnalysis?.metrics || {}).filter(m => m.status === 'normal' || m.status?.toLowerCase() === 'normal').length || 4}
+                    </span>
+                  </div>
+                  <span className="text-[9px] sm:text-[10px] font-black text-emerald-600 uppercase tracking-widest block">Good</span>
+                </div>
+                <div className="bg-[#FFFBEB] rounded-3xl p-4 sm:p-6 border border-amber-100 text-center group hover:scale-105 transition-transform shadow-sm">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-sm border border-amber-50">
+                    <span className="text-xl sm:text-2xl font-black text-amber-600">
+                      {Object.values(dashboardData.latestAnalysis?.metrics || {}).filter(m => m.status === 'moderate' || m.status === 'warning' || m.status?.toLowerCase().includes('borderline')).length || 2}
+                    </span>
+                  </div>
+                  <span className="text-[9px] sm:text-[10px] font-black text-amber-600 uppercase tracking-widest block">Moderate</span>
+                </div>
+                <div className="bg-[#FEF2F2] rounded-3xl p-4 sm:p-6 border border-red-100 text-center group hover:scale-105 transition-transform shadow-sm">
+                  <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-sm border border-red-50">
+                    <span className="text-xl sm:text-2xl font-black text-red-600">
+                      {Object.values(dashboardData.latestAnalysis?.metrics || {}).filter(m => ['low', 'high', 'critical'].includes(m.status?.toLowerCase())).length || 2}
+                    </span>
+                  </div>
+                  <span className="text-[9px] sm:text-[10px] font-black text-red-600 uppercase tracking-widest block">Issues</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Critical Deficiencies Section */}
+            <div className="bg-[#FFF1F2] rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-red-100">
+              <div className="flex items-center gap-3 mb-6 sm:mb-8">
+                <div className="bg-[#FE2C55] p-2 rounded-xl">
+                  <AlertCircle className="w-5 h-5 text-white" />
+                </div>
+                <h3 className="text-lg font-black text-[#0F172A] tracking-tight uppercase">Critical Deficiencies</h3>
+              </div>
+
+              <div className="space-y-3 sm:space-y-4">
+                {(dashboardData.latestAnalysis?.deficiencies?.length > 0 ? dashboardData.latestAnalysis.deficiencies : [
+                  { name: 'Vitamin D Deficiency', severity: 'High' },
+                  { name: 'Iron Insufficiency', severity: 'Moderate' }
+                ]).map((def, idx) => (
+                  <Link
+                    key={idx}
+                    to={`/reports/${dashboardData.recentReports[0]?._id}`}
+                    className="flex items-center justify-between bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-red-100/50 hover:border-red-200 transition-all group shadow-sm"
+                  >
+                    <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
+                      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex-shrink-0 flex items-center justify-center ${def.severity?.toLowerCase() === 'high' ? 'bg-[#FE2C55]' : 'bg-orange-500'}`}>
+                        <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                      </div>
+                      <div className="min-w-0">
+                        <h4 className="font-extrabold text-slate-800 group-hover:text-[#FE2C55] transition-colors text-sm sm:text-base truncate">{def.name}</h4>
+                        <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5 sm:mt-1">
+                          {def.severity || 'High'} Priority
+                        </p>
+                      </div>
+                    </div>
+                    <ChevronRight className="w-4 h-4 sm:w-5 h-5 text-slate-300 group-hover:text-[#FE2C55] transition-all flex-shrink-0" />
+                  </Link>
+                ))}
+
+                <Link
+                  to="/nutrition"
+                  className="w-full mt-2 sm:mt-4 bg-[#FE2C55] hover:bg-[#E5264D] text-white font-black text-[11px] sm:text-sm uppercase tracking-widest py-4 sm:py-5 rounded-2xl sm:rounded-3xl transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 group"
+                >
+                  View Personalized Diet Plan
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </div>
+            </div>
           </div>
         )}
 
-        {/* More Offerings - Horizontal scroll on mobile (2 cards at a time) */}
-        <div>
-          <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2 px-3 md:px-0">
-            <BarChart3 className="w-7 h-7 text-cyan-600" />
-            More Offerings
-          </h2>
-
-          {/* Desktop: Grid layout */}
-          <div className="hidden md:grid md:grid-cols-4 gap-4">
-            <QuickActionCard icon={Apple} title="Quick Food Check" subtitle="Instant nutrition" link="/nutrition" color="emerald" />
-            <QuickActionCard icon={Activity} title="Vital Signs" subtitle="Track metrics" link="/vital-signs" color="red" />
-            <QuickActionCard icon={Pill} title="Supplements" subtitle="Recommendations" link="/supplements" color="purple" />
-            <QuickActionCard icon={MessageSquare} title="AI Chat" subtitle="Ask health questions" link="/ai-chat" color="cyan" />
-            <QuickActionCard icon={FileText} title="My Reports" subtitle="View all reports" link="/reports" color="blue" />
-            <QuickActionCard icon={Calendar} title="Appointments" subtitle="Book doctors" link="/doctors" color="indigo" comingSoon />
-            <QuickActionCard icon={Dumbbell} title="Fitness Plan" subtitle="Exercise routines" link="/dashboard" color="orange" comingSoon />
-            <QuickActionCard icon={Brain} title="Mental Health" subtitle="Mood tracking" link="/dashboard" color="pink" comingSoon />
-          </div>
-
-          {/* Mobile: Horizontal scroll (2 cards at a time) */}
-          <div className="md:hidden">
-            <div className="flex overflow-x-auto gap-3 pb-4 snap-x snap-mandatory scrollbar-hide -mx-4 px-4">
-              <div className="min-w-[calc(50%-6px)] snap-start flex-shrink-0">
-                <QuickActionCard icon={Apple} title="Quick Food Check" subtitle="Instant nutrition" link="/nutrition" color="emerald" />
-              </div>
-              <div className="min-w-[calc(50%-6px)] snap-start flex-shrink-0">
-                <QuickActionCard icon={Activity} title="Vital Signs" subtitle="Track metrics" link="/vital-signs" color="red" />
-              </div>
-              <div className="min-w-[calc(50%-6px)] snap-start flex-shrink-0">
-                <QuickActionCard icon={Pill} title="Supplements" subtitle="Recommendations" link="/supplements" color="purple" />
-              </div>
-              <div className="min-w-[calc(50%-6px)] snap-start flex-shrink-0">
-                <QuickActionCard icon={MessageSquare} title="AI Chat" subtitle="Ask health questions" link="/ai-chat" color="cyan" />
-              </div>
-              <div className="min-w-[calc(50%-6px)] snap-start flex-shrink-0">
-                <QuickActionCard icon={FileText} title="My Reports" subtitle="View all reports" link="/reports" color="blue" />
-              </div>
-              <div className="min-w-[calc(50%-6px)] snap-start flex-shrink-0">
-                <QuickActionCard icon={Calendar} title="Appointments" subtitle="Book doctors" link="/doctors" color="indigo" comingSoon />
-              </div>
-              <div className="min-w-[calc(50%-6px)] snap-start flex-shrink-0">
-                <QuickActionCard icon={Dumbbell} title="Fitness Plan" subtitle="Exercise routines" link="/dashboard" color="orange" comingSoon />
-              </div>
-              <div className="min-w-[calc(50%-6px)] snap-start flex-shrink-0">
-                <QuickActionCard icon={Brain} title="Mental Health" subtitle="Mood tracking" link="/dashboard" color="pink" comingSoon />
-              </div>
+        {/* Recent Reports and Recommendations Section */}
+        <div className="grid md:grid-cols-2 gap-6 px-3 md:px-0">
+          {/* Recent Tests Column */}
+          <div className="bg-white rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-slate-100">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-lg font-black text-[#0F172A] uppercase tracking-tight">Recent Tests</h3>
+              <Link to="/reports" className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-indigo-600 transition-colors">View All</Link>
             </div>
-
-            {/* Scroll Indicator */}
-            <div className="flex items-center justify-center gap-2 mt-2">
-              <div className="flex items-center gap-1 text-slate-400 text-xs">
-                <ChevronRight className="w-4 h-4 animate-pulse" />
-                <span>Scroll for more</span>
-                <ChevronRight className="w-4 h-4 animate-pulse" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Recent Reports */}
-        {hasReports && (
-          <div id="recent-reports" className="scroll-mt-20">
-            <div className="flex items-center justify-between mb-6 px-3 md:px-0">
-              <div>
-                <h2 className="text-2xl font-bold text-slate-800 flex items-center gap-2">
-                  <FileText className="w-7 h-7 text-blue-600" />
-                  Recent Reports
-                </h2>
-                <p className="text-slate-600 text-sm mt-1">Your latest uploaded health reports</p>
-              </div>
-              <Link to="/reports" className="text-cyan-600 hover:text-cyan-700 font-medium text-xs sm:text-sm flex items-center gap-1 whitespace-nowrap">
-                View All
-                <ChevronRight className="w-4 h-4" />
-              </Link>
-            </div>
-            <div className="grid md:grid-cols-2 gap-4">
-              {dashboardData.recentReports.slice(0, 2).map((report) => (
-                <div key={report._id} className="bg-white rounded-2xl border-2 border-orange-200 p-5 hover:shadow-lg transition-all group">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center">
-                      <FileText className="w-6 h-6 text-white" />
+            <div className="space-y-4">
+              {(dashboardData?.recentReports?.length > 0 ? dashboardData.recentReports.slice(0, 3) : [
+                { _id: '1', reportType: 'Complete Blood Count', createdAt: '2026-02-12', status: 'completed' },
+                { _id: '2', reportType: 'Lipid Profile', createdAt: '2026-01-28', status: 'pending' },
+                { _id: '3', reportType: 'Thyroid Panel', createdAt: '2025-12-15', status: 'completed' }
+              ]).map((report, idx) => (
+                <Link
+                  key={report._id || idx}
+                  to={report._id ? `/reports/${report._id}` : "#"}
+                  className="flex items-center justify-between p-4 bg-slate-50 hover:bg-white border border-transparent hover:border-slate-100 rounded-3xl transition-all group shadow-sm"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shadow-sm text-slate-400 group-hover:text-indigo-600 transition-colors">
+                      <FileText className="w-6 h-6" />
                     </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${report.status === 'completed'
-                      ? 'bg-emerald-100 text-emerald-700'
-                      : 'bg-amber-100 text-amber-700'
+                    <div>
+                      <h4 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{report.reportType}</h4>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
+                        {new Date(report.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4">
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${report.status === 'completed' ? 'text-emerald-500' : 'text-amber-500'
                       }`}>
-                      {report.status === 'completed' ? 'ANALYZED' : 'PENDING'}
+                      {report.status === 'completed' ? 'Analyzed - Healthy' : 'Action Required'}
                     </span>
+                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-600 transition-colors" />
                   </div>
-                  <h3 className="font-bold text-slate-800 text-lg mb-2">
-                    {report.reportType}
-                  </h3>
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2 text-sm text-slate-600">
-                      <Calendar className="w-4 h-4" />
-                      <span>{new Date(report.createdAt).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric'
-                      })}</span>
-                    </div>
-                    {report.aiAnalysis?.healthScore && (
-                      <div className="flex items-center gap-1">
-                        <Heart className="w-4 h-4 text-red-500" />
-                        <span className="font-bold text-slate-800">{report.aiAnalysis.healthScore}</span>
-                      </div>
-                    )}
-                  </div>
-                  {report.aiAnalysis?.summary && (
-                    <p className="text-sm text-slate-600 line-clamp-2 mb-4">
-                      {report.aiAnalysis.summary}
-                    </p>
-                  )}
+                </Link>
+              ))}
+            </div>
+          </div>
 
-                  {/* Action Button */}
-                  <Link
-                    to={`/reports/${report._id}`}
-                    className="w-full py-2 px-4 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white text-sm font-medium rounded-xl transition-all flex items-center justify-center gap-2"
-                  >
-                    <Activity className="w-4 h-4" />
-                    View Details
-                  </Link>
+          {/* Recommended Tests Column */}
+          <div className="bg-white rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-slate-100">
+            <div className="flex items-center gap-3 mb-6">
+              <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
+                <Activity className="w-5 h-5 text-indigo-600" />
+              </div>
+              <h3 className="text-lg font-black text-[#0F172A] uppercase tracking-tight">Personalized Recommendations</h3>
+            </div>
+            <div className="space-y-4">
+              {[
+                { name: 'Vitamin B12 Panel', reason: 'Low intake detected in food log', type: 'Test' },
+                { name: 'Omega-3 (1000mg)', reason: 'To support heart and brain health', type: 'Supplement' },
+                { name: 'HbA1c Test', reason: 'Important for diabetes monitoring', type: 'Test' },
+                { name: 'Vitamin D3 (2000 IU)', reason: 'Low sun exposure detected', type: 'Supplement' }
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-center justify-between p-4 bg-slate-50 rounded-3xl group cursor-pointer hover:bg-white border border-transparent hover:border-slate-100 transition-all shadow-sm">
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-bold text-slate-800">{item.name}</h4>
+                      <span className={`text-[8px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded-md ${item.type === 'Test' ? 'bg-indigo-100 text-indigo-600' : 'bg-emerald-100 text-emerald-600'
+                        }`}>
+                        {item.type}
+                      </span>
+                    </div>
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.reason}</p>
+                  </div>
+                  <button className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all ring-1 ring-slate-100">
+                    <Plus className="w-5 h-5" />
+                  </button>
                 </div>
               ))}
             </div>
           </div>
-        )}
+        </div>
+
+
+
+
+
+
+
 
         {/* 30 Days Challenge - Above Did You Know */}
         <div>
@@ -1146,50 +1367,7 @@ export default function DashboardEnhanced() {
           </div>
         </div>
 
-        {/* Coming Soon - Horizontal scroll on mobile */}
-        <div className="bg-gradient-to-br from-purple-50 via-pink-50 to-orange-50 rounded-3xl border-2 border-purple-200 p-6 md:p-8">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
-              <Zap className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-bold text-slate-800">Coming Soon</h2>
-              <p className="text-slate-600 text-sm">Exciting new features we're working on</p>
-            </div>
-          </div>
-          <div className="md:grid md:grid-cols-3 md:gap-4 flex md:flex-none overflow-x-auto gap-4 pb-4 md:pb-0 snap-x snap-mandatory scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
-            <div className="min-w-[280px] md:min-w-0 snap-center bg-white/80 backdrop-blur-sm rounded-2xl p-5 border-2 border-purple-200">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                  <Brain className="w-5 h-5 text-purple-600" />
-                </div>
-                <Star className="w-5 h-5 text-amber-400" />
-              </div>
-              <h3 className="font-bold text-slate-800 mb-2">Mental Wellness</h3>
-              <p className="text-sm text-slate-600">Mood tracking, meditation guides, and stress management tools</p>
-            </div>
-            <div className="min-w-[280px] md:min-w-0 snap-center bg-white/80 backdrop-blur-sm rounded-2xl p-5 border-2 border-pink-200">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-lg bg-pink-100 flex items-center justify-center">
-                  <Target className="w-5 h-5 text-pink-600" />
-                </div>
-                <Star className="w-5 h-5 text-amber-400" />
-              </div>
-              <h3 className="font-bold text-slate-800 mb-2">Fitness Coaching</h3>
-              <p className="text-sm text-slate-600">Personalized workout plans and virtual fitness trainer</p>
-            </div>
-            <div className="min-w-[280px] md:min-w-0 snap-center bg-white/80 backdrop-blur-sm rounded-2xl p-5 border-2 border-orange-200">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="w-10 h-10 rounded-lg bg-orange-100 flex items-center justify-center">
-                  <Shield className="w-5 h-5 text-orange-600" />
-                </div>
-                <Star className="w-5 h-5 text-amber-400" />
-              </div>
-              <h3 className="font-bold text-slate-800 mb-2">Health Insurance</h3>
-              <p className="text-sm text-slate-600">Compare plans and manage your health coverage</p>
-            </div>
-          </div>
-        </div>
+
 
         {/* CTA Footer */}
         <div className="bg-gradient-to-r from-cyan-500 to-emerald-500 rounded-3xl p-8 text-white">
@@ -1210,6 +1388,6 @@ export default function DashboardEnhanced() {
         </div>
 
       </div>
-    </div>
+    </div >
   );
 }

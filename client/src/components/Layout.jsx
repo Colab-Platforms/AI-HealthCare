@@ -59,7 +59,7 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
   const bgColor = 'bg-gradient-to-br from-cyan-50 via-blue-50 to-cyan-100';
 
   return (
-    <div className={`min-h-screen flex ${bgColor}`}>
+    <div className={`min-h-screen flex`}>
       {/* Sidebar - Slide from RIGHT on mobile, fixed on desktop */}
       <aside className={`fixed inset-y-0 right-0 lg:left-0 lg:right-auto z-50 w-64 shadow-lg lg:shadow-sm transform transition-transform duration-300 hidden lg:flex lg:flex-col bg-gradient-to-br from-cyan-500 to-blue-600 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
         <div className="flex flex-col h-full">
@@ -105,8 +105,8 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
                   to={path}
                   onClick={() => setSidebarOpen(false)}
                   className={`flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all ${location.pathname === path
-                      ? 'border'
-                      : ''
+                    ? 'border'
+                    : ''
                     }`}
                   style={location.pathname === path ? {
                     backgroundColor: 'rgba(255,255,255,0.2)',

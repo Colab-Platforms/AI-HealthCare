@@ -290,7 +290,7 @@ export default function NutritionRevamped() {
   const waterGoal = 8;
 
   return (
-    <div className="w-full min-h-screen bg-gray-50 pb-24">
+    <div className="w-full min-h-screen pb-24">
       {/* Main Content */}
       <div className="w-full max-w-2xl mx-auto px-4 py-6 space-y-6">
 
@@ -314,121 +314,106 @@ export default function NutritionRevamped() {
           </button>
         </div>
 
-        {/* Calories Card - Purple Theme */}
-        <div className="bg-gradient-to-br from-purple-600 to-purple-700 rounded-3xl p-6 text-white shadow-xl">
-          <div className="flex items-start justify-between mb-6">
+        {/* Calories Card - Premium Theme */}
+        <div className="card card-gradient p-8 text-slate-800 shadow-2xl relative overflow-hidden ring-1 ring-white/50 border-none">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-white/20 rounded-full blur-3xl -mr-20 -mt-20"></div>
+
+          <div className="flex items-start justify-between mb-8 relative z-10">
             <div>
-              <p className="text-purple-200 text-sm uppercase tracking-wide mb-2">Calories Remaining</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-600 mb-2">Calories Remaining</p>
               <div className="flex items-baseline gap-2">
-                <span className="text-5xl font-bold">{Math.max(caloriesRemaining, 0).toLocaleString()}</span>
-                <span className="text-purple-200 text-lg">kcal</span>
+                <span className="text-6xl font-black tracking-tighter text-slate-900">{Math.max(caloriesRemaining, 0).toLocaleString()}</span>
+                <span className="text-slate-500 font-bold text-lg">kcal</span>
               </div>
             </div>
-            <div className="w-16 h-16 rounded-2xl bg-purple-500 flex items-center justify-center">
-              <Flame className="w-8 h-8 text-orange-300" />
+            <div className="w-16 h-16 rounded-[1.5rem] bg-white/40 backdrop-blur-md flex items-center justify-center border border-white/50 shadow-inner group transition-transform duration-500 hover:rotate-6">
+              <Flame className="w-8 h-8 text-orange-500 drop-shadow-md" />
             </div>
           </div>
 
-          <div className="flex items-center justify-between text-sm mb-4">
-            <span className="text-purple-200">GOAL: {caloriesGoal}</span>
-            <span className="text-purple-200">CONSUMED: {caloriesConsumed}</span>
+          <div className="flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500 mb-4 px-1">
+            <span>GOAL: {caloriesGoal}</span>
+            <span className="text-purple-600">CONSUMED: {caloriesConsumed}</span>
           </div>
 
           {/* Progress Bar */}
-          <div className="w-full h-3 bg-purple-500 rounded-full overflow-hidden mb-6">
+          <div className="relative h-4 bg-white/30 rounded-full overflow-hidden mb-8 border border-white/50">
             <div
-              className="h-full bg-gradient-to-r from-orange-500 via-red-500 to-pink-500 rounded-full transition-all duration-500"
+              className="absolute inset-y-0 left-0 bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 rounded-full transition-all duration-1000 ease-out shadow-[0_0_20px_rgba(139,92,246,0.3)]"
               style={{ width: `${caloriesPercentage}%` }}
             />
           </div>
 
-          {/* Macros */}
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-3 h-3 rounded-full bg-blue-300" />
-                <span className="text-purple-200 text-xs uppercase">Protein</span>
+          {/* Macros Grid */}
+          <div className="grid grid-cols-3 gap-6 relative z-10">
+            {[
+              { label: 'Prot', value: Math.round(proteinConsumed), goal: proteinGoal, color: 'from-blue-400 to-blue-600', text: 'text-blue-600', bg: 'bg-blue-50/50', iconSize: 'w-2 h-2', percentage: proteinPercentage },
+              { label: 'Carbs', value: Math.round(carbsConsumed), goal: carbsGoal, color: 'from-emerald-400 to-emerald-600', text: 'text-emerald-600', bg: 'bg-emerald-50/50', iconSize: 'w-2 h-2', percentage: carbsPercentage },
+              { label: 'Fat', value: Math.round(fatsConsumed), goal: fatsGoal, color: 'from-amber-400 to-amber-600', text: 'text-amber-600', bg: 'bg-amber-50/50', iconSize: 'w-2 h-2', percentage: fatsPercentage }
+            ].map(macro => (
+              <div key={macro.label} className="space-y-3">
+                <div className="flex items-center gap-2 px-1">
+                  <div className={`w-1.5 h-1.5 rounded-full ${macro.text.replace('text-', 'bg-')}`} />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">{macro.label}</span>
+                </div>
+                <div className={`${macro.bg} backdrop-blur-md p-3 rounded-2xl border border-white/50 shadow-inner`}>
+                  <p className="text-xl font-black text-slate-800 tracking-tight">{macro.value}<span className="text-[10px] ml-0.5">g</span></p>
+                  <div className="w-full h-1.5 bg-white/40 rounded-full mt-2 overflow-hidden">
+                    <div
+                      className={`h-full bg-gradient-to-r ${macro.color} rounded-full transition-all duration-700`}
+                      style={{ width: `${macro.percentage}%` }}
+                    />
+                  </div>
+                </div>
               </div>
-              <p className="text-2xl font-bold">{Math.round(proteinConsumed)}g</p>
-              <div className="w-full h-2 bg-purple-500 rounded-full overflow-hidden mt-2">
-                <div
-                  className="h-full bg-blue-300 rounded-full transition-all duration-500"
-                  style={{ width: `${proteinPercentage}%` }}
-                />
-              </div>
-              <p className="text-xs text-purple-300 mt-1">Goal: {proteinGoal}g</p>
-            </div>
-
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-3 h-3 rounded-full bg-green-300" />
-                <span className="text-purple-200 text-xs uppercase">Carbs</span>
-              </div>
-              <p className="text-2xl font-bold">{Math.round(carbsConsumed)}g</p>
-              <div className="w-full h-2 bg-purple-500 rounded-full overflow-hidden mt-2">
-                <div
-                  className="h-full bg-green-300 rounded-full transition-all duration-500"
-                  style={{ width: `${carbsPercentage}%` }}
-                />
-              </div>
-              <p className="text-xs text-purple-300 mt-1">Goal: {carbsGoal}g</p>
-            </div>
-
-            <div>
-              <div className="flex items-center gap-2 mb-2">
-                <div className="w-3 h-3 rounded-full bg-yellow-300" />
-                <span className="text-purple-200 text-xs uppercase">Fat</span>
-              </div>
-              <p className="text-2xl font-bold">{Math.round(fatsConsumed)}g</p>
-              <div className="w-full h-2 bg-purple-500 rounded-full overflow-hidden mt-2">
-                <div
-                  className="h-full bg-yellow-300 rounded-full transition-all duration-500"
-                  style={{ width: `${fatsPercentage}%` }}
-                />
-              </div>
-              <p className="text-xs text-purple-300 mt-1">Goal: {fatsGoal}g</p>
-            </div>
+            ))}
           </div>
         </div>
 
         {/* Hydration Card */}
-        <div className="bg-white rounded-3xl p-6 shadow-lg">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center">
-                <Droplets className="w-6 h-6 text-blue-500" />
+        <div className="card p-6 border-none shadow-xl">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-4">
+              <div className="w-14 h-14 rounded-2xl bg-blue-50/50 backdrop-blur-md flex items-center justify-center border border-blue-100 shadow-inner">
+                <Droplets className="w-7 h-7 text-blue-500 drop-shadow-sm" />
               </div>
               <div>
-                <h3 className="text-xl font-bold text-slate-800">HYDRATION</h3>
-                <p className="text-sm text-slate-500">{waterIntake} / {waterGoal} glasses</p>
+                <h3 className="text-lg font-black text-slate-800 tracking-tight">HYDRATION</h3>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{waterIntake} of {waterGoal} glasses</p>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-3xl font-bold text-blue-500">{waterIntake}</p>
-              <p className="text-sm text-slate-500">Liters</p>
+              <p className="text-4xl font-black text-blue-600 tracking-tighter">{waterIntake}</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] -mt-1">Glasses</p>
             </div>
           </div>
 
           {/* Water Glasses */}
-          <div className="grid grid-cols-8 gap-2 mb-4">
+          <div className="flex flex-wrap gap-2.5 mb-6">
             {Array.from({ length: waterGoal }).map((_, i) => (
               <button
                 key={i}
                 onClick={handleAddWater}
-                className={`aspect-square rounded-xl flex items-center justify-center transition-all transform hover:scale-110 ${i < waterIntake
-                  ? 'bg-blue-500 text-white shadow-lg'
-                  : 'bg-gray-100 text-gray-400'
+                className={`w-10 h-11 rounded-xl flex items-center justify-center transition-all transform hover:scale-110 active:scale-95 border-2 ${i < waterIntake
+                  ? 'bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200'
+                  : 'bg-white/40 border-slate-100 text-slate-400 hover:border-blue-200'
                   }`}
               >
-                <Droplets className="w-5 h-5" />
+                <Droplets className={`w-5 h-5 ${i < waterIntake ? 'animate-bounce' : ''}`} />
               </button>
             ))}
+            <button
+              onClick={handleAddWater}
+              className="w-10 h-11 rounded-xl flex items-center justify-center bg-slate-50 border-2 border-dashed border-slate-200 text-slate-400 hover:border-blue-300 hover:bg-white transition-all transition-all"
+            >
+              <Plus className="w-5 h-5" />
+            </button>
           </div>
 
           {/* Progress Bar */}
-          <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+          <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
             <div
-              className="h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full transition-all duration-500"
+              className={`h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full transition-all duration-1000 ease-out`}
               style={{ width: `${(waterIntake / waterGoal) * 100}%` }}
             />
           </div>
@@ -441,22 +426,24 @@ export default function NutritionRevamped() {
             const mealCalories = mealLogs.reduce((sum, log) => sum + (log.totalNutrition?.calories || 0), 0);
 
             return (
-              <div key={mealType} className="bg-white rounded-3xl p-5 shadow-lg">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <div className="text-3xl">{getMealIcon(mealType)}</div>
+              <div key={mealType} className="card p-6 border-none shadow-xl">
+                <div className="flex items-center justify-between mb-6">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-14 h-14 rounded-2xl bg-white/40 backdrop-blur-md flex items-center justify-center border border-white/50 shadow-inner text-3xl`}>
+                      {getMealIcon(mealType)}
+                    </div>
                     <div>
-                      <h3 className="text-lg font-bold text-slate-800 capitalize">{mealType}</h3>
-                      <p className="text-sm text-slate-500">
-                        {mealLogs.length} items • {mealCalories} kcal
+                      <h3 className="text-lg font-black text-slate-800 tracking-tight uppercase">{mealType}</h3>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        {mealLogs.length} items • <span className="text-purple-600">{mealCalories} kcal</span>
                       </p>
                     </div>
                   </div>
                   <button
                     onClick={() => openAddMeal(mealType)}
-                    className="w-12 h-12 rounded-full bg-slate-800 text-white flex items-center justify-center hover:bg-slate-700 transition-all shadow-lg"
+                    className="w-12 h-12 rounded-[1.25rem] bg-slate-900 text-white flex items-center justify-center hover:bg-slate-800 transition-all shadow-xl hover:scale-110 active:scale-95 group"
                   >
-                    <Plus className="w-6 h-6" />
+                    <Plus className="w-6 h-6 group-hover:rotate-90 transition-transform duration-300" />
                   </button>
                 </div>
 
@@ -509,15 +496,23 @@ export default function NutritionRevamped() {
             className="bg-white w-full md:w-full md:max-w-lg rounded-t-3xl md:rounded-3xl p-6 max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-slate-800">
-                {editingMeal ? 'Edit' : 'Add'} {selectedMealType.charAt(0).toUpperCase() + selectedMealType.slice(1)}
-              </h2>
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
+                  <Utensils className="w-5 h-5 text-purple-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-slate-800 tracking-tight">
+                    {editingMeal ? 'Edit' : 'Add'} {selectedMealType.charAt(0).toUpperCase() + selectedMealType.slice(1)}
+                  </h2>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">Track your nutrition</p>
+                </div>
+              </div>
               <button
                 onClick={() => setShowAddMeal(false)}
-                className="p-2 hover:bg-gray-100 rounded-lg"
+                className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition-all"
               >
-                <X className="w-6 h-6" />
+                <X className="w-5 h-5" />
               </button>
             </div>
 
@@ -535,7 +530,7 @@ export default function NutritionRevamped() {
                           setQuantitySuggestions(getQuantitySuggestions(e.target.value));
                         }}
                         placeholder="e.g., Chicken Salad"
-                        className="w-full px-5 py-4 bg-slate-50/80 border-2 border-slate-100 rounded-2xl focus:border-purple-500 focus:bg-white focus:outline-none text-slate-900 font-bold transition-all placeholder:text-slate-400"
+                        className="w-full px-5 py-4 bg-slate-50/80 border-2 border-slate-100 rounded-[1.5rem] focus:border-purple-500 focus:bg-white focus:outline-none text-slate-900 font-bold transition-all placeholder:text-slate-400 shadow-inner"
                         onKeyPress={(e) => e.key === 'Enter' && analyzeFood()}
                       />
                     </div>
@@ -551,7 +546,7 @@ export default function NutritionRevamped() {
                             type="button"
                             onClick={() => setQuantity(qty)}
                             className={`px-3 py-2 rounded-xl text-[11px] font-bold transition-all border-2 ${quantity === qty
-                              ? 'bg-purple-600 border-purple-600 text-white shadow-lg'
+                              ? 'bg-purple-600 border-purple-600 text-white shadow-lg shadow-purple-200'
                               : 'bg-white border-slate-100 text-slate-600 hover:border-purple-200'
                               }`}
                           >
@@ -565,7 +560,7 @@ export default function NutritionRevamped() {
                         value={quantity}
                         onChange={(e) => setQuantity(e.target.value)}
                         placeholder="e.g., 1 bowl, 100g"
-                        className="w-full px-5 py-3.5 bg-slate-50/80 border-2 border-slate-100 rounded-xl focus:border-purple-500 focus:bg-white focus:outline-none text-slate-900 font-bold transition-all placeholder:text-slate-400"
+                        className="w-full px-5 py-3.5 bg-slate-50/80 border-2 border-slate-100 rounded-[1.5rem] focus:border-purple-500 focus:bg-white focus:outline-none text-slate-900 font-bold transition-all placeholder:text-slate-400 shadow-inner"
                         onKeyPress={(e) => e.key === 'Enter' && analyzeFood()}
                       />
                     </div>
@@ -586,7 +581,7 @@ export default function NutritionRevamped() {
                             type="button"
                             onClick={() => setPrepMethod(method.label)}
                             className={`p-2.5 rounded-xl transition-all border-2 flex flex-col items-center gap-1.5 ${prepMethod === method.label
-                              ? 'bg-purple-600 border-purple-600 text-white shadow-lg'
+                              ? 'bg-purple-600 border-purple-600 text-white shadow-lg shadow-purple-200'
                               : 'bg-white border-slate-100 text-slate-600 hover:border-purple-200'
                               }`}
                           >
@@ -600,61 +595,64 @@ export default function NutritionRevamped() {
                     <button
                       onClick={analyzeFood}
                       disabled={analyzing || !foodName.trim() || !quantity.trim()}
-                      className="w-full bg-slate-900 text-white font-black py-5 rounded-[2rem] hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 transition-all shadow-xl uppercase tracking-widest text-sm"
+                      className="w-full bg-slate-900 text-white font-black py-5 rounded-[2rem] hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 transition-all shadow-[0_20px_40px_-12px_rgba(15,23,42,0.3)] uppercase tracking-widest text-sm relative overflow-hidden group active:scale-[0.98]"
                     >
-                      {analyzing ? (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
-                          Analyzing...
-                        </>
-                      ) : (
-                        <>
-                          <Zap className="w-5 h-5 text-purple-400" />
-                          Calculate Nutrition
-                        </>
-                      )}
+                      <div className="absolute inset-x-0 bottom-0 h-1 bg-white/20 transform translate-y-2 group-hover:translate-y-0 transition-transform"></div>
+                      <div className="relative z-10 flex items-center gap-3">
+                        {analyzing ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin text-purple-400" />
+                            Analyzing...
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-5 h-5 text-purple-400 group-hover:animate-pulse" />
+                            Calculate Nutrition
+                          </>
+                        )}
+                      </div>
                     </button>
                   </div>
                 </>
               ) : (
                 <>
                   {/* Nutrition Results - Premium Light Theme */}
-                  <div className="space-y-6">
+                  <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
                     <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_50px_rgba(0,0,0,0.05)] relative overflow-hidden">
                       {/* Decorative Gradient Accent */}
                       <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-500/5 to-blue-500/5 rounded-bl-full pointer-events-none" />
 
-                      <div className="flex flex-col sm:flex-row items-center gap-8 mb-8 relative z-10">
+                      <div className="flex flex-col sm:flex-row items-center gap-6 mb-8 relative z-10">
                         {/* Circular Score Ring */}
-                        <div className="relative w-28 h-28 flex-shrink-0">
+                        <div className="relative w-24 h-24 flex-shrink-0">
                           <svg className="w-full h-full transform -rotate-90">
-                            <circle cx="56" cy="56" r="50" stroke="#f1f5f9" strokeWidth="8" fill="none" />
+                            <circle cx="48" cy="48" r="42" stroke="#f1f5f9" strokeWidth="8" fill="none" />
                             <circle
-                              cx="56" cy="56" r="50"
+                              cx="48" cy="48" r="42"
                               stroke={fullAnalysis?.healthScore10 >= 7 ? "#10b981" : fullAnalysis?.healthScore10 >= 4 ? "#f59e0b" : "#ef4444"}
                               strokeWidth="8"
                               fill="none"
-                              strokeDasharray={314}
-                              strokeDashoffset={314 - (fullAnalysis?.healthScore10 || (fullAnalysis?.healthScore / 10)) * 31.4}
+                              strokeDasharray={264}
+                              strokeDashoffset={264 - (fullAnalysis?.healthScore10 || (fullAnalysis?.healthScore / 10)) * 26.4}
                               strokeLinecap="round"
                               className="transition-all duration-1000 ease-out"
                             />
                           </svg>
                           <div className="absolute inset-0 flex flex-col items-center justify-center">
-                            <span className="text-3xl font-black text-slate-800">
+                            <span className="text-2xl font-black text-slate-800">
                               {fullAnalysis?.healthScore10 || (fullAnalysis?.healthScore / 10).toFixed(1)}
                             </span>
-                            <span className="text-[8px] font-black text-slate-400 tracking-widest">SCORE</span>
+                            <span className="text-[8px] font-black text-slate-400 tracking-widest uppercase">SCORE</span>
                           </div>
                         </div>
 
-                        <div className="text-center sm:text-left">
-                          <h3 className="text-2xl font-black text-slate-800 mb-1">{foodName}</h3>
+                        <div className="text-center sm:text-left flex-1 min-w-0">
+                          <h3 className="text-2xl font-black text-slate-800 mb-2 truncate" title={foodName}>{foodName}</h3>
                           <div className="flex items-center justify-center sm:justify-start gap-2">
-                            <span className="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-black rounded-lg uppercase tracking-wider">
+                            <span className="px-3 py-1 bg-slate-100 text-slate-500 text-[10px] font-black rounded-lg uppercase tracking-wider shadow-sm">
                               {quantity}
                             </span>
-                            <div className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${fullAnalysis?.healthScore10 >= 7 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
+                            <div className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider shadow-sm ${fullAnalysis?.healthScore10 >= 7 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
                               {fullAnalysis?.healthScore10 >= 7 ? 'Optimal' : 'Moderate'}
                             </div>
                           </div>
@@ -664,13 +662,13 @@ export default function NutritionRevamped() {
                       {/* Macros Grid */}
                       <div className="grid grid-cols-4 gap-3 mb-8 relative z-10">
                         {[
-                          { label: 'Kcal', value: Math.round(nutritionData.calories), color: 'text-orange-600', bg: 'bg-orange-50' },
-                          { label: 'Prot', value: Math.round(nutritionData.protein), color: 'text-blue-600', bg: 'bg-blue-50' },
-                          { label: 'Carbs', value: Math.round(nutritionData.carbs), color: 'text-emerald-600', bg: 'bg-emerald-50' },
-                          { label: 'Fats', value: Math.round(nutritionData.fats), color: 'text-rose-600', bg: 'bg-rose-50' }
+                          { label: 'Kcal', value: Math.round(nutritionData.calories), color: 'text-orange-600', bg: 'bg-orange-50', border: 'border-orange-100' },
+                          { label: 'Prot', value: Math.round(nutritionData.protein), color: 'text-blue-600', bg: 'bg-blue-50', border: 'border-blue-100' },
+                          { label: 'Carbs', value: Math.round(nutritionData.carbs), color: 'text-emerald-600', bg: 'bg-emerald-50', border: 'border-emerald-100' },
+                          { label: 'Fats', value: Math.round(nutritionData.fats), color: 'text-rose-600', bg: 'bg-rose-50', border: 'border-rose-100' }
                         ].map(stat => (
-                          <div key={stat.label} className={`${stat.bg} rounded-2xl p-3 text-center transition-transform hover:-translate-y-1`}>
-                            <p className="text-lg font-black text-slate-800 leading-none mb-1">{stat.value}</p>
+                          <div key={stat.label} className={`${stat.bg} ${stat.border} border rounded-2xl p-3 text-center shadow-sm transition-transform hover:-translate-y-1 group`}>
+                            <p className="text-lg font-black text-slate-800 leading-none mb-1 group-hover:scale-110 transition-transform origin-bottom">{stat.value}</p>
                             <p className={`text-[9px] font-black uppercase tracking-tighter ${stat.color}`}>{stat.label}</p>
                           </div>
                         ))}
@@ -678,12 +676,12 @@ export default function NutritionRevamped() {
 
                       <div className="space-y-6 relative z-10">
                         {/* Summary Box */}
-                        <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 shadow-inner">
+                        <div className="bg-gradient-to-br from-slate-50 to-white rounded-[1.5rem] p-5 border border-slate-100 shadow-inner group">
                           <div className="flex items-center gap-2 mb-2">
-                            <Zap className="w-3 h-3 text-purple-500" />
-                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">AI Insights</span>
+                            <Brain className="w-4 h-4 text-purple-500 group-hover:rotate-12 transition-transform" />
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Medical Analysis</span>
                           </div>
-                          <p className="text-xs font-medium text-slate-600 leading-relaxed italic">
+                          <p className="text-xs font-semibold text-slate-600 leading-relaxed italic">
                             "{fullAnalysis?.analysis}"
                           </p>
                         </div>
@@ -691,16 +689,18 @@ export default function NutritionRevamped() {
                         {/* Components Sections */}
                         <div className="grid gap-4">
                           {fullAnalysis?.enhancementTips?.length > 0 && (
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                               <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-1">
-                                <Plus className="w-3 h-3 text-emerald-500" />
+                                <Sparkles className="w-3 h-3 text-emerald-500" />
                                 Boost Nutrition
                               </h4>
-                              <div className="flex flex-wrap gap-2">
+                              <div className="space-y-2">
                                 {fullAnalysis.enhancementTips.map((tip, i) => (
-                                  <div key={i} className="px-3 py-2 bg-emerald-50/50 border border-emerald-100/50 rounded-xl flex items-center gap-2">
-                                    <div className="w-1 h-1 rounded-full bg-emerald-400" />
-                                    <p className="text-[10px] font-bold text-emerald-800">{tip}</p>
+                                  <div key={i} className="px-4 py-3 bg-emerald-50/50 border border-emerald-100/50 rounded-2xl flex items-center gap-3">
+                                    <div className="w-5 h-5 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+                                      <Plus className="w-3 h-3 text-emerald-600" />
+                                    </div>
+                                    <p className="text-[10px] font-bold text-emerald-900 leading-tight pt-0.5">{tip}</p>
                                   </div>
                                 ))}
                               </div>
@@ -708,16 +708,17 @@ export default function NutritionRevamped() {
                           )}
 
                           {fullAnalysis?.micronutrients?.length > 0 && (
-                            <div className="space-y-2">
+                            <div className="space-y-3">
                               <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-2 px-1">
                                 <Activity className="w-3 h-3 text-blue-500" />
-                                Key Micros
+                                Essential Nutrients
                               </h4>
                               <div className="flex flex-wrap gap-2">
                                 {fullAnalysis.micronutrients.map((micro, i) => (
-                                  <span key={i} className="px-3 py-1.5 bg-blue-50 text-blue-700 text-[10px] font-black rounded-lg uppercase tracking-tight">
-                                    {micro}
-                                  </span>
+                                  <div key={i} className="px-3 py-2 bg-blue-50 border border-blue-100 rounded-xl flex items-center gap-1.5 shadow-sm">
+                                    <CheckCircle className="w-3 h-3 text-blue-500" />
+                                    <span className="text-[10px] font-black text-blue-800 uppercase tracking-widest">{micro}</span>
+                                  </div>
                                 ))}
                               </div>
                             </div>
@@ -727,22 +728,26 @@ export default function NutritionRevamped() {
                     </div>
                   </div>
 
-                  <div className="flex gap-3">
+                  {/* Actions */}
+                  <div className="flex gap-4 pt-4">
                     <button
                       onClick={() => {
                         setNutritionData(null);
                         setQuantity('');
                       }}
-                      className="flex-1 bg-gray-200 text-gray-900 font-bold py-4 rounded-xl hover:bg-gray-300 transition-all"
+                      className="flex-1 py-5 bg-slate-100 text-slate-600 rounded-[2rem] font-black text-sm uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95"
                     >
                       Back
                     </button>
                     <button
                       onClick={logMeal}
-                      className="flex-1 bg-slate-800 text-white font-bold py-4 rounded-xl hover:bg-slate-700 flex items-center justify-center gap-2 transition-all"
+                      className="flex-[2] py-5 bg-slate-900 text-white rounded-[2rem] font-black text-sm uppercase tracking-widest shadow-2xl hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center gap-3 group relative overflow-hidden"
                     >
-                      <Check className="w-5 h-5" />
-                      {editingMeal ? 'Update' : 'Log Meal'}
+                      <div className="absolute inset-x-0 bottom-0 h-1 bg-white/20 transform translate-y-2 group-hover:translate-y-0 transition-transform"></div>
+                      <div className="relative z-10 flex items-center gap-3">
+                        <CheckCircle className="w-5 h-5 text-emerald-400 group-hover:scale-110 transition-transform" />
+                        {editingMeal ? 'Update Meal' : 'Add to Diary'}
+                      </div>
                     </button>
                   </div>
                 </>

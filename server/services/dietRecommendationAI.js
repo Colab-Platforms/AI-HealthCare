@@ -2,8 +2,9 @@ const axios = require('axios');
 
 class DietRecommendationAI {
   constructor() {
-    this.apiKey = process.env.OPENROUTER_API_KEY;
-    this.apiUrl = 'https://openrouter.ai/api/v1/chat/completions';
+    this.apiKey = process.env.ANTHROPIC_API_KEY;
+    this.apiUrl = 'https://api.anthropic.com/v1/messages';
+    this.model = 'claude-3-5-sonnet-20240620';
   }
 
   /**
@@ -15,6 +16,7 @@ class DietRecommendationAI {
       labReports = [],
       healthParameters = {},
       fitnessGoals = [],
+      primaryFitnessGoal = '',
       activityLevel = 'moderate',
       age,
       gender,
@@ -26,10 +28,12 @@ class DietRecommendationAI {
       dietaryPreference = 'non-vegetarian',
       medicalConditions = [],
       allergies = [],
+      currentMedications = [],
       reportConditions = [],
       deficiencies = [],
-      hasReports = false, // NEW: Flag to indicate if user has reports
-      nutritionGoals = {}
+      hasReports = false,
+      nutritionGoals = {},
+      diabetesInfo = null   // NEW: full diabetes context
     } = userData;
 
     const dailyCalories = nutritionGoals.dailyCalories || 2000;
@@ -50,23 +54,23 @@ class DietRecommendationAI {
     // Build report conditions description (only if reports exist)
     let reportConditionsDescription = '';
     let deficienciesDescription = '';
-    
+
     if (hasReports) {
       if (reportConditions.length > 0) {
-        reportConditionsDescription = `\n**CRITICAL: Health Report Conditions (MUST ADDRESS IN DIET):**\n${reportConditions.map(c => 
+        reportConditionsDescription = `\n**CRITICAL: Health Report Conditions (MUST ADDRESS IN DIET):**\n${reportConditions.map(c =>
           c.finding ? `- ${c.finding}` : `- ${c.parameter}: ${c.value} (${c.status})`
         ).join('\n')}`;
       }
 
       if (deficiencies.length > 0) {
-        deficienciesDescription = `\n**CRITICAL: Nutrient Deficiencies (MUST ADDRESS IN DIET):**\n${deficiencies.map(d => 
+        deficienciesDescription = `\n**CRITICAL: Nutrient Deficiencies (MUST ADDRESS IN DIET):**\n${deficiencies.map(d =>
           `- ${d.nutrient} (${d.severity})`
         ).join('\n')}`;
       }
     }
 
     // Build scenario-specific instructions
-    const scenarioInstructions = hasReports 
+    const scenarioInstructions = hasReports
       ? `
 **SCENARIO: User HAS uploaded health reports**
 Your diet plan MUST address:
@@ -129,17 +133,41 @@ ${bmiGoalDescription}
 - Current BMI: ${currentBMI}
 ${reportConditionsDescription}
 ${deficienciesDescription}
+${diabetesInfo ? `
+**🚨 DIABETES / PREDIABETES - STRICT DIETARY RULES (HIGHEST PRIORITY):**
+This user ${diabetesInfo.isPrediabetic && !diabetesInfo.isDiabetic ? 'is PREDIABETIC' : `has ${diabetesInfo.diabetesType || 'Type 2'} Diabetes (${diabetesInfo.diabetesStatus || 'detected'})`}.
+${diabetesInfo.hba1c ? `HbA1c: ${diabetesInfo.hba1c}%` : ''}
+${diabetesInfo.fastingGlucose ? `Fasting Glucose: ${diabetesInfo.fastingGlucose}` : ''}
+${diabetesInfo.onMedication ? `On medication: ${(diabetesInfo.medicationType || []).join(', ') || 'yes'}` : ''}
+
+MANDATORY RULES FOR DIABETIC DIET:
+1. ALL carbohydrates MUST be LOW GLYCEMIC INDEX (GI < 55) - NO high GI foods
+2. STRICTLY AVOID: White rice, white bread, maida, refined flour, sugar, sweets, mithai, fruit juices, potato (fried)
+3. REPLACE with: Brown rice (small portion), jowar/bajra/ragi roti, whole wheat chapati, oats, barley
+4. Space ALL meals 3-4 hours apart to avoid glucose spikes
+5. EVERY meal MUST include fiber-rich vegetables (karela, methi, palak, lauki)
+6. Protein at EVERY meal to slow glucose absorption
+7. Max carbs per meal: 30-45g (strictly)
+8. Include diabetes-friendly Indian foods: bitter gourd (karela), fenugreek (methi), jamun, amla
+9. NO fruit juices - only whole fruits with low GI (guava, apple, pear - max 1 serving/day)
+10. Cook with minimal oil (use olive oil or mustard oil in small quantity)
+11. Include cinnamon (dalchini) in diet - natural blood sugar regulator
+12. Suggest post-meal 10-minute walk as lifestyle tip
+` : ''}
+${primaryFitnessGoal ? `
+**FITNESS GOAL:** User's primary fitness goal is: "${primaryFitnessGoal}". Align meal plan to support this goal.` : ''}
 
 MEAL SELECTION GUIDELINES:
-- Breakfast: Traditional Indian options (Idli, Dosa, Paratha, Upma, Poha, Oats, Eggs)
-- Mid-Morning Snack: Light options (Fruit, Yogurt, Nuts, Chana)
-- Lunch: Main meal with protein + carbs + vegetables (Curry + Rice/Roti, Dal + Rice)
-- Evening Snack: Light options (Tea with snack, Fruit, Nuts)
-- Dinner: Lighter than lunch (Soup, Salad, Light curry with Roti)
+- Breakfast: Traditional Indian options (Idli, Dosa, Upma, Poha, Oats${diabetesInfo ? ', Moong chilla, Besan cheela' : ', Paratha, Eggs'})
+- Mid-Morning Snack: Light options (${diabetesInfo ? 'Nuts, Buttermilk, Sprouted chana, Cucumber' : 'Fruit, Yogurt, Nuts, Chana'})
+- Lunch: Main meal with protein + veggies + controlled carbs (${diabetesInfo ? 'Dal + Jowar roti + Sabzi (no white rice)' : 'Curry + Rice/Roti, Dal + Rice'})
+- Evening Snack: Light options (${diabetesInfo ? 'Roasted makhana, Buttermilk, 4-5 almonds' : 'Tea with snack, Fruit, Nuts'})
+- Dinner: Lighter than lunch (${diabetesInfo ? 'Soup + Salad + 1 roti + light dal' : 'Soup, Salad, Light curry with Roti'})
 
 PORTION SIZE EXAMPLES:
-- Rice: 150g cooked = ~200 cal, 4g protein, 45g carbs
-- Roti: 1 piece (30g) = ~80 cal, 2.5g protein, 15g carbs
+- Brown Rice: 100g cooked = ~130 cal, 3g protein, 28g carbs (GI=50)
+- Jowar Roti: 1 piece (35g) = ~90 cal, 3g protein, 18g carbs (GI=43)
+- Whole Wheat Roti: 1 piece (30g) = ~80 cal, 2.5g protein, 15g carbs
 - Dal: 150ml cooked = ~100 cal, 8g protein, 15g carbs
 - Chicken: 100g = ~165 cal, 31g protein, 0g carbs
 - Paneer: 100g = ~265 cal, 18g protein, 6g carbs, 20g fat
@@ -157,8 +185,11 @@ Generate a comprehensive, personalized Indian diet plan based on the following h
 ${targetWeight ? `- Target Weight: ${targetWeight} kg` : ''}
 - Dietary Preference: ${dietaryPreference}
 - Activity Level: ${activityLevel}
+${primaryFitnessGoal ? `- Primary Fitness Goal: ${primaryFitnessGoal}` : ''}
 ${medicalConditions.length > 0 ? `- Medical Conditions: ${medicalConditions.join(', ')}` : ''}
 ${allergies.length > 0 ? `- Allergies: ${allergies.join(', ')}` : ''}
+${currentMedications.length > 0 ? `- Current Medications: ${currentMedications.join(', ')}` : ''}
+${diabetesInfo ? `- Diabetes Status: ${diabetesInfo.diabetesType} (${diabetesInfo.diabetesStatus}) - APPLY STRICT DIABETIC DIET RULES` : ''}
 - Has Health Reports: ${hasReports ? 'YES' : 'NO'}
 
 **DAILY NUTRITION TARGETS (MUST BE MET BY SUGGESTED MEALS):**
@@ -363,32 +394,29 @@ IMPORTANT: Provide ONLY the JSON response, no additional text. Ensure all calori
       const response = await axios.post(
         this.apiUrl,
         {
-          model: 'anthropic/claude-3.5-sonnet',
+          model: this.model,
+          max_tokens: 4000,
+          system: 'You are an expert Indian nutritionist specializing in personalized diet plans based on lab reports and health data. Always provide Indian food recommendations only. CRITICAL: Ensure all meal suggestions add up to meet the user\'s daily calorie and macro targets. Include detailed calorie and macro information for each meal.',
           messages: [
-            {
-              role: 'system',
-              content: 'You are an expert Indian nutritionist specializing in personalized diet plans based on lab reports and health data. Always provide Indian food recommendations only. CRITICAL: Ensure all meal suggestions add up to meet the user\'s daily calorie and macro targets. Include detailed calorie and macro information for each meal.'
-            },
             {
               role: 'user',
               content: prompt
             }
           ],
-          temperature: 0.7,
-          max_tokens: 4000
+          temperature: 0.7
         },
         {
           headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': process.env.APP_URL || 'http://localhost:5000',
-            'X-Title': 'HealthAI Platform'
-          }
+            'x-api-key': this.apiKey,
+            'anthropic-version': '2023-06-01',
+            'Content-Type': 'application/json'
+          },
+          timeout: 60000
         }
       );
 
-      const content = response.data.choices[0].message.content.trim();
-      
+      const content = response.data.content[0].text.trim();
+
       // Extract JSON from response
       let jsonMatch = content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
@@ -469,32 +497,29 @@ Provide ONLY the JSON response, no additional text.`;
       const response = await axios.post(
         this.apiUrl,
         {
-          model: 'anthropic/claude-3.5-sonnet',
+          model: this.model,
+          max_tokens: 2000,
+          system: 'You are an expert healthcare advisor specializing in nutritional supplementation for Indian patients.',
           messages: [
-            {
-              role: 'system',
-              content: 'You are an expert healthcare advisor specializing in nutritional supplementation for Indian patients.'
-            },
             {
               role: 'user',
               content: prompt
             }
           ],
-          temperature: 0.7,
-          max_tokens: 2000
+          temperature: 0.7
         },
         {
           headers: {
-            'Authorization': `Bearer ${this.apiKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': process.env.APP_URL || 'http://localhost:5000',
-            'X-Title': 'HealthAI Platform'
-          }
+            'x-api-key': this.apiKey,
+            'anthropic-version': '2023-06-01',
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000
         }
       );
 
-      const content = response.data.choices[0].message.content.trim();
-      
+      const content = response.data.content[0].text.trim();
+
       // Extract JSON from response
       let jsonMatch = content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {

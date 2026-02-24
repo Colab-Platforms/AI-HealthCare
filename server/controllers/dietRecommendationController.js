@@ -52,7 +52,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
               status: metric.status || 'noted',
               reportId: report._id
             });
-            
+
             // Track abnormal conditions
             if (metric.status !== 'normal') {
               reportConditions.push({
@@ -104,6 +104,35 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       };
     }
 
+    // --- Diabetes detection ---
+    const diabetesProfile = user.profile?.diabetesProfile || {};
+    const medicalHistoryConditions = user.profile?.medicalHistory?.conditions || [];
+    const chronicConditions = user.profile?.chronicConditions || [];
+    const fitnessProfile = user.profile?.fitnessProfile || {};
+
+    const isDiabetic = !!(
+      diabetesProfile.type ||
+      medicalHistoryConditions.some(c => /diabet/i.test(c)) ||
+      chronicConditions.some(c => /diabet/i.test(c))
+    );
+
+    const isPrediabetic = !!(
+      diabetesProfile.type === 'Prediabetes' ||
+      medicalHistoryConditions.some(c => /prediabet/i.test(c))
+    );
+
+    const diabetesInfo = isDiabetic || isPrediabetic ? {
+      isDiabetic,
+      isPrediabetic,
+      diabetesType: diabetesProfile.type || 'Type 2',
+      diabetesStatus: diabetesProfile.status || 'detected',
+      hba1c: diabetesProfile.hba1c,
+      fastingGlucose: diabetesProfile.fastingGlucose,
+      postMealGlucose: diabetesProfile.postMealGlucose,
+      onMedication: diabetesProfile.onMedication,
+      medicationType: diabetesProfile.medicationType || [],
+    } : null;
+
     // Prepare user data for AI
     const userData = {
       age: user.profile?.age || 25,
@@ -111,22 +140,28 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       weight: currentWeight,
       height: height,
       currentBMI: currentBMI.toFixed(1),
-      bmiGoal: bmiGoal, // weight_loss, weight_gain, maintain
+      bmiGoal: bmiGoal,
       targetWeight: targetWeight,
       dietaryPreference: user.profile?.dietaryPreference || 'non-vegetarian',
       activityLevel: user.profile?.activityLevel || 'moderately_active',
       fitnessGoals: user.profile?.fitnessGoals || [],
-      medicalConditions: user.profile?.medicalConditions || [],
+      primaryFitnessGoal: fitnessProfile.primaryGoal || '',
+      medicalConditions: [
+        ...(user.profile?.medicalConditions || []),
+        ...medicalHistoryConditions,
+        ...chronicConditions
+      ].filter((v, i, a) => v && a.indexOf(v) === i), // dedupe
       allergies: user.profile?.allergies || [],
-      hasReports: hasReports, // Flag to indicate if reports exist
+      currentMedications: user.profile?.medicalHistory?.currentMedications || [],
+      hasReports: hasReports,
       labReports: labReportInsights,
-      reportConditions: reportConditions, // Abnormal conditions from reports
-      deficiencies: deficiencies, // Nutrient deficiencies
+      reportConditions: reportConditions,
+      deficiencies: deficiencies,
+      diabetesInfo,            // ← full diabetes context
       healthParameters: {
         bmi: currentBMI,
         bloodPressure: user.profile?.bloodPressure
       },
-      // Add nutrition goals to userData
       nutritionGoals: {
         dailyCalories: nutritionGoals.calorieGoal,
         protein: nutritionGoals.proteinGoal,
@@ -183,7 +218,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
 
     res.json({
       success: true,
-      message: hasReports 
+      message: hasReports
         ? 'Personalized diet plan generated based on your goal and health reports'
         : 'Personalized diet plan generated based on your nutrition goal',
       dietPlan,

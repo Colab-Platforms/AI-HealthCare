@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import axios from 'axios';
-import { 
+import {
   User, Save, Heart, AlertCircle, Camera, Mail, Phone, Target,
   Activity, Droplet, Cigarette, Wine, Moon, Apple, Dumbbell, Pill, Bell
 } from 'lucide-react';
@@ -36,8 +36,17 @@ export default function Profile() {
       height: user?.profile?.height || '',
       weight: user?.profile?.weight || '',
       bloodGroup: user?.profile?.bloodGroup || '',
-      allergies: user?.profile?.allergies?.join(', ') || '',
-      chronicConditions: user?.profile?.chronicConditions?.join(', ') || ''
+      medicalHistory: {
+        conditions: user?.profile?.medicalHistory?.conditions || []
+      },
+      lifestyle: {
+        smoker: user?.profile?.lifestyle?.smoker || false,
+        alcohol: user?.profile?.lifestyle?.alcohol || false,
+        sleepHours: user?.profile?.lifestyle?.sleepHours || '7',
+        stressLevel: user?.profile?.lifestyle?.stressLevel || 'moderate',
+        waterIntake: user?.profile?.lifestyle?.waterIntake || '8'
+      },
+      diabetesProfile: user?.profile?.diabetesProfile || null
     }
   });
 
@@ -65,13 +74,31 @@ export default function Profile() {
         console.log('No health goal set yet');
       }
     };
-    
+
     fetchHealthGoal();
   }, []);
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
-    if (name.startsWith('profile.')) {
+    const { name, value, type, checked } = e.target;
+    if (name.startsWith('profile.lifestyle.')) {
+      const field = name.split('.')[2];
+      setFormData(prev => ({
+        ...prev,
+        profile: {
+          ...prev.profile,
+          lifestyle: { ...prev.profile.lifestyle, [field]: type === 'checkbox' ? checked : value }
+        }
+      }));
+    } else if (name.startsWith('profile.diabetesProfile.')) {
+      const field = name.split('.')[2];
+      setFormData(prev => ({
+        ...prev,
+        profile: {
+          ...prev.profile,
+          diabetesProfile: { ...prev.profile.diabetesProfile, [field]: value }
+        }
+      }));
+    } else if (name.startsWith('profile.')) {
       const field = name.split('.')[1];
       setFormData(prev => ({ ...prev, profile: { ...prev.profile, [field]: value } }));
     } else {
@@ -90,8 +117,11 @@ export default function Profile() {
           age: formData.profile.age ? Number(formData.profile.age) : undefined,
           height: formData.profile.height ? Number(formData.profile.height) : undefined,
           weight: formData.profile.weight ? Number(formData.profile.weight) : undefined,
-          allergies: formData.profile.allergies ? formData.profile.allergies.split(',').map(s => s.trim()).filter(Boolean) : [],
-          chronicConditions: formData.profile.chronicConditions ? formData.profile.chronicConditions.split(',').map(s => s.trim()).filter(Boolean) : []
+          lifestyle: {
+            ...formData.profile.lifestyle,
+            sleepHours: Number(formData.profile.lifestyle.sleepHours),
+            waterIntake: Number(formData.profile.lifestyle.waterIntake)
+          }
         }
       };
       const { data } = await api.put('/auth/profile', payload);
@@ -116,11 +146,11 @@ export default function Profile() {
         height: Number(goalFormData.height),
         age: Number(goalFormData.age)
       };
-      
+
       const response = await axios.post('/api/nutrition/goals', payload, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      
+
       setHealthGoal(response.data.healthGoal);
       toast.success('Fitness goal set successfully! Your daily targets have been calculated.');
     } catch (error) {
@@ -219,17 +249,16 @@ export default function Profile() {
       {/* Tabs */}
       <div className="flex gap-1 md:gap-2 p-1 bg-slate-100 rounded-xl w-full md:w-fit overflow-x-auto">
         {[
-          { id: 'profile', label: 'Profile', icon: User }, 
+          { id: 'profile', label: 'Profile', icon: User },
           { id: 'goals', label: 'Set Goal', icon: Target }
         ].map(tab => (
-          <button 
-            key={tab.id} 
-            onClick={() => setActiveTab(tab.id)} 
-            className={`flex items-center gap-1 md:gap-2 px-3 md:px-5 py-2 md:py-2.5 rounded-lg font-medium transition-all whitespace-nowrap text-sm md:text-base ${
-              activeTab === tab.id 
-                ? 'bg-white text-slate-800 shadow-sm' 
-                : 'text-slate-600 hover:text-slate-800'
-            }`}
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`flex items-center gap-1 md:gap-2 px-3 md:px-5 py-2 md:py-2.5 rounded-lg font-medium transition-all whitespace-nowrap text-sm md:text-base ${activeTab === tab.id
+              ? 'bg-white text-slate-800 shadow-sm'
+              : 'text-slate-600 hover:text-slate-800'
+              }`}
           >
             <tab.icon className="w-4 h-4" />
             {tab.label}
@@ -249,43 +278,43 @@ export default function Profile() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-5">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Full Name</label>
-                  <input 
-                    type="text" 
-                    name="name" 
-                    value={formData.name} 
-                    onChange={handleChange} 
-                    className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4 text-slate-800 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none" 
-                    required 
+                  <input
+                    type="text"
+                    name="name"
+                    value={formData.name}
+                    onChange={handleChange}
+                    className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4 text-slate-800 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none"
+                    required
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Email</label>
-                  <input 
-                    type="email" 
-                    value={user?.email} 
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-slate-500" 
-                    disabled 
+                  <input
+                    type="email"
+                    value={user?.email}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 text-slate-500"
+                    disabled
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Age</label>
-                  <input 
-                    type="number" 
-                    name="profile.age" 
-                    value={formData.profile.age} 
-                    onChange={handleChange} 
-                    className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4 text-slate-800 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none" 
-                    min="1" 
-                    max="120" 
-                    placeholder="Enter your age" 
+                  <input
+                    type="number"
+                    name="profile.age"
+                    value={formData.profile.age}
+                    onChange={handleChange}
+                    className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4 text-slate-800 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none"
+                    min="1"
+                    max="120"
+                    placeholder="Enter your age"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Gender</label>
-                  <select 
-                    name="profile.gender" 
-                    value={formData.profile.gender} 
-                    onChange={handleChange} 
+                  <select
+                    name="profile.gender"
+                    value={formData.profile.gender}
+                    onChange={handleChange}
                     className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4 text-slate-800 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none"
                   >
                     <option value="">Select gender</option>
@@ -296,10 +325,10 @@ export default function Profile() {
                 </div>
                 <div className="md:col-span-2">
                   <label className="block text-sm font-medium text-slate-700 mb-2">Dietary Preference</label>
-                  <select 
-                    name="profile.dietaryPreference" 
-                    value={formData.profile.dietaryPreference} 
-                    onChange={handleChange} 
+                  <select
+                    name="profile.dietaryPreference"
+                    value={formData.profile.dietaryPreference}
+                    onChange={handleChange}
                     className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4 text-slate-800 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none"
                   >
                     <option value="non-vegetarian">Non-Vegetarian</option>
@@ -320,36 +349,36 @@ export default function Profile() {
               <div className="grid md:grid-cols-3 gap-5">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Height (cm)</label>
-                  <input 
-                    type="number" 
-                    name="profile.height" 
-                    value={formData.profile.height} 
-                    onChange={handleChange} 
-                    className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4 text-slate-800 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none" 
-                    min="50" 
-                    max="300" 
-                    placeholder="170" 
+                  <input
+                    type="number"
+                    name="profile.height"
+                    value={formData.profile.height}
+                    onChange={handleChange}
+                    className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4 text-slate-800 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none"
+                    min="50"
+                    max="300"
+                    placeholder="170"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Weight (kg)</label>
-                  <input 
-                    type="number" 
-                    name="profile.weight" 
-                    value={formData.profile.weight} 
-                    onChange={handleChange} 
-                    className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4 text-slate-800 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none" 
-                    min="10" 
-                    max="500" 
-                    placeholder="70" 
+                  <input
+                    type="number"
+                    name="profile.weight"
+                    value={formData.profile.weight}
+                    onChange={handleChange}
+                    className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4 text-slate-800 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none"
+                    min="10"
+                    max="500"
+                    placeholder="70"
                   />
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-slate-700 mb-2">Blood Group</label>
-                  <select 
-                    name="profile.bloodGroup" 
-                    value={formData.profile.bloodGroup} 
-                    onChange={handleChange} 
+                  <select
+                    name="profile.bloodGroup"
+                    value={formData.profile.bloodGroup}
+                    onChange={handleChange}
                     className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4 text-slate-800 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none"
                   >
                     <option value="">Select</option>
@@ -365,216 +394,162 @@ export default function Profile() {
             <div className="bg-white rounded-2xl border border-slate-200 p-3 md:p-6 shadow-sm">
               <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
                 <AlertCircle className="w-5 h-5 text-amber-500" />
-                Medical History
+                Medical Conditions
               </h3>
-              <div className="space-y-5">
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Allergies <span className="text-slate-400 font-normal">(comma separated)</span>
-                  </label>
-                  <input 
-                    type="text" 
-                    name="profile.allergies" 
-                    value={formData.profile.allergies} 
-                    onChange={handleChange} 
-                    className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4 text-slate-800 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none" 
-                    placeholder="e.g., Penicillin, Peanuts" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-2">
-                    Chronic Conditions <span className="text-slate-400 font-normal">(comma separated)</span>
-                  </label>
-                  <input 
-                    type="text" 
-                    name="profile.chronicConditions" 
-                    value={formData.profile.chronicConditions} 
-                    onChange={handleChange} 
-                    className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4 text-slate-800 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none" 
-                    placeholder="e.g., Diabetes, Hypertension" 
-                  />
-                </div>
+              <div className="space-y-4">
+                <label className="block text-sm font-medium text-slate-700">
+                  Chronic Conditions <span className="text-slate-400 font-normal">(comma separated)</span>
+                </label>
+                <input
+                  type="text"
+                  name="profile.medicalHistory.conditions"
+                  value={formData.profile.medicalHistory.conditions.join(', ')}
+                  onChange={(e) => {
+                    const conditions = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                    setFormData(prev => ({
+                      ...prev,
+                      profile: {
+                        ...prev.profile,
+                        medicalHistory: { ...prev.profile.medicalHistory, conditions }
+                      }
+                    }));
+                  }}
+                  className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4 text-slate-800 focus:border-cyan-500 focus:ring-2 focus:ring-cyan-500/20 focus:outline-none"
+                  placeholder="e.g., Diabetes, Hypertension"
+                />
               </div>
             </div>
 
-            {/* Diabetes Profile */}
-            {user?.profile?.diabetesProfile && (
+            {/* Diabetes Profile (if applicable) */}
+            {formData.profile.diabetesProfile && (
               <div className="bg-white rounded-2xl border border-slate-200 p-3 md:p-6 shadow-sm">
                 <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
                   <Pill className="w-5 h-5 text-purple-500" />
-                  Diabetes Profile
+                  Diabetes Management
                 </h3>
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="p-3 bg-slate-50 rounded-xl">
-                    <p className="text-xs text-slate-500 mb-1">Diabetes Type</p>
-                    <p className="text-sm font-semibold text-slate-800 capitalize">{user.profile.diabetesProfile.type}</p>
+                <div className="grid md:grid-cols-2 gap-5">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Diabetes Type</label>
+                    <select
+                      name="profile.diabetesProfile.type"
+                      value={formData.profile.diabetesProfile.type}
+                      onChange={handleChange}
+                      className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4"
+                    >
+                      <option value="Type 1">Type 1</option>
+                      <option value="Type 2">Type 2</option>
+                      <option value="Prediabetes">Prediabetes</option>
+                      <option value="Gestational">Gestational</option>
+                    </select>
                   </div>
-                  {user.profile.diabetesProfile.status && (
-                    <div className="p-3 bg-slate-50 rounded-xl">
-                      <p className="text-xs text-slate-500 mb-1">Status</p>
-                      <p className="text-sm font-semibold text-slate-800 capitalize">{user.profile.diabetesProfile.status}</p>
-                    </div>
-                  )}
-                  {user.profile.diabetesProfile.hba1c && (
-                    <div className="p-3 bg-slate-50 rounded-xl">
-                      <p className="text-xs text-slate-500 mb-1">HbA1c Level</p>
-                      <p className="text-sm font-semibold text-slate-800">{user.profile.diabetesProfile.hba1c}%</p>
-                    </div>
-                  )}
-                  {user.profile.diabetesProfile.glucoseMonitoring && (
-                    <div className="p-3 bg-slate-50 rounded-xl">
-                      <p className="text-xs text-slate-500 mb-1">Glucose Monitoring</p>
-                      <p className="text-sm font-semibold text-slate-800 capitalize">{user.profile.diabetesProfile.glucoseMonitoring.replace('_', ' ')}</p>
-                    </div>
-                  )}
-                  {user.profile.diabetesProfile.medicationType && user.profile.diabetesProfile.medicationType.length > 0 && (
-                    <div className="p-3 bg-slate-50 rounded-xl md:col-span-2">
-                      <p className="text-xs text-slate-500 mb-2">Medications</p>
-                      <div className="flex flex-wrap gap-2">
-                        {user.profile.diabetesProfile.medicationType.map((med, idx) => (
-                          <span key={idx} className="px-2 py-1 bg-purple-100 text-purple-700 rounded-lg text-xs font-medium capitalize">
-                            {med}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">HbA1c Level (%)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      name="profile.diabetesProfile.hba1c"
+                      value={formData.profile.diabetesProfile.hba1c}
+                      onChange={handleChange}
+                      className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Diagnosis Year</label>
+                    <input
+                      type="number"
+                      name="profile.diabetesProfile.diagnosisYear"
+                      value={formData.profile.diabetesProfile.diagnosisYear}
+                      onChange={handleChange}
+                      className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-2">Current Status</label>
+                    <select
+                      name="profile.diabetesProfile.status"
+                      value={formData.profile.diabetesProfile.status}
+                      onChange={handleChange}
+                      className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4"
+                    >
+                      <option value="Controlled">Controlled</option>
+                      <option value="Uncontrolled">Uncontrolled</option>
+                      <option value="Newly diagnosed">Newly diagnosed</option>
+                    </select>
+                  </div>
                 </div>
               </div>
             )}
 
             {/* Lifestyle Habits */}
-            {user?.profile?.lifestyle && (
-              <div className="bg-white rounded-2xl border border-slate-200 p-3 md:p-6 shadow-sm">
-                <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-green-500" />
-                  Lifestyle Habits
-                </h3>
-                <div className="grid md:grid-cols-3 gap-4">
-                  <div className="p-3 bg-slate-50 rounded-xl flex items-center gap-3">
-                    <Moon className="w-5 h-5 text-indigo-500" />
-                    <div>
-                      <p className="text-xs text-slate-500">Sleep Hours</p>
-                      <p className="text-sm font-semibold text-slate-800">{user.profile.lifestyle.sleepHours} hours</p>
-                    </div>
-                  </div>
-                  <div className="p-3 bg-slate-50 rounded-xl flex items-center gap-3">
-                    <Droplet className="w-5 h-5 text-blue-500" />
-                    <div>
-                      <p className="text-xs text-slate-500">Water Intake</p>
-                      <p className="text-sm font-semibold text-slate-800">{user.profile.lifestyle.waterIntake} glasses</p>
-                    </div>
-                  </div>
-                  <div className="p-3 bg-slate-50 rounded-xl flex items-center gap-3">
-                    <AlertCircle className="w-5 h-5 text-amber-500" />
-                    <div>
-                      <p className="text-xs text-slate-500">Stress Level</p>
-                      <p className="text-sm font-semibold text-slate-800 capitalize">{user.profile.lifestyle.stressLevel}</p>
-                    </div>
-                  </div>
-                  {user.profile.lifestyle.smoker && (
-                    <div className="p-3 bg-slate-50 rounded-xl flex items-center gap-3">
-                      <Cigarette className="w-5 h-5 text-red-500" />
-                      <div>
-                        <p className="text-xs text-slate-500">Smoking</p>
-                        <p className="text-sm font-semibold text-slate-800 capitalize">{user.profile.lifestyle.smokingFrequency || 'Yes'}</p>
-                      </div>
-                    </div>
-                  )}
-                  {user.profile.lifestyle.alcohol && (
-                    <div className="p-3 bg-slate-50 rounded-xl flex items-center gap-3">
-                      <Wine className="w-5 h-5 text-purple-500" />
-                      <div>
-                        <p className="text-xs text-slate-500">Alcohol</p>
-                        <p className="text-sm font-semibold text-slate-800 capitalize">{user.profile.lifestyle.alcoholFrequency || 'Yes'}</p>
-                      </div>
-                    </div>
-                  )}
+            <div className="bg-white rounded-2xl border border-slate-200 p-3 md:p-6 shadow-sm">
+              <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
+                <Activity className="w-5 h-5 text-green-500" />
+                Lifestyle Habits
+              </h3>
+              <div className="grid md:grid-cols-2 gap-5">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Sleep Hours</label>
+                  <input
+                    type="number"
+                    name="profile.lifestyle.sleepHours"
+                    value={formData.profile.lifestyle.sleepHours}
+                    onChange={handleChange}
+                    className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4 text-slate-800 focus:border-cyan-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Water Intake (glasses)</label>
+                  <input
+                    type="number"
+                    name="profile.lifestyle.waterIntake"
+                    value={formData.profile.lifestyle.waterIntake}
+                    onChange={handleChange}
+                    className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4 text-slate-800 focus:border-cyan-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-2">Stress Level</label>
+                  <select
+                    name="profile.lifestyle.stressLevel"
+                    value={formData.profile.lifestyle.stressLevel}
+                    onChange={handleChange}
+                    className="w-full bg-white border border-slate-300 rounded-xl py-3 px-4 text-slate-800 focus:border-cyan-500"
+                  >
+                    <option value="low">Low</option>
+                    <option value="moderate">Moderate</option>
+                    <option value="high">High</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-4 justify-center">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="profile.lifestyle.smoker"
+                      checked={formData.profile.lifestyle.smoker}
+                      onChange={handleChange}
+                      className="w-5 h-5 text-cyan-500 rounded border-slate-300 focus:ring-cyan-500"
+                    />
+                    <span className="text-slate-700 font-medium">Smoker</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="profile.lifestyle.alcohol"
+                      checked={formData.profile.lifestyle.alcohol}
+                      onChange={handleChange}
+                      className="w-5 h-5 text-cyan-500 rounded border-slate-300 focus:ring-cyan-500"
+                    />
+                    <span className="text-slate-700 font-medium">Consume Alcohol</span>
+                  </label>
                 </div>
               </div>
-            )}
+            </div>
 
-            {/* Diet Preferences */}
-            {user?.profile?.dietPreferences && (
-              <div className="bg-white rounded-2xl border border-slate-200 p-3 md:p-6 shadow-sm">
-                <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                  <Apple className="w-5 h-5 text-red-500" />
-                  Diet Preferences
-                </h3>
-                <div className="grid md:grid-cols-2 gap-4">
-                  {user.profile.dietPreferences.cuisinePreference && (
-                    <div className="p-3 bg-slate-50 rounded-xl">
-                      <p className="text-xs text-slate-500 mb-1">Cuisine Preference</p>
-                      <p className="text-sm font-semibold text-slate-800 capitalize">{user.profile.dietPreferences.cuisinePreference}</p>
-                    </div>
-                  )}
-                  {user.profile.dietPreferences.mealsPerDay && (
-                    <div className="p-3 bg-slate-50 rounded-xl">
-                      <p className="text-xs text-slate-500 mb-1">Meals Per Day</p>
-                      <p className="text-sm font-semibold text-slate-800">{user.profile.dietPreferences.mealsPerDay}</p>
-                    </div>
-                  )}
-                  {user.profile.dietPreferences.restrictions && user.profile.dietPreferences.restrictions.length > 0 && (
-                    <div className="p-3 bg-slate-50 rounded-xl md:col-span-2">
-                      <p className="text-xs text-slate-500 mb-2">Food Restrictions</p>
-                      <div className="flex flex-wrap gap-2">
-                        {user.profile.dietPreferences.restrictions.map((restriction, idx) => (
-                          <span key={idx} className="px-2 py-1 bg-red-100 text-red-700 rounded-lg text-xs font-medium capitalize">
-                            {restriction}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
 
-            {/* Fitness Profile */}
-            {user?.profile?.fitnessProfile && (
-              <div className="bg-white rounded-2xl border border-slate-200 p-3 md:p-6 shadow-sm">
-                <h3 className="text-lg font-bold text-slate-800 mb-6 flex items-center gap-2">
-                  <Dumbbell className="w-5 h-5 text-orange-500" />
-                  Fitness Profile
-                </h3>
-                <div className="grid md:grid-cols-2 gap-4">
-                  {user.profile.fitnessProfile.primaryGoal && (
-                    <div className="p-3 bg-slate-50 rounded-xl">
-                      <p className="text-xs text-slate-500 mb-1">Primary Goal</p>
-                      <p className="text-sm font-semibold text-slate-800 capitalize">{user.profile.fitnessProfile.primaryGoal.replace('_', ' ')}</p>
-                    </div>
-                  )}
-                  {user.profile.fitnessProfile.timeframe && (
-                    <div className="p-3 bg-slate-50 rounded-xl">
-                      <p className="text-xs text-slate-500 mb-1">Timeframe</p>
-                      <p className="text-sm font-semibold text-slate-800">{user.profile.fitnessProfile.timeframe} months</p>
-                    </div>
-                  )}
-                  {user.profile.fitnessProfile.biggestChallenge && (
-                    <div className="p-3 bg-slate-50 rounded-xl md:col-span-2">
-                      <p className="text-xs text-slate-500 mb-1">Biggest Challenge</p>
-                      <p className="text-sm font-semibold text-slate-800 capitalize">{user.profile.fitnessProfile.biggestChallenge.replace('_', ' ')}</p>
-                    </div>
-                  )}
-                  {user.profile.fitnessProfile.exercisePreference && user.profile.fitnessProfile.exercisePreference.length > 0 && (
-                    <div className="p-3 bg-slate-50 rounded-xl md:col-span-2">
-                      <p className="text-xs text-slate-500 mb-2">Exercise Preferences</p>
-                      <div className="flex flex-wrap gap-2">
-                        {user.profile.fitnessProfile.exercisePreference.map((exercise, idx) => (
-                          <span key={idx} className="px-2 py-1 bg-orange-100 text-orange-700 rounded-lg text-xs font-medium capitalize">
-                            {exercise.replace('_', ' ')}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
 
-            <button 
-              type="submit" 
-              disabled={loading} 
+            <button
+              type="submit"
+              disabled={loading}
               className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {loading ? (
@@ -633,7 +608,7 @@ export default function Profile() {
                   {healthGoal.goalType.replace('_', ' ')}
                 </div>
               </div>
-              
+
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-4 mt-4">
                 <div className="bg-white p-2 md:p-4 rounded-xl">
                   <p className="text-xs md:text-sm text-slate-600 mb-1">Daily Calories</p>
@@ -660,7 +635,7 @@ export default function Profile() {
             <h3 className="text-lg font-semibold text-slate-800 mb-4">
               {healthGoal ? 'Update Your Fitness Goal' : 'Set Your Fitness Goal'}
             </h3>
-            
+
             <div className="grid md:grid-cols-2 gap-6">
               {/* Goal Type */}
               <div>
@@ -814,7 +789,7 @@ export default function Profile() {
                   We use the <strong>Mifflin-St Jeor equation</strong> (industry standard used by WHO, fitness apps, and hospitals) to calculate your BMR:
                 </p>
                 <p className="text-xs text-blue-600 font-mono mb-2">
-                  Male: BMR = (10 × weight) + (6.25 × height) − (5 × age) + 5<br/>
+                  Male: BMR = (10 × weight) + (6.25 × height) − (5 × age) + 5<br />
                   Female: BMR = (10 × weight) + (6.25 × height) − (5 × age) − 161
                 </p>
                 <p className="text-sm text-blue-700 mb-2">

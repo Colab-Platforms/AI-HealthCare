@@ -10,7 +10,7 @@ import DoctorRegister from './pages/DoctorRegister';
 import DashboardEnhanced from './pages/DashboardEnhanced';
 import DoctorDashboard from './pages/DoctorDashboard';
 import UploadReport from './pages/UploadReport';
-import ReportDetails from './pages/ReportDetails';
+import ReportAnalysisMobile from './pages/ReportAnalysisMobile';
 import Doctors from './pages/Doctors';
 import Profile from './pages/Profile';
 import DemoPreview from './pages/DemoPreview';
@@ -85,7 +85,7 @@ export default function App() {
         <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><DashboardEnhanced /></Layout></ProtectedRoute>} />
         <Route path="/upload" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><UploadReport /></Layout></ProtectedRoute>} />
         <Route path="/reports" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><AllReports /></Layout></ProtectedRoute>} />
-        <Route path="/reports/:id" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><ReportDetails /></Layout></ProtectedRoute>} />
+        <Route path="/reports/:id" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><ReportAnalysisMobile /></Layout></ProtectedRoute>} />
         <Route path="/reports/:id/summary" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><ReportSummary /></Layout></ProtectedRoute>} />
         <Route path="/challenge" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Challenge30Days /></Layout></ProtectedRoute>} />
         <Route path="/diabetes" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><DiabetesCare /></Layout></ProtectedRoute>} />
