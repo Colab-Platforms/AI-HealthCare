@@ -367,7 +367,7 @@ const LogGlucoseModal = ({ isOpen, onClose, onSave }) => {
             {/* Save Button */}
             <button
               onClick={handleSave}
-              className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white py-4 rounded-full font-bold text-base hover:from-blue-600 hover:to-blue-700 transition-all shadow-lg shadow-blue-200 active:scale-[0.98]"
+              className="w-full bg-gradient-to-r from-purple-500 to-orange-600 text-white py-4 rounded-full font-bold text-base hover:from-purple-600 hover:to-orange-700 transition-all shadow-lg shadow-blue-200 active:scale-[0.98]"
             >
               Save Reading
             </button>

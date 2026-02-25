@@ -174,7 +174,7 @@ export default function Wearables() {
           </button>
           <button 
             onClick={() => setShowConnectModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-xl hover:shadow-lg transition-all"
+            className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-500 to-orange-500 text-white rounded-xl hover:shadow-lg transition-all"
           >
             <Plus className="w-4 h-4" />
             Add Device
@@ -239,7 +239,7 @@ export default function Wearables() {
                       return (
                         <div 
                           key={j} 
-                          className="flex-1 bg-gradient-to-t from-cyan-500 to-blue-500 rounded-sm" 
+                          className="flex-1 bg-gradient-to-t from-purple-500 to-orange-500 rounded-sm" 
                           style={{ height: `${height}%`, marginTop: 'auto' }} 
                         />
                       );
@@ -341,7 +341,7 @@ export default function Wearables() {
                     className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                       isConnected 
                         ? 'bg-slate-100 text-slate-700 hover:bg-slate-200' 
-                        : 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:shadow-lg'
+                        : 'bg-gradient-to-r from-purple-500 to-orange-500 text-white hover:shadow-lg'
                     }`}
                   >
                     {isConnected ? 'Disconnect' : 'Connect'}

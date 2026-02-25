@@ -271,10 +271,10 @@ export default function NutritionRevamped() {
 
   const getMealColor = (type) => {
     const colors = {
-      breakfast: 'from-orange-400 to-orange-500',
-      lunch: 'from-yellow-400 to-yellow-500',
-      snack: 'from-pink-400 to-pink-500',
-      dinner: 'from-purple-400 to-purple-500'
+      breakfast: 'from-purple-400 to-orange-500',
+      lunch: 'from-purple-400 to-orange-500',
+      snack: 'from-purple-400 to-orange-500',
+      dinner: 'from-purple-400 to-orange-500'
     };
     return colors[type] || 'from-gray-400 to-gray-500';
   };
@@ -314,7 +314,7 @@ export default function NutritionRevamped() {
         {/* Welcome Message - Mobile Only */}
         <div className="md:hidden flex items-center justify-between">
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-md flex-shrink-0">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-orange-600 flex items-center justify-center text-white text-sm font-bold shadow-md flex-shrink-0">
               {user?.name?.[0]?.toUpperCase() || 'U'}
             </div>
             <h1 className="text-sm font-bold text-slate-800 truncate">
@@ -356,7 +356,7 @@ export default function NutritionRevamped() {
           {/* Progress Bar */}
           <div className="relative h-4 bg-white/30 rounded-full overflow-hidden mb-8 border border-white/50">
             <div
-              className="absolute inset-y-0 left-0 bg-gradient-to-r from-purple-500 via-indigo-500 to-blue-500 rounded-full transition-all duration-1000 ease-out shadow-[0_0_20px_rgba(139,92,246,0.3)]"
+              className="absolute inset-y-0 left-0 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 rounded-full transition-all duration-1000 ease-out shadow-[0_0_20px_rgba(139,92,246,0.3)]"
               style={{ width: `${caloriesPercentage}%` }}
             />
           </div>
@@ -364,9 +364,9 @@ export default function NutritionRevamped() {
           {/* Macros Grid */}
           <div className="grid grid-cols-3 gap-6 relative z-10">
             {[
-              { label: 'Prot', value: Math.round(proteinConsumed), goal: proteinGoal, color: 'from-blue-400 to-blue-600', text: 'text-blue-600', bg: 'bg-blue-50/50', iconSize: 'w-2 h-2', percentage: proteinPercentage },
-              { label: 'Carbs', value: Math.round(carbsConsumed), goal: carbsGoal, color: 'from-emerald-400 to-emerald-600', text: 'text-emerald-600', bg: 'bg-emerald-50/50', iconSize: 'w-2 h-2', percentage: carbsPercentage },
-              { label: 'Fat', value: Math.round(fatsConsumed), goal: fatsGoal, color: 'from-amber-400 to-amber-600', text: 'text-amber-600', bg: 'bg-amber-50/50', iconSize: 'w-2 h-2', percentage: fatsPercentage }
+              { label: 'Prot', value: Math.round(proteinConsumed), goal: proteinGoal, color: 'from-purple-400 to-orange-600', text: 'text-blue-600', bg: 'bg-blue-50/50', iconSize: 'w-2 h-2', percentage: proteinPercentage },
+              { label: 'Carbs', value: Math.round(carbsConsumed), goal: carbsGoal, color: 'from-purple-400 to-orange-600', text: 'text-emerald-600', bg: 'bg-emerald-50/50', iconSize: 'w-2 h-2', percentage: carbsPercentage },
+              { label: 'Fat', value: Math.round(fatsConsumed), goal: fatsGoal, color: 'from-purple-400 to-orange-600', text: 'text-amber-600', bg: 'bg-amber-50/50', iconSize: 'w-2 h-2', percentage: fatsPercentage }
             ].map(macro => (
               <div key={macro.label} className="space-y-3">
                 <div className="flex items-center gap-2 px-1">
@@ -430,7 +430,7 @@ export default function NutritionRevamped() {
           {/* Progress Bar */}
           <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
             <div
-              className={`h-full bg-gradient-to-r from-blue-400 to-blue-600 rounded-full transition-all duration-1000 ease-out`}
+              className={`h-full bg-gradient-to-r from-purple-400 to-orange-600 rounded-full transition-all duration-1000 ease-out`}
               style={{ width: `${(waterIntake / waterGoal) * 100}%` }}
             />
           </div>
@@ -522,7 +522,7 @@ export default function NutritionRevamped() {
             onClick={() => setShowAddMeal(false)}
           >
             <div
-              className="bg-white w-full md:w-full md:max-w-lg rounded-t-3xl md:rounded-3xl p-6 max-h-[85vh] overflow-y-auto"
+              className="bg-white w-full md:w-full md:max-w-lg rounded-t-3xl md:rounded-3xl p-6 pb-24 md:pb-6 max-h-[90vh] overflow-y-auto"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-8">
@@ -649,7 +649,7 @@ export default function NutritionRevamped() {
                     <div className="space-y-6 animate-in slide-in-from-bottom-6 duration-700 ease-out">
                       {/* Header: Score and Basic Info */}
                       <div className="relative group">
-                        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-blue-500/5 rounded-[2.5rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-orange-500/5 rounded-[2.5rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
                         <div className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-[0_20px_50px_rgba(0,0,0,0.04)] relative">
                           <div className="flex items-center justify-between mb-8">
                             <div className="min-w-0 flex-1">

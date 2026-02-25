@@ -1,8 +1,9 @@
 const axios = require('axios');
 
 /**
- * AI Nutrition Analyzer using Claude 3.5 Sonnet / GPT-4o
+ * AI Nutrition Analyzer using Claude Direct API / OpenRouter
  * Analyzes food from images or text descriptions
+ * Supports both Anthropic direct API (sk-ant keys) and OpenRouter
  */
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
@@ -18,10 +19,14 @@ class NutritionAI {
   }
 
   getApiParams(attempt = 0) {
+    // Re-read API key in case env changed
+    this.apiKey = process.env.ANTHROPIC_API_KEY || process.env.OPENROUTER_API_KEY;
+
     const isAnthropicDirect = this.apiKey?.startsWith('sk-ant');
     const apiUrl = isAnthropicDirect ? ANTHROPIC_API_URL : OPENROUTER_API_URL;
 
-    let model = isAnthropicDirect ? 'claude-3-5-sonnet-latest' : 'anthropic/claude-3-5-sonnet';
+    // Use correct model names for each API
+    let model = isAnthropicDirect ? 'claude-3-5-sonnet-20241022' : 'anthropic/claude-3-5-sonnet';
     if (!isAnthropicDirect && attempt === 1) model = 'openai/gpt-4o-mini';
     if (!isAnthropicDirect && attempt >= 2) model = 'google/gemini-pro-1.5';
 
@@ -30,6 +35,9 @@ class NutritionAI {
 
   async makeAIRequest(payload, attempt = 0) {
     const { isAnthropicDirect, apiUrl, model } = this.getApiParams(attempt);
+
+    console.log(`🔄 NutritionAI: Using ${isAnthropicDirect ? 'Anthropic Direct' : 'OpenRouter'} with model: ${model} (attempt ${attempt + 1})`);
+
     const headers = isAnthropicDirect ? {
       'x-api-key': this.apiKey,
       'anthropic-version': '2023-06-01',
@@ -44,31 +52,77 @@ class NutritionAI {
     try {
       payload.model = model;
 
-      // Adjust payload for Anthropic Direct if needed
-      const requestPayload = isAnthropicDirect ? {
-        model: payload.model,
-        max_tokens: payload.max_tokens,
-        system: payload.system || (payload.messages && payload.messages[0].role === 'system' ? payload.messages[0].content : ''),
-        messages: payload.messages.filter(m => m.role !== 'system'),
-        temperature: payload.temperature
-      } : payload;
+      // Build the correct payload format for each API
+      let requestPayload;
 
-      const response = await axios.post(apiUrl, requestPayload, { headers, timeout: attempt === 0 ? 45000 : 60000 });
+      if (isAnthropicDirect) {
+        // Extract system message from messages array if present
+        let systemContent = payload.system || '';
+        let userMessages = payload.messages || [];
+
+        if (!systemContent && userMessages.length > 0 && userMessages[0].role === 'system') {
+          systemContent = userMessages[0].content;
+          userMessages = userMessages.filter(m => m.role !== 'system');
+        }
+
+        requestPayload = {
+          model: model,
+          max_tokens: payload.max_tokens || 2000,
+          system: systemContent,
+          messages: userMessages,
+          temperature: payload.temperature || 0.3
+        };
+      } else {
+        requestPayload = payload;
+      }
+
+      const timeout = isAnthropicDirect ? 60000 : (attempt === 0 ? 45000 : 60000);
+      const response = await axios.post(apiUrl, requestPayload, { headers, timeout });
 
       let aiResponse = '';
-      if (!isAnthropicDirect) {
-        aiResponse = response.data.choices[0].message.content;
+      if (isAnthropicDirect) {
+        if (response.data && response.data.content && response.data.content[0]) {
+          aiResponse = response.data.content[0].text;
+        } else {
+          console.error('❌ Unexpected Anthropic response structure:', JSON.stringify(response.data).substring(0, 500));
+          throw new Error('Invalid response structure from Anthropic API');
+        }
       } else {
-        aiResponse = response.data.content[0].text;
+        if (response.data && response.data.choices && response.data.choices[0]) {
+          aiResponse = response.data.choices[0].message.content;
+        } else {
+          console.error('❌ Unexpected OpenRouter response structure:', JSON.stringify(response.data).substring(0, 500));
+          throw new Error('Invalid response structure from OpenRouter API');
+        }
       }
+
+      console.log('✅ NutritionAI: Got response, length:', aiResponse.length);
       return aiResponse;
     } catch (error) {
-      console.error(`Nutrition AI Request Error (Attempt ${attempt + 1}):`, error.response?.data || error.message);
+      const errorDetail = error.response?.data ? JSON.stringify(error.response.data).substring(0, 500) : error.message;
+      console.error(`❌ NutritionAI Request Error (Attempt ${attempt + 1}):`, errorDetail);
 
+      // Retry logic for OpenRouter with fallback models
       if (!isAnthropicDirect && attempt < 2) {
         console.log(`⚠️ Attempt ${attempt + 1} failed. Retrying with fallback model...`);
         return this.makeAIRequest(payload, attempt + 1);
       }
+
+      // If Anthropic direct fails and OpenRouter key exists, try OpenRouter as fallback
+      if (isAnthropicDirect && process.env.OPENROUTER_API_KEY) {
+        console.log('⚠️ Anthropic direct failed. Trying OpenRouter as fallback...');
+        const origKey = process.env.ANTHROPIC_API_KEY;
+        process.env.ANTHROPIC_API_KEY = '';
+        try {
+          const result = await this.makeAIRequest(payload, 0);
+          process.env.ANTHROPIC_API_KEY = origKey;
+          return result;
+        } catch (retryErr) {
+          process.env.ANTHROPIC_API_KEY = origKey;
+          throw retryErr;
+        }
+      }
+
       throw error;
     }
   }
@@ -165,48 +219,56 @@ Return response in EXACT JSON format (no markdown):
 
 CRITICAL: Use accurate Indian food nutrition data. Plain roti is LOW calorie (70-80 each), not high!`;
 
-    const isOpenRouter = this.apiKey?.startsWith('sk-or');
+    const { isAnthropicDirect } = this.getApiParams();
     const systemMsg = 'You are a professional nutritionist AI with expertise in Indian food recognition and accurate nutrition data.';
 
-    const payload = isOpenRouter ? {
-      messages: [
-        { role: 'system', content: systemMsg },
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: prompt },
-            {
-              type: 'image_url',
-              image_url: {
-                url: `data:image/jpeg;base64,${imageBase64}`
+    let payload;
+
+    if (isAnthropicDirect) {
+      // Anthropic Direct API format for images
+      payload = {
+        max_tokens: 2000,
+        system: systemMsg,
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              {
+                type: 'image',
+                source: {
+                  type: 'base64',
+                  media_type: 'image/jpeg',
+                  data: imageBase64
+                }
               }
-            }
-          ]
-        }
-      ],
-      temperature: 0.3,
-      max_tokens: 2000
-    } : {
-      max_tokens: 2000,
-      system: systemMsg,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: prompt },
-            {
-              type: 'image',
-              source: {
-                type: 'base64',
-                media_type: 'image/jpeg',
-                data: imageBase64
+            ]
+          }
+        ],
+        temperature: 0.3
+      };
+    } else {
+      // OpenRouter format for images
+      payload = {
+        messages: [
+          { role: 'system', content: systemMsg },
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: `data:image/jpeg;base64,${imageBase64}`
+                }
               }
-            }
-          ]
-        }
-      ],
-      temperature: 0.3
-    };
+            ]
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 2000
+      };
+    }
 
     try {
       const aiResponse = await this.makeAIRequest(payload);
@@ -267,21 +329,21 @@ Return the response in this EXACT JSON format (no markdown, just pure JSON):
 
 Be accurate with portion sizes and nutrition values. Use standard serving sizes if quantities are not specified.`;
 
-    const isOpenRouter = this.apiKey?.startsWith('sk-or');
     const systemMsg = 'You are a professional nutritionist AI.';
+    const { isAnthropicDirect } = this.getApiParams();
 
-    const payload = isOpenRouter ? {
+    const payload = isAnthropicDirect ? {
+      max_tokens: 2000,
+      system: systemMsg,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3
+    } : {
       messages: [
         { role: 'system', content: systemMsg },
         { role: 'user', content: prompt }
       ],
       temperature: 0.3,
       max_tokens: 2000
-    } : {
-      max_tokens: 2000,
-      system: systemMsg,
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3
     };
 
     try {
@@ -337,21 +399,21 @@ Provide 3-5 INDIAN meal suggestions in JSON:
   "tips": []
 }`;
 
-    const isOpenRouter = this.apiKey?.startsWith('sk-or');
     const systemMsg = 'You are a professional nutritionist AI specializing in Indian cuisine.';
+    const { isAnthropicDirect } = this.getApiParams();
 
-    const payload = isOpenRouter ? {
+    const payload = isAnthropicDirect ? {
+      max_tokens: 1500,
+      system: systemMsg,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7
+    } : {
       messages: [
         { role: 'system', content: systemMsg },
         { role: 'user', content: prompt }
       ],
       temperature: 0.7,
       max_tokens: 1500
-    } : {
-      max_tokens: 1500,
-      system: systemMsg,
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.7
     };
 
     try {
@@ -383,21 +445,21 @@ Return in JSON:
   "alternatives": [ { "name": "Name", "description": "Why", "nutrition": {}, "benefits": "Key" } ]
 }`;
 
-    const isOpenRouter = this.apiKey?.startsWith('sk-or');
     const systemMsg = 'You are a professional nutritionist AI specializing in Indian cuisine.';
+    const { isAnthropicDirect } = this.getApiParams();
 
-    const payload = isOpenRouter ? {
+    const payload = isAnthropicDirect ? {
+      max_tokens: 1500,
+      system: systemMsg,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3
+    } : {
       messages: [
         { role: 'system', content: systemMsg },
         { role: 'user', content: prompt }
       ],
       temperature: 0.3,
       max_tokens: 1500
-    } : {
-      max_tokens: 1500,
-      system: systemMsg,
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3
     };
 
     try {

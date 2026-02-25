@@ -265,7 +265,7 @@ export default function VitalSigns() {
 
       {/* Selected Report Info */}
       {selectedReport && (
-        <div className="bg-gradient-to-r from-red-500 to-pink-500 rounded-2xl p-6 text-white">
+        <div className="bg-gradient-to-r from-purple-500 to-orange-500 rounded-2xl p-6 text-white">
           <div className="flex items-center gap-3 mb-2">
             <FileText className="w-6 h-6" />
             <h2 className="text-xl font-bold">{selectedReport.reportType}</h2>
@@ -296,7 +296,7 @@ export default function VitalSigns() {
               <select
                 value={selectedVitalForGraph || ''}
                 onChange={(e) => setSelectedVitalForGraph(e.target.value)}
-                className="appearance-none w-full px-4 py-3 pr-10 bg-gradient-to-r from-cyan-50 to-blue-50 border-2 border-cyan-200 rounded-xl text-sm font-medium text-slate-800 hover:border-cyan-400 focus:border-cyan-500 focus:outline-none cursor-pointer transition-colors"
+                className="appearance-none w-full px-4 py-3 pr-10 bg-gradient-to-r from-purple-50 to-orange-50 border-2 border-cyan-200 rounded-xl text-sm font-medium text-slate-800 hover:border-cyan-400 focus:border-cyan-500 focus:outline-none cursor-pointer transition-colors"
               >
                 <option value="">Select Vital</option>
                 {allMetrics.map(metric => (

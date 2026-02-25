@@ -34,7 +34,7 @@ export default function HealthLoader({ message }) {
         <div className="absolute inset-0 rounded-full bg-blue-200 animate-pulse"></div>
         
         {/* Icon container */}
-        <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center shadow-lg">
+        <div className="relative w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-orange-500 flex items-center justify-center shadow-lg">
           <Icon className={`w-10 h-10 text-white animate-pulse`} />
         </div>
       </div>

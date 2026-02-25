@@ -99,7 +99,7 @@ export default function DoctorRegister() {
       <div className="w-full max-w-2xl">
         <div className="text-center mb-8">
           <Link to="/" className="inline-flex items-center gap-2 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-purple-500 to-orange-500 flex items-center justify-center">
               <Activity className="w-7 h-7 text-white" />
             </div>
             <span className="text-2xl font-bold text-slate-800">HealthAI</span>
@@ -152,7 +152,7 @@ export default function DoctorRegister() {
                     <input type="password" name="confirmPassword" value={formData.confirmPassword} onChange={handleChange} className="w-full bg-white border border-slate-200 rounded-xl py-3 px-4 text-slate-800 placeholder-slate-400 focus:border-cyan-500 focus:outline-none" placeholder="••••••••" required />
                   </div>
                 </div>
-                <button type="button" onClick={() => setStep(2)} className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all mt-4">
+                <button type="button" onClick={() => setStep(2)} className="w-full py-3 bg-gradient-to-r from-purple-500 to-orange-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all mt-4">
                   Continue →
                 </button>
               </div>
@@ -196,7 +196,7 @@ export default function DoctorRegister() {
                   <button type="button" onClick={() => setStep(1)} className="flex-1 py-3 bg-slate-100 text-slate-700 font-semibold rounded-xl hover:bg-slate-200 transition-all flex items-center justify-center gap-2">
                     <ArrowLeft className="w-4 h-4" /> Back
                   </button>
-                  <button type="button" onClick={() => setStep(3)} className="flex-1 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all">
+                  <button type="button" onClick={() => setStep(3)} className="flex-1 py-3 bg-gradient-to-r from-purple-500 to-orange-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all">
                     Continue →
                   </button>
                 </div>
@@ -256,7 +256,7 @@ export default function DoctorRegister() {
                   <button type="button" onClick={() => setStep(2)} className="flex-1 py-3 bg-slate-100 text-slate-700 font-semibold rounded-xl hover:bg-slate-200 transition-all flex items-center justify-center gap-2">
                     <ArrowLeft className="w-4 h-4" /> Back
                   </button>
-                  <button type="submit" disabled={loading} className="flex-1 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all disabled:opacity-50">
+                  <button type="submit" disabled={loading} className="flex-1 py-3 bg-gradient-to-r from-purple-500 to-orange-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all disabled:opacity-50">
                     {loading ? 'Submitting...' : 'Submit Application'}
                   </button>
                 </div>

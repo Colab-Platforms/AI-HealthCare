@@ -19,7 +19,7 @@ const StackingCardShowcase = () => {
       title: "Sleep & Recovery",
       description: "Advanced sleep analysis with personalized recommendations. Improve your sleep by understanding patterns, identifying disruptions, and building habits that support deeper rest. Wake up refreshed and energized every day.",
       subtitle: "Advanced sleep analysis with personalized recommendations",
-      gradient: "from-indigo-700 via-purple-800 to-blue-900",
+      gradient: "from-purple-700 via-pink-800 to-orange-900",
       tabColor: "bg-indigo-600",
       image: "https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?w=800&h=500&fit=crop",
       icon: Moon,
@@ -28,7 +28,7 @@ const StackingCardShowcase = () => {
       title: "Health Monitoring",
       description: "Connect your wearables and track vital signs, sleep patterns, and activity levels. Get alerts when something needs attention and see your health trends over time with our advanced monitoring system.",
       subtitle: "Real-time health tracking with smart alerts",
-      gradient: "from-cyan-700 via-blue-800 to-indigo-900",
+      gradient: "from-purple-700 via-pink-800 to-orange-900",
       tabColor: "bg-cyan-600",
       image: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=800&h=500&fit=crop",
       icon: Activity,
@@ -37,7 +37,7 @@ const StackingCardShowcase = () => {
       title: "Personalized Nutrition",
       description: "Track your meals and get actionable feedback that helps you build a better relationship with food. Our AI calculates your perfect macro balance based on your goals and activity level.",
       subtitle: "Smart nutrition tracking with AI recommendations",
-      gradient: "from-emerald-700 via-green-800 to-teal-900",
+      gradient: "from-purple-700 via-pink-800 to-orange-900",
       tabColor: "bg-emerald-600",
       image: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=800&h=500&fit=crop",
       icon: Utensils,
@@ -46,7 +46,7 @@ const StackingCardShowcase = () => {
       title: "Expert Consultations",
       description: "Connect with verified healthcare professionals through video consultations. Get expert medical advice from the comfort of your home with our secure telemedicine platform.",
       subtitle: "24/7 access to healthcare professionals",
-      gradient: "from-amber-700 via-orange-800 to-yellow-900",
+      gradient: "from-purple-700 via-pink-800 to-orange-900",
       tabColor: "bg-amber-600",
       image: "https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?w=800&h=500&fit=crop",
       icon: Stethoscope,
@@ -88,7 +88,7 @@ const StackingCardShowcase = () => {
           {/* Section Title */}
           <div className="text-center mb-8 relative z-10">
             <h2 className="text-4xl md:text-5xl font-bold text-white mb-3">
-              Our <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">Services</span>
+              Our <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-orange-500">Services</span>
             </h2>
             <p className="text-lg text-slate-400">Scroll to explore more</p>
           </div>

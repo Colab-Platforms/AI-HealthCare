@@ -11,7 +11,7 @@ const ScrollCardShowcaseV2 = () => {
       description: "From strategic AI integration to building personalized AI applications to AI consulting, our comprehensive AI services empower businesses to drive growth and innovation.",
       subtitle: "Connect with our team of experts and access the potential of AI development services",
       icon: Brain,
-      gradient: "from-purple-600 via-pink-600 to-rose-600",
+      gradient: "from-purple-600 via-pink-600 to-orange-600",
       accentColor: "purple",
       image: "https://images.unsplash.com/photo-1677442136019-21780ecad995?w=800&h=600&fit=crop"
     },
@@ -20,7 +20,7 @@ const ScrollCardShowcaseV2 = () => {
       description: "Advanced data analytics and machine learning models provide deep insights into your health patterns, helping you make informed decisions about your wellness journey.",
       subtitle: "Powerful analytics engine processing millions of health data points",
       icon: TrendingUp,
-      gradient: "from-cyan-600 via-blue-600 to-indigo-600",
+      gradient: "from-purple-600 via-pink-600 to-orange-600",
       accentColor: "cyan",
       image: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&h=600&fit=crop"
     },
@@ -29,7 +29,7 @@ const ScrollCardShowcaseV2 = () => {
       description: "AI-powered diagnostic tools analyze your symptoms and medical history to provide accurate preliminary assessments and guide you to the right care.",
       subtitle: "Cutting-edge diagnostic algorithms with 98% accuracy",
       icon: Activity,
-      gradient: "from-emerald-600 via-green-600 to-teal-600",
+      gradient: "from-purple-600 via-pink-600 to-orange-600",
       accentColor: "emerald",
       image: "https://images.unsplash.com/photo-1579154204601-01588f351e67?w=800&h=600&fit=crop"
     },
@@ -38,7 +38,7 @@ const ScrollCardShowcaseV2 = () => {
       description: "Every individual is unique. Our AI creates personalized health plans tailored to your specific needs, goals, and medical history for optimal results.",
       subtitle: "Customized health strategies powered by machine learning",
       icon: Heart,
-      gradient: "from-rose-600 via-pink-600 to-fuchsia-600",
+      gradient: "from-purple-600 via-pink-600 to-orange-600",
       accentColor: "rose",
       image: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&h=600&fit=crop"
     },
@@ -47,7 +47,7 @@ const ScrollCardShowcaseV2 = () => {
       description: "Stay ahead of health issues with predictive analytics that identify potential risks early, allowing for proactive intervention and better outcomes.",
       subtitle: "Predictive models analyzing thousands of health indicators",
       icon: Shield,
-      gradient: "from-blue-600 via-indigo-600 to-purple-600",
+      gradient: "from-purple-600 via-pink-600 to-orange-600",
       accentColor: "blue",
       image: "https://images.unsplash.com/photo-1559757175-5700dde675bc?w=800&h=600&fit=crop"
     }

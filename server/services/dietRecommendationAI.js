@@ -18,10 +18,13 @@ class DietRecommendationAI {
   }
 
   getApiParams(attempt = 0) {
+    // Re-read API key in case env changed
+    this.apiKey = process.env.ANTHROPIC_API_KEY || process.env.OPENROUTER_API_KEY;
+
     const isAnthropicDirect = this.apiKey?.startsWith('sk-ant');
     const apiUrl = isAnthropicDirect ? ANTHROPIC_API_URL : OPENROUTER_API_URL;
 
-    let model = isAnthropicDirect ? 'claude-3-5-sonnet-latest' : 'claude-3-5-sonnet-20240620';
+    let model = isAnthropicDirect ? 'claude-3-5-sonnet-20241022' : 'anthropic/claude-3-5-sonnet';
     if (!isAnthropicDirect && attempt === 1) model = BACKUP_MODEL;
     if (!isAnthropicDirect && attempt >= 2) model = FALLBACK_MODEL;
 
@@ -30,6 +33,9 @@ class DietRecommendationAI {
 
   async makeAIRequest(payload, attempt = 0) {
     const { isAnthropicDirect, apiUrl, model } = this.getApiParams(attempt);
+
+    console.log(`🔄 DietAI: Using ${isAnthropicDirect ? 'Anthropic Direct' : 'OpenRouter'} with model: ${model} (attempt ${attempt + 1})`);
+
     const headers = isAnthropicDirect ? {
       'x-api-key': this.apiKey,
       'anthropic-version': '2023-06-01',
@@ -55,10 +61,18 @@ class DietRecommendationAI {
       const response = await axios.post(apiUrl, requestPayload, { headers, timeout: 60000 });
 
       let aiResponse = '';
-      if (!isAnthropicDirect) {
-        aiResponse = response.data.choices[0].message.content;
+      if (isAnthropicDirect) {
+        if (response.data && response.data.content && response.data.content[0]) {
+          aiResponse = response.data.content[0].text;
+        } else {
+          throw new Error('Invalid Anthropic response structure');
+        }
       } else {
-        aiResponse = response.data.content[0].text;
+        if (response.data && response.data.choices && response.data.choices[0]) {
+          aiResponse = response.data.choices[0].message.content;
+        } else {
+          throw new Error('Invalid OpenRouter response structure');
+        }
       }
       return aiResponse;
     } catch (error) {
@@ -68,6 +82,22 @@ class DietRecommendationAI {
         console.log(`⚠️ Attempt ${attempt + 1} failed. Retrying with fallback model...`);
         return this.makeAIRequest(payload, attempt + 1);
       }
+
+      // If Anthropic direct fails and OpenRouter key exists, try OpenRouter as fallback
+      if (isAnthropicDirect && process.env.OPENROUTER_API_KEY) {
+        console.log('⚠️ Anthropic direct failed. Trying OpenRouter as fallback...');
+        const origKey = process.env.ANTHROPIC_API_KEY;
+        process.env.ANTHROPIC_API_KEY = '';
+        try {
+          const result = await this.makeAIRequest(payload, 0);
+          process.env.ANTHROPIC_API_KEY = origKey;
+          return result;
+        } catch (retryErr) {
+          process.env.ANTHROPIC_API_KEY = origKey;
+          throw retryErr;
+        }
+      }
+
       throw error;
     }
   }

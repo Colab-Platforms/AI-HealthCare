@@ -135,12 +135,12 @@ const QuickActionCard = ({ icon: Icon, title, subtitle, link, color, comingSoon 
 // Get Started Step Component
 const GetStartedStep = ({ number, title, description, completed, active, icon: Icon }) => {
   return (
-    <div className={`relative flex items-start gap-4 p-4 rounded-2xl transition-all duration-300 ${active ? 'bg-gradient-to-r from-cyan-50 to-emerald-50 border-2 border-cyan-200' :
+    <div className={`relative flex items-start gap-4 p-4 rounded-2xl transition-all duration-300 ${active ? 'bg-gradient-to-r from-purple-50 to-orange-50 border-2 border-cyan-200' :
       completed ? 'bg-emerald-50 border-2 border-emerald-200' :
         'bg-slate-50 border-2 border-slate-200'
       }`}>
       <div className={`relative flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg ${completed ? 'bg-emerald-500 text-white' :
-        active ? 'bg-gradient-to-br from-cyan-500 to-emerald-500 text-white animate-pulse' :
+        active ? 'bg-gradient-to-br from-purple-500 to-orange-500 text-white animate-pulse' :
           'bg-white text-slate-400 border-2 border-slate-300'
         }`}>
         {completed ? <CheckCircle className="w-6 h-6" /> :
@@ -329,7 +329,7 @@ export default function DashboardEnhanced() {
   const currentMetric = allAvailableMetrics[currentMetricKey];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-cyan-100">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-100">
       {/* Subtle refresh indicator - only shows when refreshing with cached data */}
       {loading.dashboard && dashboardData && (
         <div className="fixed top-20 right-4 z-50 bg-white rounded-full shadow-lg px-4 py-2 flex items-center gap-2 animate-slide-in-right">
@@ -346,7 +346,7 @@ export default function DashboardEnhanced() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {/* Profile Picture */}
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white text-lg font-bold shadow-md">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-orange-600 flex items-center justify-center text-white text-lg font-bold shadow-md">
                 {user?.name?.[0]?.toUpperCase() || 'U'}
               </div>
 
@@ -398,7 +398,7 @@ export default function DashboardEnhanced() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               {/* Profile Picture - Smaller */}
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center text-white text-lg font-bold shadow-md">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-orange-600 flex items-center justify-center text-white text-lg font-bold shadow-md">
                 {user?.name?.[0]?.toUpperCase() || 'U'}
               </div>
 
@@ -557,9 +557,8 @@ export default function DashboardEnhanced() {
 
                         {isToday ? (
                           <Flame className={`w-5 h-5 ${isSelected ? 'text-orange-500 fill-orange-500' : 'text-orange-400'}`} />
-                        ) : (
-                          <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                        )}
+                        ) : null}
+
                       </div>
 
                       <span className={`text-[11px] font-black ${isSelected ? 'text-indigo-900 scale-110' : 'text-slate-600'}`}>
@@ -659,30 +658,18 @@ export default function DashboardEnhanced() {
               </div>
             </div>
             <h3 className="text-slate-500 text-[10px] sm:text-xs font-black mb-1 uppercase tracking-[0.15em] relative z-10">Diet Plan</h3>
-            <p className="text-lg sm:text-xl font-black text-slate-800 mb-1 relative z-10 truncate">
+            <p className="text-base sm:text-lg font-black text-slate-800 mb-1 relative z-10 leading-tight">
               {(() => {
                 if (!activeDietPlan) return 'No active plan';
                 const hour = new Date().getHours();
-                let nextMeal = 'breakfast';
-                if (hour >= 9 && hour < 14) nextMeal = 'lunch';
-                else if (hour >= 14 && hour < 17) nextMeal = 'snacks';
-                else if (hour >= 17) nextMeal = 'dinner';
-
-                const meal = activeDietPlan.mealPlan?.[nextMeal];
-                if (Array.isArray(meal)) return meal[0]?.name || 'View Plan';
-                return meal?.name || 'View Plan';
+                if (hour < 9) return <>Upcoming <br /> Breakfast</>;
+                if (hour >= 9 && hour < 14) return <>Upcoming <br /> Lunch</>;
+                if (hour >= 14 && hour < 17) return <>Upcoming <br /> Snacks</>;
+                return <>Upcoming <br /> Dinner</>;
               })()}
             </p>
             <p className="text-[10px] sm:text-xs text-slate-400 font-bold relative z-10">
-              {activeDietPlan ? (
-                (() => {
-                  const hour = new Date().getHours();
-                  if (hour < 9) return 'Upcoming: Breakfast';
-                  if (hour < 14) return 'Upcoming: Lunch';
-                  if (hour < 17) return 'Upcoming: Snacks';
-                  return 'Upcoming: Dinner';
-                })()
-              ) : 'Tap to generate'}
+              {activeDietPlan ? 'Your personalized meal plan' : 'Tap to generate'}
             </p>
           </Link>
 
@@ -721,7 +708,7 @@ export default function DashboardEnhanced() {
             {/* Top Row: Icon + Title + Badge */}
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shadow-md">
+                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-purple-500 to-orange-600 flex items-center justify-center shadow-md">
                   <Droplets className="w-5 h-5 text-white" />
                 </div>
                 <span className="text-sm font-bold text-slate-700 uppercase tracking-wider">
@@ -1125,7 +1112,7 @@ export default function DashboardEnhanced() {
         {/* 30 Days Challenge - Above Did You Know */}
         <div>
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-orange-500 flex items-center justify-center">
               <Trophy className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -1135,7 +1122,7 @@ export default function DashboardEnhanced() {
           </div>
           <Link
             to="/challenge"
-            className="block bg-gradient-to-br from-amber-400 via-orange-500 to-red-500 rounded-3xl p-5 sm:p-8 text-white hover:shadow-2xl transition-all hover:-translate-y-1 group"
+            className="block bg-gradient-to-br from-purple-400 via-pink-500 to-orange-500 rounded-3xl p-5 sm:p-8 text-white hover:shadow-2xl transition-all hover:-translate-y-1 group"
           >
             {/* Header - Compact on mobile */}
             <div className="flex items-center justify-between mb-4 sm:mb-6">
@@ -1194,7 +1181,7 @@ export default function DashboardEnhanced() {
         {/* Did You Know - Horizontal scroll on mobile */}
         <div>
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-400 to-orange-500 flex items-center justify-center">
               <Sparkles className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -1273,7 +1260,7 @@ export default function DashboardEnhanced() {
 
 
         {/* CTA Footer */}
-        <div className="bg-gradient-to-r from-cyan-500 to-emerald-500 rounded-3xl p-8 text-white">
+        <div className="bg-gradient-to-r from-purple-500 to-orange-500 rounded-3xl p-8 text-white">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div>
               <h3 className="text-2xl font-bold mb-2">Need Help Getting Started?</h3>

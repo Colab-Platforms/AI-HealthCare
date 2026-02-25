@@ -63,6 +63,30 @@ exports.logMeal = async (req, res) => {
       });
     }
 
+    // Ensure arrays are sanitized properly
+    const sanitizeMicronutrients = (data) => {
+      if (!Array.isArray(data)) return [];
+      return data.map(item => {
+        if (typeof item === 'string') return { name: item, value: 'Unknown', percentage: 0 };
+        return {
+          name: item.name || 'Unknown',
+          value: item.value || 'Unknown',
+          percentage: Number(item.percentage) || 0
+        };
+      });
+    };
+
+    const sanitizeTips = (data) => {
+      if (!Array.isArray(data)) return [];
+      return data.map(item => {
+        if (typeof item === 'string') return { name: item, benefit: item };
+        return {
+          name: item.name || 'Tip',
+          benefit: item.benefit || item.description || ''
+        };
+      });
+    };
+
     const foodLog = new FoodLog({
       userId: req.user._id,
       mealType,
@@ -71,8 +95,8 @@ exports.logMeal = async (req, res) => {
       notes,
       healthScore,
       healthScore10,
-      micronutrients: micronutrients || [],
-      enhancementTips: enhancementTips || [],
+      micronutrients: sanitizeMicronutrients(micronutrients),
+      enhancementTips: sanitizeTips(enhancementTips),
       healthBenefitsSummary,
       timestamp: timestamp || new Date()
     });
@@ -802,6 +826,30 @@ exports.quickFoodCheck = async (req, res) => {
       ? analysis.data.alternatives
       : [];
 
+    // Ensure arrays are sanitized properly
+    const sanitizeMicronutrients = (data) => {
+      if (!Array.isArray(data)) return [];
+      return data.map(item => {
+        if (typeof item === 'string') return { name: item, value: 'Unknown', percentage: 0 };
+        return {
+          name: item.name || 'Unknown',
+          value: item.value || 'Unknown',
+          percentage: Number(item.percentage) || 0
+        };
+      });
+    };
+
+    const sanitizeTips = (data) => {
+      if (!Array.isArray(data)) return [];
+      return data.map(item => {
+        if (typeof item === 'string') return { name: item, benefit: item };
+        return {
+          name: item.name || 'Tip',
+          benefit: item.benefit || item.description || ''
+        };
+      });
+    };
+
     // Save to database for permanent storage with ALL details
     const foodCheck = new QuickFoodCheck({
       userId: req.user._id,
@@ -816,10 +864,10 @@ exports.quickFoodCheck = async (req, res) => {
       healthScore10: analysis.data.healthScore10 || (analysis.data.healthScore ? analysis.data.healthScore / 10 : 5),
       isHealthy: analysis.data.isHealthy || false,
       analysis: analysis.data.analysis || '',
-      micronutrients: Array.isArray(analysis.data.micronutrients) ? analysis.data.micronutrients : [],
-      enhancementTips: Array.isArray(analysis.data.enhancementTips) ? analysis.data.enhancementTips : [],
-      warnings: Array.isArray(analysis.data.warnings) ? analysis.data.warnings : [],
-      benefits: Array.isArray(analysis.data.benefits) ? analysis.data.benefits : [],
+      micronutrients: sanitizeMicronutrients(analysis.data.micronutrients),
+      enhancementTips: sanitizeTips(analysis.data.enhancementTips),
+      warnings: Array.isArray(analysis.data.warnings) ? analysis.data.warnings.map(w => typeof w === 'string' ? w : JSON.stringify(w)) : [],
+      benefits: Array.isArray(analysis.data.benefits) ? analysis.data.benefits.map(b => typeof b === 'string' ? b : JSON.stringify(b)) : [],
       healthBenefitsSummary: analysis.data.healthBenefitsSummary || '',
       alternatives: alternativesArray,
       imageUrl: imageBase64 ? `data:image/jpeg;base64,${imageBase64.substring(0, 100)}...` : null,

@@ -12,7 +12,7 @@ const ScrollCardShowcase = () => {
       description: "From comprehensive health report analysis to personalized recommendations, our AI services empower you to take control of your health journey. Get instant insights from your medical reports.",
       subtitle: "Advanced machine learning algorithms analyze your health data",
       icon: Brain,
-      gradient: "from-purple-500 via-pink-500 to-rose-500",
+      gradient: "from-purple-500 via-pink-500 to-orange-500",
       image: "https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=800&h=600&fit=crop",
       stats: [
         { label: "Accuracy", value: "98%" },
@@ -25,7 +25,7 @@ const ScrollCardShowcase = () => {
       description: "Track your meals and get actionable feedback that helps you build a better relationship with food. Our AI calculates your perfect macro balance based on your goals and activity level.",
       subtitle: "Smart nutrition tracking with AI-powered recommendations",
       icon: Utensils,
-      gradient: "from-emerald-500 via-green-500 to-teal-500",
+      gradient: "from-purple-500 via-pink-500 to-orange-500",
       image: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=800&h=600&fit=crop",
       stats: [
         { label: "Meal Plans", value: "10K+" },
@@ -38,7 +38,7 @@ const ScrollCardShowcase = () => {
       description: "Connect your wearables and track vital signs, sleep patterns, and activity levels. Get alerts when something needs attention and see your health trends over time.",
       subtitle: "Continuous monitoring with smart alerts and insights",
       icon: Activity,
-      gradient: "from-cyan-500 via-blue-500 to-indigo-500",
+      gradient: "from-purple-500 via-pink-500 to-orange-500",
       image: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=800&h=600&fit=crop",
       stats: [
         { label: "Devices Connected", value: "25K+" },
@@ -51,7 +51,7 @@ const ScrollCardShowcase = () => {
       description: "Never miss a dose with intelligent reminders. Track your medications, get interaction warnings, and receive refill alerts. Your complete medication companion.",
       subtitle: "AI-powered medication tracking and reminders",
       icon: Pill,
-      gradient: "from-amber-500 via-orange-500 to-red-500",
+      gradient: "from-purple-500 via-pink-500 to-orange-500",
       image: "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?w=800&h=600&fit=crop",
       stats: [
         { label: "Reminders Set", value: "100K+" },
@@ -64,7 +64,7 @@ const ScrollCardShowcase = () => {
       description: "Improve your sleep by understanding patterns, identifying disruptions, and building habits that support deeper rest. Wake up refreshed and energized every day.",
       subtitle: "Advanced sleep analysis with personalized recommendations",
       icon: Moon,
-      gradient: "from-indigo-500 via-purple-500 to-pink-500",
+      gradient: "from-purple-500 via-pink-500 to-orange-500",
       image: "https://images.unsplash.com/photo-1541781774459-bb2af2f05b55?w=800&h=600&fit=crop",
       stats: [
         { label: "Sleep Tracked", value: "1M+ nights" },
@@ -77,7 +77,7 @@ const ScrollCardShowcase = () => {
       description: "Stay ahead of health issues with predictive analytics. Our AI identifies potential risks early and provides actionable steps to maintain optimal health.",
       subtitle: "Proactive health management with AI predictions",
       icon: Shield,
-      gradient: "from-blue-500 via-cyan-500 to-teal-500",
+      gradient: "from-purple-500 via-pink-500 to-orange-500",
       image: "https://images.unsplash.com/photo-1559757175-5700dde675bc?w=800&h=600&fit=crop",
       stats: [
         { label: "Risk Assessments", value: "75K+" },

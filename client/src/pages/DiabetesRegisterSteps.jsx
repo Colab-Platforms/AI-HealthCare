@@ -3,8 +3,8 @@
 
 // STEP 2: DIABETES PROFILE
 export const Step2DiabetesProfile = ({ formData, setFormData, nextStep, prevStep, toggleArrayItem }) => (
-  <div className="min-h-screen flex bg-gradient-to-br from-cyan-50 to-blue-50">
-    <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-cyan-500 via-blue-500 to-cyan-600">
+  <div className="min-h-screen flex bg-gradient-to-br from-purple-50 to-orange-50">
+    <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-purple-500 via-pink-500 to-orange-600">
       <div className="absolute inset-0">
         <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
         <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
@@ -260,7 +260,7 @@ export const Step2DiabetesProfile = ({ formData, setFormData, nextStep, prevStep
         
           <button 
             type="submit"
-            className="w-full py-3 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-600 hover:to-blue-700"
+            className="w-full py-3 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-orange-600 hover:from-purple-600 hover:to-orange-700"
           >
             Continue <ArrowRight className="w-5 h-5" />
           </button>

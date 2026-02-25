@@ -75,7 +75,7 @@ export default function DiabetesCare() {
         {/* Welcome Message - Mobile Only */}
         <div className="md:hidden flex items-center justify-between">
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-md flex-shrink-0">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-orange-600 flex items-center justify-center text-white text-sm font-bold shadow-md flex-shrink-0">
               {user?.name?.[0]?.toUpperCase() || 'U'}
             </div>
             <h1 className="text-sm font-bold text-slate-800 truncate">
@@ -161,7 +161,7 @@ export default function DiabetesCare() {
               <span className="text-green-400 text-lg">%</span>
             </div>
             <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-green-400 to-cyan-400 rounded-full" style={{ width: '60%' }} />
+              <div className="h-full bg-gradient-to-r from-purple-400 to-orange-400 rounded-full" style={{ width: '60%' }} />
             </div>
             <p className="text-xs text-cyan-400 mt-2 uppercase tracking-wide">Target Range</p>
           </div>
@@ -218,7 +218,7 @@ export default function DiabetesCare() {
         </div>
 
         {/* Smart Forecast */}
-        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-3xl p-6 border-2 border-blue-200">
+        <div className="bg-gradient-to-br from-purple-50 to-orange-50 rounded-3xl p-6 border-2 border-blue-200">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0">
               <Info className="w-6 h-6 text-white" />

@@ -325,7 +325,7 @@ export default function Challenge30Days() {
             {/* Progress Bar */}
             <div className="w-full bg-slate-100 rounded-full h-3 mb-6">
               <div
-                className="h-3 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 transition-all duration-500"
+                className="h-3 rounded-full bg-gradient-to-r from-purple-500 to-orange-500 transition-all duration-500"
                 style={{ width: `${getDayProgress(currentDay)}%` }}
               />
             </div>
@@ -363,7 +363,7 @@ export default function Challenge30Days() {
           </div>
 
           {/* Achievements */}
-          <div className="bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl p-6 text-white">
+          <div className="bg-gradient-to-br from-purple-500 to-orange-500 rounded-2xl p-6 text-white">
             <div className="flex items-center gap-3 mb-4">
               <Award className="w-6 h-6" />
               <h3 className="text-lg font-semibold">Achievements</h3>

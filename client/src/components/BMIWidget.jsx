@@ -257,7 +257,7 @@ export default function BMIWidget() {
 
   if (!bmi) {
     return (
-      <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl border-2 border-cyan-200 p-6">
+      <div className="bg-gradient-to-br from-purple-50 to-orange-50 rounded-2xl border-2 border-cyan-200 p-6">
         <div className="text-center">
           <Target className="w-12 h-12 text-cyan-500 mx-auto mb-3" />
           <h3 className="text-lg font-bold text-slate-800 mb-2">Complete Your Profile</h3>
@@ -277,7 +277,7 @@ export default function BMIWidget() {
 
   return (
     <>
-      <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl border-2 border-cyan-200 p-4 lg:p-6 shadow-sm">
+      <div className="bg-gradient-to-br from-purple-50 to-orange-50 rounded-2xl border-2 border-cyan-200 p-4 lg:p-6 shadow-sm">
         <div className="flex flex-col lg:flex-row items-center gap-3 lg:gap-6">
           {/* BMI Gauge - Mobile version (top half-circle) visible only on mobile */}
           <div className="lg:hidden w-full flex justify-center">

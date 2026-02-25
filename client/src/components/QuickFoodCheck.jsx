@@ -296,10 +296,10 @@ export default function QuickFoodCheck() {
   return (
     <div className="space-y-4">
       {/* Main Quick Check Card */}
-      <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-3xl p-6 shadow-lg border border-blue-100">
+      <div className="bg-gradient-to-br from-purple-50 to-orange-50 rounded-3xl p-6 shadow-lg border border-blue-100">
         {/* Header */}
         <div className="flex items-center gap-3 mb-6">
-          <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center">
+          <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-orange-600 rounded-2xl flex items-center justify-center">
             <Lightbulb className="w-6 h-6 text-white" />
           </div>
           <div>
@@ -503,7 +503,7 @@ export default function QuickFoodCheck() {
             <button
               onClick={handleQuickCheck}
               disabled={loading || (!foodInput.trim() && !image)}
-              className="px-4 py-4 bg-gradient-to-r from-cyan-500 via-blue-500 to-blue-600 text-white rounded-2xl font-bold hover:shadow-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 transition-all flex items-center justify-center gap-2 shadow-lg"
+              className="px-4 py-4 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-600 text-white rounded-2xl font-bold hover:shadow-xl hover:scale-105 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:scale-100 transition-all flex items-center justify-center gap-2 shadow-lg"
             >
               {loading ? (
                 <>
@@ -527,7 +527,7 @@ export default function QuickFoodCheck() {
         <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
           <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_50px_rgba(0,0,0,0.04)] relative overflow-hidden group">
             {/* Animated Background Gradient */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-purple-500/5 to-blue-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl group-hover:scale-110 transition-transform duration-700" />
+            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-purple-500/5 to-orange-500/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl group-hover:scale-110 transition-transform duration-700" />
 
             <div className="relative z-10">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
@@ -792,7 +792,7 @@ export default function QuickFoodCheck() {
                 <button
                   key={check._id}
                   onClick={() => handleHistoryItemClick(check)}
-                  className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-blue-50 to-cyan-50 rounded-xl hover:from-blue-100 hover:to-cyan-100 transition-all text-left"
+                  className="w-full flex items-center justify-between p-3 bg-gradient-to-r from-purple-50 to-orange-50 rounded-xl hover:from-purple-100 hover:to-orange-100 transition-all text-left"
                 >
                   <div className="flex-1">
                     <p className="font-semibold text-gray-900">{check.foodName}</p>
@@ -880,7 +880,7 @@ export default function QuickFoodCheck() {
                   className="hidden"
                   style={{ display: 'none' }}
                 />
-                <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-cyan-50 to-blue-50 border-2 border-cyan-200 rounded-2xl hover:border-cyan-400 transition-all">
+                <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-purple-50 to-orange-50 border-2 border-cyan-200 rounded-2xl hover:border-cyan-400 transition-all">
                   <div className="w-12 h-12 bg-cyan-500 rounded-xl flex items-center justify-center">
                     <Camera className="w-6 h-6 text-white" />
                   </div>
@@ -918,7 +918,7 @@ export default function QuickFoodCheck() {
                   className="hidden"
                   style={{ display: 'none' }}
                 />
-                <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-purple-50 to-pink-50 border-2 border-purple-200 rounded-2xl hover:border-purple-400 transition-all">
+                <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-purple-50 to-orange-50 border-2 border-purple-200 rounded-2xl hover:border-purple-400 transition-all">
                   <div className="w-12 h-12 bg-purple-500 rounded-xl flex items-center justify-center">
                     <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />

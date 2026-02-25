@@ -243,7 +243,7 @@ export default function Consultation() {
               <ArrowLeft className="w-5 h-5 text-slate-400" />
             </button>
             <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center text-lg font-bold text-white">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-r from-purple-500 to-orange-500 flex items-center justify-center text-lg font-bold text-white">
                 {appointment.doctor?.name?.[0]?.toUpperCase() || 'D'}
               </div>
               <div>
@@ -347,7 +347,7 @@ export default function Consultation() {
           <div className="mt-8 text-center">
             <button
               onClick={startConsultation}
-              className="bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white px-8 py-4 rounded-xl font-medium transition-all inline-flex items-center gap-2"
+              className="bg-gradient-to-r from-purple-500 to-orange-500 hover:from-purple-600 hover:to-orange-600 text-white px-8 py-4 rounded-xl font-medium transition-all inline-flex items-center gap-2"
             >
               <Video className="w-5 h-5" />
               Start Consultation
@@ -371,7 +371,7 @@ export default function Consultation() {
                     />
                   ) : (
                     <div className="text-center">
-                      <div className="w-32 h-32 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center text-4xl font-bold text-white mx-auto mb-4">
+                      <div className="w-32 h-32 rounded-full bg-gradient-to-r from-purple-500 to-orange-500 flex items-center justify-center text-4xl font-bold text-white mx-auto mb-4">
                         {appointment.doctor?.name?.[0]?.toUpperCase() || 'D'}
                       </div>
                       <p className="text-white text-lg">Dr. {appointment.doctor?.name}</p>

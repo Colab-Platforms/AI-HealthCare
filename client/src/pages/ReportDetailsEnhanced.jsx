@@ -75,7 +75,7 @@ export default function ReportDetailsEnhanced() {
           </Link>
 
           {/* Header Card */}
-          <div className="bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl p-6 text-white relative overflow-hidden">
+          <div className="bg-gradient-to-r from-purple-600 to-orange-600 rounded-2xl p-6 text-white relative overflow-hidden">
             <div className="absolute inset-0 opacity-10">
               <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -translate-y-1/2 translate-x-1/2" />
             </div>
@@ -188,7 +188,7 @@ export default function ReportDetailsEnhanced() {
       {/* Summary */}
       {aiAnalysis?.summary && (
         <div className="card p-8 relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-purple-500 to-indigo-600"></div>
+          <div className="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-purple-500 to-orange-600"></div>
           <h2 className="text-xl font-black text-slate-800 mb-4 flex items-center gap-3">
             <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center shadow-inner">
               <Activity className="w-5 h-5 text-purple-600" />

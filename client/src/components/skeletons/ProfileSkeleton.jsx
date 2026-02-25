@@ -2,7 +2,7 @@ import React from 'react';
 
 const ProfileSkeleton = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4 sm:p-6 animate-pulse">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-pink-900 to-slate-900 p-4 sm:p-6 animate-pulse">
       {/* Profile Header */}
       <div className="bg-slate-800/50 rounded-xl p-6 border border-slate-700/50 mb-6">
         <div className="flex items-center gap-4 mb-4">

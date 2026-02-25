@@ -168,7 +168,7 @@ function DoctorsTab() {
             <div key={doctor._id} className={`p-4 rounded-xl border ${doctor.approvalStatus === 'pending' ? 'bg-amber-50 border-amber-200' : doctor.approvalStatus === 'rejected' ? 'bg-red-50 border-red-200' : 'bg-slate-50 border-slate-200'}`}>
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-white font-bold">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-orange-500 flex items-center justify-center text-white font-bold">
                     {doctor.name?.[0]?.toUpperCase()}
                   </div>
                   <div>

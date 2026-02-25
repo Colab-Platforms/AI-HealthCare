@@ -644,9 +644,13 @@ exports.aiChat = async (req, res) => {
       return res.status(400).json({ message: 'Query is required' });
     }
 
-    // Check if API key is configured
-    if (!process.env.OPENROUTER_API_KEY) {
-      console.error('OPENROUTER_API_KEY not configured');
+    // Check if any API key is configured
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    const openrouterKey = process.env.OPENROUTER_API_KEY;
+    const isAnthropicDirect = anthropicKey && anthropicKey.startsWith('sk-ant');
+
+    if (!anthropicKey && !openrouterKey) {
+      console.error('No AI API key configured');
       return res.status(500).json({
         success: false,
         message: 'AI service not configured. Please contact administrator.',
@@ -704,48 +708,73 @@ User Profile: ${req.user.name}`;
 
     systemPrompt += `\n\nProvide helpful, accurate health information. Always remind users to consult healthcare professionals for medical decisions.`;
 
-    // Build messages array for AI
-    const messages = [
-      { role: 'system', content: systemPrompt }
-    ];
+    // Build messages array for AI (without system for Anthropic)
+    const userMessages = [];
 
     // Add conversation history if provided
     if (conversationHistory && Array.isArray(conversationHistory)) {
       conversationHistory.slice(-10).forEach(msg => {
         if (msg.role && msg.content) {
-          messages.push({ role: msg.role, content: msg.content });
+          userMessages.push({ role: msg.role, content: msg.content });
         }
       });
     }
 
     // Add current query
-    messages.push({ role: 'user', content: query });
+    userMessages.push({ role: 'user', content: query });
 
-    console.log('Calling OpenRouter API with free model...');
-
-    // Call OpenRouter API with FREE model
     const axios = require('axios');
-    const response = await axios.post(
-      'https://openrouter.ai/api/v1/chat/completions',
-      {
-        model: 'google/gemini-2.0-flash-exp:free', // FREE Google Gemini model
-        messages,
-        temperature: 0.7,
-        max_tokens: 2000
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': process.env.CLIENT_URL || 'https://ai-diagnostic-steel.vercel.app',
-          'X-Title': 'HealthAI Platform'
-        },
-        timeout: 30000 // 30 second timeout
-      }
-    );
+    let aiResponse;
 
-    const aiResponse = response.data.choices[0].message.content;
-    console.log('OpenRouter API success');
+    if (isAnthropicDirect) {
+      console.log('Calling Anthropic Direct API...');
+      const response = await axios.post(
+        'https://api.anthropic.com/v1/messages',
+        {
+          model: 'claude-3-5-sonnet-20241022',
+          system: systemPrompt,
+          messages: userMessages,
+          temperature: 0.7,
+          max_tokens: 2000
+        },
+        {
+          headers: {
+            'x-api-key': anthropicKey,
+            'anthropic-version': '2023-06-01',
+            'Content-Type': 'application/json'
+          },
+          timeout: 30000
+        }
+      );
+      aiResponse = response.data.content[0].text;
+      console.log('Anthropic Direct API success');
+    } else {
+      console.log('Calling OpenRouter API...');
+      const messages = [
+        { role: 'system', content: systemPrompt },
+        ...userMessages
+      ];
+      const response = await axios.post(
+        'https://openrouter.ai/api/v1/chat/completions',
+        {
+          model: 'google/gemini-2.0-flash-exp:free',
+          messages,
+          temperature: 0.7,
+          max_tokens: 2000
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${openrouterKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': process.env.CLIENT_URL || 'https://ai-diagnostic-steel.vercel.app',
+            'X-Title': 'HealthAI Platform'
+          },
+          timeout: 30000
+        }
+      );
+      aiResponse = response.data.choices[0].message.content;
+      console.log('OpenRouter API success');
+    }
 
     res.json({
       success: true,

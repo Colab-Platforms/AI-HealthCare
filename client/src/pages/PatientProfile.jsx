@@ -20,7 +20,7 @@ export default function PatientProfile() {
   }, [patientId, appointmentId]);
 
   if (loading) return <GenericSkeleton />;
-  if (!data) return <div className="bg-[#111827] rounded-2xl border border-slate-700 p-6 text-center py-16"><p className="text-slate-400">Patient not found or access denied.</p><Link to="/doctors" className="mt-4 inline-block px-6 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold rounded-xl">Go Back</Link></div>;
+  if (!data) return <div className="bg-[#111827] rounded-2xl border border-slate-700 p-6 text-center py-16"><p className="text-slate-400">Patient not found or access denied.</p><Link to="/doctors" className="mt-4 inline-block px-6 py-2 bg-gradient-to-r from-purple-500 to-orange-500 text-white font-semibold rounded-xl">Go Back</Link></div>;
 
   const { patient, healthSummary, healthReports, wearableSummary, appointmentHistory } = data;
   const tabs = [{ id: 'overview', label: 'Overview', icon: User }, { id: 'reports', label: 'Health Reports', icon: FileText }, { id: 'wearables', label: 'Wearable Data', icon: Watch }, { id: 'history', label: 'Appointment History', icon: Calendar }];
@@ -32,7 +32,7 @@ export default function PatientProfile() {
       {/* Patient Header */}
       <div className="bg-[#111827] rounded-2xl border border-slate-700 p-6">
         <div className="flex flex-col md:flex-row md:items-center gap-6">
-          <div className="w-20 h-20 rounded-2xl bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center text-white text-3xl font-bold">{patient.name?.charAt(0)?.toUpperCase()}</div>
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-r from-purple-500 to-orange-500 flex items-center justify-center text-white text-3xl font-bold">{patient.name?.charAt(0)?.toUpperCase()}</div>
           <div className="flex-1">
             <h1 className="text-2xl font-bold text-white">{patient.name}</h1>
             <div className="flex flex-wrap gap-4 mt-2 text-sm text-slate-400">

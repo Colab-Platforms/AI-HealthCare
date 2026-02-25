@@ -112,12 +112,12 @@ const ScrollPhoneShowcase = () => {
 
   const getPhoneScreenGradient = (screen) => {
     const gradients = {
-      dashboard: 'from-blue-500 to-cyan-500',
-      nutrition: 'from-emerald-500 to-green-500',
-      'ai-chat': 'from-purple-500 to-pink-500',
-      sleep: 'from-indigo-500 to-blue-500'
+      dashboard: 'from-purple-500 to-orange-500',
+      nutrition: 'from-purple-500 to-orange-500',
+      'ai-chat': 'from-purple-500 to-orange-500',
+      sleep: 'from-purple-500 to-orange-500'
     };
-    return gradients[screen] || 'from-cyan-500 to-blue-500';
+    return gradients[screen] || 'from-purple-500 to-orange-500';
   };
 
   return (

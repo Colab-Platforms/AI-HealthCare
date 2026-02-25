@@ -310,7 +310,7 @@ export default function ReportDetails() {
 
       <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-cyan-400 font-medium transition-colors"><ArrowLeft className="w-4 h-4" /> Back to Dashboard</Link>
 
-      <div className="bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl p-6 text-white relative overflow-hidden">
+      <div className="bg-gradient-to-r from-purple-600 to-orange-600 rounded-2xl p-6 text-white relative overflow-hidden">
         <div className="absolute inset-0 opacity-10"><div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -translate-y-1/2 translate-x-1/2" /></div>
         <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="flex items-center gap-5">
@@ -578,7 +578,7 @@ export default function ReportDetails() {
       )}
 
       {showComparison && comparisonData && (
-        <div className="bg-gradient-to-br from-blue-50 to-cyan-50 rounded-2xl border-2 border-blue-200 p-6 shadow-lg">
+        <div className="bg-gradient-to-br from-purple-50 to-orange-50 rounded-2xl border-2 border-blue-200 p-6 shadow-lg">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-bold text-blue-900 flex items-center gap-2">
               <TrendingUp className="w-6 h-6 text-blue-600" />

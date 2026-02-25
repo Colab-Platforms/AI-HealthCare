@@ -36,7 +36,7 @@ export default function Subscription() {
       </div>
 
       {/* Current Plan Banner */}
-      <div className="bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl p-6 text-white relative overflow-hidden">
+      <div className="bg-gradient-to-r from-purple-600 to-orange-600 rounded-2xl p-6 text-white relative overflow-hidden">
         <div className="absolute inset-0 opacity-10"><div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -translate-y-1/2 translate-x-1/2" /></div>
         <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -84,7 +84,7 @@ export default function Subscription() {
                 ))}
               </ul>
               
-              <button className={`w-full py-3 rounded-xl font-semibold transition-all ${isCurrentPlan ? 'bg-slate-800 text-slate-500 cursor-default' : plan.popular ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white hover:opacity-90' : 'border-2 border-slate-700 text-slate-300 hover:border-cyan-500 hover:text-cyan-400'}`} disabled={isCurrentPlan}>
+              <button className={`w-full py-3 rounded-xl font-semibold transition-all ${isCurrentPlan ? 'bg-slate-800 text-slate-500 cursor-default' : plan.popular ? 'bg-gradient-to-r from-purple-500 to-orange-500 text-white hover:opacity-90' : 'border-2 border-slate-700 text-slate-300 hover:border-cyan-500 hover:text-cyan-400'}`} disabled={isCurrentPlan}>
                 {isCurrentPlan ? 'Current Plan' : plan.price === 0 ? 'Downgrade' : 'Upgrade Now'}
               </button>
             </div>

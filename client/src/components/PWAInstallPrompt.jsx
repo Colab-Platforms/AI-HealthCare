@@ -88,7 +88,7 @@ export default function PWAInstallPrompt() {
     <>
       {/* Mobile - Bottom sticky banner */}
       <div className="md:hidden fixed bottom-20 left-0 right-0 z-50 px-3 animate-slide-up">
-        <div className="bg-gradient-to-r from-cyan-500 to-blue-600 rounded-2xl shadow-2xl p-4">
+        <div className="bg-gradient-to-r from-purple-500 to-orange-600 rounded-2xl shadow-2xl p-4">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
               <Smartphone className="w-6 h-6 text-white" />
@@ -120,7 +120,7 @@ export default function PWAInstallPrompt() {
         <div className="bg-white rounded-2xl shadow-2xl border-2 border-cyan-200 p-6 max-w-sm">
           <div className="flex items-start justify-between mb-3">
             <div className="flex items-center gap-3">
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center flex-shrink-0">
+              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-orange-600 flex items-center justify-center flex-shrink-0">
                 <Download className="w-7 h-7 text-white" />
               </div>
               <div>
@@ -147,7 +147,7 @@ export default function PWAInstallPrompt() {
           <div className="flex gap-3">
             <button
               onClick={handleInstall}
-              className="flex-1 px-5 py-3 bg-gradient-to-r from-cyan-500 to-blue-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
+              className="flex-1 px-5 py-3 bg-gradient-to-r from-purple-500 to-orange-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
             >
               Install Now
             </button>

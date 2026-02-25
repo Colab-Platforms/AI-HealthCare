@@ -709,7 +709,7 @@ export default function QuickFoodScan() {
           {!imagePreview && (
             <div className="space-y-6">
               <div className="relative group">
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-blue-600 to-cyan-500 rounded-[2rem] blur opacity-20 group-hover:opacity-30 transition duration-1000"></div>
+                <div className="absolute -inset-0.5 bg-gradient-to-r from-purple-600 to-orange-500 rounded-[2rem] blur opacity-20 group-hover:opacity-30 transition duration-1000"></div>
                 <div className="relative bg-white rounded-[2rem] p-6 sm:p-8 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] border border-slate-100">
                   {(!foodInput.trim() && !imagePreview) && (
                     <div className="flex flex-col items-center text-center mb-8 animate-in fade-in zoom-in duration-500">
@@ -792,7 +792,7 @@ export default function QuickFoodScan() {
                             </>
                           )}
                         </div>
-                        <div className="absolute inset-0 bg-gradient-to-r from-blue-600/20 to-cyan-500/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                        <div className="absolute inset-0 bg-gradient-to-r from-purple-600/20 to-orange-500/20 opacity-0 group-hover:opacity-100 transition-opacity"></div>
                       </button>
                     </div>
                   </div>
@@ -825,7 +825,7 @@ export default function QuickFoodScan() {
             <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
               {imagePreview && (
                 <div className="relative group">
-                  <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 to-cyan-500 rounded-[2.2rem] blur opacity-10"></div>
+                  <div className="absolute -inset-1 bg-gradient-to-r from-purple-500 to-orange-500 rounded-[2.2rem] blur opacity-10"></div>
                   <div className="relative rounded-[2rem] overflow-hidden border-4 border-white shadow-2xl">
                     <img
                       src={imagePreview}
@@ -930,7 +930,7 @@ export default function QuickFoodScan() {
                     <button
                       onClick={handleAnalyze}
                       disabled={loading}
-                      className="w-full group relative overflow-hidden py-5 bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-[2rem] font-black text-base tracking-widest transition-all active:scale-[0.98] shadow-[0_20px_40px_-12px_rgba(59,130,246,0.3)] disabled:opacity-50"
+                      className="w-full group relative overflow-hidden py-5 bg-gradient-to-r from-purple-600 to-orange-600 text-white rounded-[2rem] font-black text-base tracking-widest transition-all active:scale-[0.98] shadow-[0_20px_40px_-12px_rgba(59,130,246,0.3)] disabled:opacity-50"
                     >
                       <div className="relative z-10 flex items-center justify-center gap-3 uppercase">
                         {loading ? (
@@ -1281,10 +1281,10 @@ export default function QuickFoodScan() {
 
             <div className="space-y-3 mb-6">
               {[
-                { type: 'breakfast', icon: '🌅', label: 'Breakfast', color: 'from-orange-400 to-yellow-400' },
-                { type: 'lunch', icon: '☀️', label: 'Lunch', color: 'from-yellow-400 to-amber-400' },
-                { type: 'dinner', icon: '🌙', label: 'Dinner', color: 'from-indigo-400 to-purple-400' },
-                { type: 'snack', icon: '🍎', label: 'Snacks', color: 'from-green-400 to-emerald-400' }
+                { type: 'breakfast', icon: '🌅', label: 'Breakfast', color: 'from-purple-400 to-orange-400' },
+                { type: 'lunch', icon: '☀️', label: 'Lunch', color: 'from-purple-400 to-orange-400' },
+                { type: 'dinner', icon: '🌙', label: 'Dinner', color: 'from-purple-400 to-orange-400' },
+                { type: 'snack', icon: '🍎', label: 'Snacks', color: 'from-purple-400 to-orange-400' }
               ].map((meal) => (
                 <button
                   key={meal.type}
@@ -1307,7 +1307,7 @@ export default function QuickFoodScan() {
 
             <button
               onClick={logMealToNutrition}
-              className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl font-bold hover:shadow-lg transition-all"
+              className="w-full py-3 bg-gradient-to-r from-purple-600 to-orange-600 text-white rounded-xl font-bold hover:shadow-lg transition-all"
             >
               Log to {selectedMealType.charAt(0).toUpperCase() + selectedMealType.slice(1)}
             </button>
@@ -1334,7 +1334,7 @@ export default function QuickFoodScan() {
                 {/* Rotating Outer Ring */}
                 <div className="absolute inset-0 border-[3px] border-dashed border-blue-400/30 rounded-full animate-spin" style={{ animationDuration: '8s' }}></div>
                 {/* Glowing Core */}
-                <div className="absolute inset-4 bg-gradient-to-br from-blue-500 to-cyan-400 rounded-full p-1 shadow-[0_0_50px_rgba(59,130,246,0.5)]">
+                <div className="absolute inset-4 bg-gradient-to-br from-purple-500 to-orange-400 rounded-full p-1 shadow-[0_0_50px_rgba(59,130,246,0.5)]">
                   <div className="w-full h-full bg-slate-900 rounded-full flex items-center justify-center overflow-hidden">
                     <div className="absolute inset-x-0 h-1 bg-blue-400/50 blur-sm animate-[scan_2s_linear_infinite]" />
                     <ChefHat className="w-16 h-16 text-blue-400 drop-shadow-[0_0_10px_rgba(96,165,250,0.8)]" />
@@ -1345,7 +1345,7 @@ export default function QuickFoodScan() {
 
             <div className="space-y-4">
               <h2 className="text-4xl font-black text-white tracking-tighter">
-                Scanning <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">Nutrition</span>
+                Scanning <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-orange-300">Nutrition</span>
               </h2>
               <p className="text-slate-400 font-bold text-sm uppercase tracking-[0.3em]">AI processing active</p>
             </div>

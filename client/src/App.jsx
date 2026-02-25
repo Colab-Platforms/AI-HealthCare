@@ -73,7 +73,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-fixed bg-gradient-to-br from-cyan-50 via-blue-50 to-cyan-100">
+    <div className="min-h-screen bg-fixed bg-gradient-to-br from-purple-50 via-pink-50 to-orange-100">
       <PWAInstallPrompt />
       <Routes>
         <Route path="/" element={<Landing />} />

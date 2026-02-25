@@ -116,7 +116,7 @@ export default function ReportSummary() {
       </div>
 
       {/* Header */}
-      <div className="bg-gradient-to-r from-cyan-600 to-blue-600 rounded-2xl p-8 text-white">
+      <div className="bg-gradient-to-r from-purple-600 to-orange-600 rounded-2xl p-8 text-white">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div>
             {/* Patient Name */}

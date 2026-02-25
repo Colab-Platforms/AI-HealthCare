@@ -183,7 +183,7 @@ export default function Profile() {
       {/* Welcome Message - Mobile Only */}
       <div className="md:hidden flex items-center justify-between">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-md flex-shrink-0">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-orange-600 flex items-center justify-center text-white text-sm font-bold shadow-md flex-shrink-0">
             {user?.name?.[0]?.toUpperCase() || 'U'}
           </div>
           <h1 className="text-sm font-bold text-slate-800 truncate">
@@ -206,7 +206,7 @@ export default function Profile() {
       </div>
 
       {/* Profile Header Card */}
-      <div className="bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl p-3 md:p-6 text-white relative overflow-hidden shadow-lg">
+      <div className="bg-gradient-to-r from-purple-500 to-orange-500 rounded-2xl p-3 md:p-6 text-white relative overflow-hidden shadow-lg">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -translate-y-1/2 translate-x-1/2" />
         </div>
@@ -550,7 +550,7 @@ export default function Profile() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              className="w-full py-3 bg-gradient-to-r from-purple-500 to-orange-500 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -598,7 +598,7 @@ export default function Profile() {
         <form onSubmit={handleGoalSubmit} className="max-w-4xl space-y-6">
           {/* Current Goal Display */}
           {healthGoal && (
-            <div className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl border-2 border-blue-200 p-3 md:p-6 shadow-sm w-full overflow-hidden">
+            <div className="bg-gradient-to-br from-purple-50 to-orange-50 rounded-2xl border-2 border-blue-200 p-3 md:p-6 shadow-sm w-full overflow-hidden">
               <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-3 md:gap-4 mb-4">
                 <div className="flex-1">
                   <h3 className="text-lg md:text-xl font-bold text-blue-900 mb-1">Your Current Goal</h3>
@@ -772,7 +772,7 @@ export default function Profile() {
             <button
               type="submit"
               disabled={goalLoading}
-              className="mt-6 w-full md:w-auto px-8 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white rounded-lg font-medium hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
+              className="mt-6 w-full md:w-auto px-8 py-3 bg-gradient-to-r from-purple-500 to-orange-500 text-white rounded-lg font-medium hover:shadow-lg disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <Target className="w-5 h-5" />
               {goalLoading ? 'Calculating...' : healthGoal ? 'Update Goal' : 'Set Goal & Calculate Targets'}

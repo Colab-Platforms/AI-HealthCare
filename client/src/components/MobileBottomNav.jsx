@@ -86,8 +86,8 @@ export default function MobileBottomNav() {
 
       {/* More Menu Dropdown */}
       {showMoreMenu && (
-        <div className="fixed bottom-24 right-4 left-4 sm:left-auto sm:w-72 bg-gradient-to-br from-white to-cyan-50 rounded-3xl shadow-2xl z-50 overflow-hidden animate-fade-in border-2 border-cyan-200">
-          <div className="p-5 bg-gradient-to-r from-cyan-500 to-blue-500">
+        <div className="fixed bottom-24 right-4 left-4 sm:left-auto sm:w-72 bg-gradient-to-br from-white to-orange-50 rounded-3xl shadow-2xl z-50 overflow-hidden animate-fade-in border-2 border-cyan-200">
+          <div className="p-5 bg-gradient-to-r from-purple-500 to-orange-500">
             <div className="flex items-center justify-between">
               <h3 className="font-bold text-white text-lg">Menu</h3>
               <button onClick={() => setShowMoreMenu(false)} className="text-white hover:bg-white/20 rounded-full p-1.5 transition-colors">
@@ -142,7 +142,7 @@ export default function MobileBottomNav() {
                   to={item.path}
                   onClick={() => setShowMoreMenu(false)}
                   className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all text-sm group ${active
-                    ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg'
+                    ? 'bg-gradient-to-r from-purple-500 to-orange-500 text-white shadow-lg'
                     : 'text-slate-700 hover:bg-cyan-50'
                     }`}
                 >
@@ -160,7 +160,7 @@ export default function MobileBottomNav() {
             <div className="border-t-2 border-cyan-100 my-3" />
 
             <div className="px-4 py-2 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-white font-bold">
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-orange-500 flex items-center justify-center text-white font-bold">
                 {user?.name?.[0]?.toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">

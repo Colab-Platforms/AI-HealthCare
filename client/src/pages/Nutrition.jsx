@@ -326,7 +326,7 @@ export default function Nutrition() {
   const isToday = selectedDate === today;
 
   return (
-    <div className={`w-full h-full bg-gradient-to-br from-cyan-50 via-blue-50 to-cyan-100 flex flex-col ${showAddMeal ? 'overflow-hidden' : ''}`}>
+    <div className={`w-full h-full bg-gradient-to-br from-purple-50 via-pink-50 to-orange-100 flex flex-col ${showAddMeal ? 'overflow-hidden' : ''}`}>
       {/* Subtle refresh indicator */}
       {loading && !isInitialLoad && (
         <div className="fixed top-20 right-4 z-50 bg-white rounded-full shadow-lg px-4 py-2 flex items-center gap-2 animate-slide-in-right">
@@ -380,7 +380,7 @@ export default function Nutrition() {
 
         {/* Calories Overview */}
         {dailySummary && healthGoal && (
-          <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-3xl p-6 text-white shadow-lg">
+          <div className="bg-gradient-to-br from-purple-500 to-orange-600 rounded-3xl p-6 text-white shadow-lg">
             <div className="flex items-center justify-between mb-6">
               <div>
                 <p className="text-blue-100 text-sm mb-1">Calories Today</p>
@@ -434,7 +434,7 @@ export default function Nutrition() {
         )}
 
         {/* Water Intake */}
-        <div className="bg-gradient-to-br from-cyan-400 to-blue-500 rounded-3xl p-6 text-white shadow-lg">
+        <div className="bg-gradient-to-br from-purple-400 to-orange-500 rounded-3xl p-6 text-white shadow-lg">
           <div className="flex items-start justify-between mb-4">
             <div>
               <p className="text-cyan-100 text-sm mb-1">Water Reminder</p>
@@ -482,7 +482,7 @@ export default function Nutrition() {
               const mealCalories = mealLogs.reduce((sum, log) => sum + (log.totalNutrition?.calories || 0), 0);
 
               return (
-                <div key={type} className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 text-white shadow-md">
+                <div key={type} className="bg-gradient-to-br from-purple-500 to-orange-600 rounded-2xl p-4 text-white shadow-md">
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <p className="text-sm opacity-90 capitalize">{type}</p>
@@ -667,7 +667,7 @@ export default function Nutrition() {
             ) : (
               <div className="space-y-4">
                 {/* Nutrition Card */}
-                <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-2xl p-4 text-white">
+                <div className="bg-gradient-to-br from-purple-500 to-orange-600 rounded-2xl p-4 text-white">
                   <h3 className="font-bold text-white mb-4">{analysisResult.foodItem?.name}</h3>
 
                   <div className="grid grid-cols-2 gap-3 mb-4">

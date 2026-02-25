@@ -1,32 +1,46 @@
 const axios = require('axios');
 
-console.log('✅ aiService-fixed.js loaded - IMPROVED VERSION WITH EXPLICIT PROMPT');
+console.log('✅ aiService-fixed.js loaded - SUPPORTS BOTH ANTHROPIC DIRECT & OPENROUTER');
 
 const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
+
 const PRIMARY_MODEL = 'anthropic/claude-3.5-sonnet';
 const BACKUP_MODEL = 'openai/gpt-4o-mini';
 const FALLBACK_MODEL = 'google/gemini-pro-1.5';
 
+const getApiConfig = () => {
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  const openrouterKey = process.env.OPENROUTER_API_KEY;
+
+  // Prefer Anthropic direct API if key starts with sk-ant
+  if (anthropicKey && anthropicKey.startsWith('sk-ant')) {
+    return {
+      isAnthropicDirect: true,
+      apiKey: anthropicKey,
+      apiUrl: ANTHROPIC_API_URL
+    };
+  }
+
+  // Fallback to OpenRouter
+  if (openrouterKey) {
+    return {
+      isAnthropicDirect: false,
+      apiKey: openrouterKey,
+      apiUrl: OPENROUTER_API_URL
+    };
+  }
+
+  throw new Error('No AI API key found. Set ANTHROPIC_API_KEY or OPENROUTER_API_KEY');
+};
+
 const makeAIRequest = async (reportText, userProfile = {}, attempt = 0) => {
   try {
-    // Use OpenRouter with Claude - more reliable than direct Anthropic API
-    const apiKey = process.env.OPENROUTER_API_KEY;
-    if (!apiKey) {
-      throw new Error('OPENROUTER_API_KEY not found');
-    }
-
-    const apiUrl = OPENROUTER_API_URL;
-
-    // Select model - try Claude first, then fallback to GPT-4
-    let model = PRIMARY_MODEL; // anthropic/claude-3.5-sonnet
-    if (attempt === 1) model = BACKUP_MODEL; // openai/gpt-4o-mini
-    if (attempt >= 2) model = FALLBACK_MODEL; // google/gemini-pro-1.5
+    const config = getApiConfig();
 
     const fitnessGoal = userProfile?.fitnessProfile?.primaryGoal || userProfile?.nutritionGoal?.goal || 'general health';
     const age = userProfile?.profile?.age || userProfile?.age || 'unknown';
     const gender = userProfile?.profile?.gender || userProfile?.gender || 'unknown';
-
-    console.log(`\n🔄 [Attempt ${attempt + 1}] Making AI request with ${model} via OpenRouter for ${fitnessGoal}...`);
 
     const prompt = `You are a medical report analyzer. Extract information from this health report and return ONLY valid JSON.
 
@@ -142,113 +156,189 @@ If report shows "Hemoglobin: 11.6 g/dL (Normal: 13-17)", you should create:
 
 NOW ANALYZE THE REPORT AND RETURN ONLY THE JSON OBJECT:`;
 
-    const response = await axios.post(
-      apiUrl,
-      {
-        model: model,
-        messages: [
-          { role: 'system', content: 'You are a medical report analyzer. Always return valid JSON only, no markdown, no extra text.' },
-          { role: 'user', content: prompt }
-        ],
-        temperature: 0.1,
-        max_tokens: 4000
-      },
-      {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'https://fitcure.ai',
-          'X-Title': 'FitCure Health'
+    if (config.isAnthropicDirect) {
+      // ===== ANTHROPIC DIRECT API =====
+      const model = 'claude-3-5-sonnet-20241022';
+      console.log(`\n🔄 [Attempt ${attempt + 1}] Making AI request with ${model} via Anthropic Direct API for ${fitnessGoal}...`);
+
+      const response = await axios.post(
+        config.apiUrl,
+        {
+          model: model,
+          max_tokens: 4000,
+          temperature: 0.1,
+          system: 'You are a medical report analyzer. Always return valid JSON only, no markdown, no extra text.',
+          messages: [
+            { role: 'user', content: prompt }
+          ]
         },
-        timeout: 120000
+        {
+          headers: {
+            'x-api-key': config.apiKey,
+            'anthropic-version': '2023-06-01',
+            'Content-Type': 'application/json'
+          },
+          timeout: 120000
+        }
+      );
+
+      let content = '';
+      if (response.data && response.data.content && response.data.content[0]) {
+        content = response.data.content[0].text;
+      } else {
+        console.error('❌ Anthropic API Error Details:', response.data);
+        throw new Error('Invalid response from Anthropic API');
       }
-    );
 
-    let content = '';
-    if (!response.data.choices || !response.data.choices[0]) {
-      console.error('❌ OpenRouter Error Details:', response.data);
-      throw new Error('Invalid response from OpenRouter');
+      console.log('\n📦 ========== FULL AI RESPONSE ==========');
+      console.log(content.substring(0, 2000));
+      console.log('==========================================\n');
+
+      // Extract JSON
+      let jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.error('❌ No JSON in response');
+        throw new Error('Invalid AI response - no JSON found');
+      }
+
+      const analysis = JSON.parse(jsonMatch[0]);
+      return processAnalysis(analysis);
+
+    } else {
+      // ===== OPENROUTER API =====
+      let model = PRIMARY_MODEL;
+      if (attempt === 1) model = BACKUP_MODEL;
+      if (attempt >= 2) model = FALLBACK_MODEL;
+
+      console.log(`\n🔄 [Attempt ${attempt + 1}] Making AI request with ${model} via OpenRouter for ${fitnessGoal}...`);
+
+      const response = await axios.post(
+        config.apiUrl,
+        {
+          model: model,
+          messages: [
+            { role: 'system', content: 'You are a medical report analyzer. Always return valid JSON only, no markdown, no extra text.' },
+            { role: 'user', content: prompt }
+          ],
+          temperature: 0.1,
+          max_tokens: 4000
+        },
+        {
+          headers: {
+            'Authorization': `Bearer ${config.apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://fitcure.ai',
+            'X-Title': 'FitCure Health'
+          },
+          timeout: 120000
+        }
+      );
+
+      let content = '';
+      if (!response.data.choices || !response.data.choices[0]) {
+        console.error('❌ OpenRouter Error Details:', response.data);
+        throw new Error('Invalid response from OpenRouter');
+      }
+      content = response.data.choices[0].message.content;
+
+      console.log('\n📦 ========== FULL AI RESPONSE ==========');
+      console.log(content.substring(0, 2000));
+      console.log('==========================================\n');
+
+      // Extract JSON
+      let jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        console.error('❌ No JSON in response');
+        throw new Error('Invalid AI response - no JSON found');
+      }
+
+      const analysis = JSON.parse(jsonMatch[0]);
+      return processAnalysis(analysis);
     }
-    content = response.data.choices[0].message.content;
-
-    console.log('\n📦 ========== FULL AI RESPONSE ==========');
-    console.log(content.substring(0, 2000));
-    console.log('==========================================\n');
-
-    // Extract JSON - handle markdown code blocks
-    let jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error('❌ No JSON in response');
-      throw new Error('Invalid AI response - no JSON found');
-    }
-
-    const analysis = JSON.parse(jsonMatch[0]);
-
-    console.log('✅ Parsed successfully');
-    console.log('Patient:', analysis.patientName);
-    console.log('Health Score:', analysis.healthScore);
-    console.log('Summary length:', analysis.summary?.length || 0);
-    console.log('Key Findings:', analysis.keyFindings?.length || 0);
-    console.log('Metrics:', Object.keys(analysis.metrics || {}).length);
-    console.log('Diet Plan Breakfast:', analysis.dietPlan?.breakfast?.length || 0);
-
-    // Ensure healthScore is a number
-    if (typeof analysis.healthScore === 'string') {
-      analysis.healthScore = 75;
-    }
-    analysis.healthScore = Math.max(0, Math.min(100, Number(analysis.healthScore) || 75));
-
-    // Ensure arrays
-    if (!Array.isArray(analysis.keyFindings)) analysis.keyFindings = [];
-    if (!Array.isArray(analysis.deficiencies)) analysis.deficiencies = [];
-    if (!Array.isArray(analysis.supplements)) analysis.supplements = [];
-
-    // Convert string arrays to object arrays, but ONLY if they are not already objects
-    if (analysis.deficiencies.length > 0 && typeof analysis.deficiencies[0] === 'string') {
-      analysis.deficiencies = analysis.deficiencies.map(d => ({
-        name: d,
-        severity: 'moderate',
-        currentValue: 'See report',
-        normalRange: 'See report',
-        symptoms: []
-      }));
-    } else if (analysis.deficiencies.length > 0) {
-      // Ensure all fields exist in objects
-      analysis.deficiencies = analysis.deficiencies.map(d => ({
-        name: d.name || d.deficiency || 'Unknown deficiency',
-        severity: d.severity || 'moderate',
-        currentValue: d.currentValue && d.currentValue !== 'See report' ? d.currentValue : 'Extract from report',
-        normalRange: d.normalRange && d.normalRange !== 'See report' ? d.normalRange : 'Extract from report',
-        symptoms: d.symptoms || []
-      }));
-    }
-
-    if (analysis.supplements.length > 0 && typeof analysis.supplements[0] === 'string') {
-      analysis.supplements = analysis.supplements.map(s => ({
-        category: s,
-        reason: 'Based on report findings',
-        naturalSources: 'Consult healthcare professional',
-        note: 'Consult doctor for dosage'
-      }));
-    }
-
-    return analysis;
 
   } catch (error) {
     console.error(`❌ AI Error (Attempt ${attempt + 1}):`, error.response?.data || error.message);
 
-    // Retry logic with fallback models for OpenRouter
-    const apiKey = process.env.OPENROUTER_API_KEY || process.env.ANTHROPIC_API_KEY;
-    const isOpenRouter = apiKey?.startsWith('sk-or');
+    const config = getApiConfig();
 
-    if (isOpenRouter && attempt < 2) {
+    // Retry logic: only retry with OpenRouter fallback models
+    if (!config.isAnthropicDirect && attempt < 2) {
       console.log(`⚠️ Attempt ${attempt + 1} failed. Retrying with fallback model...`);
       return makeAIRequest(reportText, userProfile, attempt + 1);
+    }
+
+    // If Anthropic direct fails, try OpenRouter as backup (if key exists)
+    if (config.isAnthropicDirect && attempt === 0 && process.env.OPENROUTER_API_KEY) {
+      console.log('⚠️ Anthropic direct failed. Trying OpenRouter as backup...');
+      // Temporarily swap to OpenRouter by removing ANTHROPIC from consideration
+      const origKey = process.env.ANTHROPIC_API_KEY;
+      process.env.ANTHROPIC_API_KEY = '';
+      try {
+        const result = await makeAIRequest(reportText, userProfile, 0);
+        process.env.ANTHROPIC_API_KEY = origKey;
+        return result;
+      } catch (retryErr) {
+        process.env.ANTHROPIC_API_KEY = origKey;
+        throw retryErr;
+      }
     }
 
     throw error;
   }
 };
+
+// Process and validate the AI analysis result
+function processAnalysis(analysis) {
+  console.log('✅ Parsed successfully');
+  console.log('Patient:', analysis.patientName);
+  console.log('Health Score:', analysis.healthScore);
+  console.log('Summary length:', analysis.summary?.length || 0);
+  console.log('Key Findings:', analysis.keyFindings?.length || 0);
+  console.log('Metrics:', Object.keys(analysis.metrics || {}).length);
+  console.log('Diet Plan Breakfast:', analysis.dietPlan?.breakfast?.length || 0);
+
+  // Ensure healthScore is a number
+  if (typeof analysis.healthScore === 'string') {
+    analysis.healthScore = 75;
+  }
+  analysis.healthScore = Math.max(0, Math.min(100, Number(analysis.healthScore) || 75));
+
+  // Ensure arrays
+  if (!Array.isArray(analysis.keyFindings)) analysis.keyFindings = [];
+  if (!Array.isArray(analysis.deficiencies)) analysis.deficiencies = [];
+  if (!Array.isArray(analysis.supplements)) analysis.supplements = [];
+
+  // Convert string arrays to object arrays, but ONLY if they are not already objects
+  if (analysis.deficiencies.length > 0 && typeof analysis.deficiencies[0] === 'string') {
+    analysis.deficiencies = analysis.deficiencies.map(d => ({
+      name: d,
+      severity: 'moderate',
+      currentValue: 'See report',
+      normalRange: 'See report',
+      symptoms: []
+    }));
+  } else if (analysis.deficiencies.length > 0) {
+    // Ensure all fields exist in objects
+    analysis.deficiencies = analysis.deficiencies.map(d => ({
+      name: d.name || d.deficiency || 'Unknown deficiency',
+      severity: d.severity || 'moderate',
+      currentValue: d.currentValue && d.currentValue !== 'See report' ? d.currentValue : 'Extract from report',
+      normalRange: d.normalRange && d.normalRange !== 'See report' ? d.normalRange : 'Extract from report',
+      symptoms: d.symptoms || []
+    }));
+  }
+
+  if (analysis.supplements.length > 0 && typeof analysis.supplements[0] === 'string') {
+    analysis.supplements = analysis.supplements.map(s => ({
+      category: s,
+      reason: 'Based on report findings',
+      naturalSources: 'Consult healthcare professional',
+      note: 'Consult doctor for dosage'
+    }));
+  }
+
+  return analysis;
+}
 
 exports.analyzeHealthReport = makeAIRequest;
 
@@ -281,10 +371,35 @@ const compareReports = async (currentReport, previousReport) => {
       "concerns": ["Metric 1"]
     }`;
 
-    // Create a dummy user profile for the request
-    const dummyProfile = { age: currentReport.aiAnalysis?.patientAge, gender: currentReport.aiAnalysis?.patientGender };
+    const config = getApiConfig();
 
-    return await makeAIRequest(prompt, dummyProfile);
+    if (config.isAnthropicDirect) {
+      const response = await axios.post(
+        config.apiUrl,
+        {
+          model: 'claude-3-5-sonnet-20241022',
+          max_tokens: 2000,
+          temperature: 0.1,
+          system: 'You are a medical data analyst. Return valid JSON only.',
+          messages: [{ role: 'user', content: prompt }]
+        },
+        {
+          headers: {
+            'x-api-key': config.apiKey,
+            'anthropic-version': '2023-06-01',
+            'Content-Type': 'application/json'
+          },
+          timeout: 60000
+        }
+      );
+      const content = response.data.content[0].text;
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) return JSON.parse(jsonMatch[0]);
+      throw new Error('No JSON in comparison response');
+    } else {
+      const dummyProfile = { age: currentReport.aiAnalysis?.patientAge, gender: currentReport.aiAnalysis?.patientGender };
+      return await makeAIRequest(prompt, dummyProfile);
+    }
   } catch (error) {
     console.error('❌ Comparison failed:', error.message);
     return { overallTrend: 'stable', summary: 'Could not generate detailed comparison.' };
@@ -293,10 +408,12 @@ const compareReports = async (currentReport, previousReport) => {
 
 const chatWithReport = async (reportText, userQuestion, history = []) => {
   try {
+    const reportContent = typeof reportText === 'object' ? (reportText.extractedText || JSON.stringify(reportText.aiAnalysis)) : reportText;
+
     const prompt = `You are a medical assistant. Answer the user's question based on their health report.
     
     REPORT CONTENT:
-    ${reportText.substring(0, 5000)}
+    ${reportContent.substring(0, 5000)}
     
     USER QUESTION:
     ${userQuestion}
@@ -312,9 +429,32 @@ const chatWithReport = async (reportText, userQuestion, history = []) => {
     
     RESPONSE:`;
 
-    const response = await makeAIRequest(prompt, {});
-    // If makeAIRequest returns an object (and this prompt asks for text), try to extract a summary or message
-    return typeof response === 'object' ? (response.summary || response.answer || JSON.stringify(response)) : response;
+    const config = getApiConfig();
+
+    if (config.isAnthropicDirect) {
+      const response = await axios.post(
+        config.apiUrl,
+        {
+          model: 'claude-3-5-sonnet-20241022',
+          max_tokens: 2000,
+          temperature: 0.3,
+          system: 'You are a helpful medical assistant. Provide clear, concise health information.',
+          messages: [{ role: 'user', content: prompt }]
+        },
+        {
+          headers: {
+            'x-api-key': config.apiKey,
+            'anthropic-version': '2023-06-01',
+            'Content-Type': 'application/json'
+          },
+          timeout: 60000
+        }
+      );
+      return response.data.content[0].text;
+    } else {
+      const response = await makeAIRequest(prompt, {});
+      return typeof response === 'object' ? (response.summary || response.answer || JSON.stringify(response)) : response;
+    }
   } catch (error) {
     return "I'm sorry, I'm having trouble analyzing your report right now. Please consult your doctor for medical advice.";
   }

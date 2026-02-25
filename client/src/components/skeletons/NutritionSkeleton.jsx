@@ -2,7 +2,7 @@ import React from 'react';
 
 const NutritionSkeleton = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-4 sm:p-6 animate-pulse">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-pink-900 to-slate-900 p-4 sm:p-6 animate-pulse">
       {/* Header */}
       <div className="mb-6">
         <div className="h-8 bg-slate-700/50 rounded w-48 mb-2"></div>

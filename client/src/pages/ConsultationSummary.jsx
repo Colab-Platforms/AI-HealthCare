@@ -157,7 +157,7 @@ export default function ConsultationSummary() {
         {/* Doctor Info */}
         <div className="bg-[#111827] rounded-2xl border border-slate-700 p-6 mb-6">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-500 flex items-center justify-center text-xl font-bold text-white">
+            <div className="w-16 h-16 rounded-xl bg-gradient-to-r from-purple-500 to-orange-500 flex items-center justify-center text-xl font-bold text-white">
               {consultationData.doctor.name[0]}
             </div>
             <div className="flex-1">

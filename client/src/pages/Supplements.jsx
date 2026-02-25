@@ -196,7 +196,7 @@ export default function Supplements() {
 
       {/* Selected Report Info */}
       {selectedReport && (
-        <div className="bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl p-6 text-white">
+        <div className="bg-gradient-to-r from-purple-500 to-orange-500 rounded-2xl p-6 text-white">
           <div className="flex items-center gap-3 mb-2">
             <FileText className="w-6 h-6" />
             <h2 className="text-xl font-bold">{selectedReport.reportType}</h2>

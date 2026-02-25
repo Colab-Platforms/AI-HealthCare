@@ -171,7 +171,7 @@ export default function Doctors() {
                 return (
                   <div key={doctor._id} className="bg-white rounded-2xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-all">
                     <div className="flex items-start gap-4 mb-4">
-                      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-xl font-bold text-white">
+                      <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-orange-500 flex items-center justify-center text-xl font-bold text-white">
                         {name[0]?.toUpperCase()}
                       </div>
                       <div className="flex-1">
@@ -192,7 +192,7 @@ export default function Doctors() {
                       </div>
                       <button
                         onClick={() => setSelectedDoctor(doctor)}
-                        className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-medium rounded-xl hover:shadow-lg transition-all"
+                        className="px-4 py-2 bg-gradient-to-r from-purple-500 to-orange-500 text-white font-medium rounded-xl hover:shadow-lg transition-all"
                       >
                         Book Now
                       </button>
@@ -220,7 +220,7 @@ export default function Doctors() {
                 <div key={apt._id} className="p-4 bg-slate-50 rounded-xl border border-slate-100">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-white font-bold">
+                      <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-orange-500 flex items-center justify-center text-white font-bold">
                         {(apt.doctor?.name || apt.doctor?.user?.name)?.[0]?.toUpperCase() || 'D'}
                       </div>
                       <div>
@@ -276,7 +276,7 @@ export default function Doctors() {
 
             {/* Doctor Info */}
             <div className="flex items-center gap-4 p-4 bg-slate-50 rounded-xl mb-6">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-500 flex items-center justify-center text-white font-bold">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-orange-500 flex items-center justify-center text-white font-bold">
                 {(selectedDoctor.name || selectedDoctor.user?.name)?.[0]?.toUpperCase()}
               </div>
               <div>
@@ -409,7 +409,7 @@ export default function Doctors() {
                 <button
                   type="submit"
                   disabled={booking || !bookingData.date || !bookingData.timeSlot}
-                  className="flex-1 py-3 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-medium rounded-xl hover:shadow-lg transition-all disabled:opacity-50"
+                  className="flex-1 py-3 bg-gradient-to-r from-purple-500 to-orange-500 text-white font-medium rounded-xl hover:shadow-lg transition-all disabled:opacity-50"
                 >
                   {booking ? 'Booking...' : `Confirm • ₹${selectedDoctor.consultationFee || 500}`}
                 </button>

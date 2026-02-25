@@ -8,9 +8,9 @@ router.post('/chat', async (req, res) => {
     const { query, conversationHistory, userReports } = req.body;
 
     if (!query || query.trim().length === 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         success: false,
-        message: 'Query is required' 
+        message: 'Query is required'
       });
     }
 
@@ -25,7 +25,7 @@ router.post('/chat', async (req, res) => {
 - Be supportive and encouraging about health goals
 
 Respond in a clear, organized format with proper formatting for readability.`;
-    
+
     // Add report context if available
     if (userReports && userReports.length > 0) {
       const reportContext = userReports.map(report => {
@@ -33,31 +33,67 @@ Respond in a clear, organized format with proper formatting for readability.`;
         const metrics = report.metrics ? JSON.stringify(report.metrics) : '';
         return `Report: ${report.type || 'Health Report'} (${date})\nAnalysis: ${report.analysis || 'No analysis'}\nMetrics: ${metrics}`;
       }).join('\n\n');
-      
+
       systemPrompt += `\n\nUser's Health Reports:\n${reportContext}\n\nUse this information to provide personalized responses based on their actual health data.`;
     }
 
     // Build messages array
     const messages = [];
-    
+
     if (conversationHistory && Array.isArray(conversationHistory)) {
       conversationHistory.slice(-6).forEach(msg => {
         if (msg.role && msg.content && !msg.content.includes('Hello')) {
-          messages.push({ 
-            role: msg.role === 'user' ? 'user' : 'assistant', 
-            content: msg.content 
+          messages.push({
+            role: msg.role === 'user' ? 'user' : 'assistant',
+            content: msg.content
           });
         }
       });
     }
-    
+
     messages.push({ role: 'user', content: query });
 
     let aiResponse = null;
     let lastError = null;
 
-    // Try Claude model from OpenRouter
-    if (process.env.OPENROUTER_API_KEY) {
+    // Try Anthropic Direct API first if key starts with sk-ant
+    const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    if (!aiResponse && anthropicKey && anthropicKey.startsWith('sk-ant')) {
+      try {
+        console.log('Trying Anthropic Direct API with claude-3-5-sonnet-20241022...');
+        const response = await axios.post(
+          'https://api.anthropic.com/v1/messages',
+          {
+            model: 'claude-3-5-sonnet-20241022',
+            system: systemPrompt,
+            messages: messages,
+            temperature: 0.7,
+            max_tokens: 1500
+          },
+          {
+            headers: {
+              'x-api-key': anthropicKey,
+              'anthropic-version': '2023-06-01',
+              'Content-Type': 'application/json'
+            },
+            timeout: 30000
+          }
+        );
+
+        if (response.data && response.data.content && response.data.content[0]) {
+          aiResponse = response.data.content[0].text;
+          console.log('Success with Anthropic Direct API');
+        }
+      } catch (error) {
+        const status = error.response?.status;
+        const errorMsg = error.response?.data?.error?.message || error.message;
+        console.error(`Anthropic Direct failed (${status}):`, errorMsg);
+        lastError = error;
+      }
+    }
+
+    // Fallback: Try Claude model from OpenRouter
+    if (!aiResponse && process.env.OPENROUTER_API_KEY) {
       const models = [
         'anthropic/claude-3.5-sonnet',
         'anthropic/claude-3-sonnet'
@@ -65,8 +101,8 @@ Respond in a clear, organized format with proper formatting for readability.`;
 
       for (const model of models) {
         try {
-          console.log(`Trying model: ${model}`);
-          
+          console.log(`Trying OpenRouter model: ${model}`);
+
           const response = await axios.post(
             'https://openrouter.ai/api/v1/chat/completions',
             {
@@ -91,13 +127,13 @@ Respond in a clear, organized format with proper formatting for readability.`;
 
           if (response.data && response.data.choices && response.data.choices[0]) {
             aiResponse = response.data.choices[0].message.content;
-            console.log(`Success with model: ${model}`);
+            console.log(`Success with OpenRouter model: ${model}`);
             break;
           }
         } catch (error) {
           const status = error.response?.status;
           const errorMsg = error.response?.data?.error?.message || error.message;
-          
+
           console.error(`Model ${model} failed (${status}):`, errorMsg);
           lastError = error;
           continue;
@@ -111,7 +147,7 @@ Respond in a clear, organized format with proper formatting for readability.`;
       aiResponse = generateIntelligentResponse(query, conversationHistory);
     }
 
-    res.json({ 
+    res.json({
       success: true,
       response: aiResponse,
       timestamp: new Date().toISOString(),
@@ -124,11 +160,11 @@ Respond in a clear, organized format with proper formatting for readability.`;
       response: error.response?.data,
       status: error.response?.status
     });
-    
+
     // Even on error, provide a helpful response
     const fallbackResponse = generateIntelligentResponse(req.body.query, req.body.conversationHistory);
-    
-    res.json({ 
+
+    res.json({
       success: true,
       response: fallbackResponse,
       timestamp: new Date().toISOString(),
@@ -140,7 +176,7 @@ Respond in a clear, organized format with proper formatting for readability.`;
 // Intelligent fallback response generator
 function generateIntelligentResponse(query, conversationHistory = []) {
   const lowerQuery = query.toLowerCase();
-  
+
   // Health metrics and lab values
   if (lowerQuery.includes('vitamin d') || lowerQuery.includes('vitamin-d')) {
     return `Vitamin D Information:
@@ -165,7 +201,7 @@ Symptoms of Deficiency:
 
 Important: Always consult with your healthcare provider for personalized advice and treatment.`;
   }
-  
+
   if (lowerQuery.includes('iron') || lowerQuery.includes('hemoglobin') || lowerQuery.includes('anemia')) {
     return `Iron & Hemoglobin Information:
 
@@ -639,7 +675,7 @@ module.exports = router;
 // Intelligent fallback response generator
 function generateIntelligentResponse(query, conversationHistory = []) {
   const lowerQuery = query.toLowerCase();
-  
+
   // Health metrics and lab values
   if (lowerQuery.includes('vitamin d') || lowerQuery.includes('vitamin-d')) {
     return `**Vitamin D Information:**
@@ -664,7 +700,7 @@ Vitamin D is essential for bone health, immune function, and overall wellbeing.
 
 **Important:** Always consult with your healthcare provider for personalized advice and treatment.`;
   }
-  
+
   if (lowerQuery.includes('iron') || lowerQuery.includes('hemoglobin') || lowerQuery.includes('anemia')) {
     return `**Iron & Hemoglobin Information:**
 

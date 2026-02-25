@@ -163,20 +163,20 @@ export default function Profile() {
 
   const getBmiStatus = (bmi) => {
     if (!bmi) return { label: 'N/A', color: 'slate', gradient: 'from-slate-400 to-slate-500' };
-    if (bmi < 18.5) return { label: 'Underweight', color: 'blue', gradient: 'from-blue-400 to-blue-500' };
-    if (bmi < 25) return { label: 'Normal', color: 'emerald', gradient: 'from-emerald-400 to-emerald-500' };
-    if (bmi < 30) return { label: 'Overweight', color: 'amber', gradient: 'from-amber-400 to-amber-500' };
-    return { label: 'Obese', color: 'red', gradient: 'from-red-400 to-red-500' };
+    if (bmi < 18.5) return { label: 'Underweight', color: 'blue', gradient: 'from-purple-400 to-orange-500' };
+    if (bmi < 25) return { label: 'Normal', color: 'emerald', gradient: 'from-purple-400 to-orange-500' };
+    if (bmi < 30) return { label: 'Overweight', color: 'amber', gradient: 'from-purple-400 to-orange-500' };
+    return { label: 'Obese', color: 'red', gradient: 'from-purple-400 to-orange-500' };
   };
 
   const bmiStatus = getBmiStatus(parseFloat(bmi));
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-cyan-100 pb-20">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-100 pb-20">
       <div className="max-w-7xl mx-auto space-y-6 animate-fade-in p-4">
 
         {/* Hero Header - Compact on Mobile */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-cyan-500 via-blue-500 to-indigo-500 rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-2xl">
+        <div className="relative overflow-hidden bg-gradient-to-br from-purple-500 via-pink-500 to-orange-500 rounded-3xl p-4 sm:p-6 md:p-8 text-white shadow-2xl">
           <div className="absolute top-0 right-0 w-32 h-32 sm:w-64 sm:h-64 bg-white/10 rounded-full -mr-16 sm:-mr-32 -mt-16 sm:-mt-32" />
           <div className="absolute bottom-0 left-0 w-24 h-24 sm:w-48 sm:h-48 bg-white/10 rounded-full -ml-12 sm:-ml-24 -mb-12 sm:-mb-24" />
           
@@ -247,7 +247,7 @@ export default function Profile() {
               onClick={() => setActiveTab(tab.id)} 
               className={`flex items-center gap-2 px-6 py-3 rounded-xl font-medium transition-all whitespace-nowrap ${
                 activeTab === tab.id 
-                  ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-lg' 
+                  ? 'bg-gradient-to-r from-purple-500 to-orange-500 text-white shadow-lg' 
                   : 'text-slate-600 hover:bg-slate-50'
               }`}
             >
@@ -264,7 +264,7 @@ export default function Profile() {
               <div className="bg-white rounded-3xl shadow-lg p-4 sm:p-6 border-2 border-cyan-100">
                 <div className="flex items-center justify-between mb-4 sm:mb-6">
                   <h3 className="text-lg sm:text-xl font-bold text-slate-800 flex items-center gap-2">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-purple-400 to-orange-500 flex items-center justify-center">
                       <User className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                     </div>
                     <span className="text-base sm:text-xl">Basic Information</span>
@@ -284,7 +284,7 @@ export default function Profile() {
 
                 {/* BMI Calculator - Show at top on mobile */}
                 {bmi && (
-                  <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl border-2 border-cyan-200">
+                  <div className="mb-4 sm:mb-6 p-3 sm:p-4 bg-gradient-to-br from-purple-50 to-orange-50 rounded-2xl border-2 border-cyan-200">
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
                         <p className="text-xs sm:text-sm text-slate-600 mb-1">Your BMI</p>
@@ -376,7 +376,7 @@ export default function Profile() {
               {/* Health Information */}
               <div className="bg-white rounded-3xl shadow-lg p-4 sm:p-6 border-2 border-red-100">
                 <h3 className="text-lg sm:text-xl font-bold text-slate-800 mb-4 sm:mb-6 flex items-center gap-2">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-red-400 to-pink-500 flex items-center justify-center">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-purple-400 to-orange-500 flex items-center justify-center">
                     <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                   </div>
                   <span className="text-base sm:text-xl">Health Information</span>
@@ -431,7 +431,7 @@ export default function Profile() {
               {/* Medical History */}
               <div className="bg-white rounded-3xl shadow-lg p-4 sm:p-6 border-2 border-amber-100">
                 <h3 className="text-lg sm:text-xl font-bold text-slate-800 mb-4 sm:mb-6 flex items-center gap-2">
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center">
+                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-purple-400 to-orange-500 flex items-center justify-center">
                     <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
                   </div>
                   <span className="text-base sm:text-xl">Medical History</span>
@@ -472,7 +472,7 @@ export default function Profile() {
                 <button 
                   type="submit" 
                   disabled={loading} 
-                  className="w-full py-3 sm:py-4 bg-gradient-to-r from-cyan-500 to-blue-500 text-white font-bold rounded-2xl hover:shadow-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-base sm:text-lg"
+                  className="w-full py-3 sm:py-4 bg-gradient-to-r from-purple-500 to-orange-500 text-white font-bold rounded-2xl hover:shadow-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-base sm:text-lg"
                 >
                   {loading ? (
                     <div className="w-5 h-5 sm:w-6 sm:h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
@@ -488,7 +488,7 @@ export default function Profile() {
 
             {/* Sidebar - Quick Stats Only */}
             <div className="space-y-6">
-              <div className="bg-gradient-to-br from-purple-500 to-indigo-500 rounded-3xl shadow-lg p-4 sm:p-6 text-white">
+              <div className="bg-gradient-to-br from-purple-500 to-orange-500 rounded-3xl shadow-lg p-4 sm:p-6 text-white">
                 <h3 className="text-base sm:text-lg font-bold mb-3 sm:mb-4 flex items-center gap-2">
                   <Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />
                   Quick Stats
@@ -518,7 +518,7 @@ export default function Profile() {
           <form onSubmit={handleGoalSubmit} className="max-w-5xl space-y-6">
             {/* Current Goal Display - Compact on Mobile */}
             {healthGoal && (
-              <div className="bg-gradient-to-br from-emerald-50 to-green-50 rounded-2xl sm:rounded-3xl border-2 sm:border-3 border-emerald-200 p-3 sm:p-4 md:p-6 shadow-lg">
+              <div className="bg-gradient-to-br from-purple-50 to-orange-50 rounded-2xl sm:rounded-3xl border-2 sm:border-3 border-emerald-200 p-3 sm:p-4 md:p-6 shadow-lg">
                 <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-4 mb-3 sm:mb-4">
                   <div>
                     <h3 className="text-lg sm:text-xl md:text-2xl font-bold text-emerald-900 mb-0.5 sm:mb-1">Your Current Goal</h3>
@@ -531,28 +531,28 @@ export default function Profile() {
                 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4 mt-3 sm:mt-4 md:mt-6">
                   <div className="bg-white p-3 sm:p-4 md:p-5 rounded-xl sm:rounded-2xl shadow-md text-center">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-red-400 to-pink-500 flex items-center justify-center mx-auto mb-1 sm:mb-2">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-purple-400 to-orange-500 flex items-center justify-center mx-auto mb-1 sm:mb-2">
                       <Target className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
                     </div>
                     <p className="text-[10px] sm:text-xs md:text-sm text-slate-600 mb-0.5 sm:mb-1">Daily Calories</p>
                     <p className="text-lg sm:text-xl md:text-2xl font-bold text-slate-800">{healthGoal.dailyCalorieTarget}</p>
                   </div>
                   <div className="bg-white p-3 sm:p-4 md:p-5 rounded-xl sm:rounded-2xl shadow-md text-center">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-blue-400 to-blue-500 flex items-center justify-center mx-auto mb-1 sm:mb-2">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-purple-400 to-orange-500 flex items-center justify-center mx-auto mb-1 sm:mb-2">
                       <Beef className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
                     </div>
                     <p className="text-[10px] sm:text-xs md:text-sm text-slate-600 mb-0.5 sm:mb-1">Protein</p>
                     <p className="text-lg sm:text-xl md:text-2xl font-bold text-blue-600">{healthGoal.macroTargets.protein}g</p>
                   </div>
                   <div className="bg-white p-3 sm:p-4 md:p-5 rounded-xl sm:rounded-2xl shadow-md text-center">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-green-400 to-green-500 flex items-center justify-center mx-auto mb-1 sm:mb-2">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-purple-400 to-orange-500 flex items-center justify-center mx-auto mb-1 sm:mb-2">
                       <Wheat className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
                     </div>
                     <p className="text-[10px] sm:text-xs md:text-sm text-slate-600 mb-0.5 sm:mb-1">Carbs</p>
                     <p className="text-lg sm:text-xl md:text-2xl font-bold text-green-600">{healthGoal.macroTargets.carbs}g</p>
                   </div>
                   <div className="bg-white p-3 sm:p-4 md:p-5 rounded-xl sm:rounded-2xl shadow-md text-center">
-                    <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-orange-400 to-orange-500 flex items-center justify-center mx-auto mb-1 sm:mb-2">
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 rounded-lg sm:rounded-xl bg-gradient-to-br from-purple-400 to-orange-500 flex items-center justify-center mx-auto mb-1 sm:mb-2">
                       <Droplet className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-white" />
                     </div>
                     <p className="text-[10px] sm:text-xs md:text-sm text-slate-600 mb-0.5 sm:mb-1">Fats</p>
@@ -565,7 +565,7 @@ export default function Profile() {
             {/* Goal Setting Form */}
             <div className="bg-white rounded-3xl shadow-lg p-6 border-2 border-cyan-100">
               <h3 className="text-xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-400 to-orange-500 flex items-center justify-center">
                   <Target className="w-5 h-5 text-white" />
                 </div>
                 {healthGoal ? 'Update Your Fitness Goal' : 'Set Your Fitness Goal'}
@@ -699,7 +699,7 @@ export default function Profile() {
               <button
                 type="submit"
                 disabled={goalLoading}
-                className="mt-6 w-full py-4 bg-gradient-to-r from-emerald-500 to-green-500 text-white font-bold rounded-2xl hover:shadow-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-lg"
+                className="mt-6 w-full py-4 bg-gradient-to-r from-purple-500 to-orange-500 text-white font-bold rounded-2xl hover:shadow-2xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 text-lg"
               >
                 {goalLoading ? (
                   <div className="w-6 h-6 border-3 border-white/30 border-t-white rounded-full animate-spin" />
@@ -718,7 +718,7 @@ export default function Profile() {
         {healthHistory && healthHistory.history && Object.keys(healthHistory.history).length > 0 && (
           <div className="bg-white rounded-3xl shadow-lg p-6 border-2 border-cyan-100">
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-400 to-orange-500 flex items-center justify-center">
                 <FileText className="w-6 h-6 text-white" />
               </div>
               <div>
@@ -732,10 +732,10 @@ export default function Profile() {
                 <button
                   key={reportType}
                   onClick={() => navigate('/reports')}
-                  className="bg-gradient-to-br from-cyan-50 to-blue-50 rounded-2xl p-5 border-2 border-cyan-200 hover:border-cyan-400 hover:shadow-lg transition-all group text-left"
+                  className="bg-gradient-to-br from-purple-50 to-orange-50 rounded-2xl p-5 border-2 border-cyan-200 hover:border-cyan-400 hover:shadow-lg transition-all group text-left"
                 >
                   <div className="flex items-center justify-between mb-3">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-400 to-orange-500 flex items-center justify-center">
                       <FileText className="w-6 h-6 text-white" />
                     </div>
                     <ChevronRight className="w-5 h-5 text-cyan-600 group-hover:translate-x-1 transition-transform" />
@@ -758,7 +758,7 @@ export default function Profile() {
               ))}
             </div>
 
-            <div className="mt-6 flex items-center justify-between p-4 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-2xl text-white">
+            <div className="mt-6 flex items-center justify-between p-4 bg-gradient-to-r from-purple-500 to-orange-500 rounded-2xl text-white">
               <div>
                 <p className="text-sm text-cyan-100">Total Reports</p>
                 <p className="text-2xl font-bold">{healthHistory.totalReports || 0}</p>

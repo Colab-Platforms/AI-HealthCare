@@ -34,13 +34,13 @@ export default function HealthProgressAnimation({ step }) {
       {/* Animated Icon Container */}
       <div className="relative w-32 h-32 mb-4">
         {/* Outer pulse ring */}
-        <div className="absolute inset-0 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full opacity-20 animate-pulse"></div>
+        <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-orange-500 rounded-full opacity-20 animate-pulse"></div>
         
         {/* Middle ring */}
-        <div className="absolute inset-4 bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full opacity-30 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
+        <div className="absolute inset-4 bg-gradient-to-br from-purple-400 to-orange-500 rounded-full opacity-30 animate-pulse" style={{ animationDelay: '0.2s' }}></div>
         
         {/* Inner icon container */}
-        <div className="absolute inset-8 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-full flex items-center justify-center text-white shadow-lg">
+        <div className="absolute inset-8 bg-gradient-to-br from-purple-500 to-orange-600 rounded-full flex items-center justify-center text-white shadow-lg">
           {getIcon()}
         </div>
         

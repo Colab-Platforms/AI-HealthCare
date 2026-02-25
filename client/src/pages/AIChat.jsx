@@ -276,7 +276,7 @@ export default function AIChat() {
       {/* Welcome Message - Mobile Only - Fixed at top */}
       <div className="md:hidden fixed top-0 left-0 right-0 z-30 bg-white border-b border-gray-200 px-4 py-2.5 flex items-center justify-between">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-md flex-shrink-0">
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-orange-600 flex items-center justify-center text-white text-xs font-bold shadow-md flex-shrink-0">
             {user?.name?.[0]?.toUpperCase() || 'U'}
           </div>
           <h1 className="text-sm font-bold text-slate-800 truncate">

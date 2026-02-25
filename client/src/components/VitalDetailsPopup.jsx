@@ -149,7 +149,7 @@ export default function VitalDetailsPopup({ vital, onClose }) {
             {/* Visual Range Indicator (Like WebShark) */}
             <div className="space-y-3">
               <p className="text-sm font-semibold text-slate-800">Range Indicator</p>
-              <div className="relative h-12 bg-gradient-to-r from-red-200 via-amber-200 to-emerald-200 rounded-xl overflow-hidden border-2 border-slate-200">
+              <div className="relative h-12 bg-gradient-to-r from-purple-200 via-pink-200 to-orange-200 rounded-xl overflow-hidden border-2 border-slate-200">
                 {/* Normal range highlight */}
                 <div
                   className="absolute top-0 bottom-0 bg-white/40 border-l-2 border-r-2 border-blue-500"

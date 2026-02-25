@@ -257,7 +257,7 @@ const GlucoseLog = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-cyan-50 via-blue-50 to-cyan-100 pb-28">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-100 pb-28">
       {/* Top Navigation */}
       <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-white/40">
         <div className="px-4 py-3 flex items-center justify-between">
@@ -410,7 +410,7 @@ const GlucoseLog = () => {
           </button>
           <button
             onClick={() => setShowLogModal(true)}
-            className="flex-[1.5] bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-md shadow-blue-200 py-3 rounded-2xl font-bold text-[13px] hover:from-blue-600 hover:to-blue-700 transition-colors focus:scale-95"
+            className="flex-[1.5] bg-gradient-to-r from-purple-500 to-orange-600 text-white shadow-md shadow-blue-200 py-3 rounded-2xl font-bold text-[13px] hover:from-purple-600 hover:to-orange-700 transition-colors focus:scale-95"
           >
             + Log Glucose
           </button>

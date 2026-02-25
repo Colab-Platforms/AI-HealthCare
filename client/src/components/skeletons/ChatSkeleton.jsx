@@ -2,7 +2,7 @@ import React from 'react';
 
 const ChatSkeleton = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex flex-col animate-pulse">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-pink-900 to-slate-900 flex flex-col animate-pulse">
       {/* Header */}
       <div className="bg-slate-800/50 border-b border-slate-700/50 p-4">
         <div className="h-6 bg-slate-700/50 rounded w-48 mx-auto"></div>

@@ -101,7 +101,7 @@ export default function EmailTest() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 disabled:from-slate-600 disabled:to-slate-600 text-white py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2"
+              className="w-full bg-gradient-to-r from-purple-500 to-orange-500 hover:from-purple-600 hover:to-orange-600 disabled:from-slate-600 disabled:to-slate-600 text-white py-3 rounded-xl font-medium transition-all flex items-center justify-center gap-2"
             >
               {loading ? (
                 <>

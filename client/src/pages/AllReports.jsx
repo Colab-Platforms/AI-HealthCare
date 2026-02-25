@@ -61,7 +61,7 @@ export default function AllReports() {
       {/* Welcome Message - Mobile Only */}
       <div className="md:hidden flex items-center justify-between">
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white text-sm font-bold shadow-md flex-shrink-0">
+          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-orange-600 flex items-center justify-center text-white text-sm font-bold shadow-md flex-shrink-0">
             {user?.name?.[0]?.toUpperCase() || 'U'}
           </div>
           <h1 className="text-sm font-bold text-slate-800 truncate">

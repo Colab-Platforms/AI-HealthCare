@@ -173,11 +173,11 @@ export default function SleepTracker({ isOpen, onClose }) {
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl w-full max-w-md max-h-[90vh] flex flex-col shadow-2xl border border-slate-700">
+      <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 rounded-3xl w-full max-w-md max-h-[90vh] pb-24 md:pb-0 flex flex-col shadow-2xl border border-slate-700">
         {/* Header */}
         <div className="flex-shrink-0 bg-slate-900/95 backdrop-blur-sm p-4 border-b border-slate-700 flex items-center justify-between rounded-t-3xl">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-orange-600 flex items-center justify-center">
               <Moon className="w-5 h-5 text-white" />
             </div>
             <div>
@@ -219,7 +219,7 @@ export default function SleepTracker({ isOpen, onClose }) {
                 return (
                   <div key={index} className={`flex-1 text-center ${isToday ? 'opacity-100' : 'opacity-60'}`}>
                     <div className={`w-8 h-8 sm:w-10 sm:h-10 mx-auto rounded-full flex items-center justify-center mb-1 ${dayRecord
-                      ? 'bg-gradient-to-br from-orange-500 to-orange-600 ring-2 ring-orange-400/30'
+                      ? 'bg-gradient-to-br from-purple-500 to-orange-600 ring-2 ring-orange-400/30'
                       : 'bg-slate-800'
                       } ${isToday ? 'ring-2 ring-white/30' : ''}`}>
                       <span className="text-[10px] sm:text-xs font-medium text-white">
@@ -247,7 +247,7 @@ export default function SleepTracker({ isOpen, onClose }) {
                       <div className="w-full bg-slate-800 rounded-t-lg overflow-hidden relative" style={{ height: '80px' }}>
                         {heightPercent > 0 && (
                           <div
-                            className="absolute bottom-0 w-full bg-gradient-to-t from-orange-500 to-orange-400 rounded-t-lg transition-all duration-700 ease-out"
+                            className="absolute bottom-0 w-full bg-gradient-to-t from-purple-500 to-orange-400 rounded-t-lg transition-all duration-700 ease-out"
                             style={{ height: `${heightPercent}%` }}
                           >
                             <div className="absolute inset-0 bg-gradient-to-t from-transparent to-white/20" />
@@ -352,7 +352,7 @@ export default function SleepTracker({ isOpen, onClose }) {
                   <div className="flex gap-2">
                     <button
                       onClick={startSleep}
-                      className="flex-1 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl font-semibold flex items-center justify-center gap-1.5 transition shadow-lg text-xs"
+                      className="flex-1 py-2.5 bg-gradient-to-r from-purple-600 to-orange-600 hover:from-purple-700 hover:to-orange-700 text-white rounded-xl font-semibold flex items-center justify-center gap-1.5 transition shadow-lg text-xs"
                     >
                       <Play className="w-3.5 h-3.5" />
                       Start Sleep
@@ -368,7 +368,7 @@ export default function SleepTracker({ isOpen, onClose }) {
                 ) : (
                   <button
                     onClick={stopSleep}
-                    className="w-full py-3 bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition shadow-lg animate-pulse text-sm"
+                    className="w-full py-3 bg-gradient-to-r from-purple-600 to-orange-600 hover:from-purple-700 hover:to-orange-700 text-white rounded-xl font-semibold flex items-center justify-center gap-2 transition shadow-lg animate-pulse text-sm"
                   >
                     <Pause className="w-4 h-4" />
                     Stop & Save Sleep
@@ -410,7 +410,7 @@ export default function SleepTracker({ isOpen, onClose }) {
                 <div className="flex gap-3">
                   <button
                     onClick={saveManualEdit}
-                    className="flex-1 py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white rounded-2xl font-semibold flex items-center justify-center gap-2 transition"
+                    className="flex-1 py-3 bg-gradient-to-r from-purple-600 to-orange-600 hover:from-purple-700 hover:to-orange-700 text-white rounded-2xl font-semibold flex items-center justify-center gap-2 transition"
                   >
                     <Check className="w-4 h-4" />
                     Save

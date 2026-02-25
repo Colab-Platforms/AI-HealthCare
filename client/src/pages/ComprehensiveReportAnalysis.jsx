@@ -98,9 +98,9 @@ export default function ComprehensiveReportAnalysis() {
   const healthScore = aiAnalysis?.healthScore || 0;
 
   const getHealthScoreColor = (score) => {
-    if (score >= 80) return 'from-emerald-500 to-green-600';
-    if (score >= 60) return 'from-amber-500 to-orange-600';
-    return 'from-red-500 to-rose-600';
+    if (score >= 80) return 'from-purple-500 to-orange-600';
+    if (score >= 60) return 'from-purple-500 to-orange-600';
+    return 'from-purple-500 to-orange-600';
   };
 
   const getMetricStatusColor = (status) => {

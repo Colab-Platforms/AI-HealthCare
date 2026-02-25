@@ -121,7 +121,7 @@ export default function UploadReport() {
             <span className="text-[10px] font-black tracking-widest text-blue-700 uppercase">HIPAA Secure Portal</span>
           </div>
           <h1 className="text-4xl font-black text-slate-800 tracking-tight">
-            Analyze Medical <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 to-cyan-500">Reports</span>
+            Analyze Medical <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-600 to-orange-500">Reports</span>
           </h1>
           <p className="text-slate-500 max-w-md font-medium">
             Upload your documents for instant AI-powered health insights and personalized recommendations.
@@ -229,7 +229,7 @@ export default function UploadReport() {
                 <div className="space-y-3">
                   <div className="h-4 bg-slate-100 rounded-full overflow-hidden">
                     <div
-                      className="h-full bg-gradient-to-r from-blue-600 to-cyan-500 transition-all duration-500"
+                      className="h-full bg-gradient-to-r from-purple-600 to-orange-500 transition-all duration-500"
                       style={{ width: `${uploadProgress}%` }}
                     />
                   </div>

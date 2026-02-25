@@ -360,7 +360,7 @@ export default function ReportAnalysisMobile() {
                         <div className="space-y-4">
                             {(aiAnalysis.recommendations?.lifestyle || aiAnalysis.dietPlan?.tips || []).map((tip, idx) => (
                                 <div key={idx} className="bg-white rounded-3xl p-6 flex gap-4 shadow-sm border border-slate-100 group relative overflow-hidden">
-                                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-blue-400 to-blue-600"></div>
+                                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-purple-400 to-orange-600"></div>
                                     <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center shrink-0">
                                         <Zap className="w-5 h-5 text-blue-500" />
                                     </div>
