@@ -33,11 +33,18 @@ const adminNavItems = [
 ];
 
 export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isDoctorLayout }) {
-  const { user, logout, isAdmin, isDoctor } = useAuth();
+  const { user, logout, isAdmin, isDoctor, refreshUser } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [healthData, setHealthData] = useState({ healthScore: 0, caloriesConsumed: 0, calorieTarget: 2000 });
+
+  // Refresh user data on mount to get latest profile picture and data
+  useEffect(() => {
+    if (user && refreshUser) {
+      refreshUser();
+    }
+  }, []);
 
   // Fetch real-time health data for dashboard
   useEffect(() => {

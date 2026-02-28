@@ -59,52 +59,28 @@ app.use((err, req, res, next) => {
   });
 });
 
-let dbConnected = false;
-let dbConnectionPromise = null;
+// Global connection state for serverless
+let cachedDb = null;
 
 const initDB = async () => {
-  if (dbConnected) return true;
-  if (dbConnectionPromise) {
-    await dbConnectionPromise;
-    return dbConnected;
+  if (cachedDb && cachedDb.connection.readyState === 1) {
+    return cachedDb;
   }
+  
   try {
-    dbConnectionPromise = connectDB();
-    await dbConnectionPromise;
-    dbConnected = true;
-    console.log('Database connected');
-    try {
-      require('./services/reminderService');
-    } catch (error) {
-      console.error('Error loading reminder service:', error);
-    }
-    try {
-      require('./services/notificationService');
-    } catch (error) {
-      console.error('Error loading notification service:', error);
-    }
-    return true;
+    cachedDb = await connectDB();
+    console.log('Database connected (cached)');
+    return cachedDb;
   } catch (error) {
     console.error('Database connection error:', error);
-    dbConnectionPromise = null;
-    return false;
+    cachedDb = null;
+    throw error;
   }
 };
 
 if (process.env.VERCEL) {
-  // Middleware to ensure DB is connected before handling requests
-  app.use(async (req, res, next) => {
-    try {
-      await initDB();
-      next();
-    } catch (error) {
-      console.error('Database connection failed:', error);
-      res.status(503).json({
-        success: false,
-        message: 'Service temporarily unavailable - database connection failed'
-      });
-    }
-  });
+  // Initialize DB connection on cold start
+  initDB().catch(err => console.error('Initial DB connection failed:', err));
   
   module.exports = app;
 } else {
