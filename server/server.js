@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+const mongoose = require('mongoose');
 const connectDB = require('./config/db');
 const fs = require('fs');
 const path = require('path');
@@ -60,29 +61,39 @@ app.use((err, req, res, next) => {
 });
 
 // Global connection state for serverless
-let cachedDb = null;
+let isConnected = false;
 
-const initDB = async () => {
-  if (cachedDb && cachedDb.connection.readyState === 1) {
-    return cachedDb;
+const connectToDatabase = async () => {
+  if (isConnected && mongoose.connection.readyState === 1) {
+    console.log('Using existing database connection');
+    return;
   }
-  
+
   try {
-    cachedDb = await connectDB();
-    console.log('Database connected (cached)');
-    return cachedDb;
+    const db = await connectDB();
+    isConnected = true;
+    console.log('New database connection established');
+    return db;
   } catch (error) {
-    console.error('Database connection error:', error);
-    cachedDb = null;
+    console.error('Database connection failed:', error);
+    isConnected = false;
     throw error;
   }
 };
 
 if (process.env.VERCEL) {
-  // Initialize DB connection on cold start
-  initDB().catch(err => console.error('Initial DB connection failed:', err));
+  // For Vercel serverless, wrap the app with connection handler
+  const handler = async (req, res) => {
+    try {
+      await connectToDatabase();
+    } catch (error) {
+      console.error('Failed to connect to database:', error);
+      // Continue anyway - some endpoints might not need DB
+    }
+    return app(req, res);
+  };
   
-  module.exports = app;
+  module.exports = handler;
 } else {
   const PORT = process.env.PORT || 5000;
   connectDB().then(() => {
