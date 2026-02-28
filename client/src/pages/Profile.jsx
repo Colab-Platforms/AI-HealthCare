@@ -268,9 +268,8 @@ export default function Profile() {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      // Fix: The API returns { profilePicture: url }, but updateUser expects full user object or partial
-      const updatedUser = { ...user, profilePicture: data.profilePicture };
-      updateUser(updatedUser);
+      // Update user with new profile picture
+      updateUser({ ...user, profilePicture: data.profilePicture });
       toast.success('Profile picture updated successfully!');
     } catch (error) {
       console.error('Upload error:', error);

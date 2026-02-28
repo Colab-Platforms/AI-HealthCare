@@ -150,9 +150,17 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
           {/* User Footer - Fixed at bottom */}
           <div className="p-6 shrink-0 border-t border-slate-50">
             <div className="flex items-center gap-4 p-4 rounded-[1.25rem] bg-slate-50 hover:bg-slate-100 transition-all border border-slate-100">
-              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-[#2FC8B9] shadow-lg">
-                <span className="font-black text-white">{user?.name?.[0]?.toUpperCase()}</span>
-              </div>
+              {user?.profilePicture ? (
+                <img
+                  src={user.profilePicture}
+                  alt={user.name}
+                  className="w-10 h-10 rounded-xl object-cover shrink-0 shadow-lg"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-[#2FC8B9] shadow-lg">
+                  <span className="font-black text-white">{user?.name?.[0]?.toUpperCase()}</span>
+                </div>
+              )}
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-black truncate text-black uppercase tracking-wider">
                   {isDoctor() ? `DR. ${user?.name}` : user?.name}
@@ -211,10 +219,18 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
               {/* Profile Icon - Click to go to profile */}
               <button
                 onClick={() => navigate('/profile')}
-                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-[#2FC8B9] shadow-lg hover:shadow-xl transition-all cursor-pointer"
+                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-[#2FC8B9] shadow-lg hover:shadow-xl transition-all cursor-pointer overflow-hidden"
                 title="Go to Profile"
               >
-                <span className="font-black text-white">{user?.name?.[0]?.toUpperCase()}</span>
+                {user?.profilePicture ? (
+                  <img
+                    src={user.profilePicture}
+                    alt={user.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="font-black text-white">{user?.name?.[0]?.toUpperCase()}</span>
+                )}
               </button>
             </div>
           </div>
