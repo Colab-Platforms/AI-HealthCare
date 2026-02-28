@@ -6,7 +6,7 @@
   "devCommand": "cd client && npm run dev",
   "framework": null,
   "functions": {
-    "api/**/*.js": {
+    "api/index.js": {
       "memory": 1024,
       "maxDuration": 60
     }

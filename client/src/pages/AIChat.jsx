@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Send, Bot, User, Loader2, Copy, Check, Trash2, Menu, X, Bell } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
+import api from '../services/api';
 import toast from 'react-hot-toast';
 
 export default function AIChat() {
@@ -21,14 +22,8 @@ export default function AIChat() {
   useEffect(() => {
     const fetchUserReports = async () => {
       try {
-        const token = localStorage.getItem('token');
-        const response = await fetch('/api/health/reports', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setUserReports(data.reports || []);
-        }
+        const { data } = await api.get('/health/reports');
+        setUserReports(data.reports || data || []);
       } catch (error) {
         console.error('Failed to load reports:', error);
       }
@@ -40,21 +35,15 @@ export default function AIChat() {
     const loadChatHistory = async () => {
       try {
         // First try to load from backend
-        const token = localStorage.getItem('token');
-        const response = await fetch('/api/chat/history', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
-        if (response.ok) {
-          const data = await response.json();
-          if (data.success && data.messages && data.messages.length > 0) {
-            setMessages(data.messages);
-            // Also save to localStorage as backup
-            localStorage.setItem(`chat_history_${user?.id}`, JSON.stringify(data.messages));
-            return;
-          }
+        const { data } = await api.get('/chat/history');
+
+        if (data.success && data.messages && data.messages.length > 0) {
+          setMessages(data.messages);
+          // Also save to localStorage as backup
+          localStorage.setItem(`chat_history_${user?.id}`, JSON.stringify(data.messages));
+          return;
         }
-        
+
         // Fallback to localStorage if backend fails
         const savedMessages = localStorage.getItem(`chat_history_${user?.id}`);
         if (savedMessages) {
@@ -77,9 +66,9 @@ export default function AIChat() {
         }
       }
     };
-    
+
     if (user) loadChatHistory();
-    
+
     // Handle incoming query from Ask Coach
     if (location.state?.initialQuery) {
       setInput(location.state.initialQuery);
@@ -139,19 +128,11 @@ export default function AIChat() {
 
   const saveChatToBackend = async (updatedMessages) => {
     try {
-      const token = localStorage.getItem('token');
       // Save only new messages (last 2: user + assistant)
       const newMessages = updatedMessages.slice(-2);
-      
-      await fetch('/api/chat/history', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ messages: newMessages })
-      });
-      
+
+      await api.post('/chat/history', { messages: newMessages });
+
       // Also save to localStorage as backup
       localStorage.setItem(`chat_history_${user?.id}`, JSON.stringify(updatedMessages));
     } catch (error) {
@@ -164,16 +145,12 @@ export default function AIChat() {
   const clearChat = async () => {
     if (confirm('Are you sure you want to clear the chat history?')) {
       try {
-        const token = localStorage.getItem('token');
         // Clear from backend
-        await fetch('/api/chat/history', {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        
+        await api.delete('/chat/history');
+
         // Clear from localStorage
         localStorage.removeItem(`chat_history_${user?.id}`);
-        
+
         const greeting = generateGreetingWithReports();
         setMessages([{ role: 'assistant', content: greeting, timestamp: new Date() }]);
         toast.success('Chat cleared');
@@ -206,31 +183,24 @@ export default function AIChat() {
     setLoading(true);
 
     try {
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query: currentInput,
-          conversationHistory: messages.slice(-10),
-          userReports: userReports.map(r => ({
-            type: r.reportType,
-            date: r.uploadDate,
-            analysis: r.analysis,
-            metrics: r.metrics
-          }))
-        })
+      const { data } = await api.post('/chat', {
+        query: currentInput,
+        conversationHistory: messages.slice(-10),
+        userReports: userReports.map(r => ({
+          type: r.reportType,
+          date: r.uploadDate,
+          analysis: r.analysis,
+          metrics: r.metrics
+        }))
       });
 
-      if (!response.ok) throw new Error('Failed to get AI response');
-      const data = await response.json();
-      
       if (data.success && data.response) {
         streamResponse(data.response, () => {
           const aiResponse = { role: 'assistant', content: data.response, timestamp: new Date() };
           const updatedMessages = [...messages, userMessage, aiResponse];
           setMessages(updatedMessages);
           setStreamingText('');
-          
+
           // Save to backend and localStorage
           saveChatToBackend(updatedMessages);
         });
@@ -244,7 +214,7 @@ export default function AIChat() {
         const updatedMessages = [...messages, userMessage, aiResponse];
         setMessages(updatedMessages);
         setStreamingText('');
-        
+
         // Save to backend and localStorage
         saveChatToBackend(updatedMessages);
       });

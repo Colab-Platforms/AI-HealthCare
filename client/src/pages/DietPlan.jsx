@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { healthService, nutritionService } from '../services/api';
+import api, { healthService, nutritionService } from '../services/api';
 import {
   Heart, Clock, ArrowLeft, Flame, Target,
   AlertCircle, Sparkles, CheckCircle, Lightbulb, X, UtensilsCrossed, Utensils
@@ -200,12 +200,7 @@ export default function DietPlan() {
 
   const fetchPersonalizedPlan = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/diet-recommendations/diet-plan/active', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.status === 404) return;
-      const data = await res.json();
+      const { data } = await api.get('/diet-recommendations/diet-plan/active');
       if (data.success && data.dietPlan) {
         const dp = data.dietPlan;
         if (dp.mealPlan && !dp.mealPlan.snacks) {
@@ -217,7 +212,7 @@ export default function DietPlan() {
         setPersonalizedPlan(dp);
       }
     } catch (err) {
-      console.error('Error fetching diet plan:', err);
+      if (err.response?.status !== 404) console.error('Error fetching diet plan:', err);
     } finally {
       setLoading(false);
     }
@@ -225,11 +220,7 @@ export default function DietPlan() {
 
   const fetchPlanHistory = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/diet-recommendations/diet-plan/history', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
+      const { data } = await api.get('/diet-recommendations/diet-plan/history');
       if (data.success) {
         setPlanHistory(data.history || []);
       }
@@ -242,11 +233,7 @@ export default function DietPlan() {
     setLoading(true);
     setShowHistory(false);
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`/api/diet-recommendations/diet-plan/${planId}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      const data = await res.json();
+      const { data } = await api.get(`/diet-recommendations/diet-plan/${planId}`);
       if (data.success) {
         setPersonalizedPlan(data.dietPlan);
         toast.success('Viewing selected plan');
@@ -260,29 +247,19 @@ export default function DietPlan() {
 
   const fetchSupplementRecommendations = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/diet-recommendations/supplements/active', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.status === 404) return;
-      const data = await res.json();
+      const { data } = await api.get('/diet-recommendations/supplements/active');
       if (data.success && data.recommendations) {
         setSupplementRecommendations(data.recommendations);
       }
     } catch (err) {
-      console.error('Error fetching supplements:', err);
+      if (err.response?.status !== 404) console.error('Error fetching supplements:', err);
     }
   };
 
   const generateAIPlan = async () => {
     setGenerating(true);
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/diet-recommendations/diet-plan/generate', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
-      });
-      const data = await res.json();
+      const { data } = await api.post('/diet-recommendations/diet-plan/generate');
       if (data.success) {
         toast.success('Diet plan generated successfully!');
         fetchPersonalizedPlan();
@@ -291,7 +268,7 @@ export default function DietPlan() {
         toast.error(data.message || 'Failed to generate plan');
       }
     } catch (err) {
-      toast.error('Error generating diet plan');
+      toast.error(err.response?.data?.message || 'Error generating diet plan');
     } finally {
       setGenerating(false);
     }

@@ -119,12 +119,7 @@ export const DataProvider = ({ children }) => {
     }
 
     try {
-      const token = localStorage.getItem('token');
-      const res = await fetch('/api/diet-recommendations/diet-plan/active', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      if (res.status === 404) return null;
-      const data = await res.json();
+      const { data } = await import('../services/api').then(m => m.default.get('/diet-recommendations/diet-plan/active'));
       if (data.success && data.dietPlan) {
         cache.set('diet_plan', data.dietPlan, 15 * 60 * 1000); // Cache for 15 minutes
         return data.dietPlan;
