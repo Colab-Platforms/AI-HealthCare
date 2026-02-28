@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import axios from 'axios';
 import {
   User, Save, Heart, AlertCircle, Camera, Mail, Phone, Target,
   Activity, Droplet, Cigarette, Wine, Moon, Apple, Dumbbell, Pill, Upload
@@ -54,10 +53,7 @@ export default function Profile() {
 
   const fetchHealthGoal = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const response = await axios.get('/api/nutrition/goals', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      const response = await api.get('/nutrition/goals');
       if (response.data.healthGoal) {
         setHealthGoal(response.data.healthGoal);
         setGoalFormData({

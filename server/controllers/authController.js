@@ -3,6 +3,7 @@ const User = require('../models/User');
 const Doctor = require('../models/Doctor');
 const HealthGoal = require('../models/HealthGoal');
 const { calculateNutritionGoals } = require('../services/nutritionGoalCalculator');
+const cloudinary = require('../services/cloudinary');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
@@ -328,10 +329,15 @@ exports.uploadProfilePicture = async (req, res) => {
 
     try {
       console.log('Attempting Cloudinary upload...');
-      const result = await cloudinary.uploadImage(req.file.buffer, 'profile_pictures');
-      console.log('Cloudinary upload success:', result.secure_url);
+      const imageUrl = await cloudinary.uploadImage(req.file.buffer, 'profile_pictures');
 
-      user.profilePicture = result.secure_url;
+      if (!imageUrl) {
+        throw new Error('Could not get image URL from Cloudinary');
+      }
+
+      console.log('Cloudinary upload success:', imageUrl);
+
+      user.profilePicture = imageUrl;
       await user.save();
 
       res.json({

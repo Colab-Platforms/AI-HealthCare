@@ -2,9 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Target, TrendingUp, TrendingDown, AlertCircle, CheckCircle } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
-
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+import api from '../services/api';
 
 // BMI Gauge Component - Desktop (Right-side half circle)
 const BMIGaugeDesktop = ({ bmi }) => {
@@ -243,11 +241,8 @@ export default function BMIWidget() {
 
   const fetchCurrentGoal = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const { data } = await axios.get(`${API_URL}/api/auth/profile`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      setCurrentGoal(data.user?.nutritionGoal);
+      const { data } = await api.get('/auth/profile');
+      setCurrentGoal(data.user?.nutritionGoal || data.nutritionGoal);
     } catch (error) {
       console.error('Failed to fetch goal:', error);
     }

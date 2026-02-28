@@ -6,6 +6,7 @@ const pdfParse = require('pdf-parse');
 const fs = require('fs');
 const NutritionSummary = require('../models/NutritionSummary');
 const cache = require('../utils/cache');
+const cloudinary = require('../services/cloudinary');
 
 exports.uploadReport = async (req, res) => {
   try {
@@ -14,14 +15,23 @@ exports.uploadReport = async (req, res) => {
     }
 
     let extractedText = '';
+    let cloudinaryUrl = null;
     try {
       if (req.file.mimetype === 'application/pdf') {
         // Handle both memory storage (Vercel) and disk storage (local)
         const dataBuffer = req.file.buffer || fs.readFileSync(req.file.path);
+
+        // Upload to Cloudinary for persistence (non-blocking for extraction)
+        console.log('☁️ Uploading report to Cloudinary...');
+        cloudinaryUrl = await cloudinary.uploadImage(dataBuffer, 'health_reports');
+
         const pdfData = await pdfParse(dataBuffer);
         extractedText = pdfData.text;
       } else {
-        // For images, use manual text or OCR service
+        // For images, upload to Cloudinary and use manual text
+        console.log('☁️ Uploading image report to Cloudinary...');
+        const imageBuffer = req.file.buffer || fs.readFileSync(req.file.path);
+        cloudinaryUrl = await cloudinary.uploadImage(imageBuffer, 'health_reports');
         extractedText = req.body.manualText || 'Image report - manual text provided';
       }
     } catch (parseError) {
@@ -38,8 +48,9 @@ exports.uploadReport = async (req, res) => {
       reportType: req.body.reportType || 'general',
       originalFile: {
         filename: req.file.originalname || req.file.filename,
-        path: req.file.path || 'memory-storage',
-        mimetype: req.file.mimetype
+        path: cloudinaryUrl || req.file.path || 'memory-storage',
+        mimetype: req.file.mimetype,
+        cloudinaryUrl: cloudinaryUrl
       },
       extractedText,
       status: 'processing'

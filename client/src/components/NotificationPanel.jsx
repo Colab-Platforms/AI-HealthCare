@@ -22,22 +22,22 @@ export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
 
     const [expandedId, setExpandedId] = useState(null);
 
-    const fetchNotifications = async () => {
+    async function fetchNotifications() {
         setLoading(true);
         try {
             const { data } = await notificationService.getAll();
             if (data.success) {
                 setNotifications(data.notifications);
-                setUnreadCount(data.unreadCount);
+                setUnreadCount(typeof data.unreadCount === 'number' ? data.unreadCount : (data.notifications?.filter(n => !n.read).length || 0));
             }
         } catch (error) {
             console.error('Failed to fetch notifications:', error);
         } finally {
             setLoading(false);
         }
-    };
+    }
 
-    const fetchUnreadCount = async () => {
+    async function fetchUnreadCount() {
         try {
             const { data } = await notificationService.getUnreadCount();
             if (data && typeof data.unreadCount !== 'undefined') {
@@ -47,7 +47,7 @@ export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
         } catch (error) {
             console.error('Error fetching notification count:', error);
         }
-    };
+    }
 
     useEffect(() => {
         if (isOpen) {

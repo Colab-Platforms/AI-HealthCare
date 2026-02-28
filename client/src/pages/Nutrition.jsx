@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import axios from 'axios';
+import api from '../services/api';
 import toast from 'react-hot-toast';
 import {
   Loader2, Plus, Trash2, X, Droplets, Flame, Zap, Heart,
@@ -59,10 +59,10 @@ export default function Nutrition() {
 
       const [logsRes, summaryRes, goalRes] = await Promise.all([
         isToday
-          ? axios.get('/api/nutrition/logs/today', { headers })
-          : axios.get(`/api/nutrition/logs?startDate=${selectedDate}&endDate=${selectedDate}`, { headers }),
-        axios.get(`/api/nutrition/summary/daily?date=${selectedDate}`, { headers }),
-        axios.get('/api/nutrition/goals', { headers }).catch(() => ({ data: { healthGoal: null } }))
+          ? api.get('/nutrition/logs/today')
+          : api.get(`/nutrition/logs?startDate=${selectedDate}&endDate=${selectedDate}`),
+        api.get(`/nutrition/summary/daily?date=${selectedDate}`),
+        api.get('/nutrition/goals').catch(() => ({ data: { healthGoal: null } }))
       ]);
 
       setTodayLogs(logsRes.data.foodLogs || []);
@@ -199,10 +199,9 @@ export default function Nutrition() {
       // Build enhanced description with serving size and preparation
       const enhancedDescription = `${servingSize} ${preparationMethod} ${foodDescription}`;
 
-      const response = await axios.post(
-        '/api/nutrition/quick-check',
-        { foodDescription: enhancedDescription },
-        { headers: { Authorization: `Bearer ${token}` } }
+      const response = await api.post(
+        '/nutrition/quick-check',
+        { foodDescription: enhancedDescription }
       );
 
       setAnalysisResult(response.data.data);
@@ -224,8 +223,8 @@ export default function Nutrition() {
 
     try {
       const token = localStorage.getItem('token');
-      await axios.post(
-        '/api/nutrition/log-meal',
+      await api.post(
+        '/nutrition/log-meal',
         {
           mealType,
           foodItems: foodItems.map(item => ({
@@ -234,8 +233,7 @@ export default function Nutrition() {
           })),
           notes: `${foodItems.length} items logged`,
           timestamp: selectedDate
-        },
-        { headers: { Authorization: `Bearer ${token}` } }
+        }
       );
 
       toast.success('Meal logged successfully!');
@@ -258,9 +256,7 @@ export default function Nutrition() {
 
     try {
       const token = localStorage.getItem('token');
-      await axios.delete(`/api/nutrition/logs/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.delete(`/nutrition/logs/${id}`);
 
       toast.success('Meal deleted');
       fetchData();
@@ -339,7 +335,7 @@ export default function Nutrition() {
       {/* Main Content with Max Width on Desktop */}
       <div className="w-full flex-1 overflow-y-auto flex justify-center">
         <div className="w-full max-w-4xl px-3 md:px-6 lg:px-8 py-4 space-y-4 pb-24">
-          
+
           {/* Date Picker - Above Everything */}
           <div className="bg-white rounded-2xl p-4 shadow-md border border-gray-200">
             <div className="flex items-center justify-between">
@@ -357,8 +353,8 @@ export default function Nutrition() {
                 onClick={handleNextDay}
                 disabled={isToday}
                 className={`p-2 rounded-lg transition ${isToday
-                    ? 'opacity-40 cursor-not-allowed'
-                    : 'hover:bg-gray-100'
+                  ? 'opacity-40 cursor-not-allowed'
+                  : 'hover:bg-gray-100'
                   }`}
               >
                 <ChevronRight className="w-5 h-5 text-gray-600" />
@@ -456,8 +452,8 @@ export default function Nutrition() {
                   key={i}
                   onClick={() => i < waterIntake ? handleRemoveWater() : handleAddWater()}
                   className={`aspect-square rounded-lg flex items-center justify-center cursor-pointer transition-all transform hover:scale-110 ${i < waterIntake
-                      ? 'bg-white text-blue-500 shadow-lg'
-                      : 'bg-white/30 text-white'
+                    ? 'bg-white text-blue-500 shadow-lg'
+                    : 'bg-white/30 text-white'
                     }`}
                 >
                   <Droplets className="w-5 h-5" />
@@ -605,8 +601,8 @@ export default function Nutrition() {
                         key={size}
                         onClick={() => setServingSize(size)}
                         className={`py-2 px-4 rounded-lg font-medium transition-all ${servingSize === size
-                            ? 'bg-blue-600 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          ? 'bg-blue-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                           }`}
                       >
                         {size.charAt(0).toUpperCase() + size.slice(1)}
@@ -624,8 +620,8 @@ export default function Nutrition() {
                         key={method}
                         onClick={() => setPreparationMethod(method)}
                         className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${preparationMethod === method
-                            ? 'bg-emerald-600 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                           }`}
                       >
                         {method.charAt(0).toUpperCase() + method.slice(1)}
@@ -716,8 +712,8 @@ export default function Nutrition() {
                           key={qty}
                           onClick={() => setQuantity(qty)}
                           className={`py-3 px-4 rounded-lg font-medium transition-all ${quantity === qty
-                              ? 'bg-cyan-600 text-white ring-2 ring-cyan-300'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                            ? 'bg-cyan-600 text-white ring-2 ring-cyan-300'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                             }`}
                         >
                           {qty}

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import axios from 'axios';
+import api from '../services/api';
 import toast from 'react-hot-toast';
 import {
   Loader2, Trash2, AlertCircle, CheckCircle, Camera, X, ChefHat,
@@ -33,11 +33,8 @@ export default function QuickFoodCheck() {
 
   const fetchHistory = async () => {
     try {
-      const token = localStorage.getItem('token');
-      const today = new Date().toISOString().split('T')[0];
-      const response = await axios.get(
-        `/api/nutrition/quick-checks/history/date?date=${today}`,
-        { headers: { Authorization: `Bearer ${token}` } }
+      const response = await api.get(
+        `/nutrition/quick-checks/history/date?date=${today}`
       );
       setHistory(response.data.stats?.checks || []);
     } catch (error) {
@@ -119,7 +116,7 @@ export default function QuickFoodCheck() {
   // Compress image to reduce memory usage on mobile
   const compressImage = async (file) => {
     console.log('compressImage called with:', file.name, `${(file.size / 1024).toFixed(0)}KB`);
-    
+
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -130,7 +127,7 @@ export default function QuickFoodCheck() {
           const canvas = document.createElement('canvas');
           let width = img.width;
           let height = img.height;
-          
+
           // Resize if image is too large (max 1200px on longest side)
           const maxSize = 1200;
           if (width > maxSize || height > maxSize) {
@@ -143,14 +140,14 @@ export default function QuickFoodCheck() {
             }
             console.log('Resizing to:', width, 'x', height);
           }
-          
+
           canvas.width = width;
           canvas.height = height;
-          
+
           const ctx = canvas.getContext('2d');
           ctx.drawImage(img, 0, 0, width, height);
           console.log('Image drawn on canvas, converting to blob...');
-          
+
           // Convert to blob with compression (0.8 quality for JPEG)
           canvas.toBlob(
             (blob) => {
@@ -191,7 +188,7 @@ export default function QuickFoodCheck() {
 
     const file = e.target.files[0];
     console.log('Image selected:', file ? file.name : 'No file');
-    
+
     if (!file) {
       console.log('No file selected');
       return;
@@ -207,14 +204,14 @@ export default function QuickFoodCheck() {
       console.log('Starting image compression...');
       // Show loading toast
       const loadingToast = toast.loading('Processing image...');
-      
+
       // Compress image
       const compressedFile = await compressImage(file);
       console.log('Compression complete:', {
         original: `${(file.size / 1024).toFixed(0)}KB`,
         compressed: `${(compressedFile.size / 1024).toFixed(0)}KB`
       });
-      
+
       setImage(compressedFile);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -255,26 +252,26 @@ export default function QuickFoodCheck() {
       // Build context from image details and food input
       let contextText = '';
       const parts = [];
-      
+
       // Add food input text if provided
       if (foodInput && foodInput.trim()) {
         parts.push(foodInput.trim());
       }
-      
+
       // Add image details if provided
       if (image) {
         if (imageDetails.quantity) parts.push(`Quantity: ${imageDetails.quantity}`);
         if (imageDetails.prepMethod) parts.push(`Preparation: ${imageDetails.prepMethod}`);
         if (imageDetails.additionalInfo) parts.push(imageDetails.additionalInfo);
       }
-      
+
       contextText = parts.join(', ');
 
       // Use FormData for image upload to avoid memory issues
       const formData = new FormData();
       formData.append('foodDescription', foodInput || 'Food from image');
       formData.append('additionalContext', contextText);
-      
+
       if (image) {
         // Image is already compressed from handleImageSelect
         formData.append('image', image);
@@ -290,12 +287,11 @@ export default function QuickFoodCheck() {
         context: contextText
       });
 
-      const response = await axios.post(
-        '/api/nutrition/quick-check',
+      const response = await api.post(
+        '/nutrition/quick-check',
         formData,
         {
-          headers: { 
-            Authorization: `Bearer ${token}`,
+          headers: {
             'Content-Type': 'multipart/form-data'
           },
           timeout: 60000 // 60 seconds for image analysis
@@ -380,10 +376,7 @@ export default function QuickFoodCheck() {
     if (!confirm('Delete this food check?')) return;
 
     try {
-      const token = localStorage.getItem('token');
-      await axios.delete(`/api/nutrition/quick-checks/${id}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      await api.delete(`/nutrition/quick-checks/${id}`);
       toast.success('Deleted');
       fetchHistory();
     } catch (error) {

@@ -8,7 +8,7 @@ import { useState, useEffect } from 'react';
 import TextSelectionPopup from './TextSelectionPopup';
 import MobileBottomNav from './MobileBottomNav';
 import PWAInstallPrompt from './PWAInstallPrompt';
-import axios from 'axios';
+import api from '../services/api';
 
 const patientNavItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -44,21 +44,18 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
     const fetchHealthData = async () => {
       if (location.pathname === '/dashboard' && !isAdmin() && !isDoctor()) {
         try {
-          const token = localStorage.getItem('token');
-          const headers = { Authorization: `Bearer ${token}` };
-
           // Fetch latest report for health score
-          const reportsRes = await axios.get('/api/health/reports', { headers });
+          const reportsRes = await api.get('/health/reports');
           const latestReport = reportsRes.data.reports?.[0];
           const healthScore = latestReport?.healthScore || 0;
 
           // Fetch today's nutrition summary
           const today = new Date().toISOString().split('T')[0];
-          const nutritionRes = await axios.get(`/api/nutrition/summary/daily?date=${today}`, { headers });
+          const nutritionRes = await api.get(`/nutrition/summary/daily?date=${today}`);
           const caloriesConsumed = nutritionRes.data.summary?.totalCalories || 0;
 
           // Fetch health goal for calorie target
-          const goalRes = await axios.get('/api/nutrition/goals', { headers }).catch(() => ({ data: { healthGoal: null } }));
+          const goalRes = await api.get('/nutrition/goals').catch(() => ({ data: { healthGoal: null } }));
           const calorieTarget = goalRes.data.healthGoal?.dailyCalorieTarget || 2000;
 
           setHealthData({ healthScore, caloriesConsumed, calorieTarget });
