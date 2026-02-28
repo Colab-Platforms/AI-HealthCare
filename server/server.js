@@ -60,40 +60,9 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Global connection state for serverless
-let isConnected = false;
-
-const connectToDatabase = async () => {
-  if (isConnected && mongoose.connection.readyState === 1) {
-    console.log('Using existing database connection');
-    return;
-  }
-
-  try {
-    const db = await connectDB();
-    isConnected = true;
-    console.log('New database connection established');
-    return db;
-  } catch (error) {
-    console.error('Database connection failed:', error);
-    isConnected = false;
-    throw error;
-  }
-};
-
+// Export app for local development or Vercel
 if (process.env.VERCEL) {
-  // For Vercel serverless, wrap the app with connection handler
-  const handler = async (req, res) => {
-    try {
-      await connectToDatabase();
-    } catch (error) {
-      console.error('Failed to connect to database:', error);
-      // Continue anyway - some endpoints might not need DB
-    }
-    return app(req, res);
-  };
-  
-  module.exports = handler;
+  module.exports = app;
 } else {
   const PORT = process.env.PORT || 5000;
   connectDB().then(() => {
