@@ -145,15 +145,15 @@ ${labReports?.length > 0 ? labReports.map(r => `- ${r.parameter}: ${r.value} ${r
 ${deficiencies?.length > 0 ? deficiencies.map(d => `- ${d.nutrient || d.name} (${d.severity})`).join('\n') : ''}
 
 CRITICAL INSTRUCTIONS:
-1. Provide EXACTLY 3 DISTINCT meal options for EVERY category (breakfast, midMorningSnack, lunch, eveningSnack, dinner).
-2. Each option should be a complete alternative. Name them exactly "Option 1", "Option 2", and "Option 3".
+1. Provide EXACTLY 4 DISTINCT meal options for EVERY category (breakfast, midMorningSnack, lunch, eveningSnack, dinner).
+2. Each option should be a complete alternative. Name them exactly "Option 1", "Option 2", "Option 3", and "Option 4".
 3. Ensure the combined nutrition of these options FULFILLS the user's daily macro targets (if user picks one option from each category).
 4. Use ONLY Indian foods.
 5. TRULY PRIORITIZE the user's specific food preferences for each meal. If they list breakfast favorites, use them for breakfast options.
 6. STRICTLY avoid any 'Foods to Avoid' and adhere to 'Dietary Restrictions'. Try to incorporate 'Preferred Foods'.
 7. If no lab data is provided, prioritize the Fitness Goal (${bmiGoal}) and BMI-based needs.
 8. Provide specific portion sizes in grams/pieces.
-9. DO NOT provide more than 3 options per meal.
+9. DO NOT provide more than 4 options per meal.
 10. ${promptExtension || ''}
 
 RETURN JSON ONLY:
@@ -164,27 +164,32 @@ RETURN JSON ONLY:
     "breakfast": [
       { "name": "Option 1", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
       { "name": "Option 2", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-      { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
+      { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
+      { "name": "Option 4", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
     ],
     "lunch": [
        { "name": "Option 1", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
        { "name": "Option 2", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-       { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
+       { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
+       { "name": "Option 4", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
     ],
     "dinner": [
        { "name": "Option 1", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
        { "name": "Option 2", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-       { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
+       { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
+       { "name": "Option 4", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
     ],
     "midMorningSnack": [
        { "name": "Option 1", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
        { "name": "Option 2", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-       { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
+       { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
+       { "name": "Option 4", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
     ],
     "eveningSnack": [
        { "name": "Option 1", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
        { "name": "Option 2", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-       { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
+       { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
+       { "name": "Option 4", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
     ]
   },
   "keyFoods": [{ "name": "Food", "reason": "Why", "frequency": "Daily" }],
