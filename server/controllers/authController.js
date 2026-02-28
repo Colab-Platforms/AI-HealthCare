@@ -329,10 +329,18 @@ exports.uploadProfilePicture = async (req, res) => {
 
     try {
       console.log('Attempting Cloudinary upload...');
-      const imageUrl = await cloudinary.uploadImage(req.file.buffer, 'profile_pictures');
+      const dataBuffer = req.file.buffer || (req.file.path ? fs.readFileSync(req.file.path) : null);
+
+      if (!dataBuffer) {
+        console.error('❌ No file data found in req.file');
+        throw new Error('File data is missing or corrupted');
+      }
+
+      const imageUrl = await cloudinary.uploadImage(dataBuffer, 'profile_pictures');
 
       if (!imageUrl) {
-        throw new Error('Could not get image URL from Cloudinary');
+        console.error('❌ Cloudinary returned null URL. Check your environment variables.');
+        throw new Error('Cloudinary upload failed - check server configuration');
       }
 
       console.log('Cloudinary upload success:', imageUrl);

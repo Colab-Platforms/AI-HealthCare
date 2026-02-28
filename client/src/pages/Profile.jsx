@@ -215,25 +215,62 @@ export default function Profile() {
       return;
     }
 
-    // Validate file size (max 5MB)
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('Image size should be less than 5MB');
-      return;
-    }
-
     setUploadingImage(true);
-    const formData = new FormData();
-    formData.append('profilePicture', file);
 
     try {
-      const token = localStorage.getItem('token');
+      // Small compression utility using Canvas
+      const compressImage = (file) => {
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = (event) => {
+            const img = new Image();
+            img.src = event.target.result;
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              let width = img.width;
+              let height = img.height;
+
+              // Max dimension 800px for profile pic
+              const MAX_DIM = 800;
+              if (width > height) {
+                if (width > MAX_DIM) {
+                  height *= MAX_DIM / width;
+                  width = MAX_DIM;
+                }
+              } else {
+                if (height > MAX_DIM) {
+                  width *= MAX_DIM / height;
+                  height = MAX_DIM;
+                }
+              }
+
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx.drawImage(img, 0, 0, width, height);
+
+              canvas.toBlob((blob) => {
+                resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
+              }, 'image/jpeg', 0.8); // 80% quality
+            };
+          };
+        });
+      };
+
+      const compressedFile = file.size > 500 * 1024 ? await compressImage(file) : file;
+      console.log(`Original: ${(file.size / 1024).toFixed(2)}KB, Compressed: ${(compressedFile.size / 1024).toFixed(2)}KB`);
+
+      const formData = new FormData();
+      formData.append('profilePicture', compressedFile);
+
       const { data } = await api.post('/auth/upload-profile-picture', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
+        headers: { 'Content-Type': 'multipart/form-data' }
       });
 
-      updateUser(data.user);
+      // Fix: The API returns { profilePicture: url }, but updateUser expects full user object or partial
+      const updatedUser = { ...user, profilePicture: data.profilePicture };
+      updateUser(updatedUser);
       toast.success('Profile picture updated successfully!');
     } catch (error) {
       console.error('Upload error:', error);

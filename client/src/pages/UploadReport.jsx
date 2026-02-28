@@ -73,6 +73,15 @@ export default function UploadReport() {
       return;
     }
 
+    const fileToUpload = files[0];
+
+    // Proactive check for Vercel 4.5MB limit on PDFs
+    if (fileToUpload.file.type === 'application/pdf' && fileToUpload.file.size > 4.5 * 1024 * 1024) {
+      console.warn('PDF size exceeds Vercel limit:', (fileToUpload.file.size / 1024 / 1024).toFixed(2), 'MB');
+      toast.error('PDF file is too large for cloud analysis (Max 4.5MB). Please compress the PDF or upload a smaller version.');
+      return;
+    }
+
     setLoading(true);
     setUploadProgress(0);
 
@@ -87,10 +96,67 @@ export default function UploadReport() {
     }, 300);
 
     try {
-      const formData = new FormData();
-      formData.append('report', files[0].file);
-      formData.append('reportType', files[0].reportType);
+      let finalFile = fileToUpload.file;
+      console.log('Final file size before compression:', (finalFile.size / 1024 / 1024).toFixed(2), 'MB');
 
+      // Compress if it's an image and over 1MB
+      if (finalFile.type.startsWith('image/') && finalFile.size > 1 * 1024 * 1024) {
+        const compressImage = (file, quality = 0.8) => {
+          return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.readAsDataURL(file);
+            reader.onload = (event) => {
+              const img = new Image();
+              img.src = event.target.result;
+              img.onload = () => {
+                const canvas = document.createElement('canvas');
+                let width = img.width;
+                let height = img.height;
+
+                // Max dimension 1200px for reports to stay under limit
+                const MAX_DIM = 1200;
+                if (width > height) {
+                  if (width > MAX_DIM) {
+                    height *= MAX_DIM / width;
+                    width = MAX_DIM;
+                  }
+                } else {
+                  if (height > MAX_DIM) {
+                    width *= MAX_DIM / height;
+                    height = MAX_DIM;
+                  }
+                }
+
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, width, height);
+                canvas.toBlob((blob) => {
+                  resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
+                }, 'image/jpeg', quality);
+              };
+            };
+          });
+        };
+
+        toast.loading('Optimizing image for cloud upload...', { id: 'compressing' });
+        finalFile = await compressImage(finalFile, 0.7); // 70% quality for reports
+
+        // If still too big, try even more aggressive compression
+        if (finalFile.size > 4 * 1024 * 1024) {
+          console.log('Still too big, retrying with 0.5 quality');
+          finalFile = await compressImage(fileToUpload.file, 0.5);
+        }
+
+        console.log('Final compressed size:', (finalFile.size / 1024 / 1024).toFixed(2), 'MB');
+        toast.dismiss('compressing');
+      }
+
+      const formData = new FormData();
+      formData.append('report', finalFile);
+      formData.append('reportType', fileToUpload.reportType);
+
+      console.log('Sending multipart request to /health/upload...');
       const { data } = await healthService.uploadReport(formData);
       clearInterval(progressInterval);
       setUploadProgress(100);
@@ -98,7 +164,11 @@ export default function UploadReport() {
       setTimeout(() => navigate(`/reports/${data.report._id}`), 500);
     } catch (error) {
       clearInterval(progressInterval);
-      toast.error(error.response?.data?.message || 'Failed to analyze report');
+      const errorMsg = error.response?.status === 413
+        ? 'File is still too large for the server (Max 4.5MB total payload). Try an image with fewer details.'
+        : (error.response?.data?.message || 'Failed to analyze report');
+      console.error('Upload Error:', error.response?.data || error.message);
+      toast.error(errorMsg);
       setUploadProgress(0);
     } finally {
       setLoading(false);

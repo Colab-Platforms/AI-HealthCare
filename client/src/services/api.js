@@ -132,7 +132,7 @@ export const authService = {
 
 export const notificationService = {
   getAll: () => api.get('/notifications'),
-  getUnreadCount: () => api.get('/notifications/unread-count'),
+  getUnreadCount: () => api.get('/notifications/unread-count', { skipAutoLogout: true }),
   markAsRead: (id) => api.put(`/notifications/${id}/read`),
   markAllAsRead: () => api.put('/notifications/mark-all-read'),
   deleteOne: (id) => api.delete(`/notifications/${id}`),

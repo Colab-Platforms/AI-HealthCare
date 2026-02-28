@@ -17,10 +17,13 @@ exports.uploadReport = async (req, res) => {
     let extractedText = '';
     let cloudinaryUrl = null;
     try {
-      if (req.file.mimetype === 'application/pdf') {
-        // Handle both memory storage (Vercel) and disk storage (local)
-        const dataBuffer = req.file.buffer || fs.readFileSync(req.file.path);
+      const dataBuffer = req.file.buffer || (req.file.path ? fs.readFileSync(req.file.path) : null);
 
+      if (!dataBuffer) {
+        throw new Error('No file data found to process');
+      }
+
+      if (req.file.mimetype === 'application/pdf') {
         // Upload to Cloudinary for persistence (non-blocking for extraction)
         console.log('☁️ Uploading report to Cloudinary...');
         cloudinaryUrl = await cloudinary.uploadImage(dataBuffer, 'health_reports');
@@ -30,8 +33,7 @@ exports.uploadReport = async (req, res) => {
       } else {
         // For images, upload to Cloudinary and use manual text
         console.log('☁️ Uploading image report to Cloudinary...');
-        const imageBuffer = req.file.buffer || fs.readFileSync(req.file.path);
-        cloudinaryUrl = await cloudinary.uploadImage(imageBuffer, 'health_reports');
+        cloudinaryUrl = await cloudinary.uploadImage(dataBuffer, 'health_reports');
         extractedText = req.body.manualText || 'Image report - manual text provided';
       }
     } catch (parseError) {
