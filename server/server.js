@@ -92,7 +92,20 @@ const initDB = async () => {
 };
 
 if (process.env.VERCEL) {
-  initDB().catch(err => console.error('DB init error:', err));
+  // Middleware to ensure DB is connected before handling requests
+  app.use(async (req, res, next) => {
+    try {
+      await initDB();
+      next();
+    } catch (error) {
+      console.error('Database connection failed:', error);
+      res.status(503).json({
+        success: false,
+        message: 'Service temporarily unavailable - database connection failed'
+      });
+    }
+  });
+  
   module.exports = app;
 } else {
   const PORT = process.env.PORT || 5000;
