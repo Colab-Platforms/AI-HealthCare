@@ -2,6 +2,7 @@ const FoodLog = require('../models/FoodLog');
 const HealthGoal = require('../models/HealthGoal');
 const NutritionSummary = require('../models/NutritionSummary');
 const nutritionAI = require('../services/nutritionAI');
+const { uploadImage } = require('../services/cloudinary');
 
 // Analyze food from image or text
 exports.analyzeFood = async (req, res) => {
@@ -15,11 +16,17 @@ exports.analyzeFood = async (req, res) => {
       });
     }
 
-    let analysis;
-
+    let imageUrl = null;
     if (imageBase64) {
       // Analyze from image
       analysis = await nutritionAI.analyzeFromImage(imageBase64, additionalContext);
+
+      // Upload to Cloudinary for consistent storage
+      try {
+        imageUrl = await uploadImage(`data:image/jpeg;base64,${imageBase64}`, 'logged_meals');
+      } catch (e) {
+        console.error('Cloudinary upload in analyzeFood failed:', e);
+      }
     } else {
       // Analyze from text
       analysis = await nutritionAI.analyzeFromText(foodDescription);
@@ -27,7 +34,10 @@ exports.analyzeFood = async (req, res) => {
 
     res.json({
       success: true,
-      analysis: analysis.data,
+      analysis: {
+        ...analysis.data,
+        imageUrl
+      },
       message: 'Food analyzed successfully'
     });
   } catch (error) {
@@ -87,10 +97,34 @@ exports.logMeal = async (req, res) => {
       });
     };
 
+    // Calculate total nutrition explicitly before saving to ensure summary is correct
+    const totalNutrition = {
+      calories: 0,
+      protein: 0,
+      carbs: 0,
+      fats: 0,
+      fiber: 0,
+      sugar: 0,
+      sodium: 0
+    };
+
+    foodItems.forEach(item => {
+      if (item.nutrition) {
+        totalNutrition.calories += Number(item.nutrition.calories) || 0;
+        totalNutrition.protein += Number(item.nutrition.protein) || 0;
+        totalNutrition.carbs += Number(item.nutrition.carbs) || 0;
+        totalNutrition.fats += Number(item.nutrition.fats) || 0;
+        totalNutrition.fiber += Number(item.nutrition.fiber) || 0;
+        totalNutrition.sugar += Number(item.nutrition.sugar) || 0;
+        totalNutrition.sodium += Number(item.nutrition.sodium) || 0;
+      }
+    });
+
     const foodLog = new FoodLog({
       userId: req.user._id,
       mealType,
       foodItems,
+      totalNutrition,
       imageUrl,
       notes,
       healthScore,
@@ -124,11 +158,17 @@ exports.logMeal = async (req, res) => {
 // Get food logs
 exports.getFoodLogs = async (req, res) => {
   try {
-    const { startDate, endDate, mealType } = req.query;
+    const { startDate, endDate, mealType, date } = req.query;
 
     const query = { userId: req.user._id };
 
-    if (startDate || endDate) {
+    if (date) {
+      const d = new Date(date);
+      d.setHours(0, 0, 0, 0);
+      const nextDay = new Date(d);
+      nextDay.setDate(d.getDate() + 1);
+      query.timestamp = { $gte: d, $lt: nextDay };
+    } else if (startDate || endDate) {
       query.timestamp = {};
       if (startDate) query.timestamp.$gte = new Date(startDate);
       if (endDate) query.timestamp.$lte = new Date(endDate);
@@ -366,8 +406,12 @@ exports.logWeight = async (req, res) => {
 exports.getDailySummary = async (req, res) => {
   try {
     const { date } = req.query;
-    const targetDate = date ? new Date(date) : new Date();
-    targetDate.setHours(0, 0, 0, 0);
+    // Use UTC date part for consistency
+    const queryDate = date ? new Date(date) : new Date();
+    const targetDate = new Date(queryDate.toISOString().split('T')[0]);
+    targetDate.setUTCHours(0, 0, 0, 0);
+
+    console.log(`Fetching summary for user ${req.user._id} on ${targetDate.toISOString()}`);
 
     let summary = await NutritionSummary.findOne({
       userId: req.user._id,
@@ -446,10 +490,11 @@ exports.getWeeklySummary = async (req, res) => {
   }
 };
 
-// Get last 7 days activity data for chart
+// Get 7 days activity data for chart (relative to selected date)
 exports.getActivityWeek = async (req, res) => {
   try {
-    const endDate = new Date();
+    const { date } = req.query;
+    const endDate = date ? new Date(date) : new Date();
     endDate.setHours(23, 59, 59, 999);
 
     const startDate = new Date(endDate);
@@ -548,102 +593,137 @@ exports.getRecommendations = async (req, res) => {
 
 // Helper function to update daily summary
 async function updateDailySummary(userId, date) {
-  const targetDate = new Date(date);
-  targetDate.setHours(0, 0, 0, 0);
+  try {
+    // Normalize date to UTC midnight for consistency
+    const d = new Date(date);
+    const targetDate = new Date(d.toISOString().split('T')[0]);
+    targetDate.setUTCHours(0, 0, 0, 0);
 
-  const nextDay = new Date(targetDate);
-  nextDay.setDate(nextDay.getDate() + 1);
+    const nextDay = new Date(targetDate);
+    nextDay.setUTCDate(nextDay.getUTCDate() + 1);
 
-  // Get all food logs for the day
-  const foodLogs = await FoodLog.find({
-    userId,
-    timestamp: {
-      $gte: targetDate,
-      $lt: nextDay
-    }
-  });
+    console.log(`Updating daily summary for ${userId} from ${targetDate.toISOString()} to ${nextDay.toISOString()}`);
 
-  // Calculate totals
-  const totals = {
-    totalCalories: 0,
-    totalProtein: 0,
-    totalCarbs: 0,
-    totalFats: 0,
-    totalFiber: 0,
-    totalSugar: 0,
-    totalSodium: 0,
-    averageHealthScore: 0
-  };
+    // Get all food logs for the day
+    const foodLogs = await FoodLog.find({
+      userId,
+      timestamp: {
+        $gte: targetDate,
+        $lt: nextDay
+      }
+    });
 
-  const mealsLogged = {
-    breakfast: false,
-    lunch: false,
-    dinner: false,
-    snacks: 0
-  };
+    // Calculate totals
+    const totals = {
+      totalCalories: 0,
+      totalProtein: 0,
+      totalCarbs: 0,
+      totalFats: 0,
+      totalFiber: 0,
+      totalSugar: 0,
+      totalSodium: 0,
+      averageHealthScore: 0
+    };
 
-  let totalWeight = 0;
-  let weightedHealthScoreSum = 0;
+    const mealsLogged = {
+      breakfast: false,
+      lunch: false,
+      dinner: false,
+      snacks: 0
+    };
 
-  foodLogs.forEach(log => {
-    if (log.totalNutrition) {
-      const calories = log.totalNutrition.calories || 0;
+    let totalWeight = 0;
+    let weightedHealthScoreSum = 0;
+
+    foodLogs.forEach(log => {
+      // Use totalNutrition if available, otherwise sum foodItems as fallback
+      const logNutrition = log.totalNutrition || { calories: 0, protein: 0, carbs: 0, fats: 0 };
+
+      // Fallback: If totalNutrition is all 0 but foodItems are not, sum them
+      let calories = Number(logNutrition.calories) || 0;
+      let protein = Number(logNutrition.protein) || 0;
+      let carbs = Number(logNutrition.carbs) || 0;
+      let fats = Number(logNutrition.fats) || 0;
+      let fiber = Number(logNutrition.fiber) || 0;
+
+      if (calories === 0 && log.foodItems && log.foodItems.length > 0) {
+        log.foodItems.forEach(item => {
+          if (item.nutrition) {
+            calories += Number(item.nutrition.calories) || 0;
+            protein += Number(item.nutrition.protein) || 0;
+            carbs += Number(item.nutrition.carbs) || 0;
+            fats += Number(item.nutrition.fats) || 0;
+            fiber += Number(item.nutrition.fiber) || 0;
+          }
+        });
+      }
+
       totals.totalCalories += calories;
-      totals.totalProtein += log.totalNutrition.protein || 0;
-      totals.totalCarbs += log.totalNutrition.carbs || 0;
-      totals.totalFats += log.totalNutrition.fats || 0;
-      totals.totalFiber += log.totalNutrition.fiber || 0;
-      totals.totalSugar += log.totalNutrition.sugar || 0;
-      totals.totalSodium += log.totalNutrition.sodium || 0;
+      totals.totalProtein += protein;
+      totals.totalCarbs += carbs;
+      totals.totalFats += fats;
+      totals.totalFiber += fiber;
+      totals.totalSugar += Number(logNutrition.sugar) || 0;
+      totals.totalSodium += Number(logNutrition.sodium) || 0;
 
       // Weight the health score by calories of the item
       const healthScore = log.healthScore10 !== undefined ? log.healthScore10 * 10 : (log.healthScore || 50);
-      weightedHealthScoreSum += healthScore * (calories || 100); // at least 100 to avoid 0 weight
+      weightedHealthScoreSum += healthScore * (calories || 100);
       totalWeight += (calories || 100);
-    }
 
-    if (log.mealType === 'snack') {
-      mealsLogged.snacks++;
-    } else {
-      mealsLogged[log.mealType] = true;
-    }
-  });
-
-  if (totalWeight > 0) {
-    totals.averageHealthScore = Math.round(weightedHealthScoreSum / totalWeight);
-  } else if (foodLogs.length > 0) {
-    // Fallback to simple average if no calories
-    const totalScore = foodLogs.reduce((sum, log) => sum + (log.healthScore10 !== undefined ? log.healthScore10 * 10 : (log.healthScore || 50)), 0);
-    totals.averageHealthScore = Math.round(totalScore / foodLogs.length);
-  }
-
-  // Get user's health goal
-  const healthGoal = await HealthGoal.findOne({ userId });
-
-  let summary = await NutritionSummary.findOne({
-    userId,
-    date: targetDate
-  });
-
-  if (!summary) {
-    summary = new NutritionSummary({
-      userId,
-      date: targetDate
+      if (log.mealType === 'snack') {
+        mealsLogged.snacks++;
+      } else if (['breakfast', 'lunch', 'dinner'].includes(log.mealType)) {
+        mealsLogged[log.mealType] = true;
+      }
     });
+
+    if (totalWeight > 0) {
+      totals.averageHealthScore = Math.round(weightedHealthScoreSum / totalWeight);
+    } else if (foodLogs.length > 0) {
+      const totalScore = foodLogs.reduce((sum, log) => sum + (log.healthScore10 !== undefined ? log.healthScore10 * 10 : (log.healthScore || 50)), 0);
+      totals.averageHealthScore = Math.round(totalScore / foodLogs.length);
+    }
+
+    // Get user's latest health goal
+    const healthGoal = await HealthGoal.findOne({ userId, isActive: true }).sort({ createdAt: -1 });
+
+    let summary = await NutritionSummary.findOne({ userId, date: targetDate });
+
+    if (!summary) {
+      summary = new NutritionSummary({ userId, date: targetDate });
+    }
+
+    // Update summary with calculated totals
+    summary.totalCalories = totals.totalCalories;
+    summary.totalProtein = totals.totalProtein;
+    summary.totalCarbs = totals.totalCarbs;
+    summary.totalFats = totals.totalFats;
+    summary.totalFiber = totals.totalFiber;
+    summary.totalSugar = totals.totalSugar;
+    summary.totalSodium = totals.totalSodium;
+    summary.averageHealthScore = totals.averageHealthScore;
+    summary.mealsLogged = mealsLogged;
+
+    if (healthGoal) {
+      summary.calorieGoal = healthGoal.dailyCalorieTarget;
+      summary.proteinGoal = healthGoal.macroTargets.protein;
+      summary.carbsGoal = healthGoal.macroTargets.carbs;
+      summary.fatsGoal = healthGoal.macroTargets.fats;
+    }
+
+    // Force recalculation of status and percentages
+    if (typeof summary.calculateStatus === 'function') {
+      summary.calculateStatus();
+    }
+
+    await summary.save();
+    console.log(`Daily summary updated successfully for ${userId} on ${targetDate.toISOString()}. Total Cals: ${summary.totalCalories}`);
+    return summary;
+  } catch (error) {
+    console.error('Update daily summary error:', error);
+    return null;
   }
-
-  Object.assign(summary, totals);
-  summary.mealsLogged = mealsLogged;
-
-  if (healthGoal) {
-    summary.calorieGoal = healthGoal.dailyCalorieTarget;
-    summary.proteinGoal = healthGoal.macroTargets.protein;
-    summary.carbsGoal = healthGoal.macroTargets.carbs;
-    summary.fatsGoal = healthGoal.macroTargets.fats;
-  }
-
-  await summary.save();
-  return summary;
 }
 
 // Helper function to create daily summary
@@ -654,12 +734,61 @@ async function createDailySummary(userId, date) {
 // Quick food check without logging - with complete details persistence
 exports.quickFoodCheck = async (req, res) => {
   try {
-    const { foodDescription, imageBase64, additionalContext } = req.body;
+    const fs = require('fs');
+    let { foodDescription, imageBase64, additionalContext } = req.body;
 
-    console.log('Quick check request:', {
+    let cloudinaryUrl = null;
+
+    // ─── STEP 1: Extract base64 from uploaded file ───
+    if (req.file) {
+      console.log('📷 Received file upload via multer:', req.file.filename || 'memory-buffer');
+      console.log('📷 File size:', `${(req.file.size / 1024).toFixed(2)} KB, MIME: ${req.file.mimetype}`);
+
+      try {
+        if (req.file.buffer) {
+          // Memory storage (Vercel)
+          imageBase64 = req.file.buffer.toString('base64');
+        } else if (req.file.path) {
+          // Disk storage (local)
+          imageBase64 = fs.readFileSync(req.file.path, { encoding: 'base64' });
+          // Delete temp file after reading
+          fs.unlink(req.file.path, (err) => {
+            if (err) console.error('Error deleting temp file:', err);
+          });
+        }
+
+        console.log('📷 Extracted base64 from file, length:', imageBase64?.length || 0);
+      } catch (fileError) {
+        console.error('❌ Error extracting base64 from file:', fileError);
+        return res.status(500).json({
+          success: false,
+          message: 'Failed to process uploaded image',
+          error: fileError.message
+        });
+      }
+    }
+
+    // ─── STEP 2: Upload to Cloudinary (non-blocking — won't stop AI analysis) ───
+    if (imageBase64) {
+      try {
+        const mimeType = req.file?.mimetype || 'image/jpeg';
+        const dataUri = `data:${mimeType};base64,${imageBase64}`;
+        console.log('☁️ Uploading to Cloudinary...');
+        cloudinaryUrl = await uploadImage(dataUri, 'food_scans');
+        console.log('☁️ Cloudinary result:', cloudinaryUrl ? '✅ ' + cloudinaryUrl : '❌ Failed (null)');
+      } catch (cloudinaryError) {
+        console.error('☁️ Cloudinary upload failed (continuing without it):', cloudinaryError.message);
+        // Don't return error — continue with AI analysis even if Cloudinary fails
+      }
+    }
+
+    console.log('🔍 Quick check request:', {
       hasDescription: !!foodDescription,
       hasImage: !!imageBase64,
-      imageSize: imageBase64 ? `${(imageBase64.length * 0.75 / 1024).toFixed(2)} KB` : 'N/A'
+      hasCloudinaryUrl: !!cloudinaryUrl,
+      imageSource: req.file ? 'multipart-upload' : (imageBase64 ? 'base64-json' : 'none'),
+      imageSize: imageBase64 ? `${(imageBase64.length * 0.75 / 1024).toFixed(2)} KB` : 'N/A',
+      context: additionalContext
     });
 
     if (!foodDescription && !imageBase64) {
@@ -669,149 +798,38 @@ exports.quickFoodCheck = async (req, res) => {
       });
     }
 
-    // Check image size limit (3MB)
-    if (imageBase64 && imageBase64.length > 4000000) {
-      return res.status(400).json({
-        success: false,
-        message: 'Image too large. Please use a smaller image (max 3MB)'
-      });
-    }
-
     let analysis;
 
-    // Get AI analysis
+    // ─── STEP 3: AI Analysis — image or text ───
     if (imageBase64) {
       try {
-        console.log('Attempting image analysis...');
-        console.log('Image size:', `${(imageBase64.length * 0.75 / 1024).toFixed(2)} KB`);
-        console.log('Additional context:', additionalContext);
+        console.log('🧠 Attempting AI image analysis via Anthropic...');
 
-        // Use image analysis
+        // Use image analysis — send base64 directly to Anthropic Claude Vision
         const imageAnalysis = await nutritionAI.analyzeFromImage(imageBase64, additionalContext || foodDescription || 'Food from image');
 
-        console.log('Image analysis successful');
-        console.log('AI Response:', JSON.stringify(imageAnalysis.data).substring(0, 200));
+        console.log('🧠 Image analysis successful:', imageAnalysis.data?.foodItem?.name || 'Unknown food');
 
         // Check if AI couldn't detect food
         if (imageAnalysis.data?.error === 'UNABLE_TO_DETECT_FOOD') {
           return res.status(400).json({
             success: false,
-            message: imageAnalysis.data.message || 'Could not detect food in the image. Please try again with a clearer photo.',
+            message: imageAnalysis.data.message || 'Could not detect food in image',
             error: 'UNABLE_TO_DETECT_FOOD'
           });
         }
 
-        // Transform image analysis to match quickFoodCheck format
-        if (imageAnalysis.success && imageAnalysis.data) {
-          const firstItem = imageAnalysis.data.foodItems?.[0] || {};
-          const totalNutrition = imageAnalysis.data.totalNutrition || {};
+        analysis = imageAnalysis;
 
-          // Helper function to parse range values (e.g., "250-300" -> 275)
-          const parseRange = (value) => {
-            if (typeof value === 'string' && value.includes('-')) {
-              const [min, max] = value.split('-').map(Number);
-              return Math.round((min + max) / 2);
-            }
-            return Number(value) || 0;
-          };
-
-          // Helper to format range for display
-          const formatRange = (value) => {
-            if (typeof value === 'string' && value.includes('-')) {
-              return value; // Keep as range string
-            }
-            return String(value);
-          };
-
-          // Parse nutrition values for calculations
-          const calories = parseRange(totalNutrition.calories);
-          const protein = parseRange(totalNutrition.protein);
-          const carbs = parseRange(totalNutrition.carbs);
-          const fats = parseRange(totalNutrition.fats);
-          const fiber = parseRange(totalNutrition.fiber);
-          const sugar = parseRange(totalNutrition.sugar);
-          const sodium = parseRange(totalNutrition.sodium);
-
-          // Calculate health score based on nutrition
-          let healthScore = 70; // Base score
-          if (calories > 500) healthScore -= 10;
-          if (calories > 700) healthScore -= 10;
-          if (protein > 15) healthScore += 10;
-          if (fiber > 5) healthScore += 10;
-          if (sugar > 20) healthScore -= 10;
-          if (sodium > 500) healthScore -= 10;
-          healthScore = Math.max(0, Math.min(100, healthScore));
-
-          // Transform alternatives from image analysis
-          const alternatives = Array.isArray(imageAnalysis.data.alternatives)
-            ? imageAnalysis.data.alternatives.map(alt => ({
-              name: alt.name || '',
-              description: alt.description || '',
-              nutrition: {
-                calories: parseRange(alt.calories),
-                protein: parseRange(alt.protein),
-                carbs: parseRange(alt.carbs),
-                fats: parseRange(alt.fats),
-                fiber: parseRange(alt.fiber || 0)
-              },
-              benefits: alt.benefits || ''
-            }))
-            : [];
-
-          // Create analysis with both numeric and range values
-          analysis = {
-            success: true,
-            data: {
-              foodItem: {
-                name: firstItem.name || 'Food from image',
-                quantity: firstItem.quantity || 'See image',
-                nutrition: {
-                  calories: calories,
-                  protein: protein,
-                  carbs: carbs,
-                  fats: fats,
-                  fiber: fiber,
-                  sugar: sugar,
-                  sodium: sodium
-                },
-                // Store range strings for display
-                nutritionRanges: {
-                  calories: formatRange(totalNutrition.calories),
-                  protein: formatRange(totalNutrition.protein),
-                  carbs: formatRange(totalNutrition.carbs),
-                  fats: formatRange(totalNutrition.fats),
-                  fiber: formatRange(totalNutrition.fiber),
-                  sugar: formatRange(totalNutrition.sugar),
-                  sodium: formatRange(totalNutrition.sodium)
-                }
-              },
-              healthScore: imageAnalysis.data.healthScore || healthScore,
-              healthScore10: imageAnalysis.data.healthScore10 || (imageAnalysis.data.healthScore ? imageAnalysis.data.healthScore / 10 : healthScore / 10),
-              isHealthy: imageAnalysis.data.isHealthy !== undefined ? imageAnalysis.data.isHealthy : healthScore >= 70,
-              analysis: imageAnalysis.data.analysis || 'Food analyzed from image',
-              micronutrients: imageAnalysis.data.micronutrients || [],
-              enhancementTips: imageAnalysis.data.enhancementTips || [],
-              warnings: imageAnalysis.data.warnings || (healthScore < 70 ? ['High calorie content', 'Consider healthier alternatives'] : []),
-              benefits: imageAnalysis.data.benefits || (healthScore >= 70 ? ['Good nutritional balance'] : []),
-              healthBenefitsSummary: imageAnalysis.data.healthBenefitsSummary || '',
-              alternatives: alternatives
-            }
-          };
-
-          console.log('Analysis transformed successfully');
-          console.log('Health score:', healthScore);
-          console.log('Nutrition ranges:', analysis.data.foodItem.nutritionRanges);
-          console.log('Alternatives count:', alternatives.length);
-        }
       } catch (imageError) {
-        console.error('Image analysis failed:', imageError.message);
-        console.error('Error details:', imageError.response?.data || imageError);
-        console.error('Falling back to text analysis');
+        console.error('❌ Image analysis failed:', imageError.message);
+        console.error('❌ Full error:', imageError.response?.data || imageError.message);
+        console.log('⚠️ Falling back to text analysis...');
         // Fallback to text analysis if image fails
         analysis = await nutritionAI.quickFoodCheck(additionalContext || foodDescription || 'Food from image');
       }
     } else {
-      console.log('Using text analysis');
+      console.log('📝 Using text analysis for:', foodDescription);
       analysis = await nutritionAI.quickFoodCheck(foodDescription);
     }
 
@@ -850,7 +868,16 @@ exports.quickFoodCheck = async (req, res) => {
       });
     };
 
-    // Save to database for permanent storage with ALL details
+    // ─── STEP 4: Construct final image URL — prefer Cloudinary ───
+    let finalImageUrl = cloudinaryUrl;
+    if (!finalImageUrl && imageBase64) {
+      // If Cloudinary failed, use a small truncated base64 as last resort
+      // (avoid storing giant base64 in DB)
+      console.log('⚠️ No Cloudinary URL, using base64 data URI as fallback');
+      finalImageUrl = `data:image/jpeg;base64,${imageBase64}`;
+    }
+
+    // ─── STEP 5: Save to MongoDB ───
     const foodCheck = new QuickFoodCheck({
       userId: req.user._id,
       foodName: analysis.data.foodItem?.name || foodDescription,
@@ -870,23 +897,27 @@ exports.quickFoodCheck = async (req, res) => {
       benefits: Array.isArray(analysis.data.benefits) ? analysis.data.benefits.map(b => typeof b === 'string' ? b : JSON.stringify(b)) : [],
       healthBenefitsSummary: analysis.data.healthBenefitsSummary || '',
       alternatives: alternativesArray,
-      imageUrl: imageBase64 ? `data:image/jpeg;base64,${imageBase64.substring(0, 100)}...` : null,
+      imageUrl: finalImageUrl,
       timestamp: new Date()
     });
 
     await foodCheck.save();
 
-    console.log('Food check saved successfully');
+    console.log('✅ Food check saved. Cloudinary URL:', cloudinaryUrl || 'N/A');
+    console.log('✅ Detected food:', analysis.data.foodItem?.name, '| Calories:', analysis.data.foodItem?.nutrition?.calories);
 
     res.json({
       success: true,
-      data: analysis.data,
+      data: {
+        ...analysis.data,
+        imageUrl: finalImageUrl
+      },
       savedId: foodCheck._id,
       message: 'Food analyzed and saved successfully'
     });
   } catch (error) {
-    console.error('Quick food check error:', error);
-    console.error('Error stack:', error.stack);
+    console.error('❌ Quick food check error:', error);
+    console.error('❌ Error stack:', error.stack);
     res.status(500).json({
       success: false,
       message: 'Failed to analyze food',

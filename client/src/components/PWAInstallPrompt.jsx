@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Download, X, Smartphone } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { Download, X } from 'lucide-react';
 
 export default function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
@@ -8,37 +7,47 @@ export default function PWAInstallPrompt() {
   const [isInstalled, setIsInstalled] = useState(false);
 
   useEffect(() => {
-    // Check if app is already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    // Check if already installed
+    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
       setIsInstalled(true);
       return;
     }
+
+    // Check if user dismissed recently
+    const dismissedTime = localStorage.getItem('pwa-install-dismissed');
+    if (dismissedTime) {
+      const timeSinceDismissed = Date.now() - parseInt(dismissedTime);
+      const twoMinutes = 2 * 60 * 1000; // 2 minutes in milliseconds
+      
+      if (timeSinceDismissed < twoMinutes) {
+        // Set timeout to show after remaining time
+        const remainingTime = twoMinutes - timeSinceDismissed;
+        setTimeout(() => {
+          setShowPrompt(true);
+        }, remainingTime);
+        return;
+      }
+    }
+
+    // Show prompt immediately if not dismissed recently
+    setShowPrompt(true);
 
     // Listen for beforeinstallprompt event
     const handleBeforeInstallPrompt = (e) => {
       e.preventDefault();
       setDeferredPrompt(e);
-      
-      // Show prompt immediately on mobile, after 5 seconds on desktop
-      const isMobile = window.innerWidth < 768;
-      const delay = isMobile ? 1000 : 5000;
-      
-      const timer = setTimeout(() => {
-        setShowPrompt(true);
-      }, delay);
-
-      return () => clearTimeout(timer);
+      setShowPrompt(true);
     };
+
+    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
 
     // Listen for app installed event
     const handleAppInstalled = () => {
       setIsInstalled(true);
       setShowPrompt(false);
       setDeferredPrompt(null);
-      toast.success('🎉 FitCure app installed successfully!');
     };
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
     return () => {
@@ -47,119 +56,67 @@ export default function PWAInstallPrompt() {
     };
   }, []);
 
-  // Show prompt every 2 minutes if dismissed
-  useEffect(() => {
-    if (!deferredPrompt || isInstalled) return;
-
-    const interval = setInterval(() => {
-      setShowPrompt(true);
-    }, 2 * 60 * 1000); // 2 minutes in milliseconds
-
-    return () => clearInterval(interval);
-  }, [deferredPrompt, isInstalled]);
-
-  const handleInstall = async () => {
-    if (!deferredPrompt) return;
-
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    
-    if (outcome === 'accepted') {
-      toast.success('Installing FitCure app...');
-    } else {
-      toast('You can install later from browser menu', { icon: '💡' });
+  const handleInstallClick = async () => {
+    if (!deferredPrompt) {
+      // Fallback for browsers that don't support beforeinstallprompt
+      alert('To install this app:\n\n1. Tap the Share button\n2. Select "Add to Home Screen"');
+      return;
     }
-    
+
+    // Show the install prompt
+    deferredPrompt.prompt();
+
+    // Wait for the user to respond to the prompt
+    const { outcome } = await deferredPrompt.userChoice;
+
+    if (outcome === 'accepted') {
+      console.log('User accepted the install prompt');
+      setIsInstalled(true);
+    } else {
+      console.log('User dismissed the install prompt');
+    }
+
     setDeferredPrompt(null);
     setShowPrompt(false);
   };
 
-  const handleDismiss = () => {
+  const handleClose = () => {
     setShowPrompt(false);
-    // Don't save to localStorage - let it show again after 2 minutes
-    // No toast notification - silent dismiss
+    // Store dismissal time
+    localStorage.setItem('pwa-install-dismissed', Date.now().toString());
+    
+    // Show again after 2 minutes
+    setTimeout(() => {
+      setShowPrompt(true);
+    }, 2 * 60 * 1000); // 2 minutes
   };
 
-  if (isInstalled || !showPrompt || !deferredPrompt) {
+  // Don't show if already installed or prompt is hidden
+  if (isInstalled || !showPrompt) {
     return null;
   }
 
   return (
-    <>
-      {/* Mobile - Bottom sticky banner */}
-      <div className="md:hidden fixed bottom-20 left-0 right-0 z-50 px-3 animate-slide-up">
-        <div className="bg-gradient-to-r from-purple-500 to-orange-600 rounded-2xl shadow-2xl p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
-              <Smartphone className="w-6 h-6 text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="font-bold text-white text-sm">Install FitCure App</h3>
-              <p className="text-xs text-white/90">Quick access from home screen</p>
-            </div>
-            <div className="flex gap-2 flex-shrink-0">
-              <button
-                onClick={handleInstall}
-                className="px-4 py-2 bg-white text-cyan-600 rounded-xl font-bold hover:bg-white/90 transition-all text-sm shadow-lg"
-              >
-                Install
-              </button>
-              <button
-                onClick={handleDismiss}
-                className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-all"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        </div>
+    <div className="fixed bottom-24 right-4 z-40 md:hidden animate-slide-up">
+      <div className="relative">
+        {/* Close button - positioned at top right */}
+        <button
+          onClick={handleClose}
+          className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-all shadow-lg z-10"
+          aria-label="Close"
+        >
+          <X className="w-3 h-3 text-white" />
+        </button>
+
+        {/* Circular main button */}
+        <button
+          onClick={handleInstallClick}
+          className="w-16 h-16 rounded-full bg-gradient-to-br from-[#2FC8B9] to-[#1db7a6] shadow-2xl flex items-center justify-center border-2 border-white hover:scale-110 transition-transform active:scale-95"
+          aria-label="Install App"
+        >
+          <Download className="w-7 h-7 text-white" />
+        </button>
       </div>
-
-      {/* Desktop - Bottom right card */}
-      <div className="hidden md:block fixed bottom-8 right-8 z-40 animate-slide-up">
-        <div className="bg-white rounded-2xl shadow-2xl border-2 border-cyan-200 p-6 max-w-sm">
-          <div className="flex items-start justify-between mb-3">
-            <div className="flex items-center gap-3">
-              <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-orange-600 flex items-center justify-center flex-shrink-0">
-                <Download className="w-7 h-7 text-white" />
-              </div>
-              <div>
-                <h3 className="font-bold text-slate-800 text-lg">Install FitCure</h3>
-                <p className="text-sm text-slate-600">Progressive Web App</p>
-              </div>
-            </div>
-            <button
-              onClick={handleDismiss}
-              className="text-slate-400 hover:text-slate-600 flex-shrink-0"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
-
-          <p className="text-sm text-slate-600 mb-4">
-            ✨ Install FitCure for quick access to your health data
-            <br />
-            📱 Works offline with cached data
-            <br />
-            🚀 Faster loading and better performance
-          </p>
-
-          <div className="flex gap-3">
-            <button
-              onClick={handleInstall}
-              className="flex-1 px-5 py-3 bg-gradient-to-r from-purple-500 to-orange-600 text-white rounded-xl font-semibold hover:shadow-lg transition-all"
-            >
-              Install Now
-            </button>
-            <button
-              onClick={handleDismiss}
-              className="px-5 py-3 bg-slate-100 text-slate-700 rounded-xl font-medium hover:bg-slate-200 transition-all"
-            >
-              Later
-            </button>
-          </div>
-        </div>
-      </div>
-    </>
+    </div>
   );
 }

@@ -20,8 +20,6 @@ import Wearables from './pages/Wearables';
 import PatientProfile from './pages/PatientProfile';
 import Consultation from './pages/Consultation';
 import ConsultationSummary from './pages/ConsultationSummary';
-import VideoTest from './pages/VideoTest';
-import EmailTest from './pages/EmailTest';
 import DoctorAvailability from './pages/DoctorAvailability';
 import DietPlan from './pages/DietPlan';
 import AIChat from './pages/AIChat';
@@ -73,7 +71,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-fixed bg-gradient-to-br from-purple-50 via-pink-50 to-orange-100">
+    <div className="min-h-screen bg-white">
       <PWAInstallPrompt />
       <Routes>
         <Route path="/" element={<Landing />} />
@@ -114,8 +112,6 @@ export default function App() {
         <Route path="/admin" element={<AdminRoute><Layout isAdmin><AdminDashboard /></Layout></AdminRoute>} />
 
         <Route path="/demo" element={<DemoPreview />} />
-        <Route path="/video-test" element={<VideoTest />} />
-        <Route path="/email-test" element={<EmailTest />} />
       </Routes>
     </div>
   );

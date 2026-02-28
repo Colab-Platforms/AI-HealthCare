@@ -257,28 +257,7 @@ const GlucoseLog = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-100 pb-28">
-      {/* Top Navigation */}
-      <div className="sticky top-0 z-10 bg-white/80 backdrop-blur-md border-b border-white/40">
-        <div className="px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center">
-            <button
-              onClick={() => navigate("/dashboard")}
-              className="mr-3 p-2 hover:bg-white/60 rounded-full transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5 text-slate-700" />
-            </button>
-            <h1 className="text-lg font-bold text-slate-800">Blood Sugar</h1>
-          </div>
-          <div>
-            <span
-              className={`px-3 py-1 text-white rounded-full text-[11px] font-bold tracking-wide ${status === "stable" ? "bg-emerald-500" : status === "high" ? "bg-red-500" : "bg-yellow-500"}`}
-            >
-              {status === "stable" ? "IN RANGE" : status.toUpperCase()}
-            </span>
-          </div>
-        </div>
-      </div>
+    <div className="min-h-screen bg-slate-50 pb-28 pt-4 md:pt-0">
 
       <div className="px-3 md:px-4 py-4 space-y-6 max-w-7xl mx-auto">
         <p className="text-center text-gray-500 text-sm">
@@ -377,7 +356,7 @@ const GlucoseLog = () => {
                   onChange={handleEditChange}
                   onBlur={handleEditBlur}
                   onKeyDown={handleEditKeyDown}
-                  className="w-24 text-5xl font-extrabold text-center bg-transparent outline-none border-b-2 border-blue-500 text-slate-800"
+                  className="w-24 text-5xl font-extrabold text-center bg-transparent outline-none border-b-2 border-[#2FC8B9] text-slate-800"
                   autoFocus
                 />
                 <span className="text-sm text-gray-400 font-semibold tracking-wider">
@@ -386,13 +365,13 @@ const GlucoseLog = () => {
               </div>
             ) : (
               <button onClick={handleEditStart} className="group">
-                <div className="text-5xl font-extrabold text-slate-800 leading-none group-hover:text-blue-600 transition-colors">
+                <div className="text-5xl font-extrabold text-slate-800 leading-none group-hover:text-[#2FC8B9] transition-colors">
                   {currentReading}
                 </div>
                 <div className="text-sm text-gray-400 font-semibold tracking-wider mt-1">
                   MG/DL
                 </div>
-                <div className="text-[10px] text-blue-500 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="text-[10px] text-[#2FC8B9] opacity-0 group-hover:opacity-100 transition-opacity">
                   tap to edit
                 </div>
               </button>
@@ -404,19 +383,20 @@ const GlucoseLog = () => {
         <div className="flex justify-center gap-2 px-2 mt-8">
           <button
             onClick={() => setShowHba1cModal(true)}
-            className="flex-1 bg-white border border-blue-100 shadow-sm text-blue-600 py-3 rounded-2xl font-bold text-[13px] hover:bg-blue-50 transition-colors"
+            className="flex-1 bg-white border border-slate-100 shadow-sm text-slate-600 py-3 rounded-2xl font-bold text-[13px] hover:bg-slate-50 transition-colors"
           >
             Log HbA1c
           </button>
           <button
             onClick={() => setShowLogModal(true)}
-            className="flex-[1.5] bg-gradient-to-r from-purple-500 to-orange-600 text-white shadow-md shadow-blue-200 py-3 rounded-2xl font-bold text-[13px] hover:from-purple-600 hover:to-orange-700 transition-colors focus:scale-95"
+            className="flex-[1.5] bg-[#2FC8B9] text-white shadow-lg shadow-[#2FC8B9]/20 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-[#1db7a6] transition-all focus:scale-95 flex items-center justify-center gap-2"
           >
-            + Log Glucose
+            <Droplet className="w-4 h-4" />
+            Log Glucose
           </button>
           <button
             onClick={() => setShowWeightModal(true)}
-            className="flex-1 bg-white border border-blue-100 shadow-sm text-blue-600 py-3 rounded-2xl font-bold text-[13px] hover:bg-blue-50 transition-colors"
+            className="flex-1 bg-white border border-slate-100 shadow-sm text-slate-600 py-3 rounded-2xl font-bold text-[13px] hover:bg-slate-50 transition-colors"
           >
             Log Weight
           </button>
@@ -428,7 +408,7 @@ const GlucoseLog = () => {
             <div className="relative">
               <button
                 onClick={() => setShowTrendDropdown(!showTrendDropdown)}
-                className="flex items-center gap-1.5 text-sm font-semibold text-blue-600 bg-blue-50/80 px-3 py-1.5 rounded-full"
+                className="flex items-center gap-1.5 text-sm font-semibold text-[#2FC8B9] bg-[#2FC8B9]/10 px-3 py-1.5 rounded-full"
               >
                 {trendType === "blood_sugar"
                   ? "Glucose"

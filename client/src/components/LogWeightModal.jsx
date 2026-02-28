@@ -128,40 +128,30 @@ const LogWeightModal = ({ isOpen, onClose, onSave }) => {
   return (
     <>
       <div
-        className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300"
+        className="fixed inset-0 bg-black/60 z-[9998] transition-opacity duration-300"
         onClick={onClose}
       />
-      <div className="fixed inset-x-0 bottom-0 z-50 animate-slide-up">
-        <div className="bg-white rounded-t-3xl shadow-2xl max-h-[92vh] overflow-y-auto pb-4">
-          <div className="flex justify-center pt-3 pb-1">
-            <div className="w-10 h-1 bg-gray-300 rounded-full" />
+      <div className="fixed inset-x-0 bottom-0 z-[9999] animate-slide-up">
+        <div className="bg-white rounded-t-[3rem] shadow-2xl max-h-[92vh] overflow-y-auto pb-32">
+          <div className="flex justify-center pt-3 pb-1" onClick={onClose}>
+            <div className="w-10 h-1 bg-gray-300 rounded-full cursor-pointer" />
           </div>
 
-          <div className="sticky top-0 bg-white px-5 py-3 flex items-center gap-3 z-10">
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5 text-slate-700" />
-            </button>
-            <h2 className="text-lg font-bold text-slate-800">Log Weight</h2>
-          </div>
-
-          <div className="px-5 pb-8">
+          <div className="px-5 pb-8 pt-4">
             <div className="bg-gray-50 rounded-2xl p-6 mb-6 text-center flex items-center justify-center">
               <input
                 type="number"
                 step="0.1"
                 value={weightValue}
                 onChange={handleManualInput}
-                className={`w-36 text-6xl font-extrabold text-blue-900 tracking-tight text-center bg-transparent border-none outline-none focus:ring-0`}
+                className={`w-36 text-6xl font-extrabold text-slate-800 tracking-tight text-center bg-transparent border-none outline-none focus:ring-0`}
               />
               <span className="text-lg text-gray-400 font-medium ml-1">kg</span>
             </div>
 
             <div className="mb-8 relative">
               <div className="flex justify-center mb-1">
-                <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-t-[10px] border-l-transparent border-r-transparent border-t-blue-500" />
+                <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-t-[10px] border-l-transparent border-r-transparent border-t-[#2FC8B9]" />
               </div>
 
               <div className="flex items-center gap-2">
@@ -254,7 +244,7 @@ const LogWeightModal = ({ isOpen, onClose, onSave }) => {
 
             <button
               onClick={handleSave}
-              className="w-full bg-gradient-to-r from-purple-500 to-orange-600 text-white py-4 rounded-full font-bold text-base hover:from-purple-600 hover:to-orange-700 transition-all shadow-lg shadow-blue-200 active:scale-[0.98]"
+              className="w-full bg-[#2FC8B9] text-white py-4 rounded-full font-bold text-base hover:bg-[#1db7a6] transition-all shadow-lg shadow-[#2FC8B9]/30 active:scale-[0.98]"
             >
               Save Reading
             </button>

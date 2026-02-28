@@ -1,8 +1,7 @@
 const HealthReport = require('../models/HealthReport');
 const User = require('../models/User');
 const Doctor = require('../models/Doctor');
-const { analyzeHealthReport, compareReports, chatWithReport } = require('../services/aiService-fixed');
-const { generateMetricInfo } = require('../services/aiService');
+const { analyzeHealthReport, compareReports, chatWithReport, generateMetricInfo } = require('../services/aiService');
 const pdfParse = require('pdf-parse');
 const fs = require('fs');
 const NutritionSummary = require('../models/NutritionSummary');
@@ -316,7 +315,7 @@ exports.uploadReport = async (req, res) => {
       if (previousReport && previousReport.aiAnalysis) {
         console.log('🔄 Found previous report, generating comparison...');
 
-        // Use the robust compareReports from aiService-fixed.js
+        // Generate comparison between reports
         comparisonData = await compareReports(report, previousReport);
 
         // Save comparison to report
@@ -855,5 +854,194 @@ exports.getChallengeData = async (req, res) => {
   } catch (error) {
     console.error('Get challenge error:', error);
     res.status(500).json({ message: 'Failed to get challenge data', error: error.message });
+  }
+};
+
+// Get report comparison data for dashboard graph
+exports.getReportComparison = async (req, res) => {
+  try {
+    // Get all completed reports sorted by date
+    const reports = await HealthReport.find({
+      user: req.user._id,
+      status: 'completed'
+    }).sort({ createdAt: -1 }).limit(10);
+
+    if (reports.length === 0) {
+      return res.json({
+        hasData: false,
+        hasComparison: false,
+        totalReports: 0,
+        message: 'Upload your first health report to get started!'
+      });
+    }
+
+    const latestReport = reports[0];
+
+    // Build health score history for graphing (works for 1+ reports)
+    const scoreHistory = reports.map(r => ({
+      date: r.createdAt,
+      dateLabel: new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      score: r.aiAnalysis?.healthScore || 0,
+      type: r.reportType
+    })).reverse();
+
+    const latestScore = latestReport.aiAnalysis?.healthScore || 0;
+
+    // If only 1 report, send data without comparison
+    if (reports.length === 1) {
+      return res.json({
+        hasData: true,
+        hasComparison: false,
+        totalReports: 1,
+        message: 'Upload one more report to see health progress comparison.',
+        latestReport: {
+          _id: latestReport._id,
+          type: latestReport.reportType,
+          date: latestReport.createdAt,
+          healthScore: latestScore
+        },
+        scoreHistory,
+        insights: [{
+          type: 'info',
+          icon: '📊',
+          text: `Your initial health score is ${latestScore}%. Keep uploading reports to track your trend!`
+        }]
+      });
+    }
+
+    const previousReport = reports[1];
+
+    // Build comparison metrics (for 2+ reports)
+    const comparisonMetrics = [];
+    const latestMetrics = latestReport.aiAnalysis?.metrics || {};
+    const previousMetrics = previousReport.aiAnalysis?.metrics || {};
+
+    // Collect all unique metric keys
+    const allKeys = new Set([...Object.keys(latestMetrics), ...Object.keys(previousMetrics)]);
+
+    allKeys.forEach(key => {
+      const latest = latestMetrics[key];
+      const previous = previousMetrics[key];
+      if (latest || previous) {
+        const latestVal = parseFloat(latest?.value) || 0;
+        const prevVal = parseFloat(previous?.value) || 0;
+        const change = latestVal - prevVal;
+        const changePct = prevVal !== 0 ? Math.round((change / prevVal) * 100) : 0;
+
+        comparisonMetrics.push({
+          name: key.replace(/([A-Z])/g, ' $1').trim(),
+          key,
+          latestValue: latestVal,
+          previousValue: prevVal,
+          unit: latest?.unit || previous?.unit || '',
+          change,
+          changePercent: changePct,
+          status: latest?.status || 'unknown',
+          previousStatus: previous?.status || 'unknown',
+          improved: latest?.status === 'normal' && previous?.status !== 'normal'
+            ? true
+            : latest?.status !== 'normal' && previous?.status === 'normal'
+              ? false
+              : change === 0 ? null : undefined
+        });
+      }
+    });
+
+    // Health score comparison
+    const previousScore = previousReport.aiAnalysis?.healthScore || 0;
+    const scoreChange = latestScore - previousScore;
+
+    // Build insights
+    const insights = [];
+    const improvedMetrics = comparisonMetrics.filter(m => m.improved === true);
+    const declinedMetrics = comparisonMetrics.filter(m => m.improved === false);
+
+    if (scoreChange > 0) {
+      insights.push({
+        type: 'positive',
+        icon: '📈',
+        text: `Your health score improved by ${scoreChange} points from ${previousScore}% to ${latestScore}%.`
+      });
+    } else if (scoreChange < 0) {
+      insights.push({
+        type: 'warning',
+        icon: '📉',
+        text: `Your health score decreased by ${Math.abs(scoreChange)} points. Consider reviewing your lifestyle habits.`
+      });
+    } else {
+      insights.push({
+        type: 'info',
+        icon: '📊',
+        text: `Your health score remains stable at ${latestScore}%.`
+      });
+    }
+
+    if (improvedMetrics.length > 0) {
+      insights.push({
+        type: 'positive',
+        icon: '✅',
+        text: `${improvedMetrics.length} biomarker(s) improved: ${improvedMetrics.slice(0, 3).map(m => m.name).join(', ')}.`
+      });
+    }
+
+    if (declinedMetrics.length > 0) {
+      insights.push({
+        type: 'warning',
+        icon: '⚠️',
+        text: `${declinedMetrics.length} biomarker(s) need attention: ${declinedMetrics.slice(0, 3).map(m => m.name).join(', ')}.`
+      });
+    }
+
+    // Deficiency comparison
+    const latestDef = (latestReport.aiAnalysis?.deficiencies || []).map(d => d.name);
+    const previousDef = (previousReport.aiAnalysis?.deficiencies || []).map(d => d.name);
+    const resolvedDef = previousDef.filter(d => !latestDef.includes(d));
+    const newDef = latestDef.filter(d => !previousDef.includes(d));
+
+    if (resolvedDef.length > 0) {
+      insights.push({
+        type: 'positive',
+        icon: '🎉',
+        text: `Resolved deficiencies: ${resolvedDef.join(', ')}. Great progress!`
+      });
+    }
+
+    if (newDef.length > 0) {
+      insights.push({
+        type: 'warning',
+        icon: '🔍',
+        text: `New concerns detected: ${newDef.join(', ')}. Consider dietary adjustments.`
+      });
+    }
+
+    res.json({
+      hasData: true,
+      hasComparison: true,
+      totalReports: reports.length,
+      latestReport: {
+        _id: latestReport._id,
+        type: latestReport.reportType,
+        date: latestReport.createdAt,
+        healthScore: latestScore
+      },
+      previousReport: {
+        _id: previousReport._id,
+        type: previousReport.reportType,
+        date: previousReport.createdAt,
+        healthScore: previousScore
+      },
+      scoreChange,
+      scoreHistory,
+      comparisonMetrics: comparisonMetrics.slice(0, 12), // Limit for display
+      insights,
+      deficiencyComparison: {
+        resolved: resolvedDef,
+        new: newDef,
+        ongoing: latestDef.filter(d => previousDef.includes(d))
+      }
+    });
+  } catch (error) {
+    console.error('Report comparison error:', error);
+    res.status(500).json({ message: error.message });
   }
 };

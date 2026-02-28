@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true, minlength: 6 },
   role: { type: String, enum: ['patient', 'client', 'doctor', 'admin'], default: 'patient' },
   isActive: { type: Boolean, default: true },
+  profilePicture: { type: String }, // Cloudinary URL
   // For doctors - links to Doctor profile
   doctorProfile: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' },
   profile: {
@@ -21,8 +22,8 @@ const userSchema = new mongoose.Schema({
     chronicConditions: [String],
     avatar: String,
     // New comprehensive health fields
-    activityLevel: { 
-      type: String, 
+    activityLevel: {
+      type: String,
       enum: ['sedentary', 'lightly_active', 'moderately_active', 'very_active', 'extremely_active'],
       default: 'sedentary'
     },
@@ -74,8 +75,8 @@ const userSchema = new mongoose.Schema({
     }
   },
   nutritionGoal: {
-    goal: { 
-      type: String, 
+    goal: {
+      type: String,
       enum: ['weight_loss', 'weight_gain', 'muscle_gain', 'maintain', 'general_health'],
       default: 'general_health'
     },
@@ -86,6 +87,18 @@ const userSchema = new mongoose.Schema({
     carbsGoal: Number, // in grams
     fatGoal: Number, // in grams
     autoCalculated: { type: Boolean, default: true },
+    lastUpdated: Date
+  },
+  foodPreferences: {
+    preferredFoods: [String], // Foods user likes to eat
+    foodsToAvoid: [String], // Foods user wants to avoid
+    dietaryRestrictions: [String], // Allergies, intolerances, religious restrictions
+    mealPreferences: {
+      breakfast: [String],
+      lunch: [String],
+      snacks: [String],
+      dinner: [String]
+    },
     lastUpdated: Date
   },
   subscription: {
@@ -107,13 +120,13 @@ const userSchema = new mongoose.Schema({
   streakDays: { type: Number, default: 0 }
 }, { timestamps: true, strict: false });
 
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
   this.password = await bcrypt.hash(this.password, 12);
   next();
 });
 
-userSchema.methods.comparePassword = async function(candidatePassword) {
+userSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 

@@ -57,7 +57,7 @@ export default function AllReports() {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-fade-in p-6 pb-24">
+    <div className="w-full mx-auto space-y-8 animate-fade-in p-6 pb-24">
       {/* Welcome Message - Mobile Only */}
       <div className="md:hidden flex items-center justify-between">
         <div className="flex items-center gap-2 flex-1 min-w-0">

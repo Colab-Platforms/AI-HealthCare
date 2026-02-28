@@ -43,6 +43,8 @@ try {
   app.use('/api/wearables', require('./routes/wearableRoutes'));
   app.use('/api/nutrition', require('./routes/nutritionRoutes'));
   app.use('/api/diet-recommendations', require('./routes/dietRecommendationRoutes'));
+  app.use('/api/users', require('./routes/userRoutes'));
+  app.use('/api/notifications', require('./routes/notificationRoutes'));
   app.use('/api', require('./routes/chatRoutes'));
   app.use('/api/chat', require('./routes/chatHistoryRoutes'));
 } catch (error) {
@@ -76,6 +78,11 @@ const initDB = async () => {
     } catch (error) {
       console.error('Error loading reminder service:', error);
     }
+    try {
+      require('./services/notificationService');
+    } catch (error) {
+      console.error('Error loading notification service:', error);
+    }
     return true;
   } catch (error) {
     console.error('Database connection error:', error);
@@ -91,6 +98,7 @@ if (process.env.VERCEL) {
   const PORT = process.env.PORT || 5000;
   connectDB().then(() => {
     require('./services/reminderService');
+    try { require('./services/notificationService'); } catch (e) { console.error('Notification service error:', e); }
     app.listen(PORT, '0.0.0.0', () => {
       console.log(`Server running on port ${PORT}`);
     });

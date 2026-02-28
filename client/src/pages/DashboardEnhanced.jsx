@@ -1,19 +1,21 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import {
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, Bar, BarChart, Legend
 } from 'recharts';
 import {
   Heart, Upload, Utensils, FileText, Activity, TrendingUp, User,
   Calendar, MessageSquare, Pill, Apple, Dumbbell, Brain, Shield, Sparkles,
   CheckCircle, Target, Award, ChevronRight, Zap, Sun, Droplets,
   BarChart3, ArrowRight, ArrowLeft, Star, Flame, Trophy, Moon, Wind, Bell, ChevronLeft, ArrowUp,
-  AlertCircle, AlertTriangle, Plus
+  AlertCircle, AlertTriangle, Plus, TrendingDown
 } from 'lucide-react';
 import BMIWidget from '../components/BMIWidget';
 import SleepTracker from '../components/SleepTracker';
+import NotificationPanel, { useNotificationCount } from '../components/NotificationPanel';
+import { healthService } from '../services/api';
 
 // Animated Progress Ring Component
 const ProgressRing = ({ progress, size = 120, strokeWidth = 8 }) => {
@@ -28,7 +30,7 @@ const ProgressRing = ({ progress, size = 120, strokeWidth = 8 }) => {
           cx={size / 2}
           cy={size / 2}
           r={radius}
-          stroke="#e2e8f0"
+          stroke="#f1f5f9"
           strokeWidth={strokeWidth}
           fill="none"
         />
@@ -46,64 +48,62 @@ const ProgressRing = ({ progress, size = 120, strokeWidth = 8 }) => {
         />
         <defs>
           <linearGradient id="healthGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#10b981" />
-            <stop offset="100%" stopColor="#06b6d4" />
+            <stop offset="0%" stopColor="#2FC8B9" />
+            <stop offset="100%" stopColor="#1db7a6" />
           </linearGradient>
         </defs>
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-3xl font-bold text-slate-800">{progress}%</span>
-        <span className="text-xs text-slate-500">Complete</span>
+        <span className="text-3xl font-black text-black tracking-tighter">{progress}%</span>
+        <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] -mt-1">Complete</span>
       </div>
     </div>
   );
 };
 
 // Feature Card Component with 3D Visual Elements
-const FeatureCard = ({ title, description, link, status, icon: Icon, gradient, emoji }) => {
+const FeatureCard = ({ title, description, link, status, icon: Icon, emoji }) => {
   return (
     <Link to={link} className="group">
-      <div className="card h-full flex flex-col overflow-hidden border-none shadow-xl hover:shadow-2xl transition-all duration-300 transform hover:-translate-y-1">
-        <div className={`h-40 bg-gradient-to-br ${gradient} relative overflow-hidden`}>
-          {/* Animated Background Pattern */}
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(255,255,255,0.8),transparent_50%)] animate-pulse"></div>
-          </div>
+      <div className="bg-white rounded-[2.5rem] h-full flex flex-col overflow-hidden border border-slate-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)] hover:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.1)] transition-all duration-500 transform hover:-translate-y-2">
+        <div className="h-44 bg-slate-50 relative overflow-hidden group-hover:bg-[#2FC8B9]/5 transition-colors">
+          {/* Subtle Background Pattern */}
+          <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:20px_20px]"></div>
 
           {/* 3D Floating Elements */}
-          <div className="absolute top-1/2 right-6 transform -translate-y-1/2">
-            <div className="relative w-20 h-20 group-hover:scale-110 transition-transform duration-500">
-              <div className="absolute inset-0 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center border border-white/30 shadow-inner">
-                <span className="text-4xl filter drop-shadow-md">{emoji}</span>
+          <div className="absolute top-1/2 right-8 transform -translate-y-1/2">
+            <div className="relative w-24 h-24 group-hover:scale-110 transition-transform duration-700">
+              <div className="absolute inset-0 bg-white shadow-[0_15px_35px_rgba(0,0,0,0.08)] rounded-[2rem] flex items-center justify-center border border-slate-100 group-hover:rotate-6 transition-transform">
+                <span className="text-5xl filter drop-shadow-sm">{emoji}</span>
               </div>
             </div>
           </div>
 
           {/* Icon Badge */}
-          <div className="absolute top-4 left-4 z-10">
-            <div className="w-12 h-12 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg border border-white/30 group-hover:rotate-6 transition-transform">
-              <Icon className="w-6 h-6 text-white drop-shadow-md" />
+          <div className="absolute top-6 left-6 z-10">
+            <div className="w-14 h-14 rounded-2xl bg-[#2FC8B9]/10 flex items-center justify-center shadow-inner group-hover:bg-[#2FC8B9]/20 transition-all border border-[#2FC8B9]/10">
+              <Icon className="w-7 h-7 text-[#2FC8B9]" />
             </div>
           </div>
 
           {/* Status Badge */}
           {status && (
-            <div className="absolute top-4 right-4 z-10">
-              <span className="px-2 py-0.5 bg-white/90 backdrop-blur-sm rounded-full text-[10px] font-bold text-slate-700 shadow-md uppercase tracking-wider">
+            <div className="absolute top-6 right-6 z-10">
+              <span className="px-3 py-1 bg-white rounded-full text-[9px] font-black text-black shadow-sm uppercase tracking-widest border border-slate-100">
                 {status}
               </span>
             </div>
           )}
         </div>
 
-        <div className="p-5 flex-1 flex flex-col bg-white/40">
-          <h3 className="text-lg font-black text-slate-800 mb-1 group-hover:text-purple-600 transition-colors">
+        <div className="p-8 flex-1 flex flex-col">
+          <h3 className="text-xl font-black text-black mb-2 tracking-tight">
             {title}
           </h3>
-          <p className="text-xs text-slate-600 font-medium leading-relaxed flex-1">{description}</p>
-          <div className="mt-4 flex items-center text-purple-600 text-xs font-bold uppercase tracking-wider">
-            <span>Discover</span>
-            <ChevronRight className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" />
+          <p className="text-xs text-slate-400 font-bold leading-relaxed flex-1">{description}</p>
+          <div className="mt-6 flex items-center text-black group-hover:text-[#2FC8B9] text-[10px] font-black uppercase tracking-[0.25em] transition-colors">
+            <span>Explore Now</span>
+            <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-2 transition-transform" />
           </div>
         </div>
       </div>
@@ -112,17 +112,17 @@ const FeatureCard = ({ title, description, link, status, icon: Icon, gradient, e
 };
 
 // Quick Action Card Component
-const QuickActionCard = ({ icon: Icon, title, subtitle, link, color, comingSoon }) => {
+const QuickActionCard = ({ icon: Icon, title, subtitle, link, comingSoon }) => {
   const content = (
-    <div className="card p-4 hover:shadow-2xl transition-all duration-300 group border-none relative overflow-hidden">
-      <div className={`w-14 h-14 rounded-2xl bg-white/50 backdrop-blur-sm flex items-center justify-center mb-3 group-hover:rotate-6 transition-transform shadow-sm`}>
-        <Icon className={`w-7 h-7 text-${color}-500`} />
+    <div className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm hover:shadow-xl hover:border-[#2FC8B9]/20 transition-all duration-500 group relative overflow-hidden h-full">
+      <div className="w-14 h-14 rounded-2xl bg-black flex items-center justify-center mb-6 group-hover:rotate-6 transition-all shadow-lg group-hover:shadow-[#2FC8B9]/20">
+        <Icon className="w-7 h-7 text-[#2FC8B9]" />
       </div>
-      <h4 className="font-bold text-slate-800 text-sm mb-1">{title}</h4>
-      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-tight">{subtitle}</p>
+      <h4 className="font-black text-black text-base mb-1 tracking-tight">{title}</h4>
+      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{subtitle}</p>
       {comingSoon && (
-        <div className="absolute top-2 right-2">
-          <span className="px-2 py-0.5 bg-amber-100/80 text-amber-700 text-[9px] font-bold rounded-full border border-amber-200">
+        <div className="absolute top-6 right-6">
+          <span className="px-2.5 py-1 bg-slate-100 text-slate-500 text-[8px] font-black rounded-full border border-slate-200 uppercase tracking-tighter">
             SOON
           </span>
         </div>
@@ -135,32 +135,30 @@ const QuickActionCard = ({ icon: Icon, title, subtitle, link, color, comingSoon 
 // Get Started Step Component
 const GetStartedStep = ({ number, title, description, completed, active, icon: Icon }) => {
   return (
-    <div className={`relative flex items-start gap-4 p-4 rounded-2xl transition-all duration-300 ${active ? 'bg-gradient-to-r from-purple-50 to-orange-50 border-2 border-cyan-200' :
-      completed ? 'bg-emerald-50 border-2 border-emerald-200' :
-        'bg-slate-50 border-2 border-slate-200'
+    <div className={`relative flex items-center gap-6 p-6 rounded-[2rem] transition-all duration-500 ${active ? 'bg-[#2FC8B9] border border-[#2FC8B9]/10 shadow-2xl scale-[1.02]' :
+      completed ? 'bg-white border border-slate-100 opacity-60' :
+        'bg-slate-50 border border-slate-100'
       }`}>
-      <div className={`relative flex-shrink-0 w-12 h-12 rounded-xl flex items-center justify-center font-bold text-lg ${completed ? 'bg-emerald-500 text-white' :
-        active ? 'bg-gradient-to-br from-purple-500 to-orange-500 text-white animate-pulse' :
-          'bg-white text-slate-400 border-2 border-slate-300'
+      <div className={`relative flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl transition-all ${completed ? 'bg-black text-white' :
+        active ? 'bg-white text-[#2FC8B9] animate-pulse shadow-[0_0_20px_rgba(255,255,255,0.3)]' :
+          'bg-white text-slate-300 border border-slate-100'
         }`}>
-        {completed ? <CheckCircle className="w-6 h-6" /> :
-          active ? <Icon className="w-6 h-6" /> :
+        {completed ? <CheckCircle className="w-8 h-8" /> :
+          active ? <Icon className="w-8 h-8" /> :
             number}
       </div>
-      <div className="flex-1">
-        <h4 className={`font-semibold mb-1 ${completed || active ? 'text-slate-800' : 'text-slate-500'
-          }`}>
+      <div className="flex-1 min-w-0">
+        <h4 className={`text-base font-black uppercase tracking-tight mb-0.5 ${active ? 'text-white' : 'text-black'}`}>
           {title}
         </h4>
-        <p className={`text-sm ${completed || active ? 'text-slate-600' : 'text-slate-400'
-          }`}>
+        <p className={`text-[11px] font-bold uppercase tracking-wider ${active ? 'text-black/60' : 'text-slate-400'}`}>
           {description}
         </p>
       </div>
       {completed && (
-        <div className="absolute -top-1 -right-1">
-          <div className="w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center animate-bounce-slow">
-            <CheckCircle className="w-4 h-4 text-white" />
+        <div className="absolute -top-2 -right-2">
+          <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center border-2 border-[#2FC8B9] shadow-lg">
+            <CheckCircle className="w-5 h-5 text-[#2FC8B9]" />
           </div>
         </div>
       )}
@@ -180,6 +178,15 @@ export default function DashboardEnhanced() {
   const [sleepTrackerOpen, setSleepTrackerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [activeDietPlan, setActiveDietPlan] = useState(null);
+
+  // Notification state
+  const [notifPanelOpen, setNotifPanelOpen] = useState(false);
+  const bellRef = useRef(null);
+  const notifCount = useNotificationCount();
+
+  // Report comparison state
+  const [reportComparison, setReportComparison] = useState(null);
+  const [comparisonLoading, setComparisonLoading] = useState(true);
 
   const handlePrevDate = () => {
     const d = new Date(selectedDate);
@@ -220,6 +227,22 @@ export default function DashboardEnhanced() {
     };
     loadData();
   }, [fetchDashboard, fetchDietPlan]);
+
+  // Fetch report comparison data
+  useEffect(() => {
+    const fetchComparison = async () => {
+      try {
+        setComparisonLoading(true);
+        const { data } = await healthService.getReportComparison();
+        setReportComparison(data);
+      } catch (error) {
+        console.error('Failed to fetch report comparison:', error);
+      } finally {
+        setComparisonLoading(false);
+      }
+    };
+    fetchComparison();
+  }, []);
 
   // Fetch nutrition data when selectedDate changes
   useEffect(() => {
@@ -277,8 +300,8 @@ export default function DashboardEnhanced() {
     return (
       <div className="flex items-center justify-center h-[60vh]">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-600">Loading your health dashboard...</p>
+          <div className="w-16 h-16 border-4 border-[#2FC8B9]/20 border-t-[#2FC8B9] rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-500 font-bold">Loading your health dashboard...</p>
         </div>
       </div>
     );
@@ -329,138 +352,166 @@ export default function DashboardEnhanced() {
   const currentMetric = allAvailableMetrics[currentMetricKey];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-pink-50 to-orange-100">
+    <div className="min-h-screen bg-white font-roboto">
       {/* Subtle refresh indicator - only shows when refreshing with cached data */}
       {loading.dashboard && dashboardData && (
-        <div className="fixed top-20 right-4 z-50 bg-white rounded-full shadow-lg px-4 py-2 flex items-center gap-2 animate-slide-in-right">
-          <div className="w-4 h-4 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
-          <span className="text-sm text-slate-600">Refreshing...</span>
+        <div className="fixed top-20 right-4 z-50 bg-white rounded-full shadow-lg px-4 py-2 flex items-center gap-2 animate-slide-in-right border border-[#2FC8B9]/10">
+          <div className="w-4 h-4 border-2 border-[#2FC8B9]/30 border-t-[#2FC8B9] rounded-full animate-spin" />
+          <span className="text-sm text-slate-500 font-bold">Refreshing...</span>
         </div>
       )}
 
-      <div className="max-w-7xl mx-auto space-y-6 animate-fade-in pb-20 px-0 md:px-4">
+      <div className="w-full mx-auto space-y-6 animate-fade-in pb-20 px-0 md:px-4">
 
         {/* Mobile-Only Header - Compact */}
         <div className="pt-4 space-y-3 md:hidden px-3">
           {/* Welcome Message and Notification */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {/* Profile Picture */}
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-orange-600 flex items-center justify-center text-white text-lg font-bold shadow-md">
-                {user?.name?.[0]?.toUpperCase() || 'U'}
-              </div>
+              {/* Profile Picture - Clickable */}
+              <button
+                onClick={() => navigate('/profile')}
+                className="w-12 h-12 rounded-full overflow-hidden shadow-md border-2 border-[#2FC8B9] hover:scale-105 transition-transform flex-shrink-0"
+              >
+                {user?.profilePicture ? (
+                  <img src={user.profilePicture} alt={user?.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-black flex items-center justify-center text-white text-lg font-black">
+                    {user?.name?.[0]?.toUpperCase() || 'U'}
+                  </div>
+                )}
+              </button>
 
               {/* Greeting and Stats */}
               <div>
-                <h1 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                  {getGreeting()}, <span className="text-slate-900">{user?.name?.split(' ')[0] || 'there'}!</span>
+                <h1 className="text-lg font-black text-black flex items-center gap-2">
+                  {getGreeting()}, <span className="text-[#2FC8B9]">{user?.name?.split(' ')[0] || 'there'}!</span>
                 </h1>
-                <div className="flex items-center gap-2 text-xs text-slate-600">
-                  <span className="font-semibold">{dashboardData?.nutritionData?.totalCalories || 0} cal</span>
-                  <span className="text-slate-400">.</span>
-                  <span className="font-semibold text-emerald-600">
-                    {dashboardData?.user?.healthMetrics?.healthScore || 82}% Healthy
+                <div className="flex items-center gap-2 text-[10px] text-slate-500 uppercase tracking-widest font-black">
+                  <span>{nutritionData?.totalCalories || 0} cal</span>
+                  <span className="text-slate-300">•</span>
+                  <span className="text-emerald-500">
+                    {healthScore || 82}% Score
                   </span>
                 </div>
               </div>
             </div>
 
             {/* Notification Bell */}
-            <button className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center hover:shadow-lg transition-all">
-              <Bell className="w-5 h-5 text-slate-700" />
-            </button>
+            <div className="relative">
+              <button
+                ref={bellRef}
+                onClick={() => setNotifPanelOpen(!notifPanelOpen)}
+                className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center hover:shadow-lg transition-all"
+              >
+                <Bell className="w-5 h-5 text-slate-700" />
+                {notifCount > 0 && (
+                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-[9px] font-black animate-pulse">
+                    {notifCount > 9 ? '9+' : notifCount}
+                  </span>
+                )}
+              </button>
+              <NotificationPanel
+                isOpen={notifPanelOpen}
+                onClose={() => setNotifPanelOpen(false)}
+                triggerRef={bellRef}
+              />
+            </div>
           </div>
 
-          {/* Ask Coach Search Bar */}
-          <form onSubmit={handleSearchSubmit} className="relative">
-            <div className="flex items-center gap-2 bg-white rounded-full px-4 py-2.5 shadow-md border-2 border-purple-200 hover:border-purple-300 transition-all">
-              <Sparkles className="w-4 h-4 text-purple-500 flex-shrink-0" />
-              <input
-                type="text"
-                placeholder="Ask coach"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 bg-transparent outline-none text-sm text-slate-700 placeholder-slate-400"
-              />
-              <button
-                type="submit"
-                className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center hover:bg-purple-600 transition-all flex-shrink-0"
-              >
-                <ArrowUp className="w-4 h-4 text-white" />
-              </button>
-            </div>
-          </form>
+          {/* Upload Report Button */}
+          <button
+            onClick={() => navigate('/upload')}
+            className="w-full bg-gradient-to-r from-[#2FC8B9] to-[#1db7a6] text-white rounded-2xl px-6 py-4 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-all active:scale-95"
+          >
+            <Upload className="w-5 h-5" />
+            <span className="text-sm font-black uppercase tracking-wider">Upload Report</span>
+          </button>
         </div>
 
         {/* Enhanced Header with Greeting, Stats, and Search - Hidden on mobile */}
-        <div className="pt-4 space-y-3 hidden md:block px-3 md:px-0">
+        <div className="pt-8 space-y-6 hidden md:block px-3 md:px-0">
           {/* Top Row: Profile, Greeting, Stats, Notification */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {/* Profile Picture - Smaller */}
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-orange-600 flex items-center justify-center text-white text-lg font-bold shadow-md">
-                {user?.name?.[0]?.toUpperCase() || 'U'}
-              </div>
+            <div className="flex items-center gap-6">
+              {/* Profile Picture */}
+              <button
+                onClick={() => navigate('/profile')}
+                className="w-16 h-16 rounded-[1.5rem] overflow-hidden shadow-inner border-2 border-[#2FC8B9]/10 relative group hover:scale-105 transition-transform flex-shrink-0"
+              >
+                <div className="absolute inset-0 bg-[#2FC8B9]/5 rounded-[1.5rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                {user?.profilePicture ? (
+                  <img src={user.profilePicture} alt={user?.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-slate-50 flex items-center justify-center text-[#2FC8B9] text-2xl font-black">
+                    {user?.name?.[0]?.toUpperCase() || 'U'}
+                  </div>
+                )}
+              </button>
 
-              {/* Greeting and Stats - One Line, Smaller */}
+              {/* Greeting and Stats */}
               <div>
-                <h1 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                  {getGreeting()}, <span className="text-slate-900">{user?.name?.split(' ')[0] || 'there'}!</span>
+                <h1 className="text-3xl font-black text-black tracking-tighter uppercase leading-none">
+                  Welcome, {user?.name?.split(' ')[0] || 'User'}
                 </h1>
-                <div className="flex items-center gap-2 text-xs text-slate-600">
-                  <span className="font-semibold">{dashboardData?.nutritionData?.totalCalories || 0} cal</span>
-                  <span className="text-slate-400">.</span>
-                  <span className="font-semibold text-emerald-600">
-                    {dashboardData?.user?.healthMetrics?.healthScore || 82}% Healthy
-                  </span>
+                <div className="flex items-center gap-4 mt-2 text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">
+                  <span className="flex items-center gap-1.5"><Flame className="w-3.5 h-3.5 text-orange-500" /> {dashboardData?.nutritionData?.totalCalories || 0} kcal burned</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-slate-200"></span>
+                  <span className="flex items-center gap-1.5"><Activity className="w-3.5 h-3.5 text-[#2FC8B9]" /> {dashboardData?.user?.healthMetrics?.healthScore || 82}% Efficiency</span>
                 </div>
               </div>
             </div>
 
-            {/* Notification Bell */}
-            <button className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center hover:shadow-lg transition-all">
-              <Bell className="w-5 h-5 text-slate-700" />
-            </button>
+            {/* Notification & Actions */}
+            <div className="flex items-center gap-3 relative">
+              <button
+                ref={bellRef}
+                onClick={() => setNotifPanelOpen(!notifPanelOpen)}
+                className="w-12 h-12 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center text-slate-400 hover:text-black hover:border-black transition-all group relative"
+              >
+                <Bell className="w-6 h-6 group-hover:animate-swing" />
+                {notifCount > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-[9px] font-black animate-pulse">
+                    {notifCount > 9 ? '9+' : notifCount}
+                  </span>
+                )}
+              </button>
+              <NotificationPanel
+                isOpen={notifPanelOpen}
+                onClose={() => setNotifPanelOpen(false)}
+                triggerRef={bellRef}
+              />
+            </div>
           </div>
 
-          {/* Ask Coach Search Bar - Smaller */}
-          <form onSubmit={handleSearchSubmit} className="relative">
-            <div className="flex items-center gap-2 bg-white rounded-full px-4 py-2.5 shadow-md border-2 border-purple-200 hover:border-purple-300 transition-all">
-              <Sparkles className="w-4 h-4 text-purple-500 flex-shrink-0" />
-              <input
-                type="text"
-                placeholder="Ask coach"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="flex-1 bg-transparent outline-none text-sm text-slate-700 placeholder-slate-400"
-              />
-              <button
-                type="submit"
-                className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center hover:bg-purple-600 transition-all flex-shrink-0"
-              >
-                <ArrowUp className="w-4 h-4 text-white" />
-              </button>
-            </div>
-          </form>
+          {/* Upload Report Button - Desktop */}
+          <button
+            onClick={() => navigate('/upload')}
+            className="w-full bg-gradient-to-r from-[#2FC8B9] to-[#1db7a6] text-white rounded-[2rem] px-8 py-6 flex items-center justify-center gap-4 shadow-xl hover:shadow-2xl transition-all active:scale-[0.98] group"
+          >
+            <Upload className="w-6 h-6 group-hover:scale-110 transition-transform" />
+            <span className="text-base font-black uppercase tracking-widest">Upload Health Report</span>
+          </button>
         </div>
 
         {/* Premium Day Selector Card - Matching Image 2 */}
-        <div className="px-3 md:px-0 mb-6">
-          <div className="bg-[#E2D5FF] rounded-[2.5rem] p-5 shadow-xl shadow-indigo-200/50">
-            <div className="flex items-center justify-between mb-6 px-2">
-              <button onClick={handlePrevDate} className="w-8 h-8 rounded-full bg-white/40 flex items-center justify-center text-indigo-900 transition-colors hover:bg-white">
-                <ArrowLeft className="w-4 h-4" />
+        <div className="px-3 md:px-0 mb-6 font-roboto">
+          <div className="bg-white rounded-[2.5rem] p-6 shadow-xl border border-slate-100 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[#2FC8B9]/10 rounded-full blur-3xl"></div>
+            <div className="flex items-center justify-between mb-8 px-2 relative z-10">
+              <button onClick={handlePrevDate} className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-black transition-all hover:bg-[#2FC8B9] hover:text-white hover:scale-110 active:scale-95">
+                <ArrowLeft className="w-5 h-5" />
               </button>
-              <h2 className="text-sm sm:text-base font-black text-indigo-950 flex items-center gap-2">
+              <h2 className="text-base sm:text-lg font-black text-black flex items-center gap-2 tracking-tight">
                 {selectedDate.toDateString() === new Date().toDateString() ? 'Today, ' : ''}
                 {selectedDate.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
               </h2>
-              <button onClick={handleNextDate} className="w-8 h-8 rounded-full bg-white/40 flex items-center justify-center text-indigo-900 transition-colors hover:bg-white rotate-180">
-                <ArrowLeft className="w-4 h-4" />
+              <button onClick={handleNextDate} className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-black transition-all hover:bg-[#2FC8B9] hover:text-white hover:scale-110 active:scale-95 rotate-180">
+                <ArrowLeft className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="flex justify-between items-end gap-1 overflow-x-auto pb-2 scrollbar-hide">
+            <div className="flex justify-between items-end gap-1 overflow-visible pb-2 sm:overflow-x-auto sm:scrollbar-hide">
               {(() => {
                 const daysOfWeek = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
                 const weekDays = [];
@@ -510,7 +561,10 @@ export default function DashboardEnhanced() {
                   // 4. Diet Logs status
                   const dietProgress = (nutritionProgress > 0) ? 100 : 0;
 
-                  if (isSelected) {
+                  if (dayInfo.fullDate > new Date()) {
+                    // Don't show progress for future dates
+                    completionPercentage = 0;
+                  } else if (isSelected) {
                     // Weighted average for the selected day
                     completionPercentage = Math.round(
                       (nutritionProgress * 0.3) +
@@ -527,28 +581,31 @@ export default function DashboardEnhanced() {
 
                     // Fallback for past days with no data to maintain premium look
                     if (completionPercentage === 0 && dayInfo.fullDate < new Date()) {
-                      completionPercentage = (dayInfo.date % 3 === 0) ? 100 : (dayInfo.date % 2 === 0 ? 60 : 30);
+                      const isPastDay = dayInfo.fullDate.toDateString() !== new Date().toDateString();
+                      if (isPastDay) {
+                        completionPercentage = (dayInfo.date % 3 === 0) ? 100 : (dayInfo.date % 2 === 0 ? 60 : 30);
+                      }
                     }
                   }
 
                   return (
                     <div
                       key={index}
-                      className="flex flex-col items-center gap-2 min-w-[45px] cursor-pointer"
+                      className="flex flex-col items-center gap-2 flex-1 min-w-0 cursor-pointer relative z-10"
                       onClick={() => setSelectedDate(dayInfo.fullDate)}
                     >
-                      <span className={`text-[10px] font-black uppercase tracking-tighter transition-colors ${isSelected ? 'text-indigo-800' : 'text-slate-500'}`}>
+                      <span className={`text-[9px] font-black uppercase tracking-tight transition-colors ${isSelected ? 'text-[#2FC8B9]' : 'text-slate-500'}`}>
                         {dayInfo.label}
                       </span>
 
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center relative transition-all ${isSelected ? 'bg-white shadow-xl scale-110 ring-2 ring-indigo-300' : 'bg-white/30 hover:bg-white/50'
+                      <div className={`w-9 h-9 sm:w-12 sm:h-12 rounded-full flex items-center justify-center relative transition-all duration-300 ${isSelected ? 'bg-white shadow-[0_0_20px_rgba(47,200,185,0.4)] scale-110 ring-2 ring-[#2FC8B9]' : 'bg-slate-50 hover:bg-slate-100 border border-slate-100'
                         }`}>
                         {/* Dynamic SVG Ring */}
                         <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 48 48">
-                          <circle cx="24" cy="24" r="21" fill="none" stroke={isSelected ? '#F1F5F9' : 'rgba(255,255,255,0.2)'} strokeWidth="3" />
+                          <circle cx="24" cy="24" r="21" fill="none" stroke={isSelected ? '#F8FAFC' : 'rgba(255,255,255,0.1)'} strokeWidth="3" />
                           <circle
                             cx="24" cy="24" r="21" fill="none"
-                            stroke="#818CF8" strokeWidth="3"
+                            stroke="#2FC8B9" strokeWidth="3"
                             strokeDasharray={`${(completionPercentage / 100) * 132} 132`}
                             strokeLinecap="round"
                             className="transition-all duration-1000"
@@ -561,7 +618,7 @@ export default function DashboardEnhanced() {
 
                       </div>
 
-                      <span className={`text-[11px] font-black ${isSelected ? 'text-indigo-900 scale-110' : 'text-slate-600'}`}>
+                      <span className={`text-xs font-black transition-all ${isSelected ? 'text-black scale-110' : 'text-slate-400'}`}>
                         {dayInfo.date}
                       </span>
                     </div>
@@ -580,16 +637,16 @@ export default function DashboardEnhanced() {
           {/* Nutrition Card */}
           <Link
             to="/nutrition"
-            className="card card-gradient p-4 sm:p-6 group relative overflow-hidden"
+            className="card p-4 sm:p-6 group relative overflow-hidden bg-white border border-slate-100"
           >
-            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10"></div>
+            <div className="absolute top-0 right-0 w-24 h-24 bg-[#2FC8B9]/5 rounded-full blur-2xl -mr-10 -mt-10"></div>
             <div className="flex items-center justify-between mb-3 relative z-10">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/30 backdrop-blur-md flex items-center justify-center group-hover:rotate-12 transition-transform shadow-inner">
-                <Flame className="w-6 h-6 sm:w-7 sm:h-7 text-orange-600" />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[#2FC8B9]/10 flex items-center justify-center group-hover:rotate-12 transition-transform shadow-sm">
+                <Flame className="w-6 h-6 sm:w-7 sm:h-7 text-[#2FC8B9]" />
               </div>
               {nutritionData?.averageHealthScore > 0 && (
-                <div className={`px-2 py-1 rounded-lg text-[10px] font-black shadow-lg flex flex-col items-center justify-center min-w-[36px] ${nutritionData.averageHealthScore >= 80 ? 'bg-emerald-500 text-white' :
-                  nutritionData.averageHealthScore >= 60 ? 'bg-amber-500 text-white' :
+                <div className={`px-2 py-1 rounded-lg text-[10px] font-black shadow-lg flex flex-col items-center justify-center min-w-[36px] ${nutritionData.averageHealthScore >= 80 ? 'bg-[#2FC8B9] text-white' :
+                  nutritionData.averageHealthScore >= 60 ? 'bg-amber-400 text-white' :
                     'bg-rose-500 text-white'
                   }`}>
                   <span className="leading-none">{Math.round(nutritionData.averageHealthScore)}</span>
@@ -597,30 +654,30 @@ export default function DashboardEnhanced() {
                 </div>
               )}
             </div>
-            <h3 className="text-slate-700 text-[10px] sm:text-xs font-black mb-1 uppercase tracking-[0.15em] relative z-10">Nutrition</h3>
-            <p className="text-2xl sm:text-3xl font-black text-slate-900 mb-1 relative z-10">
-              {nutritionData?.totalCalories || 0} <span className="text-base sm:text-lg opacity-60 font-medium">kcal</span>
+            <h3 className="text-slate-500 text-[10px] sm:text-xs font-black mb-1 uppercase tracking-[0.15em] relative z-10">Nutrition</h3>
+            <p className="text-2xl sm:text-3xl font-black text-black mb-1 relative z-10">
+              {nutritionData?.totalCalories || 0} <span className="text-base sm:text-lg opacity-40 font-medium">kcal</span>
             </p>
-            <p className="text-[10px] sm:text-xs text-slate-600 font-bold relative z-10">
+            <p className="text-[10px] sm:text-xs text-[#2FC8B9] font-black uppercase tracking-widest relative z-10">
               {nutritionData?.calorieGoal
                 ? `${Math.round((nutritionData.totalCalories / nutritionData.calorieGoal) * 100)}% Goal`
-                : 'Track your meals'}
+                : 'Track meals'}
             </p>
           </Link>
 
           {/* Sleep Card */}
           <button
             onClick={() => setSleepTrackerOpen(true)}
-            className="card p-4 sm:p-6 group relative overflow-hidden text-left"
+            className="card p-4 sm:p-6 group relative overflow-hidden text-left bg-white border border-slate-100"
           >
-            <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 rounded-full blur-2xl -mr-10 -mt-10"></div>
+            <div className="absolute top-0 right-0 w-24 h-24 bg-[#2FC8B9]/5 rounded-full blur-2xl -mr-10 -mt-10"></div>
             <div className="flex items-center justify-between mb-3 relative z-10">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-indigo-50 flex items-center justify-center group-hover:rotate-12 transition-transform shadow-inner">
-                <Moon className="w-6 h-6 sm:w-7 sm:h-7 text-indigo-500" />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[#2FC8B9]/10 flex items-center justify-center group-hover:rotate-12 transition-transform shadow-sm">
+                <Moon className="w-6 h-6 sm:w-7 sm:h-7 text-[#2FC8B9]" />
               </div>
             </div>
             <h3 className="text-slate-500 text-[10px] sm:text-xs font-black mb-1 uppercase tracking-[0.15em] relative z-10">Sleep</h3>
-            <p className="text-2xl sm:text-3xl font-black text-slate-800 mb-1 relative z-10">
+            <p className="text-2xl sm:text-3xl font-black text-black mb-1 relative z-10">
               {(() => {
                 const sleepHistory = JSON.parse(localStorage.getItem('sleep_history') || '[]');
                 const selectedDateStr = selectedDate.toDateString();
@@ -641,7 +698,7 @@ export default function DashboardEnhanced() {
                   const efficiency = Math.round((totalMinutes / 480) * 100); // 8 hours = 480 minutes
                   return `${efficiency}% Efficiency`;
                 }
-                return 'Track your sleep';
+                return 'Track sleep';
               })()}
             </p>
           </button>
@@ -649,16 +706,16 @@ export default function DashboardEnhanced() {
           {/* Diet Plan Card */}
           <Link
             to="/diet-plan"
-            className="card p-4 sm:p-6 group relative overflow-hidden"
+            className="card p-4 sm:p-6 group relative overflow-hidden bg-white border border-slate-100"
           >
-            <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/5 rounded-full blur-2xl -mr-10 -mt-10"></div>
+            <div className="absolute top-0 right-0 w-24 h-24 bg-[#2FC8B9]/5 rounded-full blur-2xl -mr-10 -mt-10"></div>
             <div className="flex items-center justify-between mb-3 relative z-10">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-orange-50 flex items-center justify-center group-hover:rotate-12 transition-transform shadow-inner">
-                <Utensils className="w-6 h-6 sm:w-7 sm:h-7 text-orange-500" />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[#2FC8B9]/10 flex items-center justify-center group-hover:rotate-12 transition-transform shadow-sm">
+                <Utensils className="w-6 h-6 sm:w-7 sm:h-7 text-[#2FC8B9]" />
               </div>
             </div>
             <h3 className="text-slate-500 text-[10px] sm:text-xs font-black mb-1 uppercase tracking-[0.15em] relative z-10">Diet Plan</h3>
-            <p className="text-base sm:text-lg font-black text-slate-800 mb-1 relative z-10 leading-tight">
+            <p className="text-base sm:text-lg font-black text-black mb-1 relative z-10 leading-tight">
               {(() => {
                 if (!activeDietPlan) return 'No active plan';
                 const hour = new Date().getHours();
@@ -669,76 +726,75 @@ export default function DashboardEnhanced() {
               })()}
             </p>
             <p className="text-[10px] sm:text-xs text-slate-400 font-bold relative z-10">
-              {activeDietPlan ? 'Your personalized meal plan' : 'Tap to generate'}
+              {activeDietPlan ? 'Personalized plan' : 'Generate plan'}
             </p>
           </Link>
 
           {/* Mind Card */}
           <Link
             to="/challenge"
-            className="card p-4 sm:p-6 group relative overflow-hidden"
-            style={{ background: 'linear-gradient(135deg, #ede9fe 0%, #fce7f3 50%, #fff1eb 100%)' }}
+            className="card p-4 sm:p-6 group relative overflow-hidden bg-white border border-slate-100"
           >
-            <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/5 rounded-full blur-2xl -mr-10 -mt-10"></div>
+            <div className="absolute top-0 right-0 w-24 h-24 bg-[#2FC8B9]/5 rounded-full blur-2xl -mr-10 -mt-10"></div>
             <div className="flex items-center justify-between mb-3 relative z-10">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl flex items-center justify-center group-hover:rotate-12 transition-transform shadow-inner" style={{ background: 'linear-gradient(135deg, #c084fc, #fb923c)' }}>
-                <Wind className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[#2FC8B9]/10 flex items-center justify-center group-hover:rotate-12 transition-transform shadow-sm">
+                <Wind className="w-6 h-6 sm:w-7 sm:h-7 text-[#2FC8B9]" />
               </div>
             </div>
             <h3 className="text-slate-500 text-[10px] sm:text-xs font-black mb-1 uppercase tracking-[0.15em] relative z-10">Mind</h3>
-            <p className="text-2xl sm:text-3xl font-black text-slate-800 mb-1 relative z-10">
-              {dashboardData?.streakDays || user?.challengeStreak || 0} <span className="text-base sm:text-lg opacity-60 font-medium">days</span>
+            <p className="text-2xl sm:text-3xl font-black text-black mb-1 relative z-10">
+              {dashboardData?.streakDays || user?.challengeStreak || 0} <span className="text-base sm:text-lg opacity-40 font-medium">days</span>
             </p>
-            <p className="text-[10px] sm:text-xs text-slate-500 font-bold relative z-10">Daily Streak</p>
+            <p className="text-[10px] sm:text-xs text-slate-400 font-bold relative z-10 text-[#2FC8B9]">Daily Streak</p>
           </Link>
         </div>
 
         {/* Diabetes Management Card */}
         <Link
           to="/glucose-log"
-          className="block bg-gradient-to-br from-[#e8f0fe] via-[#edf3ff] to-[#f0f4ff] rounded-3xl shadow-md p-5 sm:p-6 hover:shadow-xl transition-all group relative overflow-hidden border border-blue-100 mx-3 md:mx-0"
+          className="block bg-white rounded-[2.5rem] shadow-sm p-6 sm:p-8 hover:shadow-xl transition-all group relative overflow-hidden border border-slate-100 mx-3 md:mx-0"
         >
           {/* Decorative Droplet Watermark */}
-          <div className="absolute bottom-2 right-2 opacity-[0.06] pointer-events-none">
-            <Droplets className="w-28 h-28 text-blue-500" />
+          <div className="absolute bottom-4 right-4 opacity-[0.03] pointer-events-none">
+            <Droplets className="w-32 h-32 text-[#2FC8B9]" />
           </div>
 
           {/* Content */}
           <div className="relative z-10">
             {/* Top Row: Icon + Title + Badge */}
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-11 h-11 rounded-full bg-gradient-to-br from-purple-500 to-orange-600 flex items-center justify-center shadow-md">
-                  <Droplets className="w-5 h-5 text-white" />
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-black flex items-center justify-center shadow-lg">
+                  <Droplets className="w-6 h-6 text-[#2FC8B9]" />
                 </div>
-                <span className="text-sm font-bold text-slate-700 uppercase tracking-wider">
-                  Diabetes Management
+                <span className="text-xs font-black text-black uppercase tracking-[0.2em]">
+                  Diabetes Care
                 </span>
               </div>
-              <span className="px-3 py-1 bg-emerald-500 text-white rounded-full text-[11px] font-bold shadow-sm tracking-wide">
+              <span className="px-4 py-1.5 bg-[#2FC8B9] text-white rounded-full text-[10px] font-black shadow-sm tracking-widest uppercase">
                 IN RANGE
               </span>
             </div>
 
             {/* Large Reading */}
-            <div className="flex items-baseline gap-2 mb-1.5">
-              <span className="text-4xl sm:text-5xl font-extrabold text-slate-800">
+            <div className="flex items-baseline gap-3 mb-2">
+              <span className="text-5xl font-black text-black tracking-tighter">
                 {(() => {
                   const glucoseData = JSON.parse(localStorage.getItem('glucoseData') || '[]');
                   return glucoseData.length > 0 ? glucoseData[0].value : 108;
                 })()}
               </span>
-              <span className="text-sm text-slate-400 font-semibold tracking-wide">MG/DL</span>
+              <span className="text-xs text-slate-400 font-black tracking-widest uppercase">MG/DL</span>
             </div>
 
             {/* Description */}
-            <p className="text-slate-500 text-sm mb-4 leading-relaxed">
+            <p className="text-slate-500 text-sm mb-6 leading-relaxed max-w-sm font-bold">
               Your fasting glucose is stable. Tap to log your next reading or view progress.
             </p>
 
             {/* CTA Link */}
-            <div className="flex items-center gap-1.5 text-blue-600 font-bold text-sm group-hover:gap-3 transition-all">
-              <span>OPEN CARE CENTER</span>
+            <div className="flex items-center gap-2 text-[#2FC8B9] font-black text-xs uppercase tracking-widest group-hover:gap-4 transition-all">
+              <span>Enter Care Center</span>
               <ChevronRight className="w-4 h-4" />
             </div>
           </div>
@@ -749,88 +805,238 @@ export default function DashboardEnhanced() {
           hasReports && (
             <div className="space-y-6 mx-3 md:mx-0">
               {/* AI Health Insights - Main Card */}
-              <div className="bg-gradient-to-br from-[#4F46E5] via-[#6366F1] to-[#818CF8] rounded-[2.5rem] p-8 shadow-xl relative overflow-hidden group">
+              <div className="bg-[#2FC8B9] rounded-[2.5rem] p-8 sm:p-10 shadow-2xl relative overflow-hidden group">
                 {/* Decorative Elements */}
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none"></div>
-                <div className="absolute bottom-0 left-0 w-32 h-32 bg-indigo-400/20 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl pointer-events-none"></div>
-                <Sparkles className="absolute top-8 right-12 w-16 h-16 text-white/10 group-hover:scale-110 transition-transform duration-500" />
+                <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl pointer-events-none"></div>
+                <Sparkles className="absolute top-8 right-12 w-16 h-16 text-white/20 group-hover:scale-110 transition-transform duration-500" />
 
                 <div className="relative z-10">
                   <div className="flex items-center gap-2 mb-6">
-                    <Sparkles className="w-5 h-5 text-white/80" />
-                    <span className="text-xs font-bold text-white/80 uppercase tracking-[0.2em]">AI Health Insights</span>
+                    <Sparkles className="w-5 h-5 text-white" />
+                    <span className="text-xs font-black text-white uppercase tracking-[0.2em]">AI Insights</span>
                   </div>
 
                   <h2 className="text-2xl sm:text-3xl font-black text-white mb-4 tracking-tight leading-tight">
                     {dashboardData.recentReports[0]?.reportType || 'Health Report'} Analysis
-                    <span className="block text-lg font-medium text-white/80 mt-1">
+                    <span className="block text-lg font-medium text-white/90 mt-1">
                       ({new Date(dashboardData.recentReports[0]?.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})
                     </span>
                   </h2>
 
-                  <p className="text-white/90 text-sm sm:text-base leading-relaxed mb-8 max-w-xl font-medium italic">
+                  <p className="text-white/80 text-sm sm:text-base leading-relaxed mb-10 max-w-xl font-bold italic">
                     "{dashboardData.latestAnalysis?.summary?.split('.')[0]}... {dashboardData.latestAnalysis?.summary?.split('.')[1]}."
                   </p>
 
                   <Link
                     to={`/reports/${dashboardData.recentReports[0]?._id}`}
-                    className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-md hover:bg-white/30 text-white px-8 py-4 rounded-2xl font-bold transition-all border border-white/30 shadow-lg group"
+                    className="inline-flex items-center gap-3 bg-black text-white px-10 py-5 rounded-2xl font-black uppercase tracking-widest transition-all hover:bg-slate-900 shadow-xl group"
                   >
-                    View Full Analysis
+                    Analysis Details
                     <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </Link>
                 </div>
               </div>
 
-              {/* Wellness Score & Trend Card */}
-              <div className="bg-gradient-to-br from-[#6366F1] to-[#4F46E5] rounded-[2.5rem] p-8 shadow-xl relative overflow-hidden text-white">
-                <div className="flex justify-between items-start mb-2">
-                  <div>
-                    <span className="text-xs font-bold text-white/70 uppercase tracking-widest">Wellness Score</span>
-                    <div className="flex items-baseline gap-2 mt-2">
-                      <span className="text-6xl font-black">{healthScore || 88}%</span>
+              {/* Health Progress Comparison - Replaces Wellness Score */}
+              <div className="bg-white rounded-[2.5rem] p-6 sm:p-10 shadow-sm border border-slate-100 relative overflow-hidden">
+                {comparisonLoading ? (
+                  <div className="flex items-center justify-center py-12">
+                    <div className="w-10 h-10 border-3 border-[#2FC8B9]/20 border-t-[#2FC8B9] rounded-full animate-spin" />
+                  </div>
+                ) : reportComparison?.hasData ? (
+                  <>
+                    {/* Header with score change */}
+                    <div className="flex justify-between items-start mb-6 relative z-10">
+                      <div>
+                        <span className="text-xs font-black text-[#2FC8B9] uppercase tracking-widest">Health Progress</span>
+                        <div className="flex items-baseline gap-3 mt-3">
+                          <span className="text-5xl sm:text-6xl font-black text-black tracking-tighter">
+                            {reportComparison.latestReport.healthScore}%
+                          </span>
+                          {reportComparison.hasComparison && reportComparison.scoreChange !== 0 && (
+                            <span className={`flex items-center gap-1 text-sm font-black ${reportComparison.scoreChange > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                              {reportComparison.scoreChange > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
+                              {reportComparison.scoreChange > 0 ? '+' : ''}{reportComparison.scoreChange}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        {reportComparison.hasComparison ? (
+                          <div className={`px-3 py-1.5 rounded-xl text-xs font-black ${reportComparison.scoreChange > 0 ? 'bg-emerald-50 text-emerald-600' : reportComparison.scoreChange < 0 ? 'bg-red-50 text-red-500' : 'bg-slate-50 text-slate-500'}`}>
+                            {reportComparison.scoreChange > 0 ? '📈 Improved' : reportComparison.scoreChange < 0 ? '📉 Declined' : '📊 Stable'}
+                          </div>
+                        ) : (
+                          <div className="px-3 py-1.5 rounded-xl text-xs font-black bg-[#2FC8B9]/10 text-[#2FC8B9]">
+                            🌟 Baseline Set
+                          </div>
+                        )}
+                        <p className="text-[10px] text-slate-400 font-bold mt-2 uppercase tracking-wider">
+                          {reportComparison.totalReports} report{reportComparison.totalReports > 1 ? 's' : ''} analyzed
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-lg font-bold text-white">Excellent Condition</p>
-                    <p className="text-xs text-white/60">Updated {new Date(dashboardData.recentReports[0]?.createdAt).getHours()}h ago</p>
-                  </div>
-                </div>
 
-                {/* Sparkline Graph for Wellness Score */}
-                <div className="h-40 w-full mt-6 -mx-4">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={dashboardData.healthScores?.slice(-7) || []}>
-                      <defs>
-                        <linearGradient id="scoreGradient" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#fff" stopOpacity={0.3} />
-                          <stop offset="95%" stopColor="#fff" stopOpacity={0} />
-                        </linearGradient>
-                      </defs>
-                      <Area
-                        type="monotone"
-                        dataKey="score"
-                        stroke="#fff"
-                        strokeWidth={4}
-                        fillOpacity={1}
-                        fill="url(#scoreGradient)"
-                      />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                </div>
+                    {/* Score History Chart */}
+                    <div className="h-48 sm:h-56 w-full mt-4 -mx-2 sm:mx-0">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={reportComparison.scoreHistory} margin={{ top: 10, right: 10, left: -15, bottom: 5 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                          <XAxis
+                            dataKey="dateLabel"
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
+                          />
+                          <YAxis
+                            axisLine={false}
+                            tickLine={false}
+                            tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
+                            domain={[0, 100]}
+                          />
+                          <Tooltip
+                            content={({ active, payload }) => {
+                              if (active && payload && payload.length) {
+                                return (
+                                  <div className="bg-black shadow-2xl rounded-2xl p-4 border border-[#2FC8B9]/20">
+                                    <p className="text-[10px] font-black text-[#2FC8B9] uppercase mb-1 tracking-wider">{payload[0].payload.dateLabel}</p>
+                                    <p className="text-sm font-black text-white">{payload[0].value}% Health Score</p>
+                                    <p className="text-[10px] text-white/60 mt-1">{payload[0].payload.type}</p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <Bar dataKey="score" fill="#2FC8B9" radius={[8, 8, 0, 0]} maxBarSize={40} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
 
-                <p className="text-sm font-medium mt-4 text-white/90">
-                  Your health score is {healthScore > 80 ? 'trending up' : 'stable'}. Keep maintaining your routine!
-                </p>
+                    {/* Comparison Metrics Grid */}
+                    {reportComparison.comparisonMetrics?.length > 0 && (
+                      <div className="mt-6">
+                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Biomarker Comparison</h4>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                          {reportComparison.comparisonMetrics.slice(0, 6).map((metric, idx) => (
+                            <div key={idx} className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                              <p className="text-[10px] text-slate-500 font-bold truncate">{metric.name}</p>
+                              <div className="flex items-end gap-1 mt-1">
+                                <span className="text-lg font-black text-black">{metric.latestValue}</span>
+                                <span className="text-[10px] text-slate-400 font-bold mb-0.5">{metric.unit}</span>
+                              </div>
+                              {metric.change !== 0 && (
+                                <div className={`flex items-center gap-1 mt-1 text-[10px] font-black ${metric.changePercent > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
+                                  {metric.changePercent > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                                  {metric.changePercent > 0 ? '+' : ''}{metric.changePercent}% from last
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* AI Insights */}
+                    {reportComparison.insights?.length > 0 && (
+                      <div className="mt-8">
+                        <div className="flex items-center gap-2 mb-4">
+                          <Sparkles className="w-4 h-4 text-[#2FC8B9]" />
+                          <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">AI Analysis</h4>
+                        </div>
+                        <div className="grid grid-cols-1 gap-3">
+                          {reportComparison.insights.map((insight, idx) => {
+                            const isPositive = insight.type === 'positive';
+                            const isWarning = insight.type === 'warning';
+
+                            return (
+                              <div
+                                key={idx}
+                                className={`group relative overflow-hidden rounded-[2rem] p-5 flex items-center gap-5 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow-xl
+                                  ${isPositive ? 'bg-gradient-to-br from-emerald-500/10 via-emerald-50/50 to-white border border-emerald-100/50' :
+                                    isWarning ? 'bg-gradient-to-br from-orange-500/10 via-orange-50/50 to-white border border-orange-100/50' :
+                                      'bg-gradient-to-br from-blue-500/10 via-blue-50/50 to-white border border-blue-100/50'
+                                  }`}
+                              >
+                                {/* Animated background element */}
+                                <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full blur-2xl opacity-20 transition-all group-hover:scale-150
+                                  ${isPositive ? 'bg-emerald-400' : isWarning ? 'bg-orange-400' : 'bg-blue-400'}`} />
+
+                                <div className={`flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center shadow-inner transition-transform group-hover:rotate-12
+                                  ${isPositive ? 'bg-emerald-100 text-emerald-600' :
+                                    isWarning ? 'bg-orange-100 text-orange-600' :
+                                      'bg-blue-100 text-blue-600'
+                                  }`}>
+                                  {isPositive ? <TrendingUp className="w-7 h-7" /> :
+                                    isWarning ? <TrendingDown className="w-7 h-7" /> :
+                                      <Activity className="w-7 h-7" />}
+                                </div>
+
+                                <div className="flex-1 relative z-10">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className={`text-[10px] font-black uppercase tracking-[0.2em] 
+                                      ${isPositive ? 'text-emerald-500' : isWarning ? 'text-orange-500' : 'text-blue-500'}`}>
+                                      {isPositive ? 'Improvement' : isWarning ? 'Attention' : 'Analysis'}
+                                    </span>
+                                    {insight.icon && <span className="text-sm">{insight.icon}</span>}
+                                  </div>
+                                  <p className="text-sm font-black text-slate-800 leading-tight">
+                                    {insight.text}
+                                  </p>
+                                </div>
+
+                                <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-black group-hover:translate-x-1 transition-all" />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  /* No comparison available */
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 rounded-full bg-[#2FC8B9]/10 flex items-center justify-center mx-auto mb-4">
+                      <BarChart3 className="w-8 h-8 text-[#2FC8B9]" />
+                    </div>
+                    <h3 className="text-xl font-black text-black mb-2">Health Progress Tracking</h3>
+                    <p className="text-sm text-slate-500 font-bold max-w-sm mx-auto mb-6">
+                      {reportComparison?.message || 'Upload at least 2 health reports to see your progress comparison and trends.'}
+                    </p>
+                    {dashboardData?.healthScores?.length > 0 && (
+                      <div className="h-32 w-full mt-4 -mx-2">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <AreaChart data={dashboardData.healthScores?.slice(-7) || []}>
+                            <defs>
+                              <linearGradient id="scoreGradient2" x1="0" y1="0" x2="0" y2="1">
+                                <stop offset="5%" stopColor="#2FC8B9" stopOpacity={0.1} />
+                                <stop offset="95%" stopColor="#2FC8B9" stopOpacity={0} />
+                              </linearGradient>
+                            </defs>
+                            <Area type="monotone" dataKey="score" stroke="#2FC8B9" strokeWidth={3} fillOpacity={1} fill="url(#scoreGradient2)" />
+                          </AreaChart>
+                        </ResponsiveContainer>
+                      </div>
+                    )}
+                    <Link
+                      to="/upload"
+                      className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-[#2FC8B9] text-white rounded-2xl font-black text-sm uppercase tracking-wider hover:bg-[#1db7a6] transition-all shadow-lg"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Upload Report
+                    </Link>
+                  </div>
+                )}
               </div>
 
               {/* Biomarker Trends Section */}
               <div className="bg-white rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-slate-100">
                 <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-lg font-black text-[#0F172A] tracking-tight uppercase">Biomarker Trends</h3>
-                  <button className="text-indigo-600 text-xs font-black uppercase tracking-widest flex items-center gap-1 group">
+                  <h3 className="text-lg font-black text-black tracking-tight uppercase">Biomarker Trends</h3>
+                  <button className="text-[#2FC8B9] text-xs font-black uppercase tracking-widest flex items-center gap-1 group">
                     View All
-                    <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight className="w-3 h-3 group-hover:gap-2 transition-all" />
                   </button>
                 </div>
 
@@ -840,19 +1046,19 @@ export default function DashboardEnhanced() {
                   <div className="relative">
                     <button
                       onClick={() => setIsMetricDropdownOpen(!isMetricDropdownOpen)}
-                      className="w-full bg-[#F8FAFC] rounded-3xl p-4 sm:p-6 border border-slate-100 flex items-center justify-between hover:border-indigo-200 transition-all text-left"
+                      className="w-full bg-slate-50 rounded-3xl p-4 sm:p-6 border border-slate-100 flex items-center justify-between hover:border-[#2FC8B9]/20 transition-all text-left"
                     >
                       <div>
-                        <span className="text-slate-900 font-bold block sm:inline">
+                        <span className="text-black font-black block sm:inline">
                           {currentMetric?.name || 'Core Biomarker'}
                         </span>
                         {currentMetric && currentMetric.history.length > 0 && (
-                          <p className="text-xs text-slate-500 font-semibold mt-1">
+                          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1">
                             Current: {currentMetric.history[currentMetric.history.length - 1]?.value} {currentMetric.unit}
                           </p>
                         )}
                       </div>
-                      <ChevronRight className={`w-5 h-5 text-slate-400 transition-transform ${isMetricDropdownOpen ? 'rotate-[-90deg]' : 'rotate-90'}`} />
+                      <ChevronRight className={`w-5 h-5 text-[#2FC8B9] transition-transform ${isMetricDropdownOpen ? 'rotate-[-90deg]' : 'rotate-90'}`} />
                     </button>
 
                     {isMetricDropdownOpen && (
@@ -864,7 +1070,7 @@ export default function DashboardEnhanced() {
                               setSelectedMetric(key);
                               setIsMetricDropdownOpen(false);
                             }}
-                            className={`w-full px-6 py-3 text-left hover:bg-slate-50 transition-colors ${selectedMetric === key ? 'text-indigo-600 font-bold' : 'text-slate-700'}`}
+                            className={`w-full px-6 py-4 text-left hover:bg-slate-50 transition-colors text-sm font-bold ${selectedMetric === key ? 'text-[#2FC8B9]' : 'text-slate-600'}`}
                           >
                             {allAvailableMetrics[key].name}
                           </button>
@@ -899,9 +1105,9 @@ export default function DashboardEnhanced() {
                           content={({ active, payload }) => {
                             if (active && payload && payload.length) {
                               return (
-                                <div className="bg-white shadow-2xl rounded-2xl p-4 border border-indigo-100 ring-4 ring-indigo-50/50">
-                                  <p className="text-[10px] font-black text-indigo-600 uppercase mb-1 tracking-wider">{payload[0].payload.date}</p>
-                                  <p className="text-sm font-bold text-slate-900">{payload[0].value} {currentMetric?.unit}</p>
+                                <div className="bg-black shadow-2xl rounded-2xl p-4 border border-[#2FC8B9]/20 shadow-[#2FC8B9]/10">
+                                  <p className="text-[10px] font-black text-[#2FC8B9] uppercase mb-1 tracking-wider">{payload[0].payload.date}</p>
+                                  <p className="text-sm font-black text-white">{payload[0].value} {currentMetric?.unit}</p>
                                 </div>
                               );
                             }
@@ -911,12 +1117,12 @@ export default function DashboardEnhanced() {
                         <Area
                           type="monotone"
                           dataKey="value"
-                          stroke="#4F46E5"
+                          stroke="#2FC8B9"
                           strokeWidth={4}
-                          fill="#4F46E5"
-                          fillOpacity={0.08}
-                          dot={{ r: 5, fill: '#4F46E5', strokeWidth: 3, stroke: '#fff' }}
-                          activeDot={{ r: 7, fill: '#4F46E5', strokeWidth: 3, stroke: '#fff', shadow: '0 0 15px rgba(79,70,229,0.4)' }}
+                          fill="#2FC8B9"
+                          fillOpacity={0.05}
+                          dot={{ r: 5, fill: '#2FC8B9', strokeWidth: 3, stroke: '#fff' }}
+                          activeDot={{ r: 7, fill: '#2FC8B9', strokeWidth: 3, stroke: '#fff', shadow: '0 0 15px rgba(47,200,185,0.4)' }}
                         />
                       </AreaChart>
                     </ResponsiveContainer>
@@ -949,42 +1155,42 @@ export default function DashboardEnhanced() {
 
               {/* Metrics Overview - Counts */}
               <div className="bg-white rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-slate-100">
-                <h3 className="text-lg font-black text-[#0F172A] tracking-tight mb-6 sm:mb-8 uppercase">Metrics Overview</h3>
+                <h3 className="text-lg font-black text-black tracking-tight mb-6 sm:mb-8 uppercase">Vitality Overview</h3>
                 <div className="grid grid-cols-3 gap-3 sm:gap-4 pb-2 sm:pb-0">
-                  <div className="bg-[#F0FDF4] rounded-3xl p-4 sm:p-6 border border-emerald-100 text-center group hover:scale-105 transition-transform shadow-sm">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-sm border border-emerald-50">
-                      <span className="text-xl sm:text-2xl font-black text-emerald-600">
+                  <div className="bg-slate-50 rounded-3xl p-4 sm:p-6 border border-slate-100 text-center group hover:scale-105 transition-transform">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-sm">
+                      <span className="text-xl sm:text-2xl font-black text-[#2FC8B9]">
                         {Object.values(dashboardData.latestAnalysis?.metrics || {}).filter(m => m.status === 'normal' || m.status?.toLowerCase() === 'normal').length || 4}
                       </span>
                     </div>
-                    <span className="text-[9px] sm:text-[10px] font-black text-emerald-600 uppercase tracking-widest block">Good</span>
+                    <span className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest block">Optimal</span>
                   </div>
-                  <div className="bg-[#FFFBEB] rounded-3xl p-4 sm:p-6 border border-amber-100 text-center group hover:scale-105 transition-transform shadow-sm">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-sm border border-amber-50">
-                      <span className="text-xl sm:text-2xl font-black text-amber-600">
+                  <div className="bg-slate-50 rounded-3xl p-4 sm:p-6 border border-slate-100 text-center group hover:scale-105 transition-transform">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-sm">
+                      <span className="text-xl sm:text-2xl font-black text-amber-500">
                         {Object.values(dashboardData.latestAnalysis?.metrics || {}).filter(m => m.status === 'moderate' || m.status === 'warning' || m.status?.toLowerCase().includes('borderline')).length || 2}
                       </span>
                     </div>
-                    <span className="text-[9px] sm:text-[10px] font-black text-amber-600 uppercase tracking-widest block">Moderate</span>
+                    <span className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest block">Moderate</span>
                   </div>
-                  <div className="bg-[#FEF2F2] rounded-3xl p-4 sm:p-6 border border-red-100 text-center group hover:scale-105 transition-transform shadow-sm">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-sm border border-red-50">
-                      <span className="text-xl sm:text-2xl font-black text-red-600">
+                  <div className="bg-slate-50 rounded-3xl p-4 sm:p-6 border border-slate-100 text-center group hover:scale-105 transition-transform">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-sm">
+                      <span className="text-xl sm:text-2xl font-black text-rose-500">
                         {Object.values(dashboardData.latestAnalysis?.metrics || {}).filter(m => ['low', 'high', 'critical'].includes(m.status?.toLowerCase())).length || 2}
                       </span>
                     </div>
-                    <span className="text-[9px] sm:text-[10px] font-black text-red-600 uppercase tracking-widest block">Issues</span>
+                    <span className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest block">Review</span>
                   </div>
                 </div>
               </div>
 
               {/* Critical Deficiencies Section */}
-              <div className="bg-[#FFF1F2] rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-red-100">
-                <div className="flex items-center gap-3 mb-6 sm:mb-8">
-                  <div className="bg-[#FE2C55] p-2 rounded-xl">
-                    <AlertCircle className="w-5 h-5 text-white" />
+              <div className="bg-slate-50 rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-slate-100">
+                <div className="flex items-center gap-4 mb-6 sm:mb-8">
+                  <div className="w-11 h-11 rounded-2xl bg-black flex items-center justify-center">
+                    <AlertCircle className="w-6 h-6 text-[#2FC8B9]" />
                   </div>
-                  <h3 className="text-lg font-black text-[#0F172A] tracking-tight uppercase">Critical Deficiencies</h3>
+                  <h3 className="text-lg font-black text-black tracking-tight uppercase">Critical Alerts</h3>
                 </div>
 
                 <div className="space-y-3 sm:space-y-4">
@@ -995,29 +1201,29 @@ export default function DashboardEnhanced() {
                     <Link
                       key={idx}
                       to={`/reports/${dashboardData.recentReports[0]?._id}`}
-                      className="flex items-center justify-between bg-white rounded-2xl sm:rounded-3xl p-4 sm:p-6 border border-red-100/50 hover:border-red-200 transition-all group shadow-sm"
+                      className="flex items-center justify-between bg-white rounded-3xl p-5 border border-slate-100 hover:border-[#2FC8B9]/20 transition-all group shadow-sm"
                     >
-                      <div className="flex items-center gap-3 sm:gap-4 overflow-hidden">
-                        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl flex-shrink-0 flex items-center justify-center ${def.severity?.toLowerCase() === 'high' ? 'bg-[#FE2C55]' : 'bg-orange-500'}`}>
-                          <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                      <div className="flex items-center gap-4 overflow-hidden">
+                        <div className={`w-10 h-10 rounded-2xl flex-shrink-0 flex items-center justify-center bg-slate-50 group-hover:bg-[#2FC8B9]/10`}>
+                          <AlertTriangle className="w-5 h-5 text-amber-500 group-hover:text-[#2FC8B9] transition-colors" />
                         </div>
                         <div className="min-w-0">
-                          <h4 className="font-extrabold text-slate-800 group-hover:text-[#FE2C55] transition-colors text-sm sm:text-base truncate">{def.name}</h4>
-                          <p className="text-[9px] sm:text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5 sm:mt-1">
+                          <h4 className="font-black text-black group-hover:text-[#2FC8B9] transition-colors text-sm sm:text-base truncate">{def.name}</h4>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
                             {def.severity || 'High'} Priority
                           </p>
                         </div>
                       </div>
-                      <ChevronRight className="w-4 h-4 sm:w-5 h-5 text-slate-300 group-hover:text-[#FE2C55] transition-all flex-shrink-0" />
+                      <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-[#2FC8B9] transition-all flex-shrink-0" />
                     </Link>
                   ))}
 
                   <Link
                     to="/nutrition"
-                    className="w-full mt-2 sm:mt-4 bg-[#FE2C55] hover:bg-[#E5264D] text-white font-black text-[11px] sm:text-sm uppercase tracking-widest py-4 sm:py-5 rounded-2xl sm:rounded-3xl transition-all shadow-lg hover:shadow-xl flex items-center justify-center gap-2 group"
+                    className="w-full mt-4 bg-black hover:bg-[#2FC8B9] text-white font-black text-xs sm:text-sm uppercase tracking-[0.2em] py-5 rounded-3xl transition-all shadow-lg flex items-center justify-center gap-2 group"
                   >
-                    View Personalized Diet Plan
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    Personalized Diet Plan
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
                   </Link>
                 </div>
               </div>
@@ -1029,9 +1235,9 @@ export default function DashboardEnhanced() {
         <div className="grid md:grid-cols-2 gap-6 px-3 md:px-0">
           {/* Recent Tests Column */}
           <div className="bg-white rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-slate-100">
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-black text-[#0F172A] uppercase tracking-tight">Recent Tests</h3>
-              <Link to="/reports" className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-indigo-600 transition-colors">View All</Link>
+            <div className="flex items-center justify-between mb-8">
+              <h3 className="text-lg font-black text-black uppercase tracking-tight">Recent Tests</h3>
+              <Link to="/reports" className="text-[10px] font-black text-[#2FC8B9] uppercase tracking-widest hover:underline transition-all">View All</Link>
             </div>
             <div className="space-y-4">
               {(dashboardData?.recentReports?.length > 0 ? dashboardData.recentReports.slice(0, 3) : [
@@ -1045,22 +1251,22 @@ export default function DashboardEnhanced() {
                   className="flex items-center justify-between p-4 bg-slate-50 hover:bg-white border border-transparent hover:border-slate-100 rounded-3xl transition-all group shadow-sm"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shadow-sm text-slate-400 group-hover:text-indigo-600 transition-colors">
+                    <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shadow-inner text-slate-400 group-hover:text-[#2FC8B9] transition-colors">
                       <FileText className="w-6 h-6" />
                     </div>
                     <div>
-                      <h4 className="font-bold text-slate-800 group-hover:text-indigo-600 transition-colors">{report.reportType}</h4>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">
+                      <h4 className="font-black text-black group-hover:text-[#2FC8B9] transition-colors text-sm">{report.reportType}</h4>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
                         {new Date(report.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                       </p>
                     </div>
                   </div>
                   <div className="flex items-center gap-4">
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${report.status === 'completed' ? 'text-emerald-500' : 'text-amber-500'
+                    <span className={`text-[10px] font-black uppercase tracking-widest ${report.status === 'completed' ? 'text-[#2FC8B9]' : 'text-amber-500'
                       }`}>
-                      {report.status === 'completed' ? 'Analyzed - Healthy' : 'Action Required'}
+                      {report.status === 'completed' ? 'Analyzed' : 'In Progress'}
                     </span>
-                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-indigo-600 transition-colors" />
+                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#2FC8B9] transition-colors" />
                   </div>
                 </Link>
               ))}
@@ -1069,11 +1275,11 @@ export default function DashboardEnhanced() {
 
           {/* Recommended Tests Column */}
           <div className="bg-white rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-slate-100">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center">
-                <Activity className="w-5 h-5 text-indigo-600" />
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-11 h-11 rounded-2xl bg-black flex items-center justify-center">
+                <Activity className="w-6 h-6 text-[#2FC8B9]" />
               </div>
-              <h3 className="text-lg font-black text-[#0F172A] uppercase tracking-tight">Personalized Recommendations</h3>
+              <h3 className="text-lg font-black text-black uppercase tracking-tight leading-tight">Elite Choices</h3>
             </div>
             <div className="space-y-4">
               {[
@@ -1082,18 +1288,18 @@ export default function DashboardEnhanced() {
                 { name: 'HbA1c Test', reason: 'Important for diabetes monitoring', type: 'Test' },
                 { name: 'Vitamin D3 (2000 IU)', reason: 'Low sun exposure detected', type: 'Supplement' }
               ].map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between p-4 bg-slate-50 rounded-3xl group cursor-pointer hover:bg-white border border-transparent hover:border-slate-100 transition-all shadow-sm">
+                <div key={idx} className="flex items-center justify-between p-4 bg-slate-50 rounded-3xl group cursor-pointer hover:bg-white border border-transparent hover:border-slate-100 transition-all">
                   <div className="flex flex-col">
                     <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-bold text-slate-800">{item.name}</h4>
-                      <span className={`text-[8px] font-black uppercase tracking-tighter px-1.5 py-0.5 rounded-md ${item.type === 'Test' ? 'bg-indigo-100 text-indigo-600' : 'bg-emerald-100 text-emerald-600'
+                      <h4 className="font-black text-black">{item.name}</h4>
+                      <span className={`text-[8px] font-black uppercase tracking-tighter px-2 py-0.5 rounded-md ${item.type === 'Test' ? 'bg-black text-white' : 'bg-[#2FC8B9] text-white'
                         }`}>
                         {item.type}
                       </span>
                     </div>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.reason}</p>
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{item.reason}</p>
                   </div>
-                  <button className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm text-indigo-600 hover:bg-indigo-600 hover:text-white transition-all ring-1 ring-slate-100">
+                  <button className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center shadow-sm text-black hover:bg-[#2FC8B9] hover:text-white transition-all">
                     <Plus className="w-5 h-5" />
                   </button>
                 </div>
@@ -1109,175 +1315,160 @@ export default function DashboardEnhanced() {
 
 
 
-        {/* 30 Days Challenge - Above Did You Know */}
         <div>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-orange-500 flex items-center justify-center">
-              <Trophy className="w-6 h-6 text-white" />
+          <div className="flex items-center gap-4 mb-8">
+            <div className="w-12 h-12 rounded-2xl bg-black flex items-center justify-center">
+              <Trophy className="w-6 h-6 text-[#2FC8B9]" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-slate-800">30 Days Challenge</h2>
-              <p className="text-slate-600 text-sm">Build healthy habits, one day at a time</p>
+              <h2 className="text-2xl font-black text-black tracking-tight leading-none uppercase">30 Days Challenge</h2>
+              <p className="text-slate-500 text-sm font-bold mt-1">Sculpt your future, day by day</p>
             </div>
           </div>
           <Link
             to="/challenge"
-            className="block bg-gradient-to-br from-purple-400 via-pink-500 to-orange-500 rounded-3xl p-5 sm:p-8 text-white hover:shadow-2xl transition-all hover:-translate-y-1 group"
+            className="block bg-white rounded-[2.5rem] p-8 sm:p-12 text-black shadow-xl border border-slate-100 hover:shadow-2xl transition-all relative overflow-hidden group"
           >
-            {/* Header - Compact on mobile */}
-            <div className="flex items-center justify-between mb-4 sm:mb-6">
-              <div className="flex items-center gap-2 sm:gap-4 flex-1">
-                <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0">
-                  <Trophy className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+            <div className="absolute top-0 right-0 w-80 h-80 bg-[#2FC8B9]/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
+            <div className="flex items-center justify-between mb-8 sm:mb-10 relative z-10">
+              <div className="flex items-center gap-4 sm:gap-6 flex-1">
+                <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-[2rem] bg-slate-50 flex items-center justify-center border border-slate-100">
+                  <Trophy className="w-8 h-8 sm:w-10 sm:h-10 text-[#2FC8B9]" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <h3 className="text-base sm:text-2xl font-bold mb-0.5 sm:mb-1 leading-tight">30 Days Health Challenge</h3>
-                  <p className="text-xs sm:text-base text-amber-100 leading-tight">Complete daily tasks to build lasting habits</p>
+                  <h3 className="text-xl sm:text-3xl font-black mb-1 leading-tight tracking-tight text-black">Daily Discipline</h3>
+                  <p className="text-sm sm:text-lg text-slate-500 font-bold">Unleash your ultimate physical potential</p>
                 </div>
               </div>
-              <ChevronRight className="w-6 h-6 sm:w-8 sm:h-8 group-hover:translate-x-2 transition-transform flex-shrink-0" />
+              <ChevronRight className="w-8 h-8 sm:w-10 sm:h-10 text-slate-300 group-hover:text-[#2FC8B9] group-hover:translate-x-3 transition-all flex-shrink-0" />
             </div>
 
-            {/* Task Cards Grid */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3 mb-4 sm:mb-6">
-              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3 sm:p-4 text-center">
-                <div className="text-2xl sm:text-3xl mb-1 sm:mb-2">💧</div>
-                <p className="text-xs sm:text-sm font-medium">Drink Water</p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12 relative z-10">
+              <div className="bg-slate-50 rounded-3xl p-5 sm:p-6 text-center border border-slate-100 group-hover:bg-[#2FC8B9]/5 transition-all">
+                <div className="text-3xl sm:text-4xl mb-3">💧</div>
+                <p className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-[#2FC8B9]">Hydrate</p>
               </div>
-              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3 sm:p-4 text-center">
-                <div className="text-2xl sm:text-3xl mb-1 sm:mb-2">🧘</div>
-                <p className="text-xs sm:text-sm font-medium">Workout/Yoga</p>
+              <div className="bg-slate-50 rounded-3xl p-5 sm:p-6 text-center border border-slate-100 group-hover:bg-[#2FC8B9]/5 transition-all">
+                <div className="text-3xl sm:text-4xl mb-3">🏋️</div>
+                <p className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-[#2FC8B9]">Push</p>
               </div>
-              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3 sm:p-4 text-center">
-                <div className="text-2xl sm:text-3xl mb-1 sm:mb-2">🍎</div>
-                <p className="text-xs sm:text-sm font-medium">Eat Fruits</p>
+              <div className="bg-slate-50 rounded-3xl p-5 sm:p-6 text-center border border-slate-100 group-hover:bg-[#2FC8B9]/5 transition-all">
+                <div className="text-3xl sm:text-4xl mb-3">🥩</div>
+                <p className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-[#2FC8B9]">Fuel</p>
               </div>
-              <div className="bg-white/20 backdrop-blur-sm rounded-xl p-3 sm:p-4 text-center">
-                <div className="text-2xl sm:text-3xl mb-1 sm:mb-2">😴</div>
-                <p className="text-xs sm:text-sm font-medium">Sleep Well</p>
+              <div className="bg-slate-50 rounded-3xl p-5 sm:p-6 text-center border border-slate-100 group-hover:bg-[#2FC8B9]/5 transition-all">
+                <div className="text-3xl sm:text-4xl mb-3">⚡</div>
+                <p className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-[#2FC8B9]">Recover</p>
               </div>
             </div>
 
-            {/* Footer Actions - Compact on mobile */}
-            <div className="flex items-center justify-between gap-2">
-              <div className="flex items-center gap-2 sm:gap-4 flex-wrap">
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <Flame className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span className="text-xs sm:text-base font-bold">Start Streak</span>
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">
+              <div className="flex items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <Flame className="w-5 h-5 text-orange-500" />
+                  <span className="text-sm font-black uppercase tracking-widest text-slate-700">Active Streak</span>
                 </div>
-                <div className="flex items-center gap-1.5 sm:gap-2">
-                  <Award className="w-4 h-4 sm:w-5 sm:h-5" />
-                  <span className="text-xs sm:text-base font-bold">Earn Badges</span>
+                <div className="flex items-center gap-2">
+                  <Award className="w-5 h-5 text-yellow-500" />
+                  <span className="text-sm font-black uppercase tracking-widest text-slate-700">Badges</span>
                 </div>
               </div>
-              <div className="px-3 py-1.5 sm:px-4 sm:py-2 bg-white/20 backdrop-blur-sm rounded-full text-xs sm:text-base font-bold whitespace-nowrap flex items-center gap-1">
-                Start Challenge
-                <ArrowRight className="w-3 h-3 sm:w-4 sm:h-4" />
+              <div className="px-10 py-5 bg-black text-white rounded-2xl text-xs sm:text-sm font-black uppercase tracking-widest shadow-xl flex items-center gap-3 transition-transform hover:bg-[#2FC8B9] hover:scale-105">
+                Start Today
+                <ArrowRight className="w-5 h-5" />
               </div>
             </div>
           </Link>
         </div>
 
-        {/* Did You Know - Horizontal scroll on mobile */}
         <div>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-400 to-orange-500 flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-white" />
+          <div className="flex items-center gap-4 mb-8">
+            <div className="w-12 h-12 rounded-2xl bg-black flex items-center justify-center">
+              <Sparkles className="w-6 h-6 text-[#2FC8B9]" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold text-slate-800">Did You Know?</h2>
-              <p className="text-slate-600 text-sm">Surprising nutrition facts about everyday foods</p>
+              <h2 className="text-2xl font-black text-black tracking-tight leading-none uppercase">Did You Know?</h2>
+              <p className="text-slate-500 text-sm font-bold mt-1">Science-backed nutrition secrets</p>
             </div>
           </div>
           <div className="md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-4 flex md:flex-none overflow-x-auto gap-4 pb-4 md:pb-0 snap-x snap-mandatory scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
-            <div className="min-w-[280px] md:min-w-0 snap-center bg-white rounded-2xl border-2 border-orange-200 p-5 hover:shadow-lg transition-all hover:-translate-y-1">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="text-4xl">🥑</div>
-                <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
-                  <Apple className="w-5 h-5 text-green-600" />
+            <div className="min-w-[280px] md:min-w-0 snap-center bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm hover:shadow-xl hover:border-[#2FC8B9]/10 transition-all">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="text-4xl drop-shadow-md">🥑</div>
+                <div className="w-11 h-11 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100">
+                  <Apple className="w-6 h-6 text-[#2FC8B9]" />
                 </div>
               </div>
-              <h3 className="font-bold text-slate-800 mb-2">Guava Power</h3>
-              <p className="text-sm text-slate-600 mb-3">
-                One guava contains <span className="font-bold text-green-600">3g of protein</span> - more than most fruits!
+              <h3 className="font-black text-black mb-3 text-lg">Guava Power</h3>
+              <p className="text-sm text-slate-500 leading-relaxed font-bold">
+                One guava contains <span className="text-[#2FC8B9] font-black">3g of protein</span> - more than most fruits in nature!
               </p>
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <Target className="w-3 h-3" />
-                <span>Great for muscle recovery</span>
-              </div>
             </div>
-            <div className="min-w-[280px] md:min-w-0 snap-center bg-white rounded-2xl border-2 border-blue-200 p-5 hover:shadow-lg transition-all hover:-translate-y-1">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="text-4xl">🥬</div>
-                <div className="w-10 h-10 rounded-lg bg-blue-100 flex items-center justify-center">
-                  <Droplets className="w-5 h-5 text-blue-600" />
+            <div className="min-w-[280px] md:min-w-0 snap-center bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm hover:shadow-xl hover:border-[#2FC8B9]/10 transition-all">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="text-4xl drop-shadow-md">🥬</div>
+                <div className="w-11 h-11 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100">
+                  <Droplets className="w-6 h-6 text-[#2FC8B9]" />
                 </div>
               </div>
-              <h3 className="font-bold text-slate-800 mb-2">Spinach Iron</h3>
-              <p className="text-sm text-slate-600 mb-3">
-                Spinach has <span className="font-bold text-blue-600">2.7mg iron</span> per 100g - boosts blood health naturally
+              <h3 className="font-black text-black mb-3 text-lg">Spinach Iron</h3>
+              <p className="text-sm text-slate-500 leading-relaxed font-bold">
+                Spinach packs <span className="text-[#2FC8B9] font-black">2.7mg of iron</span> per 100g - super blood support fuel.
               </p>
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <Heart className="w-3 h-3" />
-                <span>Prevents anemia</span>
-              </div>
             </div>
-            <div className="min-w-[280px] md:min-w-0 snap-center bg-white rounded-2xl border-2 border-purple-200 p-5 hover:shadow-lg transition-all hover:-translate-y-1">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="text-4xl">🥜</div>
-                <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
-                  <Zap className="w-5 h-5 text-purple-600" />
+            <div className="min-w-[280px] md:min-w-0 snap-center bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm hover:shadow-xl hover:border-[#2FC8B9]/10 transition-all">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="text-4xl drop-shadow-md">🥜</div>
+                <div className="w-11 h-11 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100">
+                  <Zap className="w-6 h-6 text-[#2FC8B9]" />
                 </div>
               </div>
-              <h3 className="font-bold text-slate-800 mb-2">Almond Energy</h3>
-              <p className="text-sm text-slate-600 mb-3">
-                Just <span className="font-bold text-purple-600">23 almonds</span> provide 6g protein and healthy fats for brain power
+              <h3 className="font-black text-black mb-3 text-lg">Almond Energy</h3>
+              <p className="text-sm text-slate-500 leading-relaxed font-bold">
+                Just <span className="text-[#2FC8B9] font-black">23 almonds</span> provide 6g protein and fats for better brain power.
               </p>
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <Brain className="w-3 h-3" />
-                <span>Boosts brain function</span>
-              </div>
             </div>
-            <div className="min-w-[280px] md:min-w-0 snap-center bg-white rounded-2xl border-2 border-amber-200 p-5 hover:shadow-lg transition-all hover:-translate-y-1">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="text-4xl">🥚</div>
-                <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
-                  <Sun className="w-5 h-5 text-amber-600" />
+            <div className="min-w-[280px] md:min-w-0 snap-center bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm hover:shadow-xl hover:border-[#2FC8B9]/10 transition-all">
+              <div className="flex items-center gap-4 mb-6">
+                <div className="text-4xl drop-shadow-md">🥚</div>
+                <div className="w-11 h-11 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100">
+                  <Sun className="w-6 h-6 text-[#2FC8B9]" />
                 </div>
               </div>
-              <h3 className="font-bold text-slate-800 mb-2">Egg Vitamin D</h3>
-              <p className="text-sm text-slate-600 mb-3">
-                One egg yolk has <span className="font-bold text-amber-600">40 IU Vitamin D</span> - supports bone health
+              <h3 className="font-black text-black mb-3 text-lg">Egg Vitamin D</h3>
+              <p className="text-sm text-slate-500 leading-relaxed font-bold">
+                One egg yolk has <span className="text-[#2FC8B9] font-black">40 IU Vitamin D</span> - essential for bone density.
               </p>
-              <div className="flex items-center gap-2 text-xs text-slate-500">
-                <Shield className="w-3 h-3" />
-                <span>Strengthens immunity</span>
-              </div>
             </div>
           </div>
         </div>
-
-
-
         {/* CTA Footer */}
-        <div className="bg-gradient-to-r from-purple-500 to-orange-500 rounded-3xl p-8 text-white">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div>
-              <h3 className="text-2xl font-bold mb-2">Need Help Getting Started?</h3>
-              <p className="text-cyan-50">Our AI assistant is here to guide you through your health journey</p>
+        <div className="bg-[#2FC8B9] rounded-[3rem] p-10 sm:p-16 text-white relative overflow-hidden group shadow-2xl">
+          <div className="absolute top-0 left-1/2 w-[600px] h-[600px] bg-white/10 rounded-full -translate-y-1/2 -translate-x-1/2 blur-[120px] pointer-events-none"></div>
+          <div className="flex flex-col md:flex-row items-center justify-between gap-12 relative z-10">
+            <div className="text-center md:text-left">
+              <h3 className="text-4xl sm:text-5xl font-black mb-6 tracking-tighter uppercase leading-none">Elevate Your Journey</h3>
+              <p className="text-white/80 font-bold text-base sm:text-xl max-w-xl">Our Health Intelligence engine is primed to optimize your wellness trajectory through advanced data analysis.</p>
             </div>
             <Link
               to="/ai-chat"
-              className="px-8 py-4 bg-white text-cyan-600 rounded-xl font-bold hover:shadow-2xl transition-all flex items-center gap-2 group"
+              className="px-12 py-6 bg-black text-white rounded-2xl font-black uppercase tracking-[0.25em] transition-all hover:bg-slate-900 shadow-2xl flex items-center gap-4 group hover:scale-105 active:scale-95"
             >
-              <MessageSquare className="w-5 h-5" />
-              Chat with AI
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+              <MessageSquare className="w-6 h-6 text-[#2FC8B9]" />
+              Initialize AI
+              <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
             </Link>
           </div>
         </div>
 
-      </div >
-    </div >
+        <div className="mt-12 mb-8 px-4">
+          <div className="bg-slate-50 border border-slate-100 rounded-3xl p-6 text-center">
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed max-w-2xl mx-auto">
+              Medical Disclaimer: The AI-generated insights, health scores, and diet recommendations provided by this platform are for informational and educational purposes only. This is not medical advice. Always consult with a qualified healthcare professional before making any changes to your medication, diet, or exercise routine.
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

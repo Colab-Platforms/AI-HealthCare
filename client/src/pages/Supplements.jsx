@@ -161,7 +161,7 @@ export default function Supplements() {
   }, {});
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 animate-fade-in p-4 pb-20">
+    <div className="w-full mx-auto space-y-6 animate-fade-in p-4 pb-20">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

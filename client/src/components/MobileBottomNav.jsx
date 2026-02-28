@@ -86,12 +86,15 @@ export default function MobileBottomNav() {
 
       {/* More Menu Dropdown */}
       {showMoreMenu && (
-        <div className="fixed bottom-24 right-4 left-4 sm:left-auto sm:w-72 bg-gradient-to-br from-white to-orange-50 rounded-3xl shadow-2xl z-50 overflow-hidden animate-fade-in border-2 border-cyan-200">
-          <div className="p-5 bg-gradient-to-r from-purple-500 to-orange-500">
+        <div className="fixed bottom-24 right-4 left-4 sm:left-auto sm:w-72 bg-white rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] z-50 overflow-hidden animate-fade-in border border-slate-100 p-2">
+          <div className="p-6 bg-black rounded-[2rem] mb-2">
             <div className="flex items-center justify-between">
-              <h3 className="font-bold text-white text-lg">Menu</h3>
-              <button onClick={() => setShowMoreMenu(false)} className="text-white hover:bg-white/20 rounded-full p-1.5 transition-colors">
-                <X className="w-5 h-5" />
+              <div>
+                <h3 className="font-black text-white text-lg tracking-tighter uppercase leading-none">FitCure</h3>
+                <p className="text-[10px] text-[#2FC8B9] font-black uppercase tracking-widest mt-1">Elite Menu</p>
+              </div>
+              <button onClick={() => setShowMoreMenu(false)} className="text-white hover:bg-white/20 rounded-xl p-2 transition-colors">
+                <X className="w-6 h-6" />
               </button>
             </div>
           </div>
@@ -126,10 +129,10 @@ export default function MobileBottomNav() {
                       toast.info('Appointment coming soon');
                       setShowMoreMenu(false);
                     }}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 text-slate-700 hover:bg-cyan-50 rounded-xl transition-all text-sm group"
+                    className="w-full flex items-center gap-3 px-4 py-3.5 text-slate-700 hover:bg-[#2FC8B9]/5 rounded-xl transition-all text-sm group"
                   >
-                    <div className="w-10 h-10 rounded-xl bg-cyan-100 flex items-center justify-center group-hover:bg-cyan-200 transition-colors">
-                      <Icon className="w-5 h-5 text-cyan-600" />
+                    <div className="w-10 h-10 rounded-xl bg-[#2FC8B9]/10 flex items-center justify-center group-hover:bg-[#2FC8B9]/20 transition-colors">
+                      <Icon className="w-5 h-5 text-[#2FC8B9]" />
                     </div>
                     <span className="font-medium">{item.label}</span>
                   </button>
@@ -141,31 +144,31 @@ export default function MobileBottomNav() {
                   key={item.path}
                   to={item.path}
                   onClick={() => setShowMoreMenu(false)}
-                  className={`flex items-center gap-3 px-4 py-3.5 rounded-xl transition-all text-sm group ${active
-                    ? 'bg-gradient-to-r from-purple-500 to-orange-500 text-white shadow-lg'
-                    : 'text-slate-700 hover:bg-cyan-50'
+                  className={`flex items-center gap-4 px-5 py-4 rounded-2xl transition-all group ${active
+                    ? 'bg-black text-white shadow-xl'
+                    : 'text-slate-600 hover:bg-slate-50'
                     }`}
                 >
                   <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${active
                     ? 'bg-white/20'
-                    : 'bg-cyan-100 group-hover:bg-cyan-200'
+                    : 'bg-[#2FC8B9]/10 group-hover:bg-[#2FC8B9]/20'
                     }`}>
-                    <Icon className={`w-5 h-5 ${active ? 'text-white' : 'text-cyan-600'}`} />
+                    <Icon className={`w-5 h-5 ${active ? 'text-white' : 'text-[#2FC8B9]'}`} />
                   </div>
                   <span className="font-medium">{item.label}</span>
                 </Link>
               );
             })}
 
-            <div className="border-t-2 border-cyan-100 my-3" />
+            <div className="border-t border-slate-100 my-3" />
 
-            <div className="px-4 py-2 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-orange-500 flex items-center justify-center text-white font-bold">
+            <div className="px-5 py-4 flex items-center gap-4">
+              <div className="w-11 h-11 rounded-xl bg-black flex items-center justify-center text-[#2FC8B9] font-black shadow-lg">
                 {user?.name?.[0]?.toUpperCase()}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-slate-800 truncate">{user?.name}</p>
-                <p className="text-xs text-slate-500 truncate">{user?.email}</p>
+                <p className="text-xs font-black text-black uppercase tracking-wider truncate">{user?.name}</p>
+                <p className="text-[10px] text-slate-400 font-bold lowercase truncate">{user?.email}</p>
               </div>
             </div>
 

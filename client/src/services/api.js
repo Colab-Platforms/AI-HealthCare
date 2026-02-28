@@ -10,9 +10,9 @@ const getApiUrl = () => {
 
   // Check if we're in production (Vercel, Netlify, etc.)
   const currentHost = window.location.hostname;
-  const isProduction = 
-    import.meta.env.PROD || 
-    currentHost.includes('vercel.app') || 
+  const isProduction =
+    import.meta.env.PROD ||
+    currentHost.includes('vercel.app') ||
     currentHost.includes('netlify.app') ||
     (currentHost !== 'localhost' && currentHost !== '127.0.0.1');
 
@@ -61,10 +61,10 @@ const cachedGet = async (url, options = {}) => {
   // Make API call
   console.log('🌐 API call:', url);
   const response = await api.get(url);
-  
+
   // Cache the response
   cache.set(cacheKey, response.data, ttl);
-  
+
   return { ...response, fromCache: false };
 };
 
@@ -81,18 +81,20 @@ api.interceptors.response.use(
   (error) => {
     // Check if this request should skip auto-logout
     const skipAutoLogout = error.config?.skipAutoLogout;
-    
-    if (error.response?.status === 401 && !skipAutoLogout) {
-      console.log('401 Unauthorized - Logging out');
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
-    } else if (error.response?.status === 401 && skipAutoLogout) {
-      console.log('401 Unauthorized - Skipping auto-logout (skipAutoLogout flag set)');
-    }
-    
-    // Better error handling for network issues on mobile
-    if (!error.response) {
+
+    if (error.response?.status === 401) {
+      console.warn('🔓 401 Unauthorized detected for URL:', error.config?.url);
+      console.log('🔓 skipAutoLogout flag status:', !!skipAutoLogout);
+
+      if (!skipAutoLogout) {
+        console.log('🚪 Triggering auto-logout and redirecting to /login');
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.href = '/login';
+      } else {
+        console.log('🛡️ skipAutoLogout is TRUE — keeping user on current page');
+      }
+    } else if (!error.response) {
       console.error('Network Error:', {
         message: error.message,
         apiUrl: api.defaults.baseURL,
@@ -100,7 +102,7 @@ api.interceptors.response.use(
         currentPort: window.location.port
       });
     }
-    
+
     return Promise.reject(error);
   }
 );
@@ -118,13 +120,23 @@ export const healthService = {
   compareReport: (id) => api.get(`/health/reports/${id}/compare`),
   chatAboutReport: (id, message, chatHistory) => api.post(`/health/reports/${id}/chat`, { message, chatHistory }),
   askAI: (data) => api.post('/health/ai-chat', data),
-  getMetricInfo: (data) => api.post('/health/metric-info', data)
+  getMetricInfo: (data) => api.post('/health/metric-info', data),
+  getReportComparison: () => api.get('/health/report-comparison')
 };
 
 export const authService = {
   register: (data) => api.post('/auth/register', data),
   registerDoctor: (data) => api.post('/auth/register/doctor', data),
   login: (data) => api.post('/auth/login', data)
+};
+
+export const notificationService = {
+  getAll: () => api.get('/notifications'),
+  getUnreadCount: () => api.get('/notifications/unread-count'),
+  markAsRead: (id) => api.put(`/notifications/${id}/read`),
+  markAllAsRead: () => api.put('/notifications/mark-all-read'),
+  deleteOne: (id) => api.delete(`/notifications/${id}`),
+  clearAll: () => api.delete('/notifications')
 };
 
 export const doctorService = {
@@ -135,14 +147,14 @@ export const doctorService = {
   bookAppointment: (data) => api.post('/doctors/book', data),
   getAppointments: () => api.get('/doctors/appointments'),
   getAppointment: (id) => api.get(`/doctors/appointments/${id}`),
-  
+
   // Consultation methods
   startConsultation: (appointmentId) => api.post(`/doctors/appointments/${appointmentId}/start`),
   endConsultation: (appointmentId) => api.post(`/doctors/appointments/${appointmentId}/end`),
   getConsultationSummary: (appointmentId) => api.get(`/doctors/appointments/${appointmentId}/summary`),
   submitReview: (appointmentId, reviewData) => api.post(`/doctors/appointments/${appointmentId}/review`, reviewData),
   downloadPrescription: (appointmentId) => api.get(`/doctors/appointments/${appointmentId}/prescription`, { responseType: 'blob' }),
-  
+
   // Doctor-specific
   getDashboard: () => api.get('/doctors/me/dashboard'),
   getMyProfile: () => api.get('/doctors/me/profile'),
@@ -151,7 +163,7 @@ export const doctorService = {
   updateAppointmentStatus: (appointmentId, data) => api.patch(`/doctors/me/appointments/${appointmentId}`, data),
   getPatientProfile: (patientId, appointmentId) => api.get(`/doctors/patient/${patientId}`, { params: { appointmentId } }),
   getDoctorAppointments: (doctorId, status) => api.get(`/doctors/${doctorId}/appointments`, { params: { status } }),
-  
+
   // Availability Management
   getMyAvailability: () => api.get('/doctors/me/availability'),
   updateMyAvailability: (data) => api.put('/doctors/me/availability', data),
@@ -174,34 +186,34 @@ export const wearableService = {
 export const adminService = {
   // Stats
   getStats: () => api.get('/admin/stats'),
-  
+
   // Users
   getUsers: (params) => api.get('/admin/users', { params }),
   getUserDetails: (id) => api.get(`/admin/users/${id}`),
   updateUserStatus: (id, isActive) => api.patch(`/admin/users/${id}/status`, { isActive }),
-  
+
   // Reports
   getReports: (params) => api.get('/admin/reports', { params }),
-  
+
   // Deficiency Rules
   getDeficiencyRules: () => api.get('/admin/deficiency-rules'),
   createDeficiencyRule: (data) => api.post('/admin/deficiency-rules', data),
   updateDeficiencyRule: (id, data) => api.put(`/admin/deficiency-rules/${id}`, data),
   deleteDeficiencyRule: (id) => api.delete(`/admin/deficiency-rules/${id}`),
-  
+
   // Supplements
   getSupplements: () => api.get('/admin/supplements'),
   createSupplement: (data) => api.post('/admin/supplements', data),
   updateSupplement: (id, data) => api.put(`/admin/supplements/${id}`, data),
   deleteSupplement: (id) => api.delete(`/admin/supplements/${id}`),
-  
+
   // Diet Plans
   getDietPlans: (params) => api.get('/admin/diet-plans', { params }),
   createDietPlan: (data) => api.post('/admin/diet-plans', data),
   updateDietPlan: (id, data) => api.put(`/admin/diet-plans/${id}`, data),
   approveDietPlan: (id, status) => api.patch(`/admin/diet-plans/${id}/approve`, { status }),
   deleteDietPlan: (id) => api.delete(`/admin/diet-plans/${id}`),
-  
+
   // Doctors Management
   getDoctors: (params) => api.get('/admin/doctors', { params }),
   createDoctor: (data) => api.post('/admin/doctors', data),

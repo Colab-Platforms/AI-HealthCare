@@ -99,8 +99,14 @@ class NutritionAI {
       console.log('✅ NutritionAI: Got response, length:', aiResponse.length);
       return aiResponse;
     } catch (error) {
-      const errorDetail = error.response?.data ? JSON.stringify(error.response.data).substring(0, 500) : error.message;
-      console.error(`❌ NutritionAI Request Error (Attempt ${attempt + 1}):`, errorDetail);
+      // LOG THE FULL ERROR RESPONSE FOR DIAGNOSIS
+      let errorDetail = error.message;
+      if (error.response?.data) {
+        errorDetail = `API Error (${error.response.status}): ${JSON.stringify(error.response.data)}`;
+        console.error(`❌ NutritionAI API ERROR details:`, error.response.data);
+      }
+
+      console.error(`❌ NutritionAI Request Error (Attempt ${attempt + 1}):`, errorDetail.substring(0, 1000));
 
       // Retry logic for OpenRouter with fallback models
       if (!isAnthropicDirect && attempt < 2) {
@@ -114,7 +120,38 @@ class NutritionAI {
         const origKey = process.env.ANTHROPIC_API_KEY;
         process.env.ANTHROPIC_API_KEY = '';
         try {
-          const result = await this.makeAIRequest(payload, 0);
+          // If the payload contains an image, we MUST convert it to OpenRouter format
+          let orPayload = payload;
+          if (payload.messages?.[0]?.content && Array.isArray(payload.messages[0].content)) {
+            const hasImage = payload.messages[0].content.some(c => c.type === 'image');
+            if (hasImage) {
+              console.log('🔄 Converting Anthropic image payload to OpenRouter format for fallback');
+              const textContent = payload.messages[0].content.find(c => c.type === 'text')?.text || '';
+              const imageContent = payload.messages[0].content.find(c => c.type === 'image');
+
+              orPayload = {
+                messages: [
+                  { role: 'system', content: payload.system || 'You are a professional nutritionist AI.' },
+                  {
+                    role: 'user',
+                    content: [
+                      { type: 'text', text: textContent },
+                      {
+                        type: 'image_url',
+                        image_url: {
+                          url: `data:image/jpeg;base64,${imageContent.source.data}`
+                        }
+                      }
+                    ]
+                  }
+                ],
+                temperature: 0.3,
+                max_tokens: 2000
+              };
+            }
+          }
+
+          const result = await this.makeAIRequest(orPayload, 0);
           process.env.ANTHROPIC_API_KEY = origKey;
           return result;
         } catch (retryErr) {
@@ -127,165 +164,244 @@ class NutritionAI {
     }
   }
 
+  _getUnifiedPrompt(context = '') {
+    return `You are a professional nutritionist AI specialized in global cuisine with deep expertise in Indian foods.
+    
+    CONTEXT/DESCRIPTION: "${context}"
+    
+    CRITICAL INSTRUCTIONS:
+    1. IMAGE ANALYSIS: If analyzing an image, identify EVERY food item visible on the plate.
+    2. ACCURACY: Use real-world nutritional values. (e.g., 1 Roti = 70kcal, 1 bowl Rice = 200kcal).
+    3. RANGES: For total nutrition, provide numeric values representing the average in JSON.
+    4. ALTERNATIVES: If the meal is high in calories, oil, or sugar, suggest 3 healthy alternatives.
+    5. BREAKDOWN: Provide micronutrients, health benefits, and specific tips to make this meal healthier.
+
+    IF NO FOOD IS DETECTABLE (Only for images), return:
+    { "error": "UNABLE_TO_DETECT_FOOD", "message": "I couldn't clearly identify any food in this photo. Please try shooting from a top-down angle or ensure better lighting." }
+    
+    RETURN RESPONSE IN THIS EXACT JSON FORMAT:
+    {
+      "foodItem": {
+        "name": "Primary food name",
+        "description": "Short visual description",
+        "quantity": "Portion size estimate",
+        "nutrition": {
+          "calories": 250, "protein": 8, "carbs": 45, "fats": 5, "fiber": 6, "sugar": 2, "sodium": 150
+        }
+      },
+      "totalNutrition": { "calories": 250, "protein": 8, "carbs": 45, "fats": 5, "fiber": 6, "sugar": 2, "sodium": 150 },
+      "healthScore": 75,
+      "analysis": "Specific nutritional analysis.",
+      "micronutrients": [
+        { "name": "Vitamin C", "value": "12mg", "percentage": 15 }
+      ],
+      "enhancementTips": [
+        { "name": "Add Protein", "benefit": "Better satiety" }
+      ],
+      "healthBenefitsSummary": "Impact on health.",
+      "warnings": ["Warning if unhealthy"],
+      "alternatives": [
+        {
+          "name": "Alternative",
+          "description": "Better choice",
+          "nutrition": { "calories": 150, "protein": 10, "carbs": 20, "fats": 2 },
+          "benefits": "Benefit",
+          "prepTime": "10 mins",
+          "satietyScore": 8
+        }
+      ]
+    }`;
+  }
+
   /**
    * Analyze food from image
    */
   async analyzeFromImage(imageBase64, additionalContext = '') {
-    const prompt = `You are a professional nutritionist AI with expertise in Indian food recognition and accurate nutrition data. Carefully analyze this food image.
+    // Strip data URI prefix if present (e.g., "data:image/jpeg;base64,...")
+    if (imageBase64.startsWith('data:')) {
+      imageBase64 = imageBase64.split(',')[1];
+    }
 
-${additionalContext ? `User provided context: ${additionalContext}` : ''}
+    // Validate image size to prevent memory issues
+    const imageSizeKB = (imageBase64.length * 0.75) / 1024;
+    console.log(`🖼️ Processing image for AI analysis: ${imageSizeKB.toFixed(2)} KB`);
 
-CRITICAL INSTRUCTIONS FOR ACCURACY:
-1. LOOK AT THE IMAGE CAREFULLY - Identify the EXACT food items visible
-2. IF YOU CANNOT CLEARLY SEE FOOD IN THE IMAGE:
-   - Return error JSON with "error": "UNABLE_TO_DETECT_FOOD"
-   - Do NOT make up food names
-   - Do NOT return random food like "paneer butter masala" if you don't see it
-3. USE ACCURATE INDIAN FOOD NUTRITION DATA:
-   - Plain roti/chapati (1 medium): 70-80 kcal, 2-3g protein, 14-15g carbs, 0.5-1g fat
-   - Samosa (1 medium): 250-300 kcal, 5-7g protein, 30-35g carbs, 12-17g fat
-   - Rice (1 cup cooked): 200-240 kcal, 4-5g protein, 45-50g carbs, 0.5-1g fat
-4. PAY ATTENTION TO QUANTITY - If user says "3 pieces", multiply nutrition by 3
-5. ALWAYS provide RANGES (e.g., "210-240" not "225")
-6. DO NOT OVERESTIMATE - Plain roti is low calorie, don't confuse with paratha
+    if (imageSizeKB > 5120) { // 5MB limit
+      throw new Error('Image too large for processing. Please use a smaller image.');
+    }
 
-IF IMAGE IS UNCLEAR OR NO FOOD VISIBLE:
-Return this exact JSON:
-{
-  "error": "UNABLE_TO_DETECT_FOOD",
-  "message": "Could not clearly identify food in the image. Please try again with a clearer photo showing the food."
-}
+    const prompt = this._getUnifiedPrompt(additionalContext);
+    const systemMsg = 'You are a professional nutritionist AI with expertise in Indian food recognition and accurate nutrition data. You MUST analyze the image carefully and identify all food items visible. Return your analysis as valid JSON only.';
 
-QUANTITY HANDLING:
-- If user mentions "3 pieces", calculate for 3 pieces
-- Example: 3 plain rotis = 210-240 kcal (NOT 720 kcal)
-- Example: 3 samosas = 750-900 kcal
+    // Helper to build Anthropic Direct payload
+    const buildAnthropicPayload = () => ({
+      max_tokens: 2000,
+      system: systemMsg,
+      messages: [
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            {
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: 'image/jpeg',
+                data: imageBase64
+              }
+            }
+          ]
+        }
+      ],
+      temperature: 0.3
+    });
 
-NUTRITION VALUE FORMAT - MANDATORY RANGES:
-- ALWAYS use ranges: "210-240" never single values
-- Format: "calories": "210-240", "protein": "6-9", "carbs": "42-45"
-- This is REQUIRED for all nutrition values
+    // Helper to build OpenRouter payload (different image format!)
+    const buildOpenRouterPayload = () => ({
+      messages: [
+        { role: 'system', content: systemMsg },
+        {
+          role: 'user',
+          content: [
+            { type: 'text', text: prompt },
+            {
+              type: 'image_url',
+              image_url: {
+                url: `data:image/jpeg;base64,${imageBase64}`
+              }
+            }
+          ]
+        }
+      ],
+      temperature: 0.3,
+      max_tokens: 2000
+    });
 
-COMMON INDIAN FOODS (per piece/serving):
-- Plain roti: 70-80 kcal, 2-3g protein, 14-15g carbs, 0.5-1g fat
-- Paratha (with oil): 150-200 kcal, 3-4g protein, 20-25g carbs, 7-10g fat
-- Samosa: 250-300 kcal, 5-7g protein, 30-35g carbs, 12-17g fat
-- Idli (2 pieces): 80-100 kcal, 3-4g protein, 16-20g carbs, 0.5-1g fat
-- Dosa (1 plain): 120-150 kcal, 3-4g protein, 22-28g carbs, 2-4g fat
+    // Helper to parse AI response
+    const parseResponse = (aiResponse) => {
+      console.log('🧠 AI raw response length:', aiResponse.length);
+      console.log('🧠 AI response preview:', aiResponse.substring(0, 300));
 
-Return response in EXACT JSON format (no markdown):
-{
-  "foodItems": [
-    {
-      "name": "Exact food name",
-      "description": "What you see",
-      "quantity": "User quantity or visual estimate",
-      "nutrition": {
-        "calories": "210-240",
-        "protein": "6-9",
-        "carbs": "42-45",
-        "fats": "1.5-3",
-        "fiber": "6-9",
-        "sugar": "0-1",
-        "sodium": "0-10"
+      const jsonMatch = aiResponse.match(/(\{[\s\S]*\})/);
+      if (!jsonMatch) {
+        console.error('❌ No JSON found in AI response:', aiResponse.substring(0, 500));
+        throw new Error('No JSON in AI response');
+      }
+
+      try {
+        const parsed = JSON.parse(jsonMatch[1]);
+        console.log('✅ Parsed food:', parsed.foodItem?.name || 'Unknown');
+        return { success: true, data: parsed, rawResponse: aiResponse };
+      } catch (parseError) {
+        // Try relaxed parsing
+        let cleanedJson = jsonMatch[1]
+          .replace(/,\s*}/g, '}')
+          .replace(/,\s*]/g, ']')
+          .replace(/[\x00-\x1F\x7F]/g, ' ');
+
+        try {
+          const parsed = JSON.parse(cleanedJson);
+          console.log('✅ Relaxed parsing succeeded:', parsed.foodItem?.name || 'Unknown');
+          return { success: true, data: parsed, rawResponse: aiResponse };
+        } catch (e) {
+          throw new Error('AI returned invalid JSON');
+        }
+      }
+    };
+
+    // ─── ATTEMPT 1: Try Anthropic Direct if key is available ───
+    const hasAnthropicKey = process.env.ANTHROPIC_API_KEY && process.env.ANTHROPIC_API_KEY.startsWith('sk-ant');
+
+    if (hasAnthropicKey) {
+      try {
+        console.log('🧠 [Attempt 1] Trying Anthropic Direct API for image analysis...');
+        const anthropicPayload = buildAnthropicPayload();
+
+        // Call Anthropic Direct API directly (not through makeAIRequest to avoid bad fallback)
+        const model = 'claude-3-5-sonnet-20241022';
+        const response = await axios.post(ANTHROPIC_API_URL, {
+          model: model,
+          max_tokens: 2000,
+          system: anthropicPayload.system,
+          messages: anthropicPayload.messages,
+          temperature: 0.3
+        }, {
+          headers: {
+            'x-api-key': process.env.ANTHROPIC_API_KEY,
+            'anthropic-version': '2023-06-01',
+            'Content-Type': 'application/json'
+          },
+          timeout: 90000
+        });
+
+        if (response.data?.content?.[0]?.text) {
+          const aiResponse = response.data.content[0].text;
+          console.log('✅ Anthropic Direct image analysis succeeded');
+          return parseResponse(aiResponse);
+        } else {
+          throw new Error('Invalid response structure from Anthropic');
+        }
+      } catch (anthropicError) {
+        const errDetail = anthropicError.response?.data
+          ? JSON.stringify(anthropicError.response.data).substring(0, 300)
+          : anthropicError.message;
+        console.error('❌ Anthropic Direct failed:', errDetail);
+        console.log('⚠️ Will try OpenRouter next...');
       }
     }
-  ],
-  "totalNutrition": {
-    "calories": "210-240",
-    "protein": "6-9",
-    "carbs": "42-45",
-    "fats": "1.5-3",
-    "fiber": "6-9",
-    "sugar": "0-1",
-    "sodium": "0-10"
-  },
-  "healthScore": 0-100,
-  "healthScore10": 0.0-10.0,
-  "isHealthy": true/false,
-  "analysis": "Brief analysis",
-  "micronutrients": [
-    { "name": "Vitamin C", "value": "12mg", "percentage": 15 },
-    { "name": "Iron", "value": "1.2mg", "percentage": 8 }
-  ],
-  "enhancementTips": [
-    { "name": "Sprouts", "benefit": "Adds 5g of plant-based protein and fiber" },
-    { "name": "Lemon Juice", "benefit": "Increases Iron absorption with Vitamin C" }
-  ],
-  "healthBenefitsSummary": "This meal provide a balanced mix of complex carbs and protein. Adding greens would improve the fiber content and provide essential Vitamin K for bone health.",
-  "recommendations": "Suggestions",
-  "alternatives": []
-}
 
-CRITICAL: Use accurate Indian food nutrition data. Plain roti is LOW calorie (70-80 each), not high!`;
+    // ─── ATTEMPT 2: Try OpenRouter with vision-capable models ───
+    const hasOpenRouterKey = !!process.env.OPENROUTER_API_KEY;
 
-    const { isAnthropicDirect } = this.getApiParams();
-    const systemMsg = 'You are a professional nutritionist AI with expertise in Indian food recognition and accurate nutrition data.';
+    if (hasOpenRouterKey) {
+      const openRouterModels = [
+        'anthropic/claude-3.5-sonnet',
+        'google/gemini-flash-1.5',
+        'openai/gpt-4o-mini',
+        'google/gemini-pro-1.5'
+      ];
 
-    let payload;
+      for (let i = 0; i < openRouterModels.length; i++) {
+        try {
+          const modelName = openRouterModels[i];
+          console.log(`🧠 [Attempt ${i + 2}] Trying OpenRouter with ${modelName}...`);
 
-    if (isAnthropicDirect) {
-      // Anthropic Direct API format for images
-      payload = {
-        max_tokens: 2000,
-        system: systemMsg,
-        messages: [
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: prompt },
-              {
-                type: 'image',
-                source: {
-                  type: 'base64',
-                  media_type: 'image/jpeg',
-                  data: imageBase64
-                }
-              }
-            ]
+          const openRouterPayload = buildOpenRouterPayload();
+          openRouterPayload.model = modelName;
+
+          const response = await axios.post(OPENROUTER_API_URL, openRouterPayload, {
+            headers: {
+              'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
+              'Content-Type': 'application/json',
+              'HTTP-Referer': 'https://fitcure.ai',
+              'X-Title': 'FitCure Nutrition'
+            },
+            timeout: 90000
+          });
+
+          if (response.data?.choices?.[0]?.message?.content) {
+            const aiResponse = response.data.choices[0].message.content;
+            console.log(`✅ OpenRouter (${modelName}) image analysis succeeded`);
+            return parseResponse(aiResponse);
+          } else {
+            throw new Error('Invalid OpenRouter response');
           }
-        ],
-        temperature: 0.3
-      };
-    } else {
-      // OpenRouter format for images
-      payload = {
-        messages: [
-          { role: 'system', content: systemMsg },
-          {
-            role: 'user',
-            content: [
-              { type: 'text', text: prompt },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: `data:image/jpeg;base64,${imageBase64}`
-                }
-              }
-            ]
-          }
-        ],
-        temperature: 0.3,
-        max_tokens: 2000
-      };
-    }
+        } catch (orError) {
+          const errDetail = orError.response?.data
+            ? JSON.stringify(orError.response.data).substring(0, 300)
+            : orError.message;
+          console.error(`❌ OpenRouter model ${openRouterModels[i]} failed:`, errDetail);
 
-    try {
-      const aiResponse = await this.makeAIRequest(payload);
-      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        return {
-          success: true,
-          data: JSON.parse(jsonMatch[0]),
-          rawResponse: aiResponse
-        };
-      } else {
-        throw new Error('Failed to parse AI response');
+          if (i < openRouterModels.length - 1) {
+            console.log('⚠️ Trying next model...');
+          }
+        }
       }
-    } catch (error) {
-      console.error('AI Image Analysis Error:', error.message);
-      throw error;
     }
+
+    // ─── ALL ATTEMPTS FAILED ───
+    console.error('❌ ALL image analysis attempts failed! No API could process the image.');
+    throw new Error('Failed to analyze food image with any available AI model. Please try text input instead.');
   }
 
   /**
@@ -348,13 +464,19 @@ Be accurate with portion sizes and nutrition values. Use standard serving sizes 
 
     try {
       const aiResponse = await this.makeAIRequest(payload);
-      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+      const jsonMatch = aiResponse.match(/(\{[\s\S]*\})/);
       if (jsonMatch) {
-        return {
-          success: true,
-          data: JSON.parse(jsonMatch[0]),
-          rawResponse: aiResponse
-        };
+        try {
+          return {
+            success: true,
+            data: JSON.parse(jsonMatch[1]),
+            rawResponse: aiResponse
+          };
+        } catch (parseError) {
+          console.error('JSON Parse Error. Attempting relaxed parsing...');
+          // Try to find the inner-most JSON if possible, or just throw
+          throw new Error('AI returned invalid JSON structure');
+        }
       } else {
         throw new Error('Failed to parse AI response');
       }
@@ -431,25 +553,15 @@ Provide 3-5 INDIAN meal suggestions in JSON:
   }
 
   /**
-   * Quick food check
+   * Quick food check (Unified)
    */
   async quickFoodCheck(foodDescription) {
-    const prompt = `You are a professional nutritionist AI specialized in Indian cuisine. Analyze "${foodDescription}".
-If it's junk, suggest 3-5 HEALTHY Indian alternatives.
-
-Return in JSON:
-{
-  "foodItem": { "name": "Name", "quantity": "Qty", "nutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0 } },
-  "healthScore": 0-100, "isHealthy": true/false, "analysis": "Analysis",
-  "micronutrients": [], "enhancementTips": [], "healthBenefitsSummary": "Summary",
-  "alternatives": [ { "name": "Name", "description": "Why", "nutrition": {}, "benefits": "Key" } ]
-}`;
-
+    const prompt = this._getUnifiedPrompt(foodDescription);
     const systemMsg = 'You are a professional nutritionist AI specializing in Indian cuisine.';
     const { isAnthropicDirect } = this.getApiParams();
 
     const payload = isAnthropicDirect ? {
-      max_tokens: 1500,
+      max_tokens: 2000,
       system: systemMsg,
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.3
@@ -459,14 +571,18 @@ Return in JSON:
         { role: 'user', content: prompt }
       ],
       temperature: 0.3,
-      max_tokens: 1500
+      max_tokens: 2000
     };
 
     try {
       const aiResponse = await this.makeAIRequest(payload);
-      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+      const jsonMatch = aiResponse.match(/(\{[\s\S]*\})/);
       if (jsonMatch) {
-        return { success: true, data: JSON.parse(jsonMatch[0]) };
+        try {
+          return { success: true, data: JSON.parse(jsonMatch[1]) };
+        } catch (e) {
+          throw new Error('AI returned invalid JSON in unified check');
+        }
       } else {
         throw new Error('Failed to parse AI response');
       }

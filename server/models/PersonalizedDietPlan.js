@@ -15,7 +15,7 @@ const personalizedDietPlanSchema = new mongoose.Schema({
     type: Date,
     default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) // 30 days
   },
-  
+
   // Input data used for generation
   inputData: {
     age: Number,
@@ -116,6 +116,8 @@ const personalizedDietPlanSchema = new mongoose.Schema({
     food: String,
     reason: String
   }],
+
+  avoidSuggestions: [String],
 
   // User feedback
   userRating: {

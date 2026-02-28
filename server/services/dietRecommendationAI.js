@@ -105,12 +105,12 @@ class DietRecommendationAI {
   /**
    * Generate a personalized diet plan
    */
-  async generatePersonalizedDietPlan(userData) {
+  async generatePersonalizedDietPlan(userData, promptExtension = '') {
     const {
       age, gender, weight, height, currentBMI, bmiGoal,
       dietaryPreference, activityLevel, medicalConditions,
       allergies, fitnessGoals, diabetesInfo, labReports, deficiencies,
-      nutritionGoals
+      nutritionGoals, foodPreferences
     } = userData;
 
     const prompt = `You are an expert Indian nutritionist and clinical dietitian. Generate a highly personalized Indian meal plan.
@@ -124,6 +124,15 @@ USER PROFILE:
 - Allergies: ${allergies?.join(', ') || 'None'}
 ${diabetesInfo ? `- Diabetes: ${diabetesInfo.diabetesType}, HbA1c: ${diabetesInfo.hba1c || 'N/A'}` : ''}
 
+FOOD PREFERENCES:
+- Preferred Foods (Try to include): ${foodPreferences?.preferredFoods?.join(', ') || 'None specified'}
+- Foods to Avoid (Do NOT include): ${foodPreferences?.foodsToAvoid?.join(', ') || 'None specified'}
+- Dietary Restrictions (STRICTLY adhere to): ${foodPreferences?.dietaryRestrictions?.join(', ') || 'None specified'}
+- Breakfast Favorites: ${foodPreferences?.mealPreferences?.breakfast?.join(', ') || 'None specified'}
+- Lunch Favorites: ${foodPreferences?.mealPreferences?.lunch?.join(', ') || 'None specified'}
+- Dinner Favorites: ${foodPreferences?.mealPreferences?.dinner?.join(', ') || 'None specified'}
+- Snack Favorites: ${foodPreferences?.mealPreferences?.snacks?.join(', ') || 'None specified'}
+
 FITNESS GOAL & TARGETS:
 - Goal: ${bmiGoal || 'General Health'}
 - Target Calories: ${nutritionGoals?.dailyCalories || 2000} kcal
@@ -136,11 +145,16 @@ ${labReports?.length > 0 ? labReports.map(r => `- ${r.parameter}: ${r.value} ${r
 ${deficiencies?.length > 0 ? deficiencies.map(d => `- ${d.nutrient || d.name} (${d.severity})`).join('\n') : ''}
 
 CRITICAL INSTRUCTIONS:
-1. Provide 4 DISTINCT meal options for EVERY category (breakfast, midMorningSnack, lunch, eveningSnack, dinner).
-2. Ensure the combined nutrition of these meals FULFILLS the user's daily macro targets.
-3. Use ONLY Indian foods.
-4. If no lab data is provided, prioritize the Fitness Goal (${bmiGoal}) and BMI-based needs.
-5. Provide specific portion sizes in grams/pieces.
+1. Provide EXACTLY 3 DISTINCT meal options for EVERY category (breakfast, midMorningSnack, lunch, eveningSnack, dinner).
+2. Each option should be a complete alternative. Name them exactly "Option 1", "Option 2", and "Option 3".
+3. Ensure the combined nutrition of these options FULFILLS the user's daily macro targets (if user picks one option from each category).
+4. Use ONLY Indian foods.
+5. TRULY PRIORITIZE the user's specific food preferences for each meal. If they list breakfast favorites, use them for breakfast options.
+6. STRICTLY avoid any 'Foods to Avoid' and adhere to 'Dietary Restrictions'. Try to incorporate 'Preferred Foods'.
+7. If no lab data is provided, prioritize the Fitness Goal (${bmiGoal}) and BMI-based needs.
+8. Provide specific portion sizes in grams/pieces.
+9. DO NOT provide more than 3 options per meal.
+10. ${promptExtension || ''}
 
 RETURN JSON ONLY:
 {
@@ -150,38 +164,34 @@ RETURN JSON ONLY:
     "breakfast": [
       { "name": "Option 1", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
       { "name": "Option 2", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-      { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-      { "name": "Option 4", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
+      { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
     ],
     "lunch": [
        { "name": "Option 1", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
        { "name": "Option 2", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-       { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-       { "name": "Option 4", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
+       { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
     ],
     "dinner": [
        { "name": "Option 1", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
        { "name": "Option 2", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-       { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-       { "name": "Option 4", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
+       { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
     ],
     "midMorningSnack": [
        { "name": "Option 1", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
        { "name": "Option 2", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-       { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-       { "name": "Option 4", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
+       { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
     ],
     "eveningSnack": [
        { "name": "Option 1", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
        { "name": "Option 2", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-       { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-       { "name": "Option 4", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
+       { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
     ]
   },
   "keyFoods": [{ "name": "Food", "reason": "Why", "frequency": "Daily" }],
   "deficiencyCorrections": [{ "deficiency": "Name", "indianFoods": [], "mealSuggestions": [] }],
   "lifestyleRecommendations": [],
-  "avoidFoods": [{ "food": "Name", "reason": "Why" }]
+  "avoidFoods": [{ "food": "Name", "reason": "Why" }],
+  "avoidSuggestions": ["Suggestion 1", "Suggestion 2"]
 }`;
 
     const { isAnthropicDirect } = this.getApiParams();
@@ -253,6 +263,76 @@ RETURN JSON:
       throw new Error('Failed to parse supplement recommendations JSON');
     } catch (error) {
       console.error('AI Supplement Error:', error.message);
+      throw error;
+    }
+  }
+
+  /**
+   * Analyze user food preferences and provide recommendations
+   */
+  async analyzeFoodPreferences(user) {
+    const { foodPreferences, profile, nutritionGoal } = user;
+
+    const systemMsg = `You are a nutrition expert analyzing user food preferences. Provide personalized recommendations based on their food choices, health goals, and dietary needs.`;
+
+    const prompt = `Analyze these food preferences and provide recommendations:
+
+User Profile:
+- Age: ${profile?.age || 'Not specified'}
+- Gender: ${profile?.gender || 'Not specified'}
+- Dietary Preference: ${profile?.dietaryPreference || 'Not specified'}
+- Activity Level: ${profile?.activityLevel || 'Not specified'}
+- Health Goal: ${nutritionGoal?.goal || 'general_health'}
+
+Food Preferences:
+- Preferred Foods: ${foodPreferences.preferredFoods?.join(', ') || 'None specified'}
+- Foods to Avoid: ${foodPreferences.foodsToAvoid?.join(', ') || 'None specified'}
+- Dietary Restrictions: ${foodPreferences.dietaryRestrictions?.join(', ') || 'None specified'}
+
+Provide analysis in this JSON format:
+{
+  "overallScore": 85,
+  "strengths": ["Good protein sources", "Includes vegetables"],
+  "concerns": ["High sodium foods", "Limited fiber sources"],
+  "recommendations": {
+    "foodsToAdd": [
+      {"name": "Quinoa", "reason": "High protein and fiber", "benefit": "Supports muscle recovery"},
+      {"name": "Spinach", "reason": "Rich in iron", "benefit": "Boosts energy levels"}
+    ],
+    "foodsToLimit": [
+      {"name": "Processed snacks", "reason": "High in sodium", "alternative": "Nuts or fruits"}
+    ],
+    "mealIdeas": [
+      {"meal": "Breakfast", "suggestion": "Oatmeal with berries and nuts"},
+      {"meal": "Lunch", "suggestion": "Grilled chicken salad with quinoa"}
+    ]
+  },
+  "nutritionalGaps": ["Omega-3 fatty acids", "Vitamin D"],
+  "tips": ["Drink more water", "Include more whole grains"]
+}`;
+
+    const payload = !this.getApiParams().isAnthropicDirect ? {
+      model: this.getApiParams().model,
+      messages: [
+        { role: 'system', content: systemMsg },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 2500
+    } : {
+      max_tokens: 2500,
+      system: systemMsg,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7
+    };
+
+    try {
+      const aiResponse = await this.makeAIRequest(payload);
+      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+      if (jsonMatch) return JSON.parse(jsonMatch[0]);
+      throw new Error('Failed to parse food preference analysis JSON');
+    } catch (error) {
+      console.error('AI Food Preference Analysis Error:', error.message);
       throw error;
     }
   }

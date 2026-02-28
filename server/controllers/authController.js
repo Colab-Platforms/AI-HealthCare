@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Doctor = require('../models/Doctor');
+const HealthGoal = require('../models/HealthGoal');
 const { calculateNutritionGoals } = require('../services/nutritionGoalCalculator');
 
 const generateToken = (id) => {
@@ -10,9 +11,9 @@ const generateToken = (id) => {
 exports.register = async (req, res) => {
   try {
     const { name, email, phone, password, role, profile, nutritionGoal } = req.body;
-    
+
     // Check if user exists by email or phone
-    const existingUser = await User.findOne({ 
+    const existingUser = await User.findOne({
       $or: [{ email }, ...(phone ? [{ phone }] : [])]
     });
     if (existingUser) {
@@ -22,7 +23,7 @@ exports.register = async (req, res) => {
     // Determine role - only patient allowed via normal registration
     // Doctor registration is separate, admin is created by existing admin
     const userRole = role === 'doctor' ? 'doctor' : 'patient';
-    
+
     // Calculate nutrition goals if profile data is provided
     let calculatedGoals = null;
     if (profile && profile.age && profile.gender && profile.weight && profile.height && nutritionGoal) {
@@ -42,12 +43,12 @@ exports.register = async (req, res) => {
         // Continue with registration even if calculation fails
       }
     }
-    
-    const user = await User.create({ 
-      name, 
-      email, 
+
+    const user = await User.create({
+      name,
+      email,
       phone,
-      password, 
+      password,
       role: userRole,
       profile: profile || {},
       nutritionGoal: calculatedGoals ? {
@@ -63,7 +64,7 @@ exports.register = async (req, res) => {
         startDate: new Date()
       }
     });
-    
+
     res.status(201).json({
       _id: user._id,
       name: user.name,
@@ -84,12 +85,12 @@ exports.register = async (req, res) => {
 // Doctor Registration - creates user + doctor profile (pending approval)
 exports.registerDoctor = async (req, res) => {
   try {
-    const { 
+    const {
       name, email, phone, password,
-      specialization, qualifications, experience, hospital, 
-      licenseNumber, consultationFee, bio 
+      specialization, qualifications, experience, hospital,
+      licenseNumber, consultationFee, bio
     } = req.body;
-    
+
     // Check if user exists
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -97,11 +98,11 @@ exports.registerDoctor = async (req, res) => {
     }
 
     // Create user with doctor role
-    const user = await User.create({ 
-      name, 
-      email, 
+    const user = await User.create({
+      name,
+      email,
       phone,
-      password, 
+      password,
       role: 'doctor',
       isActive: true
     });
@@ -126,7 +127,7 @@ exports.registerDoctor = async (req, res) => {
     // Link doctor profile to user
     user.doctorProfile = doctor._id;
     await user.save();
-    
+
     res.status(201).json({
       _id: user._id,
       name: user.name,
@@ -148,7 +149,7 @@ exports.registerDoctor = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, phone, password } = req.body;
-    
+
     // Allow login with email or phone
     const query = email ? { email } : { phone };
     const user = await User.findOne(query).populate('doctorProfile');
@@ -169,6 +170,8 @@ exports.login = async (req, res) => {
         phone: user.phone,
         role: user.role,
         profile: user.profile,
+        nutritionGoal: user.nutritionGoal,
+        foodPreferences: user.foodPreferences,
         subscription: user.subscription,
         healthMetrics: user.healthMetrics,
         token: generateToken(user._id)
@@ -206,9 +209,12 @@ exports.updateProfile = async (req, res) => {
   try {
     const user = await User.findById(req.user._id);
     if (user) {
+      const oldHeight = user.profile?.height;
+      const oldWeight = user.profile?.weight;
+
       user.name = req.body.name || user.name;
       user.phone = req.body.phone || user.phone;
-      
+
       // Properly merge profile object
       if (req.body.profile) {
         user.profile = {
@@ -216,12 +222,49 @@ exports.updateProfile = async (req, res) => {
           ...req.body.profile
         };
       }
-      
+
+      const newHeight = user.profile?.height;
+      const newWeight = user.profile?.weight;
+      let bmiChanged = false;
+      let newBmi = user.healthMetrics?.bmi;
+
+      // Detecting changes in height or weight
+      if (newHeight !== oldHeight || newWeight !== oldWeight) {
+        if (newHeight && newWeight) {
+          // Recalculate BMI
+          newBmi = Number((newWeight / Math.pow(newHeight / 100, 2)).toFixed(1));
+          user.healthMetrics = {
+            ...user.healthMetrics,
+            bmi: newBmi
+          };
+          bmiChanged = true;
+        }
+
+        // Search for and update active HealthGoal
+        const healthGoal = await HealthGoal.findOne({ userId: user._id, isActive: true });
+        if (healthGoal) {
+          healthGoal.height = newHeight || healthGoal.height;
+          healthGoal.currentWeight = newWeight || healthGoal.currentWeight;
+          healthGoal.age = user.profile.age || healthGoal.age;
+          healthGoal.gender = user.profile.gender || healthGoal.gender;
+
+          // The pre-save hook in HealthGoal will handle target recalculations
+          await healthGoal.save();
+        }
+      }
+
       // Mark profile as modified to ensure Mongoose saves it
       user.markModified('profile');
-      
+      if (bmiChanged) user.markModified('healthMetrics');
+
       const updatedUser = await user.save();
-      res.json({ ...updatedUser.toObject(), password: undefined });
+
+      res.json({
+        ...updatedUser.toObject(),
+        password: undefined,
+        bmiChanged,
+        newBmi
+      });
     } else {
       res.status(404).json({ message: 'User not found' });
     }
@@ -244,20 +287,20 @@ exports.getSubscription = async (req, res) => {
 exports.createAdmin = async (req, res) => {
   try {
     const { name, email, password } = req.body;
-    
+
     const existingUser = await User.findOne({ email });
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
 
-    const admin = await User.create({ 
-      name, 
-      email, 
-      password, 
+    const admin = await User.create({
+      name,
+      email,
+      password,
       role: 'admin',
       subscription: { plan: 'premium', status: 'active', startDate: new Date() }
     });
-    
+
     res.status(201).json({
       _id: admin._id,
       name: admin.name,
@@ -266,5 +309,45 @@ exports.createAdmin = async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// Upload profile picture to Cloudinary
+exports.uploadProfilePicture = async (req, res) => {
+  try {
+    console.log('Upload profile picture request received. Files:', req.file ? 'File found' : 'No file');
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'No file uploaded' });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    try {
+      console.log('Attempting Cloudinary upload...');
+      const result = await cloudinary.uploadImage(req.file.buffer, 'profile_pictures');
+      console.log('Cloudinary upload success:', result.secure_url);
+
+      user.profilePicture = result.secure_url;
+      await user.save();
+
+      res.json({
+        message: 'Profile picture uploaded successfully',
+        profilePicture: user.profilePicture
+      });
+    } catch (uploadError) {
+      console.error('Cloudinary upload error details:', uploadError);
+      res.status(500).json({
+        message: 'Cloudinary upload failed',
+        error: uploadError.message,
+        details: uploadError.toString()
+      });
+    }
+  } catch (error) {
+    console.error('Upload profile picture general error:', error);
+    res.status(500).json({ message: 'Server error during upload', error: error.message });
   }
 };

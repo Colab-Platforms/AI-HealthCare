@@ -186,30 +186,19 @@ const LogGlucoseModal = ({ isOpen, onClose, onSave }) => {
     <>
       {/* Backdrop */}
       <div
-        className="fixed inset-0 bg-black/50 z-40 transition-opacity duration-300"
+        className="fixed inset-0 bg-black/60 z-[9998] transition-opacity duration-300"
         onClick={onClose}
       />
 
       {/* Modal - Slides up from bottom */}
-      <div className="fixed inset-x-0 bottom-0 z-50 animate-slide-up">
-        <div className="bg-white rounded-t-3xl shadow-2xl max-h-[92vh] overflow-y-auto">
+      <div className="fixed inset-x-0 bottom-0 z-[9999] animate-slide-up">
+        <div className="bg-white rounded-t-[3rem] shadow-2xl max-h-[92vh] overflow-y-auto pb-32">
           {/* Drag Handle */}
-          <div className="flex justify-center pt-3 pb-1">
-            <div className="w-10 h-1 bg-gray-300 rounded-full" />
+          <div className="flex justify-center pt-3 pb-1" onClick={onClose}>
+            <div className="w-10 h-1 bg-gray-300 rounded-full cursor-pointer" />
           </div>
 
-          {/* Header */}
-          <div className="sticky top-0 bg-white px-5 py-3 flex items-center gap-3 z-10">
-            <button
-              onClick={onClose}
-              className="p-2 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <ArrowLeft className="w-5 h-5 text-slate-700" />
-            </button>
-            <h2 className="text-lg font-bold text-slate-800">Log Glucose</h2>
-          </div>
-
-          <div className="px-5 pb-8">
+          <div className="px-5 pb-8 pt-4">
             <div className="bg-gray-50 rounded-2xl p-6 mb-6 text-center flex items-center justify-center">
               <input
                 type="number"
@@ -224,9 +213,9 @@ const LogGlucoseModal = ({ isOpen, onClose, onSave }) => {
 
             {/* Ruler-Style Slider */}
             <div className="mb-8 relative">
-              {/* Center indicator (blue triangle) */}
+              {/* Center indicator (teal triangle) */}
               <div className="flex justify-center mb-1">
-                <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-t-[10px] border-l-transparent border-r-transparent border-t-blue-500" />
+                <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-t-[10px] border-l-transparent border-r-transparent border-t-[#2FC8B9]" />
               </div>
 
               <div className="flex items-center gap-2">
@@ -275,13 +264,12 @@ const LogGlucoseModal = ({ isOpen, onClose, onSave }) => {
                         style={{ width: "8px", flexShrink: 0 }}
                       >
                         <div
-                          className={`w-px ${
-                            tick.isMajor
-                              ? "h-10 bg-gray-700"
-                              : tick.isMid
-                                ? "h-6 bg-gray-400"
-                                : "h-3 bg-gray-300"
-                          }`}
+                          className={`w-px ${tick.isMajor
+                            ? "h-10 bg-gray-700"
+                            : tick.isMid
+                              ? "h-6 bg-gray-400"
+                              : "h-3 bg-gray-300"
+                            }`}
                         />
                         {tick.isMajor && (
                           <span className="text-[10px] text-gray-500 mt-1 font-medium">
@@ -329,11 +317,10 @@ const LogGlucoseModal = ({ isOpen, onClose, onSave }) => {
                   <button
                     key={type.id}
                     onClick={() => setReadingType(type.id)}
-                    className={`w-full p-4 rounded-2xl border-2 transition-all duration-200 ${
-                      readingType === type.id
-                        ? "border-blue-500 bg-blue-50/50 shadow-sm"
-                        : "border-gray-200 bg-white hover:border-gray-300"
-                    }`}
+                    className={`w-full p-4 rounded-2xl border-2 transition-all duration-200 ${readingType === type.id
+                      ? "border-[#2FC8B9] bg-[#2FC8B9]/10 shadow-sm"
+                      : "border-gray-200 bg-white hover:border-gray-300"
+                      }`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -348,11 +335,10 @@ const LogGlucoseModal = ({ isOpen, onClose, onSave }) => {
                         </div>
                       </div>
                       <div
-                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ml-3 transition-all ${
-                          readingType === type.id
-                            ? "border-blue-500 bg-blue-500"
-                            : "border-gray-300"
-                        }`}
+                        className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ml-3 transition-all ${readingType === type.id
+                          ? "border-[#2FC8B9] bg-[#2FC8B9]"
+                          : "border-gray-300"
+                          }`}
                       >
                         {readingType === type.id && (
                           <div className="w-2.5 h-2.5 bg-white rounded-full" />
@@ -367,7 +353,7 @@ const LogGlucoseModal = ({ isOpen, onClose, onSave }) => {
             {/* Save Button */}
             <button
               onClick={handleSave}
-              className="w-full bg-gradient-to-r from-purple-500 to-orange-600 text-white py-4 rounded-full font-bold text-base hover:from-purple-600 hover:to-orange-700 transition-all shadow-lg shadow-blue-200 active:scale-[0.98]"
+              className="w-full bg-[#2FC8B9] text-white py-4 rounded-full font-bold text-base hover:bg-[#1db7a6] transition-all shadow-lg shadow-[#2FC8B9]/30 active:scale-[0.98]"
             >
               Save Reading
             </button>

@@ -18,7 +18,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    // Get latest health reports
+    // Get latest health reports - ensure we use the correct field 'user'
     const healthReports = await HealthReport.find({ user: userId })
       .sort({ createdAt: -1 })
       .limit(5);
@@ -81,27 +81,35 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
     const heightInMeters = height / 100;
     const currentBMI = currentWeight / (heightInMeters * heightInMeters);
 
-    // Calculate user's nutrition goals based on BMI goal
+    // Calculate user's nutrition goals or use saved ones
     let nutritionGoals = null;
-    try {
-      nutritionGoals = calculateNutritionGoals({
-        age: user.profile?.age || 25,
-        gender: user.profile?.gender || 'male',
-        weight: currentWeight,
-        height: height,
-        activityLevel: user.profile?.activityLevel || 'moderately_active',
-        goal: bmiGoal, // Use BMI goal
-        targetWeight: targetWeight
-      });
-    } catch (error) {
-      console.warn('Could not calculate nutrition goals:', error.message);
-      // Use default goals if calculation fails
+    if (user.nutritionGoal?.calorieGoal && user.nutritionGoal?.calorieGoal > 0) {
       nutritionGoals = {
-        calorieGoal: 2000,
-        proteinGoal: 150,
-        carbsGoal: 200,
-        fatGoal: 65
+        calorieGoal: user.nutritionGoal.calorieGoal,
+        proteinGoal: user.nutritionGoal.proteinGoal || 150,
+        carbsGoal: user.nutritionGoal.carbsGoal || 200,
+        fatGoal: user.nutritionGoal.fatGoal || 65
       };
+    } else {
+      try {
+        nutritionGoals = calculateNutritionGoals({
+          age: user.profile?.age || 25,
+          gender: user.profile?.gender || 'male',
+          weight: currentWeight,
+          height: height,
+          activityLevel: user.profile?.activityLevel || 'moderately_active',
+          goal: bmiGoal,
+          targetWeight: targetWeight
+        });
+      } catch (error) {
+        console.warn('Could not calculate nutrition goals:', error.message);
+        nutritionGoals = {
+          calorieGoal: 2000,
+          proteinGoal: 150,
+          carbsGoal: 200,
+          fatGoal: 65
+        };
+      }
     }
 
     // --- Diabetes detection ---
@@ -167,13 +175,31 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
         protein: nutritionGoals.proteinGoal,
         carbs: nutritionGoals.carbsGoal,
         fat: nutritionGoals.fatGoal
-      }
+      },
+      foodPreferences: user.foodPreferences || {} // Pass food preferences to AI
     };
 
     // Generate AI-powered diet plan
-    // If no reports: Focus on BMI goal and nutrition targets
-    // If reports exist: Consider BMI goal + report conditions + deficiencies
-    const aiDietPlan = await dietRecommendationAI.generatePersonalizedDietPlan(userData);
+    const aiDietPlan = await dietRecommendationAI.generatePersonalizedDietPlan(userData, `
+      144. Provide EXACTLY 3 DISTINCT meal options for EVERY category (breakfast, midMorningSnack, lunch, eveningSnack, dinner).
+      145. Ensure each option is a complete meal.
+      146. Provide nutritional information (calories, protein) for each individual option.
+      147. Ensure the combined nutrition of these options (if user picks one from each category) roughly fulfills the daily targets: ${nutritionGoals.calorieGoal} kcal, ${nutritionGoals.proteinGoal}g protein, ${nutritionGoals.carbsGoal}g carbs, ${nutritionGoals.fatGoal}g fat.
+      148. Use ONLY Indian foods and favor foods and affordability.
+      149. TRULY PRIORITIZE the user's specific food preferences for each meal: 
+           Breakfast Preferences: ${userData.foodPreferences.mealPreferences?.breakfast?.join(', ') || 'N/A'},
+           Lunch Preferences: ${userData.foodPreferences.mealPreferences?.lunch?.join(', ') || 'N/A'},
+           Dinner Preferences: ${userData.foodPreferences.mealPreferences?.dinner?.join(', ') || 'N/A'},
+           General Preferred Foods: ${userData.foodPreferences.preferredFoods?.join(', ') || 'N/A'}.
+      150. STRICTLY avoid any 'Foods to Avoid': ${userData.foodPreferences.foodsToAvoid?.join(', ') || 'N/A'}. 
+           Also strictly follow 'Dietary Restrictions': ${userData.foodPreferences.dietaryRestrictions?.join(', ') || 'N/A'}.
+      151. If the user lists specific foods they eat daily, try to build the healthiest version of those into the plan.
+      152. If no lab data is provided, prioritize the Fitness Goal (${bmiGoal}) and BMI-based needs.
+      153. Provide specific portion sizes in grams/pieces.
+      154. Name the options exactly as "Option 1", "Option 2", and "Option 3".
+      155. Provide a specific 'avoidSuggestions' section in your response listing 3-5 specific smart suggestions of what the user should avoid based on their lab reports or biometric profile.
+    `);
+    console.log(`Diet plan generated for user ${userId}. Based on reports: ${hasReports}`);
 
     // Deactivate old diet plans
     await PersonalizedDietPlan.updateMany(
@@ -183,6 +209,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
 
     // Save new diet plan with nutrition goals
     const dietPlan = new PersonalizedDietPlan({
+      ...aiDietPlan, // AI response fields (meal plan, avoidSuggestions, etc.)
       userId: userId,
       inputData: {
         age: userData.age,
@@ -208,7 +235,6 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
           fat: nutritionGoals.fatGoal
         }
       },
-      ...aiDietPlan,
       generatedAt: new Date(),
       validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Valid for 30 days
       isActive: true
@@ -260,9 +286,68 @@ exports.getActiveDietPlan = async (req, res) => {
       success: true,
       dietPlan
     });
-
   } catch (error) {
     console.error('Get diet plan error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch diet plan',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get diet plan history
+ */
+exports.getDietPlanHistory = async (req, res) => {
+  try {
+    const userId = req.user._id;
+
+    const history = await PersonalizedDietPlan.find({ userId })
+      .sort({ generatedAt: -1 })
+      .limit(10)
+      .select('generatedAt isActive inputData nutritionGoals');
+
+    res.json({
+      success: true,
+      history
+    });
+  } catch (error) {
+    console.error('Get diet plan history error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch diet plan history',
+      error: error.message
+    });
+  }
+};
+
+/**
+ * Get specific diet plan by ID
+ */
+exports.getDietPlanById = async (req, res) => {
+  try {
+    const { planId } = req.params;
+    const userId = req.user._id;
+
+    const dietPlan = await PersonalizedDietPlan.findOne({
+      _id: planId,
+      userId
+    });
+
+    if (!dietPlan) {
+      return res.status(404).json({
+        success: false,
+        message: 'Diet plan not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      dietPlan
+    });
+  } catch (error) {
+    console.error('Get diet plan by ID error:', error);
     res.status(500).json({
       success: false,
       message: 'Failed to fetch diet plan',
@@ -284,9 +369,9 @@ exports.generateSupplementRecommendations = async (req, res) => {
       return res.status(404).json({ success: false, message: 'User not found' });
     }
 
-    // Get latest health reports
-    const healthReports = await HealthReport.find({ userId })
-      .sort({ uploadDate: -1 })
+    // Get latest health reports - using correct field name 'user'
+    const healthReports = await HealthReport.find({ user: userId })
+      .sort({ createdAt: -1 })
       .limit(5);
 
     // Extract deficiencies

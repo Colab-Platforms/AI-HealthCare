@@ -191,17 +191,12 @@ export default function Register() {
   // Step 2: Patient Registration Form - Basic Info
   if (step === 2) {
     return (
-      <div className="min-h-screen flex bg-gradient-to-br from-purple-50 to-orange-50">
-        {/* Mobile Health Animation - Shows only on mobile */}
-        <div className="lg:hidden w-full">
-          <HealthProgressAnimation step={2} />
-        </div>
-
+      <div className="min-h-screen flex bg-white">
         {/* Left Panel with Animation - Desktop Only */}
-        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-purple-500 via-pink-500 to-orange-600">
-          <div className="absolute inset-0">
-            <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
-            <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute top-20 left-20 w-72 h-72 bg-[#2FC8B9] rounded-full blur-[120px]" />
+            <div className="absolute bottom-20 right-20 w-96 h-96 bg-[#2FC8B9] rounded-full blur-[120px]" />
           </div>
           <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
             {/* Animated Medical Icon */}
@@ -234,35 +229,35 @@ export default function Register() {
             {/* Progress Steps */}
             <div className="flex items-center gap-2 mt-4">
               <div className="flex items-center gap-1">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 2 ? 'bg-white text-cyan-600' : 'bg-white/20'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 2 ? 'bg-[#2FC8B9] text-white' : 'bg-white/10'}`}>
                   <span className="text-sm font-bold">1</span>
                 </div>
                 <span className="text-xs">Basic</span>
               </div>
               <div className="w-8 h-0.5 bg-white/20"></div>
               <div className="flex items-center gap-1">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 3 ? 'bg-white text-cyan-600' : 'bg-white/20'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 3 ? 'bg-[#2FC8B9] text-white' : 'bg-white/10'}`}>
                   <span className="text-sm font-bold">2</span>
                 </div>
                 <span className="text-xs">Health</span>
               </div>
               <div className="w-8 h-0.5 bg-white/20"></div>
               <div className="flex items-center gap-1">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 4 ? 'bg-white text-cyan-600' : 'bg-white/20'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 4 ? 'bg-[#2FC8B9] text-white' : 'bg-white/10'}`}>
                   <span className="text-sm font-bold">3</span>
                 </div>
                 <span className="text-xs">Lifestyle</span>
               </div>
               <div className="w-8 h-0.5 bg-white/20"></div>
               <div className="flex items-center gap-1">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 5 ? 'bg-white text-cyan-600' : 'bg-white/20'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 5 ? 'bg-[#2FC8B9] text-white' : 'bg-white/10'}`}>
                   <span className="text-sm font-bold">4</span>
                 </div>
                 <span className="text-xs">Diabetes</span>
               </div>
               <div className="w-8 h-0.5 bg-white/20"></div>
               <div className="flex items-center gap-1">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 6 ? 'bg-white text-cyan-600' : 'bg-white/20'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 6 ? 'bg-[#2FC8B9] text-white' : 'bg-white/10'}`}>
                   <span className="text-sm font-bold">5</span>
                 </div>
                 <span className="text-xs">Goals</span>
@@ -276,13 +271,21 @@ export default function Register() {
         {/* Right Panel - Form */}
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="w-full max-w-md">
-            <button onClick={() => navigate('/')} className="flex items-center gap-2 mb-6 text-cyan-600 hover:text-cyan-700">
+            {/* Mobile Logo */}
+            <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
+              <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center border border-[#2FC8B9]/30 shadow-lg shadow-[#2FC8B9]/10">
+                <Activity className="w-7 h-7 text-[#2FC8B9]" />
+              </div>
+              <span className="text-2xl font-black text-black uppercase tracking-tighter">FitCure</span>
+            </div>
+
+            <button onClick={() => navigate('/')} className="flex items-center gap-2 mb-6 text-[#2FC8B9] font-black uppercase tracking-tighter text-xs hover:text-black transition-colors">
               <ArrowLeft className="w-4 h-4" /> Back
             </button>
 
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-2 text-slate-900">Basic Information</h2>
-              <p className="text-slate-600">Step 1 of 5 - Let's start with the basics</p>
+              <h2 className="text-3xl font-black mb-2 text-black uppercase tracking-tighter">Your Health Profile</h2>
+              <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Step 1 of 5 • Global Health Identity</p>
             </div>
 
             <form onSubmit={(e) => { e.preventDefault(); nextStep(); }} className="space-y-4">
@@ -294,7 +297,7 @@ export default function Register() {
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full bg-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-slate-200 text-slate-900 placeholder:text-slate-400"
+                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 focus:border-[#2FC8B9] text-black font-bold placeholder:text-slate-400"
                     placeholder="John Doe"
                     required
                   />
@@ -381,15 +384,15 @@ export default function Register() {
 
               <button
                 type="submit"
-                className="w-full py-3 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-purple-500 to-orange-600 hover:from-purple-600 hover:to-orange-700"
+                className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:shadow-[0_10px_25px_rgba(47,200,185,0.3)] transition-all flex items-center justify-center gap-2 bg-[#2FC8B9] hover:bg-[#28b5a6]"
               >
-                Continue <ArrowRight className="w-5 h-5" />
+                Continue Setup <ArrowRight className="w-5 h-5" />
               </button>
             </form>
 
             <p className="text-center mt-6 text-slate-600">
               Already have an account?{' '}
-              <Link to="/login" className="font-semibold text-cyan-600 hover:text-cyan-700">Sign in</Link>
+              <Link to="/login" className="font-black text-[#2FC8B9] hover:text-black transition-colors uppercase text-xs tracking-widest">Sign in</Link>
             </p>
 
           </div>
@@ -439,6 +442,14 @@ export default function Register() {
 
         <div className="flex-1 flex items-center justify-center p-8">
           <div className="w-full max-w-md">
+            {/* Mobile Logo */}
+            <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
+              <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center border border-[#2FC8B9]/30 shadow-lg shadow-[#2FC8B9]/10">
+                <Activity className="w-7 h-7 text-[#2FC8B9]" />
+              </div>
+              <span className="text-2xl font-black text-black uppercase tracking-tighter">FitCure</span>
+            </div>
+
             <button onClick={prevStep} className="flex items-center gap-2 mb-6 text-cyan-700 hover:text-cyan-800">
               <ArrowLeft className="w-4 h-4" /> Back
             </button>
@@ -581,6 +592,14 @@ export default function Register() {
 
         <div className="flex-1 flex items-center justify-center p-8 overflow-y-auto">
           <div className="w-full max-w-md py-8">
+            {/* Mobile Logo */}
+            <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
+              <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center border border-[#2FC8B9]/30 shadow-lg shadow-[#2FC8B9]/10">
+                <Activity className="w-7 h-7 text-[#2FC8B9]" />
+              </div>
+              <span className="text-2xl font-black text-black uppercase tracking-tighter">FitCure</span>
+            </div>
+
             <button onClick={prevStep} className="flex items-center gap-2 mb-6 text-cyan-700 hover:text-cyan-800">
               <ArrowLeft className="w-4 h-4" /> Back
             </button>
@@ -647,8 +666,8 @@ export default function Register() {
               )}
 
 
-              <button type="submit" className="w-full py-3 text-white font-semibold rounded-xl bg-gradient-to-r from-purple-600 to-orange-600 hover:from-purple-700 hover:to-orange-700 flex items-center justify-center gap-2">
-                Continue <ArrowRight className="w-5 h-5" />
+              <button type="submit" className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:shadow-[0_10px_25px_rgba(47,200,185,0.3)] transition-all flex items-center justify-center gap-2 bg-[#2FC8B9] hover:bg-[#28b5a6]">
+                Finalize Steps <ArrowRight className="w-5 h-5" />
               </button>
             </form>
           </div>
@@ -683,6 +702,14 @@ export default function Register() {
 
         <div className="flex-1 flex items-center justify-center p-8 overflow-y-auto">
           <div className="w-full max-w-md py-8">
+            {/* Mobile Logo */}
+            <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
+              <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center border border-[#2FC8B9]/30 shadow-lg shadow-[#2FC8B9]/10">
+                <Activity className="w-7 h-7 text-[#2FC8B9]" />
+              </div>
+              <span className="text-2xl font-black text-black uppercase tracking-tighter">FitCure</span>
+            </div>
+
             <button onClick={prevStep} className="flex items-center gap-2 mb-6 text-cyan-700 hover:text-cyan-800">
               <ArrowLeft className="w-4 h-4" /> Back
             </button>
@@ -990,6 +1017,14 @@ export default function Register() {
 
         <div className="flex-1 flex items-center justify-center p-8 overflow-y-auto">
           <div className="w-full max-w-md py-8">
+            {/* Mobile Logo */}
+            <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
+              <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center border border-[#2FC8B9]/30 shadow-lg shadow-[#2FC8B9]/10">
+                <Activity className="w-7 h-7 text-[#2FC8B9]" />
+              </div>
+              <span className="text-2xl font-black text-black uppercase tracking-tighter">FitCure</span>
+            </div>
+
             <button onClick={prevStep} className="flex items-center gap-2 mb-6 text-cyan-700 hover:text-cyan-800">
               <ArrowLeft className="w-4 h-4" /> Back
             </button>

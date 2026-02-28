@@ -27,7 +27,7 @@ export default function Subscription() {
   if (loading) return <GenericSkeleton />;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 animate-fade-in">
+    <div className="w-full mx-auto space-y-8 animate-fade-in">
       {/* Header */}
       <div className="text-center">
         <div className="inline-flex items-center gap-2 bg-violet-500/20 text-violet-400 px-4 py-2 rounded-full text-sm font-semibold mb-4"><Crown className="w-4 h-4" />Subscription Plans</div>

@@ -116,25 +116,123 @@ export default function QuickFoodCheck() {
     }
   };
 
-  const handleImageSelect = (e) => {
+  // Compress image to reduce memory usage on mobile
+  const compressImage = async (file) => {
+    console.log('compressImage called with:', file.name, `${(file.size / 1024).toFixed(0)}KB`);
+    
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        console.log('FileReader loaded, creating image...');
+        const img = new Image();
+        img.onload = () => {
+          console.log('Image loaded:', img.width, 'x', img.height);
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          
+          // Resize if image is too large (max 1200px on longest side)
+          const maxSize = 1200;
+          if (width > maxSize || height > maxSize) {
+            if (width > height) {
+              height = (height / width) * maxSize;
+              width = maxSize;
+            } else {
+              width = (width / height) * maxSize;
+              height = maxSize;
+            }
+            console.log('Resizing to:', width, 'x', height);
+          }
+          
+          canvas.width = width;
+          canvas.height = height;
+          
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          console.log('Image drawn on canvas, converting to blob...');
+          
+          // Convert to blob with compression (0.8 quality for JPEG)
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                console.log('Blob created:', `${(blob.size / 1024).toFixed(0)}KB`);
+                // Create a new File object from the blob
+                const compressedFile = new File([blob], file.name, {
+                  type: 'image/jpeg',
+                  lastModified: Date.now()
+                });
+                resolve(compressedFile);
+              } else {
+                console.error('Canvas to Blob conversion failed');
+                reject(new Error('Canvas to Blob conversion failed'));
+              }
+            },
+            'image/jpeg',
+            0.8
+          );
+        };
+        img.onerror = (error) => {
+          console.error('Image load error:', error);
+          reject(error);
+        };
+        img.src = e.target.result;
+      };
+      reader.onerror = (error) => {
+        console.error('FileReader error:', error);
+        reject(error);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleImageSelect = async (e) => {
     e.preventDefault(); // Prevent form submission/page refresh
     e.stopPropagation(); // Stop event bubbling
 
     const file = e.target.files[0];
-    if (file) {
-      // Validate file size (max 3MB)
-      if (file.size > 3 * 1024 * 1024) {
-        toast.error('Image too large. Please use a smaller image (max 3MB)');
-        return;
-      }
+    console.log('Image selected:', file ? file.name : 'No file');
+    
+    if (!file) {
+      console.log('No file selected');
+      return;
+    }
 
-      setImage(file);
+    // Validate file size (max 5MB before compression)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image too large. Please use a smaller image (max 5MB)');
+      return;
+    }
+
+    try {
+      console.log('Starting image compression...');
+      // Show loading toast
+      const loadingToast = toast.loading('Processing image...');
+      
+      // Compress image
+      const compressedFile = await compressImage(file);
+      console.log('Compression complete:', {
+        original: `${(file.size / 1024).toFixed(0)}KB`,
+        compressed: `${(compressedFile.size / 1024).toFixed(0)}KB`
+      });
+      
+      setImage(compressedFile);
       const reader = new FileReader();
       reader.onloadend = () => {
+        console.log('Image preview ready');
         setImagePreview(reader.result);
         setShowImageDetailsForm(true); // Show form when image is selected
+        toast.dismiss(loadingToast);
+        toast.success(`Image ready (${(compressedFile.size / 1024).toFixed(0)}KB)`);
       };
-      reader.readAsDataURL(file);
+      reader.onerror = (error) => {
+        console.error('FileReader error:', error);
+        toast.dismiss(loadingToast);
+        toast.error('Failed to read image file');
+      };
+      reader.readAsDataURL(compressedFile);
+    } catch (error) {
+      console.error('Image compression error:', error);
+      toast.error('Failed to process image. Please try another image.');
     }
 
     // Reset the input value so the same file can be selected again
@@ -147,59 +245,59 @@ export default function QuickFoodCheck() {
       return;
     }
 
-    // If image is uploaded but no details provided, show warning
-    if (image && !imageDetails.quantity && !imageDetails.prepMethod) {
-      toast.error('Please provide quantity and preparation method for the image');
-      return;
-    }
+    // If image is uploaded, quantity and prep method are optional but recommended
+    // Don't block the user if they want to proceed without them
 
     setLoading(true);
     try {
       const token = localStorage.getItem('token');
 
-      // Convert image to base64 if present
-      let imageBase64 = null;
-      if (image) {
-        const reader = new FileReader();
-        imageBase64 = await new Promise((resolve, reject) => {
-          reader.onloadend = () => {
-            // Remove the data:image/...;base64, prefix
-            const base64 = reader.result.split(',')[1];
-            resolve(base64);
-          };
-          reader.onerror = reject;
-          reader.readAsDataURL(image);
-        });
-      }
-
-      // Build context from image details
+      // Build context from image details and food input
       let contextText = '';
-      if (image && (imageDetails.quantity || imageDetails.prepMethod || imageDetails.additionalInfo)) {
-        const parts = [];
+      const parts = [];
+      
+      // Add food input text if provided
+      if (foodInput && foodInput.trim()) {
+        parts.push(foodInput.trim());
+      }
+      
+      // Add image details if provided
+      if (image) {
         if (imageDetails.quantity) parts.push(`Quantity: ${imageDetails.quantity}`);
         if (imageDetails.prepMethod) parts.push(`Preparation: ${imageDetails.prepMethod}`);
         if (imageDetails.additionalInfo) parts.push(imageDetails.additionalInfo);
-        if (foodInput) parts.push(`Additional info: ${foodInput}`);
-        contextText = parts.join(', ');
-      } else {
-        contextText = foodInput;
+      }
+      
+      contextText = parts.join(', ');
+
+      // Use FormData for image upload to avoid memory issues
+      const formData = new FormData();
+      formData.append('foodDescription', foodInput || 'Food from image');
+      formData.append('additionalContext', contextText);
+      
+      if (image) {
+        // Image is already compressed from handleImageSelect
+        formData.append('image', image);
+        console.log('Sending image:', {
+          size: `${(image.size / 1024).toFixed(2)} KB`,
+          name: image.name
+        });
       }
 
       console.log('Sending request:', {
-        hasImage: !!imageBase64,
-        imageSize: imageBase64 ? `${(imageBase64.length * 0.75 / 1024).toFixed(2)} KB` : 'N/A',
+        hasImage: !!image,
+        hasText: !!foodInput,
         context: contextText
       });
 
       const response = await axios.post(
         '/api/nutrition/quick-check',
+        formData,
         {
-          foodDescription: foodInput || 'Food from image',
-          imageBase64: imageBase64,
-          additionalContext: contextText
-        },
-        {
-          headers: { Authorization: `Bearer ${token}` },
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+          },
           timeout: 60000 // 60 seconds for image analysis
         }
       );
@@ -382,7 +480,7 @@ export default function QuickFoodCheck() {
             <div className="bg-white border-2 border-purple-200 rounded-2xl p-5 animate-in fade-in slide-in-from-top-2">
               <p className="text-sm font-bold text-purple-900 mb-4 flex items-center gap-2">
                 <ChefHat className="w-5 h-5" />
-                Tell us more for accurate results
+                Tell us more for better accuracy (optional)
               </p>
 
               {/* Quantity Input */}
@@ -853,29 +951,20 @@ export default function QuickFoodCheck() {
             <h3 className="text-xl font-bold text-gray-900 mb-4">Choose Image Source</h3>
             <div className="space-y-3">
               {/* Camera Option */}
-              <div
-                className="cursor-pointer"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  // Trigger file input click
-                  const input = document.getElementById('camera-input');
-                  if (input) input.click();
-                }}
+              <label
+                htmlFor="camera-input"
+                className="cursor-pointer block"
               >
                 <input
                   id="camera-input"
                   type="file"
                   accept="image/*"
                   capture="environment"
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    handleImageSelect(e);
-                    setShowCameraModal(false);
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
+                    setShowCameraModal(false); // Close modal first
+                    await handleImageSelect(e); // Then process image
                   }}
                   className="hidden"
                   style={{ display: 'none' }}
@@ -889,31 +978,22 @@ export default function QuickFoodCheck() {
                     <p className="text-sm text-gray-600">Use camera to capture food</p>
                   </div>
                 </div>
-              </div>
+              </label>
 
               {/* Gallery Option */}
-              <div
-                className="cursor-pointer"
-                onClick={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  // Trigger file input click
-                  const input = document.getElementById('gallery-input');
-                  if (input) input.click();
-                }}
+              <label
+                htmlFor="gallery-input"
+                className="cursor-pointer block"
               >
                 <input
                   id="gallery-input"
                   type="file"
                   accept="image/*"
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     e.preventDefault();
                     e.stopPropagation();
-                    handleImageSelect(e);
-                    setShowCameraModal(false);
-                  }}
-                  onClick={(e) => {
-                    e.stopPropagation();
+                    setShowCameraModal(false); // Close modal first
+                    await handleImageSelect(e); // Then process image
                   }}
                   className="hidden"
                   style={{ display: 'none' }}
@@ -929,7 +1009,7 @@ export default function QuickFoodCheck() {
                     <p className="text-sm text-gray-600">Select existing photo</p>
                   </div>
                 </div>
-              </div>
+              </label>
             </div>
 
             {/* Cancel Button */}

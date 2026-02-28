@@ -7,8 +7,9 @@ const { protect } = require('../middleware/auth');
 router.use(protect);
 
 // Food Analysis
+const upload = require('../middleware/upload');
 router.post('/analyze-food', nutritionController.analyzeFood);
-router.post('/quick-check', nutritionController.quickFoodCheck);
+router.post('/quick-check', upload.single('image'), nutritionController.quickFoodCheck);
 router.post('/get-alternatives', nutritionController.getHealthyAlternatives);
 
 // Quick Food Check History & Storage

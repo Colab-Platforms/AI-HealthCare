@@ -24,7 +24,7 @@ export default function Nutrition() {
   const [foodDescription, setFoodDescription] = useState('');
   const [analyzing, setAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
-  
+
   // Smart suggestions state
   const [quantity, setQuantity] = useState('');
   const [servingSize, setServingSize] = useState('medium');
@@ -40,9 +40,9 @@ export default function Nutrition() {
   useEffect(() => {
     if (window.location.hash === '#daily-target') {
       setTimeout(() => {
-        document.getElementById('daily-target')?.scrollIntoView({ 
-          behavior: 'smooth', 
-          block: 'center' 
+        document.getElementById('daily-target')?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center'
         });
       }, 100);
     }
@@ -58,7 +58,7 @@ export default function Nutrition() {
       const isToday = selectedDate === today;
 
       const [logsRes, summaryRes, goalRes] = await Promise.all([
-        isToday 
+        isToday
           ? axios.get('/api/nutrition/logs/today', { headers })
           : axios.get(`/api/nutrition/logs?startDate=${selectedDate}&endDate=${selectedDate}`, { headers }),
         axios.get(`/api/nutrition/summary/daily?date=${selectedDate}`, { headers }),
@@ -72,7 +72,7 @@ export default function Nutrition() {
       // Load water intake from localStorage
       const savedWater = localStorage.getItem(`waterIntake_${selectedDate}`);
       setWaterIntake(savedWater ? parseInt(savedWater) : 0);
-      
+
       setIsInitialLoad(false);
     } catch (error) {
       console.error('Failed to fetch data:', error);
@@ -87,7 +87,7 @@ export default function Nutrition() {
     const newWater = waterIntake + 1;
     setWaterIntake(newWater);
     localStorage.setItem(`waterIntake_${selectedDate}`, newWater);
-    
+
     // Check for excessive water consumption (8-9 liters = 32-36 glasses)
     if (newWater >= 32 && newWater <= 36) {
       toast('⚠️ You are approaching 8 liters of water. Be mindful of overhydration!', {
@@ -124,37 +124,37 @@ export default function Nutrition() {
   // Smart quantity suggestions based on food type
   const getQuantitySuggestions = (foodName) => {
     const lowerFood = foodName.toLowerCase();
-    
+
     // Liquids
     if (lowerFood.includes('juice') || lowerFood.includes('milk') || lowerFood.includes('water') || lowerFood.includes('tea') || lowerFood.includes('coffee')) {
       return ['1 cup (250ml)', '1 glass (200ml)', '1 bottle (500ml)', '2 cups (500ml)'];
     }
-    
+
     // Rice/Grains
     if (lowerFood.includes('rice') || lowerFood.includes('pasta') || lowerFood.includes('noodles')) {
       return ['1 cup', '1.5 cups', '2 cups', '1 bowl'];
     }
-    
+
     // Bread/Roti
     if (lowerFood.includes('bread') || lowerFood.includes('roti') || lowerFood.includes('chapati') || lowerFood.includes('paratha')) {
       return ['1 piece', '2 pieces', '3 pieces', '4 pieces'];
     }
-    
+
     // Fruits
     if (lowerFood.includes('apple') || lowerFood.includes('banana') || lowerFood.includes('orange') || lowerFood.includes('mango')) {
       return ['1 small', '1 medium', '1 large', '2 pieces'];
     }
-    
+
     // Eggs
     if (lowerFood.includes('egg')) {
       return ['1 egg', '2 eggs', '3 eggs', '4 eggs'];
     }
-    
+
     // Chicken/Meat
     if (lowerFood.includes('chicken') || lowerFood.includes('meat') || lowerFood.includes('fish')) {
       return ['100g', '150g', '200g', '1 piece'];
     }
-    
+
     // Default
     return ['1 serving', '1 plate', '1 bowl', '1 cup'];
   };
@@ -195,10 +195,10 @@ export default function Nutrition() {
     setAnalyzing(true);
     try {
       const token = localStorage.getItem('token');
-      
+
       // Build enhanced description with serving size and preparation
       const enhancedDescription = `${servingSize} ${preparationMethod} ${foodDescription}`;
-      
+
       const response = await axios.post(
         '/api/nutrition/quick-check',
         { foodDescription: enhancedDescription },
@@ -232,7 +232,8 @@ export default function Nutrition() {
             ...item,
             notes: `${item.quantity} - ${item.servingSize} - ${item.preparationMethod}`
           })),
-          notes: `${foodItems.length} items logged`
+          notes: `${foodItems.length} items logged`,
+          timestamp: selectedDate
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -290,13 +291,13 @@ export default function Nutrition() {
     date.setDate(date.getDate() + 1);
     const nextDate = date.toISOString().split('T')[0];
     const today = new Date().toISOString().split('T')[0];
-    
+
     // Don't allow future dates
     if (nextDate > today) {
       toast.error('Cannot view future dates');
       return;
     }
-    
+
     setSelectedDate(nextDate);
   };
 
@@ -305,10 +306,10 @@ export default function Nutrition() {
     const today = new Date();
     const yesterday = new Date(today);
     yesterday.setDate(yesterday.getDate() - 1);
-    
+
     if (dateStr === today.toISOString().split('T')[0]) return 'Today';
     if (dateStr === yesterday.toISOString().split('T')[0]) return 'Yesterday';
-    
+
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   };
 
@@ -334,207 +335,208 @@ export default function Nutrition() {
           <span className="text-sm text-slate-600">Refreshing...</span>
         </div>
       )}
-      
-      {/* Date Picker Header */}
-      <div className="w-full px-3 md:px-6 lg:px-8 py-3 flex items-center justify-between bg-white border-b border-gray-200 sticky top-0 z-10 shrink-0">
-        <button
-          onClick={handlePreviousDay}
-          className="p-2 hover:bg-gray-100 rounded-lg transition"
-        >
-          <ChevronLeft className="w-5 h-5 text-gray-600" />
-        </button>
-        <div className="text-center">
-          <p className="text-sm text-gray-500">Nutrition</p>
-          <p className="text-lg font-bold text-gray-900">{formatDate(selectedDate)}</p>
-        </div>
-        <button
-          onClick={handleNextDay}
-          disabled={isToday}
-          className={`p-2 rounded-lg transition ${
-            isToday 
-              ? 'opacity-40 cursor-not-allowed' 
-              : 'hover:bg-gray-100'
-          }`}
-        >
-          <ChevronRight className="w-5 h-5 text-gray-600" />
-        </button>
-      </div>
 
       {/* Main Content with Max Width on Desktop */}
       <div className="w-full flex-1 overflow-y-auto flex justify-center">
         <div className="w-full max-w-4xl px-3 md:px-6 lg:px-8 py-4 space-y-4 pb-24">
-        {!healthGoal && (
-          <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 flex items-start gap-3">
-            <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-            <div className="flex-1">
-              <p className="font-semibold text-amber-900 mb-2">Set Your Fitness Goal</p>
+          
+          {/* Date Picker - Above Everything */}
+          <div className="bg-white rounded-2xl p-4 shadow-md border border-gray-200">
+            <div className="flex items-center justify-between">
               <button
-                onClick={() => navigate('/profile?tab=goals')}
-                className="text-sm bg-amber-600 text-white px-3 py-1 rounded-lg hover:bg-amber-700"
+                onClick={handlePreviousDay}
+                className="p-2 hover:bg-gray-100 rounded-lg transition"
               >
-                Set Goal Now
+                <ChevronLeft className="w-5 h-5 text-gray-600" />
+              </button>
+              <div className="text-center flex-1">
+                <p className="text-xl font-bold text-gray-900">{formatDate(selectedDate)}</p>
+                <p className="text-xs text-gray-500 mt-1">Track your nutrition</p>
+              </div>
+              <button
+                onClick={handleNextDay}
+                disabled={isToday}
+                className={`p-2 rounded-lg transition ${isToday
+                    ? 'opacity-40 cursor-not-allowed'
+                    : 'hover:bg-gray-100'
+                  }`}
+              >
+                <ChevronRight className="w-5 h-5 text-gray-600" />
               </button>
             </div>
           </div>
-        )}
 
-        {/* Calories Overview */}
-        {dailySummary && healthGoal && (
-          <div className="bg-gradient-to-br from-purple-500 to-orange-600 rounded-3xl p-6 text-white shadow-lg">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <p className="text-blue-100 text-sm mb-1">Calories Today</p>
-                <div className="flex items-baseline gap-2">
-                  <span className="text-4xl font-bold">{dailySummary.totalCalories}</span>
-                  <span className="text-blue-100">/ {healthGoal.dailyCalorieTarget}</span>
-                </div>
-              </div>
-              <div className="relative w-24 h-24">
-                <svg className="w-24 h-24 transform -rotate-90" viewBox="0 0 36 36">
-                  <path
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    fill="none"
-                    stroke="rgba(255,255,255,0.2)"
-                    strokeWidth="3"
-                  />
-                  <path
-                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    fill="none"
-                    stroke="white"
-                    strokeWidth="3"
-                    strokeDasharray={`${Math.min(caloriePercentage, 100)}, 100`}
-                    strokeLinecap="round"
-                  />
-                </svg>
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-sm font-bold">{Math.min(caloriePercentage, 100).toFixed(0)}%</span>
-                </div>
+          {!healthGoal && (
+            <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-semibold text-amber-900 mb-2">Set Your Fitness Goal</p>
+                <button
+                  onClick={() => navigate('/profile?tab=goals')}
+                  className="text-sm bg-amber-600 text-white px-3 py-1 rounded-lg hover:bg-amber-700"
+                >
+                  Set Goal Now
+                </button>
               </div>
             </div>
+          )}
 
-            {/* Macros */}
-            <div className="grid grid-cols-3 gap-3">
-              <div className="bg-white/20 rounded-xl p-3 text-center">
-                <p className="text-xs text-blue-100 mb-1">Protein</p>
-                <p className="font-bold">{dailySummary.totalProtein.toFixed(0)}g</p>
-                <p className="text-xs text-blue-100">/ {healthGoal.macroTargets.protein}g</p>
-              </div>
-              <div className="bg-white/20 rounded-xl p-3 text-center">
-                <p className="text-xs text-blue-100 mb-1">Carbs</p>
-                <p className="font-bold">{dailySummary.totalCarbs.toFixed(0)}g</p>
-                <p className="text-xs text-blue-100">/ {healthGoal.macroTargets.carbs}g</p>
-              </div>
-              <div className="bg-white/20 rounded-xl p-3 text-center">
-                <p className="text-xs text-blue-100 mb-1">Fats</p>
-                <p className="font-bold">{dailySummary.totalFats.toFixed(0)}g</p>
-                <p className="text-xs text-blue-100">/ {healthGoal.macroTargets.fats}g</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Water Intake */}
-        <div className="bg-gradient-to-br from-purple-400 to-orange-500 rounded-3xl p-6 text-white shadow-lg">
-          <div className="flex items-start justify-between mb-4">
-            <div>
-              <p className="text-cyan-100 text-sm mb-1">Water Reminder</p>
-              <p className="text-2xl font-bold">Drink water stay hydrated</p>
-            </div>
-            <div className="text-4xl">💧</div>
-          </div>
-
-          <p className="text-cyan-100 mb-4">Today you drink <span className="font-bold text-white">{waterIntake} glass</span> of water</p>
-          <p className="text-cyan-100 mb-4 text-sm">{(waterIntake * 0.25).toFixed(2)} L</p>
-
-          {/* Water Glasses */}
-          <div className="grid grid-cols-6 gap-2 mb-4">
-            {Array.from({ length: waterGoal }).map((_, i) => (
-              <div
-                key={i}
-                onClick={() => i < waterIntake ? handleRemoveWater() : handleAddWater()}
-                className={`aspect-square rounded-lg flex items-center justify-center cursor-pointer transition-all transform hover:scale-110 ${
-                  i < waterIntake
-                    ? 'bg-white text-blue-500 shadow-lg'
-                    : 'bg-white/30 text-white'
-                }`}
-              >
-                <Droplets className="w-5 h-5" />
-              </div>
-            ))}
-          </div>
-
-          <button
-            onClick={handleAddWater}
-            className="w-full bg-white text-blue-600 font-bold py-2 rounded-xl hover:bg-blue-50 transition-all"
-          >
-            + Add Water
-          </button>
-        </div>
-
-        {/* Meals Section */}
-        <div id="daily-target" className="scroll-mt-20">
-          <h2 className="text-lg font-bold text-gray-900 mb-4">My Daily Target</h2>
-
-          {/* Meal Cards */}
-          <div className="space-y-3">
-            {['breakfast', 'lunch', 'snack', 'dinner'].map((type) => {
-              const mealLogs = todayLogs.filter(log => log.mealType === type);
-              const mealCalories = mealLogs.reduce((sum, log) => sum + (log.totalNutrition?.calories || 0), 0);
-
-              return (
-                <div key={type} className="bg-gradient-to-br from-purple-500 to-orange-600 rounded-2xl p-4 text-white shadow-md">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <p className="text-sm opacity-90 capitalize">{type}</p>
-                      <p className="text-2xl font-bold">{mealCalories} Kcal</p>
-                    </div>
-                    <span className="text-3xl">{getMealIcon(type)}</span>
+          {/* Calories Overview */}
+          {dailySummary && healthGoal && (
+            <div className="bg-gradient-to-br from-purple-500 to-orange-600 rounded-3xl p-6 text-white shadow-lg">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <p className="text-blue-100 text-sm mb-1">Calories Today</p>
+                  <div className="flex items-baseline gap-2">
+                    <span className="text-4xl font-bold">{dailySummary.totalCalories}</span>
+                    <span className="text-blue-100">/ {healthGoal.dailyCalorieTarget}</span>
                   </div>
-
-                  {mealLogs.length > 0 ? (
-                    <div className="space-y-2 mb-3">
-                      {mealLogs.map((log) => (
-                        <div key={log._id} className="bg-white/20 rounded-lg p-2 flex items-center justify-between">
-                          <div className="flex-1">
-                            <p className="text-sm font-medium">{log.foodItems?.[0]?.name || 'Food'}</p>
-                            <p className="text-xs opacity-75">{log.totalNutrition?.calories} cal</p>
-                          </div>
-                          <button
-                            onClick={() => deleteMeal(log._id)}
-                            className="p-1 hover:bg-white/30 rounded-lg transition"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-
-                  <button
-                    onClick={() => {
-                      if (!healthGoal) {
-                        toast.error('Please set your fitness goal first');
-                        return;
-                      }
-                      setMealType(type);
-                      setShowAddMeal(true);
-                    }}
-                    className="w-full bg-white/30 hover:bg-white/40 text-white font-bold py-2 rounded-lg transition-all flex items-center justify-center gap-2"
-                  >
-                    <Plus className="w-5 h-5" />
-                    Add {type.charAt(0).toUpperCase() + type.slice(1)}
-                  </button>
                 </div>
-              );
-            })}
+                <div className="relative w-24 h-24">
+                  <svg className="w-24 h-24 transform -rotate-90" viewBox="0 0 36 36">
+                    <path
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="rgba(255,255,255,0.2)"
+                      strokeWidth="3"
+                    />
+                    <path
+                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                      fill="none"
+                      stroke="white"
+                      strokeWidth="3"
+                      strokeDasharray={`${Math.min(caloriePercentage, 100)}, 100`}
+                      strokeLinecap="round"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <span className="text-sm font-bold">{Math.min(caloriePercentage, 100).toFixed(0)}%</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Macros */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-white/20 rounded-xl p-3 text-center">
+                  <p className="text-xs text-blue-100 mb-1">Protein</p>
+                  <p className="font-bold">{dailySummary.totalProtein.toFixed(0)}g</p>
+                  <p className="text-xs text-blue-100">/ {healthGoal.macroTargets.protein}g</p>
+                </div>
+                <div className="bg-white/20 rounded-xl p-3 text-center">
+                  <p className="text-xs text-blue-100 mb-1">Carbs</p>
+                  <p className="font-bold">{dailySummary.totalCarbs.toFixed(0)}g</p>
+                  <p className="text-xs text-blue-100">/ {healthGoal.macroTargets.carbs}g</p>
+                </div>
+                <div className="bg-white/20 rounded-xl p-3 text-center">
+                  <p className="text-xs text-blue-100 mb-1">Fats</p>
+                  <p className="font-bold">{dailySummary.totalFats.toFixed(0)}g</p>
+                  <p className="text-xs text-blue-100">/ {healthGoal.macroTargets.fats}g</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Water Intake */}
+          <div className="bg-gradient-to-br from-purple-400 to-orange-500 rounded-3xl p-6 text-white shadow-lg">
+            <div className="flex items-start justify-between mb-4">
+              <div>
+                <p className="text-cyan-100 text-sm mb-1">Water Reminder</p>
+                <p className="text-2xl font-bold">Drink water stay hydrated</p>
+              </div>
+              <div className="text-4xl">💧</div>
+            </div>
+
+            <p className="text-cyan-100 mb-4">Today you drink <span className="font-bold text-white">{waterIntake} glass</span> of water</p>
+            <p className="text-cyan-100 mb-4 text-sm">{(waterIntake * 0.25).toFixed(2)} L</p>
+
+            {/* Water Glasses */}
+            <div className="grid grid-cols-6 gap-2 mb-4">
+              {Array.from({ length: waterGoal }).map((_, i) => (
+                <div
+                  key={i}
+                  onClick={() => i < waterIntake ? handleRemoveWater() : handleAddWater()}
+                  className={`aspect-square rounded-lg flex items-center justify-center cursor-pointer transition-all transform hover:scale-110 ${i < waterIntake
+                      ? 'bg-white text-blue-500 shadow-lg'
+                      : 'bg-white/30 text-white'
+                    }`}
+                >
+                  <Droplets className="w-5 h-5" />
+                </div>
+              ))}
+            </div>
+
+            <button
+              onClick={handleAddWater}
+              className="w-full bg-white text-blue-600 font-bold py-2 rounded-xl hover:bg-blue-50 transition-all"
+            >
+              + Add Water
+            </button>
           </div>
-        </div>
+
+          {/* Meals Section */}
+          <div id="daily-target" className="scroll-mt-20">
+            <h2 className="text-lg font-bold text-gray-900 mb-4">My Daily Target</h2>
+
+            {/* Meal Cards */}
+            <div className="space-y-3">
+              {['breakfast', 'lunch', 'snack', 'dinner'].map((type) => {
+                const mealLogs = todayLogs.filter(log => log.mealType === type);
+                const mealCalories = mealLogs.reduce((sum, log) => sum + (log.totalNutrition?.calories || 0), 0);
+
+                return (
+                  <div key={type} className="bg-gradient-to-br from-purple-500 to-orange-600 rounded-2xl p-4 text-white shadow-md">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <p className="text-sm opacity-90 capitalize">{type}</p>
+                        <p className="text-2xl font-bold">{mealCalories} Kcal</p>
+                      </div>
+                      <span className="text-3xl">{getMealIcon(type)}</span>
+                    </div>
+
+                    {mealLogs.length > 0 ? (
+                      <div className="space-y-2 mb-3">
+                        {mealLogs.map((log) => (
+                          <div key={log._id} className="bg-white/20 rounded-lg p-2 flex items-center justify-between">
+                            <div className="flex-1">
+                              <p className="text-sm font-medium">{log.foodItems?.[0]?.name || 'Food'}</p>
+                              <p className="text-xs opacity-75">{log.totalNutrition?.calories} cal</p>
+                            </div>
+                            <button
+                              onClick={() => deleteMeal(log._id)}
+                              className="p-1 hover:bg-white/30 rounded-lg transition"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+
+                    <button
+                      onClick={() => {
+                        if (!healthGoal) {
+                          toast.error('Please set your fitness goal first');
+                          return;
+                        }
+                        setMealType(type);
+                        setShowAddMeal(true);
+                      }}
+                      className="w-full bg-white/30 hover:bg-white/40 text-white font-bold py-2 rounded-lg transition-all flex items-center justify-center gap-2"
+                    >
+                      <Plus className="w-5 h-5" />
+                      Add {type.charAt(0).toUpperCase() + type.slice(1)}
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
         </div>
       </div>
 
       {/* Add Meal Modal */}
       {showAddMeal && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center md:justify-center"
           onClick={() => {
             setShowAddMeal(false);
@@ -547,7 +549,7 @@ export default function Nutrition() {
             setShowQuantitySuggestions(false);
           }}
         >
-          <div 
+          <div
             className="bg-white w-full md:w-full md:max-w-2xl rounded-t-3xl md:rounded-3xl p-6 max-h-[85vh] md:max-h-[90vh] overflow-y-auto md:mb-0"
             onClick={(e) => e.stopPropagation()}
           >
@@ -602,11 +604,10 @@ export default function Nutrition() {
                       <button
                         key={size}
                         onClick={() => setServingSize(size)}
-                        className={`py-2 px-4 rounded-lg font-medium transition-all ${
-                          servingSize === size
+                        className={`py-2 px-4 rounded-lg font-medium transition-all ${servingSize === size
                             ? 'bg-blue-600 text-white'
                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
+                          }`}
                       >
                         {size.charAt(0).toUpperCase() + size.slice(1)}
                       </button>
@@ -622,11 +623,10 @@ export default function Nutrition() {
                       <button
                         key={method}
                         onClick={() => setPreparationMethod(method)}
-                        className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${
-                          preparationMethod === method
+                        className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${preparationMethod === method
                             ? 'bg-emerald-600 text-white'
                             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        }`}
+                          }`}
                       >
                         {method.charAt(0).toUpperCase() + method.slice(1)}
                       </button>
@@ -715,11 +715,10 @@ export default function Nutrition() {
                         <button
                           key={qty}
                           onClick={() => setQuantity(qty)}
-                          className={`py-3 px-4 rounded-lg font-medium transition-all ${
-                            quantity === qty
+                          className={`py-3 px-4 rounded-lg font-medium transition-all ${quantity === qty
                               ? 'bg-cyan-600 text-white ring-2 ring-cyan-300'
                               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
+                            }`}
                         >
                           {qty}
                         </button>

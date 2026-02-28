@@ -9,6 +9,8 @@ router.use(protect);
 // Diet plan routes
 router.post('/diet-plan/generate', dietRecommendationController.generatePersonalizedDietPlan);
 router.get('/diet-plan/active', dietRecommendationController.getActiveDietPlan);
+router.get('/diet-plan/history', dietRecommendationController.getDietPlanHistory);
+router.get('/diet-plan/:planId', dietRecommendationController.getDietPlanById);
 router.post('/diet-plan/:planId/rate', dietRecommendationController.rateDietPlan);
 
 // Supplement recommendation routes

@@ -1,11 +1,11 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import axios from 'axios';
 import {
   User, Save, Heart, AlertCircle, Camera, Mail, Phone, Target,
-  Activity, Droplet, Cigarette, Wine, Moon, Apple, Dumbbell, Pill, Bell
+  Activity, Droplet, Cigarette, Wine, Moon, Apple, Dumbbell, Pill, Upload
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import BMIWidget from '../components/BMIWidget';
@@ -14,6 +14,8 @@ export default function Profile() {
   const { user, updateUser } = useAuth();
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const fileInputRef = useRef(null);
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') || 'profile');
   const [healthGoal, setHealthGoal] = useState(null);
   const [goalLoading, setGoalLoading] = useState(false);
@@ -50,33 +52,46 @@ export default function Profile() {
     }
   });
 
-  useEffect(() => {
-    const fetchHealthGoal = async () => {
-      try {
-        const token = localStorage.getItem('token');
-        const response = await axios.get('/api/nutrition/goals', {
-          headers: { Authorization: `Bearer ${token}` }
+  const fetchHealthGoal = async () => {
+    try {
+      const token = localStorage.getItem('token');
+      const response = await axios.get('/api/nutrition/goals', {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (response.data.healthGoal) {
+        setHealthGoal(response.data.healthGoal);
+        setGoalFormData({
+          goalType: response.data.healthGoal.goalType,
+          currentWeight: response.data.healthGoal.currentWeight,
+          targetWeight: response.data.healthGoal.targetWeight,
+          height: response.data.healthGoal.height,
+          age: response.data.healthGoal.age,
+          gender: response.data.healthGoal.gender,
+          activityLevel: response.data.healthGoal.activityLevel,
+          dietaryPreference: response.data.healthGoal.dietaryPreference
         });
-        if (response.data.healthGoal) {
-          setHealthGoal(response.data.healthGoal);
-          setGoalFormData({
-            goalType: response.data.healthGoal.goalType,
-            currentWeight: response.data.healthGoal.currentWeight,
-            targetWeight: response.data.healthGoal.targetWeight,
-            height: response.data.healthGoal.height,
-            age: response.data.healthGoal.age,
-            gender: response.data.healthGoal.gender,
-            activityLevel: response.data.healthGoal.activityLevel,
-            dietaryPreference: response.data.healthGoal.dietaryPreference
-          });
-        }
-      } catch (error) {
-        console.log('No health goal set yet');
       }
-    };
+    } catch (error) {
+      console.log('No health goal set yet');
+    }
+  };
 
+  useEffect(() => {
     fetchHealthGoal();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      setGoalFormData(prev => ({
+        ...prev,
+        currentWeight: user?.profile?.weight || prev.currentWeight,
+        height: user?.profile?.height || prev.height,
+        age: user?.profile?.age || prev.age,
+        gender: user?.profile?.gender || prev.gender,
+        dietaryPreference: user?.profile?.dietaryPreference || prev.dietaryPreference
+      }));
+    }
+  }, [user]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -127,6 +142,35 @@ export default function Profile() {
       const { data } = await api.put('/auth/profile', payload);
       updateUser(data);
       toast.success('Profile updated successfully!');
+
+      if (data.bmiChanged) {
+        await fetchHealthGoal();
+        toast((t) => (
+          <div className="flex flex-col gap-2">
+            <p className="text-sm font-medium">
+              Your BMI has changed to <span className="font-bold text-cyan-600">{data.newBmi}</span>.
+              Nutrition targets have been updated!
+            </p>
+            <div className="flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  toast.dismiss(t.id);
+                  setActiveTab('goals');
+                }}
+                className="px-3 py-1.5 bg-cyan-100 text-cyan-700 rounded-lg text-xs font-black uppercase tracking-wider hover:bg-cyan-200 transition-colors"
+              >
+                Review Fitness Goal
+              </button>
+              <button
+                onClick={() => toast.dismiss(t.id)}
+                className="px-3 py-1.5 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-slate-200 transition-colors"
+              >
+                Later
+              </button>
+            </div>
+          </div>
+        ), { duration: 8000, position: 'bottom-center' });
+      }
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to update profile');
     } finally {
@@ -165,6 +209,44 @@ export default function Profile() {
     setGoalFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleImageUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image size should be less than 5MB');
+      return;
+    }
+
+    setUploadingImage(true);
+    const formData = new FormData();
+    formData.append('profilePicture', file);
+
+    try {
+      const token = localStorage.getItem('token');
+      const { data } = await api.post('/auth/upload-profile-picture', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      updateUser(data.user);
+      toast.success('Profile picture updated successfully!');
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast.error(error.response?.data?.message || 'Failed to upload image');
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   const bmi = formData.profile.height && formData.profile.weight
     ? (formData.profile.weight / Math.pow(formData.profile.height / 100, 2)).toFixed(1) : null;
 
@@ -179,64 +261,95 @@ export default function Profile() {
   const bmiStatus = getBmiStatus(parseFloat(bmi));
 
   return (
-    <div className="w-full overflow-x-hidden space-y-6 animate-fade-in px-3 md:px-6">
-      {/* Welcome Message - Mobile Only */}
-      <div className="md:hidden flex items-center justify-between">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-orange-600 flex items-center justify-center text-white text-sm font-bold shadow-md flex-shrink-0">
-            {user?.name?.[0]?.toUpperCase() || 'U'}
-          </div>
-          <h1 className="text-sm font-bold text-slate-800 truncate">
-            {(() => {
-              const hour = new Date().getHours();
-              if (hour < 12) return 'Good Morning';
-              if (hour < 18) return 'Good Afternoon';
-              return 'Good Evening';
-            })()}, {user?.name?.split(' ')[0] || 'there'}!
-          </h1>
-        </div>
-        <button className="w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center hover:shadow-lg transition-all flex-shrink-0">
-          <Bell className="w-4 h-4 text-slate-700" />
-        </button>
-      </div>
+    <div className="w-full overflow-x-hidden space-y-6 animate-fade-in px-3 md:px-6 pb-24">
+      {/* Hidden file input for image upload */}
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleImageUpload}
+        className="hidden"
+      />
 
       <div className="hidden md:block">
         <h1 className="text-2xl font-bold text-slate-800">My Profile</h1>
         <p className="text-slate-500 mt-1">Manage your information and track health progress</p>
       </div>
 
-      {/* Profile Header Card */}
-      <div className="bg-gradient-to-r from-purple-500 to-orange-500 rounded-2xl p-3 md:p-6 text-white relative overflow-hidden shadow-lg">
+      {/* Profile Header Card - Centered Profile Picture */}
+      <div className="bg-gradient-to-br from-[#2FC8B9] to-[#1db7a6] rounded-3xl p-6 md:p-8 text-white relative overflow-hidden shadow-xl">
         <div className="absolute inset-0 opacity-10">
           <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -translate-y-1/2 translate-x-1/2" />
+          <div className="absolute bottom-0 left-0 w-48 h-48 bg-white rounded-full translate-y-1/2 -translate-x-1/2" />
         </div>
-        <div className="relative flex flex-col gap-4 md:gap-6">
-          <div className="flex flex-col md:flex-row md:items-center gap-4 md:gap-6">
-            <div className="relative">
-              <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl md:text-3xl font-bold">
+
+        <div className="relative flex flex-col items-center text-center gap-4">
+          {/* Centered Profile Picture with Upload */}
+          <div className="relative group">
+            {user?.profilePicture ? (
+              <img
+                src={user.profilePicture}
+                alt={user.name}
+                className="w-24 h-24 md:w-32 md:h-32 rounded-full object-cover border-4 border-white/30 shadow-2xl"
+              />
+            ) : (
+              <div className="w-24 h-24 md:w-32 md:h-32 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-4xl md:text-5xl font-black border-4 border-white/30 shadow-2xl">
                 {user?.name?.[0]?.toUpperCase()}
               </div>
-              <button className="absolute -bottom-2 -right-2 w-8 h-8 bg-white rounded-full flex items-center justify-center text-cyan-600 shadow-lg hover:scale-110 transition-transform">
-                <Camera className="w-4 h-4" />
-              </button>
-            </div>
-            <div className="flex-1">
-              <h2 className="text-xl md:text-2xl font-bold">{user?.name}</h2>
-              <div className="flex flex-col gap-2 mt-2 text-white/90 text-sm md:text-base">
-                <span className="flex items-center gap-1"><Mail className="w-4 h-4 flex-shrink-0" /> {user?.email}</span>
-                {user?.phone && <span className="flex items-center gap-1"><Phone className="w-4 h-4 flex-shrink-0" /> {user?.phone}</span>}
-              </div>
+            )}
+
+            {/* Upload Button Overlay */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingImage}
+              className="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+            >
+              {uploadingImage ? (
+                <div className="w-8 h-8 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <Camera className="w-8 h-8 text-white" />
+              )}
+            </button>
+
+            {/* Small Upload Icon */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingImage}
+              className="absolute -bottom-2 -right-2 w-10 h-10 bg-white rounded-full flex items-center justify-center text-[#2FC8B9] shadow-lg hover:scale-110 transition-transform disabled:opacity-50"
+            >
+              {uploadingImage ? (
+                <div className="w-4 h-4 border-2 border-[#2FC8B9]/30 border-t-[#2FC8B9] rounded-full animate-spin" />
+              ) : (
+                <Upload className="w-5 h-5" />
+              )}
+            </button>
+          </div>
+
+          {/* User Info */}
+          <div>
+            <h2 className="text-2xl md:text-3xl font-black">{user?.name}</h2>
+            <div className="flex flex-col gap-2 mt-3 text-white/90 text-sm md:text-base">
+              <span className="flex items-center justify-center gap-2">
+                <Mail className="w-4 h-4" /> {user?.email}
+              </span>
+              {user?.phone && (
+                <span className="flex items-center justify-center gap-2">
+                  <Phone className="w-4 h-4" /> {user?.phone}
+                </span>
+              )}
             </div>
           </div>
-          <div className="flex gap-3 md:gap-4">
-            <div className="text-center p-3 md:p-4 bg-white/10 backdrop-blur-sm rounded-xl flex-1">
-              <p className="text-2xl md:text-3xl font-bold">{user?.healthMetrics?.healthScore || '--'}</p>
-              <p className="text-xs md:text-sm text-white/80">Health Score</p>
+
+          {/* Stats */}
+          <div className="flex gap-4 mt-2 w-full max-w-md">
+            <div className="text-center p-4 bg-white/10 backdrop-blur-sm rounded-2xl flex-1">
+              <p className="text-3xl font-black">{user?.healthMetrics?.healthScore || '--'}</p>
+              <p className="text-sm text-white/80 mt-1">Health Score</p>
             </div>
             {bmi && (
-              <div className="text-center p-3 md:p-4 bg-white/10 backdrop-blur-sm rounded-xl flex-1">
-                <p className="text-2xl md:text-3xl font-bold">{bmi}</p>
-                <p className="text-xs md:text-sm text-white/80">BMI</p>
+              <div className="text-center p-4 bg-white/10 backdrop-blur-sm rounded-2xl flex-1">
+                <p className="text-3xl font-black">{bmi}</p>
+                <p className="text-sm text-white/80 mt-1">BMI</p>
               </div>
             )}
           </div>

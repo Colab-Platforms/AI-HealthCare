@@ -1,3 +1,0 @@
-Force Vercel rebuild - Sleep tracker graph fix
-Timestamp: 2026-02-11 15:00:00
-Changes: Bar graph with empty state + removed time asleep
