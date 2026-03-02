@@ -35,8 +35,13 @@ console.log('Environment:', {
 // GLOBAL MongoDB connection - shared across all serverless calls
 // ============================================================
 let cachedConnection = null;
+let connectionAttempts = 0;
+const MAX_CONNECTION_ATTEMPTS = 3;
 
 const connectToDatabase = async () => {
+  connectionAttempts++;
+  console.log(`🔄 Connection attempt ${connectionAttempts}/${MAX_CONNECTION_ATTEMPTS}`);
+
   // If already connected, return immediately
   if (cachedConnection && mongoose.connection.readyState === 1) {
     console.log('♻️ Reusing existing MongoDB connection');
@@ -76,10 +81,13 @@ const connectToDatabase = async () => {
   }
 
   if (!process.env.MONGODB_URI) {
-    throw new Error('MONGODB_URI is not set. Configure it in Vercel Environment Variables.');
+    const error = 'MONGODB_URI is not set. Configure it in Vercel Environment Variables.';
+    console.error('❌ CRITICAL:', error);
+    throw new Error(error);
   }
 
   console.log('🔄 Connecting to MongoDB...');
+  console.log('MongoDB URI:', process.env.MONGODB_URI.substring(0, 30) + '...');
 
   const options = {
     serverSelectionTimeoutMS: 30000,
@@ -95,13 +103,25 @@ const connectToDatabase = async () => {
   };
 
   try {
+    console.log('Mongoose connection state before connect:', mongoose.connection.readyState);
     const conn = await mongoose.connect(process.env.MONGODB_URI, options);
     cachedConnection = conn;
+    connectionAttempts = 0; // Reset on success
     console.log('✅ MongoDB Connected:', conn.connection.host);
+    console.log('Mongoose connection state after connect:', mongoose.connection.readyState);
     return conn;
   } catch (error) {
     cachedConnection = null;
     console.error('❌ MongoDB Connection Error:', error.message);
+    console.error('Error code:', error.code);
+    console.error('Error name:', error.name);
+    
+    if (connectionAttempts < MAX_CONNECTION_ATTEMPTS) {
+      console.log(`Retrying connection (${connectionAttempts}/${MAX_CONNECTION_ATTEMPTS})...`);
+      await new Promise(resolve => setTimeout(resolve, 1000 * connectionAttempts)); // Exponential backoff
+      return connectToDatabase();
+    }
+    
     throw error;
   }
 };
