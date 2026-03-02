@@ -3,19 +3,35 @@ const path = require('path');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
 
-// Load environment variables
-dotenv.config({ path: path.join(__dirname, '../server/.env') });
+// Load environment variables FIRST
+const envPath = path.join(__dirname, '../server/.env');
+console.log('Loading .env from:', envPath);
+dotenv.config({ path: envPath });
+
+// Verify critical env vars
+if (!process.env.MONGODB_URI) {
+  console.error('ERROR: MONGODB_URI not set in environment');
+}
+if (!process.env.JWT_SECRET) {
+  console.error('ERROR: JWT_SECRET not set in environment');
+}
 
 // Set Vercel environment
 process.env.VERCEL = '1';
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
+
+console.log('Environment:', {
+  NODE_ENV: process.env.NODE_ENV,
+  VERCEL: process.env.VERCEL,
+  MONGODB_URI: process.env.MONGODB_URI ? 'SET' : 'NOT SET',
+  JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'NOT SET'
+});
 
 // Connection state
 let isConnected = false;
 
 const connectToDatabase = async () => {
   if (isConnected && mongoose.connection.readyState === 1) {
-    console.log('Using existing database connection');
     return;
   }
 
@@ -27,21 +43,21 @@ const connectToDatabase = async () => {
 
     await mongoose.connect(process.env.MONGODB_URI, options);
     isConnected = true;
-    console.log('Database connected successfully');
+    console.log('✓ Database connected');
   } catch (error) {
-    console.error('Database connection error:', error);
+    console.error('✗ Database connection error:', error.message);
     isConnected = false;
     throw error;
   }
 };
 
-// Import the Express app (not the handler)
+// Import Express and middleware
 const express = require('express');
 const cors = require('cors');
-const fs = require('fs');
 
 const app = express();
 
+// Middleware
 app.use(cors({
   origin: process.env.CLIENT_URL || '*',
   credentials: true
@@ -49,113 +65,142 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Health check
+// Health check endpoint (no auth required)
 app.get('/api/health-check', (req, res) => {
   res.json({
     status: 'ok',
-    message: 'FitCure API',
+    message: 'API is running',
     timestamp: new Date().toISOString(),
-    dbConnected: mongoose.connection.readyState === 1,
-    environment: process.env.NODE_ENV,
-    vercel: !!process.env.VERCEL,
-    routes: {
-      auth: !!authRoutes,
-      health: !!healthRoutes,
-      metrics: !!metricRoutes,
-      doctors: !!doctorRoutes,
-      admin: !!adminRoutes,
-      wearables: !!wearableRoutes,
-      nutrition: !!nutritionRoutes,
-      dietRecommendations: !!dietRecommendationRoutes,
-      users: !!userRoutes,
-      notifications: !!notificationRoutes,
-      chat: !!chatRoutes,
-      chatHistory: !!chatHistoryRoutes
-    }
+    environment: process.env.NODE_ENV
   });
 });
 
-// Test route to verify nutrition routes are loaded
-app.get('/api/test-nutrition', (req, res) => {
-  res.json({
-    message: 'Nutrition routes test',
-    nutritionRoutesLoaded: !!nutritionRoutes,
-    timestamp: new Date().toISOString()
-  });
-});
+// Load and mount routes
+console.log('Mounting routes...');
 
-// Load routes with better error handling
-const loadRoute = (path, name) => {
-  try {
-    const route = require(path);
-    console.log(`✓ Loaded ${name} route`);
-    return route;
-  } catch (error) {
-    console.error(`✗ Error loading ${name} route:`, error.message);
-    return null;
-  }
-};
+try {
+  const authRoutes = require('../server/routes/authRoutes');
+  app.use('/api/auth', authRoutes);
+  console.log('✓ Auth routes mounted');
+} catch (e) {
+  console.error('✗ Auth routes error:', e.message);
+}
 
-console.log('Loading routes...');
-const authRoutes = loadRoute('../server/routes/authRoutes', 'auth');
-const healthRoutes = loadRoute('../server/routes/healthRoutes', 'health');
-const metricRoutes = loadRoute('../server/routes/metricRoutes', 'metrics');
-const doctorRoutes = loadRoute('../server/routes/doctorRoutes', 'doctors');
-const adminRoutes = loadRoute('../server/routes/adminRoutes', 'admin');
-const wearableRoutes = loadRoute('../server/routes/wearableRoutes', 'wearables');
-const nutritionRoutes = loadRoute('../server/routes/nutritionRoutes', 'nutrition');
-const dietRecommendationRoutes = loadRoute('../server/routes/dietRecommendationRoutes', 'diet-recommendations');
-const userRoutes = loadRoute('../server/routes/userRoutes', 'users');
-const notificationRoutes = loadRoute('../server/routes/notificationRoutes', 'notifications');
-const chatRoutes = loadRoute('../server/routes/chatRoutes', 'chat');
-const chatHistoryRoutes = loadRoute('../server/routes/chatHistoryRoutes', 'chat-history');
-console.log('Routes loaded.');
+try {
+  const healthRoutes = require('../server/routes/healthRoutes');
+  app.use('/api/health', healthRoutes);
+  console.log('✓ Health routes mounted');
+} catch (e) {
+  console.error('✗ Health routes error:', e.message);
+}
 
-if (authRoutes) app.use('/api/auth', authRoutes);
-if (healthRoutes) app.use('/api/health', healthRoutes);
-if (metricRoutes) app.use('/api/metrics', metricRoutes);
-if (doctorRoutes) app.use('/api/doctors', doctorRoutes);
-if (adminRoutes) app.use('/api/admin', adminRoutes);
-if (wearableRoutes) app.use('/api/wearables', wearableRoutes);
-if (nutritionRoutes) app.use('/api/nutrition', nutritionRoutes);
-if (dietRecommendationRoutes) app.use('/api/diet-recommendations', dietRecommendationRoutes);
-if (userRoutes) app.use('/api/users', userRoutes);
-if (notificationRoutes) app.use('/api/notifications', notificationRoutes);
-if (chatRoutes) app.use('/api', chatRoutes);
-if (chatHistoryRoutes) app.use('/api/chat', chatHistoryRoutes);
+try {
+  const nutritionRoutes = require('../server/routes/nutritionRoutes');
+  app.use('/api/nutrition', nutritionRoutes);
+  console.log('✓ Nutrition routes mounted');
+} catch (e) {
+  console.error('✗ Nutrition routes error:', e.message);
+}
 
-// 404 handler for API routes
+try {
+  const dietRecommendationRoutes = require('../server/routes/dietRecommendationRoutes');
+  app.use('/api/diet-recommendations', dietRecommendationRoutes);
+  console.log('✓ Diet recommendation routes mounted');
+} catch (e) {
+  console.error('✗ Diet recommendation routes error:', e.message);
+}
+
+try {
+  const metricRoutes = require('../server/routes/metricRoutes');
+  app.use('/api/metrics', metricRoutes);
+  console.log('✓ Metric routes mounted');
+} catch (e) {
+  console.error('✗ Metric routes error:', e.message);
+}
+
+try {
+  const doctorRoutes = require('../server/routes/doctorRoutes');
+  app.use('/api/doctors', doctorRoutes);
+  console.log('✓ Doctor routes mounted');
+} catch (e) {
+  console.error('✗ Doctor routes error:', e.message);
+}
+
+try {
+  const adminRoutes = require('../server/routes/adminRoutes');
+  app.use('/api/admin', adminRoutes);
+  console.log('✓ Admin routes mounted');
+} catch (e) {
+  console.error('✗ Admin routes error:', e.message);
+}
+
+try {
+  const wearableRoutes = require('../server/routes/wearableRoutes');
+  app.use('/api/wearables', wearableRoutes);
+  console.log('✓ Wearable routes mounted');
+} catch (e) {
+  console.error('✗ Wearable routes error:', e.message);
+}
+
+try {
+  const userRoutes = require('../server/routes/userRoutes');
+  app.use('/api/users', userRoutes);
+  console.log('✓ User routes mounted');
+} catch (e) {
+  console.error('✗ User routes error:', e.message);
+}
+
+try {
+  const notificationRoutes = require('../server/routes/notificationRoutes');
+  app.use('/api/notifications', notificationRoutes);
+  console.log('✓ Notification routes mounted');
+} catch (e) {
+  console.error('✗ Notification routes error:', e.message);
+}
+
+try {
+  const chatRoutes = require('../server/routes/chatRoutes');
+  app.use('/api', chatRoutes);
+  console.log('✓ Chat routes mounted');
+} catch (e) {
+  console.error('✗ Chat routes error:', e.message);
+}
+
+try {
+  const chatHistoryRoutes = require('../server/routes/chatHistoryRoutes');
+  app.use('/api/chat', chatHistoryRoutes);
+  console.log('✓ Chat history routes mounted');
+} catch (e) {
+  console.error('✗ Chat history routes error:', e.message);
+}
+
+// 404 handler
 app.use('/api/*', (req, res) => {
-  console.log('404 - Route not found:', req.method, req.originalUrl);
   res.status(404).json({
     error: 'Route not found',
     method: req.method,
-    path: req.originalUrl,
-    availableRoutes: Object.keys(app._router.stack
-      .filter(r => r.route)
-      .reduce((acc, r) => {
-        acc[r.route.path] = Object.keys(r.route.methods);
-        return acc;
-      }, {}))
+    path: req.originalUrl
   });
 });
 
 // Error handler
 app.use((err, req, res, next) => {
-  console.error('Error:', err.stack);
+  console.error('Error:', err.message);
   res.status(500).json({
-    message: err.message || 'Something went wrong!',
+    message: err.message || 'Internal server error',
     error: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });
 });
 
-// Serverless handler with DB connection
+// Serverless handler
 const handler = async (req, res) => {
   try {
     await connectToDatabase();
   } catch (error) {
-    console.error('Failed to connect to database:', error);
-    // Continue anyway - some endpoints might not need DB
+    console.error('Database connection failed:', error.message);
+    if (req.path === '/api/health-check') {
+      return res.status(200).json({ status: 'ok', dbConnected: false });
+    }
   }
   return app(req, res);
 };
