@@ -78,29 +78,32 @@ const connectToDatabase = async () => {
   // Create connection promise to avoid multiple simultaneous connections
   connectionPromise = (async () => {
     let attempts = 0;
-    const maxAttempts = 3;
+    const maxAttempts = 5; // Increased from 3 to 5 for Vercel
 
     while (attempts < maxAttempts) {
       try {
         attempts++;
         console.log(`🔄 Connection attempt ${attempts}/${maxAttempts}`);
+        console.log('MongoDB URI format check:', process.env.MONGODB_URI ? `Valid (${process.env.MONGODB_URI.substring(0, 30)}...)` : 'MISSING');
         
         const conn = await mongoose.connect(process.env.MONGODB_URI, options);
         
         console.log('✅ MongoDB Connected:', conn.connection.host);
+        console.log('Connection state:', mongoose.connection.readyState);
         connectionPromise = null; // Clear promise on success
         return conn;
       } catch (error) {
         console.error(`❌ Connection attempt ${attempts} failed:`, error.message);
         console.error('Error code:', error.code);
         console.error('Error name:', error.name);
+        console.error('Full error:', error);
         
         if (attempts < maxAttempts) {
-          const delay = 1000 * attempts;
+          const delay = 2000 * attempts; // Increased delay: 2s, 4s, 6s, 8s, 10s
           console.log(`⏳ Retrying in ${delay}ms...`);
           await new Promise(resolve => setTimeout(resolve, delay));
         } else {
-          console.error('❌ All connection attempts failed');
+          console.error('❌ All connection attempts failed after', maxAttempts, 'tries');
           connectionPromise = null; // Clear promise on failure
           throw error;
         }
@@ -145,22 +148,31 @@ app.use('/api', async (req, res, next) => {
     }
 
     console.log(`[DB Middleware] ${req.method} ${req.path} - Connecting to database...`);
+    console.log('[DB Middleware] Current connection state:', mongoose.connection.readyState);
+    
     await connectToDatabase();
+    
     console.log(`[DB Middleware] ${req.method} ${req.path} - Database connected, proceeding to route`);
+    console.log('[DB Middleware] Connection state after connect:', mongoose.connection.readyState);
     next();
   } catch (error) {
     console.error(`[DB Middleware] ${req.method} ${req.path} - Connection failed:`, error.message);
     console.error('[DB Middleware] Error details:', {
       code: error.code,
       name: error.name,
-      mongooseState: mongoose.connection.readyState
+      mongooseState: mongoose.connection.readyState,
+      fullError: error.toString()
     });
     
     // Return 503 Service Unavailable for database connection errors
     return res.status(503).json({
       message: 'Database connection failed. Please try again.',
       error: 'Service temporarily unavailable',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      details: process.env.NODE_ENV === 'development' ? {
+        errorMessage: error.message,
+        errorCode: error.code,
+        errorName: error.name
+      } : undefined,
       timestamp: new Date().toISOString()
     });
   }
