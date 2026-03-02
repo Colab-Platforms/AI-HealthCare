@@ -115,10 +115,18 @@ const connectToDatabase = async () => {
     console.error('❌ MongoDB Connection Error:', error.message);
     console.error('Error code:', error.code);
     console.error('Error name:', error.name);
+    console.error('Full error:', JSON.stringify({
+      message: error.message,
+      code: error.code,
+      name: error.name,
+      mongooseState: mongoose.connection.readyState,
+      mongodbUri: process.env.MONGODB_URI ? `${process.env.MONGODB_URI.substring(0, 30)}...` : 'NOT SET'
+    }, null, 2));
     
     if (connectionAttempts < MAX_CONNECTION_ATTEMPTS) {
-      console.log(`Retrying connection (${connectionAttempts}/${MAX_CONNECTION_ATTEMPTS})...`);
-      await new Promise(resolve => setTimeout(resolve, 1000 * connectionAttempts)); // Exponential backoff
+      const delay = 1000 * connectionAttempts;
+      console.log(`⏳ Retrying connection in ${delay}ms (${connectionAttempts}/${MAX_CONNECTION_ATTEMPTS})...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
       return connectToDatabase();
     }
     
@@ -180,6 +188,13 @@ app.get('/api/health-check', (req, res) => {
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
     dbConnected: mongoose.connection.readyState === 1,
+    dbState: mongoose.connection.readyState,
+    dbStateDescription: {
+      0: 'disconnected',
+      1: 'connected',
+      2: 'connecting',
+      3: 'disconnecting'
+    }[mongoose.connection.readyState],
     envVars: {
       MONGODB_URI: !!process.env.MONGODB_URI,
       JWT_SECRET: !!process.env.JWT_SECRET,
