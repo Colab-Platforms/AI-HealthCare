@@ -67,12 +67,6 @@ exports.analyzeFood = async (req, res) => {
     });
   }
 };
-      success: false,
-      message: 'Failed to analyze food',
-      error: error.message
-    });
-  }
-};
 
 // Log a meal
 exports.logMeal = async (req, res) => {
