@@ -14,6 +14,12 @@ exports.analyzeFood = async (req, res) => {
   try {
     const { foodDescription, imageBase64, additionalContext } = req.body;
 
+    console.log('Analyzing food:', { 
+      hasDescription: !!foodDescription, 
+      hasImage: !!imageBase64,
+      userId: req.user._id 
+    });
+
     if (!foodDescription && !imageBase64) {
       return res.status(400).json({
         success: false,
@@ -22,21 +28,28 @@ exports.analyzeFood = async (req, res) => {
     }
 
     let imageUrl = null;
+    let analysis = null;
+    
     if (imageBase64) {
       // Analyze from image
+      console.log('Analyzing from image...');
       analysis = await nutritionAI.analyzeFromImage(imageBase64, additionalContext);
 
       // Upload to Cloudinary for consistent storage
       try {
+        console.log('Uploading image to Cloudinary...');
         imageUrl = await uploadImage(`data:image/jpeg;base64,${imageBase64}`, 'logged_meals');
+        console.log('Image uploaded successfully:', imageUrl);
       } catch (e) {
-        console.error('Cloudinary upload in analyzeFood failed:', e);
+        console.error('Cloudinary upload in analyzeFood failed:', e.message);
       }
     } else {
       // Analyze from text
+      console.log('Analyzing from text...');
       analysis = await nutritionAI.analyzeFromText(foodDescription);
     }
 
+    console.log('Food analysis completed successfully');
     res.json({
       success: true,
       analysis: {
@@ -46,8 +59,14 @@ exports.analyzeFood = async (req, res) => {
       message: 'Food analyzed successfully'
     });
   } catch (error) {
-    console.error('Analyze food error:', error);
+    console.error('Analyze food error:', error.message, error.stack);
     res.status(500).json({
+      success: false,
+      message: 'Failed to analyze food',
+      error: error.message
+    });
+  }
+};
       success: false,
       message: 'Failed to analyze food',
       error: error.message
@@ -404,6 +423,15 @@ exports.logWeight = async (req, res) => {
   try {
     const { weight, notes } = req.body;
 
+    console.log('Logging weight:', { userId: req.user._id, weight, notes });
+
+    if (!weight) {
+      return res.status(400).json({
+        success: false,
+        message: 'Weight value is required'
+      });
+    }
+
     // Save to HealthMetric for glucose log page
     const HealthMetric = require('../models/HealthMetric');
     const metric = new HealthMetric({
@@ -415,7 +443,10 @@ exports.logWeight = async (req, res) => {
       recordedAt: new Date(),
       notes
     });
+    
+    console.log('Saving weight metric to database...');
     await metric.save({ maxTimeMS: 30000 });
+    console.log('Weight metric saved successfully');
 
     // Also update user profile weight
     const User = require('../models/User');
@@ -425,6 +456,7 @@ exports.logWeight = async (req, res) => {
       user.profile.weight = Number(weight);
       user.markModified('profile');
       await user.save({ maxTimeMS: 30000 });
+      console.log('User profile weight updated');
     }
 
     // Update health goal if exists
@@ -439,6 +471,7 @@ exports.logWeight = async (req, res) => {
       });
       // Recalculate targets based on new weight
       await healthGoal.save({ maxTimeMS: 30000 });
+      console.log('Health goal weight updated');
     }
 
     res.json({
@@ -448,7 +481,7 @@ exports.logWeight = async (req, res) => {
       healthGoal
     });
   } catch (error) {
-    console.error('Log weight error:', error);
+    console.error('Log weight error:', error.message, error.stack);
     res.status(500).json({
       success: false,
       message: 'Failed to log weight',
