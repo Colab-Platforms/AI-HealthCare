@@ -162,6 +162,15 @@ app.get('/api/health-check', (req, res) => {
   });
 });
 
+// Root endpoint
+app.get('/', (req, res) => {
+  res.json({
+    message: 'Healthcare AI Platform API',
+    status: 'running',
+    version: '1.0.0'
+  });
+});
+
 // Load and mount routes
 console.log('Mounting routes...');
 
@@ -277,10 +286,30 @@ console.log('All routes mounted. Ready to handle requests.');
 
 // 404 handler
 app.use('/api/*', (req, res) => {
+  console.log('404 - Route not found:', {
+    method: req.method,
+    path: req.originalUrl,
+    url: req.url,
+    baseUrl: req.baseUrl
+  });
   res.status(404).json({
     error: 'Route not found',
     method: req.method,
-    path: req.originalUrl
+    path: req.originalUrl,
+    availableRoutes: [
+      '/api/auth',
+      '/api/health',
+      '/api/nutrition',
+      '/api/diet-recommendations',
+      '/api/metrics',
+      '/api/doctors',
+      '/api/admin',
+      '/api/wearables',
+      '/api/users',
+      '/api/notifications',
+      '/api/chat',
+      '/api/health-check'
+    ]
   });
 });
 
