@@ -59,10 +59,10 @@ export default function Nutrition() {
 
       const [logsRes, summaryRes, goalRes] = await Promise.all([
         isToday
-          ? api.get('/nutrition/logs/today')
-          : api.get(`/nutrition/logs?startDate=${selectedDate}&endDate=${selectedDate}`),
-        api.get(`/nutrition/summary/daily?date=${selectedDate}`),
-        api.get('/nutrition/goals').catch(() => ({ data: { healthGoal: null } }))
+          ? api.get('nutrition/logs/today')
+          : api.get(`nutrition/logs?startDate=${selectedDate}&endDate=${selectedDate}`),
+        api.get(`nutrition/summary/daily?date=${selectedDate}`),
+        api.get('nutrition/goals').catch(() => ({ data: { healthGoal: null } }))
       ]);
 
       setTodayLogs(logsRes.data.foodLogs || []);
@@ -200,7 +200,7 @@ export default function Nutrition() {
       const enhancedDescription = `${servingSize} ${preparationMethod} ${foodDescription}`;
 
       const response = await api.post(
-        '/nutrition/quick-check',
+        'nutrition/quick-check',
         { foodDescription: enhancedDescription }
       );
 
@@ -224,7 +224,7 @@ export default function Nutrition() {
     try {
       const token = localStorage.getItem('token');
       await api.post(
-        '/nutrition/log-meal',
+        'nutrition/log-meal',
         {
           mealType,
           foodItems: foodItems.map(item => ({
@@ -256,7 +256,7 @@ export default function Nutrition() {
 
     try {
       const token = localStorage.getItem('token');
-      await api.delete(`/nutrition/logs/${id}`);
+      await api.delete(`nutrition/logs/${id}`);
 
       toast.success('Meal deleted');
       fetchData();

@@ -18,6 +18,15 @@ try {
 }
 
 const app = express();
+// Ensure database connection for every request (crucial for serverless)
+app.use(async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    next(error);
+  }
+});
 
 app.use(cors({
   origin: process.env.CLIENT_URL || '*',
@@ -60,19 +69,24 @@ app.use((err, req, res, next) => {
   });
 });
 
+// Initialize database connection
+// In serverless (Vercel), this ensures connection is ready before handlers run
+connectDB().catch(err => {
+  console.error('Initial DB connection failed:', err);
+});
+
+// Initialize services (only if not on Vercel or if needed)
+if (!process.env.VERCEL) {
+  require('./services/reminderService');
+  try { require('./services/notificationService'); } catch (e) { console.error('Notification service error:', e); }
+}
+
 // Export app for local development or Vercel
 if (process.env.VERCEL) {
   module.exports = app;
 } else {
   const PORT = process.env.PORT || 5000;
-  connectDB().then(() => {
-    require('./services/reminderService');
-    try { require('./services/notificationService'); } catch (e) { console.error('Notification service error:', e); }
-    app.listen(PORT, '0.0.0.0', () => {
-      console.log(`Server running on port ${PORT}`);
-    });
-  }).catch(err => {
-    console.error('Failed to start server:', err);
-    process.exit(1);
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on port ${PORT}`);
   });
 }

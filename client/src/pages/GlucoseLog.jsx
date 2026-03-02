@@ -49,14 +49,14 @@ const GlucoseLog = () => {
       setLoading(true);
 
       // Fetch recent readings for the list (blood sugar)
-      const logRes = await api.get("/metrics/blood_sugar?limit=10");
+      const logRes = await api.get("metrics/blood_sugar?limit=10");
       setRecentReadings(logRes.data);
 
       // Fetch history for all 3 for the graphs
       const [glucoseRes, hba1cRes, weightRes] = await Promise.all([
-        api.get("/metrics/blood_sugar?limit=50"),
-        api.get("/metrics/hba1c?limit=50"),
-        api.get("/metrics/weight?limit=50")
+        api.get("metrics/blood_sugar?limit=50"),
+        api.get("metrics/hba1c?limit=50"),
+        api.get("metrics/weight?limit=50")
       ]);
 
       setGlucoseHistory(glucoseRes.data);
@@ -92,7 +92,7 @@ const GlucoseLog = () => {
         recordedAt: timestamp,
         notes: "",
       };
-      await api.post("/metrics", payload);
+      await api.post("metrics", payload);
       fetchMetrics();
     } catch (error) {
       console.error("Error saving reading:", error);

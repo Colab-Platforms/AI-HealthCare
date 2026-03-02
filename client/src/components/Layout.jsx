@@ -9,6 +9,8 @@ import TextSelectionPopup from './TextSelectionPopup';
 import MobileBottomNav from './MobileBottomNav';
 import PWAInstallPrompt from './PWAInstallPrompt';
 import api from '../services/api';
+import NotificationPanel from './NotificationPanel';
+import { useRef } from 'react';
 
 const patientNavItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -38,6 +40,8 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [healthData, setHealthData] = useState({ healthScore: 0, caloriesConsumed: 0, calorieTarget: 2000 });
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const notificationTriggerRef = useRef(null);
 
   // Refresh user data on mount to get latest profile picture and data
   useEffect(() => {
@@ -52,17 +56,17 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
       if (location.pathname === '/dashboard' && !isAdmin() && !isDoctor()) {
         try {
           // Fetch latest report for health score
-          const reportsRes = await api.get('/health/reports');
+          const reportsRes = await api.get('health/reports');
           const latestReport = reportsRes.data.reports?.[0];
           const healthScore = latestReport?.healthScore || 0;
 
           // Fetch today's nutrition summary
           const today = new Date().toISOString().split('T')[0];
-          const nutritionRes = await api.get(`/nutrition/summary/daily?date=${today}`);
+          const nutritionRes = await api.get(`nutrition/summary/daily?date=${today}`);
           const caloriesConsumed = nutritionRes.data.summary?.totalCalories || 0;
 
           // Fetch health goal for calorie target
-          const goalRes = await api.get('/nutrition/goals').catch(() => ({ data: { healthGoal: null } }));
+          const goalRes = await api.get('nutrition/goals').catch(() => ({ data: { healthGoal: null } }));
           const calorieTarget = goalRes.data.healthGoal?.dailyCalorieTarget || 2000;
 
           setHealthData({ healthScore, caloriesConsumed, calorieTarget });
@@ -218,10 +222,23 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
               </div>
 
               {/* Notifications */}
-              <button className="relative p-3 rounded-2xl transition-all flex-shrink-0 bg-slate-50 border border-slate-100 text-slate-400 hover:text-[#2FC8B9] hover:bg-white hover:shadow-sm">
+              <button
+                ref={notificationTriggerRef}
+                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                className={`relative p-3 rounded-2xl transition-all flex-shrink-0 border transition-all ${isNotificationOpen
+                  ? 'bg-[#2FC8B9] border-[#2FC8B9] text-white shadow-lg'
+                  : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-[#2FC8B9] hover:bg-white hover:shadow-sm'
+                  }`}
+              >
                 <Bell className="w-5 h-5" />
-                <span className="absolute top-3 right-3 w-2 h-2 bg-[#2FC8B9] rounded-full border-2 border-white" />
+                <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-[#2FC8B9] rounded-full border-2 border-white" />
               </button>
+
+              <NotificationPanel
+                isOpen={isNotificationOpen}
+                onClose={() => setIsNotificationOpen(false)}
+                triggerRef={notificationTriggerRef}
+              />
 
               {/* Profile Icon - Click to go to profile */}
               <button

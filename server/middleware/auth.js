@@ -1,35 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const mongoose = require('mongoose');
-const connectDB = require('../config/db');
-
-// Cache database connection
-let isConnecting = false;
-let connectionPromise = null;
-
-const ensureDBConnection = async () => {
-  if (mongoose.connection.readyState === 1) {
-    return true; // Already connected
-  }
-  
-  if (isConnecting && connectionPromise) {
-    await connectionPromise; // Wait for existing connection attempt
-    return mongoose.connection.readyState === 1;
-  }
-  
-  try {
-    isConnecting = true;
-    connectionPromise = connectDB();
-    await connectionPromise;
-    isConnecting = false;
-    return true;
-  } catch (error) {
-    isConnecting = false;
-    connectionPromise = null;
-    console.error('Failed to connect to database:', error.message);
-    return false;
-  }
-};
 
 exports.protect = async (req, res, next) => {
   try {
@@ -42,43 +13,57 @@ exports.protect = async (req, res, next) => {
       return res.status(401).json({ message: 'Not authorized, no token' });
     }
 
+    if (!process.env.JWT_SECRET) {
+      console.error('JWT_SECRET is not set!');
+      return res.status(500).json({ message: 'Server configuration error' });
+    }
+
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log('Token decoded, user ID:', decoded.id);
-    
-    // Ensure database connection with retry
-    const connected = await ensureDBConnection();
-    if (!connected) {
-      console.error('Database connection failed');
-      return res.status(500).json({ message: 'Database connection error' });
+
+    // Check if DB is connected (should already be connected by middleware in api/index.js)
+    if (mongoose.connection.readyState !== 1) {
+      console.error('Database not connected in auth middleware, readyState:', mongoose.connection.readyState);
+      // Try to wait briefly for connection
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      if (mongoose.connection.readyState !== 1) {
+        return res.status(503).json({ message: 'Database not available. Please try again.' });
+      }
     }
-    
+
     // Retry user lookup with timeout
     let retries = 3;
     let user = null;
-    
+
     while (retries > 0 && !user) {
       try {
-        user = await User.findById(decoded.id).select('-password').maxTimeMS(5000);
+        user = await User.findById(decoded.id).select('-password').maxTimeMS(10000);
         if (user) break;
       } catch (dbError) {
         console.error(`User lookup attempt ${4 - retries} failed:`, dbError.message);
         retries--;
         if (retries > 0) {
-          await new Promise(resolve => setTimeout(resolve, 500)); // Wait 500ms before retry
+          await new Promise(resolve => setTimeout(resolve, 1000));
         }
       }
     }
-    
+
     if (!user) {
       console.error('User not found in database after retries:', decoded.id);
       return res.status(401).json({ message: 'User not found' });
     }
-    
+
     req.user = user;
     console.log('User authenticated:', req.user._id, req.user.name);
     next();
   } catch (error) {
     console.error('Auth middleware error:', error.message);
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: 'Invalid token' });
+    }
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token expired' });
+    }
     res.status(401).json({ message: 'Not authorized, token failed' });
   }
 };

@@ -116,7 +116,7 @@ export default function NutritionRevamped() {
     try {
       const targetDate = date || selectedDate;
       const response = await api.get(
-        `/nutrition/activity/week?date=${targetDate}`
+        `nutrition/activity/week?date=${targetDate}`
       );
       if (response.data.success) {
         setTrends(response.data.weekData);
@@ -136,9 +136,9 @@ export default function NutritionRevamped() {
 
       // Fetch logs and summary for the specific date
       const [logsRes, summaryRes, goalRes] = await Promise.all([
-        api.get(`/nutrition/logs?date=${targetDate}`),
-        api.get(`/nutrition/summary/daily?date=${targetDate}`),
-        api.get("/nutrition/goals")
+        api.get(`nutrition/logs?date=${targetDate}`),
+        api.get(`nutrition/summary/daily?date=${targetDate}`),
+        api.get("nutrition/goals")
           .catch(() => ({ data: { healthGoal: null } })),
       ]);
 
@@ -239,7 +239,7 @@ export default function NutritionRevamped() {
     setAnalyzing(true);
     try {
       const response = await api.post(
-        "/nutrition/quick-check",
+        "nutrition/quick-check",
         { foodDescription: `${quantity} ${foodName} ${prepMethod}` }
       );
 
@@ -275,7 +275,7 @@ export default function NutritionRevamped() {
       if (editingMeal) {
         // Update existing meal
         await api.put(
-          `/nutrition/logs/${editingMeal._id}`,
+          `nutrition/logs/${editingMeal._id}`,
           {
             foodItems: [
               {
@@ -294,7 +294,7 @@ export default function NutritionRevamped() {
       } else {
         // Add new meal
         await api.post(
-          "/nutrition/log-meal",
+          "nutrition/log-meal",
           {
             mealType: selectedMealType,
             foodItems: [
@@ -332,7 +332,7 @@ export default function NutritionRevamped() {
     if (!confirm("Delete this meal?")) return;
 
     try {
-      const response = await api.delete(`/nutrition/logs/${id}`);
+      const response = await api.delete(`nutrition/logs/${id}`);
 
       toast.success("Meal deleted");
       invalidateCache(["dashboard"]);

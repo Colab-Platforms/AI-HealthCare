@@ -22,7 +22,7 @@ export default function AIChat() {
   useEffect(() => {
     const fetchUserReports = async () => {
       try {
-        const { data } = await api.get('/health/reports');
+        const { data } = await api.get('health/reports');
         setUserReports(data.reports || data || []);
       } catch (error) {
         console.error('Failed to load reports:', error);
@@ -35,7 +35,7 @@ export default function AIChat() {
     const loadChatHistory = async () => {
       try {
         // First try to load from backend
-        const { data } = await api.get('/chat/history');
+        const { data } = await api.get('chat/history');
 
         if (data.success && data.messages && data.messages.length > 0) {
           setMessages(data.messages);
@@ -131,7 +131,7 @@ export default function AIChat() {
       // Save only new messages (last 2: user + assistant)
       const newMessages = updatedMessages.slice(-2);
 
-      await api.post('/chat/history', { messages: newMessages });
+      await api.post('chat/history', { messages: newMessages });
 
       // Also save to localStorage as backup
       localStorage.setItem(`chat_history_${user?.id}`, JSON.stringify(updatedMessages));
@@ -146,7 +146,7 @@ export default function AIChat() {
     if (confirm('Are you sure you want to clear the chat history?')) {
       try {
         // Clear from backend
-        await api.delete('/chat/history');
+        await api.delete('chat/history');
 
         // Clear from localStorage
         localStorage.removeItem(`chat_history_${user?.id}`);
@@ -183,7 +183,7 @@ export default function AIChat() {
     setLoading(true);
 
     try {
-      const { data } = await api.post('/chat', {
+      const { data } = await api.post('chat', {
         query: currentInput,
         conversationHistory: messages.slice(-10),
         userReports: userReports.map(r => ({

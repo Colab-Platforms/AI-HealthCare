@@ -13,10 +13,10 @@ exports.register = async (req, res) => {
   try {
     const { name, email, phone, password, role, profile, nutritionGoal } = req.body;
 
-    // Check if user exists by email or phone
+    // Check if user exists by email or phone - with extended timeout for Vercel
     const existingUser = await User.findOne({
       $or: [{ email }, ...(phone ? [{ phone }] : [])]
-    });
+    }).maxTimeMS(30000);
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists with this email or phone' });
     }
@@ -64,7 +64,7 @@ exports.register = async (req, res) => {
         status: 'active',
         startDate: new Date()
       }
-    });
+    }).maxTimeMS(30000);
 
     res.status(201).json({
       _id: user._id,
@@ -92,13 +92,13 @@ exports.registerDoctor = async (req, res) => {
       licenseNumber, consultationFee, bio
     } = req.body;
 
-    // Check if user exists
-    const existingUser = await User.findOne({ email });
+    // Check if user exists - with extended timeout for Vercel
+    const existingUser = await User.findOne({ email }).maxTimeMS(30000);
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists with this email' });
     }
 
-    // Create user with doctor role
+    // Create user with doctor role - with extended timeout for Vercel
     const user = await User.create({
       name,
       email,
@@ -106,9 +106,9 @@ exports.registerDoctor = async (req, res) => {
       password,
       role: 'doctor',
       isActive: true
-    });
+    }).maxTimeMS(30000);
 
-    // Create doctor profile (pending approval)
+    // Create doctor profile (pending approval) - with extended timeout for Vercel
     const doctor = await Doctor.create({
       user: user._id,
       name,
@@ -123,11 +123,11 @@ exports.registerDoctor = async (req, res) => {
       bio,
       approvalStatus: 'pending',
       isListed: false
-    });
+    }).maxTimeMS(30000);
 
-    // Link doctor profile to user
+    // Link doctor profile to user - with extended timeout for Vercel
     user.doctorProfile = doctor._id;
-    await user.save();
+    await user.save({ maxTimeMS: 30000 });
 
     res.status(201).json({
       _id: user._id,
@@ -151,9 +151,9 @@ exports.login = async (req, res) => {
   try {
     const { email, phone, password } = req.body;
 
-    // Allow login with email or phone
+    // Allow login with email or phone - with extended timeout for Vercel
     const query = email ? { email } : { phone };
-    const user = await User.findOne(query).populate('doctorProfile');
+    const user = await User.findOne(query).populate('doctorProfile').maxTimeMS(30000);
 
     if (!user) {
       return res.status(401).json({ message: 'Invalid credentials' });
@@ -199,7 +199,7 @@ exports.login = async (req, res) => {
 
 exports.getProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('-password');
+    const user = await User.findById(req.user._id).select('-password').maxTimeMS(30000);
     res.json(user);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -208,7 +208,7 @@ exports.getProfile = async (req, res) => {
 
 exports.updateProfile = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id);
+    const user = await User.findById(req.user._id).maxTimeMS(30000);
     if (user) {
       const oldHeight = user.profile?.height;
       const oldWeight = user.profile?.weight;
@@ -241,8 +241,8 @@ exports.updateProfile = async (req, res) => {
           bmiChanged = true;
         }
 
-        // Search for and update active HealthGoal
-        const healthGoal = await HealthGoal.findOne({ userId: user._id, isActive: true });
+        // Search for and update active HealthGoal - with extended timeout for Vercel
+        const healthGoal = await HealthGoal.findOne({ userId: user._id, isActive: true }).maxTimeMS(30000);
         if (healthGoal) {
           healthGoal.height = newHeight || healthGoal.height;
           healthGoal.currentWeight = newWeight || healthGoal.currentWeight;
@@ -250,7 +250,7 @@ exports.updateProfile = async (req, res) => {
           healthGoal.gender = user.profile.gender || healthGoal.gender;
 
           // The pre-save hook in HealthGoal will handle target recalculations
-          await healthGoal.save();
+          await healthGoal.save({ maxTimeMS: 30000 });
         }
       }
 
@@ -258,7 +258,7 @@ exports.updateProfile = async (req, res) => {
       user.markModified('profile');
       if (bmiChanged) user.markModified('healthMetrics');
 
-      const updatedUser = await user.save();
+      const updatedUser = await user.save({ maxTimeMS: 30000 });
 
       res.json({
         ...updatedUser.toObject(),
@@ -277,7 +277,7 @@ exports.updateProfile = async (req, res) => {
 
 exports.getSubscription = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('subscription');
+    const user = await User.findById(req.user._id).select('subscription').maxTimeMS(30000);
     res.json(user.subscription);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -289,7 +289,7 @@ exports.createAdmin = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email }).maxTimeMS(30000);
     if (existingUser) {
       return res.status(400).json({ message: 'User already exists' });
     }
@@ -300,7 +300,7 @@ exports.createAdmin = async (req, res) => {
       password,
       role: 'admin',
       subscription: { plan: 'premium', status: 'active', startDate: new Date() }
-    });
+    }).maxTimeMS(30000);
 
     res.status(201).json({
       _id: admin._id,

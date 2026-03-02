@@ -34,7 +34,7 @@ export default function QuickFoodCheck() {
   const fetchHistory = async () => {
     try {
       const response = await api.get(
-        `/nutrition/quick-checks/history/date?date=${today}`
+        `nutrition/quick-checks/history/date?date=${today}`
       );
       setHistory(response.data.stats?.checks || []);
     } catch (error) {
@@ -288,7 +288,7 @@ export default function QuickFoodCheck() {
       });
 
       const response = await api.post(
-        '/nutrition/quick-check',
+        'nutrition/quick-check',
         formData,
         {
           headers: {
@@ -376,7 +376,7 @@ export default function QuickFoodCheck() {
     if (!confirm('Delete this food check?')) return;
 
     try {
-      await api.delete(`/nutrition/quick-checks/${id}`);
+      await api.delete(`nutrition/quick-checks/${id}`);
       toast.success('Deleted');
       fetchHistory();
     } catch (error) {

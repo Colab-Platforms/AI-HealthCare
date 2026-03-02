@@ -53,7 +53,7 @@ export default function Profile() {
 
   const fetchHealthGoal = async () => {
     try {
-      const response = await api.get('/nutrition/goals');
+      const response = await api.get('nutrition/goals');
       if (response.data.healthGoal) {
         setHealthGoal(response.data.healthGoal);
         setGoalFormData({
@@ -135,7 +135,7 @@ export default function Profile() {
           }
         }
       };
-      const { data } = await api.put('/auth/profile', payload);
+      const { data } = await api.put('auth/profile', payload);
       updateUser(data);
       toast.success('Profile updated successfully!');
 
@@ -187,9 +187,14 @@ export default function Profile() {
         age: Number(goalFormData.age)
       };
 
-      const response = await axios.post('/api/nutrition/goals', payload, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // Use PUT if goal exists, POST if new
+      const response = healthGoal
+        ? await api.put('nutrition/goals', payload, {
+            headers: { Authorization: `Bearer ${token}` }
+          })
+        : await api.post('nutrition/goals', payload, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
 
       setHealthGoal(response.data.healthGoal);
       toast.success('Fitness goal set successfully! Your daily targets have been calculated.');
@@ -264,7 +269,7 @@ export default function Profile() {
       const formData = new FormData();
       formData.append('profilePicture', compressedFile);
 
-      const { data } = await api.post('/auth/upload-profile-picture', formData, {
+      const { data } = await api.post('auth/upload-profile-picture', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
 

@@ -2,30 +2,32 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
+    // Check if already connected
+    if (mongoose.connection.readyState === 1) {
+      console.log('✓ MongoDB already connected');
+      return mongoose.connection;
+    }
+
     const options = {
-      serverSelectionTimeoutMS: 30000, // Increased from 10s to 30s for Vercel
+      serverSelectionTimeoutMS: 30000,
       socketTimeoutMS: 45000,
       connectTimeoutMS: 30000,
+      bufferTimeoutMS: 30000, // Increase from default 10s to 30s
       retryWrites: true,
       w: 'majority',
-      maxPoolSize: 10,
-      minPoolSize: 2,
+      maxPoolSize: process.env.VERCEL ? 5 : 10,
+      minPoolSize: process.env.VERCEL ? 0 : 2,
+      maxIdleTimeMS: process.env.VERCEL ? 10000 : 30000,
     };
 
-    console.log('Connecting to MongoDB with options:', {
-      serverSelectionTimeoutMS: options.serverSelectionTimeoutMS,
-      socketTimeoutMS: options.socketTimeoutMS,
-      connectTimeoutMS: options.connectTimeoutMS,
-      maxPoolSize: options.maxPoolSize,
-      minPoolSize: options.minPoolSize
-    });
+    console.log('Connecting to MongoDB...');
 
     const conn = await mongoose.connect(process.env.MONGODB_URI, options);
     console.log(`✓ MongoDB Connected: ${conn.connection.host}`);
     return conn;
   } catch (error) {
     console.error(`✗ MongoDB Connection Error: ${error.message}`);
-    
+
     // Don't exit in serverless environment
     if (process.env.VERCEL) {
       console.error('Running in Vercel - continuing without database');

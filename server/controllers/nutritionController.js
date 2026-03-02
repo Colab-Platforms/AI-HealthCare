@@ -4,6 +4,11 @@ const NutritionSummary = require('../models/NutritionSummary');
 const nutritionAI = require('../services/nutritionAI');
 const { uploadImage } = require('../services/cloudinary');
 
+// Helper function to add timeout to all queries for Vercel compatibility
+const withTimeout = (query, timeoutMs = 30000) => {
+  return query.maxTimeMS(timeoutMs);
+};
+
 // Analyze food from image or text
 exports.analyzeFood = async (req, res) => {
   try {
@@ -178,9 +183,9 @@ exports.getFoodLogs = async (req, res) => {
       query.mealType = mealType;
     }
 
-    const foodLogs = await FoodLog.find(query)
+    const foodLogs = await withTimeout(FoodLog.find(query)
       .sort({ timestamp: -1 })
-      .limit(100);
+      .limit(100));
 
     res.json({
       success: true,
@@ -206,13 +211,13 @@ exports.getTodayLogs = async (req, res) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
 
-    const foodLogs = await FoodLog.find({
+    const foodLogs = await withTimeout(FoodLog.find({
       userId: req.user._id,
       timestamp: {
         $gte: today,
         $lt: tomorrow
       }
-    }).sort({ timestamp: 1 });
+    }).sort({ timestamp: 1 }));
 
     res.json({
       success: true,
@@ -310,7 +315,7 @@ exports.setHealthGoal = async (req, res) => {
       userId: req.user._id
     };
 
-    let healthGoal = await HealthGoal.findOne({ userId: req.user._id });
+    let healthGoal = await withTimeout(HealthGoal.findOne({ userId: req.user._id }));
 
     if (healthGoal) {
       // Update existing goal
@@ -320,7 +325,7 @@ exports.setHealthGoal = async (req, res) => {
       healthGoal = new HealthGoal(goalData);
     }
 
-    await healthGoal.save();
+    await healthGoal.save({ maxTimeMS: 30000 });
 
     res.json({
       success: true,
@@ -340,7 +345,7 @@ exports.setHealthGoal = async (req, res) => {
 // Get health goal
 exports.getHealthGoal = async (req, res) => {
   try {
-    const healthGoal = await HealthGoal.findOne({ userId: req.user._id });
+    const healthGoal = await withTimeout(HealthGoal.findOne({ userId: req.user._id }));
 
     if (!healthGoal) {
       return res.status(404).json({
@@ -371,10 +376,12 @@ exports.updateHealthGoal = async (req, res) => {
       userId: req.user._id
     };
 
-    const healthGoal = await HealthGoal.findOneAndUpdate(
-      { userId: req.user._id },
-      goalData,
-      { new: true, upsert: true }
+    const healthGoal = await withTimeout(
+      HealthGoal.findOneAndUpdate(
+        { userId: req.user._id },
+        goalData,
+        { new: true, upsert: true }
+      )
     );
 
     res.json({
@@ -442,10 +449,10 @@ exports.getDailySummary = async (req, res) => {
 
     console.log(`Fetching summary for user ${req.user._id} on ${targetDate.toISOString()}`);
 
-    let summary = await NutritionSummary.findOne({
+    let summary = await withTimeout(NutritionSummary.findOne({
       userId: req.user._id,
       date: targetDate
-    });
+    }));
 
     if (!summary) {
       // Create summary if doesn't exist

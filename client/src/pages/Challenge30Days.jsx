@@ -51,7 +51,7 @@ export default function Challenge30Days() {
 
     // Then try to load from backend
     try {
-      const response = await api.get('/health/challenge');
+      const response = await api.get('health/challenge');
       const data = response.data.challengeData || {};
 
       // Convert Map to plain object if needed
@@ -101,7 +101,7 @@ export default function Challenge30Days() {
 
     // Try to save to backend
     try {
-      const response = await api.post('/health/challenge', {
+      const response = await api.post('health/challenge', {
         challengeData: newData
       });
 

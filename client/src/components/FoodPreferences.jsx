@@ -24,7 +24,7 @@ export default function FoodPreferences({ onClose }) {
 
   const fetchPreferences = async () => {
     try {
-      const response = await api.get('/users/food-preferences');
+      const response = await api.get('users/food-preferences');
       if (response.data.success) {
         const data = response.data.data;
         setPreferences({
@@ -46,7 +46,7 @@ export default function FoodPreferences({ onClose }) {
 
   const savePreferences = async () => {
     try {
-      const response = await api.post('/users/food-preferences', preferences);
+      const response = await api.post('users/food-preferences', preferences);
       if (response.data.success) {
         toast.success('Preferences saved!');
         return true;
@@ -71,7 +71,7 @@ export default function FoodPreferences({ onClose }) {
         return;
       }
 
-      const response = await api.post('/users/analyze-food-choices');
+      const response = await api.post('users/analyze-food-choices');
       if (response.data.success) {
         setAnalysis(response.data.data);
         toast.success('Analysis complete!');

@@ -132,7 +132,8 @@ export const DataProvider = ({ children }) => {
     }
 
     try {
-      const { data } = await import('../services/api').then(m => m.default.get('/diet-recommendations/diet-plan/active'));
+      const { dietRecommendationService } = await import('../services/api');
+      const { data } = await dietRecommendationService.getActiveDietPlan();
       if (data.success && data.dietPlan) {
         cache.set('diet_plan', data.dietPlan, 15 * 60 * 1000); // Cache for 15 minutes
         return data.dietPlan;

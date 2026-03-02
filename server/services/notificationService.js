@@ -8,8 +8,12 @@ const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
 
 class NotificationService {
     constructor() {
-        this.startSchedulers();
-        console.log('🔔 Notification service started');
+        if (!process.env.VERCEL) {
+            this.startSchedulers();
+            console.log('🔔 Notification service started with schedulers');
+        } else {
+            console.log('🔔 Notification service started in serverless mode');
+        }
     }
 
     startSchedulers() {
@@ -35,7 +39,87 @@ class NotificationService {
         cron.schedule('0 20 * * *', () => this.sendDietAdherenceNotifications());
 
         // Check on startup for any pending notifications
-        setTimeout(() => this.generateStartupNotifications(), 5000);
+        if (!process.env.VERCEL) {
+            setTimeout(() => this.generateStartupNotifications(), 5000);
+        }
+    }
+
+    // New method to run all cron tasks manually (for Vercel Cron or specific triggers)
+    async runCronTasks() {
+        console.log('🔄 Running all notification cron tasks...');
+        await this.sendMealReminders('breakfast');
+        await this.sendMealReminders('lunch');
+        await this.sendMealReminders('snack');
+        await this.sendMealReminders('dinner');
+        await this.sendSleepReminders();
+        await this.sendMacroUpdates();
+        await this.sendDietAdherenceNotifications();
+        console.log('✅ All notification cron tasks complete');
+    }
+
+    // Trigger startup notifications for a specific user (serverless friendly)
+    async triggerUserStartupNotifications(user) {
+        try {
+            const now = new Date();
+            const hour = now.getHours();
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            console.log(`🔔 Triggering startup notifications for user ${user._id}`);
+
+            // Just run a quick check for current meal time
+            if (hour >= 7 && hour < 11) await this.sendUserMealReminder(user, 'breakfast');
+            if (hour >= 12 && hour < 15) await this.sendUserMealReminder(user, 'lunch');
+            if (hour >= 16 && hour < 18) await this.sendUserMealReminder(user, 'snack');
+            if (hour >= 19 && hour < 22) await this.sendUserMealReminder(user, 'dinner');
+        } catch (error) {
+            console.error('Error triggering user startup notifications:', error);
+        }
+    }
+
+    // Helper for specific user reminders
+    async sendUserMealReminder(user, mealType) {
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+
+        const existingLog = await FoodLog.findOne({
+            userId: user._id,
+            mealType,
+            timestamp: { $gte: today, $lt: tomorrow }
+        });
+
+        if (!existingLog) {
+            const existingReminder = await Notification.findOne({
+                userId: user._id,
+                type: 'food_reminder',
+                'metadata.mealType': mealType,
+                createdAt: { $gte: today }
+            });
+
+            if (!existingReminder) {
+                const mealNames = { breakfast: '🌅 Breakfast', lunch: '☀️ Lunch', snack: '🍎 Snack', dinner: '🌙 Dinner' };
+                const mealMessages = {
+                    breakfast: 'Start your day right! Log your breakfast.',
+                    lunch: 'Time for lunch! Don\'t forget to log it.',
+                    snack: 'Healthy snack time! Log it now.',
+                    dinner: 'Evening meal time! Log your dinner.'
+                };
+
+                await Notification.create({
+                    userId: user._id,
+                    type: 'food_reminder',
+                    title: `${mealNames[mealType]} Reminder`,
+                    message: mealMessages[mealType],
+                    icon: mealType === 'breakfast' ? '🌅' : mealType === 'lunch' ? '☀️' : mealType === 'snack' ? '🍎' : '🌙',
+                    priority: 'medium',
+                    actionUrl: '/nutrition',
+                    metadata: { mealType },
+                    expiresAt: tomorrow
+                });
+            }
+        }
     }
 
     async sendMealReminders(mealType) {

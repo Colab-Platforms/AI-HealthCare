@@ -421,7 +421,7 @@ export default function QuickFoodScan() {
 
         // 2. COMPRESS IMAGE IN BACKGROUND
         await new Promise(resolve => setTimeout(resolve, 300));
-        
+
         let processedFile;
         try {
           processedFile = await compressImage(file);
@@ -475,7 +475,7 @@ export default function QuickFoodScan() {
     setLoadingFoodImage(true);
     try {
       const response = await api.get(
-        `/nutrition/food-image?foodName=${encodeURIComponent(foodName)}`,
+        `nutrition/food-image?foodName=${encodeURIComponent(foodName)}`,
         { skipAutoLogout: true }
       );
 
@@ -564,7 +564,7 @@ export default function QuickFoodScan() {
       console.log('Sending analysis request (FormData) via api instance...');
 
       const response = await api.post(
-        '/nutrition/quick-check',
+        'nutrition/quick-check',
         formData,
         {
           headers: {
@@ -715,7 +715,7 @@ export default function QuickFoodScan() {
 
       // Log meal to nutrition page
       const response = await api.post(
-        '/nutrition/log-meal',
+        'nutrition/log-meal',
         {
           mealType: selectedMealType,
           foodItems: [foodItem],

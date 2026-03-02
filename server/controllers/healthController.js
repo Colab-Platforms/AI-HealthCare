@@ -313,6 +313,55 @@ exports.uploadReport = async (req, res) => {
     cache.delete(`reports:${req.user._id}`);
     cache.delete(`dashboard:${req.user._id}`);
 
+    // 🆕 AUTO-UPDATE PERSONALIZED DIET PLAN FROM REPORT
+    if (aiAnalysis.dietPlan) {
+      try {
+        const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
+
+        // Deactivate old diet plans
+        await PersonalizedDietPlan.updateMany(
+          { userId: req.user._id, isActive: true },
+          { isActive: false }
+        );
+
+        // Map report diet plan to personalized diet plan structure
+        const mapMealItems = (items) => {
+          if (!Array.isArray(items)) return [];
+          return items.map(item => ({
+            name: typeof item === 'string' ? item : (item.meal || 'Healthy Meal'),
+            description: item.tip || '',
+            benefits: Array.isArray(item.nutrients) ? item.nutrients.join(', ') : '',
+            calories: item.calories || 0,
+            protein: item.protein || 0
+          }));
+        };
+
+        const newDietPlan = new PersonalizedDietPlan({
+          userId: req.user._id,
+          isActive: true,
+          dailyCalorieTarget: aiAnalysis.dietPlan.dailyCalorieTarget || 2000,
+          mealPlan: {
+            breakfast: mapMealItems(aiAnalysis.dietPlan.breakfast),
+            lunch: mapMealItems(aiAnalysis.dietPlan.lunch),
+            dinner: mapMealItems(aiAnalysis.dietPlan.dinner),
+            snacks: mapMealItems(aiAnalysis.dietPlan.snacks),
+            midMorningSnack: mapMealItems(aiAnalysis.dietPlan.midMorningSnack || [])
+          },
+          avoidSuggestions: aiAnalysis.dietPlan.foodsToLimit || [],
+          lifestyleRecommendations: aiAnalysis.recommendations?.lifestyle || [],
+          inputData: {
+            hasReports: true,
+            bmiGoal: req.user.nutritionGoal?.goal || 'maintain'
+          }
+        });
+
+        await newDietPlan.save();
+        console.log('✅ Personalized diet plan updated from latest report');
+      } catch (dpError) {
+        console.error('⚠️ Failed to update personalized diet plan:', dpError.message);
+      }
+    }
+
     // 🆕 AUTO-COMPARE WITH PREVIOUS REPORT
     let comparisonData = null;
     try {
@@ -578,6 +627,17 @@ exports.getDashboardData = async (req, res) => {
         waterIntake: nutritionData.waterIntake
       } : null
     };
+
+    // 🆕 Trigger startup notifications for user (Serverless friendly)
+    try {
+      const notificationService = require('../services/notificationService');
+      // Fire and forget - don't wait for notifications to block dashboard delivery
+      notificationService.triggerUserStartupNotifications(req.user).catch(err =>
+        console.error('Non-critical notification error:', err)
+      );
+    } catch (nError) {
+      console.error('Notification service loading error:', nError);
+    }
 
     cache.set(cacheKey, dashboardData, 120); // Cache for 2 minutes
     res.json(dashboardData);

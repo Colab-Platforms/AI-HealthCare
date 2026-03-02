@@ -23,19 +23,29 @@ export const AuthProvider = ({ children }) => {
     // Clear any existing data before logging in new user
     localStorage.clear();
     sessionStorage.clear();
-    
+
+    // Clear service worker cache immediately
+    if ('caches' in window) {
+      try {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+      } catch (err) {
+        console.error('Cache clear error:', err);
+      }
+    }
+
     const isEmail = emailOrPhone.includes('@');
     const payload = isEmail ? { email: emailOrPhone, password } : { phone: emailOrPhone, password };
-    const { data } = await api.post('/auth/login', payload);
-    
+    const { data } = await api.post('auth/login', payload);
+
     // Set new token and user data
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data));
     api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
-    
+
     // Fetch latest profile data to ensure we have the most recent info
     try {
-      const profileResponse = await api.get('/auth/profile');
+      const profileResponse = await api.get('auth/profile');
       const userData = { ...data, ...profileResponse.data };
       localStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
@@ -52,15 +62,25 @@ export const AuthProvider = ({ children }) => {
     // Clear any existing data before registering new user
     localStorage.clear();
     sessionStorage.clear();
-    
-    const { data } = await api.post('/auth/register', { 
-      name, 
-      email, 
-      password, 
+
+    // Clear service worker cache immediately
+    if ('caches' in window) {
+      try {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+      } catch (err) {
+        console.error('Cache clear error:', err);
+      }
+    }
+
+    const { data } = await api.post('auth/register', {
+      name,
+      email,
+      password,
       profile,
-      nutritionGoal 
+      nutritionGoal
     });
-    
+
     // Set new token and user data
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data));
@@ -73,9 +93,19 @@ export const AuthProvider = ({ children }) => {
     // Clear any existing data before registering new doctor
     localStorage.clear();
     sessionStorage.clear();
-    
-    const { data } = await api.post('/auth/register/doctor', doctorData);
-    
+
+    // Clear service worker cache immediately
+    if ('caches' in window) {
+      try {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+      } catch (err) {
+        console.error('Cache clear error:', err);
+      }
+    }
+
+    const { data } = await api.post('auth/register/doctor', doctorData);
+
     // Set new token and user data
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data));
@@ -88,13 +118,13 @@ export const AuthProvider = ({ children }) => {
     // Clear all storage to prevent data leakage between users
     localStorage.clear();
     sessionStorage.clear();
-    
+
     // Clear API headers
     delete api.defaults.headers.common['Authorization'];
-    
+
     // Clear user state
     setUser(null);
-    
+
     // Clear service worker cache
     if ('caches' in window) {
       caches.keys().then(names => {
@@ -110,7 +140,7 @@ export const AuthProvider = ({ children }) => {
 
   const refreshUser = async () => {
     try {
-      const { data } = await api.get('/auth/profile');
+      const { data } = await api.get('auth/profile');
       setUser(data);
       localStorage.setItem('user', JSON.stringify(data));
       return data;
@@ -128,20 +158,20 @@ export const AuthProvider = ({ children }) => {
   const isSubscribed = () => user?.subscription?.status === 'active';
 
   return (
-    <AuthContext.Provider value={{ 
-      user, 
-      login, 
-      register, 
+    <AuthContext.Provider value={{
+      user,
+      login,
+      register,
       registerDoctor,
-      logout, 
+      logout,
       updateUser,
-      refreshUser, 
-      loading, 
-      isAdmin, 
+      refreshUser,
+      loading,
+      isAdmin,
       isDoctor,
       isPatient,
       isDoctorApproved,
-      isSubscribed 
+      isSubscribed
     }}>
       {children}
     </AuthContext.Provider>

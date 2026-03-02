@@ -107,15 +107,28 @@ const HEALTH_ANALYSIS_PROMPT = `You are a professional medical report analyzer. 
     
     IMPORTANT: Return ONLY the JSON object. Do not include markdown formatting or extra text.`;
 
-exports.analyzeHealthReport = async (reportText) => {
+exports.analyzeHealthReport = async (reportText, user = {}) => {
   try {
     console.log('🔄 Analyzing report...');
-    console.log('🤖 Models:', AI_MODELS);
 
-    const content = await makeOpenRouterRequest([
+    // Build user profile context for AI
+    let userContext = "User Profile: ";
+    if (user.name) userContext += `Name: ${user.name}, `;
+    if (user.profile) {
+      if (user.profile.age) userContext += `Age: ${user.profile.age}, `;
+      if (user.profile.gender) userContext += `Gender: ${user.profile.gender}, `;
+      if (user.profile.dietaryPreference) userContext += `Dietary Preference: ${user.profile.dietaryPreference}, `;
+      if (user.profile.medicalHistory?.conditions?.length > 0) {
+        userContext += `Conditions: ${user.profile.medicalHistory.conditions.join(', ')}, `;
+      }
+    }
+
+    const messages = [
       { role: 'system', content: HEALTH_ANALYSIS_PROMPT },
-      { role: 'user', content: reportText }
-    ]);
+      { role: 'user', content: `${userContext}\n\nPlease analyze the following health report text:\n\n${reportText}` }
+    ];
+
+    const content = await makeOpenRouterRequest(messages);
 
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     const analysis = JSON.parse(jsonMatch[0]);

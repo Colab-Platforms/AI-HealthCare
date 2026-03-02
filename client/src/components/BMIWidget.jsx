@@ -241,7 +241,7 @@ export default function BMIWidget() {
 
   const fetchCurrentGoal = async () => {
     try {
-      const { data } = await api.get('/auth/profile');
+      const { data } = await api.get('auth/profile');
       setCurrentGoal(data.user?.nutritionGoal || data.nutritionGoal);
     } catch (error) {
       console.error('Failed to fetch goal:', error);

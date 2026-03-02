@@ -377,8 +377,8 @@ exports.generateSupplementRecommendations = async (req, res) => {
     // Extract deficiencies
     const deficiencies = [];
     healthReports.forEach(report => {
-      if (report.analysis?.deficiencies) {
-        report.analysis.deficiencies.forEach(def => {
+      if (report.aiAnalysis?.deficiencies) {
+        report.aiAnalysis.deficiencies.forEach(def => {
           deficiencies.push({
             nutrient: def.name || def,
             severity: def.severity || 'detected',

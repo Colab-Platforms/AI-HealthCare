@@ -17,13 +17,13 @@ export default function ReportDetailsEnhanced() {
         setLoading(true);
         setReport(null);
         setExpandedMetrics({});
-        
+
         // Fetch current report
-        const { data } = await api.get(`/health/reports/${id}`);
+        const { data } = await api.get(`health/reports/${id}`);
         setReport(data.report);
-        
+
         // Fetch all reports for comparison
-        const reportsResponse = await api.get('/health/reports');
+        const reportsResponse = await api.get('health/reports');
         setAllReports(reportsResponse.data || []);
       } catch (error) {
         toast.error('Failed to load report');
@@ -71,14 +71,14 @@ export default function ReportDetailsEnhanced() {
   // Calculate health trend
   const getHealthTrend = () => {
     if (reportsWithScores.length < 2) return null;
-    
+
     const currentIndex = reportsWithScores.findIndex(r => r._id === id);
     if (currentIndex <= 0) return null;
-    
+
     const currentScore = reportsWithScores[currentIndex].aiAnalysis.healthScore;
     const previousScore = reportsWithScores[currentIndex - 1].aiAnalysis.healthScore;
     const difference = currentScore - previousScore;
-    
+
     return {
       difference,
       percentage: ((difference / previousScore) * 100).toFixed(1),
@@ -215,9 +215,8 @@ export default function ReportDetailsEnhanced() {
                 <div className="relative mb-4">
                   <span className="text-5xl md:text-6xl font-black text-slate-900">{healthScore}</span>
                   {healthTrend && (
-                    <div className={`absolute -top-2 -right-2 flex items-center gap-1 px-2 py-1 rounded-full ${
-                      healthTrend.isImproving ? 'bg-emerald-500' : 'bg-red-500'
-                    } text-white text-xs font-black`}>
+                    <div className={`absolute -top-2 -right-2 flex items-center gap-1 px-2 py-1 rounded-full ${healthTrend.isImproving ? 'bg-emerald-500' : 'bg-red-500'
+                      } text-white text-xs font-black`}>
                       {healthTrend.isImproving ? (
                         <TrendingUp className="w-3 h-3" />
                       ) : (
@@ -228,22 +227,21 @@ export default function ReportDetailsEnhanced() {
                   )}
                 </div>
                 <span className="text-[10px] uppercase tracking-[0.2em] text-slate-600 font-black mb-4 block">Health Score</span>
-                
+
                 {/* Mini comparison graph */}
                 <div className="w-full h-24 flex items-end gap-1 justify-center mb-3">
                   {reportsWithScores.slice(-5).map((r, idx) => {
                     const score = r.aiAnalysis.healthScore;
                     const height = (score / 100) * 100;
                     const isCurrentReport = r._id === id;
-                    
+
                     return (
                       <div key={r._id} className="flex flex-col items-center gap-1 flex-1">
-                        <div 
-                          className={`w-full rounded-t-lg transition-all ${
-                            isCurrentReport 
-                              ? 'bg-gradient-to-t from-purple-600 to-orange-600 shadow-lg' 
+                        <div
+                          className={`w-full rounded-t-lg transition-all ${isCurrentReport
+                              ? 'bg-gradient-to-t from-purple-600 to-orange-600 shadow-lg'
                               : 'bg-slate-300'
-                          }`}
+                            }`}
                           style={{ height: `${height}%` }}
                         />
                         <span className="text-[8px] font-black text-slate-400">
@@ -253,14 +251,12 @@ export default function ReportDetailsEnhanced() {
                     );
                   })}
                 </div>
-                
+
                 {healthTrend && (
-                  <div className={`text-center p-2 rounded-xl ${
-                    healthTrend.isImproving ? 'bg-emerald-50' : 'bg-red-50'
-                  }`}>
-                    <p className={`text-[9px] font-black uppercase tracking-wider ${
-                      healthTrend.isImproving ? 'text-emerald-700' : 'text-red-700'
+                  <div className={`text-center p-2 rounded-xl ${healthTrend.isImproving ? 'bg-emerald-50' : 'bg-red-50'
                     }`}>
+                    <p className={`text-[9px] font-black uppercase tracking-wider ${healthTrend.isImproving ? 'text-emerald-700' : 'text-red-700'
+                      }`}>
                       {healthTrend.isImproving ? '✓ Improving' : '⚠ Declining'}
                     </p>
                     <p className="text-[8px] text-slate-500 font-bold mt-1">
@@ -308,7 +304,7 @@ export default function ReportDetailsEnhanced() {
             </div>
             HEALTH PROGRESS TRACKING
           </h2>
-          
+
           {/* Full comparison graph */}
           <div className="bg-gradient-to-br from-slate-50 to-white rounded-3xl p-6 border-2 border-white shadow-inner mb-6">
             <div className="flex items-end justify-between gap-2 h-64">
@@ -318,36 +314,33 @@ export default function ReportDetailsEnhanced() {
                 const isCurrentReport = r._id === id;
                 const prevScore = idx > 0 ? reportsWithScores[idx - 1].aiAnalysis.healthScore : null;
                 const change = prevScore ? score - prevScore : 0;
-                
+
                 return (
                   <div key={r._id} className="flex-1 flex flex-col items-center gap-2 group/bar">
                     {/* Score label on hover */}
                     <div className="opacity-0 group-hover/bar:opacity-100 transition-opacity">
-                      <div className={`px-3 py-1 rounded-lg text-xs font-black ${
-                        isCurrentReport ? 'bg-purple-600 text-white' : 'bg-slate-200 text-slate-700'
-                      }`}>
+                      <div className={`px-3 py-1 rounded-lg text-xs font-black ${isCurrentReport ? 'bg-purple-600 text-white' : 'bg-slate-200 text-slate-700'
+                        }`}>
                         {score}
                       </div>
                       {change !== 0 && (
-                        <div className={`text-[10px] font-black text-center mt-1 ${
-                          change > 0 ? 'text-emerald-600' : 'text-red-600'
-                        }`}>
+                        <div className={`text-[10px] font-black text-center mt-1 ${change > 0 ? 'text-emerald-600' : 'text-red-600'
+                          }`}>
                           {change > 0 ? '+' : ''}{change}
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Bar */}
-                    <div 
-                      className={`w-full rounded-t-xl transition-all duration-500 relative ${
-                        isCurrentReport 
-                          ? 'bg-gradient-to-t from-purple-600 to-orange-600 shadow-xl ring-2 ring-purple-300' 
+                    <div
+                      className={`w-full rounded-t-xl transition-all duration-500 relative ${isCurrentReport
+                          ? 'bg-gradient-to-t from-purple-600 to-orange-600 shadow-xl ring-2 ring-purple-300'
                           : change > 0
                             ? 'bg-gradient-to-t from-emerald-400 to-emerald-500'
                             : change < 0
                               ? 'bg-gradient-to-t from-red-400 to-red-500'
                               : 'bg-gradient-to-t from-slate-300 to-slate-400'
-                      } hover:scale-105 cursor-pointer`}
+                        } hover:scale-105 cursor-pointer`}
                       style={{ height: `${height}%` }}
                     >
                       {isCurrentReport && (
@@ -358,12 +351,11 @@ export default function ReportDetailsEnhanced() {
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Date label */}
                     <div className="text-center">
-                      <p className={`text-[10px] font-black ${
-                        isCurrentReport ? 'text-purple-600' : 'text-slate-500'
-                      }`}>
+                      <p className={`text-[10px] font-black ${isCurrentReport ? 'text-purple-600' : 'text-slate-500'
+                        }`}>
                         {new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                       </p>
                       <p className="text-[8px] text-slate-400 font-bold">
@@ -378,15 +370,13 @@ export default function ReportDetailsEnhanced() {
 
           {/* Trend Analysis */}
           {healthTrend && (
-            <div className={`p-6 rounded-3xl border-2 ${
-              healthTrend.isImproving 
-                ? 'bg-emerald-50/50 border-emerald-200' 
+            <div className={`p-6 rounded-3xl border-2 ${healthTrend.isImproving
+                ? 'bg-emerald-50/50 border-emerald-200'
                 : 'bg-red-50/50 border-red-200'
-            }`}>
+              }`}>
               <div className="flex items-start gap-4">
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner ${
-                  healthTrend.isImproving ? 'bg-emerald-100' : 'bg-red-100'
-                }`}>
+                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-inner ${healthTrend.isImproving ? 'bg-emerald-100' : 'bg-red-100'
+                  }`}>
                   {healthTrend.isImproving ? (
                     <TrendingUp className={`w-6 h-6 ${healthTrend.isImproving ? 'text-emerald-600' : 'text-red-600'}`} />
                   ) : (
@@ -394,9 +384,8 @@ export default function ReportDetailsEnhanced() {
                   )}
                 </div>
                 <div className="flex-1">
-                  <h3 className={`text-lg font-black mb-2 ${
-                    healthTrend.isImproving ? 'text-emerald-800' : 'text-red-800'
-                  }`}>
+                  <h3 className={`text-lg font-black mb-2 ${healthTrend.isImproving ? 'text-emerald-800' : 'text-red-800'
+                    }`}>
                     {healthTrend.isImproving ? '🎉 Your Health is Improving!' : '⚠️ Health Score Declined'}
                   </h3>
                   <p className="text-slate-700 text-sm font-bold mb-4">
@@ -416,19 +405,19 @@ export default function ReportDetailsEnhanced() {
                       <p className="text-2xl font-black text-slate-900">{healthTrend.currentScore}</p>
                     </div>
                   </div>
-                  
+
                   {healthTrend.isImproving ? (
                     <div className="mt-4 p-4 bg-emerald-100/50 rounded-2xl border border-emerald-200">
                       <p className="text-xs font-bold text-emerald-800">
-                        <span className="font-black">Great progress!</span> Keep following your personalized diet and fitness plan. 
+                        <span className="font-black">Great progress!</span> Keep following your personalized diet and fitness plan.
                         Your consistent efforts are paying off. Continue monitoring your health metrics regularly.
                       </p>
                     </div>
                   ) : (
                     <div className="mt-4 p-4 bg-red-100/50 rounded-2xl border border-red-200">
                       <p className="text-xs font-bold text-red-800">
-                        <span className="font-black">Attention needed:</span> Your health score has declined. 
-                        Review the recommendations below carefully and consider consulting with a healthcare professional. 
+                        <span className="font-black">Attention needed:</span> Your health score has declined.
+                        Review the recommendations below carefully and consider consulting with a healthcare professional.
                         Focus on the immediate action items to get back on track.
                       </p>
                     </div>

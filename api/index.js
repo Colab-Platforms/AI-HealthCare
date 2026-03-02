@@ -3,17 +3,18 @@ const path = require('path');
 const dotenv = require('dotenv');
 const mongoose = require('mongoose');
 
-// Load environment variables FIRST
+// Load environment variables from .env file (for local dev)
+// On Vercel, env vars are set in the dashboard, so this is a fallback
 const envPath = path.join(__dirname, '../server/.env');
-console.log('Loading .env from:', envPath);
 dotenv.config({ path: envPath });
 
 // Verify critical env vars
 if (!process.env.MONGODB_URI) {
-  console.error('ERROR: MONGODB_URI not set in environment');
+  console.error('CRITICAL ERROR: MONGODB_URI not set in environment!');
+  console.error('Make sure MONGODB_URI is set in Vercel Environment Variables dashboard');
 }
 if (!process.env.JWT_SECRET) {
-  console.error('ERROR: JWT_SECRET not set in environment');
+  console.error('CRITICAL ERROR: JWT_SECRET not set in environment!');
 }
 
 // Set Vercel environment
@@ -23,58 +24,86 @@ process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 console.log('Environment:', {
   NODE_ENV: process.env.NODE_ENV,
   VERCEL: process.env.VERCEL,
-  MONGODB_URI: process.env.MONGODB_URI ? 'SET' : 'NOT SET',
-  JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'NOT SET'
+  MONGODB_URI: process.env.MONGODB_URI ? `SET (${process.env.MONGODB_URI.substring(0, 20)}...)` : 'NOT SET',
+  JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'NOT SET',
+  ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ? 'SET' : 'NOT SET',
+  OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY ? 'SET' : 'NOT SET',
+  CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME ? 'SET' : 'NOT SET'
 });
 
-// Connection state - PERSISTENT across requests
-let mongoConnection = null;
-let isConnecting = false;
-let connectionPromise = null;
+// ============================================================
+// GLOBAL MongoDB connection - shared across all serverless calls
+// ============================================================
+let cachedConnection = null;
 
 const connectToDatabase = async () => {
   // If already connected, return immediately
-  if (mongoConnection && mongoose.connection.readyState === 1) {
-    console.log('✓ Using existing database connection');
-    return mongoConnection;
+  if (cachedConnection && mongoose.connection.readyState === 1) {
+    console.log('♻️ Reusing existing MongoDB connection');
+    return cachedConnection;
   }
 
-  // If currently connecting, wait for that connection
-  if (isConnecting && connectionPromise) {
-    console.log('⏳ Waiting for existing connection attempt...');
-    return connectionPromise;
-  }
+  // If connection is in progress, wait for it
+  if (mongoose.connection.readyState === 2) {
+    console.log('⏳ MongoDB connection in progress, waiting...');
+    await new Promise((resolve) => {
+      const check = setInterval(() => {
+        if (mongoose.connection.readyState !== 2) {
+          clearInterval(check);
+          resolve();
+        }
+      }, 100);
+      // Safety timeout for waiting
+      setTimeout(() => {
+        clearInterval(check);
+        resolve();
+      }, 10000);
+    });
 
-  // Start new connection
-  isConnecting = true;
-  connectionPromise = (async () => {
-    try {
-      console.log('🔄 Connecting to MongoDB...');
-      
-      const options = {
-        serverSelectionTimeoutMS: 30000, // Increased from 10s to 30s
-        socketTimeoutMS: 45000,
-        connectTimeoutMS: 30000,
-        retryWrites: true,
-        w: 'majority',
-        maxPoolSize: 10,
-        minPoolSize: 2,
-      };
-
-      const conn = await mongoose.connect(process.env.MONGODB_URI, options);
-      mongoConnection = conn;
-      isConnecting = false;
-      console.log('✓ Database connected successfully');
-      return conn;
-    } catch (error) {
-      isConnecting = false;
-      connectionPromise = null;
-      console.error('✗ Database connection error:', error.message);
-      throw error;
+    if (mongoose.connection.readyState === 1) {
+      return mongoose.connection;
     }
-  })();
+  }
 
-  return connectionPromise;
+  // ONLY disconnect if state is definitely broken (not 0, 1, or 2)
+  if (mongoose.connection.readyState !== 0 && mongoose.connection.readyState !== 1 && mongoose.connection.readyState !== 2) {
+    try {
+      console.log('🧹 Cleaning up broken connection state:', mongoose.connection.readyState);
+      await mongoose.disconnect();
+    } catch (e) {
+      console.log('Disconnect cleanup error:', e.message);
+    }
+  }
+
+  if (!process.env.MONGODB_URI) {
+    throw new Error('MONGODB_URI is not set. Configure it in Vercel Environment Variables.');
+  }
+
+  console.log('🔄 Connecting to MongoDB...');
+
+  const options = {
+    serverSelectionTimeoutMS: 30000,
+    socketTimeoutMS: 45000,
+    connectTimeoutMS: 30000,
+    // CRITICAL: Increase buffer timeout to prevent "buffering timed out" errors
+    bufferTimeoutMS: 30000,
+    retryWrites: true,
+    w: 'majority',
+    maxPoolSize: 5,  // Reduced for serverless
+    minPoolSize: 0,  // 0 for serverless to allow cold starts
+    maxIdleTimeMS: 10000, // Close idle connections quickly in serverless
+  };
+
+  try {
+    const conn = await mongoose.connect(process.env.MONGODB_URI, options);
+    cachedConnection = conn;
+    console.log('✅ MongoDB Connected:', conn.connection.host);
+    return conn;
+  } catch (error) {
+    cachedConnection = null;
+    console.error('❌ MongoDB Connection Error:', error.message);
+    throw error;
+  }
 };
 
 // Import Express and middleware
@@ -85,20 +114,51 @@ const app = express();
 
 // Middleware
 app.use(cors({
-  origin: process.env.CLIENT_URL || '*',
-  credentials: true
+  origin: '*',
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
 }));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
-// Health check endpoint (no auth required)
+// ============================================================
+// CRITICAL: Database connection middleware - runs BEFORE all routes
+// This ensures DB is connected before any route handler tries to query
+// ============================================================
+app.use('/api', async (req, res, next) => {
+  // Skip DB connection for health check
+  if (req.path === '/health-check') {
+    return next();
+  }
+
+  try {
+    await connectToDatabase();
+    next();
+  } catch (error) {
+    console.error('DB middleware connection failed:', error.message);
+    return res.status(503).json({
+      message: 'Database connection failed. Please try again.',
+      error: 'Service temporarily unavailable'
+    });
+  }
+});
+
+// Health check endpoint (no auth or DB required)
 app.get('/api/health-check', (req, res) => {
   res.json({
     status: 'ok',
     message: 'API is running',
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
-    dbConnected: mongoose.connection.readyState === 1
+    dbConnected: mongoose.connection.readyState === 1,
+    envVars: {
+      MONGODB_URI: !!process.env.MONGODB_URI,
+      JWT_SECRET: !!process.env.JWT_SECRET,
+      ANTHROPIC_API_KEY: !!process.env.ANTHROPIC_API_KEY,
+      OPENROUTER_API_KEY: !!process.env.OPENROUTER_API_KEY,
+      CLOUDINARY_CLOUD_NAME: !!process.env.CLOUDINARY_CLOUD_NAME
+    }
   });
 });
 
@@ -212,34 +272,17 @@ app.use('/api/*', (req, res) => {
 
 // Error handler
 app.use((err, req, res, next) => {
-  console.error('Error:', err.message);
+  console.error('Unhandled Error:', err.message);
+  console.error('Stack:', err.stack);
   res.status(500).json({
     message: err.message || 'Internal server error',
     error: process.env.NODE_ENV === 'development' ? err.stack : undefined
   });
 });
 
-// Serverless handler with connection pooling
+// Serverless handler - simplified since DB connection is handled by middleware
 const handler = async (req, res) => {
-  try {
-    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
-    await connectToDatabase();
-  } catch (error) {
-    console.error('Database connection failed:', error.message);
-    // For health check, return success even if DB fails
-    if (req.path === '/api/health-check') {
-      return res.status(200).json({ 
-        status: 'ok', 
-        dbConnected: false,
-        message: 'API running but DB connection failed'
-      });
-    }
-    // For other requests, return 503 Service Unavailable
-    return res.status(503).json({
-      message: 'Database connection failed',
-      error: 'Service temporarily unavailable'
-    });
-  }
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
   return app(req, res);
 };
 
