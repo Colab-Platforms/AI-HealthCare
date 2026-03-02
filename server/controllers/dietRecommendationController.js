@@ -181,23 +181,24 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
 
     // Generate AI-powered diet plan
     const aiDietPlan = await dietRecommendationAI.generatePersonalizedDietPlan(userData, `
-      144. Provide EXACTLY 3 DISTINCT meal options for EVERY category (breakfast, midMorningSnack, lunch, eveningSnack, dinner).
-      145. Ensure each option is a complete meal.
-      146. Provide nutritional information (calories, protein) for each individual option.
-      147. Ensure the combined nutrition of these options (if user picks one from each category) roughly fulfills the daily targets: ${nutritionGoals.calorieGoal} kcal, ${nutritionGoals.proteinGoal}g protein, ${nutritionGoals.carbsGoal}g carbs, ${nutritionGoals.fatGoal}g fat.
-      148. Use ONLY Indian foods and favor foods and affordability.
-      149. TRULY PRIORITIZE the user's specific food preferences for each meal: 
+      1. Provide EXACTLY 4 DISTINCT meal options for EVERY category (breakfast, midMorningSnack, lunch, eveningSnack, dinner).
+      2. Ensure each option is a complete meal with descriptive Indian food names.
+      3. Provide nutritional information (calories, protein, carbs, fats) for each individual option.
+      4. Ensure the combined nutrition of these options (if user picks one from each category) roughly fulfills the daily targets: ${nutritionGoals.calorieGoal} kcal, ${nutritionGoals.proteinGoal}g protein, ${nutritionGoals.carbsGoal}g carbs, ${nutritionGoals.fatGoal}g fat.
+      5. Use ONLY Indian foods and favor affordability.
+      6. TRULY PRIORITIZE the user's specific food preferences for each meal: 
            Breakfast Preferences: ${userData.foodPreferences.mealPreferences?.breakfast?.join(', ') || 'N/A'},
            Lunch Preferences: ${userData.foodPreferences.mealPreferences?.lunch?.join(', ') || 'N/A'},
            Dinner Preferences: ${userData.foodPreferences.mealPreferences?.dinner?.join(', ') || 'N/A'},
            General Preferred Foods: ${userData.foodPreferences.preferredFoods?.join(', ') || 'N/A'}.
-      150. STRICTLY avoid any 'Foods to Avoid': ${userData.foodPreferences.foodsToAvoid?.join(', ') || 'N/A'}. 
+      7. STRICTLY avoid any 'Foods to Avoid': ${userData.foodPreferences.foodsToAvoid?.join(', ') || 'N/A'}. 
            Also strictly follow 'Dietary Restrictions': ${userData.foodPreferences.dietaryRestrictions?.join(', ') || 'N/A'}.
-      151. If the user lists specific foods they eat daily, try to build the healthiest version of those into the plan.
-      152. If no lab data is provided, prioritize the Fitness Goal (${bmiGoal}) and BMI-based needs.
-      153. Provide specific portion sizes in grams/pieces.
-      154. Name the options exactly as "Option 1", "Option 2", and "Option 3".
-      155. Provide a specific 'avoidSuggestions' section in your response listing 3-5 specific smart suggestions of what the user should avoid based on their lab reports or biometric profile.
+      8. If the user lists specific foods they eat daily, try to build the healthiest version of those into the plan.
+      9. If no lab data is provided, prioritize the Fitness Goal (${bmiGoal}) and BMI-based needs.
+      10. Provide specific portion sizes in grams/pieces/cups.
+      11. Each meal option MUST have: name, description, calories, protein, carbs, fats, and benefits.
+      12. Ensure variety - no two options should be similar (e.g., don't have two rice-based meals).
+      13. Provide a specific 'avoidSuggestions' section in your response listing 3-5 specific smart suggestions of what the user should avoid based on their lab reports or biometric profile.
     `);
     console.log(`Diet plan generated for user ${userId}. Based on reports: ${hasReports}`);
 

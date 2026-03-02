@@ -146,15 +146,17 @@ ${deficiencies?.length > 0 ? deficiencies.map(d => `- ${d.nutrient || d.name} ($
 
 CRITICAL INSTRUCTIONS:
 1. Provide EXACTLY 4 DISTINCT meal options for EVERY category (breakfast, midMorningSnack, lunch, eveningSnack, dinner).
-2. Each option should be a complete alternative. Name them exactly "Option 1", "Option 2", "Option 3", and "Option 4".
+2. Each option should be a complete alternative with a DESCRIPTIVE MEAL NAME (e.g., "Masala Dosa", "Idli with Sambar", "Poha with Peanuts", "Oats Upma"). DO NOT use generic names like "Option 1", "Option 2", etc.
 3. Ensure the combined nutrition of these options FULFILLS the user's daily macro targets (if user picks one option from each category).
-4. Use ONLY Indian foods.
+4. Use ONLY Indian foods and traditional Indian recipes.
 5. TRULY PRIORITIZE the user's specific food preferences for each meal. If they list breakfast favorites, use them for breakfast options.
 6. STRICTLY avoid any 'Foods to Avoid' and adhere to 'Dietary Restrictions'. Try to incorporate 'Preferred Foods'.
 7. If no lab data is provided, prioritize the Fitness Goal (${bmiGoal}) and BMI-based needs.
-8. Provide specific portion sizes in grams/pieces.
+8. Provide specific portion sizes in grams/pieces/cups.
 9. DO NOT provide more than 4 options per meal.
-10. ${promptExtension || ''}
+10. Each meal option MUST include: name, description, calories, protein, and benefits.
+11. Ensure variety - no two options should be similar (e.g., don't have two rice-based meals).
+12. ${promptExtension || ''}
 
 RETURN JSON ONLY:
 {
@@ -162,34 +164,34 @@ RETURN JSON ONLY:
   "macroTargets": { "protein": number, "carbs": number, "fats": number },
   "mealPlan": {
     "breakfast": [
-      { "name": "Option 1", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-      { "name": "Option 2", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-      { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-      { "name": "Option 4", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
-    ],
-    "lunch": [
-       { "name": "Option 1", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-       { "name": "Option 2", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-       { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-       { "name": "Option 4", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
-    ],
-    "dinner": [
-       { "name": "Option 1", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-       { "name": "Option 2", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-       { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-       { "name": "Option 4", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
+      { "name": "Masala Dosa with Sambar", "description": "Crispy dosa with spiced potato filling and sambar", "calories": 350, "protein": 12, "carbs": 45, "fats": 12, "benefits": "High in carbs for energy, good protein from lentils" },
+      { "name": "Idli with Chutney", "description": "Steamed rice cakes with coconut chutney and sambar", "calories": 280, "protein": 10, "carbs": 38, "fats": 8, "benefits": "Light, easy to digest, good for weight management" },
+      { "name": "Poha with Peanuts", "description": "Flattened rice with vegetables, peanuts and spices", "calories": 320, "protein": 14, "carbs": 40, "fats": 10, "benefits": "Rich in protein from peanuts, quick energy" },
+      { "name": "Oats Upma", "description": "Savory oats with vegetables, peas and spices", "calories": 300, "protein": 11, "carbs": 42, "fats": 9, "benefits": "High fiber, sustained energy, good for digestion" }
     ],
     "midMorningSnack": [
-       { "name": "Option 1", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-       { "name": "Option 2", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-       { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-       { "name": "Option 4", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
+      { "name": "Greek Yogurt with Berries", "description": "Protein-rich yogurt with fresh berries and honey", "calories": 150, "protein": 15, "carbs": 18, "fats": 2, "benefits": "High protein, probiotics for gut health" },
+      { "name": "Almonds and Apple", "description": "Handful of almonds (25g) with fresh apple", "calories": 180, "protein": 6, "carbs": 20, "fats": 10, "benefits": "Healthy fats, fiber, sustained energy" },
+      { "name": "Protein Smoothie", "description": "Banana, protein powder, milk and honey blend", "calories": 200, "protein": 20, "carbs": 22, "fats": 3, "benefits": "High protein, quick recovery, muscle building" },
+      { "name": "Boiled Eggs with Toast", "description": "2 boiled eggs with whole wheat toast and butter", "calories": 220, "protein": 16, "carbs": 18, "fats": 10, "benefits": "Complete protein, choline for brain health" }
+    ],
+    "lunch": [
+      { "name": "Chicken Biryani", "description": "Fragrant basmati rice with tender chicken and spices", "calories": 550, "protein": 35, "carbs": 60, "fats": 15, "benefits": "Complete meal, high protein, satisfying" },
+      { "name": "Dal Makhani with Roti", "description": "Creamy lentil curry with 2 whole wheat rotis", "calories": 480, "protein": 18, "carbs": 65, "fats": 12, "benefits": "Plant-based protein, fiber-rich, vegetarian" },
+      { "name": "Paneer Tikka Masala", "description": "Cottage cheese in tomato-based gravy with rice", "calories": 520, "protein": 28, "carbs": 58, "fats": 16, "benefits": "High calcium, protein-rich, satisfying" },
+      { "name": "Fish Curry with Rice", "description": "Spiced fish in coconut gravy with basmati rice", "calories": 500, "protein": 32, "carbs": 55, "fats": 14, "benefits": "Omega-3 rich, high protein, heart-healthy" }
     ],
     "eveningSnack": [
-       { "name": "Option 1", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-       { "name": "Option 2", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-       { "name": "Option 3", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" },
-       { "name": "Option 4", "description": "Desc", "calories": number, "protein": number, "benefits": "Why" }
+      { "name": "Roasted Chickpeas", "description": "Spiced roasted chickpeas (100g)", "calories": 140, "protein": 8, "carbs": 16, "fats": 4, "benefits": "High fiber, plant-based protein, crunchy" },
+      { "name": "Mixed Nuts", "description": "Almonds, cashews, walnuts mix (30g)", "calories": 180, "protein": 6, "carbs": 8, "fats": 16, "benefits": "Healthy fats, antioxidants, energy boost" },
+      { "name": "Cucumber and Hummus", "description": "Fresh cucumber slices with hummus dip", "calories": 120, "protein": 5, "carbs": 12, "fats": 5, "benefits": "Low calorie, hydrating, light" },
+      { "name": "Sprout Salad", "description": "Fresh sprouts with lemon dressing and spices", "calories": 100, "protein": 7, "carbs": 10, "fats": 3, "benefits": "Nutrient-dense, enzymes for digestion" }
+    ],
+    "dinner": [
+      { "name": "Vegetable Khichdi", "description": "One-pot rice and lentil dish with vegetables", "calories": 380, "protein": 14, "carbs": 52, "fats": 10, "benefits": "Light, easy to digest, complete meal" },
+      { "name": "Grilled Chicken with Salad", "description": "Protein-rich grilled chicken with fresh vegetable salad", "calories": 420, "protein": 38, "carbs": 28, "fats": 12, "benefits": "High protein, low carb, muscle building" },
+      { "name": "Moong Dal Soup", "description": "Light lentil soup with vegetables and spices", "calories": 280, "protein": 12, "carbs": 38, "fats": 6, "benefits": "Light, nutritious, easy to digest" },
+      { "name": "Tofu Stir-fry", "description": "Tofu with mixed vegetables and light sauce", "calories": 350, "protein": 20, "carbs": 35, "fats": 14, "benefits": "Plant-based protein, low calorie, vegetarian" }
     ]
   },
   "keyFoods": [{ "name": "Food", "reason": "Why", "frequency": "Daily" }],
