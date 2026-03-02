@@ -8,6 +8,11 @@ const NutritionSummary = require('../models/NutritionSummary');
 const cache = require('../utils/cache');
 const cloudinary = require('../services/cloudinary');
 
+// Helper function to add timeout to all queries for Vercel compatibility
+const withTimeout = (query, timeoutMs = 30000) => {
+  return query.maxTimeMS(timeoutMs);
+};
+
 exports.uploadReport = async (req, res) => {
   try {
     if (!req.file) {
@@ -429,9 +434,9 @@ exports.getReports = async (req, res) => {
       return res.json(cached);
     }
 
-    const reports = await HealthReport.find({ user: req.user._id })
+    const reports = await withTimeout(HealthReport.find({ user: req.user._id })
       .sort({ createdAt: -1 })
-      .limit(50);
+      .limit(50));
 
     cache.set(cacheKey, reports, 180); // Cache for 3 minutes
     res.json(reports);
@@ -442,7 +447,7 @@ exports.getReports = async (req, res) => {
 
 exports.getReportById = async (req, res) => {
   try {
-    const report = await HealthReport.findOne({ _id: req.params.id, user: req.user._id });
+    const report = await withTimeout(HealthReport.findOne({ _id: req.params.id, user: req.user._id }));
     if (!report) {
       return res.status(404).json({ message: 'Report not found' });
     }
@@ -451,12 +456,12 @@ exports.getReportById = async (req, res) => {
     let recommendedDoctors = [];
     if (report.aiAnalysis?.doctorConsultation?.recommended) {
       const specs = report.aiAnalysis.doctorConsultation.specializations || [];
-      const doctors = await Doctor.find({
+      const doctors = await withTimeout(Doctor.find({
         specialization: { $in: specs.map(s => new RegExp(s, 'i')) },
         isAvailable: true
       })
         .sort({ rating: -1 })
-        .limit(3);
+        .limit(3));
 
       recommendedDoctors = doctors.map(doc => ({
         ...doc.toObject(),
@@ -918,7 +923,7 @@ exports.saveChallengeData = async (req, res) => {
 // Get challenge data
 exports.getChallengeData = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select('challengeData streakDays');
+    const user = await withTimeout(User.findById(req.user._id).select('challengeData streakDays'));
 
     res.json({
       challengeData: user.challengeData || {},
@@ -934,10 +939,10 @@ exports.getChallengeData = async (req, res) => {
 exports.getReportComparison = async (req, res) => {
   try {
     // Get all completed reports sorted by date
-    const reports = await HealthReport.find({
+    const reports = await withTimeout(HealthReport.find({
       user: req.user._id,
       status: 'completed'
-    }).sort({ createdAt: -1 }).limit(10);
+    }).sort({ createdAt: -1 }).limit(10));
 
     if (reports.length === 0) {
       return res.json({
