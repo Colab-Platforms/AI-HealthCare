@@ -3,15 +3,28 @@ const mongoose = require('mongoose');
 const connectDB = async () => {
   try {
     const options = {
-      serverSelectionTimeoutMS: 10000, // 10 seconds for serverless
-      socketTimeoutMS: 45000, // Close sockets after 45 seconds of inactivity
+      serverSelectionTimeoutMS: 30000, // Increased from 10s to 30s for Vercel
+      socketTimeoutMS: 45000,
+      connectTimeoutMS: 30000,
+      retryWrites: true,
+      w: 'majority',
+      maxPoolSize: 10,
+      minPoolSize: 2,
     };
 
+    console.log('Connecting to MongoDB with options:', {
+      serverSelectionTimeoutMS: options.serverSelectionTimeoutMS,
+      socketTimeoutMS: options.socketTimeoutMS,
+      connectTimeoutMS: options.connectTimeoutMS,
+      maxPoolSize: options.maxPoolSize,
+      minPoolSize: options.minPoolSize
+    });
+
     const conn = await mongoose.connect(process.env.MONGODB_URI, options);
-    console.log(`MongoDB Connected: ${conn.connection.host}`);
+    console.log(`✓ MongoDB Connected: ${conn.connection.host}`);
     return conn;
   } catch (error) {
-    console.error(`MongoDB Connection Error: ${error.message}`);
+    console.error(`✗ MongoDB Connection Error: ${error.message}`);
     
     // Don't exit in serverless environment
     if (process.env.VERCEL) {
