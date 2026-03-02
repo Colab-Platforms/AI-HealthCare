@@ -10,11 +10,17 @@ dotenv.config({ path: envPath });
 
 // Verify critical env vars
 if (!process.env.MONGODB_URI) {
-  console.error('CRITICAL ERROR: MONGODB_URI not set in environment!');
+  console.error('❌ CRITICAL ERROR: MONGODB_URI not set in environment!');
   console.error('Make sure MONGODB_URI is set in Vercel Environment Variables dashboard');
+  console.error('Current env vars:', Object.keys(process.env).filter(k => k.includes('MONGO') || k.includes('DB')));
+} else {
+  console.log('✅ MONGODB_URI is set:', process.env.MONGODB_URI.substring(0, 50) + '...');
 }
+
 if (!process.env.JWT_SECRET) {
-  console.error('CRITICAL ERROR: JWT_SECRET not set in environment!');
+  console.error('❌ CRITICAL ERROR: JWT_SECRET not set in environment!');
+} else {
+  console.log('✅ JWT_SECRET is set');
 }
 
 // Set Vercel environment
