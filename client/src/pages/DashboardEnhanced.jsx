@@ -579,13 +579,8 @@ export default function DashboardEnhanced() {
                       completionPercentage = Math.round((completionPercentage * 0.6) + (sleepProgress * 0.4));
                     }
 
-                    // Fallback for past days with no data to maintain premium look
-                    if (completionPercentage === 0 && dayInfo.fullDate < new Date()) {
-                      const isPastDay = dayInfo.fullDate.toDateString() !== new Date().toDateString();
-                      if (isPastDay) {
-                        completionPercentage = (dayInfo.date % 3 === 0) ? 100 : (dayInfo.date % 2 === 0 ? 60 : 30);
-                      }
-                    }
+                    // Don't show fallback data for past days - only show actual data
+                    // This prevents new users from seeing fake historical data
                   }
 
                   return (
@@ -1286,28 +1281,36 @@ export default function DashboardEnhanced() {
               <h3 className="text-lg font-black text-black uppercase tracking-tight leading-tight">Elite Choices</h3>
             </div>
             <div className="space-y-4">
-              {[
-                { name: 'Vitamin B12 Panel', reason: 'Low intake detected in food log', type: 'Test' },
-                { name: 'Omega-3 (1000mg)', reason: 'To support heart and brain health', type: 'Supplement' },
-                { name: 'HbA1c Test', reason: 'Important for diabetes monitoring', type: 'Test' },
-                { name: 'Vitamin D3 (2000 IU)', reason: 'Low sun exposure detected', type: 'Supplement' }
-              ].map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between p-4 bg-slate-50 rounded-3xl group cursor-pointer hover:bg-white border border-transparent hover:border-slate-100 transition-all">
-                  <div className="flex flex-col">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-black text-black">{item.name}</h4>
-                      <span className={`text-[8px] font-black uppercase tracking-tighter px-2 py-0.5 rounded-md ${item.type === 'Test' ? 'bg-black text-white' : 'bg-[#2FC8B9] text-white'
-                        }`}>
-                        {item.type}
-                      </span>
+              {dashboardData?.recentReports?.length > 0 ? (
+                [
+                  { name: 'Vitamin B12 Panel', reason: 'Low intake detected in food log', type: 'Test' },
+                  { name: 'Omega-3 (1000mg)', reason: 'To support heart and brain health', type: 'Supplement' },
+                  { name: 'HbA1c Test', reason: 'Important for diabetes monitoring', type: 'Test' },
+                  { name: 'Vitamin D3 (2000 IU)', reason: 'Low sun exposure detected', type: 'Supplement' }
+                ].map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-4 bg-slate-50 rounded-3xl group cursor-pointer hover:bg-white border border-transparent hover:border-slate-100 transition-all">
+                    <div className="flex flex-col">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h4 className="font-black text-black">{item.name}</h4>
+                        <span className={`text-[8px] font-black uppercase tracking-tighter px-2 py-0.5 rounded-md ${item.type === 'Test' ? 'bg-black text-white' : 'bg-[#2FC8B9] text-white'
+                          }`}>
+                          {item.type}
+                        </span>
+                      </div>
+                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{item.reason}</p>
                     </div>
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{item.reason}</p>
+                    <button className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center shadow-sm text-black hover:bg-[#2FC8B9] hover:text-white transition-all">
+                      <Plus className="w-5 h-5" />
+                    </button>
                   </div>
-                  <button className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center shadow-sm text-black hover:bg-[#2FC8B9] hover:text-white transition-all">
-                    <Plus className="w-5 h-5" />
-                  </button>
+                ))
+              ) : (
+                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 text-center">
+                  <Activity className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+                  <p className="text-sm font-black text-slate-500 uppercase tracking-widest">No recommendations yet</p>
+                  <p className="text-[10px] text-slate-400 mt-2">Upload health reports to get personalized recommendations</p>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>

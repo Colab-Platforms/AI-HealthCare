@@ -411,30 +411,33 @@ export default function DietPlan() {
               <div className="flex-1">
                 <h2 className="text-2xl font-black uppercase tracking-tight mb-2">Generate Your Diet Plan</h2>
                 <p className="text-slate-500 font-bold text-sm uppercase tracking-widest leading-relaxed">
-                  {!user?.nutritionGoal?.goal && !user?.hasReports
-                    ? "Set your fitness goals or upload a health report to get a hyper-personalized diet plan."
+                  {!user?.nutritionGoal?.calorieGoal
+                    ? "Set your fitness goals in your profile to get a hyper-personalized diet plan."
                     : "Create a personalized diet plan based on your custom food preferences, health reports, and fitness goals."}
                 </p>
                 <div className="mt-4 flex flex-wrap gap-2 justify-center md:justify-start">
-                  {!user?.nutritionGoal?.goal && (
+                  {!user?.nutritionGoal?.calorieGoal && (
                     <Link to="/profile?tab=goals" className="px-3 py-1 bg-slate-100 text-slate-600 rounded-lg text-xs font-bold uppercase hover:bg-slate-200">
                       + Set Fitness Goal
                     </Link>
                   )}
-                  {/* Assuming hasReports is a boolean we might not have on user context, we rely on the backend */}
-                  <button onClick={() => setShowFoodPreferences(true)} className="px-3 py-1 bg-slate-100 text-[#2FC8B9] rounded-lg text-[10px] font-black uppercase hover:bg-slate-200 flex items-center gap-1.5 transition-all">
-                    <Utensils className="w-3.5 h-3.5" />
-                    Set Meal Favorites
-                  </button>
+                  {user?.nutritionGoal?.calorieGoal && (
+                    <button onClick={() => setShowFoodPreferences(true)} className="px-3 py-1 bg-slate-100 text-[#2FC8B9] rounded-lg text-[10px] font-black uppercase hover:bg-slate-200 flex items-center gap-1.5 transition-all">
+                      <Utensils className="w-3.5 h-3.5" />
+                      Set Meal Favorites
+                    </button>
+                  )}
                 </div>
               </div>
-              <button
-                onClick={generateAIPlan}
-                disabled={generating}
-                className="px-8 py-4 bg-[#2FC8B9] text-white rounded-2xl font-black uppercase text-sm shadow-lg disabled:opacity-50 hover:bg-[#25a89b] transition-colors shrink-0"
-              >
-                {generating ? 'Generating...' : 'Generate Plan'}
-              </button>
+              {user?.nutritionGoal?.calorieGoal && (
+                <button
+                  onClick={generateAIPlan}
+                  disabled={generating}
+                  className="px-8 py-4 bg-[#2FC8B9] text-white rounded-2xl font-black uppercase text-sm shadow-lg disabled:opacity-50 hover:bg-[#25a89b] transition-colors shrink-0"
+                >
+                  {generating ? 'Generating...' : 'Generate Plan'}
+                </button>
+              )}
             </div>
           </div>
         )}
