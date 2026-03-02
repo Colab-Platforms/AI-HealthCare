@@ -21,16 +21,6 @@ exports.protect = async (req, res, next) => {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     console.log('Token decoded, user ID:', decoded.id);
 
-    // Check if DB is connected (should already be connected by middleware in api/index.js)
-    if (mongoose.connection.readyState !== 1) {
-      console.error('Database not connected in auth middleware, readyState:', mongoose.connection.readyState);
-      // Try to wait briefly for connection
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      if (mongoose.connection.readyState !== 1) {
-        return res.status(503).json({ message: 'Database not available. Please try again.' });
-      }
-    }
-
     // Retry user lookup with timeout (30s to handle Vercel cold starts)
     let retries = 3;
     let user = null;
