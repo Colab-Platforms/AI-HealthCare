@@ -153,13 +153,21 @@ app.use('/api', async (req, res, next) => {
   }
 
   try {
+    console.log(`[DB Middleware] ${req.method} ${req.path} - Connecting to database...`);
     await connectToDatabase();
+    console.log(`[DB Middleware] ${req.method} ${req.path} - Database connected, proceeding to route`);
     next();
   } catch (error) {
-    console.error('DB middleware connection failed:', error.message);
+    console.error(`[DB Middleware] ${req.method} ${req.path} - Connection failed:`, error.message);
+    console.error('[DB Middleware] Error details:', {
+      code: error.code,
+      name: error.name,
+      mongooseState: mongoose.connection.readyState
+    });
     return res.status(503).json({
       message: 'Database connection failed. Please try again.',
-      error: 'Service temporarily unavailable'
+      error: 'Service temporarily unavailable',
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 });
@@ -192,130 +200,132 @@ app.get('/', (req, res) => {
 });
 
 // Load and mount routes
-console.log('Mounting routes...');
+console.log('🚀 Mounting routes...');
 
 try {
-  console.log('Loading auth routes...');
+  console.log('📍 Loading auth routes...');
   const authRoutes = require('../server/routes/authRoutes');
   app.use('/api/auth', authRoutes);
-  console.log('✓ Auth routes mounted successfully');
+  console.log('✅ Auth routes mounted successfully');
 } catch (e) {
-  console.error('✗ Auth routes error:', e.message, e.stack);
+  console.error('❌ Auth routes error:', e.message, e.stack);
 }
 
 try {
-  console.log('Loading health routes...');
+  console.log('📍 Loading health routes...');
   const healthRoutes = require('../server/routes/healthRoutes');
   app.use('/api/health', healthRoutes);
-  console.log('✓ Health routes mounted successfully');
+  console.log('✅ Health routes mounted successfully');
 } catch (e) {
-  console.error('✗ Health routes error:', e.message, e.stack);
+  console.error('❌ Health routes error:', e.message, e.stack);
 }
 
 try {
-  console.log('Loading nutrition routes...');
+  console.log('📍 Loading nutrition routes...');
   const nutritionRoutes = require('../server/routes/nutritionRoutes');
   app.use('/api/nutrition', nutritionRoutes);
-  console.log('✓ Nutrition routes mounted successfully');
+  console.log('✅ Nutrition routes mounted successfully');
 } catch (e) {
-  console.error('✗ Nutrition routes error:', e.message, e.stack);
+  console.error('❌ Nutrition routes error:', e.message, e.stack);
 }
 
 try {
-  console.log('Loading diet recommendation routes...');
+  console.log('📍 Loading diet recommendation routes...');
   const dietRecommendationRoutes = require('../server/routes/dietRecommendationRoutes');
   app.use('/api/diet-recommendations', dietRecommendationRoutes);
-  console.log('✓ Diet recommendation routes mounted successfully');
+  console.log('✅ Diet recommendation routes mounted successfully');
 } catch (e) {
-  console.error('✗ Diet recommendation routes error:', e.message, e.stack);
+  console.error('❌ Diet recommendation routes error:', e.message, e.stack);
 }
 
 try {
-  console.log('Loading metric routes...');
+  console.log('📍 Loading metric routes...');
   const metricRoutes = require('../server/routes/metricRoutes');
   app.use('/api/metrics', metricRoutes);
-  console.log('✓ Metric routes mounted successfully');
+  console.log('✅ Metric routes mounted successfully');
 } catch (e) {
-  console.error('✗ Metric routes error:', e.message, e.stack);
+  console.error('❌ Metric routes error:', e.message, e.stack);
 }
 
 try {
-  console.log('Loading doctor routes...');
+  console.log('📍 Loading doctor routes...');
   const doctorRoutes = require('../server/routes/doctorRoutes');
   app.use('/api/doctors', doctorRoutes);
-  console.log('✓ Doctor routes mounted successfully');
+  console.log('✅ Doctor routes mounted successfully');
 } catch (e) {
-  console.error('✗ Doctor routes error:', e.message, e.stack);
+  console.error('❌ Doctor routes error:', e.message, e.stack);
 }
 
 try {
-  console.log('Loading admin routes...');
+  console.log('📍 Loading admin routes...');
   const adminRoutes = require('../server/routes/adminRoutes');
   app.use('/api/admin', adminRoutes);
-  console.log('✓ Admin routes mounted successfully');
+  console.log('✅ Admin routes mounted successfully');
 } catch (e) {
-  console.error('✗ Admin routes error:', e.message, e.stack);
+  console.error('❌ Admin routes error:', e.message, e.stack);
 }
 
 try {
-  console.log('Loading wearable routes...');
+  console.log('📍 Loading wearable routes...');
   const wearableRoutes = require('../server/routes/wearableRoutes');
   app.use('/api/wearables', wearableRoutes);
-  console.log('✓ Wearable routes mounted successfully');
+  console.log('✅ Wearable routes mounted successfully');
 } catch (e) {
-  console.error('✗ Wearable routes error:', e.message, e.stack);
+  console.error('❌ Wearable routes error:', e.message, e.stack);
 }
 
 try {
-  console.log('Loading user routes...');
+  console.log('📍 Loading user routes...');
   const userRoutes = require('../server/routes/userRoutes');
   app.use('/api/users', userRoutes);
-  console.log('✓ User routes mounted successfully');
+  console.log('✅ User routes mounted successfully');
 } catch (e) {
-  console.error('✗ User routes error:', e.message, e.stack);
+  console.error('❌ User routes error:', e.message, e.stack);
 }
 
 try {
-  console.log('Loading notification routes...');
+  console.log('📍 Loading notification routes...');
   const notificationRoutes = require('../server/routes/notificationRoutes');
   app.use('/api/notifications', notificationRoutes);
-  console.log('✓ Notification routes mounted successfully');
+  console.log('✅ Notification routes mounted successfully');
 } catch (e) {
-  console.error('✗ Notification routes error:', e.message, e.stack);
+  console.error('❌ Notification routes error:', e.message, e.stack);
 }
 
 try {
-  console.log('Loading chat routes...');
+  console.log('📍 Loading chat routes...');
   const chatRoutes = require('../server/routes/chatRoutes');
   app.use('/api', chatRoutes);
-  console.log('✓ Chat routes mounted successfully');
+  console.log('✅ Chat routes mounted successfully');
 } catch (e) {
-  console.error('✗ Chat routes error:', e.message, e.stack);
+  console.error('❌ Chat routes error:', e.message, e.stack);
 }
 
 try {
-  console.log('Loading chat history routes...');
+  console.log('📍 Loading chat history routes...');
   const chatHistoryRoutes = require('../server/routes/chatHistoryRoutes');
   app.use('/api/chat', chatHistoryRoutes);
-  console.log('✓ Chat history routes mounted successfully');
+  console.log('✅ Chat history routes mounted successfully');
 } catch (e) {
-  console.error('✗ Chat history routes error:', e.message, e.stack);
+  console.error('❌ Chat history routes error:', e.message, e.stack);
 }
 
-console.log('All routes mounted. Ready to handle requests.');
+console.log('🎉 All routes mounted. Ready to handle requests.');
 
 // 404 handler
 app.use('/api/*', (req, res) => {
-  console.log('404 - Route not found:', {
+  console.log('❌ 404 - Route not found:', {
     method: req.method,
     path: req.originalUrl,
     url: req.url,
-    baseUrl: req.baseUrl
+    baseUrl: req.baseUrl,
+    dbConnected: mongoose.connection.readyState === 1
   });
   res.status(404).json({
     error: 'Route not found',
     method: req.method,
     path: req.originalUrl,
+    dbConnected: mongoose.connection.readyState === 1,
     availableRoutes: [
       '/api/auth',
       '/api/health',
