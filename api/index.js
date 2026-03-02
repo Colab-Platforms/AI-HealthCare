@@ -34,7 +34,7 @@ console.log('Environment:', {
 // ============================================================
 // GLOBAL MongoDB connection - shared across all serverless calls
 // ============================================================
-let cachedConnection = null;
+let connectionPromise = null;
 
 const connectToDatabase = async () => {
   // If already connected, return immediately
@@ -44,34 +44,13 @@ const connectToDatabase = async () => {
   }
 
   // If connection is in progress, wait for it
-  if (mongoose.connection.readyState === 2) {
-    console.log('⏳ MongoDB connection in progress, waiting...');
-    await new Promise((resolve) => {
-      const check = setInterval(() => {
-        if (mongoose.connection.readyState !== 2) {
-          clearInterval(check);
-          resolve();
-        }
-      }, 100);
-      // Safety timeout for waiting
-      setTimeout(() => {
-        clearInterval(check);
-        resolve();
-      }, 10000);
-    });
-
-    if (mongoose.connection.readyState === 1) {
-      return mongoose.connection;
-    }
-  }
-
-  // ONLY disconnect if state is definitely broken (not 0, 1, or 2)
-  if (mongoose.connection.readyState !== 0 && mongoose.connection.readyState !== 1 && mongoose.connection.readyState !== 2) {
+  if (connectionPromise) {
+    console.log('⏳ MongoDB connection in progress, waiting for existing promise...');
     try {
-      console.log('🧹 Cleaning up broken connection state:', mongoose.connection.readyState);
-      await mongoose.disconnect();
+      return await connectionPromise;
     } catch (e) {
-      console.log('Disconnect cleanup error:', e.message);
+      console.error('Existing connection promise failed:', e.message);
+      connectionPromise = null;
     }
   }
 
@@ -88,44 +67,48 @@ const connectToDatabase = async () => {
     serverSelectionTimeoutMS: 30000,
     socketTimeoutMS: 45000,
     connectTimeoutMS: 30000,
-    // CRITICAL: Increase buffer timeout to prevent "buffering timed out" errors
     bufferTimeoutMS: 30000,
     retryWrites: true,
     w: 'majority',
-    maxPoolSize: 5,  // Reduced for serverless
-    minPoolSize: 0,  // 0 for serverless to allow cold starts
-    maxIdleTimeMS: 10000, // Close idle connections quickly in serverless
+    maxPoolSize: 5,
+    minPoolSize: 0,
+    maxIdleTimeMS: 10000,
   };
 
-  let attempts = 0;
-  const maxAttempts = 3;
+  // Create connection promise to avoid multiple simultaneous connections
+  connectionPromise = (async () => {
+    let attempts = 0;
+    const maxAttempts = 3;
 
-  while (attempts < maxAttempts) {
-    try {
-      attempts++;
-      console.log(`🔄 Connection attempt ${attempts}/${maxAttempts}`);
-      console.log('Mongoose connection state before connect:', mongoose.connection.readyState);
-      
-      const conn = await mongoose.connect(process.env.MONGODB_URI, options);
-      
-      console.log('✅ MongoDB Connected:', conn.connection.host);
-      console.log('Mongoose connection state after connect:', mongoose.connection.readyState);
-      return conn;
-    } catch (error) {
-      console.error(`❌ Connection attempt ${attempts} failed:`, error.message);
-      console.error('Error code:', error.code);
-      console.error('Error name:', error.name);
-      
-      if (attempts < maxAttempts) {
-        const delay = 1000 * attempts;
-        console.log(`⏳ Retrying in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
-      } else {
-        console.error('❌ All connection attempts failed');
-        throw error;
+    while (attempts < maxAttempts) {
+      try {
+        attempts++;
+        console.log(`🔄 Connection attempt ${attempts}/${maxAttempts}`);
+        
+        const conn = await mongoose.connect(process.env.MONGODB_URI, options);
+        
+        console.log('✅ MongoDB Connected:', conn.connection.host);
+        connectionPromise = null; // Clear promise on success
+        return conn;
+      } catch (error) {
+        console.error(`❌ Connection attempt ${attempts} failed:`, error.message);
+        console.error('Error code:', error.code);
+        console.error('Error name:', error.name);
+        
+        if (attempts < maxAttempts) {
+          const delay = 1000 * attempts;
+          console.log(`⏳ Retrying in ${delay}ms...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+        } else {
+          console.error('❌ All connection attempts failed');
+          connectionPromise = null; // Clear promise on failure
+          throw error;
+        }
       }
     }
-  }
+  })();
+
+  return connectionPromise;
 };
 
 // Import Express and middleware
@@ -172,10 +155,13 @@ app.use('/api', async (req, res, next) => {
       name: error.name,
       mongooseState: mongoose.connection.readyState
     });
+    
+    // Return 503 Service Unavailable for database connection errors
     return res.status(503).json({
       message: 'Database connection failed. Please try again.',
       error: 'Service temporarily unavailable',
-      details: process.env.NODE_ENV === 'development' ? error.message : undefined
+      details: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      timestamp: new Date().toISOString()
     });
   }
 });
@@ -358,20 +344,50 @@ app.use('/api/*', (req, res) => {
   });
 });
 
-// Error handler
+// Error handler - must be last
 app.use((err, req, res, next) => {
-  console.error('Unhandled Error:', err.message);
-  console.error('Stack:', err.stack);
-  res.status(500).json({
-    message: err.message || 'Internal server error',
-    error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  console.error('Unhandled Error:', {
+    message: err.message,
+    code: err.code,
+    name: err.name,
+    stack: err.stack
+  });
+  
+  // Determine appropriate status code
+  let statusCode = 500;
+  let errorMessage = 'Internal server error';
+  
+  if (err.name === 'MongooseError' || err.name === 'MongoError') {
+    statusCode = 503;
+    errorMessage = 'Database error. Please try again.';
+  } else if (err.name === 'ValidationError') {
+    statusCode = 400;
+    errorMessage = 'Validation error';
+  } else if (err.name === 'CastError') {
+    statusCode = 400;
+    errorMessage = 'Invalid ID format';
+  }
+  
+  res.status(statusCode).json({
+    message: errorMessage,
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined,
+    timestamp: new Date().toISOString()
   });
 });
 
-// Serverless handler - simplified since DB connection is handled by middleware
+// Serverless handler - Express app handles all routing
 const handler = async (req, res) => {
-  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
-  return app(req, res);
+  try {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    return app(req, res);
+  } catch (error) {
+    console.error('Serverless handler error:', error.message);
+    res.status(500).json({
+      message: 'Internal server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      timestamp: new Date().toISOString()
+    });
+  }
 };
 
 module.exports = handler;

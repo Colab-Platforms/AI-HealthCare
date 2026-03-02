@@ -13,16 +13,35 @@ exports.register = async (req, res) => {
   try {
     const { name, email, phone, password, role, profile, nutritionGoal } = req.body;
 
+    // Validate required fields
+    if (!name || !email || !password) {
+      console.log('Registration attempt: Missing required fields');
+      return res.status(400).json({ message: 'Name, email, and password are required' });
+    }
+
+    console.log('Registration attempt for email:', email);
+
     // Check if user exists by email or phone - with extended timeout for Vercel
-    const existingUser = await User.findOne({
-      $or: [{ email }, ...(phone ? [{ phone }] : [])]
-    }).maxTimeMS(30000);
+    let existingUser = null;
+    try {
+      existingUser = await User.findOne({
+        $or: [{ email }, ...(phone ? [{ phone }] : [])]
+      }).maxTimeMS(30000);
+    } catch (dbError) {
+      console.error('Database error checking existing user:', dbError.message);
+      console.error('Database error code:', dbError.code);
+      return res.status(503).json({ 
+        message: 'Database error. Please try again.',
+        error: process.env.NODE_ENV === 'development' ? dbError.message : undefined
+      });
+    }
+
     if (existingUser) {
+      console.log('User already exists:', existingUser.email);
       return res.status(400).json({ message: 'User already exists with this email or phone' });
     }
 
     // Determine role - only patient allowed via normal registration
-    // Doctor registration is separate, admin is created by existing admin
     const userRole = role === 'doctor' ? 'doctor' : 'patient';
 
     // Calculate nutrition goals if profile data is provided
@@ -40,31 +59,45 @@ exports.register = async (req, res) => {
           weeklyGoal: nutritionGoal.weeklyGoal || 0.5
         });
       } catch (calcError) {
-        console.error('Nutrition goal calculation error:', calcError);
+        console.error('Nutrition goal calculation error:', calcError.message);
         // Continue with registration even if calculation fails
       }
     }
 
-    const user = await User.create({
-      name,
-      email,
-      phone,
-      password,
-      role: userRole,
-      profile: profile || {},
-      nutritionGoal: calculatedGoals ? {
-        goal: nutritionGoal.goal,
-        targetWeight: nutritionGoal.targetWeight,
-        weeklyGoal: nutritionGoal.weeklyGoal,
-        ...calculatedGoals,
-        autoCalculated: true
-      } : undefined,
-      subscription: {
-        plan: 'free',
-        status: 'active',
-        startDate: new Date()
-      }
-    }).maxTimeMS(30000);
+    let user = null;
+    try {
+      console.log('Creating user in database...');
+      user = await User.create({
+        name,
+        email,
+        phone,
+        password,
+        role: userRole,
+        profile: profile || {},
+        nutritionGoal: calculatedGoals ? {
+          goal: nutritionGoal.goal,
+          targetWeight: nutritionGoal.targetWeight,
+          weeklyGoal: nutritionGoal.weeklyGoal,
+          ...calculatedGoals,
+          autoCalculated: true
+        } : undefined,
+        subscription: {
+          plan: 'free',
+          status: 'active',
+          startDate: new Date()
+        }
+      }).maxTimeMS(30000);
+    } catch (createError) {
+      console.error('User creation error:', createError.message);
+      console.error('User creation error code:', createError.code);
+      console.error('User creation error stack:', createError.stack);
+      return res.status(500).json({ 
+        message: 'Failed to create user. Please try again.',
+        error: process.env.NODE_ENV === 'development' ? createError.message : undefined
+      });
+    }
+
+    console.log('User registered successfully:', user._id);
 
     res.status(201).json({
       _id: user._id,
@@ -78,8 +111,14 @@ exports.register = async (req, res) => {
       token: generateToken(user._id)
     });
   } catch (error) {
-    console.error('Registration error:', error);
-    res.status(500).json({ message: error.message });
+    console.error('Registration error:', error.message);
+    console.error('Registration error stack:', error.stack);
+    console.error('Registration error code:', error.code);
+    res.status(500).json({ 
+      message: 'Registration failed. Please try again.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      timestamp: new Date().toISOString()
+    });
   }
 };
 
@@ -151,19 +190,60 @@ exports.login = async (req, res) => {
   try {
     const { email, phone, password } = req.body;
 
+    // Input validation
+    if (!email && !phone) {
+      console.log('Login attempt: Missing email and phone');
+      return res.status(400).json({ message: 'Email or phone is required' });
+    }
+
+    if (!password) {
+      console.log('Login attempt: Missing password');
+      return res.status(400).json({ message: 'Password is required' });
+    }
+
     // Allow login with email or phone - with extended timeout for Vercel
     const query = email ? { email } : { phone };
-    const user = await User.findOne(query).populate('doctorProfile').maxTimeMS(30000);
+    console.log('Login attempt with query:', query);
+    
+    let user;
+    try {
+      user = await User.findOne(query).populate('doctorProfile').maxTimeMS(30000);
+    } catch (dbError) {
+      console.error('Database error during user lookup:', dbError.message);
+      console.error('Database error code:', dbError.code);
+      return res.status(503).json({ 
+        message: 'Database error. Please try again.',
+        error: process.env.NODE_ENV === 'development' ? dbError.message : undefined
+      });
+    }
 
     if (!user) {
+      console.log('User not found for query:', query);
       return res.status(401).json({ message: 'Invalid credentials' });
     }
 
+    console.log('User found:', user._id, 'isActive:', user.isActive);
+
     if (!user.isActive) {
+      console.log('User account is deactivated:', user._id);
       return res.status(403).json({ message: 'Account is deactivated. Please contact support.' });
     }
 
-    if (await user.comparePassword(password)) {
+    // Compare password with proper error handling
+    let passwordMatch = false;
+    try {
+      console.log('Comparing password for user:', user._id);
+      passwordMatch = await user.comparePassword(password);
+    } catch (pwError) {
+      console.error('Password comparison error:', pwError.message);
+      console.error('Password comparison error stack:', pwError.stack);
+      return res.status(500).json({ 
+        message: 'Authentication error. Please try again.',
+        error: process.env.NODE_ENV === 'development' ? pwError.message : undefined
+      });
+    }
+
+    if (passwordMatch) {
       const response = {
         _id: user._id,
         name: user.name,
@@ -188,12 +268,21 @@ exports.login = async (req, res) => {
         };
       }
 
+      console.log('Login successful for user:', user._id);
       res.json(response);
     } else {
+      console.log('Password mismatch for user:', user._id);
       res.status(401).json({ message: 'Invalid credentials' });
     }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Login error:', error.message);
+    console.error('Login error stack:', error.stack);
+    console.error('Login error code:', error.code);
+    res.status(500).json({ 
+      message: 'Login failed. Please try again.',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+      timestamp: new Date().toISOString()
+    });
   }
 };
 
