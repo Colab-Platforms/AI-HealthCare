@@ -28,18 +28,22 @@ router.delete('/logs/:id', nutritionController.deleteFoodLog);
 
 // Health Goals
 router.post('/goals', nutritionController.setHealthGoal);
+router.put('/goals', nutritionController.updateHealthGoal);
 router.get('/goals', nutritionController.getHealthGoal);
 router.post('/log-weight', nutritionController.logWeight);
 
-// Nutrition Summary
+// Nutrition Summary - SPECIFIC ROUTES BEFORE PARAMETERIZED ROUTES
 router.get('/summary/daily', nutritionController.getDailySummary);
 router.get('/summary/weekly', nutritionController.getWeeklySummary);
 router.get('/activity/week', nutritionController.getActivityWeek);
-
-// AI Recommendations
 router.get('/recommendations', nutritionController.getRecommendations);
-
-// Food Images
 router.get('/food-image', nutritionController.getFoodImage);
+
+// Quick Food Check - SPECIFIC ROUTES BEFORE PARAMETERIZED ROUTES
+router.get('/quick-checks/history/date', nutritionController.getFoodCheckHistory);
+router.get('/quick-checks/summary/weekly', nutritionController.getWeeklyFoodCheckSummary);
+router.get('/quick-checks/:id', nutritionController.getQuickFoodCheck);
+router.delete('/quick-checks/:id', nutritionController.deleteQuickFoodCheck);
+router.get('/quick-checks', nutritionController.getQuickFoodChecks);
 
 module.exports = router;

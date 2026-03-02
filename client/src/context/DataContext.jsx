@@ -1,6 +1,7 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { healthService, wearableService, nutritionService } from '../services/api';
 import { cache } from '../utils/cache';
+import { useAuth } from './AuthContext';
 
 const DataContext = createContext();
 
@@ -13,6 +14,7 @@ export const useData = () => {
 };
 
 export const DataProvider = ({ children }) => {
+  const { user } = useAuth();
   const [dashboardData, setDashboardData] = useState(null);
   const [wearableData, setWearableData] = useState(null);
   const [nutritionData, setNutritionData] = useState(null);
@@ -21,6 +23,17 @@ export const DataProvider = ({ children }) => {
     wearable: false,
     nutrition: false
   });
+
+  // Clear all data when user changes (login/logout/register)
+  useEffect(() => {
+    if (!user) {
+      // User logged out or not authenticated
+      cache.clear();
+      setDashboardData(null);
+      setWearableData(null);
+      setNutritionData(null);
+    }
+  }, [user?.id]); // Only trigger when user ID changes
 
   // Fetch dashboard data with caching
   const fetchDashboard = useCallback(async (forceRefresh = false) => {
@@ -149,6 +162,14 @@ export const DataProvider = ({ children }) => {
     }
   }, []);
 
+  // Clear all data when user changes (for logout/login scenarios)
+  const clearAllData = useCallback(() => {
+    cache.clear();
+    setDashboardData(null);
+    setWearableData(null);
+    setNutritionData(null);
+  }, []);
+
   const value = {
     // Data
     dashboardData,
@@ -161,7 +182,8 @@ export const DataProvider = ({ children }) => {
     fetchWearable,
     fetchNutrition,
     fetchDietPlan,
-    invalidateCache
+    invalidateCache,
+    clearAllData
   };
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;

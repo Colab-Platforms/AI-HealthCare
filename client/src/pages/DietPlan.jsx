@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import api, { healthService, nutritionService } from '../services/api';
+import api, { healthService, nutritionService, dietRecommendationService } from '../services/api';
 import {
   Heart, Clock, ArrowLeft, Flame, Target,
   AlertCircle, Sparkles, CheckCircle, Lightbulb, X, UtensilsCrossed, Utensils
@@ -200,7 +200,7 @@ export default function DietPlan() {
 
   const fetchPersonalizedPlan = async () => {
     try {
-      const { data } = await api.get('/diet-recommendations/diet-plan/active');
+      const { data } = await dietRecommendationService.getActiveDietPlan();
       if (data.success && data.dietPlan) {
         const dp = data.dietPlan;
         if (dp.mealPlan && !dp.mealPlan.snacks) {
@@ -212,7 +212,10 @@ export default function DietPlan() {
         setPersonalizedPlan(dp);
       }
     } catch (err) {
-      if (err.response?.status !== 404) console.error('Error fetching diet plan:', err);
+      if (err.response?.status !== 404) {
+        console.error('Error fetching diet plan:', err);
+        toast.error('Failed to load diet plan');
+      }
     } finally {
       setLoading(false);
     }
@@ -220,7 +223,7 @@ export default function DietPlan() {
 
   const fetchPlanHistory = async () => {
     try {
-      const { data } = await api.get('/diet-recommendations/diet-plan/history');
+      const { data } = await dietRecommendationService.getDietPlanHistory();
       if (data.success) {
         setPlanHistory(data.history || []);
       }
@@ -233,7 +236,7 @@ export default function DietPlan() {
     setLoading(true);
     setShowHistory(false);
     try {
-      const { data } = await api.get(`/diet-recommendations/diet-plan/${planId}`);
+      const { data } = await dietRecommendationService.getDietPlanById(planId);
       if (data.success) {
         setPersonalizedPlan(data.dietPlan);
         toast.success('Viewing selected plan');
@@ -247,19 +250,21 @@ export default function DietPlan() {
 
   const fetchSupplementRecommendations = async () => {
     try {
-      const { data } = await api.get('/diet-recommendations/supplements/active');
+      const { data } = await dietRecommendationService.getActiveSupplements();
       if (data.success && data.recommendations) {
         setSupplementRecommendations(data.recommendations);
       }
     } catch (err) {
-      if (err.response?.status !== 404) console.error('Error fetching supplements:', err);
+      if (err.response?.status !== 404) {
+        console.error('Error fetching supplements:', err);
+      }
     }
   };
 
   const generateAIPlan = async () => {
     setGenerating(true);
     try {
-      const { data } = await api.post('/diet-recommendations/diet-plan/generate');
+      const { data } = await dietRecommendationService.generateDietPlan();
       if (data.success) {
         toast.success('Diet plan generated successfully!');
         fetchPersonalizedPlan();
@@ -268,7 +273,7 @@ export default function DietPlan() {
         toast.error(data.message || 'Failed to generate plan');
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Error generating diet plan');
+      toast.error(err.response?.data?.message || 'Failed to generate diet plan');
     } finally {
       setGenerating(false);
     }

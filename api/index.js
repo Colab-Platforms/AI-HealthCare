@@ -55,27 +55,90 @@ app.get('/api/health-check', (req, res) => {
     status: 'ok',
     message: 'FitCure API',
     timestamp: new Date().toISOString(),
-    dbConnected: mongoose.connection.readyState === 1
+    dbConnected: mongoose.connection.readyState === 1,
+    environment: process.env.NODE_ENV,
+    vercel: !!process.env.VERCEL,
+    routes: {
+      auth: !!authRoutes,
+      health: !!healthRoutes,
+      metrics: !!metricRoutes,
+      doctors: !!doctorRoutes,
+      admin: !!adminRoutes,
+      wearables: !!wearableRoutes,
+      nutrition: !!nutritionRoutes,
+      dietRecommendations: !!dietRecommendationRoutes,
+      users: !!userRoutes,
+      notifications: !!notificationRoutes,
+      chat: !!chatRoutes,
+      chatHistory: !!chatHistoryRoutes
+    }
   });
 });
 
-// Load routes
-try {
-  app.use('/api/auth', require('../server/routes/authRoutes'));
-  app.use('/api/health', require('../server/routes/healthRoutes'));
-  app.use('/api/metrics', require('../server/routes/metricRoutes'));
-  app.use('/api/doctors', require('../server/routes/doctorRoutes'));
-  app.use('/api/admin', require('../server/routes/adminRoutes'));
-  app.use('/api/wearables', require('../server/routes/wearableRoutes'));
-  app.use('/api/nutrition', require('../server/routes/nutritionRoutes'));
-  app.use('/api/diet-recommendations', require('../server/routes/dietRecommendationRoutes'));
-  app.use('/api/users', require('../server/routes/userRoutes'));
-  app.use('/api/notifications', require('../server/routes/notificationRoutes'));
-  app.use('/api', require('../server/routes/chatRoutes'));
-  app.use('/api/chat', require('../server/routes/chatHistoryRoutes'));
-} catch (error) {
-  console.error('Error loading routes:', error);
-}
+// Test route to verify nutrition routes are loaded
+app.get('/api/test-nutrition', (req, res) => {
+  res.json({
+    message: 'Nutrition routes test',
+    nutritionRoutesLoaded: !!nutritionRoutes,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Load routes with better error handling
+const loadRoute = (path, name) => {
+  try {
+    const route = require(path);
+    console.log(`✓ Loaded ${name} route`);
+    return route;
+  } catch (error) {
+    console.error(`✗ Error loading ${name} route:`, error.message);
+    return null;
+  }
+};
+
+console.log('Loading routes...');
+const authRoutes = loadRoute('../server/routes/authRoutes', 'auth');
+const healthRoutes = loadRoute('../server/routes/healthRoutes', 'health');
+const metricRoutes = loadRoute('../server/routes/metricRoutes', 'metrics');
+const doctorRoutes = loadRoute('../server/routes/doctorRoutes', 'doctors');
+const adminRoutes = loadRoute('../server/routes/adminRoutes', 'admin');
+const wearableRoutes = loadRoute('../server/routes/wearableRoutes', 'wearables');
+const nutritionRoutes = loadRoute('../server/routes/nutritionRoutes', 'nutrition');
+const dietRecommendationRoutes = loadRoute('../server/routes/dietRecommendationRoutes', 'diet-recommendations');
+const userRoutes = loadRoute('../server/routes/userRoutes', 'users');
+const notificationRoutes = loadRoute('../server/routes/notificationRoutes', 'notifications');
+const chatRoutes = loadRoute('../server/routes/chatRoutes', 'chat');
+const chatHistoryRoutes = loadRoute('../server/routes/chatHistoryRoutes', 'chat-history');
+console.log('Routes loaded.');
+
+if (authRoutes) app.use('/api/auth', authRoutes);
+if (healthRoutes) app.use('/api/health', healthRoutes);
+if (metricRoutes) app.use('/api/metrics', metricRoutes);
+if (doctorRoutes) app.use('/api/doctors', doctorRoutes);
+if (adminRoutes) app.use('/api/admin', adminRoutes);
+if (wearableRoutes) app.use('/api/wearables', wearableRoutes);
+if (nutritionRoutes) app.use('/api/nutrition', nutritionRoutes);
+if (dietRecommendationRoutes) app.use('/api/diet-recommendations', dietRecommendationRoutes);
+if (userRoutes) app.use('/api/users', userRoutes);
+if (notificationRoutes) app.use('/api/notifications', notificationRoutes);
+if (chatRoutes) app.use('/api', chatRoutes);
+if (chatHistoryRoutes) app.use('/api/chat', chatHistoryRoutes);
+
+// 404 handler for API routes
+app.use('/api/*', (req, res) => {
+  console.log('404 - Route not found:', req.method, req.originalUrl);
+  res.status(404).json({
+    error: 'Route not found',
+    method: req.method,
+    path: req.originalUrl,
+    availableRoutes: Object.keys(app._router.stack
+      .filter(r => r.route)
+      .reduce((acc, r) => {
+        acc[r.route.path] = Object.keys(r.route.methods);
+        return acc;
+      }, {}))
+  });
+});
 
 // Error handler
 app.use((err, req, res, next) => {

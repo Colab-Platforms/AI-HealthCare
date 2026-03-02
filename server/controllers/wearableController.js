@@ -201,9 +201,17 @@ exports.getWearableDashboard = async (req, res) => {
   }
 };
 
-// Generate demo data for testing
+// Generate demo data for testing - DISABLED IN PRODUCTION
 exports.generateDemoData = async (req, res) => {
   try {
+    // Only allow in development mode
+    if (process.env.NODE_ENV === 'production') {
+      return res.status(403).json({ 
+        message: 'Demo data generation is disabled in production',
+        error: 'DEMO_DATA_DISABLED'
+      });
+    }
+
     const { deviceType } = req.body;
     
     let wearable = await WearableData.findOne({ user: req.user._id, deviceType });

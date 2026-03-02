@@ -20,10 +20,17 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const login = async (emailOrPhone, password) => {
+    // Clear any existing data before logging in new user
+    localStorage.clear();
+    sessionStorage.clear();
+    
     const isEmail = emailOrPhone.includes('@');
     const payload = isEmail ? { email: emailOrPhone, password } : { phone: emailOrPhone, password };
     const { data } = await api.post('/auth/login', payload);
+    
+    // Set new token and user data
     localStorage.setItem('token', data.token);
+    localStorage.setItem('user', JSON.stringify(data));
     api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
     
     // Fetch latest profile data to ensure we have the most recent info
@@ -42,6 +49,10 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (name, email, password, profile = {}, nutritionGoal = null) => {
+    // Clear any existing data before registering new user
+    localStorage.clear();
+    sessionStorage.clear();
+    
     const { data } = await api.post('/auth/register', { 
       name, 
       email, 
@@ -49,6 +60,8 @@ export const AuthProvider = ({ children }) => {
       profile,
       nutritionGoal 
     });
+    
+    // Set new token and user data
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data));
     api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
@@ -57,7 +70,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   const registerDoctor = async (doctorData) => {
+    // Clear any existing data before registering new doctor
+    localStorage.clear();
+    sessionStorage.clear();
+    
     const { data } = await api.post('/auth/register/doctor', doctorData);
+    
+    // Set new token and user data
     localStorage.setItem('token', data.token);
     localStorage.setItem('user', JSON.stringify(data));
     api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
@@ -66,10 +85,22 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    // Clear all storage to prevent data leakage between users
+    localStorage.clear();
+    sessionStorage.clear();
+    
+    // Clear API headers
     delete api.defaults.headers.common['Authorization'];
+    
+    // Clear user state
     setUser(null);
+    
+    // Clear service worker cache
+    if ('caches' in window) {
+      caches.keys().then(names => {
+        names.forEach(name => caches.delete(name));
+      }).catch(err => console.error('Cache clear error:', err));
+    }
   };
 
   const updateUser = (userData) => {

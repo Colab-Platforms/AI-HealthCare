@@ -73,6 +73,12 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  
+  // Clear cache on login/register requests to prevent data leakage
+  if (config.url?.includes('/auth/login') || config.url?.includes('/auth/register')) {
+    cache.clear();
+  }
+  
   return config;
 });
 
@@ -88,8 +94,10 @@ api.interceptors.response.use(
 
       if (!skipAutoLogout) {
         console.log('🚪 Triggering auto-logout and redirecting to /login');
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        // Clear all storage on 401
+        localStorage.clear();
+        sessionStorage.clear();
+        cache.clear();
         window.location.href = '/login';
       } else {
         console.log('🛡️ skipAutoLogout is TRUE — keeping user on current page');
@@ -236,6 +244,17 @@ export const nutritionService = {
   getDailySummary: (date) => api.get('/nutrition/summary/daily', { params: { date } }),
   getGoals: () => api.get('/nutrition/goals'),
   updateGoals: (goals) => api.put('/nutrition/goals', goals)
+};
+
+export const dietRecommendationService = {
+  generateDietPlan: () => api.post('/diet-recommendations/diet-plan/generate'),
+  getActiveDietPlan: () => api.get('/diet-recommendations/diet-plan/active'),
+  getDietPlanHistory: () => api.get('/diet-recommendations/diet-plan/history'),
+  getDietPlanById: (planId) => api.get(`/diet-recommendations/diet-plan/${planId}`),
+  rateDietPlan: (planId, rating) => api.post(`/diet-recommendations/diet-plan/${planId}/rate`, { rating }),
+  generateSupplements: () => api.post('/diet-recommendations/supplements/generate'),
+  getActiveSupplements: () => api.get('/diet-recommendations/supplements/active'),
+  trackSupplementUsage: (recommendationId, data) => api.post(`/diet-recommendations/supplements/${recommendationId}/track`, data)
 };
 
 export default api;

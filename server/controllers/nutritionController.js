@@ -363,6 +363,35 @@ exports.getHealthGoal = async (req, res) => {
   }
 };
 
+// Update health goal (alias for setHealthGoal for PUT requests)
+exports.updateHealthGoal = async (req, res) => {
+  try {
+    const goalData = {
+      ...req.body,
+      userId: req.user._id
+    };
+
+    const healthGoal = await HealthGoal.findOneAndUpdate(
+      { userId: req.user._id },
+      goalData,
+      { new: true, upsert: true }
+    );
+
+    res.json({
+      success: true,
+      healthGoal,
+      message: 'Health goal updated successfully'
+    });
+  } catch (error) {
+    console.error('Update health goal error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update health goal',
+      error: error.message
+    });
+  }
+};
+
 // Log weight
 exports.logWeight = async (req, res) => {
   try {
