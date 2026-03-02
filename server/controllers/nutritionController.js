@@ -358,6 +358,28 @@ exports.setHealthGoal = async (req, res) => {
 // Get health goal
 exports.getHealthGoal = async (req, res) => {
   try {
+    const user = await withTimeout(require('../models/User').findById(req.user._id));
+    
+    // PRIORITIZE user's nutritionGoal from profile
+    if (user && user.nutritionGoal && user.nutritionGoal.calorieGoal) {
+      return res.json({
+        success: true,
+        healthGoal: {
+          userId: req.user._id,
+          dailyCalorieTarget: user.nutritionGoal.calorieGoal,
+          macroTargets: {
+            protein: user.nutritionGoal.proteinGoal || 150,
+            carbs: user.nutritionGoal.carbsGoal || 200,
+            fats: user.nutritionGoal.fatGoal || 65
+          },
+          goal: user.nutritionGoal.goal,
+          targetWeight: user.nutritionGoal.targetWeight,
+          source: 'user_profile'
+        }
+      });
+    }
+
+    // Fallback to HealthGoal model
     const healthGoal = await withTimeout(HealthGoal.findOne({ userId: req.user._id }));
 
     if (!healthGoal) {
