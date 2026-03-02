@@ -3,6 +3,11 @@ const router = express.Router();
 const { protect } = require('../middleware/auth');
 const HealthMetric = require('../models/HealthMetric');
 
+// Helper function to add timeout to all queries for Vercel compatibility
+const withTimeout = (query, timeoutMs = 30000) => {
+  return query.maxTimeMS(timeoutMs);
+};
+
 // Log a new health metric
 router.post('/', protect, async (req, res) => {
     try {
@@ -10,7 +15,7 @@ router.post('/', protect, async (req, res) => {
 
         // Create new metric
         const metric = new HealthMetric({
-            userId: req.user.id,
+            userId: req.user._id,
             type,
             value: Number(value),
             unit,
@@ -19,7 +24,7 @@ router.post('/', protect, async (req, res) => {
             notes
         });
 
-        await metric.save();
+        await metric.save({ maxTimeMS: 30000 });
 
         res.status(201).json(metric);
     } catch (error) {
@@ -34,9 +39,9 @@ router.get('/:type', protect, async (req, res) => {
         const { type } = req.params;
         const limit = parseInt(req.query.limit) || 50;
 
-        const metrics = await HealthMetric.find({ userId: req.user.id, type })
+        const metrics = await withTimeout(HealthMetric.find({ userId: req.user._id, type })
             .sort({ recordedAt: -1 })
-            .limit(limit);
+            .limit(limit));
 
         res.json(metrics);
     } catch (error) {
@@ -52,8 +57,8 @@ router.get('/summary/latest', protect, async (req, res) => {
         const summary = {};
 
         for (const type of types) {
-            const latest = await HealthMetric.findOne({ userId: req.user.id, type })
-                .sort({ recordedAt: -1 });
+            const latest = await withTimeout(HealthMetric.findOne({ userId: req.user._id, type })
+                .sort({ recordedAt: -1 }));
             if (latest) {
                 summary[type] = latest;
             }

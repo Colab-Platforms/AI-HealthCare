@@ -404,29 +404,48 @@ exports.logWeight = async (req, res) => {
   try {
     const { weight, notes } = req.body;
 
-    const healthGoal = await HealthGoal.findOne({ userId: req.user._id });
-
-    if (!healthGoal) {
-      return res.status(404).json({
-        success: false,
-        message: 'Please set your health goal first'
-      });
-    }
-
-    healthGoal.currentWeight = weight;
-    healthGoal.weeklyWeightLogs.push({
-      weight,
-      date: new Date(),
+    // Save to HealthMetric for glucose log page
+    const HealthMetric = require('../models/HealthMetric');
+    const metric = new HealthMetric({
+      userId: req.user._id,
+      type: 'weight',
+      value: Number(weight),
+      unit: 'kg',
+      readingContext: 'general',
+      recordedAt: new Date(),
       notes
     });
+    await metric.save({ maxTimeMS: 30000 });
 
-    // Recalculate targets based on new weight
-    await healthGoal.save();
+    // Also update user profile weight
+    const User = require('../models/User');
+    const user = await withTimeout(User.findById(req.user._id));
+    if (user) {
+      user.profile = user.profile || {};
+      user.profile.weight = Number(weight);
+      user.markModified('profile');
+      await user.save({ maxTimeMS: 30000 });
+    }
+
+    // Update health goal if exists
+    const healthGoal = await withTimeout(HealthGoal.findOne({ userId: req.user._id }));
+
+    if (healthGoal) {
+      healthGoal.currentWeight = Number(weight);
+      healthGoal.weeklyWeightLogs.push({
+        weight: Number(weight),
+        date: new Date(),
+        notes
+      });
+      // Recalculate targets based on new weight
+      await healthGoal.save({ maxTimeMS: 30000 });
+    }
 
     res.json({
       success: true,
-      healthGoal,
-      message: 'Weight logged successfully'
+      message: 'Weight logged successfully',
+      metric,
+      healthGoal
     });
   } catch (error) {
     console.error('Log weight error:', error);
