@@ -8,6 +8,33 @@ const withTimeout = (query, timeoutMs = 30000) => {
   return query.maxTimeMS(timeoutMs);
 };
 
+// Get latest reading for each specified type (comma separated) - SPECIFIC ROUTE BEFORE PARAMETERIZED
+router.get('/summary/latest', protect, async (req, res) => {
+    try {
+        const types = req.query.types ? req.query.types.split(',') : ['blood_sugar', 'hba1c', 'weight'];
+        const summary = {};
+
+        console.log('Fetching latest metrics for types:', types);
+
+        for (const type of types) {
+            const latest = await withTimeout(HealthMetric.findOne({ userId: req.user._id, type })
+                .sort({ recordedAt: -1 }));
+            if (latest) {
+                summary[type] = latest;
+                console.log(`Latest ${type}:`, latest.value);
+            }
+        }
+
+        res.json(summary);
+    } catch (error) {
+        console.error('Error fetching metric summary:', error.message);
+        res.status(500).json({ 
+          message: 'Server error fetching metric summary',
+          error: error.message 
+        });
+    }
+});
+
 // Log a new health metric
 router.post('/', protect, async (req, res) => {
     try {
@@ -47,7 +74,7 @@ router.post('/', protect, async (req, res) => {
     }
 });
 
-// Get metrics by type
+// Get metrics by type - PARAMETERIZED ROUTE AFTER SPECIFIC ROUTES
 router.get('/:type', protect, async (req, res) => {
     try {
         const { type } = req.params;
@@ -65,33 +92,6 @@ router.get('/:type', protect, async (req, res) => {
         console.error(`Error fetching ${req.params.type} metrics:`, error.message);
         res.status(500).json({ 
           message: 'Server error fetching health metrics',
-          error: error.message 
-        });
-    }
-});
-
-// Get latest reading for each specified type (comma separated)
-router.get('/summary/latest', protect, async (req, res) => {
-    try {
-        const types = req.query.types ? req.query.types.split(',') : ['blood_sugar', 'hba1c', 'weight'];
-        const summary = {};
-
-        console.log('Fetching latest metrics for types:', types);
-
-        for (const type of types) {
-            const latest = await withTimeout(HealthMetric.findOne({ userId: req.user._id, type })
-                .sort({ recordedAt: -1 }));
-            if (latest) {
-                summary[type] = latest;
-                console.log(`Latest ${type}:`, latest.value);
-            }
-        }
-
-        res.json(summary);
-    } catch (error) {
-        console.error('Error fetching metric summary:', error.message);
-        res.status(500).json({ 
-          message: 'Server error fetching metric summary',
           error: error.message 
         });
     }
