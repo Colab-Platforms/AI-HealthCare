@@ -186,6 +186,9 @@ app.use('/api', async (req, res, next) => {
 
 // Health check endpoint (no auth or DB required)
 app.get('/api/health-check', (req, res) => {
+  const mongodbUri = process.env.MONGODB_URI;
+  const uriStatus = mongodbUri ? `SET (${mongodbUri.substring(0, 40)}...)` : 'NOT SET';
+  
   res.json({
     status: 'ok',
     message: 'API is running',
@@ -200,11 +203,13 @@ app.get('/api/health-check', (req, res) => {
       3: 'disconnecting'
     }[mongoose.connection.readyState],
     envVars: {
-      MONGODB_URI: !!process.env.MONGODB_URI,
-      JWT_SECRET: !!process.env.JWT_SECRET,
-      ANTHROPIC_API_KEY: !!process.env.ANTHROPIC_API_KEY,
-      OPENROUTER_API_KEY: !!process.env.OPENROUTER_API_KEY,
-      CLOUDINARY_CLOUD_NAME: !!process.env.CLOUDINARY_CLOUD_NAME
+      MONGODB_URI: uriStatus,
+      JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'NOT SET',
+      ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ? 'SET' : 'NOT SET',
+      OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY ? 'SET' : 'NOT SET',
+      CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME ? 'SET' : 'NOT SET',
+      NODE_ENV: process.env.NODE_ENV,
+      VERCEL: process.env.VERCEL ? 'YES' : 'NO'
     }
   });
 });
