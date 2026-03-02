@@ -27,28 +27,54 @@ console.log('Environment:', {
   JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'NOT SET'
 });
 
-// Connection state
-let isConnected = false;
+// Connection state - PERSISTENT across requests
+let mongoConnection = null;
+let isConnecting = false;
+let connectionPromise = null;
 
 const connectToDatabase = async () => {
-  if (isConnected && mongoose.connection.readyState === 1) {
-    return;
+  // If already connected, return immediately
+  if (mongoConnection && mongoose.connection.readyState === 1) {
+    console.log('✓ Using existing database connection');
+    return mongoConnection;
   }
 
-  try {
-    const options = {
-      serverSelectionTimeoutMS: 10000,
-      socketTimeoutMS: 45000,
-    };
-
-    await mongoose.connect(process.env.MONGODB_URI, options);
-    isConnected = true;
-    console.log('✓ Database connected');
-  } catch (error) {
-    console.error('✗ Database connection error:', error.message);
-    isConnected = false;
-    throw error;
+  // If currently connecting, wait for that connection
+  if (isConnecting && connectionPromise) {
+    console.log('⏳ Waiting for existing connection attempt...');
+    return connectionPromise;
   }
+
+  // Start new connection
+  isConnecting = true;
+  connectionPromise = (async () => {
+    try {
+      console.log('🔄 Connecting to MongoDB...');
+      
+      const options = {
+        serverSelectionTimeoutMS: 30000, // Increased from 10s to 30s
+        socketTimeoutMS: 45000,
+        connectTimeoutMS: 30000,
+        retryWrites: true,
+        w: 'majority',
+        maxPoolSize: 10,
+        minPoolSize: 2,
+      };
+
+      const conn = await mongoose.connect(process.env.MONGODB_URI, options);
+      mongoConnection = conn;
+      isConnecting = false;
+      console.log('✓ Database connected successfully');
+      return conn;
+    } catch (error) {
+      isConnecting = false;
+      connectionPromise = null;
+      console.error('✗ Database connection error:', error.message);
+      throw error;
+    }
+  })();
+
+  return connectionPromise;
 };
 
 // Import Express and middleware
@@ -71,7 +97,8 @@ app.get('/api/health-check', (req, res) => {
     status: 'ok',
     message: 'API is running',
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV
+    environment: process.env.NODE_ENV,
+    dbConnected: mongoose.connection.readyState === 1
   });
 });
 
@@ -192,15 +219,26 @@ app.use((err, req, res, next) => {
   });
 });
 
-// Serverless handler
+// Serverless handler with connection pooling
 const handler = async (req, res) => {
   try {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.path}`);
     await connectToDatabase();
   } catch (error) {
     console.error('Database connection failed:', error.message);
+    // For health check, return success even if DB fails
     if (req.path === '/api/health-check') {
-      return res.status(200).json({ status: 'ok', dbConnected: false });
+      return res.status(200).json({ 
+        status: 'ok', 
+        dbConnected: false,
+        message: 'API running but DB connection failed'
+      });
     }
+    // For other requests, return 503 Service Unavailable
+    return res.status(503).json({
+      message: 'Database connection failed',
+      error: 'Service temporarily unavailable'
+    });
   }
   return app(req, res);
 };
