@@ -35,17 +35,12 @@ console.log('Environment:', {
 // GLOBAL MongoDB connection - shared across all serverless calls
 // ============================================================
 let cachedConnection = null;
-let connectionAttempts = 0;
-const MAX_CONNECTION_ATTEMPTS = 3;
 
 const connectToDatabase = async () => {
-  connectionAttempts++;
-  console.log(`🔄 Connection attempt ${connectionAttempts}/${MAX_CONNECTION_ATTEMPTS}`);
-
   // If already connected, return immediately
-  if (cachedConnection && mongoose.connection.readyState === 1) {
+  if (mongoose.connection.readyState === 1) {
     console.log('♻️ Reusing existing MongoDB connection');
-    return cachedConnection;
+    return mongoose.connection;
   }
 
   // If connection is in progress, wait for it
@@ -102,35 +97,34 @@ const connectToDatabase = async () => {
     maxIdleTimeMS: 10000, // Close idle connections quickly in serverless
   };
 
-  try {
-    console.log('Mongoose connection state before connect:', mongoose.connection.readyState);
-    const conn = await mongoose.connect(process.env.MONGODB_URI, options);
-    cachedConnection = conn;
-    connectionAttempts = 0; // Reset on success
-    console.log('✅ MongoDB Connected:', conn.connection.host);
-    console.log('Mongoose connection state after connect:', mongoose.connection.readyState);
-    return conn;
-  } catch (error) {
-    cachedConnection = null;
-    console.error('❌ MongoDB Connection Error:', error.message);
-    console.error('Error code:', error.code);
-    console.error('Error name:', error.name);
-    console.error('Full error:', JSON.stringify({
-      message: error.message,
-      code: error.code,
-      name: error.name,
-      mongooseState: mongoose.connection.readyState,
-      mongodbUri: process.env.MONGODB_URI ? `${process.env.MONGODB_URI.substring(0, 30)}...` : 'NOT SET'
-    }, null, 2));
-    
-    if (connectionAttempts < MAX_CONNECTION_ATTEMPTS) {
-      const delay = 1000 * connectionAttempts;
-      console.log(`⏳ Retrying connection in ${delay}ms (${connectionAttempts}/${MAX_CONNECTION_ATTEMPTS})...`);
-      await new Promise(resolve => setTimeout(resolve, delay));
-      return connectToDatabase();
+  let attempts = 0;
+  const maxAttempts = 3;
+
+  while (attempts < maxAttempts) {
+    try {
+      attempts++;
+      console.log(`🔄 Connection attempt ${attempts}/${maxAttempts}`);
+      console.log('Mongoose connection state before connect:', mongoose.connection.readyState);
+      
+      const conn = await mongoose.connect(process.env.MONGODB_URI, options);
+      
+      console.log('✅ MongoDB Connected:', conn.connection.host);
+      console.log('Mongoose connection state after connect:', mongoose.connection.readyState);
+      return conn;
+    } catch (error) {
+      console.error(`❌ Connection attempt ${attempts} failed:`, error.message);
+      console.error('Error code:', error.code);
+      console.error('Error name:', error.name);
+      
+      if (attempts < maxAttempts) {
+        const delay = 1000 * attempts;
+        console.log(`⏳ Retrying in ${delay}ms...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+      } else {
+        console.error('❌ All connection attempts failed');
+        throw error;
+      }
     }
-    
-    throw error;
   }
 };
 
@@ -161,6 +155,12 @@ app.use('/api', async (req, res, next) => {
   }
 
   try {
+    // If already connected, skip connection attempt
+    if (mongoose.connection.readyState === 1) {
+      console.log(`[DB Middleware] ${req.method} ${req.path} - Using existing connection`);
+      return next();
+    }
+
     console.log(`[DB Middleware] ${req.method} ${req.path} - Connecting to database...`);
     await connectToDatabase();
     console.log(`[DB Middleware] ${req.method} ${req.path} - Database connected, proceeding to route`);
