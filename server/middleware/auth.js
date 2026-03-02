@@ -31,13 +31,13 @@ exports.protect = async (req, res, next) => {
       }
     }
 
-    // Retry user lookup with timeout
+    // Retry user lookup with timeout (30s to handle Vercel cold starts)
     let retries = 3;
     let user = null;
 
     while (retries > 0 && !user) {
       try {
-        user = await User.findById(decoded.id).select('-password').maxTimeMS(10000);
+        user = await User.findById(decoded.id).select('-password').maxTimeMS(30000);
         if (user) break;
       } catch (dbError) {
         console.error(`User lookup attempt ${4 - retries} failed:`, dbError.message);
