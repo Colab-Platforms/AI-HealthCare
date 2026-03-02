@@ -21,12 +21,16 @@ const getApiUrl = () => {
     return '/api';
   }
 
-  // For local development only
+  // For local development - try common ports
   if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
-    return 'http://localhost:5000/api';
+    // Try to detect which port the server is running on
+    // Default to 5000, but can be overridden by VITE_API_PORT env var
+    const port = import.meta.env.VITE_API_PORT || '5000';
+    return `http://localhost:${port}/api`;
   } else {
     // On mobile or different device in dev, use the same host with port 5000
-    return `http://${currentHost}:5000/api`;
+    const port = import.meta.env.VITE_API_PORT || '5000';
+    return `http://${currentHost}:${port}/api`;
   }
 };
 
