@@ -1240,36 +1240,40 @@ export default function DashboardEnhanced() {
               <Link to="/reports" className="text-[10px] font-black text-[#2FC8B9] uppercase tracking-widest hover:underline transition-all">View All</Link>
             </div>
             <div className="space-y-4">
-              {(dashboardData?.recentReports?.length > 0 ? dashboardData.recentReports.slice(0, 3) : [
-                { _id: '1', reportType: 'Complete Blood Count', createdAt: '2026-02-12', status: 'completed' },
-                { _id: '2', reportType: 'Lipid Profile', createdAt: '2026-01-28', status: 'pending' },
-                { _id: '3', reportType: 'Thyroid Panel', createdAt: '2025-12-15', status: 'completed' }
-              ]).map((report, idx) => (
-                <Link
-                  key={report._id || idx}
-                  to={report._id ? `/reports/${report._id}` : "#"}
-                  className="flex items-center justify-between p-4 bg-slate-50 hover:bg-white border border-transparent hover:border-slate-100 rounded-3xl transition-all group shadow-sm"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shadow-inner text-slate-400 group-hover:text-[#2FC8B9] transition-colors">
-                      <FileText className="w-6 h-6" />
+              {dashboardData?.recentReports?.length > 0 ? (
+                dashboardData.recentReports.slice(0, 3).map((report, idx) => (
+                  <Link
+                    key={report._id || idx}
+                    to={report._id ? `/reports/${report._id}` : "#"}
+                    className="flex items-center justify-between p-4 bg-slate-50 hover:bg-white border border-transparent hover:border-slate-100 rounded-3xl transition-all group shadow-sm"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shadow-inner text-slate-400 group-hover:text-[#2FC8B9] transition-colors">
+                        <FileText className="w-6 h-6" />
+                      </div>
+                      <div>
+                        <h4 className="font-black text-black group-hover:text-[#2FC8B9] transition-colors text-sm">{report.reportType}</h4>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
+                          {new Date(report.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h4 className="font-black text-black group-hover:text-[#2FC8B9] transition-colors text-sm">{report.reportType}</h4>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
-                        {new Date(report.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </p>
+                    <div className="flex items-center gap-4">
+                      <span className={`text-[10px] font-black uppercase tracking-widest ${report.status === 'completed' ? 'text-[#2FC8B9]' : 'text-amber-500'
+                        }`}>
+                        {report.status === 'completed' ? 'Analyzed' : 'In Progress'}
+                      </span>
+                      <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#2FC8B9] transition-colors" />
                     </div>
-                  </div>
-                  <div className="flex items-center gap-4">
-                    <span className={`text-[10px] font-black uppercase tracking-widest ${report.status === 'completed' ? 'text-[#2FC8B9]' : 'text-amber-500'
-                      }`}>
-                      {report.status === 'completed' ? 'Analyzed' : 'In Progress'}
-                    </span>
-                    <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#2FC8B9] transition-colors" />
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                ))
+              ) : (
+                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 text-center">
+                  <FileText className="w-8 h-8 text-slate-300 mx-auto mb-3" />
+                  <p className="text-sm font-black text-slate-500 uppercase tracking-widest">No reports yet</p>
+                  <p className="text-[10px] text-slate-400 mt-2">Upload your first health report to get started</p>
+                </div>
+              )}
             </div>
           </div>
 
