@@ -167,7 +167,7 @@ exports.analyzeHealthReport = async (reportText, user = {}, imageData = null) =>
       { role: 'user', content: userContent }
     ];
 
-    const content = await makeAnthropicRequest(messages, 8000);
+    const content = await makeAnthropicRequest(messages, 20000);
 
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
