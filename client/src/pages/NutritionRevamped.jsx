@@ -57,6 +57,10 @@ export default function NutritionRevamped() {
   const [waterIntake, setWaterIntake] = useState(0);
   const [editingMeal, setEditingMeal] = useState(null);
   const [selectedInsightMeal, setSelectedInsightMeal] = useState(null);
+  const [motivationMsg, setMotivationMsg] = useState({
+    text: "Keep tracking to reach your goals! 🚀",
+    type: "info"
+  });
 
   // Add meal form state
   const [foodName, setFoodName] = useState("");
@@ -329,6 +333,10 @@ export default function NutritionRevamped() {
         else if (c > 800) msg = "Energy powerhouse! Make sure to stay active today! 🔥";
 
         toast(msg, { icon: '🌟', duration: 4000 });
+        setMotivationMsg({
+          text: msg,
+          type: p > 25 ? "protein" : (c < 300 ? "light" : "energy")
+        });
       }
 
       setShowAddMeal(false);
@@ -958,53 +966,76 @@ export default function NutritionRevamped() {
               </div>
             )}
 
-            {/* Hydration Card */}
-            <div className="card p-6 border-none shadow-xl">
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-2xl bg-blue-50/50 backdrop-blur-md flex items-center justify-center border border-blue-100 shadow-inner">
-                    <Droplets className="w-7 h-7 text-blue-500 drop-shadow-sm" />
+            {/* Motivational Message Card */}
+            {motivationMsg && (
+              <div className="bg-slate-900 rounded-3xl p-5 text-white shadow-xl relative overflow-hidden group border border-slate-800 animate-in slide-in-from-right-4 duration-500">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 rounded-full blur-2xl -mr-16 -mt-16 group-hover:bg-purple-500/20 transition-all duration-700"></div>
+                <div className="flex items-start gap-4 relative z-10">
+                  <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0 border border-white/10 group-hover:scale-110 transition-all">
+                    {motivationMsg.type === 'protein' ? (
+                      <Zap className="w-5 h-5 text-purple-400" />
+                    ) : motivationMsg.type === 'light' ? (
+                      <Sparkles className="w-5 h-5 text-emerald-400" />
+                    ) : (
+                      <Activity className="w-5 h-5 text-orange-400" />
+                    )}
                   </div>
                   <div>
-                    <h3 className="text-lg font-black text-slate-800 tracking-tight">
+                    <p className="text-[10px] font-black uppercase tracking-widest text-white/50 mb-1">
+                      Insight of the day
+                    </p>
+                    <p className="text-sm font-bold leading-relaxed">
+                      {motivationMsg.text}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Hydration Card - Squeezed */}
+            <div className="card p-4 border-none shadow-xl">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-blue-50/50 backdrop-blur-md flex items-center justify-center border border-blue-100 shadow-inner">
+                    <Droplets className="w-5 h-5 text-blue-500 drop-shadow-sm" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-slate-800 tracking-tight">
                       HYDRATION
                     </h3>
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      {waterIntake} of {waterGoal} glasses
+                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                      {waterIntake}/{waterGoal} GL
                     </p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-4xl font-black text-blue-600 tracking-tighter">
+                  <p className="text-2xl font-black text-blue-600 tracking-tighter">
                     {waterIntake}
-                  </p>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] -mt-1">
-                    Glasses
                   </p>
                 </div>
               </div>
 
-              {/* Water Glasses */}
-              <div className="flex flex-wrap gap-2.5 mb-6">
+              {/* Water Glasses - Smaller */}
+              <div className="flex flex-wrap gap-1.5 mb-4">
                 {Array.from({ length: waterGoal }).map((_, i) => (
                   <button
                     key={i}
                     onClick={handleAddWater}
-                    className={`w-10 h-11 rounded-xl flex items-center justify-center transition-all transform hover:scale-110 active:scale-95 border-2 ${i < waterIntake
-                      ? "bg-blue-600 border-blue-600 text-white shadow-lg shadow-blue-200"
+                    className={`w-8 h-9 rounded-lg flex items-center justify-center transition-all transform hover:scale-110 active:scale-95 border ${i < waterIntake
+                      ? "bg-blue-600 border-blue-600 text-white shadow-md shadow-blue-200"
                       : "bg-white/40 border-slate-100 text-slate-400 hover:border-blue-200"
                       }`}
                   >
                     <Droplets
-                      className={`w-5 h-5 ${i < waterIntake ? "animate-bounce" : ""}`}
+                      className={`w-4 h-4 ${i < waterIntake ? "animate-bounce" : ""}`}
                     />
                   </button>
                 ))}
                 <button
                   onClick={handleAddWater}
-                  className="w-10 h-11 rounded-xl flex items-center justify-center bg-slate-50 border-2 border-dashed border-slate-200 text-slate-400 hover:border-blue-300 hover:bg-white transition-all transition-all"
+                  className="w-8 h-9 rounded-lg flex items-center justify-center bg-slate-50 border border-dashed border-slate-200 text-slate-400 hover:border-blue-300 hover:bg-white transition-all"
                 >
-                  <Plus className="w-5 h-5" />
+                  <Plus className="w-4 h-4" />
                 </button>
               </div>
 
