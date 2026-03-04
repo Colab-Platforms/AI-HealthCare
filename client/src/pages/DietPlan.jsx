@@ -36,15 +36,16 @@ function getFoodEmoji(mealName, mealType) {
   for (const { q, e } of map) {
     if (q.some(w => n.includes(w))) return e;
   }
-  const defaults = { breakfast: '🌅', lunch: '🍽️', snacks: '🍎', dinner: '🌙' };
+  const defaults = { breakfast: '🌅', midMorningSnack: '🍎', lunch: '🍽️', eveningSnack: '☕', dinner: '🌙' };
   return defaults[mealType] || '🍽️';
 }
 
-const MEAL_ORDER = ['breakfast', 'lunch', 'snacks', 'dinner'];
+const MEAL_ORDER = ['breakfast', 'midMorningSnack', 'lunch', 'eveningSnack', 'dinner'];
 const SECTION_INFO = {
   breakfast: { label: 'Breakfast', time: '7:00 – 9:00 AM', emoji: '☀️' },
+  midMorningSnack: { label: 'Mid-Morning Snack', time: '10:30 – 11:30 AM', emoji: '🍎' },
   lunch: { label: 'Lunch', time: '12:00 – 2:00 PM', emoji: '🥗' },
-  snacks: { label: 'Snacks', time: 'Anytime', emoji: '🍎' },
+  eveningSnack: { label: 'Evening Snack', time: '4:00 – 6:00 PM', emoji: '☕' },
   dinner: { label: 'Dinner', time: '7:00 – 9:00 PM', emoji: '🌙' },
 };
 
@@ -86,7 +87,7 @@ function LogFoodModal({ meal, mealType, onClose, onLogged }) {
     protein: '10',
     carbs: '25',
     fats: '8',
-    mealType: mealType === 'snacks' ? 'snack' : mealType,
+    mealType: (mealType === 'snacks' || mealType === 'midMorningSnack' || mealType === 'eveningSnack') ? 'snack' : mealType,
   });
   const [logging, setLogging] = useState(false);
 
@@ -202,14 +203,7 @@ export default function DietPlan() {
     try {
       const { data } = await dietRecommendationService.getActiveDietPlan();
       if (data.success && data.dietPlan) {
-        const dp = data.dietPlan;
-        if (dp.mealPlan && !dp.mealPlan.snacks) {
-          dp.mealPlan.snacks = [
-            ...(Array.isArray(dp.mealPlan.midMorningSnack) ? dp.mealPlan.midMorningSnack : []),
-            ...(Array.isArray(dp.mealPlan.eveningSnack) ? dp.mealPlan.eveningSnack : [])
-          ];
-        }
-        setPersonalizedPlan(dp);
+        setPersonalizedPlan(data.dietPlan);
       }
     } catch (err) {
       if (err.response?.status !== 404) {
