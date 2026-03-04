@@ -15,7 +15,7 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    
+
     const attemptLogin = async (retryCount = 0) => {
       try {
         const user = await login(email, password);
@@ -29,7 +29,7 @@ export default function Login() {
         if (status === 503 && retryCount < 2) {
           console.log(`Database connection failed, retrying... (attempt ${retryCount + 1}/2)`);
           toast.loading('Connecting to database, please wait...');
-          
+
           // Wait 2 seconds before retrying
           await new Promise(resolve => setTimeout(resolve, 2000));
           return attemptLogin(retryCount + 1);
@@ -133,9 +133,9 @@ export default function Login() {
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-cyan-500 focus:ring-cyan-500" />
-                <span className="text-sm text-gray-600">Remember me</span>
+                <span className="text-sm text-gray-600 font-bold uppercase text-[10px] tracking-widest">Remember me</span>
               </label>
-              <a href="#" className="text-sm font-medium text-cyan-600 hover:text-cyan-700">Forgot password?</a>
+              <Link to="/forgot-password" title="Go to find password page" className="text-sm font-black text-[#2FC8B9] hover:text-black transition-colors uppercase tracking-widest text-[10px]">Forgot password?</Link>
             </div>
 
             <button

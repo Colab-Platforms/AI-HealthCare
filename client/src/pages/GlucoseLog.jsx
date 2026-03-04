@@ -120,6 +120,7 @@ const GlucoseLog = () => {
   };
 
   const handleLogGlucose = async (newReading) => {
+    setAiLoading(true);
     await saveReadingToApi(
       "blood_sugar",
       newReading.value,
@@ -127,11 +128,12 @@ const GlucoseLog = () => {
       newReading.type,
       newReading.timestamp,
     );
-    // Refresh analysis after log
-    setTimeout(() => fetchAiAnalysis(), 1000);
+    // Refresh analysis immediately
+    fetchAiAnalysis();
   };
 
   const handleLogHba1c = async (newReading) => {
+    setAiLoading(true);
     await saveReadingToApi(
       "hba1c",
       newReading.value,
@@ -140,6 +142,7 @@ const GlucoseLog = () => {
       newReading.timestamp,
     );
     setTrendType("hba1c");
+    fetchAiAnalysis();
   };
 
   const handleLogWeight = async (newReading) => {
@@ -151,6 +154,7 @@ const GlucoseLog = () => {
       newReading.timestamp,
     );
     setTrendType("weight");
+    fetchAiAnalysis();
   };
 
   // Direct edit functions
@@ -246,8 +250,15 @@ const GlucoseLog = () => {
     );
 
     // Filter by context if applicable
+    // Filter by context if applicable
     if (trendType === "blood_sugar" && glucoseFilterContext !== "all") {
-      filtered = filtered.filter(item => item.readingContext === glucoseFilterContext);
+      filtered = filtered.filter(item => {
+        if (!item.readingContext) return false;
+        // Handle both hyphen and underscore versions (before-meal vs before_meal)
+        const normalizedItemContext = item.readingContext.replace('_', '-');
+        const normalizedFilterContext = glucoseFilterContext.replace('_', '-');
+        return normalizedItemContext === normalizedFilterContext;
+      });
     }
 
     // Map to recharts format
@@ -624,6 +635,39 @@ const GlucoseLog = () => {
                 </button>
               </div>
             )}
+
+            {/* Quick Status Info below graph */}
+            <div className="mt-6 pt-4 border-t border-gray-100">
+              {recentReadings.length > 0 ? (
+                <div className={`p-4 rounded-2xl flex items-center gap-3 ${recentReadings[0].value >= 70 && recentReadings[0].value <= 130
+                  ? "bg-emerald-50 text-emerald-700"
+                  : recentReadings[0].value > 130
+                    ? "bg-red-50 text-red-700"
+                    : "bg-orange-50 text-orange-700"
+                  }`}>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${recentReadings[0].value >= 70 && recentReadings[0].value <= 130
+                    ? "bg-emerald-100"
+                    : recentReadings[0].value > 130
+                      ? "bg-red-100"
+                      : "bg-orange-100"
+                    }`}>
+                    <Activity className="w-5 h-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold uppercase tracking-tight">Your Last Reading is {recentReadings[0].value >= 70 && recentReadings[0].value <= 130 ? 'Good' : recentReadings[0].value > 130 ? 'High' : 'Low'}</h4>
+                    <p className="text-xs opacity-80 font-medium">
+                      {recentReadings[0].value >= 70 && recentReadings[0].value <= 130
+                        ? "You're doing great! Keep following your current routine."
+                        : recentReadings[0].value > 130
+                          ? "This is above your target range. Check your AI analysis for details."
+                          : "This is below your target range. Consider a snack if needed."}
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <p className="text-xs text-center text-slate-400 font-medium italic">Log your first reading to see status analysis</p>
+              )}
+            </div>
           </div>
         </div>
 
@@ -649,7 +693,7 @@ const GlucoseLog = () => {
             {aiAnalysis ? (
               <div className="space-y-4">
                 <div className="flex items-start gap-4 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                  <div className={`mt-1 w-3 h-3 rounded-full flex-shrink-0 ${aiAnalysis.statusColor === 'green' ? 'bg-green-500' : aiAnalysis.statusColor === 'yellow' ? 'bg-yellow-500' : aiAnalysis.statusColor === 'orange' ? 'bg-orange-500' : 'bg-red-500'}`} />
+                  <div className={`mt-1 w-3 h-3 rounded-full flex-shrink-0 ${aiAnalysis.statusColor === 'green' ? 'bg-green-500 text-green-500' : aiAnalysis.statusColor === 'yellow' ? 'bg-yellow-500 text-yellow-500' : aiAnalysis.statusColor === 'orange' ? 'bg-orange-500 text-orange-500' : 'bg-red-500 text-red-500'}`} />
                   <div>
                     <h4 className="text-sm font-bold text-slate-800 mb-1">
                       Status: <span className={aiAnalysis.statusColor === 'green' ? 'text-green-600' : aiAnalysis.statusColor === 'red' ? 'text-red-600' : 'text-orange-600'}>{aiAnalysis.status}</span>
@@ -686,16 +730,21 @@ const GlucoseLog = () => {
                 <p className="text-[11px] italic text-slate-400 text-center pb-2">
                   Generated by AI based on your overall data and daily food logs.
                 </p>
+                <div className="flex justify-center pt-2">
+                  <button onClick={fetchAiAnalysis} className="text-[10px] font-bold text-purple-600 hover:text-purple-800 uppercase tracking-widest flex items-center gap-1 opacity-60 hover:opacity-100 transition-opacity">
+                    <Activity className="w-3 h-3" /> Re-analyze Trends
+                  </button>
+                </div>
               </div>
             ) : (
               !aiLoading && (
                 <div className="text-center py-6">
-                  <p className="text-sm text-slate-500 mb-4">Click below to generate a personalized AI analysis of your glucose trends.</p>
+                  <p className="text-sm text-slate-500 mb-4 font-medium italic">No recent analysis found. Log readings for automatic analysis.</p>
                   <button
                     onClick={fetchAiAnalysis}
-                    className="px-6 py-2.5 bg-purple-600 text-white rounded-full text-sm font-bold shadow-md shadow-purple-200 hover:bg-purple-700 transition-all"
+                    className="px-8 py-3 bg-[#2FC8B9] text-white rounded-full text-xs font-black uppercase tracking-widest shadow-xl shadow-[#2FC8B9]/20 hover:scale-105 transition-all"
                   >
-                    Analyze My Progress
+                    Generate First Analysis
                   </button>
                 </div>
               )

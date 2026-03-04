@@ -16,6 +16,7 @@ export default function Register() {
     // Basic Info
     name: '',
     email: '',
+    phone: '',
     password: '',
     confirmPassword: '',
     age: '',
@@ -80,7 +81,7 @@ export default function Register() {
     }
 
     setLoading(true);
-    
+
     const attemptRegister = async (retryCount = 0) => {
       try {
         const profileData = {
@@ -125,7 +126,7 @@ export default function Register() {
           weeklyGoal: parseFloat(formData.weeklyGoal)
         };
 
-        await register(formData.name, formData.email, formData.password, profileData, nutritionGoal);
+        await register(formData.name, formData.email, formData.phone, formData.password, profileData, nutritionGoal);
         toast.success('Account created successfully!');
         navigate('/dashboard');
       } catch (error) {
@@ -136,7 +137,7 @@ export default function Register() {
         if (status === 503 && retryCount < 2) {
           console.log(`Database connection failed, retrying... (attempt ${retryCount + 1}/2)`);
           toast.loading('Connecting to database, please wait...');
-          
+
           // Wait 2 seconds before retrying
           await new Promise(resolve => setTimeout(resolve, 2000));
           return attemptRegister(retryCount + 1);
@@ -160,8 +161,21 @@ export default function Register() {
   const nextStep = () => {
     // Validation for each step
     if (step === 2) {
-      if (!formData.name || !formData.email || !formData.password || !formData.age || !formData.gender) {
+      if (!formData.name || !formData.email || !formData.phone || !formData.password || !formData.age || !formData.gender) {
         toast.error('Please fill in all basic fields');
+        return;
+      }
+      if (formData.phone.length !== 10) {
+        toast.error('Phone number must be exactly 10 digits');
+        return;
+      }
+      if (formData.password !== formData.confirmPassword) {
+        toast.error('Passwords do not match');
+        return;
+      }
+      const pwdRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*])(?=.*[0-9]).{6,}$/;
+      if (!pwdRegex.test(formData.password)) {
+        toast.error('Password must contain 1 uppercase, 1 special char, and 1 number');
         return;
       }
     }
@@ -359,6 +373,27 @@ export default function Register() {
               </div>
 
               <div>
+                <label className="block text-sm font-medium mb-2 text-slate-700">Phone Number *</label>
+                <div className="relative">
+                  <Activity className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      setFormData({ ...formData, phone: val });
+                    }}
+                    className="w-full bg-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 border border-slate-200 text-slate-900 placeholder:text-slate-400 font-bold"
+                    placeholder="10 digit phone number"
+                    required
+                  />
+                </div>
+                {formData.phone && formData.phone.length !== 10 && (
+                  <p className="text-[10px] text-red-500 mt-1 font-bold">Must be 10 digits</p>
+                )}
+              </div>
+
+              <div>
                 <label className="block text-sm font-medium mb-2 text-slate-700">Email Address *</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
@@ -366,7 +401,7 @@ export default function Register() {
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full bg-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-slate-200 text-slate-900 placeholder:text-slate-400"
+                    className="w-full bg-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 border border-slate-200 text-slate-900 placeholder:text-slate-400 font-bold"
                     placeholder="you@example.com"
                     required
                   />
@@ -381,7 +416,7 @@ export default function Register() {
                     type={showPassword ? 'text' : 'password'}
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full bg-white rounded-xl py-3 pl-12 pr-12 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-slate-200 text-slate-900 placeholder:text-slate-400"
+                    className="w-full bg-white rounded-xl py-3 pl-12 pr-12 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 border border-slate-200 text-slate-900 placeholder:text-slate-400 font-bold"
                     placeholder="••••••••"
                     required
                   />
@@ -389,6 +424,19 @@ export default function Register() {
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
+                {formData.password && (
+                  <div className="mt-2 space-y-1">
+                    <p className={`text-[10px] font-bold flex items-center gap-1 ${/[A-Z]/.test(formData.password) ? 'text-green-500' : 'text-slate-400'}`}>
+                      {/[A-Z]/.test(formData.password) ? '✓' : '○'} One uppercase letter
+                    </p>
+                    <p className={`text-[10px] font-bold flex items-center gap-1 ${/[0-9]/.test(formData.password) ? 'text-green-500' : 'text-slate-400'}`}>
+                      {/[0-9]/.test(formData.password) ? '✓' : '○'} One number
+                    </p>
+                    <p className={`text-[10px] font-bold flex items-center gap-1 ${/[!@#$%^&*]/.test(formData.password) ? 'text-green-500' : 'text-slate-400'}`}>
+                      {/[!@#$%^&*]/.test(formData.password) ? '✓' : '○'} One special character
+                    </p>
+                  </div>
+                )}
               </div>
 
               <div>
@@ -399,11 +447,16 @@ export default function Register() {
                     type="password"
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    className="w-full bg-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-slate-200 text-slate-900 placeholder:text-slate-400"
+                    className="w-full bg-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 border border-slate-200 text-slate-900 placeholder:text-slate-400 font-bold"
                     placeholder="••••••••"
                     required
                   />
                 </div>
+                {formData.confirmPassword && (
+                  <p className={`text-[10px] mt-1 font-bold ${formData.password === formData.confirmPassword ? 'text-green-500' : 'text-red-500'}`}>
+                    {formData.password === formData.confirmPassword ? '✓ Passwords match' : '✗ Passwords do not match'}
+                  </p>
+                )}
               </div>
 
               <button
@@ -579,9 +632,9 @@ export default function Register() {
 
               <button
                 type="submit"
-                className="w-full py-3 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-purple-600 to-orange-600 hover:from-purple-700 hover:to-orange-700"
+                className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:shadow-[0_10px_25px_rgba(47,200,185,0.3)] transition-all flex items-center justify-center gap-2 bg-[#2FC8B9] hover:bg-[#28b5a6]"
               >
-                Continue <ArrowRight className="w-5 h-5" />
+                Continue Setup <ArrowRight className="w-5 h-5" />
               </button>
             </form>
           </div>
@@ -802,7 +855,7 @@ export default function Register() {
               </div>
 
 
-              <button type="submit" className="w-full py-3 text-white font-semibold rounded-xl bg-gradient-to-r from-purple-600 to-orange-600 hover:from-purple-700 hover:to-orange-700 flex items-center justify-center gap-2">
+              <button type="submit" className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:shadow-[0_10px_25px_rgba(47,200,185,0.3)] transition-all flex items-center justify-center gap-2 bg-[#2FC8B9] hover:bg-[#28b5a6]">
                 Continue <ArrowRight className="w-5 h-5" />
               </button>
             </form>
@@ -999,7 +1052,7 @@ export default function Register() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-3 text-white font-semibold rounded-xl hover:shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 bg-gradient-to-r from-purple-600 to-orange-600 hover:from-purple-700 hover:to-orange-700"
+                className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:shadow-[0_10px_25px_rgba(47,200,185,0.3)] transition-all flex items-center justify-center gap-3 disabled:opacity-50 bg-[#2FC8B9] hover:bg-[#28b5a6]"
               >
                 {loading ? (
                   <Loader2 className="w-5 h-5 animate-spin" />

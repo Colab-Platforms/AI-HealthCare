@@ -14,9 +14,24 @@ exports.register = async (req, res) => {
     const { name, email, phone, password, role, profile, nutritionGoal } = req.body;
 
     // Validate required fields
-    if (!name || !email || !password) {
+    if (!name || !email || !password || !phone) {
       console.log('Registration attempt: Missing required fields');
-      return res.status(400).json({ message: 'Name, email, and password are required' });
+      return res.status(400).json({ message: 'Name, email, phone, and password are required' });
+    }
+
+    // Phone number validation (exactly 10 digits)
+    const phoneRegex = /^\d{10}$/;
+    if (!phoneRegex.test(phone)) {
+      return res.status(400).json({ message: 'Phone number must be exactly 10 digits' });
+    }
+
+    // Password complexity validation
+    // At least one uppercase, one special character, one number, min 6 characters
+    const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*])(?=.*[0-9]).{6,}$/;
+    if (!passwordRegex.test(password)) {
+      return res.status(400).json({
+        message: 'Password must contain at least one uppercase letter, one special character, and one number'
+      });
     }
 
     console.log('Registration attempt for email:', email);
@@ -452,5 +467,95 @@ exports.uploadProfilePicture = async (req, res) => {
   } catch (error) {
     console.error('Upload profile picture general error:', error);
     res.status(500).json({ message: 'Server error during upload', error: error.message });
+  }
+};
+
+// --- Forgot Password Flow ---
+
+// @desc    Forgot Password - Send code
+// @route   POST /api/auth/forgot-password
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: 'No user found with that email' });
+    }
+
+    // Generate 4-digit numeric code
+    const resetCode = Math.floor(1000 + Math.random() * 9000).toString();
+
+    // Set expiry (10 minutes)
+    user.resetPasswordCode = resetCode;
+    user.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
+
+    await user.save();
+
+    // Send email
+    const emailService = require('../services/emailService');
+    await emailService.sendPasswordResetCode(user.email, user.name, resetCode);
+
+    res.json({ success: true, message: 'Verification code sent to your email' });
+  } catch (error) {
+    console.error('Forgot password error:', error);
+    res.status(500).json({ message: 'Failed to send reset code' });
+  }
+};
+
+// @desc    Verify Reset Code
+// @route   POST /api/auth/verify-reset-code
+exports.verifyResetCode = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    const user = await User.findOne({
+      email,
+      resetPasswordCode: code,
+      resetPasswordExpire: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Invalid or expired verification code' });
+    }
+
+    res.json({ success: true, message: 'Code verified successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Reset Password
+// @route   POST /api/auth/reset-password
+exports.resetPassword = async (req, res) => {
+  try {
+    const { email, code, password } = req.body;
+    const user = await User.findOne({
+      email,
+      resetPasswordCode: code,
+      resetPasswordExpire: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: 'Token expired or invalid. Please request a new code.' });
+    }
+
+    // Password complexity check (same as registration)
+    const passwordRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*])(?=.*[0-9]).{6,}$/;
+    if (!passwordRegex.test(password)) {
+      return res.status(400).json({
+        message: 'Password must contain at least one uppercase letter, one special character, and one number'
+      });
+    }
+
+    // Set new password
+    user.password = password;
+    user.resetPasswordCode = undefined;
+    user.resetPasswordExpire = undefined;
+
+    await user.save();
+
+    res.json({ success: true, message: 'Password reset successful. You can now login.' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };

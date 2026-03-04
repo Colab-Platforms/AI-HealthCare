@@ -9,6 +9,8 @@ const userSchema = new mongoose.Schema({
   role: { type: String, enum: ['patient', 'client', 'doctor', 'admin'], default: 'patient' },
   isActive: { type: Boolean, default: true },
   profilePicture: { type: String }, // Cloudinary URL
+  resetPasswordCode: String,
+  resetPasswordExpire: Date,
   // For doctors - links to Doctor profile
   doctorProfile: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' },
   profile: {

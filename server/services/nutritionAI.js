@@ -620,18 +620,19 @@ Provide 3-5 INDIAN meal suggestions in JSON:
         : 'No food logged today.'}
     
     YOUR TASK:
-    1. Analyze the current glucose reading. Is it good, borderline, or high?
-    2. Identify potential causes for this specific reading based on today's food logs (e.g., specific high-carb or high-sugar items).
-    3. Provide actionable advice for the next 4-8 hours (e.g., movement, hydration, meal adjustments).
-    4. Provide long-term suggestions based on HbA1c and general trends.
-    5. Maintain an empathetic but professional medical tone.
+    1. Analyze the current glucose reading. Is it excellent (in range), borderline, high, or critical?
+    2. Identify specific food items from today's log that may have caused a spike. Be direct: "The [Food Item] you consumed for [Meal] likely caused this reading due to its high [carb/sugar] content."
+    3. If they haven't logged food, mention that tracking meals would help identify spike causes.
+    4. Provide actionable advice for the next 4-8 hours.
+    5. Provide long-term suggestions based on HbA1c and general trends.
+    6. Mention if they should avoid certain foods they've logged today in the future.
     
     RETURN RESPONSE IN THIS EXACT JSON FORMAT:
     {
       "status": "Excellent/Good/Borderline/High/Critical",
       "statusColor": "green/yellow/orange/red",
       "analysis": "Brief analysis of the current reading.",
-      "spikeCause": "Identify specific foods or factors if applicable, or 'Unknown' if not enough data.",
+      "spikeCause": "Identify specific foods from today's log that caused a spike. Be specific.",
       "immediateAction": "What to do right now.",
       "recommendations": ["Tip 1", "Tip 2", "Tip 3"],
       "insight": "A deeper insight about their overall progress."

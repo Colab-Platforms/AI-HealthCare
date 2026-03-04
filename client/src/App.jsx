@@ -6,6 +6,7 @@ import GenericSkeleton from './components/skeletons/GenericSkeleton';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import ForgotPassword from './pages/ForgotPassword';
 import DoctorRegister from './pages/DoctorRegister';
 import DashboardEnhanced from './pages/DashboardEnhanced';
 import DoctorDashboard from './pages/DoctorDashboard';
@@ -78,6 +79,7 @@ export default function App() {
         <Route path="/login" element={getLoginRedirect()} />
         <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Register />} />
         <Route path="/register/doctor" element={user ? <Navigate to="/doctor/dashboard" /> : <DoctorRegister />} />
+        <Route path="/forgot-password" element={user ? <Navigate to="/dashboard" /> : <ForgotPassword />} />
 
         {/* Patient Routes */}
         <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><DashboardEnhanced /></Layout></ProtectedRoute>} />
