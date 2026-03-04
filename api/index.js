@@ -13,32 +13,31 @@ process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 
 // ============================================================
 // GLOBAL MongoDB connection - shared across all serverless calls
+// Track the PROMISE so concurrent requests wait for the same connection
 // ============================================================
-let cachedConnection = null;
+let connectionPromise = null;
 
 const connectToDatabase = async () => {
   // If already connected, return immediately
-  if (cachedConnection && mongoose.connection.readyState === 1) {
-    return cachedConnection;
+  if (mongoose.connection.readyState === 1) {
+    return mongoose.connection;
+  }
+
+  // If a connection attempt is already in progress, wait for it
+  if (connectionPromise) {
+    return connectionPromise;
   }
 
   if (!process.env.MONGODB_URI) {
     throw new Error('MONGODB_URI is not set. Configure it in Vercel Environment Variables.');
   }
 
-  // Use cached promise to avoid multiple simultaneous connections
-  if (cachedConnection && mongoose.connection.readyState === 2) {
-    // State 2 = connecting, wait for it
-    await cachedConnection;
-    return cachedConnection;
-  }
-
   console.log('🔄 Connecting to MongoDB...');
 
   const options = {
-    serverSelectionTimeoutMS: 15000,
-    socketTimeoutMS: 30000,
-    connectTimeoutMS: 15000,
+    serverSelectionTimeoutMS: 20000,
+    socketTimeoutMS: 45000,
+    connectTimeoutMS: 20000,
     retryWrites: true,
     w: 'majority',
     maxPoolSize: 3,
@@ -49,27 +48,29 @@ const connectToDatabase = async () => {
     autoIndex: false, // Don't build indexes on serverless
   };
 
-  try {
-    cachedConnection = await mongoose.connect(process.env.MONGODB_URI, options);
-    console.log('✅ MongoDB Connected:', mongoose.connection.host);
-    return cachedConnection;
-  } catch (error) {
-    console.error('❌ MongoDB connection failed:', error.message);
-    cachedConnection = null;
-    throw error;
-  }
+  // Store the promise so concurrent callers can await the same connection
+  connectionPromise = mongoose.connect(process.env.MONGODB_URI, options)
+    .then((conn) => {
+      console.log('✅ MongoDB Connected:', conn.connection.host);
+      return conn;
+    })
+    .catch((error) => {
+      console.error('❌ MongoDB connection failed:', error.message);
+      connectionPromise = null; // Clear so next request can retry
+      throw error;
+    });
+
+  return connectionPromise;
 };
 
 // ============================================================
 // PRE-WARM: Start connecting to DB at module load time (cold start)
-// This runs during cold start BEFORE any request arrives
+// This runs IMMEDIATELY during cold start, BEFORE any request arrives.
+// The connection will likely be ready by the time the first request hits.
 // ============================================================
-const dbWarmupPromise = process.env.MONGODB_URI
-  ? connectToDatabase().catch(err => {
-    console.error('Pre-warm DB connection failed:', err.message);
-    return null;
-  })
-  : Promise.resolve(null);
+connectToDatabase().catch(err => {
+  console.error('Pre-warm DB connection failed:', err.message);
+});
 
 // Import Express and middleware
 const express = require('express');
@@ -89,7 +90,7 @@ app.use(express.urlencoded({ limit: '50mb', extended: true }));
 
 // ============================================================
 // Database connection middleware - ensures DB is ready before routes
-// Uses the pre-warmed connection from cold start
+// Awaits the same promise that pre-warm started
 // ============================================================
 app.use('/api', async (req, res, next) => {
   // Skip DB connection for health check
@@ -98,20 +99,11 @@ app.use('/api', async (req, res, next) => {
   }
 
   try {
-    // If already connected, proceed immediately
-    if (mongoose.connection.readyState === 1) {
-      return next();
-    }
-
-    // Wait for the pre-warm connection first
-    await dbWarmupPromise;
-
-    // If still not connected after warmup, try one more time
-    if (mongoose.connection.readyState !== 1) {
-      console.log(`[DB Middleware] ${req.method} ${req.path} - Connecting...`);
-      await connectToDatabase();
-    }
-
+    // This will either:
+    // 1. Return immediately if already connected (readyState === 1)
+    // 2. Await the in-progress pre-warm promise (readyState === 2)
+    // 3. Start a new connection if previous one failed
+    await connectToDatabase();
     return next();
   } catch (error) {
     console.error(`[DB Middleware] ${req.method} ${req.path} - Failed:`, error.message);
@@ -130,6 +122,7 @@ app.get('/api/health-check', async (req, res) => {
 
   if (!dbConnected) {
     try {
+      // Await the same connection promise (pre-warm or new)
       await connectToDatabase();
       dbConnected = mongoose.connection.readyState === 1;
     } catch (error) {
@@ -144,6 +137,12 @@ app.get('/api/health-check', async (req, res) => {
     environment: process.env.NODE_ENV,
     dbConnected,
     dbState: mongoose.connection.readyState,
+    dbStateDescription: {
+      0: 'disconnected',
+      1: 'connected',
+      2: 'connecting',
+      3: 'disconnecting'
+    }[mongoose.connection.readyState],
     envVars: {
       MONGODB_URI: process.env.MONGODB_URI ? 'SET' : 'NOT SET',
       JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'NOT SET',
@@ -165,7 +164,7 @@ app.get('/', (req, res) => {
 });
 
 // ============================================================
-// Load and mount routes - using lazy loading pattern
+// Load and mount routes
 // ============================================================
 const routeConfigs = [
   { path: '/api/auth', module: '../server/routes/authRoutes' },
