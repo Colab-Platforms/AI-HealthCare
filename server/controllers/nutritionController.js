@@ -3,6 +3,8 @@ const HealthGoal = require('../models/HealthGoal');
 const NutritionSummary = require('../models/NutritionSummary');
 const nutritionAI = require('../services/nutritionAI');
 const { uploadImage } = require('../services/cloudinary');
+const QuickFoodCheck = require('../models/QuickFoodCheck');
+const fs = require('fs');
 
 // Helper function to add timeout to all queries for Vercel compatibility
 const withTimeout = (query, timeoutMs = 30000) => {
@@ -14,10 +16,10 @@ exports.analyzeFood = async (req, res) => {
   try {
     const { foodDescription, imageBase64, additionalContext } = req.body;
 
-    console.log('Analyzing food:', { 
-      hasDescription: !!foodDescription, 
+    console.log('Analyzing food:', {
+      hasDescription: !!foodDescription,
       hasImage: !!imageBase64,
-      userId: req.user._id 
+      userId: req.user._id
     });
 
     if (!foodDescription && !imageBase64) {
@@ -29,7 +31,7 @@ exports.analyzeFood = async (req, res) => {
 
     let imageUrl = null;
     let analysis = null;
-    
+
     if (imageBase64) {
       // Analyze from image
       console.log('Analyzing from image...');
@@ -359,7 +361,7 @@ exports.setHealthGoal = async (req, res) => {
 exports.getHealthGoal = async (req, res) => {
   try {
     const user = await withTimeout(require('../models/User').findById(req.user._id));
-    
+
     // PRIORITIZE user's nutritionGoal from profile
     if (user && user.nutritionGoal && user.nutritionGoal.calorieGoal) {
       return res.json({
@@ -459,7 +461,7 @@ exports.logWeight = async (req, res) => {
       recordedAt: new Date(),
       notes
     });
-    
+
     console.log('Saving weight metric to database...');
     await metric.save({ maxTimeMS: 30000 });
     console.log('Weight metric saved successfully');
@@ -838,15 +840,15 @@ async function createDailySummary(userId, date) {
 // Quick food check without logging - with complete details persistence
 exports.quickFoodCheck = async (req, res) => {
   try {
-    const fs = require('fs');
     let { foodDescription, imageBase64, additionalContext } = req.body;
 
     let cloudinaryUrl = null;
 
+    console.log('🏁 [QuickCheck] Start - User ID:', req.user?._id);
+
     // ─── STEP 1: Extract base64 from uploaded file ───
     if (req.file) {
-      console.log('📷 Received file upload via multer:', req.file.filename || 'memory-buffer');
-      console.log('📷 File size:', `${(req.file.size / 1024).toFixed(2)} KB, MIME: ${req.file.mimetype}`);
+      console.log('📷 [QuickCheck] File received:', req.file.originalname, 'Size:', req.file.size);
 
       try {
         if (req.file.buffer) {
@@ -860,10 +862,8 @@ exports.quickFoodCheck = async (req, res) => {
             if (err) console.error('Error deleting temp file:', err);
           });
         }
-
-        console.log('📷 Extracted base64 from file, length:', imageBase64?.length || 0);
       } catch (fileError) {
-        console.error('❌ Error extracting base64 from file:', fileError);
+        console.error('❌ [QuickCheck] File process error:', fileError);
         return res.status(500).json({
           success: false,
           message: 'Failed to process uploaded image',
@@ -872,34 +872,27 @@ exports.quickFoodCheck = async (req, res) => {
       }
     }
 
-    // ─── STEP 2: Upload to Cloudinary (non-blocking — won't stop AI analysis) ───
-    if (imageBase64) {
-      try {
-        const mimeType = req.file?.mimetype || 'image/jpeg';
-        const dataUri = `data:${mimeType};base64,${imageBase64}`;
-        console.log('☁️ Uploading to Cloudinary...');
-        cloudinaryUrl = await uploadImage(dataUri, 'food_scans');
-        console.log('☁️ Cloudinary result:', cloudinaryUrl ? '✅ ' + cloudinaryUrl : '❌ Failed (null)');
-      } catch (cloudinaryError) {
-        console.error('☁️ Cloudinary upload failed (continuing without it):', cloudinaryError.message);
-        // Don't return error — continue with AI analysis even if Cloudinary fails
-      }
-    }
-
-    console.log('🔍 Quick check request:', {
-      hasDescription: !!foodDescription,
-      hasImage: !!imageBase64,
-      hasCloudinaryUrl: !!cloudinaryUrl,
-      imageSource: req.file ? 'multipart-upload' : (imageBase64 ? 'base64-json' : 'none'),
-      imageSize: imageBase64 ? `${(imageBase64.length * 0.75 / 1024).toFixed(2)} KB` : 'N/A',
-      context: additionalContext
-    });
-
     if (!foodDescription && !imageBase64) {
+      console.log('⚠️ [QuickCheck] No input provided');
       return res.status(400).json({
         success: false,
         message: 'Please provide a food description or image'
       });
+    }
+
+    // ─── STEP 2: Upload to Cloudinary (non-blocking) ───
+    if (imageBase64) {
+      const mimeType = req.file?.mimetype || 'image/jpeg';
+      const dataUri = `data:${mimeType};base64,${imageBase64}`;
+      console.log('☁️ [QuickCheck] Cloudinary upload start...');
+
+      // We'll await it but wrap in try-catch to not let it fail the AI flow
+      try {
+        cloudinaryUrl = await uploadImage(dataUri, 'food_scans');
+        console.log('☁️ [QuickCheck] Cloudinary finished:', cloudinaryUrl ? 'Success' : 'Failed');
+      } catch (cloudinaryError) {
+        console.error('☁️ [QuickCheck] Cloudinary upload crash:', cloudinaryError.message);
+      }
     }
 
     let analysis;
@@ -938,10 +931,10 @@ exports.quickFoodCheck = async (req, res) => {
     }
 
     if (!analysis.success || !analysis.data) {
-      throw new Error('Failed to analyze food');
+      throw new Error('AI failed to return valid data');
     }
 
-    const QuickFoodCheck = require('../models/QuickFoodCheck');
+    console.log('💾 [QuickCheck] Saving to DB...');
 
     // Ensure alternatives is always an array
     const alternativesArray = Array.isArray(analysis.data.alternatives)
@@ -972,19 +965,19 @@ exports.quickFoodCheck = async (req, res) => {
       });
     };
 
-    // ─── STEP 4: Construct final image URL — prefer Cloudinary ───
+    // ─── STEP 4: Construct final image URL ───
     let finalImageUrl = cloudinaryUrl;
     if (!finalImageUrl && imageBase64) {
-      // If Cloudinary failed, use a small truncated base64 as last resort
-      // (avoid storing giant base64 in DB)
-      console.log('⚠️ No Cloudinary URL, using base64 data URI as fallback');
-      finalImageUrl = `data:image/jpeg;base64,${imageBase64}`;
+      // Use truncated base64 for small images or just skip if too large
+      if (imageBase64.length < 200000) {
+        finalImageUrl = `data:image/jpeg;base64,${imageBase64}`;
+      }
     }
 
     // ─── STEP 5: Save to MongoDB ───
     const foodCheck = new QuickFoodCheck({
       userId: req.user._id,
-      foodName: analysis.data.foodItem?.name || foodDescription,
+      foodName: analysis.data.foodItem?.name || foodDescription || 'Analyzed Food',
       quantity: analysis.data.foodItem?.quantity || 'Not specified',
       calories: analysis.data.foodItem?.nutrition?.calories || 0,
       protein: analysis.data.foodItem?.nutrition?.protein || 0,
