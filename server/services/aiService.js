@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { robustJsonParse } = require('../utils/aiParser');
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const CLAUDE_MODEL = 'claude-sonnet-4-6';
@@ -159,11 +160,18 @@ exports.analyzeHealthReport = async (reportText, user = {}, imageData = null) =>
 
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      throw new Error('AI Response was not valid JSON: ' + content.substring(0, 100));
+      console.error('❌ No JSON found in AI response. Raw content:', content.substring(0, 500));
+      throw new Error('AI Response was not valid JSON format');
     }
-    const analysis = JSON.parse(jsonMatch[0]);
-    console.log('✅ Analysis complete');
-    return analysis;
+
+    try {
+      const analysis = robustJsonParse(jsonMatch[0]);
+      console.log('✅ Analysis complete');
+      return analysis;
+    } catch (parseError) {
+      console.error('❌ JSON Parse Error. Raw content around error:', content.substring(Math.max(0, content.indexOf('{') - 50), 2000));
+      throw new Error(`AI Analysis failed: ${parseError.message}`);
+    }
   } catch (error) {
     console.error('❌ Error in analyzeHealthReport:', error.message);
     throw error; // Rethrow to let controller handle it
@@ -196,7 +204,13 @@ exports.compareReports = async (currentReport, previousReport) => {
     ]);
 
     const jsonMatch = content.match(/\{[\s\S]*\}/);
-    return JSON.parse(jsonMatch[0]);
+    if (!jsonMatch) return { overallTrend: 'unknown', summary: 'No JSON returned' };
+
+    try {
+      return robustJsonParse(jsonMatch[0]);
+    } catch (e) {
+      return { overallTrend: 'unknown', summary: 'JSON parse error in comparison' };
+    }
   } catch (error) {
     console.error('Comparison error:', error);
     return { overallTrend: 'unknown', summary: 'Failed to generate comparison.' };
@@ -245,7 +259,13 @@ exports.generateMetricInfo = async (metricName, metricValue, normalRange, unit) 
     ], 1000);
 
     const jsonMatch = content.match(/\{[\s\S]*\}/);
-    return JSON.parse(jsonMatch[0]);
+    if (!jsonMatch) return { whatIsIt: 'JSON Missing' };
+
+    try {
+      return robustJsonParse(jsonMatch[0]);
+    } catch (e) {
+      return { whatIsIt: 'Format error.' };
+    }
   } catch (error) {
     return { whatIsIt: 'Information unavailable.' };
   }

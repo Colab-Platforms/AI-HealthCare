@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { robustJsonParse } = require('../utils/aiParser');
 
 /**
  * AI Diet Recommendation Service
@@ -162,7 +163,7 @@ RETURN JSON ONLY:
     try {
       const aiResponse = await this.makeAIRequest(payload);
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-      if (jsonMatch) return JSON.parse(jsonMatch[0]);
+      if (jsonMatch) return robustJsonParse(jsonMatch[0]);
       throw new Error('Failed to parse diet plan JSON');
     } catch (error) {
       console.error('AI Diet Plan Error:', error.message);
@@ -197,7 +198,7 @@ RETURN JSON:
     try {
       const aiResponse = await this.makeAIRequest(payload);
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-      if (jsonMatch) return JSON.parse(jsonMatch[0]);
+      if (jsonMatch) return robustJsonParse(jsonMatch[0]);
       throw new Error('Failed to parse supplement recommendations JSON');
     } catch (error) {
       console.error('AI Supplement Error:', error.message);
@@ -259,7 +260,7 @@ Provide analysis in this JSON format:
     try {
       const aiResponse = await this.makeAIRequest(payload);
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-      if (jsonMatch) return JSON.parse(jsonMatch[0]);
+      if (jsonMatch) return robustJsonParse(jsonMatch[0]);
       throw new Error('Failed to parse food preference analysis JSON');
     } catch (error) {
       console.error('AI Food Preference Analysis Error:', error.message);

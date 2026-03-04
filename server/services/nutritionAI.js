@@ -1,4 +1,5 @@
 const axios = require('axios');
+const { robustJsonParse } = require('../utils/aiParser');
 
 /**
  * AI Nutrition Analyzer using Anthropic Claude Direct API
@@ -173,22 +174,16 @@ class NutritionAI {
   _parseResponse(aiResponse) {
     const jsonMatch = aiResponse.match(/(\{[\s\S]*\})/);
     if (!jsonMatch) {
+      console.error('❌ NutritionAI: No JSON in response:', aiResponse.substring(0, 500));
       throw new Error('No JSON in AI response');
     }
 
     try {
-      return { success: true, data: JSON.parse(jsonMatch[1]), rawResponse: aiResponse };
+      const parsedData = robustJsonParse(jsonMatch[1]);
+      return { success: true, data: parsedData, rawResponse: aiResponse };
     } catch (parseError) {
-      let cleanedJson = jsonMatch[1]
-        .replace(/,\s*}/g, '}')
-        .replace(/,\s*]/g, ']')
-        .replace(/[\x00-\x1F\x7F]/g, ' ');
-
-      try {
-        return { success: true, data: JSON.parse(cleanedJson), rawResponse: aiResponse };
-      } catch (e) {
-        throw new Error('AI returned invalid JSON');
-      }
+      console.error('❌ NutritionAI JSON Parse Error:', parseError.message);
+      throw new Error('AI returned invalid JSON');
     }
   }
 
