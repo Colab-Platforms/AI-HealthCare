@@ -4,14 +4,14 @@ const { robustJsonParse } = require('../utils/aiParser');
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const CLAUDE_MODEL = 'claude-sonnet-4-6';
 
-const makeAnthropicRequest = async (messages, maxTokens = 3000) => {
+const makeAnthropicRequest = async (messages, maxTokens = 4096) => {
   try {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey || !apiKey.startsWith('sk-ant')) {
       throw new Error('ANTHROPIC_API_KEY is not set or invalid for direct access');
     }
 
-    console.log('🔄 Making Anthropic Direct request with model:', CLAUDE_MODEL);
+    console.log('🔄 Making Anthropic Direct request with model:', CLAUDE_MODEL, 'max_tokens:', maxTokens);
 
     // Filter out system message to use as 'system' parameter in Anthropic API
     let systemMessage = '';
@@ -43,7 +43,14 @@ const makeAnthropicRequest = async (messages, maxTokens = 3000) => {
     );
 
     if (response.data && response.data.content && response.data.content[0]) {
-      console.log('✅ Anthropic call successful');
+      // Check if response was truncated
+      const stopReason = response.data.stop_reason;
+      console.log('✅ Anthropic call successful, stop_reason:', stopReason);
+
+      if (stopReason === 'max_tokens') {
+        console.warn('⚠️ WARNING: Response was TRUNCATED due to max_tokens limit (' + maxTokens + '). Output may be incomplete!');
+      }
+
       return response.data.content[0].text;
     }
 
@@ -55,52 +62,56 @@ const makeAnthropicRequest = async (messages, maxTokens = 3000) => {
   }
 };
 
-const HEALTH_ANALYSIS_PROMPT = `You are a professional medical report analyzer. Analyze the provided health report text and return a comprehensive JSON object.
-    
-    JSON STRUCTURE:
-    {
-      "patientName": "Full name found in report",
-      "reportDate": "Date of report (YYYY-MM-DD)",
-      "healthScore": 0-100 score (higher is healthier),
-      "summary": "2-3 sentence overview of health status",
-      "keyFindings": ["3-5 most important findings"],
-      "riskFactors": ["Identified health risks"],
-      "metrics": {
-         "Hemoglobin": { "value": 14.2, "unit": "g/dL", "status": "normal", "normalRange": "12.0 - 16.0" },
-         "Glucose (Fasting)": { "value": 110, "unit": "mg/dL", "status": "borderline", "normalRange": "70 - 99" }
-      },
-      "deficiencies": [
-        { "name": "Vitamin D", "severity": "moderate", "currentValue": "15 ng/mL", "normalRange": "30-100", "symptoms": ["Fatigue", "Bone pain"] }
-      ],
-      "supplements": [
-        { "category": "Vitamins", "reason": "Vitamin D deficiency", "naturalSources": "Sunlight, Fatty fish", "note": "Consult doctor for dosage" }
-      ],
-      "dietPlan": {
-        "overview": "Dietary strategy based on results",
-        "breakfast": [{ "meal": "Oatmeal", "nutrients": ["Fiber", "Complex carbs"], "tip": "Add nuts" }],
-        "lunch": [{ "meal": "Grilled chicken/Tofu salad", "nutrients": ["Protein", "Vitamins"], "tip": "Avoid heavy dressing" }],
-        "dinner": [{ "meal": "Lentil soup/Grilled Fish", "nutrients": ["Protein", "low fat"], "tip": "Eat early" }],
-        "snacks": [{ "meal": "Walnuts", "nutrients": ["Healthy fats"], "tip": "Small handful" }],
-        "foodsToIncrease": ["Leafy greens", "Protein"],
-        "foodsToLimit": ["Refined sugar", "Excess salt"],
-        "tips": ["Stay hydrated", "Monitor blood sugar"]
-      },
-      "recommendations": {
-        "immediate": ["Quick actions"],
-        "shortTerm": ["Next 1-3 months"],
-        "longTerm": ["Lifestyle changes"],
-        "lifestyle": ["Habits to adopt"],
-        "tests": ["Follow-up tests needed"]
-      },
-      "doctorConsultation": {
-        "recommended": true/false,
-        "urgency": "low/medium/high/urgent",
-        "specializations": ["Endocrinologist", "General Physician"],
-        "reason": "Why a doctor is needed"
-      }
-    }
-    
-    IMPORTANT: Return ONLY the JSON object. Do not include markdown formatting or extra text.`;
+const HEALTH_ANALYSIS_PROMPT = `You are a medical report analyzer. Analyze the health report and return a JSON object. Be CONCISE - use short strings, not paragraphs. Keep each string value under 100 characters.
+
+JSON STRUCTURE (follow EXACTLY):
+{
+  "patientName": "Name from report",
+  "reportDate": "YYYY-MM-DD",
+  "healthScore": 75,
+  "summary": "Brief 1-2 sentence overview",
+  "keyFindings": ["finding1", "finding2", "finding3"],
+  "riskFactors": ["risk1", "risk2"],
+  "metrics": {
+    "MetricName": {"value": 14.2, "unit": "g/dL", "status": "normal", "normalRange": "12-16"}
+  },
+  "deficiencies": [
+    {"name": "Vitamin D", "severity": "moderate", "currentValue": "15", "normalRange": "30-100", "symptoms": ["Fatigue"]}
+  ],
+  "supplements": [
+    {"category": "Vitamins", "reason": "Deficiency", "naturalSources": "Foods", "note": "Consult doctor"}
+  ],
+  "dietPlan": {
+    "overview": "Brief strategy",
+    "breakfast": [{"meal": "Food", "nutrients": ["Nutrient"], "tip": "Tip"}],
+    "lunch": [{"meal": "Food", "nutrients": ["Nutrient"], "tip": "Tip"}],
+    "dinner": [{"meal": "Food", "nutrients": ["Nutrient"], "tip": "Tip"}],
+    "snacks": [{"meal": "Food", "nutrients": ["Nutrient"], "tip": "Tip"}],
+    "foodsToIncrease": ["food1"],
+    "foodsToLimit": ["food1"],
+    "tips": ["tip1"]
+  },
+  "recommendations": {
+    "immediate": ["action1"],
+    "shortTerm": ["action1"],
+    "longTerm": ["action1"],
+    "lifestyle": ["habit1"],
+    "tests": ["test1"]
+  },
+  "doctorConsultation": {
+    "recommended": true,
+    "urgency": "low",
+    "specializations": ["Specialist"],
+    "reason": "Brief reason"
+  }
+}
+
+CRITICAL RULES:
+1. Return ONLY valid JSON. No markdown, no extra text.
+2. Keep values SHORT and CONCISE.
+3. Include 1-2 items per array (not 5+).
+4. Use numbers for numeric values, not strings.
+5. Do NOT use true/false as unquoted literals in string fields.`;
 
 exports.analyzeHealthReport = async (reportText, user = {}, imageData = null) => {
   try {
@@ -156,7 +167,7 @@ exports.analyzeHealthReport = async (reportText, user = {}, imageData = null) =>
       { role: 'user', content: userContent }
     ];
 
-    const content = await makeAnthropicRequest(messages);
+    const content = await makeAnthropicRequest(messages, 8000);
 
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
