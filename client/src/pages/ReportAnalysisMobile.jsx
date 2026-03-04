@@ -9,6 +9,9 @@ import {
     Mail, Languages, Filter
 } from 'lucide-react';
 import toast from 'react-hot-toast';
+import html2canvas from 'html2canvas';
+import jsPDF from 'jspdf';
+import VitalDetailsPopup from '../components/VitalDetailsPopup';
 
 export default function ReportAnalysisMobile() {
     const { id } = useParams();
@@ -19,6 +22,8 @@ export default function ReportAnalysisMobile() {
     const [translating, setTranslating] = useState(false);
     const [hindiCache, setHindiCache] = useState({});
     const [metricFilter, setMetricFilter] = useState('all');
+    const [selectedMetric, setSelectedMetric] = useState(null);
+    const [showMetricModal, setShowMetricModal] = useState(false);
 
     // Simple Hindi translation helper
     const t = (text) => {
@@ -149,17 +154,89 @@ export default function ReportAnalysisMobile() {
         }
     };
 
-    const handleDownload = () => {
-        // Use browser's built-in print to PDF functionality as it is the most reliable
-        // without adding heavy external dependencies like jspdf/html2canvas.
-        // We will hide non-essential elements using @media print in CSS if needed.
-        window.print();
+    const handleMetricClick = (metricName, metricData) => {
+        const metricInfo = {
+            name: metricName,
+            value: metricData.value,
+            unit: metricData.unit || '',
+            normalRange: metricData.normalRange || 'N/A',
+            status: metricData.status || 'normal',
+            description: metricData.description || '',
+            recommendations: metricData.recommendations || [],
+            foodsToConsume: metricData.foodsToConsume || [],
+            foodsToAvoid: metricData.foodsToAvoid || [],
+            symptoms: metricData.symptoms || [],
+            severity: metricData.severity || ''
+        };
+        setSelectedMetric(metricInfo);
+        setShowMetricModal(true);
+    };
+
+    const closeMetricModal = () => {
+        setShowMetricModal(false);
+        setSelectedMetric(null);
+    };
+
+    const handleDownload = async () => {
+        const reportElement = document.getElementById('report-mobile-content');
+        if (!reportElement) {
+            toast.error('Could not find report content');
+            return;
+        }
+
+        const toastId = toast.loading('Preparing PDF...');
+
+        try {
+            // Temporarily hide elements that shouldn't be in the PDF
+            const actionButtons = reportElement.querySelectorAll('.no-pdf');
+            actionButtons.forEach(btn => btn.style.display = 'none');
+
+            const canvas = await html2canvas(reportElement, {
+                scale: 2,
+                useCORS: true,
+                logging: false,
+                backgroundColor: '#ffffff',
+                windowWidth: 375 // Use mobile width
+            });
+
+            // Restore hidden elements
+            actionButtons.forEach(btn => btn.style.display = '');
+
+            const imgData = canvas.toDataURL('image/png');
+            const pdf = new jsPDF('p', 'mm', 'a4');
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+
+            const imgWidth = canvas.width;
+            const imgHeight = canvas.height;
+
+            const ratio = pdfWidth / imgWidth;
+            let heightLeft = imgHeight * ratio;
+            let position = 0;
+
+            pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight * ratio);
+            heightLeft -= pdfHeight;
+
+            while (heightLeft >= 0) {
+                position = heightLeft - imgHeight * ratio;
+                pdf.addPage();
+                pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight * ratio);
+                heightLeft -= pdfHeight;
+            }
+
+            pdf.save(`Health_Report_${id.substring(0, 8)}.pdf`);
+            toast.success('Report downloaded!', { id: toastId });
+        } catch (error) {
+            console.error('PDF Generation Error:', error);
+            toast.error('Failed to generate PDF. Opening print...', { id: toastId });
+            window.print();
+        }
     };
 
     return (
-        <div className="min-h-screen pb-20 font-sans">
+        <div id="report-mobile-content" className="min-h-screen pb-20 font-sans bg-slate-50">
             {/* Navbar */}
-            <div className="px-6 pt-8 pb-4 flex items-center justify-between sticky top-0 backdrop-blur-md z-10">
+            <div className="px-6 pt-8 pb-4 flex items-center justify-between sticky top-0 backdrop-blur-md z-20 no-pdf">
                 <Link to="/dashboard" className="flex items-center gap-2 text-purple-600 font-bold text-xs tracking-[0.1em]">
                     <ArrowLeft className="w-4 h-4" /> BACK TO REPORTS
                 </Link>
@@ -170,7 +247,7 @@ export default function ReportAnalysisMobile() {
                     <h1 className="text-2xl font-black text-[#0F172A] tracking-tight truncate whitespace-nowrap">{isHindi ? 'रिपोर्ट विश्लेषण' : 'Report Analysis'}</h1>
                     <p className="text-slate-500 font-medium mt-0.5 text-xs">{isHindi ? 'AI-संचालित स्वास्थ्य अंतर्दृष्टि' : 'AI-Powered Health Insights'}</p>
                 </div>
-                <div className="flex gap-2 flex-shrink-0">
+                <div className="flex gap-2 flex-shrink-0 no-pdf">
                     <button
                         onClick={translateReport}
                         disabled={translating}
@@ -196,6 +273,14 @@ export default function ReportAnalysisMobile() {
                     </button>
                 </div>
             </div>
+
+            {showMetricModal && selectedMetric && (
+                <VitalDetailsPopup
+                    metric={selectedMetric}
+                    onClose={closeMetricModal}
+                    initialLanguage={isHindi ? 'Hindi' : 'English'}
+                />
+            )}
 
             {/* Main Content */}
             <div className="px-4 space-y-6">
@@ -282,8 +367,8 @@ export default function ReportAnalysisMobile() {
                                     key={filter.id}
                                     onClick={() => setMetricFilter(filter.id)}
                                     className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border-2 transition-all whitespace-nowrap ${metricFilter === filter.id
-                                            ? `bg-${filter.color}-500 text-white border-${filter.color}-500 shadow-md`
-                                            : `bg-white text-${filter.color}-600 border-${filter.color}-100`
+                                        ? `bg-${filter.color}-500 text-white border-${filter.color}-500 shadow-md`
+                                        : `bg-white text-${filter.color}-600 border-${filter.color}-100`
                                         }`}
                                 >
                                     {filter.label}
@@ -330,9 +415,10 @@ export default function ReportAnalysisMobile() {
                             .map(([key, metric]) => {
                                 const color = getStatusColor(metric.status);
                                 return (
-                                    <div
+                                    <button
                                         key={key}
-                                        className={`card p-4 border-2 border-${color}-100 relative overflow-hidden flex flex-col justify-between`}
+                                        onClick={() => handleMetricClick(key, metric)}
+                                        className={`card p-4 border-2 border-${color}-100 relative overflow-hidden flex flex-col justify-between text-left transition-all active:scale-95`}
                                     >
                                         <div className={`absolute top-0 right-0 w-16 h-16 bg-${color}-500/5 rounded-full -mr-8 -mt-8`}></div>
 
@@ -354,7 +440,7 @@ export default function ReportAnalysisMobile() {
                                                 <span className="text-[7px] font-black uppercase tracking-tighter">{metric.status}</span>
                                             </div>
                                         </div>
-                                    </div>
+                                    </button>
                                 );
                             })}
                     </div>
@@ -481,6 +567,14 @@ export default function ReportAnalysisMobile() {
                     </p>
                 </div>
             </div>
-        </div>
+
+            {showMetricModal && selectedMetric && (
+                <VitalDetailsPopup
+                    vital={selectedMetric}
+                    onClose={closeMetricModal}
+                    initialLanguage={isHindi ? 'hi' : 'en'}
+                />
+            )}
+        </div >
     );
 }

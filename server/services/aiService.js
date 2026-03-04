@@ -69,7 +69,7 @@ JSON STRUCTURE (follow EXACTLY):
   "patientName": "Name from report",
   "reportDate": "YYYY-MM-DD",
   "healthScore": 75,
-  "summary": "Brief 1-2 sentence overview",
+  "summary": "Provide a comprehensive, accurate, and detailed executive summary of the patient's health status in layman terms. Avoid complex medical jargon where possible, or explain it simply. Focus on what these results mean for the user's overall wellbeing, identify the most critical findings, and explain why they matter. The summary should be thorough and empathetic.",
   "keyFindings": ["finding1", "finding2", "finding3"],
   "riskFactors": ["risk1", "risk2"],
   "metrics": {
@@ -128,7 +128,7 @@ JSON STRUCTURE (follow EXACTLY):
 
 CRITICAL RULES:
 1. Return ONLY valid JSON. No markdown, no extra text.
-2. Keep string values SHORT and CONCISE (under 100 chars each).
+2. Keep string values SHORT and CONCISE, EXCEPT for the "summary" field which should be detailed and thorough.
 3. Include ALL metrics found in the report with correct status (normal/high/low/borderline).
 4. Provide EXACTLY 4 meal options for EACH meal category (breakfast, lunch, dinner, snacks).
 5. Use Indian food options when appropriate.
@@ -273,18 +273,33 @@ exports.chatWithReport = async (report, message, chatHistory) => {
 
 exports.generateMetricInfo = async (metricName, metricValue, normalRange, unit) => {
   try {
-    const prompt = `Explain the medical metric "${metricName}" in simple terms.
+    const prompt = `Explain the medical metric "${metricName}" in simple terms for a patient.
     Current Value: ${metricValue} ${unit}
     Normal Range: ${normalRange}
     
-    Return JSON:
+    Return a JSON object with two keys "en" and "hi".
+    The "en" key should contain the English explanation.
+    The "hi" key should contain the Hindi translation.
+    
+    Structure:
     {
-      "whatIsIt": "Simple explanation",
-      "significance": "Why it matters",
-      "interpretation": "What the user's current value means",
-      "actions": ["Steps to take"],
-      "dietaryTips": ["Foods that help"]
-    }`;
+      "en": {
+        "whatIsIt": "Simple explanation of what this metric is",
+        "significance": "Why this metric is important for health",
+        "interpretation": "What the current value means exactly for the user",
+        "actions": ["Bullet points of what to do"],
+        "dietaryTips": ["Food items that help improve this metric"]
+      },
+      "hi": {
+        "whatIsIt": "Hindi translation of whatIsIt",
+        "significance": "Hindi translation of significance",
+        "interpretation": "Hindi translation of interpretation",
+        "actions": ["Hindi translation of actions"],
+        "dietaryTips": ["Hindi translation of dietaryTips"]
+      }
+    }
+    
+    CRITICAL: Return ONLY valid JSON. Keep it concise.`;
 
     const content = await makeAnthropicRequest([
       { role: 'system', content: 'You are a medical educator. Return JSON only.' },

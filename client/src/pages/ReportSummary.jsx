@@ -143,15 +143,27 @@ export default function ReportSummary() {
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
+
       const imgWidth = canvas.width;
       const imgHeight = canvas.height;
-      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
-      const imgX = (pdfWidth - imgWidth * ratio) / 2;
-      const imgY = 0;
 
-      pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      const ratio = pdfWidth / imgWidth;
+      let heightLeft = imgHeight * ratio;
+      let position = 0;
+
+      // Add first page
+      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight * ratio);
+      heightLeft -= pdfHeight;
+
+      // Add subsequent pages if content is longer than one page
+      while (heightLeft >= 0) {
+        position = heightLeft - imgHeight * ratio;
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight * ratio);
+        heightLeft -= pdfHeight;
+      }
+
       pdf.save(`Health_Report_${report.reportType}_${id.substring(0, 8)}.pdf`);
-
       toast.success('Report downloaded successfully!', { id: toastId });
     } catch (error) {
       console.error('PDF Generation Error:', error);
@@ -228,7 +240,7 @@ export default function ReportSummary() {
           <h2 className="text-2xl font-bold text-slate-800 mb-4 flex items-center gap-2">
             <Activity className="w-6 h-6 text-cyan-500" /> {isHindi ? 'रिपोर्ट सारांश' : 'Report Summary'}
           </h2>
-          <p className="text-slate-700 leading-relaxed text-lg">{t(aiAnalysis.summary)}</p>
+          <p className="text-slate-700 leading-relaxed text-lg whitespace-pre-wrap">{t(aiAnalysis.summary)}</p>
         </div>
       )}
 

@@ -7,6 +7,7 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import api from '../services/api';
 import { Download, Printer, Languages, Filter } from 'lucide-react';
+import VitalDetailsPopup from '../components/VitalDetailsPopup';
 
 export default function ComprehensiveReportAnalysis() {
   const { id } = useParams();
@@ -17,6 +18,8 @@ export default function ComprehensiveReportAnalysis() {
   const [translating, setTranslating] = useState(false);
   const [hindiCache, setHindiCache] = useState({});
   const [metricFilter, setMetricFilter] = useState('all');
+  const [selectedMetric, setSelectedMetric] = useState(null);
+  const [showMetricModal, setShowMetricModal] = useState(false);
 
   // Simple Hindi translation helper
   const t = (text) => {
@@ -77,6 +80,34 @@ export default function ComprehensiveReportAnalysis() {
     }
   };
 
+  const handleMetricClick = (metricName, metricData) => {
+    const metricInfo = {
+      name: metricName,
+      value: metricData.value,
+      unit: metricData.unit || '',
+      normalRange: metricData.normalRange || 'N/A',
+      status: metricData.status || 'normal',
+      description: metricData.description || metricData.whatIsIt || '',
+      recommendations: metricData.howToFix || [],
+      foodsToConsume: metricData.foods || [],
+      foodsToAvoid: metricData.foodsToAvoid || [],
+      symptoms: metricData.symptoms || [],
+      severity: metricData.severity || '',
+      whyAbnormal: metricData.whyAbnormal || '',
+      consequences: metricData.consequences || '',
+      normalizeTime: metricData.normalizeTime || '',
+      supplements: metricData.supplements || [],
+      lifestyle: metricData.lifestyle || []
+    };
+    setSelectedMetric(metricInfo);
+    setShowMetricModal(true);
+  };
+
+  const closeMetricModal = () => {
+    setShowMetricModal(false);
+    setSelectedMetric(null);
+  };
+
   const handleDownload = async () => {
     const reportElement = document.getElementById('comprehensive-report-content');
     if (!reportElement) {
@@ -114,9 +145,11 @@ export default function ComprehensiveReportAnalysis() {
       let heightLeft = imgHeight * ratio;
       let position = 0;
 
+      // Add first page
       pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight * ratio);
       heightLeft -= pdfHeight;
 
+      // Add subsequent pages if content is longer than one page
       while (heightLeft >= 0) {
         position = heightLeft - imgHeight * ratio;
         pdf.addPage();
@@ -290,7 +323,7 @@ export default function ComprehensiveReportAnalysis() {
                   className={`border-2 rounded-xl overflow-hidden transition-all ${getMetricStatusColor(metric.status)} hover:shadow-md col-span-1 md:col-span-1`}
                 >
                   <button
-                    onClick={() => setExpandedMetric(expandedMetric === key ? null : key)}
+                    onClick={() => handleMetricClick(key, metric)}
                     className="w-full p-3 md:p-6 flex flex-col md:flex-row md:items-center justify-between hover:bg-black/5 transition-colors gap-2"
                   >
                     <div className="flex items-center gap-4 flex-1 text-left">
@@ -306,104 +339,9 @@ export default function ComprehensiveReportAnalysis() {
                       <span className={`px-2 md:px-3 py-1 rounded-full text-[8px] md:text-xs font-bold ${getStatusBadgeColor(metric.status)}`}>
                         {metric.status.toUpperCase()}
                       </span>
-                      {expandedMetric === key ? <ChevronUp className="w-4 h-4 md:w-5 md:h-5" /> : <ChevronDown className="w-4 h-4 md:w-5 md:h-5" />}
+                      <Info className="w-4 h-4 md:w-5 md:h-5 text-slate-400" />
                     </div>
                   </button>
-
-                  {expandedMetric === key && (
-                    <div className="border-t-2 border-current/20 p-6 space-y-4 bg-black/2">
-                      {metric.whatIsIt && (
-                        <div>
-                          <h4 className="font-bold text-slate-800 mb-2">What is {key}?</h4>
-                          <p className="text-slate-700">{metric.whatIsIt}</p>
-                        </div>
-                      )}
-
-                      {metric.whyAbnormal && (
-                        <div>
-                          <h4 className="font-bold text-slate-800 mb-2">Why is it {metric.status.toUpperCase()}?</h4>
-                          <p className="text-slate-700">{metric.whyAbnormal}</p>
-                        </div>
-                      )}
-
-                      {metric.consequences && (
-                        <div>
-                          <h4 className="font-bold text-slate-800 mb-2">What happens if not corrected?</h4>
-                          <p className="text-slate-700">{metric.consequences}</p>
-                        </div>
-                      )}
-
-                      {metric.howToFix && (
-                        <div>
-                          <h4 className="font-bold text-slate-800 mb-2">How to normalize?</h4>
-                          <p className="text-slate-700">{metric.howToFix}</p>
-                        </div>
-                      )}
-
-                      {metric.normalizeTime && (
-                        <div className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                          <p className="text-sm text-blue-700"><strong>Expected time to normalize:</strong> {metric.normalizeTime}</p>
-                        </div>
-                      )}
-
-                      {metric.foods?.length > 0 && (
-                        <div>
-                          <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
-                            <Apple className="w-4 h-4 text-emerald-500" /> Foods to Consume
-                          </h4>
-                          <div className="flex flex-wrap gap-2">
-                            {metric.foods.map((food, i) => (
-                              <span key={i} className="bg-emerald-100 text-emerald-700 px-3 py-1 rounded-full text-sm font-medium">
-                                {food}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {metric.foodsToAvoid?.length > 0 && (
-                        <div>
-                          <h4 className="font-bold text-slate-800 mb-2 flex items-center gap-2">
-                            <AlertTriangle className="w-4 h-4 text-red-500" /> Foods to Avoid
-                          </h4>
-                          <div className="flex flex-wrap gap-2">
-                            {metric.foodsToAvoid.map((food, i) => (
-                              <span key={i} className="bg-red-100 text-red-700 px-3 py-1 rounded-full text-sm font-medium">
-                                {food}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {metric.supplements?.length > 0 && (
-                        <div>
-                          <h4 className="font-bold text-slate-800 mb-2">Recommended Supplements</h4>
-                          <div className="space-y-2">
-                            {metric.supplements.map((supp, i) => (
-                              <div key={i} className="p-3 bg-blue-50 rounded-lg border border-blue-200">
-                                <p className="font-medium text-slate-800">{supp}</p>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {metric.lifestyle?.length > 0 && (
-                        <div>
-                          <h4 className="font-bold text-slate-800 mb-2">Lifestyle Changes</h4>
-                          <ul className="space-y-2">
-                            {metric.lifestyle.map((change, i) => (
-                              <li key={i} className="flex items-start gap-2 text-slate-700">
-                                <span className="w-1.5 h-1.5 bg-slate-400 rounded-full mt-2 flex-shrink-0" />
-                                {change}
-                              </li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
               ))}
           </div>
@@ -518,7 +456,7 @@ export default function ComprehensiveReportAnalysis() {
 
             {aiAnalysis.dietPlan.snacks?.length > 0 && (
               <div className="p-4 md:p-6 bg-green-50 rounded-xl border-2 border-green-200">
-                <h3 className="font-bold text-green-700 mb-3 text-base md:text-lg">� {isHindi ? 'स्वस्थ स्नैक्स' : 'Healthy Snacks'}</h3>
+                <h3 className="font-bold text-green-700 mb-3 text-base md:text-lg">🍏 {isHindi ? 'स्वस्थ स्नैक्स' : 'Healthy Snacks'}</h3>
                 <div className="space-y-4">
                   {aiAnalysis.dietPlan.snacks.map((item, i) => (
                     <div key={i} className="p-3 bg-white rounded-lg border border-green-100">
@@ -590,7 +528,7 @@ export default function ComprehensiveReportAnalysis() {
             {aiAnalysis.fitnessPlan.flexibility && (
               <div className="p-6 bg-purple-50 rounded-xl border-2 border-purple-200">
                 <h3 className="font-bold text-purple-700 mb-3 text-lg">🧘 Flexibility & Yoga</h3>
-                <p className="text-sm text-purple-700">{aiAnalysis.fitnessPlan.flexibility}</p>
+                <p className="text-sm text-purple-700">{t(aiAnalysis.fitnessPlan.flexibility)}</p>
               </div>
             )}
 
@@ -633,11 +571,17 @@ export default function ComprehensiveReportAnalysis() {
       )}
 
       {/* Disclaimer */}
-      <div className="p-6 bg-blue-50 rounded-xl border-2 border-blue-200">
-        <p className="text-xs md:text-sm text-blue-700 text-center">
-          <strong>{isHindi ? 'अस्वीकरण:' : 'Disclaimer:'}</strong> {isHindi ? 'यह AI विश्लेषण केवल सूचनात्मक कल्याण सहायता के लिए है और इसे पेशेवर चिकित्सा सलाह की जगह नहीं लेना चाहिए। हमेशा स्वास्थ्य सेवा प्रदाता से परामर्श लें।' : 'This AI analysis is for informational wellness support only and should not replace professional medical advice. Always consult with a healthcare provider.'}
-        </p>
-      </div>
+      <p className="text-xs md:text-sm text-slate-500 text-center no-pdf">
+        {isHindi ? 'अस्वीकरण: यह विश्लेषण केवल सूचनात्मक उद्देश्यों के लिए है। किसी भी चिकित्सा निर्णय लेने से पहले हमेशा एक योग्य स्वास्थ्य देखभाल पेशेवर से परामर्श लें।' : 'Disclaimer: This analysis is for informational purposes only. Always consult with a qualified healthcare professional before making any medical decisions.'}
+      </p>
+
+      {showMetricModal && selectedMetric && (
+        <VitalDetailsPopup
+          vital={selectedMetric}
+          onClose={closeMetricModal}
+          initialLanguage={isHindi ? 'hi' : 'en'}
+        />
+      )}
     </div>
   );
 }
