@@ -60,11 +60,11 @@ Respond in a clear, organized format with proper formatting for readability.`;
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
     if (!aiResponse && anthropicKey && anthropicKey.startsWith('sk-ant')) {
       try {
-        console.log('Trying Anthropic Direct API with claude-sonnet-4-6...');
+        console.log('Trying Anthropic Direct API with claude-3-5-sonnet-20240620...');
         const response = await axios.post(
           'https://api.anthropic.com/v1/messages',
           {
-            model: 'claude-sonnet-4-6',
+            model: 'claude-3-5-sonnet-20240620',
             system: systemPrompt,
             messages: messages,
             temperature: 0.7,
