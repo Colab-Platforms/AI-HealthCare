@@ -122,7 +122,8 @@ const userSchema = new mongoose.Schema({
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
-  this.password = await bcrypt.hash(this.password, 12);
+  // Use 10 rounds (not 12) - still secure but ~4x faster on serverless
+  this.password = await bcrypt.hash(this.password, 10);
   next();
 });
 

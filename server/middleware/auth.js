@@ -19,27 +19,12 @@ exports.protect = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    console.log('Token decoded, user ID:', decoded.id);
 
-    // Retry user lookup with timeout (30s to handle Vercel cold starts)
-    let retries = 3;
-    let user = null;
-
-    while (retries > 0 && !user) {
-      try {
-        user = await User.findById(decoded.id).select('-password').maxTimeMS(30000);
-        if (user) break;
-      } catch (dbError) {
-        console.error(`User lookup attempt ${4 - retries} failed:`, dbError.message);
-        retries--;
-        if (retries > 0) {
-          await new Promise(resolve => setTimeout(resolve, 1000));
-        }
-      }
-    }
+    // Single lookup - no retry loop needed (wastes serverless execution time)
+    const user = await User.findById(decoded.id).select('-password').maxTimeMS(15000);
 
     if (!user) {
-      console.error('User not found in database after retries:', decoded.id);
+      console.error('User not found in database:', decoded.id);
       return res.status(401).json({ message: 'User not found' });
     }
 

@@ -30,7 +30,7 @@ exports.register = async (req, res) => {
     } catch (dbError) {
       console.error('Database error checking existing user:', dbError.message);
       console.error('Database error code:', dbError.code);
-      return res.status(503).json({ 
+      return res.status(503).json({
         message: 'Database error. Please try again.',
         error: process.env.NODE_ENV === 'development' ? dbError.message : undefined
       });
@@ -91,7 +91,7 @@ exports.register = async (req, res) => {
       console.error('User creation error:', createError.message);
       console.error('User creation error code:', createError.code);
       console.error('User creation error stack:', createError.stack);
-      return res.status(500).json({ 
+      return res.status(500).json({
         message: 'Failed to create user. Please try again.',
         error: process.env.NODE_ENV === 'development' ? createError.message : undefined
       });
@@ -114,7 +114,7 @@ exports.register = async (req, res) => {
     console.error('Registration error:', error.message);
     console.error('Registration error stack:', error.stack);
     console.error('Registration error code:', error.code);
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'Registration failed. Please try again.',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined,
       timestamp: new Date().toISOString()
@@ -204,14 +204,14 @@ exports.login = async (req, res) => {
     // Allow login with email or phone - with extended timeout for Vercel
     const query = email ? { email } : { phone };
     console.log('Login attempt with query:', query);
-    
+
     let user;
     try {
-      user = await User.findOne(query).populate('doctorProfile').maxTimeMS(30000);
+      user = await User.findOne(query).populate('doctorProfile').maxTimeMS(15000);
     } catch (dbError) {
       console.error('Database error during user lookup:', dbError.message);
       console.error('Database error code:', dbError.code);
-      return res.status(503).json({ 
+      return res.status(503).json({
         message: 'Database error. Please try again.',
         error: process.env.NODE_ENV === 'development' ? dbError.message : undefined
       });
@@ -237,7 +237,7 @@ exports.login = async (req, res) => {
     } catch (pwError) {
       console.error('Password comparison error:', pwError.message);
       console.error('Password comparison error stack:', pwError.stack);
-      return res.status(500).json({ 
+      return res.status(500).json({
         message: 'Authentication error. Please try again.',
         error: process.env.NODE_ENV === 'development' ? pwError.message : undefined
       });
@@ -278,7 +278,7 @@ exports.login = async (req, res) => {
     console.error('Login error:', error.message);
     console.error('Login error stack:', error.stack);
     console.error('Login error code:', error.code);
-    res.status(500).json({ 
+    res.status(500).json({
       message: 'Login failed. Please try again.',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined,
       timestamp: new Date().toISOString()
