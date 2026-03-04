@@ -535,10 +535,9 @@ export default function QuickFoodScan() {
         'nutrition/quick-check',
         formData,
         {
-          headers: {
-            'Content-Type': 'multipart/form-data'
-          },
-          timeout: 180000, // INCREASED TO 3 MINUTES
+          // IMPORTANT: Do NOT set Content-Type manually for FormData.
+          // Axios will automatically set it with the correct boundary.
+          timeout: 240000, // 4 minutes
           skipAutoLogout: true
         }
       );
