@@ -1,6 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence, useScroll, useTransform, useSpring } from 'framer-motion';
-import { Activity, Heart, Utensils, TrendingUp, Moon, Pill, Calendar, MessageSquare } from 'lucide-react';
+import { Activity, Heart, Utensils, TrendingUp, Moon, Pill, Calendar, MessageSquare, Droplets, Zap, BarChart3, Sparkles } from 'lucide-react';
 
 const ScrollPhoneShowcase = () => {
   const containerRef = useRef(null);
@@ -42,7 +42,7 @@ const ScrollPhoneShowcase = () => {
     {
       title: "Health Dashboard",
       description: "A centralized hub for your vitals, goals, and comprehensive health monitoring.",
-      phoneScreen: "https://images.unsplash.com/photo-1576091160550-217359f4cf08?w=800&q=80",
+      phoneScreen: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?q=80&w=800",
       color: "from-purple-600/40 to-orange-500/40",
       cards: [
         { icon: Heart, title: "Heart Rate", value: "72 bpm", color: "rose", ...getOffsets(-300, -180) },
@@ -54,7 +54,7 @@ const ScrollPhoneShowcase = () => {
     {
       title: "Smart Nutrition",
       description: "AI-powered food scanning and real-time nutritional breakdown of your meals.",
-      phoneScreen: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=800&q=80",
+      phoneScreen: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?q=80&w=800",
       color: "from-emerald-600/40 to-cyan-500/40",
       cards: [
         { icon: Utensils, title: "Food Scan", value: "Instant", color: "emerald", ...getOffsets(-320, -160) },
@@ -66,7 +66,7 @@ const ScrollPhoneShowcase = () => {
     {
       title: "AI Analysis",
       description: "Deep insights from your medical reports translated into actionable health plans.",
-      phoneScreen: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=800&q=80",
+      phoneScreen: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/report-analysis.jpg?v=1768295338",
       color: "from-blue-600/40 to-indigo-600/40",
       cards: [
         { icon: MessageSquare, title: "Analysis", value: "Instant", color: "cyan", ...getOffsets(-280, -200) },
@@ -76,18 +76,18 @@ const ScrollPhoneShowcase = () => {
       ]
     },
     {
-      title: "Verified Doctors",
-      description: "Direct connection with specialized healthcare professionals based on your needs.",
-      phoneScreen: "https://images.unsplash.com/photo-1505751172107-5972ff8816c7?w=800&q=80",
+      title: "Glucose Monitoring",
+      description: "Real-time tracking of blood sugar levels with smart alerts and trend analysis.",
+      phoneScreen: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=800&q=80",
       color: "from-indigo-600/40 to-purple-800/40",
       cards: [
-        { icon: Moon, title: "Specialists", value: "Verified", color: "indigo", ...getOffsets(-280, -150) },
-        { icon: Activity, title: "Network", value: "Global", color: "blue", ...getOffsets(-300, 120) },
-        { icon: TrendingUp, title: "Booking", value: "1-Click", color: "purple", ...getOffsets(280, -160) },
-        { icon: Heart, title: "Care", value: "Remote", color: "pink", ...getOffsets(300, 110) }
+        { icon: Droplets, title: "Reading", value: "108 mg/dL", color: "red", ...getOffsets(-280, -150) },
+        { icon: Activity, title: "Stability", value: "Normal", color: "emerald", ...getOffsets(-300, 120) },
+        { icon: BarChart3, title: "HBA1C", value: "5.4%", color: "blue", ...getOffsets(280, -160) },
+        { icon: Zap, title: "Alerts", value: "Active", color: "orange", ...getOffsets(300, 110) }
       ]
     }
-  ], [windowWidth, isMobile, isTablet]);
+  ], [windowWidth, isMobile, isTablet, isTablet]);
 
   const [activeSection, setActiveSection] = useState(0);
 
