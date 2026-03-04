@@ -156,20 +156,37 @@ app.get('/api/health-check', async (req, res) => {
 });
 
 try {
-  app.use('/api/auth', require('./routes/authRoutes'));
-  app.use('/api/health', require('./routes/healthRoutes'));
-  app.use('/api/metrics', require('./routes/metricRoutes'));
-  app.use('/api/doctors', require('./routes/doctorRoutes'));
-  app.use('/api/admin', require('./routes/adminRoutes'));
-  app.use('/api/wearables', require('./routes/wearableRoutes'));
-  app.use('/api/nutrition', require('./routes/nutritionRoutes'));
-  app.use('/api/diet-recommendations', require('./routes/dietRecommendationRoutes'));
-  app.use('/api/users', require('./routes/userRoutes'));
-  app.use('/api/notifications', require('./routes/notificationRoutes'));
-  app.use('/api', require('./routes/chatRoutes'));
-  app.use('/api/chat', require('./routes/chatHistoryRoutes'));
+  const routes = [
+    { path: '/api/auth', module: './routes/authRoutes' },
+    { path: '/api/health', module: './routes/healthRoutes' },
+    { path: '/api/metrics', module: './routes/metricRoutes' },
+    { path: '/api/doctors', module: './routes/doctorRoutes' },
+    { path: '/api/admin', module: './routes/adminRoutes' },
+    { path: '/api/wearables', module: './routes/wearableRoutes' },
+    { path: '/api/nutrition', module: './routes/nutritionRoutes' },
+    { path: '/api/diet-recommendations', module: './routes/dietRecommendationRoutes' },
+    { path: '/api/users', module: './routes/userRoutes' },
+    { path: '/api/notifications', module: './routes/notificationRoutes' },
+    { path: '/api', module: './routes/chatRoutes' },
+    { path: '/api/chat', module: './routes/chatHistoryRoutes' }
+  ];
+
+  routes.forEach(route => {
+    try {
+      const router = require(route.module);
+      app.use(route.path, router);
+
+      // On Vercel, also mount at the non-api path as a super-fallback
+      if (process.env.VERCEL && route.path.startsWith('/api/')) {
+        const fallbackPath = route.path.replace('/api', '');
+        app.use(fallbackPath, router);
+      }
+    } catch (err) {
+      console.error(`Error loading route ${route.path}:`, err.message);
+    }
+  });
 } catch (error) {
-  console.error('Error loading routes:', error);
+  console.error('Critical error in route registration:', error);
 }
 
 app.use((err, req, res, next) => {

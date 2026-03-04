@@ -21,17 +21,26 @@ process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 // server.js checks process.env.VERCEL and does module.exports = app
 const app = require('../server/server');
 
-// Export the handler for Vercel
+// Robust URL prefixing for Vercel
 module.exports = (req, res) => {
-  // CRITICAL: Vercel serverless functions often strip the /api prefix.
-  // Express app expects paths like '/api/nutrition/...'.
-  // We must ensure the URL has the correct prefix before passing it to Express.
-  const originalUrl = req.url || '/';
-  if (!originalUrl.startsWith('/api/') && originalUrl !== '/api') {
-    const prefixedUrl = '/api' + (originalUrl.startsWith('/') ? originalUrl : '/' + originalUrl);
-    console.log(`[Vercel Handler] Prefixed URL: ${originalUrl} -> ${prefixedUrl}`);
-    req.url = prefixedUrl;
+  let url = req.url || '/';
+
+  // Vercel sometimes passes paths without leading /, or sometimes captures 
+  // without the /api prefix. Express expects /api/path...
+
+  // Ensure leading slash
+  if (!url.startsWith('/')) {
+    url = '/' + url;
   }
+
+  // Check if we need to prefix with /api
+  if (!url.startsWith('/api/') && url !== '/api') {
+    url = '/api' + url;
+    console.log(`[Vercel] Prefixed URL: ${req.url} -> ${url}`);
+  }
+
+  req.url = url;
+  req.originalUrl = url;
 
   return app(req, res);
 };
