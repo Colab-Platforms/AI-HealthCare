@@ -59,6 +59,13 @@ const foodLogSchema = new mongoose.Schema({
     benefit: String
   }],
   healthBenefitsSummary: String,
+  warnings: [String],
+  alternatives: [{
+    name: String,
+    description: String,
+    nutrition: Object,
+    benefits: String
+  }],
   imageUrl: String, // Cloudinary or base64
   aiAnalysis: String, // Full AI response
   notes: String,

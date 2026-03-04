@@ -231,6 +231,9 @@ export default function NutritionRevamped() {
       micronutrients: meal.micronutrients || [],
       enhancementTips: meal.enhancementTips || [],
       healthBenefitsSummary: meal.healthBenefitsSummary,
+      analysis: meal.healthBenefitsSummary || meal.aiAnalysis,
+      warnings: meal.warnings || [],
+      alternatives: meal.alternatives || [],
     });
 
     setShowAddMeal(true);
@@ -294,6 +297,13 @@ export default function NutritionRevamped() {
                 },
               },
             ],
+            healthScore: fullAnalysis?.healthScore,
+            healthScore10: fullAnalysis?.healthScore10,
+            micronutrients: fullAnalysis?.micronutrients,
+            enhancementTips: fullAnalysis?.enhancementTips,
+            healthBenefitsSummary: fullAnalysis?.healthBenefitsSummary || fullAnalysis?.analysis,
+            warnings: fullAnalysis?.warnings || [],
+            alternatives: fullAnalysis?.alternatives || [],
           }
         );
         toast.success("Meal updated!");
@@ -318,7 +328,9 @@ export default function NutritionRevamped() {
             healthScore10: fullAnalysis?.healthScore10,
             micronutrients: fullAnalysis?.micronutrients,
             enhancementTips: fullAnalysis?.enhancementTips,
-            healthBenefitsSummary: fullAnalysis?.healthBenefitsSummary,
+            healthBenefitsSummary: fullAnalysis?.healthBenefitsSummary || fullAnalysis?.analysis,
+            warnings: fullAnalysis?.warnings || [],
+            alternatives: fullAnalysis?.alternatives || [],
             timestamp: selectedDate, // Log to the specific selected date
           }
         );
