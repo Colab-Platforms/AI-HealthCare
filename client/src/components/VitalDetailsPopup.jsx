@@ -7,10 +7,11 @@ import { healthService } from '../services/api';
  * Shows normal ranges, user's data, recommendations, and visual indicator
  * Similar to WebShark Health app
  */
-export default function VitalDetailsPopup({ vital, onClose }) {
+export default function VitalDetailsPopup({ vital, onClose, initialLanguage = 'en' }) {
   const [activeTab, setActiveTab] = useState('overview');
   const [aiInfo, setAiInfo] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [language, setLanguage] = useState(initialLanguage);
 
   // CRITICAL: Add defensive null checks
   if (!vital) {
@@ -39,7 +40,7 @@ export default function VitalDetailsPopup({ vital, onClose }) {
       try {
         setLoading(true);
         console.log('🔄 Fetching AI info for vital:', name);
-        
+
         const response = await healthService.getMetricInfo({
           metricName: name,
           metricValue: value,
@@ -49,7 +50,7 @@ export default function VitalDetailsPopup({ vital, onClose }) {
 
         if (response.data && response.data.metricInfo) {
           console.log('✅ Received AI info for vital:', name);
-          setAiInfo(response.data.metricInfo.en); // Use English version
+          setAiInfo(response.data.metricInfo[language] || response.data.metricInfo.en);
         }
       } catch (error) {
         console.error('❌ Error fetching AI info:', error);
@@ -64,7 +65,7 @@ export default function VitalDetailsPopup({ vital, onClose }) {
     } else {
       setLoading(false);
     }
-  }, [name, value, normalRange, unit]);
+  }, [name, value, normalRange, unit, language]);
 
   // Parse normal range (e.g., "70-100" or "4.5-5.5")
   const parseRange = (range) => {
@@ -94,7 +95,7 @@ export default function VitalDetailsPopup({ vital, onClose }) {
   const percentage = getPercentage();
 
   return (
-    <div 
+    <div
       className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
       onClick={(e) => {
         // Close modal if clicking on backdrop
@@ -177,18 +178,17 @@ export default function VitalDetailsPopup({ vital, onClose }) {
           {/* Tabs */}
           <div className="flex gap-2 border-b border-slate-200">
             {[
-              { id: 'overview', label: 'Overview' },
-              { id: 'recommendations', label: 'What to Do' },
-              { id: 'foods', label: 'Foods & Diet' }
+              { id: 'overview', label: language === 'hi' ? 'अवलोकन' : 'Overview' },
+              { id: 'recommendations', label: language === 'hi' ? 'क्या करें' : 'What to Do' },
+              { id: 'foods', label: language === 'hi' ? 'भोजन और आहार' : 'Foods & Diet' }
             ].map(tab => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-                  activeTab === tab.id
+                className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${activeTab === tab.id
                     ? 'border-cyan-500 text-cyan-600'
                     : 'border-transparent text-slate-600 hover:text-slate-800'
-                }`}
+                  }`}
               >
                 {tab.label}
               </button>
@@ -408,28 +408,26 @@ export default function VitalDetailsPopup({ vital, onClose }) {
                   </div>
                 )}
 
-                {(!foodsToConsume || !Array.isArray(foodsToConsume) || foodsToConsume.length === 0) && 
-                 (!foodsToAvoid || !Array.isArray(foodsToAvoid) || foodsToAvoid.length === 0) && (
-                  <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                    <p className="text-sm text-slate-600">No specific dietary recommendations available.</p>
-                  </div>
-                )}
+                {(!foodsToConsume || !Array.isArray(foodsToConsume) || foodsToConsume.length === 0) &&
+                  (!foodsToAvoid || !Array.isArray(foodsToAvoid) || foodsToAvoid.length === 0) && (
+                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                      <p className="text-sm text-slate-600">No specific dietary recommendations available.</p>
+                    </div>
+                  )}
               </div>
             )}
           </div>
 
           {/* Severity Badge */}
           {severity && (
-            <div className={`p-4 rounded-xl border-2 ${
-              severity === 'severe' ? 'bg-red-50 border-red-200' :
-              severity === 'moderate' ? 'bg-amber-50 border-amber-200' :
-              'bg-yellow-50 border-yellow-200'
-            }`}>
-              <p className={`text-sm font-medium ${
-                severity === 'severe' ? 'text-red-700' :
-                severity === 'moderate' ? 'text-amber-700' :
-                'text-yellow-700'
+            <div className={`p-4 rounded-xl border-2 ${severity === 'severe' ? 'bg-red-50 border-red-200' :
+                severity === 'moderate' ? 'bg-amber-50 border-amber-200' :
+                  'bg-yellow-50 border-yellow-200'
               }`}>
+              <p className={`text-sm font-medium ${severity === 'severe' ? 'text-red-700' :
+                  severity === 'moderate' ? 'text-amber-700' :
+                    'text-yellow-700'
+                }`}>
                 <strong>Severity:</strong> {severity.charAt(0).toUpperCase() + severity.slice(1)}
               </p>
             </div>

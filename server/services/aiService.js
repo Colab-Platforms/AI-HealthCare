@@ -82,20 +82,40 @@ JSON STRUCTURE (follow EXACTLY):
     {"category": "Vitamins", "reason": "Deficiency", "naturalSources": "Foods", "note": "Consult doctor"}
   ],
   "dietPlan": {
-    "overview": "Brief strategy",
-    "breakfast": [{"meal": "Food", "nutrients": ["Nutrient"], "tip": "Tip"}],
-    "lunch": [{"meal": "Food", "nutrients": ["Nutrient"], "tip": "Tip"}],
-    "dinner": [{"meal": "Food", "nutrients": ["Nutrient"], "tip": "Tip"}],
-    "snacks": [{"meal": "Food", "nutrients": ["Nutrient"], "tip": "Tip"}],
-    "foodsToIncrease": ["food1"],
-    "foodsToLimit": ["food1"],
-    "tips": ["tip1"]
+    "overview": "Brief dietary strategy based on results",
+    "breakfast": [
+      {"meal": "Meal Option 1", "nutrients": ["Nutrient"], "tip": "Tip"},
+      {"meal": "Meal Option 2", "nutrients": ["Nutrient"], "tip": "Tip"},
+      {"meal": "Meal Option 3", "nutrients": ["Nutrient"], "tip": "Tip"},
+      {"meal": "Meal Option 4", "nutrients": ["Nutrient"], "tip": "Tip"}
+    ],
+    "lunch": [
+      {"meal": "Meal 1", "nutrients": ["Nutrient"], "tip": "Tip"},
+      {"meal": "Meal 2", "nutrients": ["Nutrient"], "tip": "Tip"},
+      {"meal": "Meal 3", "nutrients": ["Nutrient"], "tip": "Tip"},
+      {"meal": "Meal 4", "nutrients": ["Nutrient"], "tip": "Tip"}
+    ],
+    "dinner": [
+      {"meal": "Meal 1", "nutrients": ["Nutrient"], "tip": "Tip"},
+      {"meal": "Meal 2", "nutrients": ["Nutrient"], "tip": "Tip"},
+      {"meal": "Meal 3", "nutrients": ["Nutrient"], "tip": "Tip"},
+      {"meal": "Meal 4", "nutrients": ["Nutrient"], "tip": "Tip"}
+    ],
+    "snacks": [
+      {"meal": "Snack 1", "nutrients": ["Nutrient"], "tip": "Tip"},
+      {"meal": "Snack 2", "nutrients": ["Nutrient"], "tip": "Tip"},
+      {"meal": "Snack 3", "nutrients": ["Nutrient"], "tip": "Tip"},
+      {"meal": "Snack 4", "nutrients": ["Nutrient"], "tip": "Tip"}
+    ],
+    "foodsToIncrease": ["food1", "food2", "food3"],
+    "foodsToLimit": ["food1", "food2"],
+    "tips": ["tip1", "tip2", "tip3"]
   },
   "recommendations": {
-    "immediate": ["action1"],
-    "shortTerm": ["action1"],
-    "longTerm": ["action1"],
-    "lifestyle": ["habit1"],
+    "immediate": ["action1", "action2"],
+    "shortTerm": ["action1", "action2"],
+    "longTerm": ["action1", "action2"],
+    "lifestyle": ["habit1", "habit2"],
     "tests": ["test1"]
   },
   "doctorConsultation": {
@@ -108,10 +128,12 @@ JSON STRUCTURE (follow EXACTLY):
 
 CRITICAL RULES:
 1. Return ONLY valid JSON. No markdown, no extra text.
-2. Keep values SHORT and CONCISE.
-3. Include 1-2 items per array (not 5+).
-4. Use numbers for numeric values, not strings.
-5. Do NOT use true/false as unquoted literals in string fields.`;
+2. Keep string values SHORT and CONCISE (under 100 chars each).
+3. Include ALL metrics found in the report with correct status (normal/high/low/borderline).
+4. Provide EXACTLY 4 meal options for EACH meal category (breakfast, lunch, dinner, snacks).
+5. Use Indian food options when appropriate.
+6. Use numbers for numeric values, not strings.
+7. Do NOT use true/false as unquoted literals in string fields.`;
 
 exports.analyzeHealthReport = async (reportText, user = {}, imageData = null) => {
   try {

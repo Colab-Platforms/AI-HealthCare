@@ -167,7 +167,8 @@ try {
     { path: '/api/users', module: './routes/userRoutes' },
     { path: '/api/notifications', module: './routes/notificationRoutes' },
     { path: '/api', module: './routes/chatRoutes' },
-    { path: '/api/chat', module: './routes/chatHistoryRoutes' }
+    { path: '/api/chat', module: './routes/chatHistoryRoutes' },
+    { path: '/api/translate', module: './routes/translateRoutes' }
   ];
 
   routes.forEach(route => {
