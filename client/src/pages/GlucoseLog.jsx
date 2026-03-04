@@ -35,6 +35,9 @@ const GlucoseLog = () => {
   const [trendType, setTrendType] = useState("blood_sugar"); // blood_sugar, hba1c, weight
   const [timeRange, setTimeRange] = useState("Week"); // Week, Month, 3 Months
   const [showTrendDropdown, setShowTrendDropdown] = useState(false);
+  const [glucoseFilterContext, setGlucoseFilterContext] = useState("all");
+  const [aiAnalysis, setAiAnalysis] = useState(null);
+  const [aiLoading, setAiLoading] = useState(false);
 
   const inputRef = useRef(null);
   const gaugeRef = useRef(null);
@@ -69,10 +72,27 @@ const GlucoseLog = () => {
         setEditValue(String(latest));
         updateStatus(latest);
       }
+
+      // Fetch AI Analysis
+      fetchAiAnalysis();
     } catch (error) {
       console.error("Error fetching metrics:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchAiAnalysis = async () => {
+    try {
+      setAiLoading(true);
+      const res = await api.get("metrics/analysis/glucose");
+      if (res.data && res.data.success) {
+        setAiAnalysis(res.data.data);
+      }
+    } catch (error) {
+      console.error("Error fetching AI analysis:", error);
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -107,6 +127,8 @@ const GlucoseLog = () => {
       newReading.type,
       newReading.timestamp,
     );
+    // Refresh analysis after log
+    setTimeout(() => fetchAiAnalysis(), 1000);
   };
 
   const handleLogHba1c = async (newReading) => {
@@ -219,9 +241,14 @@ const GlucoseLog = () => {
     else if (timeRange === "Month") cutoff.setMonth(now.getMonth() - 1);
     else if (timeRange === "3 Months") cutoff.setMonth(now.getMonth() - 3);
 
-    const filtered = sorted.filter(
+    let filtered = sorted.filter(
       (item) => new Date(item.recordedAt) >= cutoff,
     );
+
+    // Filter by context if applicable
+    if (trendType === "blood_sugar" && glucoseFilterContext !== "all") {
+      filtered = filtered.filter(item => item.readingContext === glucoseFilterContext);
+    }
 
     // Map to recharts format
     const displayData = filtered.length > 0 ? filtered : sorted.slice(-7);
@@ -554,29 +581,134 @@ const GlucoseLog = () => {
             {/* Read Type Pills (Glucose only) */}
             {trendType === "blood_sugar" && (
               <div className="flex overflow-x-auto scrollbar-hide gap-2 mt-6 pb-1">
-                <button className="flex-shrink-0 bg-[#1e293b] text-white px-4 py-1.5 rounded-full text-xs font-bold">
+                <button
+                  onClick={() => setGlucoseFilterContext("all")}
+                  className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold transition-all ${glucoseFilterContext === "all" ? "bg-[#1e293b] text-white" : "bg-gray-100 text-gray-500"}`}
+                >
                   All
                 </button>
-                <button className="flex-shrink-0 bg-blue-50/50 text-[#1c5dfd] px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-sm bg-blue-500 rotate-45" />{" "}
+                <button
+                  onClick={() => setGlucoseFilterContext("fasting")}
+                  className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${glucoseFilterContext === "fasting" ? "bg-blue-100 text-blue-700 border border-blue-200" : "bg-blue-50/50 text-blue-400"}`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-sm rotate-45 ${glucoseFilterContext === "fasting" ? "bg-blue-600" : "bg-blue-300"}`} />{" "}
                   Fasting
                 </button>
-                <button className="flex-shrink-0 bg-blue-50/50 text-[#1c5dfd] px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-sm bg-blue-500" />{" "}
+                <button
+                  onClick={() => setGlucoseFilterContext("before-meal")}
+                  className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${glucoseFilterContext === "before-meal" ? "bg-blue-100 text-blue-700 border border-blue-200" : "bg-blue-50/50 text-blue-400"}`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-sm ${glucoseFilterContext === "before-meal" ? "bg-blue-600" : "bg-blue-300"}`} />{" "}
                   Pre-meal
                 </button>
-                <button className="flex-shrink-0 bg-blue-50/50 text-[#1c5dfd] px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-sm bg-blue-500 rotate-45" />{" "}
+                <button
+                  onClick={() => setGlucoseFilterContext("after-meal")}
+                  className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${glucoseFilterContext === "after-meal" ? "bg-blue-100 text-blue-700 border border-blue-200" : "bg-blue-50/50 text-blue-400"}`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-sm rotate-45 ${glucoseFilterContext === "after-meal" ? "bg-blue-600" : "bg-blue-300"}`} />{" "}
                   Post-meal
                 </button>
-                <button className="flex-shrink-0 bg-blue-50/50 text-[#1c5dfd] px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />{" "}
+                <button
+                  onClick={() => setGlucoseFilterContext("bedtime")}
+                  className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${glucoseFilterContext === "bedtime" ? "bg-blue-100 text-blue-700 border border-blue-200" : "bg-blue-50/50 text-blue-400"}`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${glucoseFilterContext === "bedtime" ? "bg-blue-600" : "bg-blue-300"}`} />{" "}
+                  Bedtime
+                </button>
+                <button
+                  onClick={() => setGlucoseFilterContext("random")}
+                  className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${glucoseFilterContext === "random" ? "bg-blue-100 text-blue-700 border border-blue-200" : "bg-blue-50/50 text-blue-400"}`}
+                >
+                  <span className={`w-1.5 h-1.5 rounded-full ${glucoseFilterContext === "random" ? "bg-blue-600" : "bg-blue-300"}`} />{" "}
                   Random
                 </button>
               </div>
             )}
           </div>
         </div>
+
+        {/* AI Analysis Section */}
+        {trendType === "blood_sugar" && (
+          <div className="bg-white/90 backdrop-blur-md rounded-3xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-white mt-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
+                  <span className="text-purple-600 font-bold text-xs">AI</span>
+                </div>
+                <h3 className="font-bold text-slate-800">Glucose Analysis</h3>
+              </div>
+              {aiLoading && (
+                <div className="flex items-center gap-1">
+                  <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" />
+                  <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce delay-100" />
+                  <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce delay-200" />
+                </div>
+              )}
+            </div>
+
+            {aiAnalysis ? (
+              <div className="space-y-4">
+                <div className="flex items-start gap-4 p-4 rounded-2xl bg-gray-50 border border-gray-100">
+                  <div className={`mt-1 w-3 h-3 rounded-full flex-shrink-0 ${aiAnalysis.statusColor === 'green' ? 'bg-green-500' : aiAnalysis.statusColor === 'yellow' ? 'bg-yellow-500' : aiAnalysis.statusColor === 'orange' ? 'bg-orange-500' : 'bg-red-500'}`} />
+                  <div>
+                    <h4 className="text-sm font-bold text-slate-800 mb-1">
+                      Status: <span className={aiAnalysis.statusColor === 'green' ? 'text-green-600' : aiAnalysis.statusColor === 'red' ? 'text-red-600' : 'text-orange-600'}>{aiAnalysis.status}</span>
+                    </h4>
+                    <p className="text-sm text-slate-600 leading-relaxed">
+                      {aiAnalysis.analysis}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-4 rounded-2xl border border-blue-50 bg-blue-50/30">
+                    <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider mb-1">Potential Cause</p>
+                    <p className="text-sm font-semibold text-slate-800">{aiAnalysis.spikeCause}</p>
+                  </div>
+                  <div className="p-4 rounded-2xl border border-purple-50 bg-purple-50/30">
+                    <p className="text-[10px] font-bold text-purple-500 uppercase tracking-wider mb-1">Immediate Action</p>
+                    <p className="text-sm font-semibold text-slate-800">{aiAnalysis.immediateAction}</p>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl border border-emerald-50 bg-emerald-50/20">
+                  <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider mb-2">AI Insights & Tips</p>
+                  <ul className="space-y-2">
+                    {aiAnalysis.recommendations?.map((tip, i) => (
+                      <li key={i} className="flex items-start gap-2 text-xs text-slate-600">
+                        <span className="text-emerald-500 mt-0.5">•</span>
+                        {tip}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                <p className="text-[11px] italic text-slate-400 text-center pb-2">
+                  Generated by AI based on your overall data and daily food logs.
+                </p>
+              </div>
+            ) : (
+              !aiLoading && (
+                <div className="text-center py-6">
+                  <p className="text-sm text-slate-500 mb-4">Click below to generate a personalized AI analysis of your glucose trends.</p>
+                  <button
+                    onClick={fetchAiAnalysis}
+                    className="px-6 py-2.5 bg-purple-600 text-white rounded-full text-sm font-bold shadow-md shadow-purple-200 hover:bg-purple-700 transition-all"
+                  >
+                    Analyze My Progress
+                  </button>
+                </div>
+              )
+            )}
+
+            {aiLoading && !aiAnalysis && (
+              <div className="py-12 flex flex-col items-center justify-center">
+                <div className="w-12 h-12 border-4 border-purple-100 border-t-purple-600 rounded-full animate-spin mb-4" />
+                <p className="text-sm font-medium text-slate-500">AI is analyzing your readings and food logs...</p>
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Recent Readings List Context */}
         {(() => {

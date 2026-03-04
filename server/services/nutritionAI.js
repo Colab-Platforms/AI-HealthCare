@@ -591,6 +591,82 @@ Provide 3-5 INDIAN meal suggestions in JSON:
       throw error;
     }
   }
+
+  /**
+   * Analyze glucose trends with food context
+   */
+  async analyzeGlucoseTrends(userProfile, glucoseReadings, foodLogs, hba1cReadings = []) {
+    const diabetesProfile = userProfile.diabetesProfile || {};
+    const latestGlucose = glucoseReadings[0] || {};
+    const latestHba1c = hba1cReadings[0] || {};
+
+    const prompt = `You are a professional medical AI specialized in diabetes management and nutrition.
+    
+    USER PROFILE:
+    - Diabetes Type: ${diabetesProfile.diabetesType || 'Not specified'}
+    - Goals: ${userProfile.nutritionGoal?.goal || 'Manage glucose'}
+    - Medications: ${diabetesProfile.medications || 'None'}
+    
+    LATEST READINGS:
+    - Current Reading: ${latestGlucose.value} ${latestGlucose.unit} (${latestGlucose.readingContext})
+    - Latest HbA1c: ${latestHba1c.value || 'N/A'}${latestHba1c.unit || '%'}
+    
+    RECENT GLUCOSE HISTORY (Last 5):
+    ${glucoseReadings.slice(0, 5).map(r => `- ${r.value} ${r.unit} (${r.readingContext}) at ${new Date(r.recordedAt).toLocaleString()}`).join('\n')}
+    
+    FOOD LOGS FOR TODAY:
+    ${foodLogs.length > 0
+        ? foodLogs.map(log => `- ${log.mealType}: ${log.foodItems.map(f => f.name).join(', ')} (${log.totalNutrition.carbs}g carbs, ${log.totalNutrition.sugar}g sugar)`).join('\n')
+        : 'No food logged today.'}
+    
+    YOUR TASK:
+    1. Analyze the current glucose reading. Is it good, borderline, or high?
+    2. Identify potential causes for this specific reading based on today's food logs (e.g., specific high-carb or high-sugar items).
+    3. Provide actionable advice for the next 4-8 hours (e.g., movement, hydration, meal adjustments).
+    4. Provide long-term suggestions based on HbA1c and general trends.
+    5. Maintain an empathetic but professional medical tone.
+    
+    RETURN RESPONSE IN THIS EXACT JSON FORMAT:
+    {
+      "status": "Excellent/Good/Borderline/High/Critical",
+      "statusColor": "green/yellow/orange/red",
+      "analysis": "Brief analysis of the current reading.",
+      "spikeCause": "Identify specific foods or factors if applicable, or 'Unknown' if not enough data.",
+      "immediateAction": "What to do right now.",
+      "recommendations": ["Tip 1", "Tip 2", "Tip 3"],
+      "insight": "A deeper insight about their overall progress."
+    }`;
+
+    const systemMsg = 'You are a professional diabetes management AI. You MUST provide accurate, evidence-based feedback based on the user data provided. Return your response as valid JSON only.';
+    const { isAnthropicDirect } = this.getApiParams();
+
+    const payload = isAnthropicDirect ? {
+      max_tokens: 1500,
+      system: systemMsg,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.3
+    } : {
+      messages: [
+        { role: 'system', content: systemMsg },
+        { role: 'user', content: prompt }
+      ],
+      temperature: 0.3,
+      max_tokens: 1500
+    };
+
+    try {
+      const aiResponse = await this.makeAIRequest(payload);
+      const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return { success: true, data: JSON.parse(jsonMatch[0]) };
+      } else {
+        throw new Error('Failed to parse glucose analysis');
+      }
+    } catch (error) {
+      console.error('AI Glucose Analysis Error:', error.message);
+      throw error;
+    }
+  }
 }
 
 module.exports = new NutritionAI();

@@ -70,28 +70,52 @@ export default function DoctorRegister() {
     }
 
     setLoading(true);
-    try {
-      // In production, upload documents first and get URLs
-      const documentsList = Object.entries(documents).map(([type, doc]) => ({
-        name: doc.name,
-        type,
-        url: `pending_upload_${type}` // Placeholder - would be actual URL after upload
-      }));
+    
+    const attemptRegister = async (retryCount = 0) => {
+      try {
+        // In production, upload documents first and get URLs
+        const documentsList = Object.entries(documents).map(([type, doc]) => ({
+          name: doc.name,
+          type,
+          url: `pending_upload_${type}` // Placeholder - would be actual URL after upload
+        }));
 
-      await registerDoctor({
-        ...formData,
-        qualifications: formData.qualifications.split(',').map(q => q.trim()).filter(Boolean),
-        experience: parseInt(formData.experience),
-        consultationFee: parseInt(formData.consultationFee) || 500,
-        documents: documentsList
-      });
-      toast.success('Registration successful! Your profile is pending approval.');
-      navigate('/doctor/dashboard');
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Registration failed');
-    } finally {
-      setLoading(false);
-    }
+        await registerDoctor({
+          ...formData,
+          qualifications: formData.qualifications.split(',').map(q => q.trim()).filter(Boolean),
+          experience: parseInt(formData.experience),
+          consultationFee: parseInt(formData.consultationFee) || 500,
+          documents: documentsList
+        });
+        toast.success('Registration successful! Your profile is pending approval.');
+        navigate('/doctor/dashboard');
+      } catch (error) {
+        const status = error.response?.status;
+        const errorMsg = error.response?.data?.message || 'Registration failed';
+
+        // Handle 503 (database connection) errors with retry
+        if (status === 503 && retryCount < 2) {
+          console.log(`Database connection failed, retrying... (attempt ${retryCount + 1}/2)`);
+          toast.loading('Connecting to database, please wait...');
+          
+          // Wait 2 seconds before retrying
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          return attemptRegister(retryCount + 1);
+        }
+
+        if (!error.response) {
+          toast.error('Network error - Check if server is running');
+        } else if (status === 503) {
+          toast.error('Database temporarily unavailable. Please try again in a moment.');
+        } else {
+          toast.error(errorMsg);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    await attemptRegister();
   };
 
   return (

@@ -12,21 +12,7 @@ router.post('/analyze-food', nutritionController.analyzeFood);
 router.post('/quick-check', upload.single('image'), nutritionController.quickFoodCheck);
 router.post('/get-alternatives', nutritionController.getHealthyAlternatives);
 
-// Quick Food Check History & Storage
-router.get('/quick-checks', nutritionController.getQuickFoodChecks);
-router.get('/quick-checks/:id', nutritionController.getQuickFoodCheck);
-router.delete('/quick-checks/:id', nutritionController.deleteQuickFoodCheck);
-router.get('/quick-checks/history/date', nutritionController.getFoodCheckHistory);
-router.get('/quick-checks/summary/weekly', nutritionController.getWeeklyFoodCheckSummary);
-
-// Food Logging
-router.post('/log-meal', nutritionController.logMeal);
-router.get('/logs', nutritionController.getFoodLogs);
-router.get('/logs/today', nutritionController.getTodayLogs);
-router.put('/logs/:id', nutritionController.updateFoodLog);
-router.delete('/logs/:id', nutritionController.deleteFoodLog);
-
-// Health Goals
+// Health Goals - SPECIFIC ROUTES BEFORE PARAMETERIZED ROUTES
 router.post('/goals', nutritionController.setHealthGoal);
 router.put('/goals', nutritionController.updateHealthGoal);
 router.get('/goals', nutritionController.getHealthGoal);
@@ -38,6 +24,13 @@ router.get('/summary/weekly', nutritionController.getWeeklySummary);
 router.get('/activity/week', nutritionController.getActivityWeek);
 router.get('/recommendations', nutritionController.getRecommendations);
 router.get('/food-image', nutritionController.getFoodImage);
+
+// Food Logging
+router.post('/log-meal', nutritionController.logMeal);
+router.get('/logs', nutritionController.getFoodLogs);
+router.get('/logs/today', nutritionController.getTodayLogs);
+router.put('/logs/:id', nutritionController.updateFoodLog);
+router.delete('/logs/:id', nutritionController.deleteFoodLog);
 
 // Quick Food Check - SPECIFIC ROUTES BEFORE PARAMETERIZED ROUTES
 router.get('/quick-checks/history/date', nutritionController.getFoodCheckHistory);

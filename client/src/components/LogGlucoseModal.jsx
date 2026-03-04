@@ -170,6 +170,28 @@ const LogGlucoseModal = ({ isOpen, onClose, onSave }) => {
         </div>
       ),
     },
+    {
+      id: "random",
+      label: "Random",
+      description: "Reading taken at any other time",
+      icon: (
+        <div className="w-11 h-11 bg-gray-100 rounded-full flex items-center justify-center">
+          <svg
+            className="w-5 h-5 text-gray-500"
+            fill="none"
+            stroke="currentColor"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+        </div>
+      ),
+    },
   ];
 
   // Generate ruler ticks

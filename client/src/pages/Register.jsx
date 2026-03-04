@@ -80,57 +80,81 @@ export default function Register() {
     }
 
     setLoading(true);
-    try {
-      const profileData = {
-        age: parseInt(formData.age),
-        gender: formData.gender,
-        height: formData.height ? parseFloat(formData.height) : undefined,
-        weight: formData.weight ? parseFloat(formData.weight) : undefined,
-        bloodGroup: formData.bloodGroup || undefined,
-        dietaryPreference: formData.dietaryPreference,
-        activityLevel: formData.activityLevel,
-        medicalHistory: {
-          conditions: formData.chronicConditions.includes('Diabetes')
-            ? formData.chronicConditions
-            : formData.isDiabetic === 'yes' ? ['Diabetes', ...formData.chronicConditions] : formData.chronicConditions
-        },
-        lifestyle: {
-          smoker: formData.smoker,
-          alcohol: formData.alcohol,
-          sleepHours: parseInt(formData.sleepHours),
-          stressLevel: formData.stressLevel,
-          waterIntake: parseInt(formData.waterIntake)
-        },
-        diabetesProfile: formData.isDiabetic === 'yes' ? {
-          type: formData.diabetesType,
-          diagnosisYear: formData.diagnosisYear,
-          status: formData.diabetesStatus,
-          hba1c: formData.hba1c,
-          glucoseMonitoring: formData.glucoseMonitoring,
-          fastingGlucose: formData.fastingGlucose,
-          postMealGlucose: formData.postMealGlucose,
-          testingFrequency: formData.testingFrequency,
-          onMedication: formData.onMedication,
-          medicationType: formData.medicationType,
-          insulinTiming: formData.insulinTiming,
-          recentDosageChange: formData.recentDosageChange
-        } : undefined
-      };
+    
+    const attemptRegister = async (retryCount = 0) => {
+      try {
+        const profileData = {
+          age: parseInt(formData.age),
+          gender: formData.gender,
+          height: formData.height ? parseFloat(formData.height) : undefined,
+          weight: formData.weight ? parseFloat(formData.weight) : undefined,
+          bloodGroup: formData.bloodGroup || undefined,
+          dietaryPreference: formData.dietaryPreference,
+          activityLevel: formData.activityLevel,
+          medicalHistory: {
+            conditions: formData.chronicConditions.includes('Diabetes')
+              ? formData.chronicConditions
+              : formData.isDiabetic === 'yes' ? ['Diabetes', ...formData.chronicConditions] : formData.chronicConditions
+          },
+          lifestyle: {
+            smoker: formData.smoker,
+            alcohol: formData.alcohol,
+            sleepHours: parseInt(formData.sleepHours),
+            stressLevel: formData.stressLevel,
+            waterIntake: parseInt(formData.waterIntake)
+          },
+          diabetesProfile: formData.isDiabetic === 'yes' ? {
+            type: formData.diabetesType,
+            diagnosisYear: formData.diagnosisYear,
+            status: formData.diabetesStatus,
+            hba1c: formData.hba1c,
+            glucoseMonitoring: formData.glucoseMonitoring,
+            fastingGlucose: formData.fastingGlucose,
+            postMealGlucose: formData.postMealGlucose,
+            testingFrequency: formData.testingFrequency,
+            onMedication: formData.onMedication,
+            medicationType: formData.medicationType,
+            insulinTiming: formData.insulinTiming,
+            recentDosageChange: formData.recentDosageChange
+          } : undefined
+        };
 
-      const nutritionGoal = {
-        goal: formData.primaryGoal,
-        targetWeight: formData.targetWeight ? parseFloat(formData.targetWeight) : null,
-        weeklyGoal: parseFloat(formData.weeklyGoal)
-      };
+        const nutritionGoal = {
+          goal: formData.primaryGoal,
+          targetWeight: formData.targetWeight ? parseFloat(formData.targetWeight) : null,
+          weeklyGoal: parseFloat(formData.weeklyGoal)
+        };
 
-      await register(formData.name, formData.email, formData.password, profileData, nutritionGoal);
-      toast.success('Account created successfully!');
-      navigate('/dashboard');
-    } catch (error) {
-      toast.error(error.response?.data?.message || 'Registration failed');
-    } finally {
-      setLoading(false);
-    }
+        await register(formData.name, formData.email, formData.password, profileData, nutritionGoal);
+        toast.success('Account created successfully!');
+        navigate('/dashboard');
+      } catch (error) {
+        const status = error.response?.status;
+        const errorMsg = error.response?.data?.message || 'Registration failed';
+
+        // Handle 503 (database connection) errors with retry
+        if (status === 503 && retryCount < 2) {
+          console.log(`Database connection failed, retrying... (attempt ${retryCount + 1}/2)`);
+          toast.loading('Connecting to database, please wait...');
+          
+          // Wait 2 seconds before retrying
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          return attemptRegister(retryCount + 1);
+        }
+
+        if (!error.response) {
+          toast.error('Network error - Check if server is running');
+        } else if (status === 503) {
+          toast.error('Database temporarily unavailable. Please try again in a moment.');
+        } else {
+          toast.error(errorMsg);
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    await attemptRegister();
   };
 
   const nextStep = () => {

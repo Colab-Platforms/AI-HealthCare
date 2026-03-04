@@ -15,27 +15,45 @@ export default function Login() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    try {
-      const user = await login(email, password);
-      toast.success('Welcome back!');
-      navigate(user.role === 'admin' ? '/admin' : user.role === 'doctor' ? '/doctor/dashboard' : '/dashboard');
-    } catch (error) {
-      const errorMsg = error.response?.data?.message || error.message || 'Login failed';
+    
+    const attemptLogin = async (retryCount = 0) => {
+      try {
+        const user = await login(email, password);
+        toast.success('Welcome back!');
+        navigate(user.role === 'admin' ? '/admin' : user.role === 'doctor' ? '/doctor/dashboard' : '/dashboard');
+      } catch (error) {
+        const status = error.response?.status;
+        const errorMsg = error.response?.data?.message || error.message || 'Login failed';
 
-      // Check for network errors
-      if (!error.response) {
-        toast.error('Network error - Check if server is running and accessible');
-        console.error('Connection details:', {
-          apiUrl: error.config?.baseURL,
-          host: window.location.hostname,
-          port: window.location.port
-        });
-      } else {
-        toast.error(errorMsg);
+        // Handle 503 (database connection) errors with retry
+        if (status === 503 && retryCount < 2) {
+          console.log(`Database connection failed, retrying... (attempt ${retryCount + 1}/2)`);
+          toast.loading('Connecting to database, please wait...');
+          
+          // Wait 2 seconds before retrying
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          return attemptLogin(retryCount + 1);
+        }
+
+        // Check for network errors
+        if (!error.response) {
+          toast.error('Network error - Check if server is running and accessible');
+          console.error('Connection details:', {
+            apiUrl: error.config?.baseURL,
+            host: window.location.hostname,
+            port: window.location.port
+          });
+        } else if (status === 503) {
+          toast.error('Database temporarily unavailable. Please try again in a moment.');
+        } else {
+          toast.error(errorMsg);
+        }
+      } finally {
+        setLoading(false);
       }
-    } finally {
-      setLoading(false);
-    }
+    };
+
+    await attemptLogin();
   };
 
   return (
