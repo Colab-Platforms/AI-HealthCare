@@ -8,7 +8,7 @@ const { robustJsonParse } = require('../utils/aiParser');
  */
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const CLAUDE_MODEL = 'claude-3-5-sonnet-20240620';
+const CLAUDE_MODEL = 'claude-sonnet-4-6';
 
 class NutritionAI {
   constructor() {
