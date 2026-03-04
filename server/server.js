@@ -55,6 +55,74 @@ if (!process.env.VERCEL) {
   app.use('/uploads', express.static(uploadsDir));
 }
 
+// Debug endpoint for diagnostic purposes
+app.get('/api/debug-connection', async (req, res) => {
+  const results = {
+    timestamp: new Date().toISOString(),
+    steps: []
+  };
+
+  try {
+    const startConnect = Date.now();
+    await connectDB();
+    results.steps.push({
+      step: 'connect',
+      success: true,
+      durationMs: Date.now() - startConnect,
+      readyState: mongoose.connection.readyState,
+      host: mongoose.connection.host,
+      dbName: mongoose.connection.name
+    });
+  } catch (err) {
+    results.steps.push({
+      step: 'connect',
+      success: false,
+      error: err.message
+    });
+    return res.status(503).json(results);
+  }
+
+  // Raw DB query
+  try {
+    const startQuery = Date.now();
+    const userCount = await mongoose.connection.db.collection('users').countDocuments();
+    results.steps.push({
+      step: 'query_test',
+      success: true,
+      durationMs: Date.now() - startQuery,
+      userCount
+    });
+  } catch (err) {
+    results.steps.push({
+      step: 'query_test',
+      success: false,
+      error: err.message
+    });
+  }
+
+  // Mongoose Model query (This failed previously)
+  try {
+    const startModel = Date.now();
+    const User = require('./models/User');
+    const user = await User.findOne({}).select('email name').lean().maxTimeMS(10000);
+    results.steps.push({
+      step: 'model_query',
+      success: true,
+      durationMs: Date.now() - startModel,
+      foundUser: !!user
+    });
+  } catch (err) {
+    results.steps.push({
+      step: 'model_query',
+      success: false,
+      error: err.message
+    });
+  }
+
+  results.overall = results.steps.every(s => s.success !== false) ? 'ALL_PASSED' : 'SOME_FAILED';
+  res.json(results);
+});
+
 // Health check endpoint
 app.get('/api/health-check', async (req, res) => {
   let dbConnected = mongoose.connection.readyState === 1;
