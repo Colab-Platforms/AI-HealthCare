@@ -114,8 +114,8 @@ function Header() {
           </div>
 
           {/* Mobile menu button */}
-          <button 
-            className="md:hidden p-2" 
+          <button
+            className="md:hidden p-2"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
@@ -169,7 +169,7 @@ function Hero() {
 
           {/* Subheadline */}
           <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Join 10,000+ people who've transformed their health with personalized AI analysis, 
+            Join 10,000+ people who've transformed their health with personalized AI analysis,
             nutrition plans, and expert doctor connections—all from your medical reports.
           </p>
 
@@ -205,9 +205,9 @@ function Hero() {
         <div className="mt-16 relative">
           <div className="absolute inset-0 bg-gradient-to-t from-slate-50 via-transparent to-transparent z-10"></div>
           <div className="bg-white rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl shadow-blue-600/10 border border-slate-200">
-            <img 
-              src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Banner-ai-diagnostic.jpg?v=1768294903" 
-              alt="AI Health Dashboard" 
+            <img
+              src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Banner-ai-diagnostic.jpg?v=1768294903"
+              alt="AI Health Dashboard"
               className="w-full h-auto object-cover"
             />
           </div>
@@ -331,9 +331,8 @@ function HowItWorks() {
           {steps.map((step, index) => (
             <div
               key={index}
-              className={`flex flex-col ${
-                index % 2 === 1 ? "lg:flex-row-reverse" : "lg:flex-row"
-              } items-center gap-12 lg:gap-20`}
+              className={`flex flex-col ${index % 2 === 1 ? "lg:flex-row-reverse" : "lg:flex-row"
+                } items-center gap-12 lg:gap-20`}
             >
               {/* Content */}
               <div className="flex-1 text-center lg:text-left">
@@ -351,9 +350,9 @@ function HowItWorks() {
               {/* Image */}
               <div className="flex-1">
                 <div className="bg-white rounded-2xl overflow-hidden shadow-xl border border-slate-200">
-                  <img 
-                    src={step.image} 
-                    alt={step.title} 
+                  <img
+                    src={step.image}
+                    alt={step.title}
                     className="w-full h-auto object-cover"
                   />
                 </div>
@@ -438,11 +437,10 @@ function Pricing() {
           {plans.map((plan, index) => (
             <div
               key={index}
-              className={`relative p-8 rounded-2xl border ${
-                plan.popular
+              className={`relative p-8 rounded-2xl border ${plan.popular
                   ? "bg-blue-600 text-white border-blue-600 shadow-2xl shadow-blue-600/25 scale-105"
                   : "bg-white border-slate-200"
-              }`}
+                }`}
             >
               {plan.popular && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2">
@@ -469,9 +467,8 @@ function Pricing() {
                 {plan.features.map((feature, i) => (
                   <li key={i} className="flex items-start gap-3">
                     <CheckCircle
-                      className={`w-5 h-5 shrink-0 mt-0.5 ${
-                        plan.popular ? "text-white" : "text-blue-600"
-                      }`}
+                      className={`w-5 h-5 shrink-0 mt-0.5 ${plan.popular ? "text-white" : "text-blue-600"
+                        }`}
                     />
                     <span className={`text-sm ${plan.popular ? "text-blue-50" : "text-slate-600"}`}>
                       {feature}
@@ -481,11 +478,10 @@ function Pricing() {
               </ul>
               <Link
                 to="/register?skip=true"
-                className={`w-full rounded-full py-4 px-6 text-center font-medium transition-colors block ${
-                  plan.popular
+                className={`w-full rounded-full py-4 px-6 text-center font-medium transition-colors block ${plan.popular
                     ? "bg-white text-blue-600 hover:bg-blue-50"
                     : "bg-blue-600 text-white hover:bg-blue-700"
-                }`}
+                  }`}
               >
                 Get started
               </Link>
@@ -500,7 +496,7 @@ function Pricing() {
 // Testimonials Component
 function Testimonials() {
   const [current, setCurrent] = useState(0);
-  
+
   const testimonials = [
     {
       stars: 5,
@@ -595,9 +591,8 @@ function Testimonials() {
                 <button
                   key={i}
                   onClick={() => setCurrent(i)}
-                  className={`w-2.5 h-2.5 rounded-full transition-colors ${
-                    i === current ? "bg-[#8B7355]" : "bg-[#E5DFD3] hover:bg-[#8B7355]/50"
-                  }`}
+                  className={`w-2.5 h-2.5 rounded-full transition-colors ${i === current ? "bg-[#8B7355]" : "bg-[#E5DFD3] hover:bg-[#8B7355]/50"
+                    }`}
                 />
               ))}
             </div>
@@ -670,15 +665,13 @@ function FAQ() {
               >
                 <span className="text-lg font-medium text-white pr-4">{faq.question}</span>
                 <ChevronDown
-                  className={`w-5 h-5 text-cyan-300 shrink-0 transition-transform duration-200 ${
-                    openIndex === index ? "rotate-180" : ""
-                  }`}
+                  className={`w-5 h-5 text-cyan-300 shrink-0 transition-transform duration-200 ${openIndex === index ? "rotate-180" : ""
+                    }`}
                 />
               </button>
               <div
-                className={`overflow-hidden transition-all duration-200 ${
-                  openIndex === index ? "max-h-96" : "max-h-0"
-                }`}
+                className={`overflow-hidden transition-all duration-200 ${openIndex === index ? "max-h-96" : "max-h-0"
+                  }`}
               >
                 <p className="px-6 pb-6 text-cyan-100 leading-relaxed">{faq.answer}</p>
               </div>
@@ -699,7 +692,7 @@ function CTA() {
           Ready to transform your health with AI?
         </h2>
         <p className="text-lg text-cyan-100 mb-10 max-w-2xl mx-auto">
-          Join 10,000+ people who've made the switch to proactive, AI-powered healthcare. 
+          Join 10,000+ people who've made the switch to proactive, AI-powered healthcare.
           Your future self will thank you.
         </p>
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
@@ -797,7 +790,7 @@ function Footer() {
 // Main Landing Page Component
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-transparent">
+    <div className="min-h-screen bg-gradient-to-b from-[#0a1628] via-[#061e33] to-[#0a1628]">
       <MinimalHeader />
       <VideoHero />
       <FeaturesSection />

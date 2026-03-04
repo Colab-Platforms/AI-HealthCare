@@ -266,58 +266,48 @@ export default function QuickFoodScan() {
   // Optimized image compression function for mobile with SUPER aggressive settings
   const compressImage = async (file) => {
     return new Promise((resolve, reject) => {
-      // Detect mobile device
+      // Detect device type and browser
       const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
-      // MAX 20MB for the raw file before compression to prevent browser crash
-      if (file.size > 20 * 1024 * 1024) {
-        return reject(new Error('Image is too large (max 20MB). Please take a smaller photo or use a screenshot.'));
+      // MAX 40MB for the raw file before compression (modern phones have huge files)
+      if (file.size > 40 * 1024 * 1024) {
+        return reject(new Error('Image is too large (max 40MB).'));
       }
 
-      // SUPER AGGRESSIVE compression for mobile
-      const isVeryLarge = file.size > 2 * 1024 * 1024; // > 2MB
-      let targetQuality = 0.5;
-      let maxDimension = 800; // Standard
+      // Settings optimized for mobile captures
+      let targetQuality = 0.6;
+      let maxDimension = 1200;
 
       if (isMobile) {
-        // Balanced settings - 1024px is high res enough but keeps memory low
-        targetQuality = 0.6;
-        maxDimension = 1024;
-      } else if (isVeryLarge) {
-        targetQuality = 0.7;
-        maxDimension = 1200;
+        // More aggressive for mobile to prevent memory crashes
+        targetQuality = 0.5;
+        maxDimension = 1000;
       }
 
-      console.log('🗜️ Compression starting...', {
+      console.log('🗜️ Compression starting for mobile-compatible analysis...', {
         isMobile,
-        targetQuality,
-        maxDimension,
-        originalSize: (file.size / 1024).toFixed(2) + ' KB',
-        fileType: file.type
+        originalSize: (file.size / 1024).toFixed(2) + ' KB'
       });
 
       const blobUrl = URL.createObjectURL(file);
       const img = new Image();
 
-      // Safety timeout for image loading
+      // Increased timeout for slow mobile processors
       const timeoutId = setTimeout(() => {
-        img.src = ''; // Clear src to stop loading
-        console.warn('❌ Image processing timed out after 30s');
-        img.onload = null;
-        img.onerror = null;
+        img.src = '';
+        console.warn('❌ Processing timed out, using original');
         resolve(file);
-      }, 30000);
+      }, 45000);
 
-      // CRITICAL: Set handlers BEFORE setting src to avoid race condition
       img.onload = () => {
         clearTimeout(timeoutId);
-        URL.revokeObjectURL(blobUrl); // Clean up immediately
+        URL.revokeObjectURL(blobUrl);
         try {
           const canvas = document.createElement('canvas');
           let width = img.width;
           let height = img.height;
 
-          // Calculate new dimensions
+          // Scale maintaining aspect ratio
           if (width > height) {
             if (width > maxDimension) {
               height = Math.round((height * maxDimension) / width);
@@ -330,63 +320,41 @@ export default function QuickFoodScan() {
             }
           }
 
-          console.log('📐 Resizing to', width, 'x', height);
           canvas.width = width;
           canvas.height = height;
 
-          const ctx = canvas.getContext('2d', { alpha: false }); // Disable alpha for memory
-          if (!ctx) {
-            throw new Error('Could not get canvas context - low memory');
-          }
+          const ctx = canvas.getContext('2d', { alpha: false });
+          if (!ctx) throw new Error('Canvas context failed');
 
+          // Paint white background (prevents transparent PNG issues)
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillRect(0, 0, width, height);
           ctx.drawImage(img, 0, 0, width, height);
 
-          // Clear img from memory
-          img.src = "";
-
-          // Compress to JPEG
-          canvas.toBlob(
-            (blob) => {
-              // Aggressive cleanup
-              canvas.width = 0;
-              canvas.height = 0;
-
-              if (!blob) {
-                console.warn('⚠️ Canvas toBlob returned null, using original file');
-                resolve(file);
-                return;
-              }
-
-              const compressedFile = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
-                type: 'image/jpeg',
-                lastModified: Date.now(),
-              });
-
-              console.log('✅ Final size:', (compressedFile.size / 1024).toFixed(2), 'KB');
-              resolve(compressedFile);
-            },
-            'image/jpeg',
-            targetQuality
+          canvas.toBlob((blob) => {
+            if (!blob) {
+              resolve(file);
+              return;
+            }
+            const compressedFile = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), {
+              type: 'image/jpeg',
+              lastModified: Date.now(),
+            });
+            resolve(compressedFile);
+          }, 'image/jpeg', targetQuality
           );
         } catch (error) {
-          console.error('Canvas compression error:', error);
-          // Fallback: use original file
+          console.error('Compression crash:', error);
           resolve(file);
         }
       };
 
-      img.onerror = (e) => {
+      img.onerror = () => {
         clearTimeout(timeoutId);
         URL.revokeObjectURL(blobUrl);
-        console.warn('⚠️ Failed to load image in canvas, using original file. Error:', e);
-        // Fallback: resolve with original file instead of rejecting
-        // The browser couldn't decode it (e.g., HEIC), but the server/AI might handle it
         resolve(file);
       };
 
-      // Set crossOrigin before src for CORS images
-      img.crossOrigin = 'anonymous';
-      // Set src AFTER handlers to prevent race condition
       img.src = blobUrl;
     });
   };
