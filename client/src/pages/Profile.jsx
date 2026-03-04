@@ -190,11 +190,11 @@ export default function Profile() {
       // Use PUT if goal exists, POST if new
       const response = healthGoal
         ? await api.put('nutrition/goals', payload, {
-            headers: { Authorization: `Bearer ${token}` }
-          })
+          headers: { Authorization: `Bearer ${token}` }
+        })
         : await api.post('nutrition/goals', payload, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+          headers: { Authorization: `Bearer ${token}` }
+        });
 
       setHealthGoal(response.data.healthGoal);
       toast.success('Fitness goal set successfully! Your daily targets have been calculated.');
@@ -755,7 +755,7 @@ export default function Profile() {
                   <p className="text-xs md:text-sm text-blue-700">Daily targets calculated based on your goal</p>
                 </div>
                 <div className="px-3 md:px-4 py-2 bg-blue-600 text-white rounded-lg font-semibold capitalize text-sm md:text-base whitespace-nowrap">
-                  {healthGoal.goalType.replace('_', ' ')}
+                  {(healthGoal.goalType || 'Not Set').replace(/_/g, ' ')}
                 </div>
               </div>
 
