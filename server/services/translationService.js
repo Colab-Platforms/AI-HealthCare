@@ -14,7 +14,7 @@ const hindiTranslations = {
   'HDL': 'एचडीएल',
   'Triglycerides': 'ट्राइग्लिसराइड्स',
   'TSH': 'टीएसएच',
-  
+
   // Status
   'normal': 'सामान्य',
   'low': 'कम',
@@ -27,14 +27,14 @@ const hindiTranslations = {
   'borderline': 'सीमांत',
   'excellent': 'उत्कृष्ट',
   'good': 'अच्छा',
-  
+
   // Deficiencies
   'Low Hemoglobin (Anemia)': 'कम हीमोग्लोबिन (एनीमिया)',
   'Vitamin D Deficiency': 'विटामिन डी की कमी',
   'Vitamin B12 Deficiency': 'विटामिन बी12 की कमी',
   'Iron Deficiency': 'आयरन की कमी',
   'High Blood Sugar (Hyperglycemia)': 'उच्च रक्त शर्करा (हाइपरग्लाइसेमिया)',
-  
+
   // Symptoms
   'Fatigue': 'थकान',
   'Weakness': 'कमजोरी',
@@ -49,7 +49,7 @@ const hindiTranslations = {
   'Increased thirst': 'प्यास में वृद्धि',
   'Frequent urination': 'बार-बार पेशाब आना',
   'Blurred vision': 'धुंधली दृष्टि',
-  
+
   // Recommendations
   'Eat iron-rich foods': 'आयरन युक्त खाद्य पदार्थ खाएं',
   'red meat': 'लाल मांस',
@@ -65,7 +65,7 @@ const hindiTranslations = {
   'Balanced diet': 'संतुलित आहार',
   'Adequate sleep': 'पर्याप्त नींद',
   'Stress management': 'तनाव प्रबंधन',
-  
+
   // General
   'Great news': 'बहुत अच्छी खबर है',
   'Your health report shows': 'आपकी स्वास्थ्य रिपोर्ट दिखाती है',
@@ -83,43 +83,43 @@ const hindiTranslations = {
 // Translate text to Hindi using simple mapping
 const translateToHindi = (text) => {
   if (!text) return '';
-  
+
   let translatedText = text;
-  
+
   // Replace known terms
   Object.entries(hindiTranslations).forEach(([english, hindi]) => {
     const regex = new RegExp(`\\b${english}\\b`, 'gi');
     translatedText = translatedText.replace(regex, hindi);
   });
-  
+
   return translatedText;
 };
 
 // Translate analysis object to Hindi
 const translateAnalysisToHindi = (analysis) => {
   if (!analysis) return null;
-  
+
   const hindiAnalysis = { ...analysis };
-  
+
   // Translate summary
   if (analysis.summary) {
     hindiAnalysis.summaryHindi = translateToHindi(analysis.summary);
   }
-  
+
   // Translate key findings
   if (analysis.keyFindings && Array.isArray(analysis.keyFindings)) {
-    hindiAnalysis.keyFindingsHindi = analysis.keyFindings.map(finding => 
+    hindiAnalysis.keyFindingsHindi = analysis.keyFindings.map(finding =>
       translateToHindi(finding)
     );
   }
-  
+
   // Translate risk factors
   if (analysis.riskFactors && Array.isArray(analysis.riskFactors)) {
-    hindiAnalysis.riskFactorsHindi = analysis.riskFactors.map(factor => 
+    hindiAnalysis.riskFactorsHindi = analysis.riskFactors.map(factor =>
       translateToHindi(factor)
     );
   }
-  
+
   // Translate deficiencies
   if (analysis.deficiencies && Array.isArray(analysis.deficiencies)) {
     hindiAnalysis.deficienciesHindi = analysis.deficiencies.map(def => ({
@@ -130,12 +130,12 @@ const translateAnalysisToHindi = (analysis) => {
       recommendationsHindi: def.recommendations ? def.recommendations.map(r => translateToHindi(r)) : []
     }));
   }
-  
+
   // Translate recommendations
   if (analysis.recommendations) {
     hindiAnalysis.recommendationsHindi = {};
     if (analysis.recommendations.lifestyle) {
-      hindiAnalysis.recommendationsHindi.lifestyle = analysis.recommendations.lifestyle.map(r => 
+      hindiAnalysis.recommendationsHindi.lifestyle = analysis.recommendations.lifestyle.map(r =>
         translateToHindi(r)
       );
     }
@@ -143,37 +143,35 @@ const translateAnalysisToHindi = (analysis) => {
       hindiAnalysis.recommendationsHindi.diet = translateToHindi(analysis.recommendations.diet);
     }
     if (analysis.recommendations.tests) {
-      hindiAnalysis.recommendationsHindi.tests = analysis.recommendations.tests.map(t => 
+      hindiAnalysis.recommendationsHindi.tests = analysis.recommendations.tests.map(t =>
         translateToHindi(t)
       );
     }
   }
-  
+
   // Translate overall trend
   if (analysis.overallTrend) {
     hindiAnalysis.overallTrendHindi = translateToHindi(analysis.overallTrend);
   }
-  
+
   return hindiAnalysis;
 };
 
-// Translate using OpenRouter API for more accurate translation
+// Translate using Anthropic Direct API for more accurate translation
 const translateWithAI = async (text, targetLanguage = 'hi') => {
   try {
-    if (!process.env.OPENROUTER_API_KEY) {
-      console.log('[TRANSLATION] API key not available, using local translation');
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey || !apiKey.startsWith('sk-ant')) {
+      console.log('[TRANSLATION] Anthropic API key not available, using local translation');
       return targetLanguage === 'hi' ? translateToHindi(text) : text;
     }
 
     const response = await axios.post(
-      'https://openrouter.ai/api/v1/chat/completions',
+      'https://api.anthropic.com/v1/messages',
       {
-        model: 'google/gemini-2.0-flash-exp:free',
+        model: 'claude-3-5-sonnet-20241022',
+        system: `You are a medical translator. Translate the following medical text to ${targetLanguage === 'hi' ? 'Hindi' : 'English'} in simple, easy-to-understand language. Keep medical terms accurate. Return ONLY the translated text, nothing else.`,
         messages: [
-          {
-            role: 'system',
-            content: `You are a medical translator. Translate the following medical text to ${targetLanguage === 'hi' ? 'Hindi' : 'English'} in simple, easy-to-understand language. Keep medical terms accurate. Return ONLY the translated text, nothing else.`
-          },
           {
             role: 'user',
             content: text
@@ -184,16 +182,18 @@ const translateWithAI = async (text, targetLanguage = 'hi') => {
       },
       {
         headers: {
-          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': 'http://localhost:5000',
-          'X-Title': 'HealthAI'
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'Content-Type': 'application/json'
         },
-        timeout: 15000
+        timeout: 20000
       }
     );
 
-    return response.data.choices[0].message.content;
+    if (response.data && response.data.content && response.data.content[0]) {
+      return response.data.content[0].text;
+    }
+    return targetLanguage === 'hi' ? translateToHindi(text) : text;
   } catch (error) {
     console.error('[TRANSLATION] AI translation failed:', error.message);
     // Fallback to local translation

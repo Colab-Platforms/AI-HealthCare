@@ -721,17 +721,16 @@ exports.aiChat = async (req, res) => {
       return res.status(400).json({ message: 'Query is required' });
     }
 
-    // Check if any API key is configured
+    // Check if Anthropic API key is configured
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
-    const openrouterKey = process.env.OPENROUTER_API_KEY;
     const isAnthropicDirect = anthropicKey && anthropicKey.startsWith('sk-ant');
 
-    if (!anthropicKey && !openrouterKey) {
-      console.error('No AI API key configured');
+    if (!isAnthropicDirect) {
+      console.error('No valid Anthropic API key configured');
       return res.status(500).json({
         success: false,
-        message: 'AI service not configured. Please contact administrator.',
-        error: 'Missing API key'
+        message: 'AI service not configured correctly. Please contact administrator.',
+        error: 'Missing or invalid Anthropic API key'
       });
     }
 
@@ -803,54 +802,31 @@ User Profile: ${req.user.name}`;
     const axios = require('axios');
     let aiResponse;
 
-    if (isAnthropicDirect) {
-      console.log('Calling Anthropic Direct API...');
-      const response = await axios.post(
-        'https://api.anthropic.com/v1/messages',
-        {
-          model: 'claude-3-5-sonnet-20241022',
-          system: systemPrompt,
-          messages: userMessages,
-          temperature: 0.7,
-          max_tokens: 2000
+    console.log('Calling Anthropic Direct API...');
+    const response = await axios.post(
+      'https://api.anthropic.com/v1/messages',
+      {
+        model: 'claude-3-5-sonnet-20241022',
+        system: systemPrompt,
+        messages: userMessages,
+        temperature: 0.7,
+        max_tokens: 2000
+      },
+      {
+        headers: {
+          'x-api-key': anthropicKey,
+          'anthropic-version': '2023-06-01',
+          'Content-Type': 'application/json'
         },
-        {
-          headers: {
-            'x-api-key': anthropicKey,
-            'anthropic-version': '2023-06-01',
-            'Content-Type': 'application/json'
-          },
-          timeout: 30000
-        }
-      );
+        timeout: 45000
+      }
+    );
+
+    if (response.data && response.data.content && response.data.content[0]) {
       aiResponse = response.data.content[0].text;
       console.log('Anthropic Direct API success');
     } else {
-      console.log('Calling OpenRouter API...');
-      const messages = [
-        { role: 'system', content: systemPrompt },
-        ...userMessages
-      ];
-      const response = await axios.post(
-        'https://openrouter.ai/api/v1/chat/completions',
-        {
-          model: 'google/gemini-2.0-flash-exp:free',
-          messages,
-          temperature: 0.7,
-          max_tokens: 2000
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${openrouterKey}`,
-            'Content-Type': 'application/json',
-            'HTTP-Referer': process.env.CLIENT_URL || 'https://ai-diagnostic-steel.vercel.app',
-            'X-Title': 'HealthAI Platform'
-          },
-          timeout: 30000
-        }
-      );
-      aiResponse = response.data.choices[0].message.content;
-      console.log('OpenRouter API success');
+      throw new Error('Invalid response structure from Anthropic API');
     }
 
     res.json({

@@ -92,53 +92,9 @@ Respond in a clear, organized format with proper formatting for readability.`;
       }
     }
 
-    // Fallback: Try Claude model from OpenRouter
-    if (!aiResponse && process.env.OPENROUTER_API_KEY) {
-      const models = [
-        'anthropic/claude-3.5-sonnet',
-        'anthropic/claude-3-sonnet'
-      ];
-
-      for (const model of models) {
-        try {
-          console.log(`Trying OpenRouter model: ${model}`);
-
-          const response = await axios.post(
-            'https://openrouter.ai/api/v1/chat/completions',
-            {
-              model: model,
-              messages: [
-                { role: 'system', content: systemPrompt },
-                ...messages
-              ],
-              temperature: 0.7,
-              max_tokens: 1500
-            },
-            {
-              headers: {
-                'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-                'Content-Type': 'application/json',
-                'HTTP-Referer': process.env.CLIENT_URL || 'https://ai-diagnostic-steel.vercel.app',
-                'X-Title': 'HealthAI Platform'
-              },
-              timeout: 25000
-            }
-          );
-
-          if (response.data && response.data.choices && response.data.choices[0]) {
-            aiResponse = response.data.choices[0].message.content;
-            console.log(`Success with OpenRouter model: ${model}`);
-            break;
-          }
-        } catch (error) {
-          const status = error.response?.status;
-          const errorMsg = error.response?.data?.error?.message || error.message;
-
-          console.error(`Model ${model} failed (${status}):`, errorMsg);
-          lastError = error;
-          continue;
-        }
-      }
+    // If Anthropic key is not available, use intelligent fallback
+    if (!aiResponse) {
+      console.log('Anthropic Direct API key not found or failed. Using fallback.');
     }
 
     // If both APIs failed, use intelligent fallback

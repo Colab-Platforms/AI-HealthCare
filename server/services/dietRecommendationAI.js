@@ -5,99 +5,50 @@ const axios = require('axios');
  * Generates personalized diet plans and supplement recommendations
  */
 
-const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-
-const PRIMARY_MODEL = 'anthropic/claude-3.5-sonnet';
-const BACKUP_MODEL = 'openai/gpt-4o-mini';
-const FALLBACK_MODEL = 'google/gemini-pro-1.5';
+const CLAUDE_MODEL = 'claude-3-5-sonnet-20241022';
 
 class DietRecommendationAI {
   constructor() {
-    this.apiKey = process.env.ANTHROPIC_API_KEY || process.env.OPENROUTER_API_KEY;
+    this.apiKey = process.env.ANTHROPIC_API_KEY;
   }
 
-  getApiParams(attempt = 0) {
-    // Re-read API key in case env changed
-    this.apiKey = process.env.ANTHROPIC_API_KEY || process.env.OPENROUTER_API_KEY;
-
-    const isAnthropicDirect = this.apiKey?.startsWith('sk-ant');
-    const apiUrl = isAnthropicDirect ? ANTHROPIC_API_URL : OPENROUTER_API_URL;
-
-    let model = isAnthropicDirect ? 'claude-3-5-sonnet-20241022' : 'anthropic/claude-3-5-sonnet';
-    if (!isAnthropicDirect && attempt === 1) model = BACKUP_MODEL;
-    if (!isAnthropicDirect && attempt >= 2) model = FALLBACK_MODEL;
-
-    return { isAnthropicDirect, apiUrl, model };
+  getApiParams() {
+    this.apiKey = process.env.ANTHROPIC_API_KEY;
+    const apiUrl = ANTHROPIC_API_URL;
+    const model = CLAUDE_MODEL;
+    return { apiUrl, model };
   }
 
-  async makeAIRequest(payload, attempt = 0) {
-    const { isAnthropicDirect, apiUrl, model } = this.getApiParams(attempt);
+  async makeAIRequest(payload) {
+    const { apiUrl, model } = this.getApiParams();
 
-    console.log(`🔄 DietAI: Using ${isAnthropicDirect ? 'Anthropic Direct' : 'OpenRouter'} with model: ${model} (attempt ${attempt + 1})`);
+    console.log(`🔄 DietAI: Using Anthropic Direct with model: ${model}`);
 
-    const headers = isAnthropicDirect ? {
+    const headers = {
       'x-api-key': this.apiKey,
       'anthropic-version': '2023-06-01',
       'Content-Type': 'application/json'
-    } : {
-      'Authorization': `Bearer ${this.apiKey}`,
-      'Content-Type': 'application/json',
-      'HTTP-Referer': 'https://fitcure.ai',
-      'X-Title': 'FitCure Diet'
     };
 
     try {
-      payload.model = model;
-      // Adjust payload for Anthropic Direct if needed (it uses 'system' property differently)
-      const requestPayload = isAnthropicDirect ? {
-        model: payload.model,
+      const requestPayload = {
+        model: model,
         max_tokens: payload.max_tokens,
         system: payload.system || (payload.messages && payload.messages[0].role === 'system' ? payload.messages[0].content : ''),
         messages: payload.messages.filter(m => m.role !== 'system'),
         temperature: payload.temperature
-      } : payload;
+      };
 
       const response = await axios.post(apiUrl, requestPayload, { headers, timeout: 60000 });
 
-      let aiResponse = '';
-      if (isAnthropicDirect) {
-        if (response.data && response.data.content && response.data.content[0]) {
-          aiResponse = response.data.content[0].text;
-        } else {
-          throw new Error('Invalid Anthropic response structure');
-        }
+      if (response.data && response.data.content && response.data.content[0]) {
+        return response.data.content[0].text;
       } else {
-        if (response.data && response.data.choices && response.data.choices[0]) {
-          aiResponse = response.data.choices[0].message.content;
-        } else {
-          throw new Error('Invalid OpenRouter response structure');
-        }
+        throw new Error('Invalid Anthropic response structure');
       }
-      return aiResponse;
     } catch (error) {
-      console.error(`Diet AI Request Error (Attempt ${attempt + 1}):`, error.response?.data || error.message);
-
-      if (!isAnthropicDirect && attempt < 2) {
-        console.log(`⚠️ Attempt ${attempt + 1} failed. Retrying with fallback model...`);
-        return this.makeAIRequest(payload, attempt + 1);
-      }
-
-      // If Anthropic direct fails and OpenRouter key exists, try OpenRouter as fallback
-      if (isAnthropicDirect && process.env.OPENROUTER_API_KEY) {
-        console.log('⚠️ Anthropic direct failed. Trying OpenRouter as fallback...');
-        const origKey = process.env.ANTHROPIC_API_KEY;
-        process.env.ANTHROPIC_API_KEY = '';
-        try {
-          const result = await this.makeAIRequest(payload, 0);
-          process.env.ANTHROPIC_API_KEY = origKey;
-          return result;
-        } catch (retryErr) {
-          process.env.ANTHROPIC_API_KEY = origKey;
-          throw retryErr;
-        }
-      }
-
+      console.error(`Diet AI Request Error:`, error.response?.data || error.message);
       throw error;
     }
   }
@@ -201,17 +152,7 @@ RETURN JSON ONLY:
   "avoidSuggestions": ["Suggestion 1", "Suggestion 2"]
 }`;
 
-    const { isAnthropicDirect } = this.getApiParams();
-    const systemMsg = 'You are an expert Indian nutritionist specializing in personalized diet plans.';
-
-    const payload = !isAnthropicDirect ? {
-      messages: [
-        { role: 'system', content: systemMsg },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.7,
-      max_tokens: 4000
-    } : {
+    const payload = {
       max_tokens: 4000,
       system: systemMsg,
       messages: [{ role: 'user', content: prompt }],
@@ -246,17 +187,7 @@ RETURN JSON:
   "generalGuidance": [], "consultationNote": "Warning"
 }`;
 
-    const { isAnthropicDirect } = this.getApiParams();
-    const systemMsg = 'You are an expert clinical nutritionist.';
-
-    const payload = !isAnthropicDirect ? {
-      messages: [
-        { role: 'system', content: systemMsg },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.5,
-      max_tokens: 2000
-    } : {
+    const payload = {
       max_tokens: 2000,
       system: systemMsg,
       messages: [{ role: 'user', content: prompt }],
@@ -318,15 +249,7 @@ Provide analysis in this JSON format:
   "tips": ["Drink more water", "Include more whole grains"]
 }`;
 
-    const payload = !this.getApiParams().isAnthropicDirect ? {
-      model: this.getApiParams().model,
-      messages: [
-        { role: 'system', content: systemMsg },
-        { role: 'user', content: prompt }
-      ],
-      temperature: 0.7,
-      max_tokens: 2500
-    } : {
+    const payload = {
       max_tokens: 2500,
       system: systemMsg,
       messages: [{ role: 'user', content: prompt }],

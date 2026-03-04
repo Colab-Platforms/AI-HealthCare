@@ -148,7 +148,6 @@ app.get('/api/health-check', async (req, res) => {
       MONGODB_URI: process.env.MONGODB_URI ? 'SET' : 'NOT SET',
       JWT_SECRET: process.env.JWT_SECRET ? 'SET' : 'NOT SET',
       ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ? 'SET' : 'NOT SET',
-      OPENROUTER_API_KEY: process.env.OPENROUTER_API_KEY ? 'SET' : 'NOT SET',
       CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME ? 'SET' : 'NOT SET',
     },
     connectionError

@@ -1,61 +1,55 @@
 const axios = require('axios');
 
-const OPENROUTER_API_URL = 'https://openrouter.ai/api/v1/chat/completions';
+const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
+const CLAUDE_MODEL = 'claude-3-5-sonnet-20241022';
 
-// GPT-4 MODELS ONLY - NO CLAUDE!
-const AI_MODELS = [
-  'openai/gpt-4-turbo',
-  'openai/gpt-4-turbo-preview',
-  'openai/gpt-4',
-  'openai/gpt-3.5-turbo-16k'
-];
-
-let CURRENT_MODEL_INDEX = 0;
-
-const makeOpenRouterRequest = async (messages, maxTokens = 3000, retryCount = 0) => {
-  const currentModel = AI_MODELS[CURRENT_MODEL_INDEX] || AI_MODELS[0];
-
+const makeAnthropicRequest = async (messages, maxTokens = 3000) => {
   try {
-    if (!process.env.OPENROUTER_API_KEY) {
-      throw new Error('OPENROUTER_API_KEY is not set');
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey || !apiKey.startsWith('sk-ant')) {
+      throw new Error('ANTHROPIC_API_KEY is not set or invalid for direct access');
     }
 
-    console.log('🔄 Making OpenRouter request with model:', currentModel);
-    console.log('API Key present:', !!process.env.OPENROUTER_API_KEY);
+    console.log('🔄 Making Anthropic Direct request with model:', CLAUDE_MODEL);
+
+    // Filter out system message to use as 'system' parameter in Anthropic API
+    let systemMessage = '';
+    const filteredMessages = messages.filter(m => {
+      if (m.role === 'system') {
+        systemMessage = m.content;
+        return false;
+      }
+      return true;
+    });
 
     const response = await axios.post(
-      OPENROUTER_API_URL,
+      ANTHROPIC_API_URL,
       {
-        model: currentModel,
-        messages,
-        temperature: 0,
+        model: CLAUDE_MODEL,
+        system: systemMessage,
+        messages: filteredMessages,
         max_tokens: maxTokens,
-        seed: 42,
-        top_p: 1
+        temperature: 0
       },
       {
         headers: {
-          'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-          'Content-Type': 'application/json',
-          'HTTP-Referer': process.env.APP_URL || 'http://localhost:5173',
-          'X-Title': 'HealthAI Platform'
+          'x-api-key': apiKey,
+          'anthropic-version': '2023-06-01',
+          'Content-Type': 'application/json'
         },
         timeout: 120000
       }
     );
 
-    console.log('✅ API call successful with', currentModel);
-    return response.data.choices[0].message.content;
-  } catch (error) {
-    console.error('❌ API Error:', error.message);
-
-    if ((error.response?.status === 404 || error.response?.status === 403) &&
-      CURRENT_MODEL_INDEX < AI_MODELS.length - 1) {
-      console.log('⚠️ Trying next model...');
-      CURRENT_MODEL_INDEX++;
-      return makeOpenRouterRequest(messages, maxTokens, retryCount + 1);
+    if (response.data && response.data.content && response.data.content[0]) {
+      console.log('✅ Anthropic call successful');
+      return response.data.content[0].text;
     }
 
+    throw new Error('Invalid response structure from Anthropic API');
+  } catch (error) {
+    const errorMsg = error.response?.data?.error?.message || error.message;
+    console.error('❌ Anthropic Direct Error:', errorMsg);
     throw error;
   }
 };
@@ -128,7 +122,7 @@ exports.analyzeHealthReport = async (reportText, user = {}) => {
       { role: 'user', content: `${userContext}\n\nPlease analyze the following health report text:\n\n${reportText}` }
     ];
 
-    const content = await makeOpenRouterRequest(messages);
+    const content = await makeAnthropicRequest(messages);
 
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     const analysis = JSON.parse(jsonMatch[0]);
@@ -170,7 +164,7 @@ exports.compareReports = async (currentReport, previousReport) => {
       "recommendations": ["Adjusted advice based on trends"]
     }`;
 
-    const content = await makeOpenRouterRequest([
+    const content = await makeAnthropicRequest([
       { role: 'system', content: 'You are a medical trend analyst. Return JSON only.' },
       { role: 'user', content: prompt }
     ]);
@@ -198,7 +192,7 @@ exports.chatWithReport = async (report, message, chatHistory) => {
       { role: 'user', content: message }
     ];
 
-    return await makeOpenRouterRequest(messages, 1000);
+    return await makeAnthropicRequest(messages, 1000);
   } catch (error) {
     return "I'm sorry, I'm having trouble analyzing your report right now.";
   }
@@ -219,7 +213,7 @@ exports.generateMetricInfo = async (metricName, metricValue, normalRange, unit) 
       "dietaryTips": ["Foods that help"]
     }`;
 
-    const content = await makeOpenRouterRequest([
+    const content = await makeAnthropicRequest([
       { role: 'system', content: 'You are a medical educator. Return JSON only.' },
       { role: 'user', content: prompt }
     ], 1000);
