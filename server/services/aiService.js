@@ -1,7 +1,7 @@
 const axios = require('axios');
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const CLAUDE_MODEL = 'claude-3-5-sonnet-20241022';
+const CLAUDE_MODEL = 'claude-sonnet-4-6';
 
 const makeAnthropicRequest = async (messages, maxTokens = 3000) => {
   try {
@@ -101,7 +101,7 @@ const HEALTH_ANALYSIS_PROMPT = `You are a professional medical report analyzer. 
     
     IMPORTANT: Return ONLY the JSON object. Do not include markdown formatting or extra text.`;
 
-exports.analyzeHealthReport = async (reportText, user = {}) => {
+exports.analyzeHealthReport = async (reportText, user = {}, imageData = null) => {
   try {
     console.log('🔄 Analyzing report...');
 
@@ -117,30 +117,56 @@ exports.analyzeHealthReport = async (reportText, user = {}) => {
       }
     }
 
+    const userContent = [];
+
+    // Add text content if available
+    if (reportText && reportText.trim().length > 0) {
+      userContent.push({
+        type: 'text',
+        text: `${userContext}\n\nPlease analyze the following health report text:\n\n${reportText}`
+      });
+    } else if (imageData) {
+      // If no text but we have image, add context
+      userContent.push({
+        type: 'text',
+        text: `${userContext}\n\nPlease analyze this health report image.`
+      });
+    }
+
+    // Add image content if available
+    if (imageData && imageData.buffer) {
+      const base64Image = imageData.buffer.toString('base64');
+      userContent.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: imageData.mimetype || 'image/jpeg',
+          data: base64Image
+        }
+      });
+    }
+
+    if (userContent.length === 0) {
+      throw new Error('No content provided for analysis (text or image)');
+    }
+
     const messages = [
       { role: 'system', content: HEALTH_ANALYSIS_PROMPT },
-      { role: 'user', content: `${userContext}\n\nPlease analyze the following health report text:\n\n${reportText}` }
+      { role: 'user', content: userContent }
     ];
 
     const content = await makeAnthropicRequest(messages);
 
     const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) {
+      throw new Error('AI Response was not valid JSON: ' + content.substring(0, 100));
+    }
     const analysis = JSON.parse(jsonMatch[0]);
     console.log('✅ Analysis complete');
     return analysis;
   } catch (error) {
-    console.error('❌ Error:', error.message);
-    return {
-      patientName: 'Patient',
-      healthScore: 70,
-      summary: 'Analysis failed',
-      keyFindings: ['Error: ' + error.message],
-      metrics: {},
-      deficiencies: [],
-      supplements: [],
-      dietPlan: { overview: 'Pending' },
-      recommendations: { lifestyle: [] }
-    };
+    console.error('❌ Error in analyzeHealthReport:', error.message);
+    throw error; // Rethrow to let controller handle it
   }
 };
 

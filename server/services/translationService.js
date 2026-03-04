@@ -169,7 +169,7 @@ const translateWithAI = async (text, targetLanguage = 'hi') => {
     const response = await axios.post(
       'https://api.anthropic.com/v1/messages',
       {
-        model: 'claude-3-5-sonnet-20241022',
+        model: 'claude-sonnet-4-6',
         system: `You are a medical translator. Translate the following medical text to ${targetLanguage === 'hi' ? 'Hindi' : 'English'} in simple, easy-to-understand language. Keep medical terms accurate. Return ONLY the translated text, nothing else.`,
         messages: [
           {

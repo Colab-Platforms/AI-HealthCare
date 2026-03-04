@@ -39,7 +39,7 @@ exports.uploadReport = async (req, res) => {
         // For images, upload to Cloudinary and use manual text
         console.log('☁️ Uploading image report to Cloudinary...');
         cloudinaryUrl = await cloudinary.uploadImage(dataBuffer, 'health_reports');
-        extractedText = req.body.manualText || 'Image report - manual text provided';
+        extractedText = req.body.manualText || 'Image report - vision analysis requested';
       }
     } catch (parseError) {
       console.error('File parsing error:', parseError.message);
@@ -68,14 +68,23 @@ exports.uploadReport = async (req, res) => {
     let aiAnalysis;
     try {
       console.log('\n🔄 ========== ANALYZING REPORT ==========');
-      console.log('📝 PDF Text Length:', extractedText.length, 'characters');
-      console.log('📝 First 1000 characters of PDF text:');
-      console.log('---PDF-START---');
-      console.log(extractedText.substring(0, 1000));
-      console.log('---PDF-END---');
+      if (req.file.mimetype === 'application/pdf') {
+        console.log('📝 PDF Text Length:', extractedText.length, 'characters');
+        console.log('📝 First 1000 characters of PDF text:');
+        console.log('---PDF-START---');
+        console.log(extractedText.substring(0, 1000));
+        console.log('---PDF-END---');
 
-      console.log('\n🔄 Analyzing report...');
-      aiAnalysis = await analyzeHealthReport(extractedText, req.user);
+        console.log('\n🔄 Analyzing report text...');
+        aiAnalysis = await analyzeHealthReport(extractedText, req.user);
+      } else {
+        console.log('📝 Image Analysis with vision...');
+        // Pass the file data for vision analysis
+        aiAnalysis = await analyzeHealthReport(null, req.user, {
+          buffer: req.file.buffer || fs.readFileSync(req.file.path),
+          mimetype: req.file.mimetype
+        });
+      }
 
       console.log('\n📦 ========== FULL AI ANALYSIS OBJECT ==========');
       console.log('Type:', typeof aiAnalysis);
