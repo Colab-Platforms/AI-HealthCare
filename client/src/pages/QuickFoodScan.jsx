@@ -702,6 +702,19 @@ export default function QuickFoodScan() {
 
       if (response.data.success) {
         toast.success(`Meal logged to ${selectedMealType}! 🎉`, { id: logToastId });
+
+        // Show motivation based on nutrition
+        const p = result.foodItem?.nutrition?.protein || 0;
+        const c = result.foodItem?.nutrition?.calories || 0;
+        let msg = "Keep it up! You're doing well! 🚀";
+        if (p > 25) msg = "Great protein source! Your muscles will thank you! 💪";
+        else if (c < 300) msg = "Nice light meal! Perfect for staying on track! ✨";
+        else if (c > 800) msg = "Energy powerhouse! Make sure to stay active today! 🔥";
+
+        setTimeout(() => {
+          toast(msg, { icon: '🌟', duration: 4000 });
+        }, 500);
+
         setShowMealTypeModal(false);
         resetForm();
         // Navigate to nutrition page

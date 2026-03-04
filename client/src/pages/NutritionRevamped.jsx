@@ -41,6 +41,7 @@ import {
   Bar,
   Cell,
 } from "recharts";
+import MealInsightPopup from "../components/MealInsightPopup";
 
 export default function NutritionRevamped() {
   const { user } = useAuth();
@@ -55,6 +56,7 @@ export default function NutritionRevamped() {
   const [selectedMealType, setSelectedMealType] = useState("");
   const [waterIntake, setWaterIntake] = useState(0);
   const [editingMeal, setEditingMeal] = useState(null);
+  const [selectedInsightMeal, setSelectedInsightMeal] = useState(null);
 
   // Add meal form state
   const [foodName, setFoodName] = useState("");
@@ -317,6 +319,16 @@ export default function NutritionRevamped() {
           }
         );
         toast.success("Meal logged!");
+
+        // Show motivation based on nutrition
+        const p = parseFloat(protein) || 0;
+        const c = parseFloat(calories) || 0;
+        let msg = "Keep it up! You're doing well! 🚀";
+        if (p > 25) msg = "Great protein source! Your muscles will thank you! 💪";
+        else if (c < 300) msg = "Nice light meal! Perfect for staying on track! ✨";
+        else if (c > 800) msg = "Energy powerhouse! Make sure to stay active today! 🔥";
+
+        toast(msg, { icon: '🌟', duration: 4000 });
       }
 
       setShowAddMeal(false);
@@ -776,6 +788,12 @@ export default function NutritionRevamped() {
                                   g
                                 </span>
                               </div>
+                              <button
+                                onClick={() => setSelectedInsightMeal(log)}
+                                className="text-[10px] font-black text-purple-600 uppercase tracking-widest mt-2 hover:underline flex items-center gap-1"
+                              >
+                                View Meal Insight <Sparkles className="w-3 h-3" />
+                              </button>
                             </div>
                             <div className="flex items-center gap-3">
                               {log.healthScore10 !== undefined && (
@@ -1398,6 +1416,13 @@ export default function NutritionRevamped() {
             </div>
           </div>
         </div>
+      )}
+
+      {selectedInsightMeal && (
+        <MealInsightPopup
+          meal={selectedInsightMeal}
+          onClose={() => setSelectedInsightMeal(null)}
+        />
       )}
     </div>
   );
