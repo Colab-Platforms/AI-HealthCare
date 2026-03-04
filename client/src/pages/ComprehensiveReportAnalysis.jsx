@@ -53,6 +53,12 @@ export default function ComprehensiveReportAnalysis() {
         ...(aiAnalysis.deficiencies?.map(d => d.name) || []),
         ...(aiAnalysis.deficiencies?.map(d => d.explanation) || []),
         ...(aiAnalysis.deficiencies?.flatMap(d => d.symptoms) || []),
+        ...Object.values(aiAnalysis.metrics || {}).flatMap(m => [
+          m.whatItDoes,
+          m.lowHighImpact,
+          ...(m.topFoods || []),
+          ...(m.symptoms || [])
+        ])
       ].filter(Boolean);
 
       // Batch translate
@@ -81,25 +87,10 @@ export default function ComprehensiveReportAnalysis() {
   };
 
   const handleMetricClick = (metricName, metricData) => {
-    const metricInfo = {
+    setSelectedMetric({
       name: metricName,
-      value: metricData.value,
-      unit: metricData.unit || '',
-      normalRange: metricData.normalRange || 'N/A',
-      status: metricData.status || 'normal',
-      description: metricData.description || metricData.whatIsIt || '',
-      recommendations: metricData.howToFix || [],
-      foodsToConsume: metricData.foods || [],
-      foodsToAvoid: metricData.foodsToAvoid || [],
-      symptoms: metricData.symptoms || [],
-      severity: metricData.severity || '',
-      whyAbnormal: metricData.whyAbnormal || '',
-      consequences: metricData.consequences || '',
-      normalizeTime: metricData.normalizeTime || '',
-      supplements: metricData.supplements || [],
-      lifestyle: metricData.lifestyle || []
-    };
-    setSelectedMetric(metricInfo);
+      ...metricData
+    });
     setShowMetricModal(true);
   };
 
@@ -580,6 +571,7 @@ export default function ComprehensiveReportAnalysis() {
           vital={selectedMetric}
           onClose={closeMetricModal}
           initialLanguage={isHindi ? 'hi' : 'en'}
+          t={t}
         />
       )}
     </div>

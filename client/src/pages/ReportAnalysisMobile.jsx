@@ -57,6 +57,12 @@ export default function ReportAnalysisMobile() {
                 ...(aiAnalysis.deficiencies?.map(d => d.name) || []),
                 ...(aiAnalysis.deficiencies?.map(d => d.explanation) || []),
                 ...(aiAnalysis.deficiencies?.flatMap(d => d.symptoms) || []),
+                ...Object.values(aiAnalysis.metrics || {}).flatMap(m => [
+                    m.whatItDoes,
+                    m.lowHighImpact,
+                    ...(m.topFoods || []),
+                    ...(m.symptoms || [])
+                ])
             ].filter(Boolean);
 
             // Batch translate
@@ -155,20 +161,10 @@ export default function ReportAnalysisMobile() {
     };
 
     const handleMetricClick = (metricName, metricData) => {
-        const metricInfo = {
+        setSelectedMetric({
             name: metricName,
-            value: metricData.value,
-            unit: metricData.unit || '',
-            normalRange: metricData.normalRange || 'N/A',
-            status: metricData.status || 'normal',
-            description: metricData.description || '',
-            recommendations: metricData.recommendations || [],
-            foodsToConsume: metricData.foodsToConsume || [],
-            foodsToAvoid: metricData.foodsToAvoid || [],
-            symptoms: metricData.symptoms || [],
-            severity: metricData.severity || ''
-        };
-        setSelectedMetric(metricInfo);
+            ...metricData
+        });
         setShowMetricModal(true);
     };
 
@@ -573,6 +569,7 @@ export default function ReportAnalysisMobile() {
                     vital={selectedMetric}
                     onClose={closeMetricModal}
                     initialLanguage={isHindi ? 'hi' : 'en'}
+                    t={t}
                 />
             )}
         </div >

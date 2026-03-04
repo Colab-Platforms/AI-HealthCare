@@ -73,7 +73,16 @@ JSON STRUCTURE (follow EXACTLY):
   "keyFindings": ["finding1", "finding2", "finding3"],
   "riskFactors": ["risk1", "risk2"],
   "metrics": {
-    "MetricName": {"value": 14.2, "unit": "g/dL", "status": "normal", "normalRange": "12-16"}
+    "MetricName": {
+      "value": 14.2, 
+      "unit": "g/dL", 
+      "status": "normal", 
+      "normalRange": "12-16",
+      "whatItDoes": "Brief explanation of its role in body",
+      "lowHighImpact": "What happens if Low (e.g. Fatigue) vs High (e.g. Risk)",
+      "topFoods": ["Food 1", "Food 2"],
+      "symptoms": ["Symptom 1", "Symptom 2"]
+    }
   },
   "deficiencies": [
     {"name": "Vitamin D", "severity": "moderate", "currentValue": "15", "normalRange": "30-100", "symptoms": ["Fatigue"]}

@@ -1,46 +1,38 @@
 import { useState, useEffect } from 'react';
-import { X, TrendingUp, TrendingDown, AlertCircle, CheckCircle, Info } from 'lucide-react';
+import { X, Activity, Info, Apple, AlertTriangle, Zap, CheckCircle, TrendingUp, TrendingDown } from 'lucide-react';
 import { healthService } from '../services/api';
 
-/**
- * Vital Details Popup Component
- * Shows normal ranges, user's data, recommendations, and visual indicator
- * Similar to WebShark Health app
- */
-export default function VitalDetailsPopup({ vital, onClose, initialLanguage = 'en' }) {
-  const [activeTab, setActiveTab] = useState('overview');
+export default function VitalDetailsPopup({ vital, onClose, initialLanguage = 'en', t }) {
   const [aiInfo, setAiInfo] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [language, setLanguage] = useState(initialLanguage);
+  const [loading, setLoading] = useState(false);
+  const language = initialLanguage === 'hi' ? 'hi' : 'en';
 
-  // CRITICAL: Add defensive null checks
-  if (!vital) {
-    console.error('VitalDetailsPopup: vital prop is null or undefined');
-    return null;
-  }
+  if (!vital) return null;
 
-  // Extract vital information with fallback values
+  // Destructure with new field support from main analysis
   const {
-    name = 'Unknown Metric',
+    name = 'Metric',
     value = 'N/A',
     unit = '',
     normalRange = 'N/A',
     status = 'normal',
+    whatItDoes = '',
+    lowHighImpact = '',
+    topFoods = [],
+    symptoms = [],
+    // Legacy support for fields that might be passed from old reports or secondary fetch
     description = '',
     recommendations = [],
     foodsToConsume = [],
-    foodsToAvoid = [],
-    symptoms = [],
-    severity = ''
-  } = vital || {};
+  } = vital;
 
-  // Fetch AI-generated info on mount
+  // Decide if we need to fetch additional info (for older reports)
   useEffect(() => {
+    const shouldFetch = !whatItDoes && !lowHighImpact;
+
     const fetchAIInfo = async () => {
       try {
         setLoading(true);
-        console.log('🔄 Fetching AI info for vital:', name);
-
         const response = await healthService.getMetricInfo({
           metricName: name,
           metricValue: value,
@@ -49,396 +41,176 @@ export default function VitalDetailsPopup({ vital, onClose, initialLanguage = 'e
         });
 
         if (response.data && response.data.metricInfo) {
-          console.log('✅ Received AI info for vital:', name);
-          setAiInfo(response.data.metricInfo[language] || response.data.metricInfo.en);
+          const info = response.data.metricInfo[language] || response.data.metricInfo.en;
+          setAiInfo(info);
         }
       } catch (error) {
-        console.error('❌ Error fetching AI info:', error);
-        // Keep using fallback data from props
+        console.error('Error fetching metric info:', error);
       } finally {
         setLoading(false);
       }
     };
 
-    if (name && name !== 'Unknown Metric') {
+    if (shouldFetch) {
       fetchAIInfo();
-    } else {
-      setLoading(false);
     }
-  }, [name, value, normalRange, unit, language]);
+  }, [name, value, normalRange, unit, language, whatItDoes, lowHighImpact]);
 
-  // Parse normal range (e.g., "70-100" or "4.5-5.5")
-  const parseRange = (range) => {
-    if (!range) return { min: 0, max: 100 };
-    const parts = range.split('-').map(p => parseFloat(p.trim()));
-    return { min: parts[0], max: parts[1] };
+  // Wrap t for safety
+  const translate = (text) => (t && typeof t === 'function' ? t(text) : text);
+
+  // Merge data sources
+  const data = {
+    role: translate(whatItDoes || aiInfo?.whatIsIt || description || 'Information not available.'),
+    impact: translate(lowHighImpact || aiInfo?.significance || (status !== 'normal' ? aiInfo?.interpretation : null) || 'No significant issues detected.'),
+    foods: (topFoods.length > 0 ? topFoods : (aiInfo?.dietaryTips || foodsToConsume || [])).map(f => translate(f)),
+    relatableSymptoms: (symptoms.length > 0 ? symptoms : (aiInfo?.symptoms || [])).map(s => translate(s)),
+    steps: (recommendations.length > 0 ? recommendations : (aiInfo?.actions || [])).map(st => translate(st))
   };
 
-  const range = parseRange(normalRange);
-  const numValue = parseFloat(value);
-
-  // Calculate percentage position in range
-  const getPercentage = () => {
-    if (numValue < range.min) return 0;
-    if (numValue > range.max) return 100;
-    return ((numValue - range.min) / (range.max - range.min)) * 100;
+  const getStatusConfig = (s) => {
+    const statusLower = (s || '').toLowerCase();
+    if (statusLower === 'normal' || statusLower === 'good')
+      return { color: 'emerald', icon: CheckCircle, label: language === 'hi' ? 'सामान्य' : 'Normal' };
+    if (statusLower === 'borderline' || statusLower === 'moderate')
+      return { color: 'amber', icon: AlertTriangle, label: language === 'hi' ? 'मध्यम' : 'Borderline' };
+    return { color: 'red', icon: TrendingUp, label: statusLower.toUpperCase() };
   };
 
-  // Determine status color and icon
-  const getStatusColor = () => {
-    if (status === 'normal') return { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', badge: 'bg-emerald-100' };
-    if (status === 'borderline') return { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', badge: 'bg-amber-100' };
-    return { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', badge: 'bg-red-100' };
-  };
-
-  const colors = getStatusColor();
-  const percentage = getPercentage();
+  const config = getStatusConfig(status);
+  const StatusIcon = config.icon;
 
   return (
-    <div
-      className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[9999] p-4"
-      onClick={(e) => {
-        // Close modal if clicking on backdrop
-        if (e.target === e.currentTarget) {
-          onClose();
-        }
-      }}
-    >
-      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-        {/* Header */}
-        <div className={`${colors.bg} border-b-2 ${colors.border} p-6 flex items-center justify-between sticky top-0 z-10`}>
-          <div className="flex items-center gap-3">
-            <div className={`w-12 h-12 rounded-xl ${colors.badge} flex items-center justify-center`}>
-              {status === 'normal' && <CheckCircle className={`w-6 h-6 ${colors.text}`} />}
-              {status === 'borderline' && <AlertCircle className={`w-6 h-6 ${colors.text}`} />}
-              {status === 'high' && <TrendingUp className={`w-6 h-6 ${colors.text}`} />}
+    <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-[10000] p-4 animate-in fade-in duration-300">
+      <div
+        className="bg-white rounded-[2.5rem] shadow-2xl max-w-lg w-full max-h-[90vh] overflow-hidden flex flex-col animate-in zoom-in-95 duration-300 border border-slate-100"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Modern Header */}
+        <div className={`p-8 bg-${config.color}-50 relative`}>
+          <div className="flex items-center justify-between mb-6">
+            <div className={`w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm border border-${config.color}-100`}>
+              <StatusIcon className={`w-6 h-6 text-${config.color}-600`} />
             </div>
-            <div>
-              <h2 className="text-xl font-bold text-slate-800">{name}</h2>
-              <p className={`text-sm ${colors.text} font-medium capitalize`}>{status}</p>
-            </div>
+            <button
+              onClick={onClose}
+              className="w-10 h-10 bg-white/80 hover:bg-white rounded-full flex items-center justify-center shadow-sm transition-all active:scale-95"
+            >
+              <X className="w-5 h-5 text-slate-400" />
+            </button>
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-white/50 rounded-lg transition-colors"
-          >
-            <X className="w-6 h-6 text-slate-600" />
-          </button>
+
+          <h2 className="text-2xl font-black text-slate-800 tracking-tight leading-none mb-2">{name}</h2>
+          <div className="flex items-center gap-2">
+            <span className={`px-3 py-1 bg-white rounded-full text-[10px] font-black uppercase tracking-widest text-${config.color}-600 shadow-sm border border-${config.color}-100`}>
+              {config.label}
+            </span>
+            <span className="text-slate-400 font-bold text-xs">{normalRange} {unit}</span>
+          </div>
         </div>
 
-        {/* Content */}
-        <div className="p-6 space-y-6">
-          {/* Current Value & Range */}
-          <div className="space-y-4">
-            <div className="grid grid-cols-3 gap-4">
-              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
-                <p className="text-xs text-slate-600 font-medium mb-1">Your Value</p>
-                <p className="text-2xl font-bold text-slate-800">
-                  {value} <span className="text-sm text-slate-500">{unit}</span>
-                </p>
-              </div>
-              <div className="bg-blue-50 rounded-xl p-4 border border-blue-200">
-                <p className="text-xs text-blue-600 font-medium mb-1">Normal Range</p>
-                <p className="text-2xl font-bold text-blue-700">{normalRange}</p>
-              </div>
-              <div className={`${colors.bg} rounded-xl p-4 border-2 ${colors.border}`}>
-                <p className={`text-xs ${colors.text} font-medium mb-1`}>Status</p>
-                <p className={`text-2xl font-bold ${colors.text} capitalize`}>{status}</p>
-              </div>
-            </div>
+        {/* Scrollable Content */}
+        <div className="px-8 pb-8 flex-1 overflow-y-auto custom-scrollbar">
+          <div className="py-6 space-y-6">
 
-            {/* Visual Range Indicator (Like WebShark) */}
-            <div className="space-y-3">
-              <p className="text-sm font-semibold text-slate-800">Range Indicator</p>
-              <div className="relative h-12 bg-gradient-to-r from-purple-200 via-pink-200 to-orange-200 rounded-xl overflow-hidden border-2 border-slate-200">
-                {/* Normal range highlight */}
-                <div
-                  className="absolute top-0 bottom-0 bg-white/40 border-l-2 border-r-2 border-blue-500"
-                  style={{
-                    left: `${(range.min / (range.max * 1.2)) * 100}%`,
-                    right: `${100 - (range.max / (range.max * 1.2)) * 100}%`
-                  }}
-                />
-                {/* User's value indicator */}
-                <div
-                  className="absolute top-1/2 -translate-y-1/2 w-1 h-full bg-slate-800 border-2 border-white shadow-lg"
-                  style={{ left: `${percentage}%` }}
-                >
-                  <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 left-0 w-8 h-8 bg-slate-800 rounded-full border-4 border-white shadow-lg" />
+            {/* Main Value Card */}
+            <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 flex items-center justify-between">
+              <div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Your Result</p>
+                <div className="flex items-baseline gap-1">
+                  <span className={`text-4xl font-black text-${config.color}-600`}>{value}</span>
+                  <span className="text-slate-400 font-bold text-sm">{unit}</span>
                 </div>
               </div>
-              <div className="flex justify-between text-xs text-slate-600 font-medium">
-                <span>Low</span>
-                <span>Normal</span>
-                <span>High</span>
+              <div className="text-right">
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Target Range</p>
+                <p className="font-bold text-slate-700">{normalRange}</p>
               </div>
             </div>
-          </div>
 
-          {/* Tabs */}
-          <div className="flex gap-2 border-b border-slate-200">
-            {[
-              { id: 'overview', label: language === 'hi' ? 'अवलोकन' : 'Overview' },
-              { id: 'recommendations', label: language === 'hi' ? 'क्या करें' : 'What to Do' },
-              { id: 'foods', label: language === 'hi' ? 'भोजन और आहार' : 'Foods & Diet' }
-            ].map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${activeTab === tab.id
-                    ? 'border-cyan-500 text-cyan-600'
-                    : 'border-transparent text-slate-600 hover:text-slate-800'
-                  }`}
-              >
-                {tab.label}
-              </button>
-            ))}
-          </div>
-
-          {/* Tab Content */}
-          <div className="space-y-4">
-            {/* Overview Tab */}
-            {activeTab === 'overview' && (
-              <div className="space-y-4">
-                {loading ? (
-                  <div className="text-center py-8">
-                    <div className="w-12 h-12 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin mx-auto mb-3" />
-                    <p className="text-slate-500 text-sm">Loading AI insights...</p>
-                  </div>
-                ) : (
-                  <>
-                    {/* AI-Generated Description or Fallback */}
-                    {(aiInfo?.whatIsIt || description) && (
-                      <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
-                        <h3 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
-                          <Info className="w-4 h-4" />
-                          What is {name}?
-                        </h3>
-                        <p className="text-sm text-blue-900 leading-relaxed">
-                          {aiInfo?.whatIsIt || description || `${name} is a health metric that helps monitor your overall health.`}
-                        </p>
-                      </div>
-                    )}
-
-                    {/* Status Explanation */}
-                    <div className={`p-4 rounded-xl border-2 ${colors.border} ${colors.bg}`}>
-                      <h3 className={`font-semibold ${colors.text} mb-2 flex items-center gap-2`}>
-                        <Info className="w-4 h-4" />
-                        What This Means
-                      </h3>
-                      <p className={`text-sm ${colors.text}`}>
-                        {status === 'normal' && 'Your value is within the normal range. Keep maintaining your current lifestyle and habits.'}
-                        {status === 'borderline' && 'Your value is slightly outside the normal range. Consider making lifestyle adjustments and monitor regularly.'}
-                        {status === 'high' && 'Your value is significantly outside the normal range. Consult with a healthcare provider and make necessary changes.'}
-                        {status === 'low' && 'Your value is below the normal range. Consult with a healthcare provider for guidance.'}
-                      </p>
-                    </div>
-
-                    {/* When Low - AI Generated */}
-                    {aiInfo?.whenLowEffects && aiInfo.whenLowEffects.length > 0 && (
-                      <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
-                        <h3 className="font-semibold text-amber-900 mb-3 flex items-center gap-2">
-                          <TrendingDown className="w-4 h-4" />
-                          {aiInfo.whenLowTitle || 'When Low'}
-                        </h3>
-                        <ul className="space-y-2">
-                          {aiInfo.whenLowEffects.map((effect, idx) => (
-                            <li key={idx} className="text-sm text-amber-800 flex items-start gap-2">
-                              <span className="w-1.5 h-1.5 bg-amber-600 rounded-full mt-1.5 flex-shrink-0" />
-                              {effect}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* When High - AI Generated */}
-                    {aiInfo?.whenHighEffects && aiInfo.whenHighEffects.length > 0 && (
-                      <div className="p-4 bg-red-50 rounded-xl border border-red-200">
-                        <h3 className="font-semibold text-red-900 mb-3 flex items-center gap-2">
-                          <TrendingUp className="w-4 h-4" />
-                          {aiInfo.whenHighTitle || 'When High'}
-                        </h3>
-                        <ul className="space-y-2">
-                          {aiInfo.whenHighEffects.map((effect, idx) => (
-                            <li key={idx} className="text-sm text-red-800 flex items-start gap-2">
-                              <span className="w-1.5 h-1.5 bg-red-600 rounded-full mt-1.5 flex-shrink-0" />
-                              {effect}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-
-                    {/* Symptoms - Fallback if no AI data */}
-                    {!aiInfo && symptoms && Array.isArray(symptoms) && symptoms.length > 0 && (
-                      <div className="p-4 bg-amber-50 rounded-xl border border-amber-200">
-                        <h3 className="font-semibold text-amber-900 mb-3 flex items-center gap-2">
-                          <AlertCircle className="w-4 h-4" />
-                          Associated Symptoms
-                        </h3>
-                        <ul className="space-y-2">
-                          {symptoms.map((symptom, idx) => (
-                            <li key={idx} className="text-sm text-amber-800 flex items-start gap-2">
-                              <span className="w-1.5 h-1.5 bg-amber-600 rounded-full mt-1.5 flex-shrink-0" />
-                              {symptom}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </>
-                )}
+            {loading ? (
+              <div className="flex flex-col items-center justify-center py-12">
+                <div className="w-8 h-8 border-4 border-slate-200 border-t-[#2FC8B9] rounded-full animate-spin mb-4"></div>
+                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Generating Insights...</p>
               </div>
-            )}
+            ) : (
+              <div className="grid grid-cols-1 gap-4">
 
-            {/* Recommendations Tab */}
-            {activeTab === 'recommendations' && (
-              <div className="space-y-4">
-                {loading ? (
-                  <div className="text-center py-8">
-                    <div className="w-12 h-12 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin mx-auto mb-3" />
-                    <p className="text-slate-500 text-sm">Loading recommendations...</p>
-                  </div>
-                ) : (
-                  <>
-                    {/* AI-Generated Solutions */}
-                    {aiInfo?.solutions && aiInfo.solutions.length > 0 ? (
-                      <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200">
-                        <h3 className="font-semibold text-emerald-900 mb-3 flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4" />
-                          How to Improve
-                        </h3>
-                        <ul className="space-y-3">
-                          {aiInfo.solutions.map((solution, idx) => (
-                            <li key={idx} className="text-sm text-emerald-800 flex items-start gap-3 p-3 bg-white rounded-lg">
-                              <span className="w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">
-                                {idx + 1}
-                              </span>
-                              <span>{solution}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : recommendations && Array.isArray(recommendations) && recommendations.length > 0 ? (
-                      <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200">
-                        <h3 className="font-semibold text-emerald-900 mb-3 flex items-center gap-2">
-                          <CheckCircle className="w-4 h-4" />
-                          Recommendations
-                        </h3>
-                        <ul className="space-y-3">
-                          {recommendations.map((rec, idx) => (
-                            <li key={idx} className="text-sm text-emerald-800 flex items-start gap-3 p-3 bg-white rounded-lg">
-                              <span className="w-6 h-6 bg-emerald-500 text-white rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0">
-                                {idx + 1}
-                              </span>
-                              <span>{rec}</span>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    ) : (
-                      <div className="text-center py-8 text-slate-500">
-                        <Info className="w-12 h-12 mx-auto mb-3 opacity-50" />
-                        <p>Consult with a healthcare professional for personalized recommendations.</p>
-                      </div>
-                    )}
-
-                    {/* General Tips */}
-                    <div className="p-4 bg-blue-50 rounded-xl border border-blue-200">
-                      <h3 className="font-semibold text-blue-900 mb-3">General Tips</h3>
-                      <ul className="space-y-2 text-sm text-blue-800">
-                        <li className="flex items-start gap-2">
-                          <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-1.5 flex-shrink-0" />
-                          Monitor this value regularly
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-1.5 flex-shrink-0" />
-                          Maintain a healthy lifestyle
-                        </li>
-                        <li className="flex items-start gap-2">
-                          <span className="w-1.5 h-1.5 bg-blue-600 rounded-full mt-1.5 flex-shrink-0" />
-                          Consult a healthcare provider if concerned
-                        </li>
-                      </ul>
+                {/* 1. What does it do? */}
+                <div className="bg-blue-50/50 rounded-3xl p-5 border border-blue-100 group">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center">
+                      <Zap className="w-4 h-4 text-blue-600" />
                     </div>
-                  </>
-                )}
-              </div>
-            )}
+                    <h3 className="text-xs font-black text-blue-900 uppercase tracking-widest">What it Does</h3>
+                  </div>
+                  <p className="text-sm text-blue-800/80 leading-relaxed font-medium">
+                    {data.role}
+                  </p>
+                </div>
 
-            {/* Foods & Diet Tab */}
-            {activeTab === 'foods' && (
-              <div className="space-y-4">
-                {foodsToConsume && Array.isArray(foodsToConsume) && foodsToConsume.length > 0 && (
-                  <div className="p-4 bg-emerald-50 rounded-xl border border-emerald-200">
-                    <h3 className="font-semibold text-emerald-900 mb-3 flex items-center gap-2">
-                      <CheckCircle className="w-4 h-4" />
-                      Foods to Consume
-                    </h3>
+                {/* 2. Impact Low/High */}
+                <div className="bg-purple-50/50 rounded-3xl p-5 border border-purple-100">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-8 h-8 bg-purple-100 rounded-xl flex items-center justify-center">
+                      <Activity className="w-4 h-4 text-purple-600" />
+                    </div>
+                    <h3 className="text-xs font-black text-purple-900 uppercase tracking-widest">Health Impact</h3>
+                  </div>
+                  <p className="text-sm text-purple-800/80 leading-relaxed font-medium">
+                    {data.impact}
+                  </p>
+                </div>
+
+                {/* 3. What to Eat - HIGHLIGHTED */}
+                <div className="bg-emerald-50 rounded-3xl p-5 border-2 border-emerald-100 relative overflow-hidden">
+                  <div className="absolute -right-4 -bottom-4 opacity-10">
+                    <Apple className="w-24 h-24 text-emerald-600" />
+                  </div>
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="w-8 h-8 bg-emerald-100 rounded-xl flex items-center justify-center">
+                      <Apple className="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <h3 className="text-xs font-black text-emerald-900 uppercase tracking-widest italic">What to Eat to Improve</h3>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {data.foods.length > 0 ? data.foods.map((food, i) => (
+                      <span key={i} className="px-3 py-1.5 bg-white rounded-xl text-xs font-bold text-emerald-700 shadow-sm border border-emerald-100">
+                        {food}
+                      </span>
+                    )) : (
+                      <p className="text-xs text-emerald-600/70 font-medium italic">General healthy diet recommended.</p>
+                    )}
+                  </div>
+                </div>
+
+                {/* 4. Common Symptoms */}
+                {data.relatableSymptoms.length > 0 && (
+                  <div className="bg-orange-50/50 rounded-3xl p-5 border border-orange-100">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-8 h-8 bg-orange-100 rounded-xl flex items-center justify-center">
+                        <AlertTriangle className="w-4 h-4 text-orange-600" />
+                      </div>
+                      <h3 className="text-xs font-black text-orange-900 uppercase tracking-widest">Common Symptoms</h3>
+                    </div>
                     <div className="flex flex-wrap gap-2">
-                      {foodsToConsume.map((food, idx) => (
-                        <span
-                          key={idx}
-                          className="px-3 py-1.5 bg-emerald-100 text-emerald-700 rounded-full text-sm font-medium"
-                        >
-                          {food}
+                      {data.relatableSymptoms.map((symptom, i) => (
+                        <span key={i} className="px-3 py-1.5 bg-white rounded-xl text-xs font-medium text-orange-700 shadow-sm border border-orange-100">
+                          {symptom}
                         </span>
                       ))}
                     </div>
                   </div>
                 )}
 
-                {foodsToAvoid && Array.isArray(foodsToAvoid) && foodsToAvoid.length > 0 && (
-                  <div className="p-4 bg-red-50 rounded-xl border border-red-200">
-                    <h3 className="font-semibold text-red-900 mb-3 flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4" />
-                      Foods to Avoid
-                    </h3>
-                    <div className="flex flex-wrap gap-2">
-                      {foodsToAvoid.map((food, idx) => (
-                        <span
-                          key={idx}
-                          className="px-3 py-1.5 bg-red-100 text-red-700 rounded-full text-sm font-medium"
-                        >
-                          {food}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {(!foodsToConsume || !Array.isArray(foodsToConsume) || foodsToConsume.length === 0) &&
-                  (!foodsToAvoid || !Array.isArray(foodsToAvoid) || foodsToAvoid.length === 0) && (
-                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                      <p className="text-sm text-slate-600">No specific dietary recommendations available.</p>
-                    </div>
-                  )}
               </div>
             )}
           </div>
-
-          {/* Severity Badge */}
-          {severity && (
-            <div className={`p-4 rounded-xl border-2 ${severity === 'severe' ? 'bg-red-50 border-red-200' :
-                severity === 'moderate' ? 'bg-amber-50 border-amber-200' :
-                  'bg-yellow-50 border-yellow-200'
-              }`}>
-              <p className={`text-sm font-medium ${severity === 'severe' ? 'text-red-700' :
-                  severity === 'moderate' ? 'text-amber-700' :
-                    'text-yellow-700'
-                }`}>
-                <strong>Severity:</strong> {severity.charAt(0).toUpperCase() + severity.slice(1)}
-              </p>
-            </div>
-          )}
         </div>
 
-        {/* Footer */}
-        <div className="border-t border-slate-200 p-6 bg-slate-50">
-          <p className="text-xs text-slate-600 text-center">
-            This information is for educational purposes only. Always consult with a healthcare provider for medical advice.
-          </p>
+        {/* Minimal Footer */}
+        <div className="p-6 bg-slate-50 text-center border-t border-slate-100">
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Consult with a professional for medical advice</p>
         </div>
       </div>
     </div>
