@@ -136,16 +136,8 @@ export default function QuickFoodScan() {
         if (recoveredFile) {
           setImage(recoveredFile);
           setImagePreview(previewUrl);
-          console.log('✅ Recovered image successfully');
-
-          // Auto-trigger analysis if we have details
-          const details = persistedDetails ? JSON.parse(persistedDetails) : null;
-          if (persistedInput || details?.quantity) {
-            console.log('🚀 Auto-resuming analysis...');
-            setTimeout(() => {
-              handleAnalyze(null, recoveredFile);
-            }, 800);
-          }
+          console.log('✅ Recovered image successfully — user can now fill details and analyze');
+          toast.success('📸 Image recovered! Fill in details and tap Analyze.', { duration: 3000 });
         }
       } catch (e) {
         console.error('❌ Recovery failed:', e);
@@ -1063,54 +1055,44 @@ export default function QuickFoodScan() {
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header Section */}
-              <div className="relative p-8 pb-0">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+              <div className="relative p-6 pb-0">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
                   {/* Score & Icon */}
-                  <div className="flex items-center gap-6">
-                    <div className="relative w-32 h-32 flex-shrink-0">
-                      <svg className="w-full h-full transform -rotate-90">
+                  <div className="flex items-center gap-5">
+                    <div className="relative w-24 h-24 flex-shrink-0">
+                      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="44" stroke="#f1f5f9" strokeWidth="8" fill="none" />
                         <circle
-                          cx="64"
-                          cy="64"
-                          r="58"
-                          stroke="#f1f5f9"
-                          strokeWidth="10"
-                          fill="none"
-                        />
-                        <circle
-                          cx="64"
-                          cy="64"
-                          r="58"
+                          cx="50" cy="50" r="44"
                           stroke={result.healthScore10 >= 7 ? "#10b981" : result.healthScore10 >= 4 ? "#f59e0b" : "#ef4444"}
-                          strokeWidth="10"
-                          fill="none"
-                          strokeDasharray={364.4}
-                          strokeDashoffset={364.4 - (Math.round((result.healthScore10 || (result.healthScore / 10)) * 10) / 100) * 364.4}
+                          strokeWidth="8" fill="none"
+                          strokeDasharray={276.5}
+                          strokeDashoffset={276.5 - (Math.round((result.healthScore10 || (result.healthScore / 10)) * 10) / 100) * 276.5}
                           strokeLinecap="round"
                           className="transition-all duration-1000 ease-out"
                         />
                       </svg>
                       <div className="absolute inset-0 flex flex-col items-center justify-center">
-                        <span className="text-4xl font-black text-slate-800">
+                        <span className="text-2xl font-black text-slate-800">
                           {Math.round((result.healthScore10 || (result.healthScore / 10)) * 10)}
                         </span>
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">out of 100</span>
+                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">/ 100</span>
                       </div>
                     </div>
 
                     <div>
-                      <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest mb-2 ${result.isHealthy
+                      <div className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest mb-1.5 ${result.isHealthy
                         ? 'bg-emerald-100 text-emerald-700'
                         : 'bg-rose-100 text-rose-700'
                         }`}>
                         {result.isHealthy ? <CheckCircle className="w-3 h-3" /> : <AlertCircle className="w-3 h-3" />}
-                        {result.isHealthy ? 'Healthy Choice' : 'Watch Portions'}
+                        {result.isHealthy ? 'Healthy' : 'Watch Portions'}
                       </div>
-                      <h2 className="text-3xl font-black text-slate-800 leading-tight mb-1">
+                      <h2 className="text-2xl font-black text-slate-800 leading-tight mb-0.5">
                         {result.foodItem?.name}
                       </h2>
-                      <p className="text-slate-500 font-bold flex items-center gap-2 uppercase text-[11px] tracking-widest">
-                        <Zap className="w-4 h-4 text-[#2FC8B9]" />
+                      <p className="text-slate-500 font-bold flex items-center gap-1.5 uppercase text-[10px] tracking-widest">
+                        <Zap className="w-3.5 h-3.5 text-[#2FC8B9]" />
                         {result.foodItem?.quantity || 'Standard Serving'}
                       </p>
                     </div>
@@ -1153,9 +1135,9 @@ export default function QuickFoodScan() {
               </div>
 
               {/* Macro Breakdown */}
-              <div className="px-8 mt-10">
-                <div className="bg-slate-50 rounded-[2.5rem] p-8 border border-slate-100 shadow-inner">
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+              <div className="px-6 mt-6">
+                <div className="bg-slate-50 rounded-2xl p-5 border border-slate-100 shadow-inner">
+                  <div className="grid grid-cols-4 gap-3">
                     {[
                       { label: 'Calories', value: result.foodItem?.nutrition?.calories, icon: Flame, color: 'text-orange-500', bg: 'bg-orange-100', b: 'border-orange-200' },
                       { label: 'Protein', value: result.foodItem?.nutrition?.protein, icon: Zap, color: 'text-[#2FC8B9]', bg: 'bg-[#2FC8B9]/10', b: 'border-[#2FC8B9]/20' },
@@ -1165,18 +1147,18 @@ export default function QuickFoodScan() {
                       const Icon = macro.icon;
                       return (
                         <div key={macro.label} className="flex flex-col items-center">
-                          <div className={`w-14 h-14 rounded-2xl ${macro.bg} flex items-center justify-center mb-3 shadow-sm border ${macro.b}`}>
-                            <Icon className={`w-7 h-7 ${macro.color}`} />
+                          <div className={`w-10 h-10 rounded-xl ${macro.bg} flex items-center justify-center mb-2 shadow-sm border ${macro.b}`}>
+                            <Icon className={`w-5 h-5 ${macro.color}`} />
                           </div>
-                          <span className="text-sm font-black text-slate-800">{macro.value || 0}</span>
-                          <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{macro.label}</span>
+                          <span className="text-xs font-black text-slate-800">{macro.value || 0}</span>
+                          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{macro.label}</span>
                         </div>
                       );
                     })}
                   </div>
 
                   {/* Small Nutrition List */}
-                  <div className="flex flex-wrap justify-center gap-6 mt-8 pt-8 border-t border-slate-200">
+                  <div className="flex flex-wrap justify-center gap-4 mt-4 pt-4 border-t border-slate-200">
                     {[
                       { label: 'Fiber', value: result.foodItem?.nutrition?.fiber, unit: 'g' },
                       { label: 'Sugar', value: result.foodItem?.nutrition?.sugar, unit: 'g' },
@@ -1192,27 +1174,71 @@ export default function QuickFoodScan() {
                 </div>
               </div>
 
-              {/* Health Intelligence */}
-              <div className="px-8 py-10 space-y-10">
+              {/* Health Intelligence - Compact Side-by-Side Layout */}
+              <div className="px-6 py-6 space-y-5">
 
-                {/* Micronutrients Section - New Detailed Design */}
-                <div className="bg-[#2FC8B9]/10 rounded-[2.5rem] p-7 border border-[#2FC8B9]/20 shadow-sm">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-8 h-8 rounded-xl bg-[#2FC8B9]/20 flex items-center justify-center text-[#2FC8B9]">
-                      <Activity className="w-4 h-4" />
+                {/* Row 1: Health Benefits + Enhancement Tips — Side by Side */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Health Benefits Card */}
+                  <div className="bg-emerald-50/50 rounded-2xl p-5 border border-emerald-100 relative overflow-hidden group">
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-2xl -mr-8 -mt-8" />
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-8 h-8 rounded-xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-200 group-hover:rotate-12 transition-transform">
+                        <Brain className="w-4 h-4" />
+                      </div>
+                      <h4 className="text-xs font-black text-emerald-900 tracking-tight uppercase">Health Benefits</h4>
                     </div>
-                    <h4 className="text-sm font-black text-slate-700 tracking-tight uppercase">Micronutrients Breakdown</h4>
+                    <p className="text-[11px] font-bold text-emerald-800/80 leading-relaxed">
+                      {result.healthBenefitsSummary || result.analysis || "This meal provides essential nutrients for your daily requirements."}
+                    </p>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {(result.micronutrients || []).map((micro, i) => (
-                      <div key={i} className="bg-white/80 backdrop-blur-sm rounded-2xl p-4 border border-[#2FC8B9]/10 shadow-sm">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-[11px] font-black text-slate-700 truncate">{typeof micro === 'object' ? micro.name : micro}</span>
-                          <span className="text-[10px] font-black text-[#2FC8B9]">{typeof micro === 'object' ? micro.percentage : '--'}%</span>
+                  {/* Enhancement Tips Card */}
+                  <div className="bg-amber-50/40 rounded-2xl p-5 border border-amber-100 group">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="w-8 h-8 rounded-xl bg-white border border-amber-100 flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform">
+                        <Sparkles className="w-4 h-4" />
+                      </div>
+                      <h4 className="text-xs font-black text-amber-900 tracking-tight uppercase">Make it Healthier</h4>
+                    </div>
+                    <div className="space-y-2">
+                      {(result.enhancementTips || []).map((tip, i) => (
+                        <div key={i} className="bg-white rounded-xl p-2.5 flex items-center gap-3 border border-amber-100 shadow-sm">
+                          <div className="w-7 h-7 rounded-full bg-orange-500 flex items-center justify-center text-white shrink-0">
+                            <Plus className="w-3.5 h-3.5" />
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-black text-slate-800 leading-tight">{typeof tip === 'object' ? tip.name : tip}</p>
+                            <p className="text-[9px] font-bold text-slate-500 truncate">{typeof tip === 'object' ? tip.benefit : 'Adds nutritional value'}</p>
+                          </div>
                         </div>
-                        <p className="text-xl font-black text-slate-800 mb-2">{typeof micro === 'object' ? micro.value : '--'}</p>
-                        <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                      ))}
+                      {(!result.enhancementTips || result.enhancementTips.length === 0) && (
+                        <div className="text-center py-2 text-slate-400 text-[10px] font-bold uppercase tracking-widest italic">
+                          Already optimal!
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Row 2: Micronutrients — Compact 3-column grid */}
+                <div className="bg-[#2FC8B9]/10 rounded-2xl p-5 border border-[#2FC8B9]/20 shadow-sm">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="w-7 h-7 rounded-lg bg-[#2FC8B9]/20 flex items-center justify-center text-[#2FC8B9]">
+                      <Activity className="w-3.5 h-3.5" />
+                    </div>
+                    <h4 className="text-xs font-black text-slate-700 tracking-tight uppercase">Micronutrients</h4>
+                  </div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {(result.micronutrients || []).map((micro, i) => (
+                      <div key={i} className="bg-white/80 backdrop-blur-sm rounded-xl p-3 border border-[#2FC8B9]/10 shadow-sm">
+                        <div className="flex justify-between items-center mb-1">
+                          <span className="text-[10px] font-black text-slate-700 truncate">{typeof micro === 'object' ? micro.name : micro}</span>
+                          <span className="text-[9px] font-black text-[#2FC8B9]">{typeof micro === 'object' ? micro.percentage : '--'}%</span>
+                        </div>
+                        <p className="text-sm font-black text-slate-800 mb-1">{typeof micro === 'object' ? micro.value : '--'}</p>
+                        <div className="h-1 bg-slate-100 rounded-full overflow-hidden">
                           <div
                             className="h-full bg-[#2FC8B9] rounded-full transition-all duration-1000"
                             style={{ width: `${typeof micro === 'object' ? micro.percentage : 0}%` }}
@@ -1221,122 +1247,75 @@ export default function QuickFoodScan() {
                       </div>
                     ))}
                     {(!result.micronutrients || result.micronutrients.length === 0) && (
-                      <p className="text-slate-400 text-xs italic p-4 text-center col-span-2">No micronutrient data available</p>
+                      <p className="text-slate-400 text-xs italic p-3 text-center col-span-3">No micronutrient data available</p>
                     )}
                   </div>
                 </div>
 
-                {/* Health Benefits Card */}
-                <div className="bg-emerald-50/50 rounded-[2.5rem] p-7 border border-emerald-100 relative overflow-hidden group">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl -mr-10 -mt-10" />
-                  <div className="flex items-center gap-3 mb-5">
-                    <div className="w-10 h-10 rounded-2xl bg-emerald-500 flex items-center justify-center text-white shadow-lg shadow-emerald-200 group-hover:rotate-12 transition-transform">
-                      <Brain className="w-5 h-5" />
-                    </div>
-                    <h4 className="text-sm font-black text-emerald-900 tracking-tight uppercase">Health Benefits</h4>
-                  </div>
-                  <p className="text-xs font-bold text-emerald-800/80 leading-relaxed">
-                    {result.healthBenefitsSummary || result.analysis || "This meal provides essential nutrients for your daily requirements."}
-                  </p>
-                </div>
-
-                {/* Enhancement Section */}
-                <div className="bg-amber-50/40 rounded-[2.5rem] p-7 border border-amber-100 group">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-2xl bg-white border border-amber-100 flex items-center justify-center text-orange-500 group-hover:scale-110 transition-transform">
-                      <Sparkles className="w-5 h-5" />
-                    </div>
-                    <h4 className="text-sm font-black text-amber-900 tracking-tight uppercase">Make it even Healthier</h4>
-                  </div>
-
-                  <div className="space-y-3">
-                    {(result.enhancementTips || []).map((tip, i) => (
-                      <div key={i} className="bg-white rounded-[1.5rem] p-4 flex items-center gap-4 border border-amber-100 shadow-sm hover:shadow-md transition-all">
-                        <div className="w-10 h-10 rounded-full bg-orange-500 flex items-center justify-center text-white shrink-0">
-                          <Plus className="w-5 h-5" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-sm font-black text-slate-800 mb-0.5">{typeof tip === 'object' ? tip.name : tip}</p>
-                          <p className="text-[10px] font-bold text-slate-500 truncate">{typeof tip === 'object' ? tip.benefit : 'Adds nutritional value'}</p>
-                        </div>
-                      </div>
-                    ))}
-                    {(!result.enhancementTips || result.enhancementTips.length === 0) && (
-                      <div className="text-center py-4 text-slate-400 text-xs font-bold uppercase tracking-widest italic">
-                        Already optimal!
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Original Analysis Box (Optional) */}
-                <div className="relative group p-1">
-                  <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 flex items-center gap-2">
+                {/* Row 3: Analysis Detail — Compact collapsible */}
+                <details className="group">
+                  <summary className="cursor-pointer text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] flex items-center gap-2 select-none hover:text-slate-600 transition-colors">
                     <Info className="w-4 h-4 text-[#2FC8B9]" />
                     Analysis Detail
-                  </h3>
-                  <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
-                    <p className="text-slate-600 font-medium leading-relaxed">
+                    <ChevronRight className="w-3.5 h-3.5 transition-transform group-open:rotate-90 ml-auto" />
+                  </summary>
+                  <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm mt-3">
+                    <p className="text-xs text-slate-600 font-medium leading-relaxed">
                       {result.analysis}
                     </p>
                   </div>
-                </div>
+                </details>
               </div>
 
               {/* Challenges & Alerts */}
               {result.warnings && result.warnings.length > 0 && (
-                <div className="px-8 pb-10 space-y-4">
+                <div className="px-6 pb-5 space-y-3">
                   <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 text-rose-500" />
                     Nutritional Alerts
                   </h3>
-                  <div className="grid gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {result.warnings.map((w, i) => (
-                      <div key={i} className="bg-rose-50/50 border border-rose-100 rounded-2xl p-4 flex items-center gap-4 group">
-                        <div className="w-10 h-10 bg-rose-100 rounded-xl flex items-center justify-center shrink-0 group-hover:rotate-12 transition-transform">
-                          <AlertCircle className="w-5 h-5 text-rose-600" />
+                      <div key={i} className="bg-rose-50/50 border border-rose-100 rounded-xl p-3 flex items-center gap-3 group">
+                        <div className="w-7 h-7 bg-rose-100 rounded-lg flex items-center justify-center shrink-0">
+                          <AlertCircle className="w-3.5 h-3.5 text-rose-600" />
                         </div>
-                        <p className="text-xs font-bold text-rose-900 leading-tight">{w}</p>
+                        <p className="text-[11px] font-bold text-rose-900 leading-tight">{w}</p>
                       </div>
                     ))}
                   </div>
                 </div>
               )}
 
-              {/* Recommendations */}
-              {/* Recommendations */}
+              {/* Smart Alternatives */}
               {result.alternatives && result.alternatives.length > 0 && (
-                <div className="space-y-4 px-8 pb-10">
+                <div className="space-y-3 px-6 pb-5">
                   <h3 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] ml-1 flex items-center gap-2">
                     <Flame className="w-4 h-4 text-emerald-500" />
                     Smart Alternatives
                   </h3>
-                  <div className="flex overflow-x-auto scrollbar-hide gap-5 -mx-8 px-8">
+                  <div className="flex overflow-x-auto scrollbar-hide gap-3 -mx-6 px-6">
                     {result.alternatives.map((alt, i) => (
-                      <div key={i} className="min-w-[280px] group bg-white border border-slate-100 rounded-[2rem] p-6 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all">
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex-1">
-                            <p className="font-black text-slate-800 text-base leading-tight group-hover:text-emerald-600 transition-colors uppercase tracking-tight">{alt.name}</p>
-                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{alt.prepTime || 'Quick'} Prep</span>
+                      <div key={i} className="min-w-[240px] group bg-white border border-slate-100 rounded-2xl p-4 shadow-sm hover:shadow-lg transition-all">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex-1 min-w-0">
+                            <p className="font-black text-slate-800 text-sm leading-tight group-hover:text-emerald-600 transition-colors uppercase tracking-tight truncate">{alt.name}</p>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">{alt.prepTime || 'Quick'} Prep</span>
                           </div>
-                          <div className="bg-emerald-50 text-emerald-600 text-[11px] font-black px-3 py-1.5 rounded-xl border border-emerald-100">
+                          <div className="bg-emerald-50 text-emerald-600 text-[10px] font-black px-2 py-1 rounded-lg border border-emerald-100 shrink-0 ml-2">
                             {alt.nutrition?.calories} Kcal
                           </div>
                         </div>
-
-                        <p className="text-xs text-slate-500 font-medium leading-relaxed mb-6 line-clamp-2 italic">
+                        <p className="text-[10px] text-slate-500 font-medium leading-snug mb-3 line-clamp-2 italic">
                           "{alt.description}"
                         </p>
-
-                        <div className="flex items-center justify-between pt-4 border-t border-slate-50">
-                          <div className="flex gap-2">
-                            <div className="px-2 py-1 bg-[#2FC8B9]/10 text-[#2FC8B9] text-[9px] font-black rounded-lg uppercase">
-                              High Prot
-                            </div>
+                        <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+                          <div className="px-2 py-0.5 bg-[#2FC8B9]/10 text-[#2FC8B9] text-[8px] font-black rounded-md uppercase">
+                            High Prot
                           </div>
                           <div className="flex items-center gap-1">
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Satiety</span>
-                            <span className="text-xs font-black text-slate-800">{alt.satietyScore || 8}/10</span>
+                            <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">Satiety</span>
+                            <span className="text-[11px] font-black text-slate-800">{alt.satietyScore || 8}/10</span>
                           </div>
                         </div>
                       </div>
@@ -1346,16 +1325,16 @@ export default function QuickFoodScan() {
               )}
 
               {/* Master Actions */}
-              <div className="flex gap-4 pt-6">
+              <div className="flex gap-3 px-6 pb-6 pt-4">
                 <button
                   onClick={resetForm}
-                  className="flex-1 py-5 bg-slate-100 text-slate-600 rounded-[2rem] font-black text-sm uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95"
+                  className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-slate-200 transition-all active:scale-95"
                 >
                   Discard
                 </button>
                 <button
                   onClick={handleLogMeal}
-                  className="flex-[2] py-5 bg-[#2FC8B9] text-white rounded-[2rem] font-black text-sm uppercase tracking-widest shadow-[0_20px_40px_-12px_rgba(47,200,185,0.3)] hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-3"
+                  className="flex-[2] py-4 bg-[#2FC8B9] text-white rounded-2xl font-black text-sm uppercase tracking-widest shadow-[0_20px_40px_-12px_rgba(47,200,185,0.3)] hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-3"
                 >
                   <CheckCircle className="w-5 h-5 text-white/80" />
                   Log this Meal
