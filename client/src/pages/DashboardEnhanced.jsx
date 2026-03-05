@@ -878,7 +878,13 @@ export default function DashboardEnhanced() {
                     {/* Score History Chart */}
                     <div className="h-48 sm:h-56 w-full mt-4 -mx-2 sm:mx-0">
                       <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={reportComparison.scoreHistory} margin={{ top: 10, right: 10, left: -15, bottom: 5 }}>
+                        <AreaChart data={reportComparison.scoreHistory} margin={{ top: 10, right: 10, left: -15, bottom: 5 }}>
+                          <defs>
+                            <linearGradient id="scoreGradientMain" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="5%" stopColor="#2FC8B9" stopOpacity={0.3} />
+                              <stop offset="95%" stopColor="#2FC8B9" stopOpacity={0} />
+                            </linearGradient>
+                          </defs>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                           <XAxis
                             dataKey="dateLabel"
@@ -906,8 +912,17 @@ export default function DashboardEnhanced() {
                               return null;
                             }}
                           />
-                          <Bar dataKey="score" fill="#2FC8B9" radius={[8, 8, 0, 0]} maxBarSize={40} />
-                        </BarChart>
+                          <Area
+                            type="monotone"
+                            dataKey="score"
+                            stroke="#2FC8B9"
+                            strokeWidth={4}
+                            fillOpacity={1}
+                            fill="url(#scoreGradientMain)"
+                            dot={{ r: 4, fill: '#2FC8B9', strokeWidth: 2, stroke: '#fff' }}
+                            activeDot={{ r: 6, fill: '#2FC8B9', strokeWidth: 2, stroke: '#fff' }}
+                          />
+                        </AreaChart>
                       </ResponsiveContainer>
                     </div>
 
