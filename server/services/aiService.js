@@ -11,7 +11,7 @@ const makeAnthropicRequest = async (messages, maxTokens = 4096) => {
       throw new Error('ANTHROPIC_API_KEY is not set or invalid for direct access');
     }
 
-    console.log('🔄 Making Anthropic Direct request with model:', CLAUDE_MODEL, 'max_tokens:', maxTokens);
+    console.log('🔄 Anthropic request | model:', CLAUDE_MODEL, '| max_tokens:', maxTokens);
 
     // Filter out system message to use as 'system' parameter in Anthropic API
     let systemMessage = '';
@@ -22,6 +22,9 @@ const makeAnthropicRequest = async (messages, maxTokens = 4096) => {
       }
       return true;
     });
+
+    // Use shorter timeout on Vercel to stay within serverless limits
+    const requestTimeout = process.env.VERCEL ? 50000 : 120000;
 
     const response = await axios.post(
       ANTHROPIC_API_URL,
@@ -38,17 +41,16 @@ const makeAnthropicRequest = async (messages, maxTokens = 4096) => {
           'anthropic-version': '2023-06-01',
           'Content-Type': 'application/json'
         },
-        timeout: 120000
+        timeout: requestTimeout
       }
     );
 
     if (response.data && response.data.content && response.data.content[0]) {
-      // Check if response was truncated
       const stopReason = response.data.stop_reason;
-      console.log('✅ Anthropic call successful, stop_reason:', stopReason);
+      console.log('✅ Anthropic OK, stop_reason:', stopReason);
 
       if (stopReason === 'max_tokens') {
-        console.warn('⚠️ WARNING: Response was TRUNCATED due to max_tokens limit (' + maxTokens + '). Output may be incomplete!');
+        console.warn('⚠️ Response TRUNCATED (max_tokens: ' + maxTokens + ')');
       }
 
       return response.data.content[0].text;
@@ -57,7 +59,7 @@ const makeAnthropicRequest = async (messages, maxTokens = 4096) => {
     throw new Error('Invalid response structure from Anthropic API');
   } catch (error) {
     const errorMsg = error.response?.data?.error?.message || error.message;
-    console.error('❌ Anthropic Direct Error:', errorMsg);
+    console.error('❌ Anthropic Error:', errorMsg);
     throw error;
   }
 };
@@ -198,7 +200,9 @@ exports.analyzeHealthReport = async (reportText, user = {}, imageData = null) =>
       { role: 'user', content: userContent }
     ];
 
-    const content = await makeAnthropicRequest(messages, 20000);
+    // Use fewer tokens on Vercel to stay within timeout limits
+    const maxTokens = process.env.VERCEL ? 8000 : 20000;
+    const content = await makeAnthropicRequest(messages, maxTokens);
 
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {

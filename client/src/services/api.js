@@ -122,7 +122,8 @@ api.interceptors.response.use(
 export const healthService = {
   // Upload report for AI analysis
   uploadReport: (formData) => api.post('health/upload', formData, {
-    headers: { 'Content-Type': 'multipart/form-data' }
+    headers: { 'Content-Type': 'multipart/form-data' },
+    timeout: 150000 // 150 seconds for heavy AI processing
   }),
   getReports: () => api.get('health/reports'),
   getReport: (id) => api.get(`health/reports/${id}`),

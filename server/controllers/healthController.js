@@ -67,54 +67,19 @@ exports.uploadReport = async (req, res) => {
     const userProfile = req.user.profile || {};
     let aiAnalysis;
     try {
-      console.log('\n🔄 ========== ANALYZING REPORT ==========');
+      console.log('🔄 Analyzing report...');
       if (req.file.mimetype === 'application/pdf') {
-        console.log('📝 PDF Text Length:', extractedText.length, 'characters');
-        console.log('📝 First 1000 characters of PDF text:');
-        console.log('---PDF-START---');
-        console.log(extractedText.substring(0, 1000));
-        console.log('---PDF-END---');
-
-        console.log('\n🔄 Analyzing report text...');
+        console.log('📝 PDF text length:', extractedText.length);
         aiAnalysis = await analyzeHealthReport(extractedText, req.user);
       } else {
-        console.log('📝 Image Analysis with vision...');
-        // Pass the file data for vision analysis
+        console.log('📝 Image analysis with vision...');
         aiAnalysis = await analyzeHealthReport(null, req.user, {
           buffer: req.file.buffer || fs.readFileSync(req.file.path),
           mimetype: req.file.mimetype
         });
       }
 
-      console.log('\n📦 ========== FULL AI ANALYSIS OBJECT ==========');
-      console.log('Type:', typeof aiAnalysis);
-      console.log('Keys:', Object.keys(aiAnalysis));
-      console.log('\n📊 COMPLETE AI ANALYSIS:');
-      console.log(JSON.stringify(aiAnalysis, null, 2).substring(0, 3000));
-      console.log('========================================\n');
-
-      console.log('\n✅ ========== AI ANALYSIS RECEIVED ==========');
-      console.log('📊 Patient Name:', aiAnalysis.patientName || 'NOT FOUND');
-      console.log('📊 Health Score:', aiAnalysis.healthScore);
-      console.log('📊 Summary:', aiAnalysis.summary?.substring(0, 200) || 'NO SUMMARY');
-      console.log('📊 Key Findings:', aiAnalysis.keyFindings?.length || 0, 'items');
-      console.log('📊 Metrics:', Object.keys(aiAnalysis.metrics || {}).length, 'metrics found');
-
-      if (aiAnalysis.metrics && Object.keys(aiAnalysis.metrics).length > 0) {
-        console.log('\n📊 SAMPLE METRICS (first 3):');
-        Object.entries(aiAnalysis.metrics).slice(0, 3).forEach(([key, metric]) => {
-          console.log(`   - ${key}: ${metric.value} ${metric.unit} (${metric.status})`);
-        });
-      } else {
-        console.log('⚠️  NO METRICS EXTRACTED!');
-      }
-
-      console.log('\n📊 Diet Plan:');
-      console.log('   Breakfast:', aiAnalysis.dietPlan?.breakfast?.length || 0, 'meals');
-      console.log('   Lunch:', aiAnalysis.dietPlan?.lunch?.length || 0, 'meals');
-      console.log('   Dinner:', aiAnalysis.dietPlan?.dinner?.length || 0, 'meals');
-      console.log('   Snacks:', aiAnalysis.dietPlan?.snacks?.length || 0, 'meals');
-      console.log('========================================\n');
+      console.log('✅ AI analysis received | Score:', aiAnalysis.healthScore, '| Metrics:', Object.keys(aiAnalysis.metrics || {}).length);
     } catch (aiError) {
       console.error('AI Analysis failed:', aiError.message);
       // Save report with error status
@@ -377,38 +342,34 @@ exports.uploadReport = async (req, res) => {
     }
 
     // 🆕 AUTO-COMPARE WITH PREVIOUS REPORT
+    // Skip on Vercel to avoid timeout (this triggers another expensive AI call)
     let comparisonData = null;
-    try {
-      // Find previous report of same type
-      const previousReport = await HealthReport.findOne({
-        user: req.user._id,
-        reportType: report.reportType,
-        _id: { $ne: report._id },
-        status: 'completed',
-        createdAt: { $lt: report.createdAt }
-      }).sort({ createdAt: -1 });
+    if (!process.env.VERCEL) {
+      try {
+        const previousReport = await HealthReport.findOne({
+          user: req.user._id,
+          reportType: report.reportType,
+          _id: { $ne: report._id },
+          status: 'completed',
+          createdAt: { $lt: report.createdAt }
+        }).sort({ createdAt: -1 });
 
-      if (previousReport && previousReport.aiAnalysis) {
-        console.log('🔄 Found previous report, generating comparison...');
-
-        // Generate comparison between reports
-        comparisonData = await compareReports(report, previousReport);
-
-        // Save comparison to report
-        report.comparison = {
-          previousReportId: previousReport._id,
-          previousReportDate: previousReport.createdAt,
-          data: comparisonData
-        };
-        await report.save();
-
-        console.log('✅ Comparison generated and saved');
-      } else {
-        console.log('ℹ️ No previous report found for comparison');
+        if (previousReport && previousReport.aiAnalysis) {
+          console.log('🔄 Generating comparison with previous report...');
+          comparisonData = await compareReports(report, previousReport);
+          report.comparison = {
+            previousReportId: previousReport._id,
+            previousReportDate: previousReport.createdAt,
+            data: comparisonData
+          };
+          await report.save();
+          console.log('✅ Comparison saved');
+        }
+      } catch (compError) {
+        console.error('⚠️ Comparison failed (non-critical):', compError.message);
       }
-    } catch (compError) {
-      console.error('⚠️ Comparison failed (non-critical):', compError.message);
-      // Don't fail the upload if comparison fails
+    } else {
+      console.log('⚡ Skipping auto-comparison on Vercel to save time');
     }
 
     // Find recommended doctors from platform
