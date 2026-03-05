@@ -188,31 +188,31 @@ export default function Challenge30Days() {
       ) : (
         <>
           {/* New Select Day Card UI */}
-          <div className="bg-[#E2D5FF] rounded-[2.5rem] p-6 shadow-xl relative overflow-hidden">
+          <div className="bg-cyan-50 rounded-[2rem] p-4 md:p-6 shadow-sm relative overflow-hidden border border-cyan-100/50">
             <div className="flex items-center justify-between mb-8">
               <button
                 onClick={() => setCurrentDay(Math.max(1, currentDay - 1))}
-                className="w-10 h-10 rounded-full bg-white/50 flex items-center justify-center text-slate-700 hover:bg-white transition-colors"
+                className="w-8 h-8 rounded-full bg-white/80 flex items-center justify-center text-cyan-600 hover:bg-white transition-colors shadow-sm"
               >
-                <ArrowLeft className="w-5 h-5" />
+                <ArrowLeft className="w-4 h-4" />
               </button>
 
               <div className="text-center">
-                <h2 className="text-xl font-bold text-indigo-900">
+                <h2 className="text-base md:text-lg font-black text-cyan-900 uppercase tracking-tight">
                   {currentDay === 1 ? 'Today, ' : `Day ${currentDay}, `}
-                  {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                  {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                 </h2>
               </div>
 
               <button
                 onClick={() => setCurrentDay(Math.min(30, currentDay + 1))}
-                className="w-10 h-10 rounded-full bg-white/50 flex items-center justify-center text-slate-700 hover:bg-white transition-colors rotate-180"
+                className="w-8 h-8 rounded-full bg-white/80 flex items-center justify-center text-cyan-600 hover:bg-white transition-colors rotate-180 shadow-sm"
               >
-                <ArrowLeft className="w-5 h-5" />
+                <ArrowLeft className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="flex justify-between items-end gap-2 overflow-x-auto pb-4 scrollbar-hide">
+            <div className="flex justify-center items-end gap-1.5 md:gap-3 overflow-x-auto pb-2 scrollbar-hide px-1">
               {(() => {
                 const days = ['Sa', 'Su', 'Mo', 'Tu', 'We', 'Th', 'Fr'];
                 // Generate a window of days around currentDay
@@ -230,16 +230,16 @@ export default function Challenge30Days() {
                   const dayName = days[(day - 1) % 7];
 
                   return (
-                    <div key={day} className="flex flex-col items-center gap-3 min-w-[50px]">
-                      <span className={`text-sm font-semibold ${isSelected ? 'text-indigo-800' : 'text-slate-500'}`}>
+                    <div key={day} className="flex flex-col items-center gap-1.5 min-w-[48px]">
+                      <span className={`text-[10px] font-black uppercase tracking-widest ${isSelected ? 'text-cyan-600' : 'text-slate-400'}`}>
                         {dayName}
                       </span>
 
                       <button
                         onClick={() => setCurrentDay(day)}
-                        className={`w-14 h-14 rounded-full flex items-center justify-center relative transition-all ${isSelected
-                          ? 'bg-white shadow-xl scale-110'
-                          : 'bg-white/30 hover:bg-white/50'
+                        className={`w-11 h-11 rounded-full flex items-center justify-center relative transition-all ${isSelected
+                          ? 'bg-white shadow-md scale-105'
+                          : 'bg-white/40 hover:bg-white/60'
                           }`}
                       >
                         {/* Dynamic Progress Circle */}
@@ -249,16 +249,16 @@ export default function Challenge30Days() {
                             cy="28"
                             r="25"
                             fill="none"
-                            stroke={isSelected ? '#EEF2FF' : 'rgba(255,255,255,0.2)'}
-                            strokeWidth="3"
+                            stroke={isSelected ? '#F0FDFA' : 'rgba(255,255,255,0.2)'}
+                            strokeWidth="4"
                           />
                           <circle
                             cx="28"
                             cy="28"
                             r="25"
                             fill="none"
-                            stroke="#818CF8" // Indigo 400
-                            strokeWidth="3"
+                            stroke="#2FC8B9"
+                            strokeWidth="4"
                             strokeDasharray={`${(progress / 100) * 157} 157`}
                             strokeLinecap="round"
                             className="transition-all duration-700 ease-out"
@@ -266,13 +266,13 @@ export default function Challenge30Days() {
                         </svg>
 
                         {isSelected ? (
-                          <Flame className="w-6 h-6 text-orange-500 relative z-10 fill-orange-500" />
+                          <Flame className="w-5 h-5 text-orange-500 relative z-10 fill-orange-500" />
                         ) : (
-                          <div className="w-4 h-4 rounded-full bg-slate-200/50" />
+                          <div className="w-3 h-3 rounded-full bg-slate-200/50" />
                         )}
                       </button>
 
-                      <span className={`text-xs font-bold ${isSelected ? 'text-indigo-800' : 'text-slate-500'}`}>
+                      <span className={`text-xs font-black ${isSelected ? 'text-cyan-700' : 'text-slate-400'}`}>
                         {day}
                       </span>
                     </div>
@@ -284,48 +284,47 @@ export default function Challenge30Days() {
 
           {/* Stats Summary Section */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="bg-white rounded-[2rem] p-5 shadow-md border border-slate-100 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-orange-100 flex items-center justify-center">
-                <Flame className="w-6 h-6 text-orange-500" />
+            <div className="bg-white rounded-[1.5rem] p-4 shadow-sm border border-slate-100 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center">
+                <Flame className="w-5 h-5 text-orange-500" />
               </div>
               <div>
-                <p className="text-2xl font-black text-slate-800">{streak}</p>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Day Streak</p>
+                <p className="text-xl font-black text-slate-900">{streak}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Streak</p>
               </div>
             </div>
 
-            <div className="bg-white rounded-[2rem] p-5 shadow-md border border-slate-100 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-indigo-100 flex items-center justify-center">
-                <Trophy className="w-6 h-6 text-indigo-500" />
+            <div className="bg-white rounded-[1.5rem] p-4 shadow-sm border border-slate-100 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-cyan-50 flex items-center justify-center">
+                <Trophy className="w-5 h-5 text-cyan-500" />
               </div>
               <div>
-                <p className="text-2xl font-black text-slate-800">{getCompletedDays()}</p>
-                <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Days Done</p>
+                <p className="text-xl font-black text-slate-900">{getCompletedDays()}</p>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Goal</p>
               </div>
             </div>
           </div>
 
           {/* Current Day Tasks */}
-          <div className="bg-white rounded-2xl border-2 border-slate-200 p-6">
+          <div className="bg-white rounded-[2rem] border border-slate-100 p-4 md:p-6 shadow-sm">
             <div className="flex items-center justify-between mb-6">
               <div>
-                <h3 className="text-xl font-bold text-slate-800">Day {currentDay} Tasks</h3>
-                <p className="text-slate-500 text-sm">
-                  {Object.values(challengeData[currentDay] || {}).filter(Boolean).length} of {CHALLENGE_TASKS.length} completed
+                <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">Day {currentDay} Tasks</h3>
+                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-wider">
+                  {Object.values(challengeData[currentDay] || {}).filter(Boolean).length} of {CHALLENGE_TASKS.length} done
                 </p>
               </div>
               <div className="text-right">
-                <div className="text-2xl font-bold text-cyan-600">
+                <div className="text-xl font-black text-[#2FC8B9]">
                   {getDayProgress(currentDay).toFixed(0)}%
                 </div>
-                <div className="text-xs text-slate-500">Progress</div>
               </div>
             </div>
 
             {/* Progress Bar */}
-            <div className="w-full bg-slate-100 rounded-full h-3 mb-6">
+            <div className="w-full bg-slate-50 rounded-full h-2 mb-6 border border-slate-100">
               <div
-                className="h-3 rounded-full bg-gradient-to-r from-purple-500 to-orange-500 transition-all duration-500"
+                className="h-2 rounded-full bg-[#2FC8B9] shadow-[0_0_10px_rgba(47,200,185,0.3)] transition-all duration-500"
                 style={{ width: `${getDayProgress(currentDay)}%` }}
               />
             </div>
@@ -338,14 +337,14 @@ export default function Challenge30Days() {
                   <button
                     key={task.id}
                     onClick={() => toggleTask(currentDay, task.id)}
-                    className={`w-full flex items-center gap-4 p-4 rounded-xl border-2 transition-all ${isCompleted
-                      ? 'bg-emerald-50 border-emerald-200 hover:bg-emerald-100'
-                      : 'bg-white border-slate-200 hover:bg-slate-50'
+                    className={`w-full flex items-center gap-3 p-3 rounded-2xl border transition-all ${isCompleted
+                      ? 'bg-emerald-50 border-emerald-100'
+                      : 'bg-slate-50 border-slate-100 hover:border-cyan-200'
                       }`}
                   >
                     <div className="text-3xl">{task.icon}</div>
                     <div className="flex-1 text-left">
-                      <p className={`font-medium ${isCompleted ? 'text-emerald-700 line-through' : 'text-slate-800'}`}>
+                      <p className={`text-sm font-bold ${isCompleted ? 'text-emerald-700/50 line-through' : 'text-slate-700'}`}>
                         {task.label}
                       </p>
                     </div>
@@ -363,34 +362,36 @@ export default function Challenge30Days() {
           </div>
 
           {/* Achievements */}
-          <div className="bg-gradient-to-br from-purple-500 to-orange-500 rounded-2xl p-6 text-white">
+          <div className="bg-[#2FC8B9] rounded-[2rem] p-4 md:p-6 text-white shadow-lg shadow-cyan-100">
             <div className="flex items-center gap-3 mb-4">
               <Award className="w-6 h-6" />
-              <h3 className="text-lg font-semibold">Achievements</h3>
+              <h3 className="text-lg font-black uppercase tracking-tight">Achievements</h3>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <div className={`p-3 rounded-xl text-center ${streak >= 3 ? 'bg-white/20' : 'bg-white/10 opacity-50'}`}>
+              <div className={`p-3 rounded-xl text-center border ${streak >= 3 ? 'bg-white/20 border-white/30' : 'bg-white/5 border-white/5 opacity-50'}`}>
                 <div className="text-2xl mb-1">🔥</div>
-                <p className="text-xs font-medium">3 Day Streak</p>
+                <p className="text-[10px] font-black uppercase">3 Day Streak</p>
               </div>
-              <div className={`p-3 rounded-xl text-center ${streak >= 7 ? 'bg-white/20' : 'bg-white/10 opacity-50'}`}>
+              <div className={`p-3 rounded-xl text-center border ${streak >= 7 ? 'bg-white/20 border-white/30' : 'bg-white/5 border-white/5 opacity-50'}`}>
                 <div className="text-2xl mb-1">⭐</div>
-                <p className="text-xs font-medium">1 Week Streak</p>
+                <p className="text-[10px] font-black uppercase">1 Week Streak</p>
               </div>
-              <div className={`p-3 rounded-xl text-center ${getCompletedDays() >= 15 ? 'bg-white/20' : 'bg-white/10 opacity-50'}`}>
+              <div className={`p-3 rounded-xl text-center border ${getCompletedDays() >= 15 ? 'bg-white/20 border-white/30' : 'bg-white/5 border-white/5 opacity-50'}`}>
                 <div className="text-2xl mb-1">💪</div>
-                <p className="text-xs font-medium">Half Way</p>
+                <p className="text-[10px] font-black uppercase">Half Way</p>
               </div>
-              <div className={`p-3 rounded-xl text-center ${getCompletedDays() >= 30 ? 'bg-white/20' : 'bg-white/10 opacity-50'}`}>
+              <div className={`p-3 rounded-xl text-center border ${getCompletedDays() >= 30 ? 'bg-white/20 border-white/30' : 'bg-white/5 border-white/5 opacity-50'}`}>
                 <div className="text-2xl mb-1">🏆</div>
-                <p className="text-xs font-medium">Champion</p>
+                <p className="text-[10px] font-black uppercase">Champion</p>
               </div>
             </div>
           </div>
 
           {/* Tips */}
-          <div className="bg-white rounded-2xl border-2 border-slate-200 p-6">
-            <h3 className="text-lg font-semibold text-slate-800 mb-4">💡 Tips for Success</h3>
+          <div className="bg-white rounded-[2rem] border border-slate-100 p-4 md:p-6 shadow-sm">
+            <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-4 flex items-center gap-2">
+              <span className="p-1 bg-cyan-50 text-[#2FC8B9] rounded-lg">💡</span> Tips for Success
+            </h3>
             <ul className="space-y-2 text-slate-600">
               <li className="flex items-start gap-2">
                 <span className="text-cyan-500 mt-1">•</span>

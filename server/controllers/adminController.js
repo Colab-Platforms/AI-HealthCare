@@ -32,8 +32,19 @@ exports.getUserDetails = async (req, res) => {
     const user = await User.findById(req.params.id).select('-password');
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const reportCount = await HealthReport.countDocuments({ user: req.params.id });
-    res.json({ user, reportCount });
+    // Fetch diverse activity types
+    const [reports, appointments] = await Promise.all([
+      HealthReport.find({ user: req.params.id }).sort({ createdAt: -1 }).limit(10),
+      require('../models/Appointment').find({ user: req.params.id }).sort({ date: -1 }).limit(10)
+    ]);
+
+    // Simple activity consolidation
+    const activity = [
+      ...reports.map(r => ({ type: 'report', title: 'Report Processed', date: r.createdAt, status: r.status })),
+      ...appointments.map(a => ({ type: 'appointment', title: 'Appointment Linked', date: a.date, status: a.status }))
+    ].sort((a, b) => b.date - a.date).slice(0, 15);
+
+    res.json({ user, activity, reportCount: reports.length });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -83,11 +94,6 @@ exports.getReportStats = async (req, res) => {
     const failedReports = await HealthReport.countDocuments({ status: 'failed' });
     const totalUsers = await User.countDocuments({ role: 'patient' });
     const activeUsers = await User.countDocuments({ role: 'patient', isActive: true });
-    
-    // Doctor stats
-    const totalDoctors = await Doctor.countDocuments();
-    const pendingDoctors = await Doctor.countDocuments({ approvalStatus: 'pending' });
-    const approvedDoctors = await Doctor.countDocuments({ approvalStatus: 'approved' });
 
     const recentReports = await HealthReport.find()
       .populate('user', 'name')
@@ -95,10 +101,9 @@ exports.getReportStats = async (req, res) => {
       .limit(10);
 
     res.json({
-      stats: { 
-        totalReports, completedReports, failedReports, 
-        totalUsers, activeUsers,
-        totalDoctors, pendingDoctors, approvedDoctors
+      stats: {
+        totalReports, completedReports, failedReports,
+        totalUsers, activeUsers
       },
       recentReports
     });
@@ -259,7 +264,7 @@ exports.getAllDoctors = async (req, res) => {
 
     const total = await Doctor.countDocuments(filter);
     const pending = await Doctor.countDocuments({ approvalStatus: 'pending' });
-    
+
     res.json({ doctors, total, pending, page: parseInt(page), pages: Math.ceil(total / limit) });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -270,7 +275,7 @@ exports.approveDoctor = async (req, res) => {
   try {
     const { id } = req.params;
     const doctor = await Doctor.findById(id);
-    
+
     if (!doctor) {
       return res.status(404).json({ message: 'Doctor not found' });
     }
@@ -291,7 +296,7 @@ exports.rejectDoctor = async (req, res) => {
   try {
     const { id } = req.params;
     const { reason } = req.body;
-    
+
     const doctor = await Doctor.findById(id);
     if (!doctor) {
       return res.status(404).json({ message: 'Doctor not found' });
