@@ -275,14 +275,40 @@ class NutritionAI {
   async analyzeGlucoseTrends(userProfile, glucoseReadings, foodLogs, hba1cReadings = []) {
     const diabetesProfile = userProfile.diabetesProfile || {};
     const latestGlucose = glucoseReadings[0] || {};
+    const hba1c = hba1cReadings[0] || {};
 
-    const prompt = `Analyze diabetes management:
-    Glucose: ${latestGlucose.value} ${latestGlucose.unit}
-    Food: ${foodLogs.map(l => l.mealType).join(', ')}
+    const prompt = `Analyze this patient's diabetes management and recent glucose trends.
+
+    USER PROFILE:
+    - Age/Type: ${userProfile.age || 'N/A'}, ${diabetesProfile.diabetesType || 'Diabetes Type not specified'}
+    - Goals: ${diabetesProfile.targetGlucoseRange || 'Normal range'}, ${diabetesProfile.targetHbA1c || '<7.0%'}
     
-    Return JSON format with status and recommendations.`;
+    RECENT GLUCOSE READINGS:
+    ${glucoseReadings.map(r => `- ${r.value} ${r.unit} (${r.readingContext}, recorded: ${r.recordedAt})`).join('\n')}
+    
+    LATEST HbA1c: ${hba1c.value ? hba1c.value + '%' : 'Not provided'}
+    
+    TODAY'S FOOD INTAKE:
+    ${foodLogs.map(l => `- ${l.mealType}: ${l.foodItems.map(f => f.name).join(', ')}`).join('\n')}
 
-    const systemMsg = 'You are a professional diabetes management AI.';
+    CRITICAL INSTRUCTIONS:
+    1. Identify if the current glucose is within target range using medical best practices.
+    2. Analyze if any recent spikes are correlated with the food logs.
+    3. Provide actionable, concise advice.
+    4. MUST RETURN ONLY VALID JSON.
+    5. recommendations MUST BE AN ARRAY OF SIMPLE STRINGS only.
+
+    RETURN FORMAT (STRICT):
+    {
+      "status": "Short status string (e.g., Stable, Slightly High, Out of Range)",
+      "statusColor": "One of: 'green', 'yellow', 'orange', 'red'",
+      "analysis": "A concise 2-sentence summary of current trends.",
+      "spikeCause": "Likely reason for any high values, or 'None' if stable.",
+      "immediateAction": "The single most important next step.",
+      "recommendations": ["Actionable tip 1", "Actionable tip 2", "Actionable tip 3"]
+    }`;
+
+    const systemMsg = 'You are a professional endocrinologist AI specializing in diabetic trend analysis. You analyze glucose levels, food intake, and HbA1c to provide medical-grade insights. You must only return valid JSON.';
     const payload = {
       max_tokens: 1500,
       system: systemMsg,

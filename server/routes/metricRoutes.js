@@ -79,21 +79,32 @@ router.get('/analysis/glucose', protect, async (req, res) => {
     try {
         const User = require('../models/User');
         const FoodLog = require('../models/FoodLog');
+        const AIAnalysis = require('../models/AIAnalysis');
         const nutritionAI = require('../services/nutritionAI');
 
-        // Parallel fetch for all required data
-        const [user, glucoseReadings, hba1cReadings, foodLogs] = await Promise.all([
-            withTimeout(User.findById(req.user._id)),
-            withTimeout(HealthMetric.find({ userId: req.user._id, type: 'blood_sugar' }).sort({ recordedAt: -1 }).limit(10)),
-            withTimeout(HealthMetric.find({ userId: req.user._id, type: 'hba1c' }).sort({ recordedAt: -1 }).limit(2)),
-            withTimeout(FoodLog.find({
-                userId: req.user._id,
-                timestamp: {
-                    $gte: new Date(new Date().setHours(0, 0, 0, 0)),
-                    $lt: new Date(new Date().setHours(23, 59, 59, 999))
-                }
-            }))
-        ]);
+        // Fetch user profile
+        const user = await withTimeout(User.findById(req.user._id));
+
+        // Fetch recent glucose readings (past 14 days)
+        const glucoseReadings = await withTimeout(HealthMetric.find({
+            userId: req.user._id,
+            type: 'blood_sugar'
+        }).sort({ recordedAt: -1 }).limit(10));
+
+        // Fetch hba1c for context
+        const hba1cReadings = await withTimeout(HealthMetric.find({
+            userId: req.user._id,
+            type: 'hba1c'
+        }).sort({ recordedAt: -1 }).limit(1));
+
+        // Fetch today's food logs
+        const foodLogs = await withTimeout(FoodLog.find({
+            userId: req.user._id,
+            timestamp: {
+                $gte: new Date(new Date().setHours(0, 0, 0, 0)),
+                $lt: new Date(new Date().setHours(23, 59, 59, 999))
+            }
+        }));
 
         if (!glucoseReadings || glucoseReadings.length === 0) {
             return res.json({
@@ -109,8 +120,65 @@ router.get('/analysis/glucose', protect, async (req, res) => {
             });
         }
 
-        const analysis = await nutritionAI.analyzeGlucoseTrends(user, glucoseReadings, foodLogs, hba1cReadings);
-        res.json(analysis);
+        // --- Persistency / Token Saving Logic ---
+        // Create a simple hash based on the latest readings to check if something changed
+        const latestReading = glucoseReadings[0];
+        const latestReadingId = latestReading._id.toString();
+        const latestUpdate = latestReading.updatedAt || latestReading.recordedAt;
+        const foodLogKey = foodLogs.length + (foodLogs[0]?.updatedAt?.toISOString() || '');
+        const dataHash = `gl_${latestReadingId}_${latestUpdate}_${foodLogKey}`;
+
+        // Check if we already have an analysis for this set of data
+        const existingAnalysis = await AIAnalysis.findOne({
+            userId: req.user._id,
+            type: 'glucose_trends'
+        });
+
+        if (existingAnalysis && existingAnalysis.lastDataPointsHash === dataHash) {
+            console.log('✅ AI Analysis: Returning cached result (Save tokens)');
+            return res.json({
+                success: true,
+                data: existingAnalysis.analysisData
+            });
+        }
+
+        // If no cached version or data has changed, generate new analysis
+        console.log('🚀 AI Analysis: Generating fresh analysis via Claude API');
+        const result = await nutritionAI.analyzeGlucoseTrends(user, glucoseReadings, foodLogs, hba1cReadings);
+
+        if (result && result.success) {
+            // Fill defaults if some fields are missing from AI
+            const analysisData = {
+                status: result.data.status || "Check Stats",
+                statusColor: result.data.statusColor || "orange",
+                analysis: result.data.analysis || "No summary provided.",
+                spikeCause: result.data.spikeCause || "Unknown",
+                immediateAction: result.data.immediateAction || "Monitor levels",
+                recommendations: result.data.recommendations || []
+            };
+
+            // Update or create persistence record
+            if (existingAnalysis) {
+                existingAnalysis.lastDataPointsHash = dataHash;
+                existingAnalysis.analysisData = analysisData;
+                await existingAnalysis.save();
+            } else {
+                await AIAnalysis.create({
+                    userId: req.user._id,
+                    type: 'glucose_trends',
+                    lastDataPointsHash: dataHash,
+                    analysisData: analysisData
+                });
+            }
+
+            return res.json({
+                success: true,
+                data: analysisData
+            });
+        }
+
+        throw new Error("AI failed to provide valid analysis data");
+
     } catch (error) {
         console.error('Error in glucose analysis:', error.message);
         res.status(500).json({
