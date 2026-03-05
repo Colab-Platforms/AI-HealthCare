@@ -2,50 +2,52 @@ import React from 'react';
 
 const ChatSkeleton = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-pink-900 to-slate-900 flex flex-col animate-pulse">
+    <div className="min-h-[80vh] bg-slate-50 flex flex-col animate-pulse rounded-[2.5rem] border border-slate-100 overflow-hidden shadow-sm">
       {/* Header */}
-      <div className="bg-slate-800/50 border-b border-slate-700/50 p-4">
-        <div className="h-6 bg-slate-700/50 rounded w-48 mx-auto"></div>
+      <div className="bg-white border-b border-slate-100 p-6">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-[1.25rem] bg-slate-100"></div>
+          <div>
+            <div className="h-6 bg-slate-100 rounded-md w-48 mb-2"></div>
+            <div className="h-3 bg-slate-100 rounded w-32"></div>
+          </div>
+        </div>
       </div>
 
       {/* Chat Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* User Message */}
-        <div className="flex justify-end">
-          <div className="bg-purple-600/30 rounded-2xl p-4 max-w-[80%]">
-            <div className="h-4 bg-slate-700/50 rounded w-48 mb-2"></div>
-            <div className="h-4 bg-slate-700/50 rounded w-32"></div>
-          </div>
-        </div>
-
+      <div className="flex-1 p-6 space-y-6">
         {/* AI Message */}
-        <div className="flex justify-start">
-          <div className="bg-slate-800/50 rounded-2xl p-4 max-w-[80%]">
-            <div className="h-4 bg-slate-700/50 rounded w-64 mb-2"></div>
-            <div className="h-4 bg-slate-700/50 rounded w-56 mb-2"></div>
-            <div className="h-4 bg-slate-700/50 rounded w-48"></div>
+        <div className="flex justify-start gap-4">
+          <div className="w-10 h-10 rounded-[1.25rem] bg-slate-200 flex-shrink-0"></div>
+          <div className="bg-white rounded-[2rem] rounded-tl-sm p-6 border border-slate-100 max-w-[80%] space-y-3">
+            <div className="h-4 bg-slate-100 rounded w-64"></div>
+            <div className="h-4 bg-slate-100 rounded w-56"></div>
+            <div className="h-4 bg-slate-100 rounded w-48"></div>
           </div>
         </div>
 
         {/* User Message */}
-        <div className="flex justify-end">
-          <div className="bg-purple-600/30 rounded-2xl p-4 max-w-[80%]">
-            <div className="h-4 bg-slate-700/50 rounded w-40"></div>
+        <div className="flex justify-end gap-4">
+          <div className="bg-slate-200 rounded-[2rem] rounded-tr-sm p-6 max-w-[80%] space-y-3">
+            <div className="h-4 bg-white/60 rounded w-48"></div>
+            <div className="h-4 bg-white/60 rounded w-32"></div>
           </div>
+          <div className="w-10 h-10 rounded-[1.25rem] bg-slate-200 flex-shrink-0"></div>
         </div>
 
-        {/* AI Message */}
-        <div className="flex justify-start">
-          <div className="bg-slate-800/50 rounded-2xl p-4 max-w-[80%]">
-            <div className="h-4 bg-slate-700/50 rounded w-72 mb-2"></div>
-            <div className="h-4 bg-slate-700/50 rounded w-64"></div>
+        {/* AI Message Short */}
+        <div className="flex justify-start gap-4">
+          <div className="w-10 h-10 rounded-[1.25rem] bg-slate-200 flex-shrink-0"></div>
+          <div className="bg-white rounded-[2rem] rounded-tl-sm p-6 border border-slate-100 max-w-[80%] space-y-3">
+            <div className="h-4 bg-slate-100 rounded w-72"></div>
+            <div className="h-4 bg-slate-100 rounded w-40"></div>
           </div>
         </div>
       </div>
 
       {/* Input Area */}
-      <div className="bg-slate-800/50 border-t border-slate-700/50 p-4">
-        <div className="h-12 bg-slate-700/50 rounded-full"></div>
+      <div className="bg-white border-t border-slate-100 p-6">
+        <div className="h-16 bg-slate-50 rounded-[2rem] border border-slate-100"></div>
       </div>
     </div>
   );

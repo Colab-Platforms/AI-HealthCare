@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import BMIWidget from '../components/BMIWidget';
 import SleepTracker from '../components/SleepTracker';
+import DashboardSkeleton from '../components/skeletons/DashboardSkeleton';
 import NotificationPanel, { useNotificationCount } from '../components/NotificationPanel';
 import { healthService } from '../services/api';
 
@@ -295,16 +296,9 @@ export default function DashboardEnhanced() {
     }
   }, [dashboardData, user]);
 
-  // Only show full-screen loader on initial load with no cached data
+  // Only show skeleton on initial load with no cached data
   if (isInitialLoad && loading.dashboard && !dashboardData) {
-    return (
-      <div className="flex items-center justify-center h-[60vh]">
-        <div className="text-center">
-          <div className="w-16 h-16 border-4 border-[#2FC8B9]/20 border-t-[#2FC8B9] rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-500 font-bold">Loading your health dashboard...</p>
-        </div>
-      </div>
-    );
+    return <DashboardSkeleton />;
   }
 
   const hasReports = dashboardData?.recentReports?.length > 0;

@@ -2,29 +2,42 @@ import React from 'react';
 
 const ReportsSkeleton = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-pink-900 to-slate-900 p-4 sm:p-6 animate-pulse">
-      {/* Header */}
-      <div className="mb-6">
-        <div className="h-8 bg-slate-700/50 rounded w-48 mb-2"></div>
-        <div className="h-4 bg-slate-700/50 rounded w-64"></div>
+    <div className="min-h-screen bg-white p-6 pb-24 animate-pulse space-y-8">
+      {/* Header Skeleton */}
+      <div className="h-44 bg-slate-50 border border-slate-100 rounded-[2.5rem] p-8">
+        <div className="h-4 bg-slate-200 rounded w-24 mb-4"></div>
+        <div className="h-8 bg-slate-200 rounded w-64 mb-4"></div>
+        <div className="h-4 bg-slate-200 rounded w-48"></div>
       </div>
 
-      {/* Reports Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* Stats Skeleton */}
+      <div className="grid grid-cols-3 gap-4">
+        {[1, 2, 3].map(i => (
+          <div key={i} className="h-32 bg-white rounded-[2rem] border border-slate-100"></div>
+        ))}
+      </div>
+
+      {/* Filter Skeleton */}
+      <div className="flex gap-3">
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className="h-10 w-24 bg-slate-50 rounded-2xl border border-slate-100"></div>
+        ))}
+      </div>
+
+      {/* Grid Skeleton */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {[1, 2, 3, 4, 5, 6].map((i) => (
-          <div key={i} className="bg-slate-800/50 rounded-xl p-5 border border-slate-700/50">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex-1">
-                <div className="h-5 bg-slate-700/50 rounded w-32 mb-2"></div>
-                <div className="h-4 bg-slate-700/50 rounded w-24"></div>
+          <div key={i} className="h-64 bg-white rounded-[2rem] border border-slate-100 p-6 flex flex-col justify-between">
+            <div className="flex gap-4">
+              <div className="w-16 h-16 rounded-[1.25rem] bg-slate-100"></div>
+              <div className="space-y-2 flex-1">
+                <div className="h-4 bg-slate-100 rounded w-16"></div>
+                <div className="h-6 bg-slate-100 rounded w-32"></div>
+                <div className="h-3 bg-slate-100 rounded w-20"></div>
               </div>
-              <div className="w-10 h-10 bg-slate-700/50 rounded-lg"></div>
             </div>
-            <div className="space-y-2">
-              <div className="h-3 bg-slate-700/50 rounded w-full"></div>
-              <div className="h-3 bg-slate-700/50 rounded w-3/4"></div>
-            </div>
-            <div className="mt-4 h-9 bg-slate-700/50 rounded-lg"></div>
+            <div className="h-12 bg-slate-50 rounded-2xl"></div>
+            <div className="h-12 bg-slate-100 rounded-2xl"></div>
           </div>
         ))}
       </div>

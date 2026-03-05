@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import BMIWidget from '../components/BMIWidget';
+import ProfileSkeleton from '../components/skeletons/ProfileSkeleton';
 import { useNavigate } from 'react-router-dom';
 
 export default function Profile() {
@@ -342,6 +343,8 @@ export default function Profile() {
     slate: { bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-100', pillBg: 'bg-slate-100', pillText: 'text-slate-700' }
   };
   const bmiColors = colorMap[bmiStatus.color] || colorMap.slate;
+
+  if (!user) return <ProfileSkeleton />;
 
   return (
     <div className="w-full relative min-h-screen bg-slate-50 overflow-x-hidden animate-fade-in pb-24">

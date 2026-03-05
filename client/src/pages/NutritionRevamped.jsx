@@ -42,6 +42,7 @@ import {
   Cell,
 } from "recharts";
 import MealInsightPopup from "../components/MealInsightPopup";
+import NutritionSkeleton from "../components/skeletons/NutritionSkeleton";
 
 export default function NutritionRevamped() {
   const { user } = useAuth();
@@ -396,11 +397,7 @@ export default function NutritionRevamped() {
   };
 
   if (isInitialLoad && loading) {
-    return (
-      <div className="flex items-center justify-center h-screen bg-gray-50">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
-      </div>
-    );
+    return <NutritionSkeleton />;
   }
 
   const caloriesRemaining =
