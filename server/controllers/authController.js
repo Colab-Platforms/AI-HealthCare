@@ -101,7 +101,7 @@ exports.register = async (req, res) => {
           status: 'active',
           startDate: new Date()
         }
-      }).maxTimeMS(30000);
+      });
     } catch (createError) {
       console.error('User creation error:', createError.message);
       console.error('User creation error code:', createError.code);
@@ -160,7 +160,7 @@ exports.registerDoctor = async (req, res) => {
       password,
       role: 'doctor',
       isActive: true
-    }).maxTimeMS(30000);
+    });
 
     // Create doctor profile (pending approval) - with extended timeout for Vercel
     const doctor = await Doctor.create({
@@ -177,11 +177,11 @@ exports.registerDoctor = async (req, res) => {
       bio,
       approvalStatus: 'pending',
       isListed: false
-    }).maxTimeMS(30000);
+    });
 
     // Link doctor profile to user - with extended timeout for Vercel
     user.doctorProfile = doctor._id;
-    await user.save({ maxTimeMS: 30000 });
+    await user.save();
 
     res.status(201).json({
       _id: user._id,
@@ -354,7 +354,7 @@ exports.updateProfile = async (req, res) => {
           healthGoal.gender = user.profile.gender || healthGoal.gender;
 
           // The pre-save hook in HealthGoal will handle target recalculations
-          await healthGoal.save({ maxTimeMS: 30000 });
+          await healthGoal.save();
         }
       }
 
@@ -362,7 +362,7 @@ exports.updateProfile = async (req, res) => {
       user.markModified('profile');
       if (bmiChanged) user.markModified('healthMetrics');
 
-      const updatedUser = await user.save({ maxTimeMS: 30000 });
+      const updatedUser = await user.save();
 
       res.json({
         ...updatedUser.toObject(),
@@ -404,7 +404,7 @@ exports.createAdmin = async (req, res) => {
       password,
       role: 'admin',
       subscription: { plan: 'premium', status: 'active', startDate: new Date() }
-    }).maxTimeMS(30000);
+    });
 
     res.status(201).json({
       _id: admin._id,
