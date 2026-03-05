@@ -155,7 +155,7 @@ export default function RadialOrbitalTimeline({
 
   return (
     <div
-      className="w-full py-20 md:py-32 bg-gradient-to-b from-transparent via-transparent to-transparent overflow-hidden"
+      className="w-full py-20 md:py-32 bg-gradient-to-b from-transparent via-transparent to-transparent overflow-visible"
       ref={containerRef}
       onClick={handleContainerClick}
     >
@@ -185,280 +185,277 @@ export default function RadialOrbitalTimeline({
 
           {/* Right Side - Timeline Spinner with Ocean Blue Background */}
           <div className="flex-1 h-full relative rounded-3xl overflow-visible bg-gradient-to-br from-[#0a3d5c] via-[#0d5a8a] to-[#051f2e] border border-cyan-400/20 shadow-2xl shadow-cyan-600/20">
-            
+
             {/* Spinner Container */}
-        <div
-          className="absolute w-full h-full flex items-center justify-center z-10"
-          ref={orbitRef}
-          style={{
-            perspective: "1000px",
-            transform: `translate(${centerOffset.x}px, ${centerOffset.y}px)`,
-          }}
-        >
-          <div className="absolute w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 via-blue-500 to-teal-500 animate-pulse flex items-center justify-center z-50">
-            <div className="absolute w-20 h-20 rounded-full border-2 border-white/30 animate-ping opacity-70"></div>
             <div
-              className="absolute w-24 h-24 rounded-full border-2 border-white/20 animate-ping opacity-50"
-              style={{ animationDelay: "0.5s" }}
-            ></div>
-            <div className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-md shadow-lg shadow-white/50"></div>
-          </div>
-
-          <div className="absolute w-96 h-96 rounded-full border border-white/10"></div>
-
-          {timelineData.map((item, index) => {
-            const position = calculateNodePosition(index, timelineData.length);
-            const isExpanded = expandedItems[item.id];
-            const isRelated = isRelatedToActive(item.id);
-            const isPulsing = pulseEffect[item.id];
-            const Icon = item.icon;
-
-            const nodeStyle = {
-              transform: `translate(${position.x}px, ${position.y}px)`,
-              zIndex: isExpanded ? 200 : position.zIndex,
-              opacity: isExpanded ? 1 : position.opacity,
-            };
-
-            return (
-              <div
-                key={item.id}
-                ref={(el) => (nodeRefs.current[item.id] = el)}
-                className="absolute transition-all duration-700 cursor-pointer"
-                style={nodeStyle}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleItem(item.id);
-                }}
-              >
+              className="absolute w-full h-full flex items-center justify-center z-10"
+              ref={orbitRef}
+              style={{
+                perspective: "1000px",
+                transform: `translate(${centerOffset.x}px, ${centerOffset.y}px)`,
+              }}
+            >
+              <div className="absolute w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 via-blue-500 to-teal-500 animate-pulse flex items-center justify-center z-50">
+                <div className="absolute w-20 h-20 rounded-full border-2 border-white/30 animate-ping opacity-70"></div>
                 <div
-                  className={`absolute rounded-full -inset-1 ${
-                    isPulsing ? "animate-pulse duration-1000" : ""
-                  }`}
-                  style={{
-                    background: `radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%)`,
-                    width: `${item.energy * 0.5 + 40}px`,
-                    height: `${item.energy * 0.5 + 40}px`,
-                    left: `-${(item.energy * 0.5 + 40 - 40) / 2}px`,
-                    top: `-${(item.energy * 0.5 + 40 - 40) / 2}px`,
-                  }}
+                  className="absolute w-24 h-24 rounded-full border-2 border-white/20 animate-ping opacity-50"
+                  style={{ animationDelay: "0.5s" }}
                 ></div>
+                <div className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-md shadow-lg shadow-white/50"></div>
+              </div>
 
-                <div
-                  className={`
+              <div className="absolute w-96 h-96 rounded-full border border-white/10"></div>
+
+              {timelineData.map((item, index) => {
+                const position = calculateNodePosition(index, timelineData.length);
+                const isExpanded = expandedItems[item.id];
+                const isRelated = isRelatedToActive(item.id);
+                const isPulsing = pulseEffect[item.id];
+                const Icon = item.icon;
+
+                const nodeStyle = {
+                  transform: `translate(${position.x}px, ${position.y}px)`,
+                  zIndex: isExpanded ? 200 : position.zIndex,
+                  opacity: isExpanded ? 1 : position.opacity,
+                };
+
+                return (
+                  <div
+                    key={item.id}
+                    ref={(el) => (nodeRefs.current[item.id] = el)}
+                    className="absolute transition-all duration-700 cursor-pointer"
+                    style={nodeStyle}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleItem(item.id);
+                    }}
+                  >
+                    <div
+                      className={`absolute rounded-full -inset-1 ${isPulsing ? "animate-pulse duration-1000" : ""
+                        }`}
+                      style={{
+                        background: `radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%)`,
+                        width: `${item.energy * 0.5 + 40}px`,
+                        height: `${item.energy * 0.5 + 40}px`,
+                        left: `-${(item.energy * 0.5 + 40 - 40) / 2}px`,
+                        top: `-${(item.energy * 0.5 + 40 - 40) / 2}px`,
+                      }}
+                    ></div>
+
+                    <div
+                      className={`
                   w-10 h-10 rounded-full flex items-center justify-center
-                  ${
-                    isExpanded
-                      ? "bg-transparent text-white"
-                      : isRelated
-                      ? "bg-transparent text-white"
-                      : "bg-transparent text-white"
-                  }
+                  ${isExpanded
+                          ? "bg-transparent text-white"
+                          : isRelated
+                            ? "bg-transparent text-white"
+                            : "bg-transparent text-white"
+                        }
                   border-2 
-                  ${
-                    isExpanded
-                      ? "border-white shadow-lg shadow-white/30"
-                      : isRelated
-                      ? "border-white animate-pulse"
-                      : "border-white"
-                  }
+                  ${isExpanded
+                          ? "border-white shadow-lg shadow-white/30"
+                          : isRelated
+                            ? "border-white animate-pulse"
+                            : "border-white"
+                        }
                   transition-all duration-300 transform
                   ${isExpanded ? "scale-150" : ""}
                 `}
-                >
-                  <Icon size={16} />
-                </div>
+                    >
+                      <Icon size={16} />
+                    </div>
 
-                <div
-                  className={`
+                    <div
+                      className={`
                   absolute top-12  whitespace-nowrap
                   text-xs font-semibold tracking-wider
                   transition-all duration-300
                   ${isExpanded ? "text-white scale-125" : "text-white"}
                 `}
-                >
-                  {item.title}
-                </div>
+                    >
+                      {item.title}
+                    </div>
 
-                {isExpanded && (
-                  <Card className="absolute top-14 left-1/2 -translate-x-1/2 w-48 bg-gradient-to-br from-[#0a3d5c] to-[#0d5a8a] backdrop-blur-lg border-cyan-500/50 shadow-xl shadow-cyan-500/20 overflow-visible z-50">
-                    <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-px h-1.5 bg-cyan-400/70"></div>
-                    <CardHeader className="pb-1.5 pt-3 px-3">
-                      <div className="flex justify-between items-center mb-0.5">
-                        <Badge
-                          className={`px-1.5 text-xs font-semibold ${getStatusStyles(
-                            item.status
-                          )}`}
-                        >
-                          {item.status === "completed"
-                            ? "✓ COMPLETE"
-                            : item.status === "in-progress"
-                            ? "⚡ IN PROGRESS"
-                            : "⏱ PENDING"}
-                        </Badge>
-                        <span className="text-xs font-mono text-cyan-300/70">
-                          {item.date}
-                        </span>
-                      </div>
-                      <CardTitle className="text-xs text-white mt-0.5">
-                        {item.title}
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent className="text-xs text-cyan-100/90 space-y-1.5 px-3 pb-2">
-                      <div>
-                        <h4 className="text-cyan-300 font-semibold mb-0.5 text-xs">📋 Overview</h4>
-                        <p className="text-cyan-100/80 text-xs leading-tight">{item.content}</p>
-                      </div>
-
-                      <div className="pt-1.5 border-t border-cyan-500/30">
-                        <h4 className="text-cyan-300 font-semibold mb-1 text-xs">✨ Key Features</h4>
-                        <div className="space-y-0.5">
-                          {item.id === 1 && (
-                            <>
-                              <div className="flex gap-1.5 text-xs">
-                                <span className="text-cyan-400 flex-shrink-0">→</span>
-                                <span>Comprehensive health data collection</span>
-                              </div>
-                              <div className="flex gap-1.5 text-xs">
-                                <span className="text-cyan-400 flex-shrink-0">→</span>
-                                <span>User needs and pain points analysis</span>
-                              </div>
-                              <div className="flex gap-1.5 text-xs">
-                                <span className="text-cyan-400 flex-shrink-0">→</span>
-                                <span>Feature prioritization framework</span>
-                              </div>
-                            </>
-                          )}
-                          {item.id === 2 && (
-                            <>
-                              <div className="flex gap-1.5 text-xs">
-                                <span className="text-cyan-400 flex-shrink-0">→</span>
-                                <span>Scalable microservices architecture</span>
-                              </div>
-                              <div className="flex gap-1.5 text-xs">
-                                <span className="text-cyan-400 flex-shrink-0">→</span>
-                                <span>AI/ML pipeline integration</span>
-                              </div>
-                              <div className="flex gap-1.5 text-xs">
-                                <span className="text-cyan-400 flex-shrink-0">→</span>
-                                <span>Secure data storage design</span>
-                              </div>
-                            </>
-                          )}
-                          {item.id === 3 && (
-                            <>
-                              <div className="flex gap-1.5 text-xs">
-                                <span className="text-cyan-400 flex-shrink-0">→</span>
-                                <span>Claude AI integration for analysis</span>
-                              </div>
-                              <div className="flex gap-1.5 text-xs">
-                                <span className="text-cyan-400 flex-shrink-0">→</span>
-                                <span>Real-time report processing</span>
-                              </div>
-                              <div className="flex gap-1.5 text-xs">
-                                <span className="text-cyan-400 flex-shrink-0">→</span>
-                                <span>Multi-language support</span>
-                              </div>
-                            </>
-                          )}
-                          {item.id === 4 && (
-                            <>
-                              <div className="flex gap-1.5 text-xs">
-                                <span className="text-cyan-400 flex-shrink-0">→</span>
-                                <span>Automated test suite coverage</span>
-                              </div>
-                              <div className="flex gap-1.5 text-xs">
-                                <span className="text-cyan-400 flex-shrink-0">→</span>
-                                <span>Performance optimization</span>
-                              </div>
-                              <div className="flex gap-1.5 text-xs">
-                                <span className="text-cyan-400 flex-shrink-0">→</span>
-                                <span>Security vulnerability scanning</span>
-                              </div>
-                            </>
-                          )}
-                          {item.id === 5 && (
-                            <>
-                              <div className="flex gap-1.5 text-xs">
-                                <span className="text-cyan-400 flex-shrink-0">→</span>
-                                <span>Production deployment pipeline</span>
-                              </div>
-                              <div className="flex gap-1.5 text-xs">
-                                <span className="text-cyan-400 flex-shrink-0">→</span>
-                                <span>24/7 monitoring and alerts</span>
-                              </div>
-                              <div className="flex gap-1.5 text-xs">
-                                <span className="text-cyan-400 flex-shrink-0">→</span>
-                                <span>User onboarding and support</span>
-                              </div>
-                            </>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="pt-1.5 border-t border-cyan-500/30">
-                        <div className="flex justify-between items-center text-xs mb-0.5">
-                          <span className="flex items-center text-cyan-300">
-                            <Zap size={9} className="mr-0.5" />
-                            Progress
-                          </span>
-                          <span className="font-mono text-cyan-400 text-xs">{item.energy}%</span>
-                        </div>
-                        <div className="w-full h-1 bg-cyan-900/50 rounded-full overflow-hidden border border-cyan-500/30">
-                          <div
-                            className="h-full bg-gradient-to-r from-cyan-500 to-cyan-400"
-                            style={{ width: `${item.energy}%` }}
-                          ></div>
-                        </div>
-                      </div>
-
-                      {item.relatedIds.length > 0 && (
-                        <div className="pt-1.5 border-t border-cyan-500/30">
-                          <div className="flex items-center mb-0.5">
-                            <Link size={9} className="text-cyan-400 mr-0.5" />
-                            <h4 className="text-xs uppercase tracking-wider font-semibold text-cyan-300">
-                              Related Phases
-                            </h4>
+                    {isExpanded && (
+                      <Card className="absolute top-14 left-1/2 -translate-x-1/2 w-48 bg-gradient-to-br from-[#0a3d5c] to-[#0d5a8a] backdrop-blur-lg border-cyan-500/50 shadow-xl shadow-cyan-500/20 overflow-visible z-50">
+                        <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-px h-1.5 bg-cyan-400/70"></div>
+                        <CardHeader className="pb-1.5 pt-3 px-3">
+                          <div className="flex justify-between items-center mb-0.5">
+                            <Badge
+                              className={`px-1.5 text-xs font-semibold ${getStatusStyles(
+                                item.status
+                              )}`}
+                            >
+                              {item.status === "completed"
+                                ? "✓ COMPLETE"
+                                : item.status === "in-progress"
+                                  ? "⚡ IN PROGRESS"
+                                  : "⏱ PENDING"}
+                            </Badge>
+                            <span className="text-xs font-mono text-cyan-300/70">
+                              {item.date}
+                            </span>
                           </div>
-                          <div className="flex flex-wrap gap-1">
-                            {item.relatedIds.map((relatedId) => {
-                              const relatedItem = timelineData.find(
-                                (i) => i.id === relatedId
-                              );
-                              return (
-                                <Button
-                                  key={relatedId}
-                                  variant="outline"
-                                  size="sm"
-                                  className="flex items-center h-5 px-1 py-0 text-xs rounded-md border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 hover:text-cyan-200 transition-all"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    toggleItem(relatedId);
-                                  }}
-                                >
-                                  {relatedItem?.title}
-                                  <ArrowRight
-                                    size={7}
-                                    className="ml-0.5 text-cyan-400/60"
-                                  />
-                                </Button>
-                              );
-                            })}
+                          <CardTitle className="text-xs text-white mt-0.5">
+                            {item.title}
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent className="text-xs text-cyan-100/90 space-y-1.5 px-3 pb-2">
+                          <div>
+                            <h4 className="text-cyan-300 font-semibold mb-0.5 text-xs">📋 Overview</h4>
+                            <p className="text-cyan-100/80 text-xs leading-tight">{item.content}</p>
                           </div>
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                )}
-              </div>
-            );
-          })}
-        </div>
+
+                          <div className="pt-1.5 border-t border-cyan-500/30">
+                            <h4 className="text-cyan-300 font-semibold mb-1 text-xs">✨ Key Features</h4>
+                            <div className="space-y-0.5">
+                              {item.id === 1 && (
+                                <>
+                                  <div className="flex gap-1.5 text-xs">
+                                    <span className="text-cyan-400 flex-shrink-0">→</span>
+                                    <span>Comprehensive health data collection</span>
+                                  </div>
+                                  <div className="flex gap-1.5 text-xs">
+                                    <span className="text-cyan-400 flex-shrink-0">→</span>
+                                    <span>User needs and pain points analysis</span>
+                                  </div>
+                                  <div className="flex gap-1.5 text-xs">
+                                    <span className="text-cyan-400 flex-shrink-0">→</span>
+                                    <span>Feature prioritization framework</span>
+                                  </div>
+                                </>
+                              )}
+                              {item.id === 2 && (
+                                <>
+                                  <div className="flex gap-1.5 text-xs">
+                                    <span className="text-cyan-400 flex-shrink-0">→</span>
+                                    <span>Scalable microservices architecture</span>
+                                  </div>
+                                  <div className="flex gap-1.5 text-xs">
+                                    <span className="text-cyan-400 flex-shrink-0">→</span>
+                                    <span>AI/ML pipeline integration</span>
+                                  </div>
+                                  <div className="flex gap-1.5 text-xs">
+                                    <span className="text-cyan-400 flex-shrink-0">→</span>
+                                    <span>Secure data storage design</span>
+                                  </div>
+                                </>
+                              )}
+                              {item.id === 3 && (
+                                <>
+                                  <div className="flex gap-1.5 text-xs">
+                                    <span className="text-cyan-400 flex-shrink-0">→</span>
+                                    <span>Claude AI integration for analysis</span>
+                                  </div>
+                                  <div className="flex gap-1.5 text-xs">
+                                    <span className="text-cyan-400 flex-shrink-0">→</span>
+                                    <span>Real-time report processing</span>
+                                  </div>
+                                  <div className="flex gap-1.5 text-xs">
+                                    <span className="text-cyan-400 flex-shrink-0">→</span>
+                                    <span>Multi-language support</span>
+                                  </div>
+                                </>
+                              )}
+                              {item.id === 4 && (
+                                <>
+                                  <div className="flex gap-1.5 text-xs">
+                                    <span className="text-cyan-400 flex-shrink-0">→</span>
+                                    <span>Automated test suite coverage</span>
+                                  </div>
+                                  <div className="flex gap-1.5 text-xs">
+                                    <span className="text-cyan-400 flex-shrink-0">→</span>
+                                    <span>Performance optimization</span>
+                                  </div>
+                                  <div className="flex gap-1.5 text-xs">
+                                    <span className="text-cyan-400 flex-shrink-0">→</span>
+                                    <span>Security vulnerability scanning</span>
+                                  </div>
+                                </>
+                              )}
+                              {item.id === 5 && (
+                                <>
+                                  <div className="flex gap-1.5 text-xs">
+                                    <span className="text-cyan-400 flex-shrink-0">→</span>
+                                    <span>Production deployment pipeline</span>
+                                  </div>
+                                  <div className="flex gap-1.5 text-xs">
+                                    <span className="text-cyan-400 flex-shrink-0">→</span>
+                                    <span>24/7 monitoring and alerts</span>
+                                  </div>
+                                  <div className="flex gap-1.5 text-xs">
+                                    <span className="text-cyan-400 flex-shrink-0">→</span>
+                                    <span>User onboarding and support</span>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          </div>
+
+                          <div className="pt-1.5 border-t border-cyan-500/30">
+                            <div className="flex justify-between items-center text-xs mb-0.5">
+                              <span className="flex items-center text-cyan-300">
+                                <Zap size={9} className="mr-0.5" />
+                                Progress
+                              </span>
+                              <span className="font-mono text-cyan-400 text-xs">{item.energy}%</span>
+                            </div>
+                            <div className="w-full h-1 bg-cyan-900/50 rounded-full overflow-hidden border border-cyan-500/30">
+                              <div
+                                className="h-full bg-gradient-to-r from-cyan-500 to-cyan-400"
+                                style={{ width: `${item.energy}%` }}
+                              ></div>
+                            </div>
+                          </div>
+
+                          {item.relatedIds.length > 0 && (
+                            <div className="pt-1.5 border-t border-cyan-500/30">
+                              <div className="flex items-center mb-0.5">
+                                <Link size={9} className="text-cyan-400 mr-0.5" />
+                                <h4 className="text-xs uppercase tracking-wider font-semibold text-cyan-300">
+                                  Related Phases
+                                </h4>
+                              </div>
+                              <div className="flex flex-wrap gap-1">
+                                {item.relatedIds.map((relatedId) => {
+                                  const relatedItem = timelineData.find(
+                                    (i) => i.id === relatedId
+                                  );
+                                  return (
+                                    <Button
+                                      key={relatedId}
+                                      variant="outline"
+                                      size="sm"
+                                      className="flex items-center h-5 px-1 py-0 text-xs rounded-md border-cyan-500/40 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 hover:text-cyan-200 transition-all"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        toggleItem(relatedId);
+                                      }}
+                                    >
+                                      {relatedItem?.title}
+                                      <ArrowRight
+                                        size={7}
+                                        className="ml-0.5 text-cyan-400/60"
+                                      />
+                                    </Button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
 
         {/* Mobile Layout - Only Spinner */}
         <div className="lg:hidden h-auto py-4 flex flex-col items-center justify-center">
-          <div className="relative w-full h-[480px] flex items-center justify-center rounded-2xl overflow-visible" style={{background: 'linear-gradient(135deg, rgba(10, 61, 92, 0.4) 0%, rgba(13, 90, 138, 0.4) 100%)'}}>
+          <div className="relative w-full h-[480px] flex items-center justify-center rounded-2xl overflow-visible" style={{ background: 'linear-gradient(135deg, rgba(10, 61, 92, 0.4) 0%, rgba(13, 90, 138, 0.4) 100%)' }}>
             <div className="absolute inset-0 rounded-2xl border border-cyan-500/30"></div>
             <div
               className="absolute w-full h-full flex items-center justify-center"
@@ -504,9 +501,8 @@ export default function RadialOrbitalTimeline({
                     }}
                   >
                     <div
-                      className={`absolute rounded-full -inset-1 ${
-                        isPulsing ? "animate-pulse duration-1000" : ""
-                      }`}
+                      className={`absolute rounded-full -inset-1 ${isPulsing ? "animate-pulse duration-1000" : ""
+                        }`}
                       style={{
                         background: `radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%)`,
                         width: `${item.energy * 0.5 + 40}px`,
@@ -519,21 +515,19 @@ export default function RadialOrbitalTimeline({
                     <div
                       className={`
                       w-10 h-10 rounded-full flex items-center justify-center
-                      ${
-                        isExpanded
+                      ${isExpanded
                           ? "bg-transparent text-white"
                           : isRelated
-                          ? "bg-transparent text-white"
-                          : "bg-transparent text-white"
-                      }
+                            ? "bg-transparent text-white"
+                            : "bg-transparent text-white"
+                        }
                       border-2 
-                      ${
-                        isExpanded
+                      ${isExpanded
                           ? "border-white shadow-lg shadow-white/30"
                           : isRelated
-                          ? "border-white animate-pulse"
-                          : "border-white"
-                      }
+                            ? "border-white animate-pulse"
+                            : "border-white"
+                        }
                       transition-all duration-300 transform
                       ${isExpanded ? "scale-150" : ""}
                     `}
@@ -565,8 +559,8 @@ export default function RadialOrbitalTimeline({
                               {item.status === "completed"
                                 ? "✓ COMPLETE"
                                 : item.status === "in-progress"
-                                ? "⚡ IN PROGRESS"
-                                : "⏱ PENDING"}
+                                  ? "⚡ IN PROGRESS"
+                                  : "⏱ PENDING"}
                             </Badge>
                             <span className="text-xs font-mono text-cyan-300/70">
                               {item.date}

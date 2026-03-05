@@ -1358,7 +1358,7 @@ export default function QuickFoodScan() {
                   className="flex-[2] py-5 bg-[#2FC8B9] text-white rounded-[2rem] font-black text-sm uppercase tracking-widest shadow-[0_20px_40px_-12px_rgba(47,200,185,0.3)] hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-3"
                 >
                   <CheckCircle className="w-5 h-5 text-white/80" />
-                  Add to Diary
+                  Log this Meal
                 </button>
               </div>
             </div>

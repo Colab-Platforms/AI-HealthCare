@@ -58,7 +58,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (name, email, password, profile = {}, nutritionGoal = null) => {
+  const register = async (name, email, phone, password, profile = {}, nutritionGoal = null) => {
     // Clear any existing data before registering new user
     localStorage.clear();
     sessionStorage.clear();
@@ -76,6 +76,7 @@ export const AuthProvider = ({ children }) => {
     const { data } = await api.post('auth/register', {
       name,
       email,
+      phone,
       password,
       profile,
       nutritionGoal

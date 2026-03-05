@@ -1450,7 +1450,7 @@ export default function NutritionRevamped() {
                       <div className="absolute inset-x-0 bottom-0 h-1 bg-white/20 transform translate-y-2 group-hover:translate-y-0 transition-transform"></div>
                       <div className="relative z-10 flex items-center gap-3">
                         <CheckCircle className="w-5 h-5 text-white/80 group-hover:scale-110 transition-transform" />
-                        {editingMeal ? "Update Meal" : "Add to Diary"}
+                        {editingMeal ? "Update Meal" : "Log this Meal"}
                       </div>
                     </button>
                   </div>
