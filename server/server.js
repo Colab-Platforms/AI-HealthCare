@@ -175,11 +175,15 @@ try {
     try {
       const router = require(route.module);
       app.use(route.path, router);
+      console.log(`[Server] Mounted: ${route.path}`);
 
-      // On Vercel, also mount at the non-api path as a super-fallback
+      // Support direct access on Vercel (fallback if /api is stripped)
       if (process.env.VERCEL && route.path.startsWith('/api/')) {
         const fallbackPath = route.path.replace('/api', '');
-        app.use(fallbackPath, router);
+        if (fallbackPath && fallbackPath !== '/') {
+          app.use(fallbackPath, router);
+          console.log(`[Server] Mounted Vercel fallback: ${fallbackPath}`);
+        }
       }
     } catch (err) {
       console.error(`Error loading route ${route.path}:`, err.message);

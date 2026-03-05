@@ -17,30 +17,37 @@ dotenv.config({ path: envPath });
 process.env.VERCEL = '1';
 process.env.NODE_ENV = process.env.NODE_ENV || 'production';
 
-// Import the Express app from server.js
-// server.js checks process.env.VERCEL and does module.exports = app
 const app = require('../server/server');
 
-// Robust URL prefixing for Vercel
 module.exports = (req, res) => {
+  // Normalize the URL for Express
   let url = req.url || '/';
 
-  // Vercel sometimes passes paths without leading /, or sometimes captures 
-  // without the /api prefix. Express expects /api/path...
+  // Log original incoming path for debugging
+  console.log(`[Vercel Handler] Method: ${req.method} | Original Path: ${url}`);
 
   // Ensure leading slash
   if (!url.startsWith('/')) {
     url = '/' + url;
   }
 
-  // Check if we need to prefix with /api
-  if (!url.startsWith('/api/') && url !== '/api') {
-    url = '/api' + url;
-    console.log(`[Vercel] Prefixed URL: ${req.url} -> ${url}`);
+  // Force /api prefix if missing. Many rewrites in Vercel strip the prefix,
+  // but our Express app mounts explicitly at /api/...
+  // This also handles /admin routes by ensuring they get the /api prefix
+  if (!url.startsWith('/api/')) {
+    if (url.startsWith('/admin')) {
+      url = '/api' + url;
+      console.log(`[Vercel Handler] Admin route detected, forcing /api prefix: ${url}`);
+    } else if (url !== '/api') { // Only add /api if it's not already /api and not an admin route
+      url = '/api' + url;
+    }
   }
 
+  // Update request object for Express routing
   req.url = url;
   req.originalUrl = url;
+
+  console.log(`[Vercel Handler] Proxied Path: ${url}`);
 
   return app(req, res);
 };
