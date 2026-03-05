@@ -1098,15 +1098,13 @@ export default function QuickFoodScan() {
                     </div>
                   </div>
 
-                  {/* Main Action Pin */}
-                  <div className="flex md:flex-col gap-2">
-                    <button
-                      onClick={resetForm}
-                      className="p-3 bg-slate-100 text-slate-400 rounded-2xl hover:bg-slate-200 transition-all active:scale-95"
-                    >
-                      <X className="w-6 h-6" />
-                    </button>
-                  </div>
+                  {/* Closing Cross on Top Right */}
+                  <button
+                    onClick={resetForm}
+                    className="absolute top-6 right-6 p-2 bg-slate-100/80 backdrop-blur-sm text-slate-500 rounded-xl hover:bg-slate-200 transition-all active:scale-95 z-50 shadow-sm border border-white/50"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
                 </div>
 
                 {/* Analyzed Image Display */}
