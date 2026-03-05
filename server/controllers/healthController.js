@@ -19,6 +19,7 @@ exports.uploadReport = async (req, res) => {
       return res.status(400).json({ message: 'Please upload a file' });
     }
 
+    let aiAnalysis;
     let extractedText = '';
     let cloudinaryUrl = null;
     try {
@@ -28,66 +29,59 @@ exports.uploadReport = async (req, res) => {
         throw new Error('No file data found to process');
       }
 
+      // 1. Text extraction (fast)
       if (req.file.mimetype === 'application/pdf') {
-        // Upload to Cloudinary for persistence (non-blocking for extraction)
-        console.log('☁️ Uploading report to Cloudinary...');
-        cloudinaryUrl = await cloudinary.uploadImage(dataBuffer, 'health_reports');
-
         const pdfData = await pdfParse(dataBuffer);
         extractedText = pdfData.text;
       } else {
-        // For images, upload to Cloudinary and use manual text
-        console.log('☁️ Uploading image report to Cloudinary...');
-        cloudinaryUrl = await cloudinary.uploadImage(dataBuffer, 'health_reports');
         extractedText = req.body.manualText || 'Image report - vision analysis requested';
       }
-    } catch (parseError) {
-      console.error('File parsing error:', parseError.message);
-      return res.status(400).json({ message: `Failed to parse file: ${parseError.message}` });
-    }
 
-    if (!extractedText || extractedText.trim().length < 20) {
-      return res.status(400).json({ message: 'Could not extract text from report. Please provide report details manually.' });
-    }
+      if (!extractedText || extractedText.trim().length < 20) {
+        return res.status(400).json({ message: 'Could not extract text from report. Please provide details manually.' });
+      }
 
-    const report = await HealthReport.create({
-      user: req.user._id,
-      reportType: req.body.reportType || 'general',
-      originalFile: {
-        filename: req.file.originalname || req.file.filename,
-        path: cloudinaryUrl || req.file.path || 'memory-storage',
-        mimetype: req.file.mimetype,
-        cloudinaryUrl: cloudinaryUrl
-      },
-      extractedText,
-      status: 'processing'
-    });
+      // 2. Parallel AI analysis and Cloudinary upload (heavy)
+      console.log('🔄 Starting parallel AI analysis and Cloudinary upload...');
 
-    // Analyze with AI
-    const userProfile = req.user.profile || {};
-    let aiAnalysis;
-    try {
-      console.log('🔄 Analyzing report...');
+      const uploadPromise = cloudinary.uploadImage(dataBuffer, 'health_reports');
+
+      let aiPromise;
       if (req.file.mimetype === 'application/pdf') {
-        console.log('📝 PDF text length:', extractedText.length);
-        aiAnalysis = await analyzeHealthReport(extractedText, req.user);
+        aiPromise = analyzeHealthReport(extractedText, req.user);
       } else {
-        console.log('📝 Image analysis with vision...');
-        aiAnalysis = await analyzeHealthReport(null, req.user, {
-          buffer: req.file.buffer || fs.readFileSync(req.file.path),
+        aiPromise = analyzeHealthReport(null, req.user, {
+          buffer: dataBuffer,
           mimetype: req.file.mimetype
         });
       }
 
-      console.log('✅ AI analysis received | Score:', aiAnalysis.healthScore, '| Metrics:', Object.keys(aiAnalysis.metrics || {}).length);
-    } catch (aiError) {
-      console.error('AI Analysis failed:', aiError.message);
-      // Save report with error status
-      report.status = 'failed';
-      report.error = aiError.message;
-      await report.save();
-      return res.status(500).json({ message: `AI Analysis failed: ${aiError.message}` });
+      // Wait for both to complete
+      const [uploadedUrl, analysisResult] = await Promise.all([uploadPromise, aiPromise]);
+
+      cloudinaryUrl = uploadedUrl;
+      aiAnalysis = analysisResult;
+
+      console.log('✅ Parallel tasks complete | Score:', aiAnalysis.healthScore);
+    } catch (error) {
+      console.error('Processing error:', error.message);
+      return res.status(500).json({ message: `Analysis failed: ${error.message}` });
     }
+
+    // 3. Create the report record
+    const report = await HealthReport.create({
+      user: req.user._id,
+      reportType: req.body.reportType || 'general',
+      originalFile: {
+        filename: req.file.originalname,
+        path: cloudinaryUrl,
+        mimetype: req.file.mimetype,
+        cloudinaryUrl: cloudinaryUrl
+      },
+      extractedText,
+      status: 'completed',
+      aiAnalysis
+    });
 
     // ✅ CRITICAL FIX: Validate and fix healthScore
     if (aiAnalysis.healthScore) {

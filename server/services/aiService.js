@@ -23,8 +23,8 @@ const makeAnthropicRequest = async (messages, maxTokens = 4096) => {
       return true;
     });
 
-    // Use shorter timeout on Vercel to stay within serverless limits
-    const requestTimeout = process.env.VERCEL ? 50000 : 120000;
+    // Use shorter timeout on Vercel to stay within serverless limits (maxDuration is 120s)
+    const requestTimeout = process.env.VERCEL ? 110000 : 120000;
 
     const response = await axios.post(
       ANTHROPIC_API_URL,
