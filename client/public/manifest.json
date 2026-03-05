@@ -4,8 +4,14 @@
   "description": "Your personal AI-powered health assistant for managing reports, nutrition, and wellness",
   "start_url": "/",
   "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui",
+    "window-controls-overlay"
+  ],
   "background_color": "#ffffff",
-  "theme_color": "#06b6d4",
+  "theme_color": "#2FC8B9",
+  "prefer_related_applications": false,
   "orientation": "portrait-primary",
   "icons": [
     {
