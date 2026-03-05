@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { ArrowLeft, Droplet, ChevronDown } from "lucide-react";
+import { ArrowLeft, Droplet, ChevronDown, Activity } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import LogGlucoseModal from "../components/LogGlucoseModal";
 import LogHba1cModal from "../components/LogHba1cModal";

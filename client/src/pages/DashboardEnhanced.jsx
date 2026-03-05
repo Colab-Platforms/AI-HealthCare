@@ -312,6 +312,9 @@ export default function DashboardEnhanced() {
   const hasNutrition = dashboardData?.nutritionTracked;
   const hasWearable = dashboardData?.wearableConnected;
   const healthScore = dashboardData?.user?.healthMetrics?.healthScore || dashboardData?.latestAnalysis?.healthScore;
+  const isDiabetic = user?.profile?.medicalHistory?.conditions?.includes('Diabetes') || user?.profile?.diabetesProfile?.type;
+  const glucoseData = JSON.parse(localStorage.getItem('glucoseData') || '[]');
+  const latestGlucose = glucoseData.length > 0 ? glucoseData[0].value : null;
 
   // Extract all unique metrics from reports
   const allAvailableMetrics = {};
@@ -763,33 +766,32 @@ export default function DashboardEnhanced() {
                   <Droplets className="w-6 h-6 text-[#2FC8B9]" />
                 </div>
                 <span className="text-xs font-black text-black uppercase tracking-[0.2em]">
-                  Diabetes Care
+                  {isDiabetic ? "Diabetes Care" : "Blood Sugar"}
                 </span>
               </div>
-              <span className="px-4 py-1.5 bg-[#2FC8B9] text-white rounded-full text-[10px] font-black shadow-sm tracking-widest uppercase">
-                IN RANGE
-              </span>
+              {latestGlucose && (
+                <span className="px-4 py-1.5 bg-[#2FC8B9] text-white rounded-full text-[10px] font-black shadow-sm tracking-widest uppercase">
+                  {latestGlucose >= 70 && latestGlucose <= 130 ? 'IN RANGE' : (latestGlucose > 130 ? 'HIGH' : 'LOW')}
+                </span>
+              )}
             </div>
 
             {/* Large Reading */}
             <div className="flex items-baseline gap-3 mb-2">
               <span className="text-5xl font-black text-black tracking-tighter">
-                {(() => {
-                  const glucoseData = JSON.parse(localStorage.getItem('glucoseData') || '[]');
-                  return glucoseData.length > 0 ? glucoseData[0].value : 108;
-                })()}
+                {latestGlucose || '--'}
               </span>
               <span className="text-xs text-slate-400 font-black tracking-widest uppercase">MG/DL</span>
             </div>
 
             {/* Description */}
             <p className="text-slate-500 text-sm mb-6 leading-relaxed max-w-sm font-bold">
-              Your fasting glucose is stable. Tap to log your next reading or view progress.
+              {latestGlucose ? "Your recent reading is logged. Tap to manage or view progress." : "Track your blood sugar levels to get personalized insights."}
             </p>
 
             {/* CTA Link */}
             <div className="flex items-center gap-2 text-[#2FC8B9] font-black text-xs uppercase tracking-widest group-hover:gap-4 transition-all">
-              <span>Enter Care Center</span>
+              <span>{latestGlucose ? "Enter Care Center" : "Log First Reading"}</span>
               <ChevronRight className="w-4 h-4" />
             </div>
           </div>
