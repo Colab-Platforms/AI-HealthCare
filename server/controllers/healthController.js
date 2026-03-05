@@ -269,6 +269,7 @@ exports.uploadReport = async (req, res) => {
       report.patientGender = aiAnalysis.patientGender.trim();
     }
 
+    report.aiAnalysis = aiAnalysis;
     report.status = 'completed';
     await report.save();
 
