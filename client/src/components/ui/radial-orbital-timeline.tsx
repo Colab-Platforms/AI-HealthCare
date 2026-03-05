@@ -1,5 +1,4 @@
-"use client";
-import { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { ArrowRight, Link, Zap } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -83,7 +82,7 @@ export default function RadialOrbitalTimeline({
   };
 
   useEffect(() => {
-    let rotationTimer: NodeJS.Timeout;
+    let rotationTimer: any;
 
     if (autoRotate && viewMode === "orbital") {
       rotationTimer = setInterval(() => {
@@ -155,7 +154,7 @@ export default function RadialOrbitalTimeline({
 
   return (
     <div
-      className="w-full py-20 md:py-32 bg-gradient-to-b from-transparent via-transparent to-transparent overflow-visible"
+      className="w-full mt-32 md:mt-0 py-32 md:py-32 bg-gradient-to-b from-transparent via-transparent to-transparent overflow-visible"
       ref={containerRef}
       onClick={handleContainerClick}
     >
@@ -454,8 +453,8 @@ export default function RadialOrbitalTimeline({
         </div>
 
         {/* Mobile Layout - Only Spinner */}
-        <div className="lg:hidden h-auto py-4 flex flex-col items-center justify-center">
-          <div className="relative w-full h-[480px] flex items-center justify-center rounded-2xl overflow-visible" style={{ background: 'linear-gradient(135deg, rgba(10, 61, 92, 0.4) 0%, rgba(13, 90, 138, 0.4) 100%)' }}>
+        <div className="lg:hidden h-auto py-12 flex flex-col items-center justify-center">
+          <div className="relative w-full h-[520px] flex items-center justify-center rounded-2xl overflow-visible" style={{ background: 'linear-gradient(135deg, rgba(10, 61, 92, 0.4) 0%, rgba(13, 90, 138, 0.4) 100%)' }}>
             <div className="absolute inset-0 rounded-2xl border border-cyan-500/30"></div>
             <div
               className="absolute w-full h-full flex items-center justify-center"

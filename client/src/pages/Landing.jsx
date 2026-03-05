@@ -438,8 +438,8 @@ function Pricing() {
             <div
               key={index}
               className={`relative p-8 rounded-2xl border ${plan.popular
-                  ? "bg-blue-600 text-white border-blue-600 shadow-2xl shadow-blue-600/25 scale-105"
-                  : "bg-white border-slate-200"
+                ? "bg-blue-600 text-white border-blue-600 shadow-2xl shadow-blue-600/25 scale-105"
+                : "bg-white border-slate-200"
                 }`}
             >
               {plan.popular && (
@@ -479,8 +479,8 @@ function Pricing() {
               <Link
                 to="/register?skip=true"
                 className={`w-full rounded-full py-4 px-6 text-center font-medium transition-colors block ${plan.popular
-                    ? "bg-white text-blue-600 hover:bg-blue-50"
-                    : "bg-blue-600 text-white hover:bg-blue-700"
+                  ? "bg-white text-blue-600 hover:bg-blue-50"
+                  : "bg-blue-600 text-white hover:bg-blue-700"
                   }`}
               >
                 Get started
@@ -798,6 +798,7 @@ export default function Landing() {
       {/* <WhySection /> */}
       {/* <ConnoisseurStackInteractor /> */}
       <Component />
+      <div className="h-32 lg:hidden"></div>
       {/* <HealthCardsSection /> */}
       <RadialOrbitalTimeline timelineData={timelineData} />
       <ScrollPhoneShowcase />
