@@ -232,11 +232,7 @@ export default function ReportAnalysisMobile() {
     return (
         <div id="report-mobile-content" className="min-h-screen pb-20 font-sans bg-slate-50">
             {/* Navbar */}
-            <div className="px-6 pt-8 pb-4 flex items-center justify-between sticky top-0 backdrop-blur-md z-20 no-pdf">
-                <Link to="/dashboard" className="flex items-center gap-2 text-purple-600 font-bold text-xs tracking-[0.1em]">
-                    <ArrowLeft className="w-4 h-4" /> BACK TO REPORTS
-                </Link>
-            </div>
+            {/* Redundant back button removed as it's in the header */}
 
             <div className="px-6 mb-8 flex items-center justify-between gap-4">
                 <div className="flex-1 min-w-0">

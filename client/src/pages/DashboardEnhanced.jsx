@@ -1326,75 +1326,42 @@ export default function DashboardEnhanced() {
           </div>
         </div>
 
-
-
-
-
-
-
-
-        <div>
-          <div className="flex items-center gap-4 mb-8">
-            <div className="w-12 h-12 rounded-2xl bg-black flex items-center justify-center">
-              <Trophy className="w-6 h-6 text-[#2FC8B9]" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-black text-black tracking-tight leading-none uppercase">30 Days Challenge</h2>
-              <p className="text-slate-500 text-sm font-bold mt-1">Sculpt your future, day by day</p>
-            </div>
-          </div>
+        {/* 30 Days Challenge Card - Compact Performance Variant */}
+        <div className="mx-3 md:mx-0">
           <Link
             to="/challenge"
-            className="block bg-white rounded-[2.5rem] p-8 sm:p-12 text-black shadow-xl border border-slate-100 hover:shadow-2xl transition-all relative overflow-hidden group"
+            className="block relative group overflow-hidden bg-white/80 backdrop-blur-3xl rounded-[2.5rem] border border-black/5 shadow-[0_20px_50px_rgba(0,0,0,0.05)] p-6 transition-all duration-700 hover:shadow-[0_40px_80px_rgba(0,0,0,0.1)] hover:-translate-y-2 mb-12"
           >
-            <div className="absolute top-0 right-0 w-80 h-80 bg-[#2FC8B9]/5 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl"></div>
-            <div className="flex items-center justify-between mb-8 sm:mb-10 relative z-10">
-              <div className="flex items-center gap-4 sm:gap-6 flex-1">
-                <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-[2rem] bg-slate-50 flex items-center justify-center border border-slate-100">
-                  <Trophy className="w-8 h-8 sm:w-10 sm:h-10 text-[#2FC8B9]" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h3 className="text-xl sm:text-3xl font-black mb-1 leading-tight tracking-tight text-black">Daily Discipline</h3>
-                  <p className="text-sm sm:text-lg text-slate-500 font-bold">Unleash your ultimate physical potential</p>
-                </div>
-              </div>
-              <ChevronRight className="w-8 h-8 sm:w-10 sm:h-10 text-slate-300 group-hover:text-[#2FC8B9] group-hover:translate-x-3 transition-all flex-shrink-0" />
-            </div>
+            <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-[#2FC8B9]/10 rounded-full blur-[100px] group-hover:bg-[#2FC8B9]/20 transition-all duration-1000"></div>
+            <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-black/5 rounded-full blur-[100px]"></div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 sm:gap-6 mb-8 sm:mb-12 relative z-10">
-              <div className="bg-slate-50 rounded-3xl p-5 sm:p-6 text-center border border-slate-100 group-hover:bg-[#2FC8B9]/5 transition-all">
-                <div className="text-3xl sm:text-4xl mb-3">💧</div>
-                <p className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-[#2FC8B9]">Hydrate</p>
+            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center shadow-xl shadow-black/10 transform group-hover:rotate-6 transition-transform duration-500">
+                  <Trophy className="w-6 h-6 text-[#2FC8B9]" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-black text-black tracking-tight leading-none uppercase">30 Days Challenge</h2>
+                  <p className="text-slate-500 font-bold uppercase text-[9px] tracking-[0.2em] mt-1.5">Sculpt your future, day by day</p>
+                </div>
               </div>
-              <div className="bg-slate-50 rounded-3xl p-5 sm:p-6 text-center border border-slate-100 group-hover:bg-[#2FC8B9]/5 transition-all">
-                <div className="text-3xl sm:text-4xl mb-3">🏋️</div>
-                <p className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-[#2FC8B9]">Push</p>
-              </div>
-              <div className="bg-slate-50 rounded-3xl p-5 sm:p-6 text-center border border-slate-100 group-hover:bg-[#2FC8B9]/5 transition-all">
-                <div className="text-3xl sm:text-4xl mb-3">🥩</div>
-                <p className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-[#2FC8B9]">Fuel</p>
-              </div>
-              <div className="bg-slate-50 rounded-3xl p-5 sm:p-6 text-center border border-slate-100 group-hover:bg-[#2FC8B9]/5 transition-all">
-                <div className="text-3xl sm:text-4xl mb-3">⚡</div>
-                <p className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-[#2FC8B9]">Recover</p>
+
+              <div className="flex items-center gap-2">
+                <div className="px-4 py-2 bg-black text-white rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 transition-transform hover:bg-[#2FC8B9] hover:scale-105">
+                  Start
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </div>
+                <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-[#2FC8B9] group-hover:translate-x-1 transition-all" />
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-6 relative z-10">
-              <div className="flex items-center gap-6">
-                <div className="flex items-center gap-2">
-                  <Flame className="w-5 h-5 text-orange-500" />
-                  <span className="text-sm font-black uppercase tracking-widest text-slate-700">Active Streak</span>
+            {/* Micro Stats - Inline */}
+            <div className="grid grid-cols-4 gap-3 mt-4 relative z-10">
+              {['💧', '🏋️', '🥩', '⚡'].map((emoji, i) => (
+                <div key={i} className="bg-slate-50/50 backdrop-blur-sm rounded-xl p-2 text-center border border-slate-100 group-hover:bg-[#2FC8B9]/5 transition-all text-base">
+                  {emoji}
                 </div>
-                <div className="flex items-center gap-2">
-                  <Award className="w-5 h-5 text-yellow-500" />
-                  <span className="text-sm font-black uppercase tracking-widest text-slate-700">Badges</span>
-                </div>
-              </div>
-              <div className="px-10 py-5 bg-black text-white rounded-2xl text-xs sm:text-sm font-black uppercase tracking-widest shadow-xl flex items-center gap-3 transition-transform hover:bg-[#2FC8B9] hover:scale-105">
-                Start Today
-                <ArrowRight className="w-5 h-5" />
-              </div>
+              ))}
             </div>
           </Link>
         </div>
@@ -1461,20 +1428,21 @@ export default function DashboardEnhanced() {
           </div>
         </div>
         {/* CTA Footer */}
-        <div className="bg-[#2FC8B9] rounded-[3rem] p-10 sm:p-16 text-white relative overflow-hidden group shadow-2xl">
-          <div className="absolute top-0 left-1/2 w-[600px] h-[600px] bg-white/10 rounded-full -translate-y-1/2 -translate-x-1/2 blur-[120px] pointer-events-none"></div>
-          <div className="flex flex-col md:flex-row items-center justify-between gap-12 relative z-10">
+        {/* CTA Footer - Reduced Size */}
+        <div className="bg-[#2FC8B9] rounded-[2.5rem] p-6 sm:p-8 text-white relative overflow-hidden group shadow-2xl">
+          <div className="absolute top-0 left-1/2 w-[500px] h-[500px] bg-white/10 rounded-full -translate-y-1/2 -translate-x-1/2 blur-[100px] pointer-events-none"></div>
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
             <div className="text-center md:text-left">
-              <h3 className="text-4xl sm:text-5xl font-black mb-6 tracking-tighter uppercase leading-none">Elevate Your Journey</h3>
-              <p className="text-white/80 font-bold text-base sm:text-xl max-w-xl">Our Health Intelligence engine is primed to optimize your wellness trajectory through advanced data analysis.</p>
+              <h3 className="text-2xl sm:text-3xl font-black mb-2 tracking-tighter uppercase leading-none">Elevate Your Journey</h3>
+              <p className="text-white/80 font-bold text-xs sm:text-base max-w-lg">Advanced AI intelligence optimized for your wellness trajectory.</p>
             </div>
             <Link
               to="/ai-chat"
-              className="px-12 py-6 bg-black text-white rounded-2xl font-black uppercase tracking-[0.25em] transition-all hover:bg-slate-900 shadow-2xl flex items-center gap-4 group hover:scale-105 active:scale-95"
+              className="px-8 py-4 bg-black text-white rounded-2xl font-black uppercase tracking-[0.2em] transition-all hover:bg-slate-900 shadow-2xl flex items-center gap-3 hover:scale-105 active:scale-95 text-xs"
             >
-              <MessageSquare className="w-6 h-6 text-[#2FC8B9]" />
+              <MessageSquare className="w-4 h-4 text-[#2FC8B9]" />
               Initialize AI
-              <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
             </Link>
           </div>
         </div>
@@ -1486,7 +1454,7 @@ export default function DashboardEnhanced() {
             </p>
           </div>
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 }

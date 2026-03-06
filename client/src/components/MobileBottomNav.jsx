@@ -30,10 +30,10 @@ export default function MobileBottomNav() {
         }
       });
 
-      // Also check for AI Chat page
-      if (location.pathname === '/ai-chat') {
-        hasModal = true;
-      }
+      // Also check for AI Chat page - removed to allow bottom nav to show
+      // if (location.pathname === '/ai-chat') {
+      //   hasModal = true;
+      // }
 
       setHideNavbar(hasModal || showMoreMenu);
     };

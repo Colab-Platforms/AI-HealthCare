@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
-import { useLocation } from 'react-router-dom';
-import { Send, Bot, User, Loader2, Copy, Check, Trash2, Menu, X, Bell } from 'lucide-react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Send, Bot, User, Loader2, Copy, Check, Trash2, Menu, X, Bell, Sparkles, ArrowLeft, MoreVertical, MessageSquare, ShieldCheck, History } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -8,6 +8,7 @@ import toast from 'react-hot-toast';
 export default function AIChat() {
   const { user } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -34,29 +35,21 @@ export default function AIChat() {
   useEffect(() => {
     const loadChatHistory = async () => {
       try {
-        // First try to load from backend
         const { data } = await api.get('chat/history');
-
         if (data.success && data.messages && data.messages.length > 0) {
           setMessages(data.messages);
-          // Also save to localStorage as backup
           localStorage.setItem(`chat_history_${user?.id}`, JSON.stringify(data.messages));
           return;
         }
-
-        // Fallback to localStorage if backend fails
         const savedMessages = localStorage.getItem(`chat_history_${user?.id}`);
         if (savedMessages) {
-          const parsed = JSON.parse(savedMessages);
-          setMessages(parsed);
+          setMessages(JSON.parse(savedMessages));
         } else {
-          // Show greeting if no history
           const greeting = generateGreetingWithReports();
           setMessages([{ role: 'assistant', content: greeting, timestamp: new Date() }]);
         }
       } catch (error) {
         console.error('Failed to load chat history:', error);
-        // Fallback to localStorage
         const savedMessages = localStorage.getItem(`chat_history_${user?.id}`);
         if (savedMessages) {
           setMessages(JSON.parse(savedMessages));
@@ -66,19 +59,14 @@ export default function AIChat() {
         }
       }
     };
-
     if (user) loadChatHistory();
 
-    // Handle incoming query from Ask Coach
     if (location.state?.initialQuery) {
       setInput(location.state.initialQuery);
-      // Auto-submit the query
       setTimeout(() => {
         const form = document.querySelector('form');
         if (form) form.requestSubmit();
       }, 500);
-    } else if (location.state?.selectedText) {
-      setInput(`Can you explain this: "${location.state.selectedText}"`);
     }
   }, [user?.id, location.state, user?.name]);
 
@@ -87,24 +75,11 @@ export default function AIChat() {
   }, [messages, streamingText]);
 
   const generateGreetingWithReports = () => {
-    let greeting = `Hello ${user?.name || 'there'}! 👋 I'm your AI health assistant.\n\n`;
+    let greeting = `Hello ${user?.name?.split(' ')[0] || 'there'}! I'm your **FitCure Intelligence** assistant. 👋\n\n`;
     if (userReports && userReports.length > 0) {
-      greeting += `I've reviewed your uploaded health reports:\n\n`;
-      userReports.slice(0, 3).forEach((report) => {
-        const date = new Date(report.uploadDate).toLocaleDateString();
-        greeting += `📋 **${report.reportType}** (${date})\n`;
-        if (report.analysis) {
-          greeting += `   ${report.analysis.substring(0, 100)}...\n`;
-        }
-        if (report.metrics && Object.keys(report.metrics).length > 0) {
-          const metricKeys = Object.keys(report.metrics).slice(0, 2);
-          greeting += `   Key metrics: ${metricKeys.join(', ')}\n`;
-        }
-        greeting += '\n';
-      });
-      greeting += `I have a complete understanding of your health profile. Feel free to ask me about your reports, health concerns, or get personalized recommendations!\n\nWhat would you like to know?`;
+      greeting += `I've analyzed your health profile and recent reports. How can I assist you today with your wellness journey?`;
     } else {
-      greeting += `I can help you understand your health reports, explain medical terms, provide diet guidance, and answer health-related questions. What would you like to know?`;
+      greeting += `I can help you analyze medical reports, plan your nutrition, or answer any health-related questions. What's on your mind?`;
     }
     return greeting;
   };
@@ -122,54 +97,34 @@ export default function AIChat() {
         setStreaming(false);
         callback();
       }
-    }, 15);
+    }, 10);
     return () => clearInterval(interval);
   };
 
   const saveChatToBackend = async (updatedMessages) => {
     try {
-      // Save only new messages (last 2: user + assistant)
       const newMessages = updatedMessages.slice(-2);
-
       await api.post('chat/history', { messages: newMessages });
-
-      // Also save to localStorage as backup
       localStorage.setItem(`chat_history_${user?.id}`, JSON.stringify(updatedMessages));
     } catch (error) {
-      console.error('Failed to save chat to backend:', error);
-      // Still save to localStorage
       localStorage.setItem(`chat_history_${user?.id}`, JSON.stringify(updatedMessages));
     }
   };
 
   const clearChat = async () => {
-    if (confirm('Are you sure you want to clear the chat history?')) {
+    if (confirm('Are you sure you want to clear your conversation history?')) {
       try {
-        // Clear from backend
         await api.delete('chat/history');
-
-        // Clear from localStorage
         localStorage.removeItem(`chat_history_${user?.id}`);
-
         const greeting = generateGreetingWithReports();
         setMessages([{ role: 'assistant', content: greeting, timestamp: new Date() }]);
-        toast.success('Chat cleared');
+        toast.success('Conversation history wiped');
       } catch (error) {
-        console.error('Failed to clear chat:', error);
-        // Still clear localStorage
         localStorage.removeItem(`chat_history_${user?.id}`);
         const greeting = generateGreetingWithReports();
         setMessages([{ role: 'assistant', content: greeting, timestamp: new Date() }]);
-        toast.error('Chat cleared locally');
       }
     }
-  };
-
-  const startNewSession = () => {
-    const greeting = generateGreetingWithReports();
-    setMessages([{ role: 'assistant', content: greeting, timestamp: new Date() }]);
-    setSidebarOpen(false);
-    toast.success('New chat started');
   };
 
   const handleSubmit = async (e) => {
@@ -200,38 +155,15 @@ export default function AIChat() {
           const updatedMessages = [...messages, userMessage, aiResponse];
           setMessages(updatedMessages);
           setStreamingText('');
-
-          // Save to backend and localStorage
           saveChatToBackend(updatedMessages);
         });
       }
     } catch (error) {
       console.error('AI Chat error:', error);
-      toast.error('Failed to get response');
-      const fallbackResponse = generateAIResponse(currentInput);
-      streamResponse(fallbackResponse, () => {
-        const aiResponse = { role: 'assistant', content: fallbackResponse, timestamp: new Date() };
-        const updatedMessages = [...messages, userMessage, aiResponse];
-        setMessages(updatedMessages);
-        setStreamingText('');
-
-        // Save to backend and localStorage
-        saveChatToBackend(updatedMessages);
-      });
+      toast.error('Connection lost. Please try again.');
     } finally {
       setLoading(false);
     }
-  };
-
-  const generateAIResponse = (query) => {
-    const lowerQuery = query.toLowerCase();
-    if (lowerQuery.includes('vitamin d')) {
-      return `Based on your query about Vitamin D:\n\n**What is Vitamin D?**\nVitamin D is essential for bone health, immune function, and overall wellbeing.\n\n**Normal Range:** 30-100 ng/mL\n\n**If Low:**\n• Get 15-20 minutes of morning sunlight daily\n• Eat fish, eggs, fortified milk\n• Consider supplements (consult your doctor)`;
-    }
-    if (lowerQuery.includes('iron') || lowerQuery.includes('hemoglobin')) {
-      return `Regarding Iron and Hemoglobin:\n\n**Importance:**\nIron is crucial for producing hemoglobin, which carries oxygen in your blood.\n\n**Normal Hemoglobin:** 12-17 g/dL\n**Normal Iron:** 60-170 mcg/dL\n\n**To Increase Iron:**\n• Red meat, spinach, dal\n• Eat with Vitamin C foods\n• Avoid tea/coffee with meals`;
-    }
-    return `Thank you for your question. I'm here to help with understanding your health reports, explaining medical terms, providing diet guidance, and answering health-related questions.`;
   };
 
   const copyToClipboard = (text, index) => {
@@ -242,142 +174,160 @@ export default function AIChat() {
   };
 
   return (
-    <div className="w-full h-full bg-white flex flex-col md:flex-row">
-      {/* Welcome Message - Mobile Only - Fixed at top */}
-      <div className="md:hidden fixed top-0 left-0 right-0 z-30 bg-white border-b border-gray-200 px-4 py-2.5 flex items-center justify-between">
-        <div className="flex items-center gap-2 flex-1 min-w-0">
-          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-orange-600 flex items-center justify-center text-white text-xs font-bold shadow-md flex-shrink-0">
-            {user?.name?.[0]?.toUpperCase() || 'U'}
+    <div className="fixed inset-0 bg-white flex flex-col md:flex-row overflow-hidden pb-[90px] md:pb-0">
+      {/* Sidebar - Desktop */}
+      <div className={`fixed md:relative inset-y-0 left-0 w-80 bg-slate-50 border-r border-slate-100 flex flex-col z-[60] transition-transform duration-500 ease-in-out md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center shadow-lg shadow-black/10">
+              <History className="w-5 h-5 text-[#2FC8B9]" />
+            </div>
+            <h2 className="font-black text-black uppercase tracking-tighter">History</h2>
           </div>
-          <h1 className="text-sm font-bold text-slate-800 truncate">
-            {(() => {
-              const hour = new Date().getHours();
-              if (hour < 12) return 'Good Morning';
-              if (hour < 18) return 'Good Afternoon';
-              return 'Good Evening';
-            })()}, {user?.name?.split(' ')[0] || 'there'}!
-          </h1>
-        </div>
-        <button className="w-8 h-8 rounded-full bg-white shadow-md flex items-center justify-center hover:shadow-lg transition-all border border-gray-200 flex-shrink-0">
-          <Bell className="w-4 h-4 text-slate-700" />
-        </button>
-      </div>
-
-      {sidebarOpen && <div className="fixed inset-0 bg-black/30 z-40 md:hidden" onClick={() => setSidebarOpen(false)} />}
-
-      {/* Sidebar - Hidden on mobile by default, visible on desktop */}
-      <div className={`fixed md:static left-0 top-0 h-full w-64 bg-white border-r border-gray-200 flex flex-col transition-transform duration-300 z-50 md:z-auto ${sidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'} md:translate-x-0 shrink-0`}>
-        <div className="p-3 border-b border-gray-200 flex items-center justify-between shrink-0">
-          <h2 className="font-bold text-gray-900 text-xs">Chat History</h2>
-          <button onClick={() => setSidebarOpen(false)} className="p-1 hover:bg-gray-100 rounded md:hidden">
-            <X className="w-4 h-4" />
+          <button onClick={() => setSidebarOpen(false)} className="md:hidden p-2 hover:bg-slate-100 rounded-full transition-colors">
+            <X className="w-5 h-5 text-slate-400" />
           </button>
         </div>
 
-        <button onClick={startNewSession} className="m-2 px-3 py-1.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition flex items-center justify-center gap-2 font-medium text-xs shrink-0">
-          + New Chat
-        </button>
+        <div className="flex-1 overflow-y-auto p-4 space-y-2">
+          <button
+            onClick={() => { setMessages([{ role: 'assistant', content: generateGreetingWithReports(), timestamp: new Date() }]); setSidebarOpen(false); }}
+            className="w-full p-4 bg-[#2FC8B9]/10 text-[#2FC8B9] rounded-2xl border border-[#2FC8B9]/20 font-black uppercase text-[10px] tracking-widest hover:bg-[#2FC8B9]/20 transition-all flex items-center justify-center gap-2"
+          >
+            + New Session
+          </button>
 
-        <div className="flex-1 overflow-y-auto px-2 space-y-1">
-          <div className="p-3 text-center">
-            <p className="text-xs text-gray-500">Chat history is saved automatically</p>
-            <p className="text-xs text-gray-400 mt-1">{messages.length} messages in current chat</p>
+          <div className="pt-4 px-2">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Recent Sessions</p>
+            {/* Placeholder for real session history if implemented */}
+            <div className="p-4 bg-white rounded-2xl border border-slate-100 text-[11px] font-bold text-slate-500 italic">
+              All health insights are encrypted & private.
+            </div>
           </div>
         </div>
 
-        <div className="p-2 border-t border-gray-200 space-y-1 shrink-0">
-          <button onClick={clearChat} className="w-full px-2 py-1.5 text-xs text-red-600 hover:bg-red-50 rounded-lg transition flex items-center justify-center gap-2">
-            <Trash2 className="w-3 h-3" />
-            Clear Chat
+        <div className="p-4 border-t border-slate-100 bg-white">
+          <button onClick={clearChat} className="w-full p-4 flex items-center justify-center gap-2 text-rose-500 hover:bg-rose-50 rounded-2xl transition-all font-black uppercase text-[10px] tracking-widest">
+            <Trash2 className="w-4 h-4" /> Clear All Data
           </button>
         </div>
       </div>
 
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Top Bar - with padding for mobile welcome message */}
-        <div className="flex items-center px-3 py-2 border-b border-gray-200 bg-white shrink-0 mt-16 md:mt-0">
-          <button onClick={() => setSidebarOpen(!sidebarOpen)} className="p-1.5 hover:bg-gray-100 rounded-lg transition md:hidden" title="Toggle chat history">
-            <Menu className="w-5 h-5 text-gray-700" />
-          </button>
-        </div>
+      {sidebarOpen && <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 md:hidden" onClick={() => setSidebarOpen(false)} />}
 
-        {/* Messages - with padding for mobile input */}
-        <div ref={chatContainerRef} className="flex-1 overflow-y-auto px-3 py-4 space-y-3 pb-24 md:pb-4" style={{ userSelect: 'text' }}>
-          {messages.map((message, index) => (
-            <div key={index} className={`flex gap-2 ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-              {message.role === 'assistant' && (
-                <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 bg-blue-600">
-                  <Bot className="w-4 h-4 text-white" />
-                </div>
-              )}
-              <div className={`max-w-xs md:max-w-md rounded-2xl px-3 py-2 ${message.role === 'user' ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-900'}`}>
-                <div className="whitespace-pre-wrap break-words text-sm leading-relaxed">{message.content}</div>
-                <div className="flex items-center justify-between mt-1 gap-2">
-                  <span className={`text-xs ${message.role === 'user' ? 'text-blue-100' : 'text-gray-500'}`}>
-                    {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  </span>
-                  {message.role === 'assistant' && (
-                    <button onClick={() => copyToClipboard(message.content, index)} className="transition-colors p-0.5 rounded hover:bg-gray-200" title="Copy response">
-                      {copiedIndex === index ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3 text-gray-500" />}
-                    </button>
-                  )}
+      {/* Main Chat Interface */}
+      <div className="flex-1 flex flex-col h-full relative bg-white">
+        {/* Header */}
+        <header className="h-[72px] bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-6 sticky top-0 z-40">
+          <div className="flex items-center gap-4">
+            <button onClick={() => setSidebarOpen(true)} className="md:hidden p-2 hover:bg-slate-50 rounded-xl transition-colors">
+              <Menu className="w-6 h-6 text-black" />
+            </button>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center shadow-xl shadow-black/10">
+                <Sparkles className="w-5 h-5 text-[#2FC8B9]" />
+              </div>
+              <div>
+                <h1 className="text-sm font-black text-black uppercase tracking-tighter leading-none">FitCure AI</h1>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse shadow-[0_0_8px_rgba(16,185,129,0.5)]"></span>
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Active Intelligence</span>
                 </div>
               </div>
-              {message.role === 'user' && (
-                <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 bg-gray-300">
-                  <User className="w-4 h-4 text-gray-700" />
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <button className="hidden sm:flex items-center gap-2 px-4 py-2 bg-slate-50 rounded-xl border border-slate-100 text-[10px] font-black uppercase tracking-widest text-slate-600">
+              <ShieldCheck className="w-4 h-4 text-emerald-500" /> Secure
+            </button>
+            <button onClick={() => navigate(-1)} className="p-2.5 hover:bg-slate-50 rounded-xl transition-colors">
+              <ArrowLeft className="w-5 h-5 text-black" />
+            </button>
+          </div>
+        </header>
+
+        {/* Message Viewport */}
+        <div ref={chatContainerRef} className="flex-1 overflow-y-auto px-6 py-8 space-y-8 scroll-smooth">
+          {messages.map((msg, i) => (
+            <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-4 duration-500`}>
+              <div className={`flex gap-4 max-w-[85%] md:max-w-[70%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                <div className={`w-10 h-10 rounded-xl shrink-0 flex items-center justify-center shadow-lg ${msg.role === 'user' ? 'bg-[#2FC8B9]' : 'bg-black'}`}>
+                  {msg.role === 'user' ? <User className="w-5 h-5 text-white" /> : <Bot className="w-5 h-5 text-[#2FC8B9]" />}
                 </div>
-              )}
+                <div className={`relative p-5 rounded-2xl shadow-sm ${msg.role === 'user' ? 'bg-[#2FC8B9] text-white rounded-tr-none' : 'bg-slate-50 text-slate-800 border border-slate-100 rounded-tl-none'}`}>
+                  <div className="text-sm leading-relaxed font-bold prose prose-slate max-w-none prose-sm">
+                    {msg.content}
+                  </div>
+                  <div className={`flex items-center justify-between mt-4 gap-4 ${msg.role === 'user' ? 'text-white/60' : 'text-slate-400'}`}>
+                    <span className="text-[10px] font-black uppercase tracking-widest">
+                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    {msg.role === 'assistant' && (
+                      <button onClick={() => copyToClipboard(msg.content, i)} className="p-1 hover:bg-slate-200 rounded-lg transition-colors">
+                        {copiedIndex === i ? <Check className="w-3.5 h-3.5 text-emerald-500" /> : <Copy className="w-3.5 h-3.5" />}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           ))}
 
-          {streaming && streamingText && (
-            <div className="flex gap-2 justify-start">
-              <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 bg-blue-600">
-                <Bot className="w-4 h-4 text-white" />
-              </div>
-              <div className="max-w-xs md:max-w-md bg-gray-100 rounded-2xl px-3 py-2">
-                <div className="whitespace-pre-wrap break-words text-sm leading-relaxed text-gray-900">
-                  {streamingText}
-                  <span className="inline-block w-1 h-3 ml-1 animate-pulse bg-blue-600"></span>
+          {(streamingText || loading) && (
+            <div className="flex justify-start animate-in fade-in duration-300">
+              <div className="flex gap-4 max-w-[85%] md:max-w-[70%]">
+                <div className="w-10 h-10 bg-black rounded-xl shrink-0 flex items-center justify-center shadow-lg">
+                  <Bot className="w-5 h-5 text-[#2FC8B9]" />
+                </div>
+                <div className="p-5 rounded-2xl bg-slate-50 text-slate-800 border border-slate-100 rounded-tl-none shadow-sm min-w-[120px]">
+                  {streamingText ? (
+                    <div className="text-sm leading-relaxed font-bold whitespace-pre-wrap">
+                      {streamingText}
+                      <span className="inline-block w-1.5 h-4 ml-1 bg-[#2FC8B9] animate-pulse"></span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3">
+                      <Loader2 className="w-4 h-4 animate-spin text-[#2FC8B9]" />
+                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Synthesizing...</span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
           )}
-
-          {loading && !streaming && (
-            <div className="flex gap-2 justify-start">
-              <div className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 bg-blue-600">
-                <Bot className="w-4 h-4 text-white" />
-              </div>
-              <div className="bg-gray-100 rounded-2xl px-3 py-2">
-                <div className="flex items-center gap-2 text-gray-700">
-                  <Loader2 className="w-3 h-3 animate-spin text-blue-600" />
-                  <span className="text-xs">Analyzing...</span>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} className="h-4" />
         </div>
 
-        {/* Input - Fixed at bottom on mobile, relative on desktop */}
-        <div className="fixed md:relative bottom-0 left-0 right-0 md:bottom-auto border-t border-gray-200 bg-white p-3 shrink-0 md:w-auto">
-          <form onSubmit={handleSubmit} className="flex gap-2 items-end">
-            <div className="flex-1 relative">
-              <input type="text" value={input} onChange={(e) => setInput(e.target.value)} placeholder="Ask..." className="w-full px-3 py-2.5 bg-gray-50 rounded-2xl focus:outline-none transition-all text-sm border border-gray-200 focus:border-blue-500 focus:bg-white" disabled={loading || streaming} />
-              {input && (
-                <button type="button" onClick={() => setInput('')} className="absolute right-2 top-1/2 -translate-y-1/2 text-lg hover:opacity-70 transition-opacity text-gray-500">
-                  ×
+        {/* Input Dock - Modern floating style with safe padding */}
+        <div className="px-6 py-6 bg-gradient-to-t from-white via-white to-white/0 sticky bottom-0 z-40">
+          <div className="max-w-4xl mx-auto">
+            <form onSubmit={handleSubmit} className="relative group">
+              <div className="absolute inset-0 bg-black rounded-[2rem] blur-[20px] opacity-[0.03] group-focus-within:opacity-[0.08] transition-opacity"></div>
+              <div className="relative bg-white border-2 border-slate-100 group-focus-within:border-[#2FC8B9] rounded-[2rem] p-2 flex items-center gap-3 transition-all shadow-xl shadow-black/[0.02]">
+                <div className="hidden sm:flex w-10 h-10 items-center justify-center text-slate-300">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="Ask about your health reports..."
+                  disabled={loading || streaming}
+                  className="flex-1 bg-transparent py-3 px-2 text-sm font-bold text-black focus:outline-none placeholder:text-slate-400 placeholder:font-black placeholder:uppercase placeholder:text-[10px] placeholder:tracking-widest"
+                />
+                <button
+                  type="submit"
+                  disabled={!input.trim() || loading || streaming}
+                  className="w-12 h-12 bg-black text-[#2FC8B9] rounded-full flex items-center justify-center shadow-xl hover:scale-105 active:scale-95 disabled:opacity-30 disabled:scale-100 transition-all shadow-black/20"
+                >
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Send className="w-5 h-5" />}
                 </button>
-              )}
-            </div>
-            <button type="submit" disabled={!input.trim() || loading || streaming} className="px-3 py-2.5 text-white rounded-2xl font-medium hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1 flex-shrink-0 bg-blue-600 hover:bg-blue-700" title={!input.trim() ? 'Type a message first' : 'Send message'}>
-              {loading || streaming ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            </button>
-          </form>
+              </div>
+            </form>
+            <p className="text-center text-[9px] font-black text-slate-400 uppercase tracking-widest mt-4">
+              Protected by medical-grade encryption
+            </p>
+          </div>
         </div>
       </div>
     </div>

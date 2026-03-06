@@ -207,7 +207,7 @@ export default function ComprehensiveReportAnalysis() {
     <div id="comprehensive-report-content" className="max-w-7xl mx-auto space-y-8 p-4 pb-12 bg-white">
       {/* Back Button */}
       <div className="flex items-center justify-between no-pdf">
-        <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-cyan-400 font-medium transition-colors">
+        <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-[#2FC8B9] font-black uppercase text-[10px] tracking-widest transition-all">
           <ArrowLeft className="w-4 h-4" /> {isHindi ? 'डैशबोर्ड पर वापस जाएं' : 'Back to Dashboard'}
         </Link>
         <div className="flex gap-2">

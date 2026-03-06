@@ -50,6 +50,7 @@ export default function Register() {
     recentDosageChange: false,
     // Goals
     primaryGoal: 'general_health',
+    nutritionGoal: 'general_health',
     targetWeight: '',
     weeklyGoal: '0.5'
   });
@@ -121,7 +122,7 @@ export default function Register() {
         };
 
         const nutritionGoal = {
-          goal: formData.primaryGoal,
+          goal: formData.primaryGoal || formData.nutritionGoal,
           targetWeight: formData.targetWeight ? parseFloat(formData.targetWeight) : null,
           weeklyGoal: parseFloat(formData.weeklyGoal)
         };
@@ -349,7 +350,7 @@ export default function Register() {
                     type="number"
                     value={formData.age}
                     onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-                    className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-slate-200 text-slate-900 placeholder:text-slate-400"
+                    className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 border border-slate-200 text-slate-900 placeholder:text-slate-400 font-bold"
                     placeholder="25"
                     min="1"
                     max="120"
@@ -361,7 +362,7 @@ export default function Register() {
                   <select
                     value={formData.gender}
                     onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                    className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-slate-200 text-slate-900"
+                    className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 border border-slate-200 text-slate-900 font-bold"
                     required
                   >
                     <option value="" className="text-slate-900">Select</option>
@@ -481,17 +482,18 @@ export default function Register() {
   // Step 3: Health Profile
   if (step === 3) {
     return (
-      <div className="min-h-screen flex bg-gradient-to-br from-purple-50 to-orange-50">
-        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-purple-500 via-pink-500 to-orange-600">
-          <div className="absolute inset-0">
-            <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
-            <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+      <div className="min-h-screen flex bg-white">
+        {/* Left Panel - Desktop Only */}
+        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute top-20 left-20 w-72 h-72 bg-[#2FC8B9] rounded-full blur-[120px]" />
+            <div className="absolute bottom-20 right-20 w-96 h-96 bg-[#2FC8B9] rounded-full blur-[120px]" />
           </div>
           <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
             <div className="relative w-32 h-32 mb-8">
               <div className="absolute inset-0 bg-white/20 backdrop-blur-xl rounded-full animate-pulse"></div>
               <div className="absolute inset-4 bg-white/30 backdrop-blur-xl rounded-full flex items-center justify-center">
-                <Scale className="w-12 h-12 animate-bounce" style={{ animationDuration: '2s' }} />
+                <Scale className="w-12 h-12" />
               </div>
               <svg className="absolute inset-0 w-full h-full -rotate-90">
                 <circle cx="64" cy="64" r="60" stroke="white" strokeOpacity="0.2" strokeWidth="4" fill="none" />
@@ -501,7 +503,7 @@ export default function Register() {
                   strokeWidth="4"
                   fill="none"
                   strokeDasharray="377"
-                  strokeDashoffset={377 - (377 * 0.40)} // Adjusted for 2/5th progress
+                  strokeDashoffset={377 - (377 * 0.40)}
                   className="transition-all duration-500"
                   strokeLinecap="round"
                 />
@@ -527,26 +529,26 @@ export default function Register() {
               <span className="text-2xl font-black text-black uppercase tracking-tighter">FitCure</span>
             </div>
 
-            <button onClick={prevStep} className="flex items-center gap-2 mb-6 text-cyan-700 hover:text-cyan-800">
+            <button onClick={prevStep} className="flex items-center gap-2 mb-6 text-[#2FC8B9] font-black uppercase tracking-tighter text-xs hover:text-black transition-colors">
               <ArrowLeft className="w-4 h-4" /> Back
             </button>
 
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-2 text-slate-900">Health Profile</h2>
-              <p className="text-cyan-700">Step 2 of 5 - Your body metrics</p>
+              <h2 className="text-3xl font-black mb-2 text-black uppercase tracking-tighter">Health Profile</h2>
+              <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Step 2 of 5 • Global Health Identity</p>
             </div>
 
             <form onSubmit={(e) => { e.preventDefault(); nextStep(); }} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-slate-900">Height (cm) *</label>
+                  <label className="block text-sm font-medium mb-2 text-slate-700">Height (cm) *</label>
                   <div className="relative">
-                    <Ruler className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-600" />
+                    <Ruler className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
                       type="number"
                       value={formData.height}
                       onChange={(e) => setFormData(prev => ({ ...prev, height: e.target.value }))}
-                      className="w-full bg-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-slate-900 placeholder:text-slate-400"
+                      className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 focus:border-[#2FC8B9] text-black font-bold placeholder:text-slate-400"
                       placeholder="170"
                       min="100"
                       max="250"
@@ -556,14 +558,14 @@ export default function Register() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-slate-900">Weight (kg) *</label>
+                  <label className="block text-sm font-medium mb-2 text-slate-700">Weight (kg) *</label>
                   <div className="relative">
-                    <Scale className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-600" />
+                    <Scale className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                     <input
                       type="number"
                       value={formData.weight}
                       onChange={(e) => setFormData(prev => ({ ...prev, weight: e.target.value }))}
-                      className="w-full bg-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-slate-900 placeholder:text-slate-400"
+                      className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 focus:border-[#2FC8B9] text-black font-bold placeholder:text-slate-400"
                       placeholder="70"
                       min="30"
                       max="300"
@@ -575,64 +577,63 @@ export default function Register() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-slate-900">Blood Group</label>
+                <label className="block text-sm font-medium mb-2 text-slate-700">Blood Group</label>
                 <div className="relative">
-                  <Droplet className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-600" />
+                  <Droplet className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                   <select
                     value={formData.bloodGroup}
                     onChange={(e) => setFormData(prev => ({ ...prev, bloodGroup: e.target.value }))}
-                    className="w-full bg-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-slate-900"
+                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 focus:border-[#2FC8B9] text-black font-bold"
                   >
-                    <option value="" className="text-slate-900">Select (Optional)</option>
-                    <option value="A+" className="text-slate-900">A+</option>
-                    <option value="A-" className="text-slate-900">A-</option>
-                    <option value="B+" className="text-slate-900">B+</option>
-                    <option value="B-" className="text-slate-900">B-</option>
-                    <option value="AB+" className="text-slate-900">AB+</option>
-                    <option value="AB-" className="text-slate-900">AB-</option>
-                    <option value="O+" className="text-slate-900">O+</option>
-                    <option value="O-" className="text-slate-900">O-</option>
+                    <option value="" className="text-black">Select (Optional)</option>
+                    <option value="A+" className="text-black">A+</option>
+                    <option value="A-" className="text-black">A-</option>
+                    <option value="B+" className="text-black">B+</option>
+                    <option value="B-" className="text-black">B-</option>
+                    <option value="AB+" className="text-black">AB+</option>
+                    <option value="AB-" className="text-black">AB-</option>
+                    <option value="O+" className="text-black">O+</option>
+                    <option value="O-" className="text-black">O-</option>
                   </select>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-slate-900">Dietary Preference *</label>
+                <label className="block text-sm font-medium mb-2 text-slate-700">Dietary Preference *</label>
                 <select
                   value={formData.dietaryPreference}
                   onChange={(e) => setFormData(prev => ({ ...prev, dietaryPreference: e.target.value }))}
-                  className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-slate-900"
+                  className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 focus:border-[#2FC8B9] text-black font-bold"
                   required
                 >
-                  <option value="non-vegetarian" className="text-slate-900">Non-Vegetarian</option>
-                  <option value="vegetarian" className="text-slate-900">Vegetarian</option>
-                  <option value="vegan" className="text-slate-900">Vegan</option>
-                  <option value="eggetarian" className="text-slate-900">Eggetarian</option>
+                  <option value="non-vegetarian" className="text-black">Non-Vegetarian</option>
+                  <option value="vegetarian" className="text-black">Vegetarian</option>
+                  <option value="vegan" className="text-black">Vegan</option>
+                  <option value="eggetarian" className="text-black">Eggetarian</option>
                 </select>
-                <p className="text-xs mt-1 text-cyan-700">This helps us recommend suitable diet plans</p>
+                <p className="text-[10px] mt-1 text-slate-500 font-bold uppercase tracking-wider">This helps us recommend suitable diet plans</p>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-slate-900">Activity Level *</label>
+                <label className="block text-sm font-medium mb-2 text-slate-700">Activity Level *</label>
                 <select
                   value={formData.activityLevel}
                   onChange={(e) => setFormData(prev => ({ ...prev, activityLevel: e.target.value }))}
-                  className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-slate-900"
+                  className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 focus:border-[#2FC8B9] text-black font-bold"
                   required
                 >
-                  <option value="sedentary" className="text-slate-900">Sedentary (Little or no exercise)</option>
-                  <option value="lightly_active" className="text-slate-900">Lightly Active (1-3 days/week)</option>
-                  <option value="moderately_active" className="text-slate-900">Moderately Active (3-5 days/week)</option>
-                  <option value="very_active" className="text-slate-900">Very Active (6-7 days/week)</option>
-                  <option value="extremely_active" className="text-slate-900">Extremely Active (Athlete)</option>
+                  <option value="sedentary" className="text-black">Sedentary (Little or no exercise)</option>
+                  <option value="lightly_active" className="text-black">Lightly Active (1-3 days/week)</option>
+                  <option value="moderately_active" className="text-black">Moderately Active (3-5 days/week)</option>
+                  <option value="very_active" className="text-black">Very Active (6-7 days/week)</option>
+                  <option value="extremely_active" className="text-black">Extremely Active (Athlete)</option>
                 </select>
-                <p className="text-xs mt-1 text-cyan-700">Used to calculate your daily calorie needs</p>
+                <p className="text-[10px] mt-1 text-slate-500 font-bold uppercase tracking-wider">Used to calculate your daily calorie needs</p>
               </div>
-
 
               <button
                 type="submit"
-                className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:shadow-[0_10px_25px_rgba(47,200,185,0.3)] transition-all flex items-center justify-center gap-2 bg-[#2FC8B9] hover:bg-[#28b5a6]"
+                className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:shadow-[0_10px_25_rgba(47,200,185,0.3)] transition-all flex items-center justify-center gap-2 bg-[#2FC8B9] hover:bg-[#28b5a6]"
               >
                 Continue Setup <ArrowRight className="w-5 h-5" />
               </button>
@@ -646,11 +647,12 @@ export default function Register() {
   // Step 5: Diabetes Profile (Conditional)
   if (step === 5) {
     return (
-      <div className="min-h-screen flex bg-gradient-to-br from-purple-50 to-orange-50">
-        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-purple-500 via-pink-500 to-orange-600">
-          <div className="absolute inset-0">
-            <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
-            <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+      <div className="min-h-screen flex bg-white">
+        {/* Left Panel */}
+        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute top-20 left-20 w-72 h-72 bg-[#2FC8B9] rounded-full blur-[120px]" />
+            <div className="absolute bottom-20 right-20 w-96 h-96 bg-[#2FC8B9] rounded-full blur-[120px]" />
           </div>
           <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
             <div className="relative w-32 h-32 mb-8">
@@ -677,71 +679,91 @@ export default function Register() {
               <span className="text-2xl font-black text-black uppercase tracking-tighter">FitCure</span>
             </div>
 
-            <button onClick={prevStep} className="flex items-center gap-2 mb-6 text-cyan-700 hover:text-cyan-800">
+            <button onClick={prevStep} className="flex items-center gap-2 mb-6 text-[#2FC8B9] font-black uppercase tracking-tighter text-xs hover:text-black transition-colors">
               <ArrowLeft className="w-4 h-4" /> Back
             </button>
 
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-2 text-slate-900">Are you diabetic?</h2>
-              <p className="text-cyan-700">Step 4 of 5 - Detailed health check</p>
+              <h2 className="text-3xl font-black mb-2 text-black uppercase tracking-tighter">Are you diabetic?</h2>
+              <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Step 4 of 5 • Detailed health check</p>
             </div>
 
             <form onSubmit={(e) => { e.preventDefault(); nextStep(); }} className="space-y-6">
-              <div className="flex gap-4 p-4 bg-white rounded-xl border border-cyan-200">
-                <label className="flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-all hover:bg-cyan-50 border-cyan-200">
-                  <input type="radio" checked={formData.isDiabetic === 'no'} onChange={() => setFormData({ ...formData, isDiabetic: 'no', diabetesType: '' })} className="text-cyan-500" />
-                  <span className="font-medium text-slate-800">No</span>
+              <div className="flex gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
+                <label className="flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-all hover:bg-white bg-transparent border-transparent has-[:checked]:bg-white has-[:checked]:border-[#2FC8B9]/30 has-[:checked]:shadow-sm">
+                  <input type="radio" checked={formData.isDiabetic === 'no'} onChange={() => setFormData({ ...formData, isDiabetic: 'no', diabetesType: '' })} className="text-[#2FC8B9]" />
+                  <span className="font-bold text-slate-800">No</span>
                 </label>
-                <label className="flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-all hover:bg-cyan-50 border-cyan-200">
-                  <input type="radio" checked={formData.isDiabetic === 'yes'} onChange={() => setFormData({ ...formData, isDiabetic: 'yes' })} className="text-cyan-500" />
-                  <span className="font-medium text-slate-800">Yes</span>
+                <label className="flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-all hover:bg-white bg-transparent border-transparent has-[:checked]:bg-white has-[:checked]:border-[#2FC8B9]/30 has-[:checked]:shadow-sm">
+                  <input type="radio" checked={formData.isDiabetic === 'yes'} onChange={() => setFormData({ ...formData, isDiabetic: 'yes' })} className="text-[#2FC8B9]" />
+                  <span className="font-bold text-slate-800">Yes</span>
                 </label>
               </div>
 
               {formData.isDiabetic === 'yes' && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-300">
                   <div>
-                    <label className="block text-sm font-medium mb-2 text-slate-900">Diabetes Type</label>
+                    <label className="block text-sm font-medium mb-2 text-slate-700">Diabetes Type</label>
                     <select
                       value={formData.diabetesType}
                       onChange={(e) => setFormData({ ...formData, diabetesType: e.target.value })}
-                      className="w-full bg-white rounded-xl py-3 px-4 border border-cyan-200 text-slate-900"
+                      className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-black font-bold"
                     >
-                      <option value="" className="text-slate-900">Select Type</option>
-                      <option value="Type 1" className="text-slate-900">Type 1</option>
-                      <option value="Type 2" className="text-slate-900">Type 2</option>
-                      <option value="Prediabetes" className="text-slate-900">Prediabetes</option>
-                      <option value="Gestational" className="text-slate-900">Gestational</option>
+                      <option value="">Select Type</option>
+                      <option value="Type 1">Type 1</option>
+                      <option value="Type 2">Type 2</option>
+                      <option value="Prediabetes">Prediabetes</option>
+                      <option value="Gestational">Gestational</option>
                     </select>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <label className="block text-sm font-medium mb-2 text-slate-900">Diagnosis Year</label>
-                      <input type="number" value={formData.diagnosisYear} onChange={(e) => setFormData({ ...formData, diagnosisYear: e.target.value })} className="w-full bg-white rounded-xl py-3 px-4 border border-cyan-200 text-slate-900 placeholder:text-slate-400" placeholder="2020" />
+                      <label className="block text-sm font-medium mb-2 text-slate-700">Diagnosis Year</label>
+                      <input type="number" value={formData.diagnosisYear} onChange={(e) => setFormData({ ...formData, diagnosisYear: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-black font-bold placeholder:text-slate-400" placeholder="2020" />
                     </div>
                     <div>
-                      <label className="block text-sm font-medium mb-2 text-slate-900">HbA1c (%)</label>
-                      <input type="number" step="0.1" value={formData.hba1c} onChange={(e) => setFormData({ ...formData, hba1c: e.target.value })} className="w-full bg-white rounded-xl py-3 px-4 border border-cyan-200 text-slate-900 placeholder:text-slate-400" placeholder="6.5" />
+                      <label className="block text-sm font-medium mb-2 text-slate-700">HbA1c (%)</label>
+                      <input type="number" step="0.1" value={formData.hba1c} onChange={(e) => setFormData({ ...formData, hba1c: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-black font-bold placeholder:text-slate-400" placeholder="6.5" />
                     </div>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium mb-2 text-slate-900">Are you on medication?</label>
-                    <div className="flex gap-4">
+                    <label className="block text-sm font-medium mb-2 text-slate-700">Are you on medication?</label>
+                    <div className="flex gap-4 mb-4">
                       <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" checked={!formData.onMedication} onChange={() => setFormData({ ...formData, onMedication: false })} className="text-cyan-500" />
-                        <span className="text-sm text-slate-800">No</span>
+                        <input type="radio" checked={!formData.onMedication} onChange={() => setFormData({ ...formData, onMedication: false, medicationType: [] })} className="text-[#2FC8B9]" />
+                        <span className="text-sm font-bold text-slate-800">No</span>
                       </label>
                       <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" checked={formData.onMedication} onChange={() => setFormData({ ...formData, onMedication: true })} className="text-cyan-500" />
-                        <span className="text-sm text-slate-800">Yes</span>
+                        <input type="radio" checked={formData.onMedication} onChange={() => setFormData({ ...formData, onMedication: true })} className="text-[#2FC8B9]" />
+                        <span className="text-sm font-bold text-slate-800">Yes</span>
                       </label>
                     </div>
+
+                    {formData.onMedication && (
+                      <div className="animate-in fade-in slide-in-from-top-2 duration-200">
+                        <label className="block text-xs font-bold mb-2 text-slate-500 uppercase">Medicine Name</label>
+                        <div className="relative">
+                          <Tablets className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                          <input
+                            type="text"
+                            value={customMedication}
+                            onChange={(e) => setCustomMedication(e.target.value)}
+                            onBlur={() => {
+                              if (customMedication) {
+                                setFormData(prev => ({ ...prev, medicationType: [customMedication] }));
+                              }
+                            }}
+                            className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-10 pr-4 text-black font-bold placeholder:text-slate-400"
+                            placeholder="e.g. Metformin"
+                          />
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
-
 
               <button type="submit" className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:shadow-[0_10px_25px_rgba(47,200,185,0.3)] transition-all flex items-center justify-center gap-2 bg-[#2FC8B9] hover:bg-[#28b5a6]">
                 Finalize Steps <ArrowRight className="w-5 h-5" />
@@ -755,12 +777,29 @@ export default function Register() {
 
   // Step 4: Lifestyle Habits & Conditions
   if (step === 4) {
+    const diseaseSuggestions = [
+      'Hypertension', 'Type 1 Diabetes', 'Type 2 Diabetes', 'Thyroid Disorder',
+      'PCOS/PCOD', 'Asthma', 'Arthritis', 'Chronic Kidney Disease',
+      'Heart Disease', 'Cholesterol', 'Migraine', 'Acid Reflux',
+      'Anxiety', 'Depression', 'Insomnia', 'Fatty Liver', 'Anemia',
+      'Eczema', 'Psoriasis', 'Sleep Apnea', 'Celiac Disease', 'IBD', 'IBS',
+      'Tuberculosis', 'COPD', 'Gout', 'Lupus', 'Epilepsy'
+    ];
+
+    const filteredSuggestions = customCondition.length > 0
+      ? diseaseSuggestions.filter(d =>
+        d.toLowerCase().includes(customCondition.toLowerCase()) &&
+        !formData.chronicConditions.includes(d)
+      )
+      : [];
+
     return (
-      <div className="min-h-screen flex bg-gradient-to-br from-purple-50 to-orange-50">
-        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-purple-500 via-pink-500 to-orange-600">
-          <div className="absolute inset-0">
-            <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
-            <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+      <div className="min-h-screen flex bg-white">
+        {/* Left Panel */}
+        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute top-20 left-20 w-72 h-72 bg-[#2FC8B9] rounded-full blur-[120px]" />
+            <div className="absolute bottom-20 right-20 w-96 h-96 bg-[#2FC8B9] rounded-full blur-[120px]" />
           </div>
           <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
             <div className="relative w-32 h-32 mb-8">
@@ -787,73 +826,174 @@ export default function Register() {
               <span className="text-2xl font-black text-black uppercase tracking-tighter">FitCure</span>
             </div>
 
-            <button onClick={prevStep} className="flex items-center gap-2 mb-6 text-cyan-700 hover:text-cyan-800">
+            <button onClick={prevStep} className="flex items-center gap-2 mb-6 text-[#2FC8B9] font-black uppercase tracking-tighter text-xs hover:text-black transition-colors">
               <ArrowLeft className="w-4 h-4" /> Back
             </button>
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-2 text-slate-900">Lifestyle & Conditions</h2>
-              <p className="text-cyan-700">Step 3 of 5 - Habits and health history</p>
+              <h2 className="text-3xl font-black mb-2 text-black uppercase tracking-tighter">Lifestyle & Conditions</h2>
+              <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Step 3 of 5 • Health History</p>
             </div>
 
             <form onSubmit={(e) => { e.preventDefault(); nextStep(); }} className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center gap-2 p-3 bg-white rounded-xl border border-slate-200">
+                <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
                   <Cigarette className="w-5 h-5 text-slate-400" />
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={formData.smoker} onChange={(e) => setFormData({ ...formData, smoker: e.target.checked })} className="text-cyan-500" />
-                    <span className="text-sm text-slate-800">Smoker</span>
+                    <input type="checkbox" checked={formData.smoker} onChange={(e) => setFormData({ ...formData, smoker: e.target.checked })} className="text-[#2FC8B9]" />
+                    <span className="text-sm font-bold text-slate-700">Smoker</span>
                   </label>
                 </div>
-                <div className="flex items-center gap-2 p-3 bg-white rounded-xl border border-slate-200">
+                <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
                   <Wine className="w-5 h-5 text-slate-400" />
                   <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={formData.alcohol} onChange={(e) => setFormData({ ...formData, alcohol: e.target.checked })} className="text-cyan-500" />
-                    <span className="text-sm text-slate-800">Alcohol</span>
+                    <input type="checkbox" checked={formData.alcohol} onChange={(e) => setFormData({ ...formData, alcohol: e.target.checked })} className="text-[#2FC8B9]" />
+                    <span className="text-sm font-bold text-slate-700">Alcohol</span>
                   </label>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-slate-700">Sleep Hours/Night: {formData.sleepHours}h</label>
-                <input type="range" min="4" max="12" value={formData.sleepHours} onChange={(e) => setFormData({ ...formData, sleepHours: e.target.value })} className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-cyan-500" />
+                <label className="block text-sm font-medium mb-2 text-slate-700">Sleep Hours/Night: <span className="text-[#2FC8B9]">{formData.sleepHours}h</span></label>
+                <input type="range" min="4" max="12" value={formData.sleepHours} onChange={(e) => setFormData({ ...formData, sleepHours: e.target.value })} className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-[#2FC8B9]" />
               </div>
 
               <div>
                 <label className="block text-sm font-medium mb-2 text-slate-700">Stress Level</label>
-                <select value={formData.stressLevel} onChange={(e) => setFormData({ ...formData, stressLevel: e.target.value })} className="w-full bg-white rounded-xl py-3 px-4 border border-slate-200 text-slate-900">
-                  <option value="low" className="text-slate-900">Low</option>
-                  <option value="moderate" className="text-slate-900">Moderate</option>
-                  <option value="high" className="text-slate-900">High</option>
+                <select value={formData.stressLevel} onChange={(e) => setFormData({ ...formData, stressLevel: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-black font-bold">
+                  <option value="low">Low</option>
+                  <option value="moderate">Moderate</option>
+                  <option value="high">High</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-slate-700">Water Intake (Glasses/Day): {formData.waterIntake}</label>
-                <input type="range" min="1" max="15" value={formData.waterIntake} onChange={(e) => setFormData({ ...formData, waterIntake: e.target.value })} className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-cyan-500" />
+                <label className="block text-sm font-medium mb-2 text-slate-700">Water Intake (Glasses/Day): <span className="text-[#2FC8B9]">{formData.waterIntake}</span></label>
+                <input type="range" min="1" max="15" value={formData.waterIntake} onChange={(e) => setFormData({ ...formData, waterIntake: e.target.value })} className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-[#2FC8B9]" />
               </div>
 
               <div>
                 <label className="block text-sm font-medium mb-2 text-slate-700">Chronic Conditions (If any)</label>
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {['Hypertension', 'Thyroid', 'PCOS/PCOD', 'Asthma', 'Arthritis', 'None'].map(cond => (
+
+                {/* Search / Type Field */}
+                <div className="relative mb-3">
+                  <input
+                    type="text"
+                    value={customCondition}
+                    onChange={(e) => setCustomCondition(e.target.value)}
+                    placeholder="Search or type disease..."
+                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 focus:border-[#2FC8B9] text-black font-bold placeholder:text-slate-400"
+                  />
+
+                  {/* Suggestions Dropdown */}
+                  {filteredSuggestions.length > 0 && (
+                    <div className="absolute z-20 w-full mt-1 bg-white border border-slate-100 rounded-xl shadow-xl max-h-48 overflow-y-auto">
+                      {filteredSuggestions.map(suggestion => (
+                        <button
+                          key={suggestion}
+                          type="button"
+                          onClick={() => {
+                            addCustomItem('chronicConditions', suggestion);
+                            setCustomCondition('');
+                          }}
+                          className="w-full text-left px-4 py-3 hover:bg-slate-50 text-sm font-bold text-slate-700 border-b border-slate-50 last:border-0"
+                        >
+                          {suggestion}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Manual Add Button */}
+                  {customCondition && !filteredSuggestions.includes(customCondition) && (
                     <button
-                      key={cond}
                       type="button"
                       onClick={() => {
-                        if (cond === 'None') {
-                          setFormData({ ...formData, chronicConditions: [] });
-                        } else {
-                          toggleArrayItem('chronicConditions', cond);
-                        }
+                        addCustomItem('chronicConditions', customCondition);
+                        setCustomCondition('');
                       }}
-                      className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${formData.chronicConditions.includes(cond) ? 'bg-cyan-600 text-white' : 'bg-slate-100 text-slate-700'}`}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-[#2FC8B9] text-white text-[10px] font-black uppercase rounded-lg hover:bg-[#28b5a6]"
+                    >
+                      Add Custom
+                    </button>
+                  )}
+                </div>
+
+                {/* Selected Conditions Tags */}
+                <div className="flex flex-wrap gap-2">
+                  {formData.chronicConditions.length === 0 && !customCondition && (
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, chronicConditions: [] })}
+                      className="px-3 py-1 rounded-full text-[10px] font-black uppercase bg-[#2FC8B9] text-white"
+                    >
+                      None selected
+                    </button>
+                  )}
+                  {formData.chronicConditions.map(cond => (
+                    <div
+                      key={cond}
+                      className="flex items-center gap-1 px-3 py-1 bg-[#2FC8B9]/10 text-[#2FC8B9] border border-[#2FC8B9]/20 rounded-full text-[10px] font-black uppercase"
                     >
                       {cond}
-                    </button>
+                      <button
+                        type="button"
+                        onClick={() => removeItem('chronicConditions', cond)}
+                        className="p-0.5 hover:bg-[#2FC8B9]/20 rounded-full"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </div>
                   ))}
                 </div>
               </div>
 
+              {/* Medication Status */}
+              <div className="pt-4 border-t border-slate-100">
+                <label className="block text-sm font-medium mb-3 text-slate-700 font-bold">Are you on any medication?</label>
+                <div className="flex gap-4 mb-4">
+                  <label className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border cursor-pointer transition-all hover:bg-slate-50 border-slate-100 has-[:checked]:bg-[#2FC8B9]/5 has-[:checked]:border-[#2FC8B9]/30">
+                    <input
+                      type="radio"
+                      name="medication_check"
+                      checked={!formData.onMedication}
+                      onChange={() => setFormData({ ...formData, onMedication: false, medicationType: [] })}
+                      className="text-[#2FC8B9] focus:ring-[#2FC8B9]"
+                    />
+                    <span className="text-sm font-bold text-slate-800">No</span>
+                  </label>
+                  <label className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border cursor-pointer transition-all hover:bg-slate-50 border-slate-100 has-[:checked]:bg-[#2FC8B9]/5 has-[:checked]:border-[#2FC8B9]/30">
+                    <input
+                      type="radio"
+                      name="medication_check"
+                      checked={formData.onMedication}
+                      onChange={() => setFormData({ ...formData, onMedication: true })}
+                      className="text-[#2FC8B9] focus:ring-[#2FC8B9]"
+                    />
+                    <span className="text-sm font-bold text-slate-800">Yes</span>
+                  </label>
+                </div>
+
+                {formData.onMedication && (
+                  <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                    <label className="block text-xs font-bold mb-2 text-slate-500 uppercase">Medicine Name</label>
+                    <div className="relative">
+                      <Tablets className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="text"
+                        value={customMedication}
+                        onChange={(e) => {
+                          setCustomMedication(e.target.value);
+                          if (e.target.value) {
+                            setFormData(prev => ({ ...prev, medicationType: [e.target.value] }));
+                          }
+                        }}
+                        className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 focus:border-[#2FC8B9] text-black font-bold placeholder:text-slate-400"
+                        placeholder="e.g. Metformin, Amlodipine"
+                      />
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <button type="submit" className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:shadow-[0_10px_25px_rgba(47,200,185,0.3)] transition-all flex items-center justify-center gap-2 bg-[#2FC8B9] hover:bg-[#28b5a6]">
                 Continue <ArrowRight className="w-5 h-5" />
@@ -937,62 +1077,62 @@ export default function Register() {
                 <div className="grid grid-cols-2 gap-3">
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, nutritionGoal: 'weight_loss' })}
+                    onClick={() => setFormData({ ...formData, nutritionGoal: 'weight_loss', primaryGoal: 'weight_loss' })}
                     className={`p-4 rounded-xl border-2 transition-all ${formData.nutritionGoal === 'weight_loss'
-                      ? 'border-cyan-600 bg-cyan-50'
-                      : 'border-slate-200 bg-white hover:border-cyan-300'
+                      ? 'border-[#2FC8B9] bg-[#2FC8B9]/5'
+                      : 'border-slate-200 bg-white hover:border-[#2FC8B9]/30'
                       }`}
                   >
-                    <TrendingDown className={`w-8 h-8 mx-auto mb-2 ${formData.nutritionGoal === 'weight_loss' ? 'text-cyan-600' : 'text-slate-400'}`} />
-                    <p className="text-sm font-medium text-slate-900">Weight Loss</p>
+                    <TrendingDown className={`w-8 h-8 mx-auto mb-2 ${formData.nutritionGoal === 'weight_loss' ? 'text-[#2FC8B9]' : 'text-slate-400'}`} />
+                    <p className="text-sm font-black text-black uppercase tracking-tighter">Weight Loss</p>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, nutritionGoal: 'weight_gain' })}
+                    onClick={() => setFormData({ ...formData, nutritionGoal: 'weight_gain', primaryGoal: 'weight_gain' })}
                     className={`p-4 rounded-xl border-2 transition-all ${formData.nutritionGoal === 'weight_gain'
-                      ? 'border-cyan-600 bg-cyan-50'
-                      : 'border-slate-200 bg-white hover:border-cyan-300'
+                      ? 'border-[#2FC8B9] bg-[#2FC8B9]/5'
+                      : 'border-slate-200 bg-white hover:border-[#2FC8B9]/30'
                       }`}
                   >
-                    <TrendingUp className={`w-8 h-8 mx-auto mb-2 ${formData.nutritionGoal === 'weight_gain' ? 'text-cyan-600' : 'text-slate-400'}`} />
-                    <p className="text-sm font-medium text-slate-900">Weight Gain</p>
+                    <TrendingUp className={`w-8 h-8 mx-auto mb-2 ${formData.nutritionGoal === 'weight_gain' ? 'text-[#2FC8B9]' : 'text-slate-400'}`} />
+                    <p className="text-sm font-black text-black uppercase tracking-tighter">Weight Gain</p>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, nutritionGoal: 'muscle_gain' })}
+                    onClick={() => setFormData({ ...formData, nutritionGoal: 'muscle_gain', primaryGoal: 'muscle_gain' })}
                     className={`p-4 rounded-xl border-2 transition-all ${formData.nutritionGoal === 'muscle_gain'
-                      ? 'border-cyan-600 bg-cyan-50'
-                      : 'border-slate-200 bg-white hover:border-cyan-300'
+                      ? 'border-[#2FC8B9] bg-[#2FC8B9]/5'
+                      : 'border-slate-200 bg-white hover:border-[#2FC8B9]/30'
                       }`}
                   >
-                    <Dumbbell className={`w-8 h-8 mx-auto mb-2 ${formData.nutritionGoal === 'muscle_gain' ? 'text-cyan-600' : 'text-slate-400'}`} />
-                    <p className="text-sm font-medium text-slate-900">Muscle Gain</p>
+                    <Dumbbell className={`w-8 h-8 mx-auto mb-2 ${formData.nutritionGoal === 'muscle_gain' ? 'text-[#2FC8B9]' : 'text-slate-400'}`} />
+                    <p className="text-sm font-black text-black uppercase tracking-tighter">Muscle Gain</p>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, nutritionGoal: 'maintain' })}
+                    onClick={() => setFormData({ ...formData, nutritionGoal: 'maintain', primaryGoal: 'maintain' })}
                     className={`p-4 rounded-xl border-2 transition-all ${formData.nutritionGoal === 'maintain'
-                      ? 'border-cyan-600 bg-cyan-50'
-                      : 'border-slate-200 bg-white hover:border-cyan-300'
+                      ? 'border-[#2FC8B9] bg-[#2FC8B9]/5'
+                      : 'border-slate-200 bg-white hover:border-[#2FC8B9]/30'
                       }`}
                   >
-                    <Minus className={`w-8 h-8 mx-auto mb-2 ${formData.nutritionGoal === 'maintain' ? 'text-cyan-600' : 'text-slate-400'}`} />
-                    <p className="text-sm font-medium text-slate-900">Maintain</p>
+                    <Minus className={`w-8 h-8 mx-auto mb-2 ${formData.nutritionGoal === 'maintain' ? 'text-[#2FC8B9]' : 'text-slate-400'}`} />
+                    <p className="text-sm font-black text-black uppercase tracking-tighter">Maintain</p>
                   </button>
 
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, nutritionGoal: 'general_health' })}
+                    onClick={() => setFormData({ ...formData, nutritionGoal: 'general_health', primaryGoal: 'general_health' })}
                     className={`p-4 rounded-xl border-2 transition-all col-span-2 ${formData.nutritionGoal === 'general_health'
-                      ? 'border-cyan-600 bg-cyan-50'
-                      : 'border-slate-200 bg-white hover:border-cyan-300'
+                      ? 'border-[#2FC8B9] bg-[#2FC8B9]/5'
+                      : 'border-slate-200 bg-white hover:border-[#2FC8B9]/30'
                       }`}
                   >
-                    <Heart className={`w-8 h-8 mx-auto mb-2 ${formData.nutritionGoal === 'general_health' ? 'text-cyan-600' : 'text-slate-400'}`} />
-                    <p className="text-sm font-medium text-slate-900">General Health</p>
+                    <Heart className={`w-8 h-8 mx-auto mb-2 ${formData.nutritionGoal === 'general_health' ? 'text-[#2FC8B9]' : 'text-slate-400'}`} />
+                    <p className="text-sm font-black text-black uppercase tracking-tighter">General Health</p>
                   </button>
                 </div>
               </div>
@@ -1008,7 +1148,7 @@ export default function Register() {
                       type="number"
                       value={formData.targetWeight}
                       onChange={(e) => setFormData({ ...formData, targetWeight: e.target.value })}
-                      className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-slate-900 placeholder:text-slate-400"
+                      className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 border border-slate-200 text-slate-900 placeholder:text-slate-400 font-bold"
                       placeholder={formData.weight}
                       min="30"
                       max="300"
@@ -1071,11 +1211,12 @@ export default function Register() {
   // Step 6: Goals
   if (step === 6) {
     return (
-      <div className="min-h-screen flex bg-gradient-to-br from-purple-50 to-orange-50">
-        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-purple-500 via-pink-500 to-orange-600">
-          <div className="absolute inset-0">
-            <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
-            <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
+      <div className="min-h-screen flex bg-white">
+        {/* Left Panel */}
+        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
+          <div className="absolute inset-0 opacity-20">
+            <div className="absolute top-20 left-20 w-72 h-72 bg-[#2FC8B9] rounded-full blur-[120px]" />
+            <div className="absolute bottom-20 right-20 w-96 h-96 bg-[#2FC8B9] rounded-full blur-[120px]" />
           </div>
           <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
             <div className="relative w-32 h-32 mb-8">
@@ -1102,42 +1243,42 @@ export default function Register() {
               <span className="text-2xl font-black text-black uppercase tracking-tighter">FitCure</span>
             </div>
 
-            <button onClick={prevStep} className="flex items-center gap-2 mb-6 text-cyan-700 hover:text-cyan-800">
+            <button onClick={prevStep} className="flex items-center gap-2 mb-6 text-[#2FC8B9] font-black uppercase tracking-tighter text-xs hover:text-black transition-colors">
               <ArrowLeft className="w-4 h-4" /> Back
             </button>
 
             <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-2 text-slate-900">Health Goals</h2>
-              <p className="text-cyan-700">Step 5 of 5 - The finish line!</p>
+              <h2 className="text-3xl font-black mb-2 text-black uppercase tracking-tighter">Health Goals</h2>
+              <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Step 5 of 5 • The finish line!</p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
-                <label className="block text-sm font-medium mb-2 text-slate-900">Primary Goal</label>
-                <select value={formData.primaryGoal} onChange={(e) => setFormData({ ...formData, primaryGoal: e.target.value })} className="w-full bg-white rounded-xl py-3 px-4 border border-cyan-200 text-slate-900">
-                  <option value="weight_loss" className="text-slate-900">Weight Loss</option>
-                  <option value="weight_gain" className="text-slate-900">Weight Gain</option>
-                  <option value="maintain" className="text-slate-900">Maintain Weight</option>
-                  <option value="general_health" className="text-slate-900">General Health</option>
-                  <option value="diabetes_management" className="text-slate-900">Diabetes Management</option>
+                <label className="block text-sm font-medium mb-2 text-slate-700">Primary Goal</label>
+                <select value={formData.primaryGoal} onChange={(e) => setFormData({ ...formData, primaryGoal: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-black font-bold">
+                  <option value="weight_loss">Weight Loss</option>
+                  <option value="weight_gain">Weight Gain</option>
+                  <option value="maintain">Maintain Weight</option>
+                  <option value="general_health">General Health</option>
+                  <option value="diabetes_management">Diabetes Management</option>
                 </select>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-slate-900">Target Weight (kg)</label>
-                <input type="number" step="0.1" value={formData.targetWeight} onChange={(e) => setFormData({ ...formData, targetWeight: e.target.value })} className="w-full bg-white rounded-xl py-3 px-4 border border-cyan-200 text-slate-900 placeholder:text-slate-400" placeholder="65" />
+                <label className="block text-sm font-medium mb-2 text-slate-700">Target Weight (kg)</label>
+                <input type="number" step="0.1" value={formData.targetWeight} onChange={(e) => setFormData({ ...formData, targetWeight: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-black font-bold placeholder:text-slate-400" placeholder="65" />
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-slate-900">Weekly Goal (kg/week)</label>
-                <select value={formData.weeklyGoal} onChange={(e) => setFormData({ ...formData, weeklyGoal: e.target.value })} className="w-full bg-white rounded-xl py-3 px-4 border border-cyan-200 text-slate-900">
-                  <option value="0.25" className="text-slate-900">0.25 kg (Steady)</option>
-                  <option value="0.5" className="text-slate-900">0.5 kg (Recommended)</option>
-                  <option value="1.0" className="text-slate-900">1.0 kg (Aggressive)</option>
+                <label className="block text-sm font-medium mb-2 text-slate-700">Weekly Goal (kg/week)</label>
+                <select value={formData.weeklyGoal} onChange={(e) => setFormData({ ...formData, weeklyGoal: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-black font-bold">
+                  <option value="0.25">0.25 kg (Steady)</option>
+                  <option value="0.5">0.5 kg (Recommended)</option>
+                  <option value="1.0">1.0 kg (Aggressive)</option>
                 </select>
               </div>
 
-              <button type="submit" disabled={loading} className="w-full py-3 text-white font-semibold rounded-xl bg-gradient-to-r from-purple-600 to-orange-600 hover:from-purple-700 hover:to-orange-700 flex items-center justify-center gap-2 disabled:opacity-50">
+              <button type="submit" disabled={loading} className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:shadow-[0_10px_25_rgba(47,200,185,0.3)] transition-all flex items-center justify-center gap-2 bg-[#2FC8B9] hover:bg-[#28b5a6] disabled:opacity-50">
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Create Account <ArrowRight className="w-5 h-5" /></>}
               </button>
             </form>

@@ -176,11 +176,8 @@ export default function ReportSummary() {
   return (
     <div id="report-content" className="max-w-6xl mx-auto space-y-6 animate-fade-in p-4 bg-white">
       <div className="flex items-center justify-between no-pdf">
-        <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-cyan-400 font-medium transition-colors">
+        <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-[#2FC8B9] font-black uppercase text-[10px] tracking-widest transition-all">
           <ArrowLeft className="w-4 h-4" /> Back to Dashboard
-        </Link>
-        <Link to={`/reports/${id}`} className="inline-flex items-center gap-2 text-slate-400 hover:text-cyan-400 font-medium transition-colors">
-          Back to Report Details →
         </Link>
       </div>
 

@@ -102,6 +102,27 @@ exports.register = async (req, res) => {
           startDate: new Date()
         }
       });
+
+      // 🆕 Create initial HealthGoal record to sync with Fitness Dashboard
+      if (user && profile && nutritionGoal) {
+        try {
+          await HealthGoal.create({
+            userId: user._id,
+            goalType: nutritionGoal.goal || 'health_improvement',
+            currentWeight: profile.weight,
+            targetWeight: nutritionGoal.targetWeight || profile.weight,
+            height: profile.height,
+            age: profile.age,
+            gender: profile.gender,
+            activityLevel: profile.activityLevel || 'moderate',
+            isActive: true
+          });
+          console.log('Initial HealthGoal created for user');
+        } catch (goalError) {
+          console.error('Failed to create initial HealthGoal:', goalError.message);
+          // Don't fail the whole registration if this fails
+        }
+      }
     } catch (createError) {
       console.error('User creation error:', createError.message);
       console.error('User creation error code:', createError.code);
