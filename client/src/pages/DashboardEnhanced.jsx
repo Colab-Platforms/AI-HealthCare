@@ -16,6 +16,7 @@ import BMIWidget from '../components/BMIWidget';
 import SleepTracker from '../components/SleepTracker';
 import DashboardSkeleton from '../components/skeletons/DashboardSkeleton';
 import NotificationPanel, { useNotificationCount } from '../components/NotificationPanel';
+import StepCounter from '../components/StepCounter';
 import { healthService } from '../services/api';
 
 // Animated Progress Ring Component
@@ -741,55 +742,61 @@ export default function DashboardEnhanced() {
           </Link>
         </div>
 
-        {/* Diabetes Management Card */}
-        <Link
-          to="/glucose-log"
-          className="block bg-white rounded-[2.5rem] shadow-sm p-6 sm:p-8 hover:shadow-xl transition-all group relative overflow-hidden border border-slate-100 mx-3 md:mx-0"
-        >
-          {/* Decorative Droplet Watermark */}
-          <div className="absolute bottom-4 right-4 opacity-[0.03] pointer-events-none">
-            <Droplets className="w-32 h-32 text-[#2FC8B9]" />
-          </div>
+        {/* Activity & Management Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mx-3 md:mx-0">
+          {/* Direct Step Counter Component */}
+          <StepCounter />
 
-          {/* Content */}
-          <div className="relative z-10">
-            {/* Top Row: Icon + Title + Badge */}
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-black flex items-center justify-center shadow-lg">
-                  <Droplets className="w-6 h-6 text-[#2FC8B9]" />
+          {/* Diabetes Management Card */}
+          <Link
+            to="/glucose-log"
+            className="block bg-white rounded-[2.5rem] shadow-sm p-6 sm:p-8 hover:shadow-xl transition-all group relative overflow-hidden border border-slate-100"
+          >
+            {/* Decorative Droplet Watermark */}
+            <div className="absolute bottom-4 right-4 opacity-[0.03] pointer-events-none">
+              <Droplets className="w-32 h-32 text-[#2FC8B9]" />
+            </div>
+
+            {/* Content */}
+            <div className="relative z-10">
+              {/* Top Row: Icon + Title + Badge */}
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-2xl bg-black flex items-center justify-center shadow-lg">
+                    <Droplets className="w-6 h-6 text-[#2FC8B9]" />
+                  </div>
+                  <span className="text-xs font-black text-black uppercase tracking-[0.2em]">
+                    {isDiabetic ? "Diabetes Care" : "Blood Sugar"}
+                  </span>
                 </div>
-                <span className="text-xs font-black text-black uppercase tracking-[0.2em]">
-                  {isDiabetic ? "Diabetes Care" : "Blood Sugar"}
-                </span>
+                {latestGlucose && (
+                  <span className="px-4 py-1.5 bg-[#2FC8B9] text-white rounded-full text-[10px] font-black shadow-sm tracking-widest uppercase">
+                    {latestGlucose >= 70 && latestGlucose <= 130 ? 'IN RANGE' : (latestGlucose > 130 ? 'HIGH' : 'LOW')}
+                  </span>
+                )}
               </div>
-              {latestGlucose && (
-                <span className="px-4 py-1.5 bg-[#2FC8B9] text-white rounded-full text-[10px] font-black shadow-sm tracking-widest uppercase">
-                  {latestGlucose >= 70 && latestGlucose <= 130 ? 'IN RANGE' : (latestGlucose > 130 ? 'HIGH' : 'LOW')}
+
+              {/* Large Reading */}
+              <div className="flex items-baseline gap-3 mb-2">
+                <span className="text-5xl font-black text-black tracking-tighter">
+                  {latestGlucose || '--'}
                 </span>
-              )}
-            </div>
+                <span className="text-xs text-slate-400 font-black tracking-widest uppercase">MG/DL</span>
+              </div>
 
-            {/* Large Reading */}
-            <div className="flex items-baseline gap-3 mb-2">
-              <span className="text-5xl font-black text-black tracking-tighter">
-                {latestGlucose || '--'}
-              </span>
-              <span className="text-xs text-slate-400 font-black tracking-widest uppercase">MG/DL</span>
-            </div>
+              {/* Description */}
+              <p className="text-slate-500 text-sm mb-6 leading-relaxed max-w-sm font-bold">
+                {latestGlucose ? "Your recent reading is logged. Tap to manage or view progress." : "Track your blood sugar levels to get personalized insights."}
+              </p>
 
-            {/* Description */}
-            <p className="text-slate-500 text-sm mb-6 leading-relaxed max-w-sm font-bold">
-              {latestGlucose ? "Your recent reading is logged. Tap to manage or view progress." : "Track your blood sugar levels to get personalized insights."}
-            </p>
-
-            {/* CTA Link */}
-            <div className="flex items-center gap-2 text-[#2FC8B9] font-black text-xs uppercase tracking-widest group-hover:gap-4 transition-all">
-              <span>{latestGlucose ? "Enter Care Center" : "Log First Reading"}</span>
-              <ChevronRight className="w-4 h-4" />
+              {/* CTA Link */}
+              <div className="flex items-center gap-2 text-[#2FC8B9] font-black text-xs uppercase tracking-widest group-hover:gap-4 transition-all">
+                <span>{latestGlucose ? "Enter Care Center" : "Log First Reading"}</span>
+                <ChevronRight className="w-4 h-4" />
+              </div>
             </div>
-          </div>
-        </Link>
+          </Link>
+        </div>
 
         {/* AI Health Insights Section - Only shown if user has reports */}
         {
