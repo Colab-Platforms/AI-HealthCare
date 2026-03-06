@@ -1,126 +1,171 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
+import { MapPin, Navigation, Activity } from 'lucide-react';
+
+// Haversine formula to calculate the distance between two GPS coordinates in meters
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371e3; // Earth's radius in metres
+    const φ1 = lat1 * (Math.PI / 180);
+    const φ2 = lat2 * (Math.PI / 180);
+    const Δφ = (lat2 - lat1) * (Math.PI / 180);
+    const Δλ = (lon2 - lon1) * (Math.PI / 180);
+
+    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+        Math.cos(φ1) * Math.cos(φ2) *
+        Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+
+    return R * c; // Distance in meters
+};
 
 const StepCounter = () => {
-    const [steps, setSteps] = useState(0);
     const [isTracking, setIsTracking] = useState(false);
-    const [permissionGranted, setPermissionGranted] = useState(false);
-    const [magnitude, setMagnitude] = useState(0);
+    const [distance, setDistance] = useState(0); // in meters
+    const [steps, setSteps] = useState(0); // estimated
+    const [errorMsg, setErrorMsg] = useState('');
 
-    // Constants for our basic pedometer algorithm
-    const STEP_THRESHOLD = 15; // Customize based on testing (gravity is normally ~9.8)
+    const watchIdRef = useRef(null);
+    const lastPosRef = useRef(null);
 
-    const handleMotion = useCallback((event) => {
-        // Get acceleration data including gravity
-        const acc = event.accelerationIncludingGravity;
-        if (!acc) return;
-
-        // Calculate the total magnitude of the acceleration vector
-        const currentMagnitude = Math.sqrt(
-            Math.pow(acc.x || 0, 2) + Math.pow(acc.y || 0, 2) + Math.pow(acc.z || 0, 2)
-        );
-
-        setMagnitude(currentMagnitude.toFixed(2));
-
-        // If the movement crosses the threshold, register a step
-        if (currentMagnitude > STEP_THRESHOLD) {
-            setSteps((prevSteps) => prevSteps + 1);
-        }
-    }, []);
-
-    const requestAccess = async () => {
-        // iOS 13+ requires explicit permission for DeviceMotionEvent
-        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-            try {
-                const permissionState = await DeviceMotionEvent.requestPermission();
-                if (permissionState === 'granted') {
-                    setPermissionGranted(true);
-                    startTracking();
-                } else {
-                    alert('Permission to access device motion was denied.');
-                }
-            } catch (error) {
-                console.error('Error requesting motion permission:', error);
-                // Fallback or Android
-                setPermissionGranted(true);
-                startTracking();
-            }
-        } else {
-            // Android and older iOS devices don't need explicit permission requests
-            setPermissionGranted(true);
-            startTracking();
-        }
-    };
+    // Average step length in meters (standard estimation)
+    const AVERAGE_STEP_LENGTH = 0.762;
 
     const startTracking = () => {
-        if (window.DeviceMotionEvent) {
-            window.addEventListener('devicemotion', handleMotion);
-            setIsTracking(true);
-        } else {
-            alert('Device motion is not supported on your device/browser.');
+        setErrorMsg('');
+        if (!('geolocation' in navigator)) {
+            setErrorMsg('GPS/Location is not supported on your browser.');
+            return;
         }
+
+        setIsTracking(true);
+
+        const options = {
+            enableHighAccuracy: true,
+            timeout: 10000,
+            maximumAge: 0
+        };
+
+        // Watch position continuously
+        watchIdRef.current = navigator.geolocation.watchPosition(
+            (position) => {
+                const { latitude, longitude, accuracy } = position.coords;
+
+                // Ignore highly inaccurate GPS jumps (e.g. > 20 meters off)
+                if (accuracy > 20) return;
+
+                if (lastPosRef.current) {
+                    const distMoved = calculateDistance(
+                        lastPosRef.current.latitude,
+                        lastPosRef.current.longitude,
+                        latitude,
+                        longitude
+                    );
+
+                    // Only count movements larger than 2 meters to avoid "GPS drift" standing still
+                    if (distMoved > 2) {
+                        setDistance((prev) => {
+                            const newDist = prev + distMoved;
+                            // Estimate steps based on distance
+                            setSteps(Math.round(newDist / AVERAGE_STEP_LENGTH));
+                            return newDist;
+                        });
+                        lastPosRef.current = { latitude, longitude };
+                    }
+                } else {
+                    // First position reading
+                    lastPosRef.current = { latitude, longitude };
+                }
+            },
+            (err) => {
+                console.warn('GPS Error:', err);
+                if (err.code === 1) {
+                    setErrorMsg('Location access denied. Please allow GPS.');
+                } else {
+                    setErrorMsg('Failed to get GPS signal. Step outside!');
+                }
+                setIsTracking(false);
+            },
+            options
+        );
     };
 
     const stopTracking = () => {
-        window.removeEventListener('devicemotion', handleMotion);
+        if (watchIdRef.current !== null) {
+            navigator.geolocation.clearWatch(watchIdRef.current);
+            watchIdRef.current = null;
+        }
         setIsTracking(false);
+        lastPosRef.current = null;
     };
 
     useEffect(() => {
-        // Cleanup listener on unmount
+        // Cleanup on unmount
         return () => {
-            window.removeEventListener('devicemotion', handleMotion);
+            if (watchIdRef.current !== null) {
+                navigator.geolocation.clearWatch(watchIdRef.current);
+            }
         };
-    }, [handleMotion]);
+    }, []);
 
     return (
         <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-white/80 backdrop-blur-xl border border-white/20 p-5 rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 relative overflow-hidden"
+            className="bg-white/80 backdrop-blur-xl border border-white/20 p-6 rounded-[2.5rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)] transition-all duration-300 relative overflow-hidden h-full flex flex-col"
         >
-            <div className="absolute top-0 right-0 p-4 opacity-10">
-                <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 2C7.58172 2 4 5.58172 4 10c0 4.4183 8 12 8 12s8-7.5817 8-12c0-4.4183-3.5817-8-8-8z" />
-                    <circle cx="12" cy="10" r="3" />
-                </svg>
+            <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                <MapPin className="w-24 h-24" />
             </div>
 
-            <div className="relative z-10 flex flex-col items-center">
-                <h2 className="text-lg font-semibold text-slate-800 mb-1 flex items-center gap-2">
-                    <span className="text-xl">👟</span> Live Step Counter
-                </h2>
+            <div className="relative z-10 flex flex-col flex-1">
+                <div className="flex justify-between items-start mb-4">
+                    <h2 className="text-sm font-black text-slate-800 uppercase tracking-widest flex items-center gap-2">
+                        <span className="w-8 h-8 rounded-xl bg-blue-100 text-blue-600 flex items-center justify-center">
+                            <Navigation className="w-4 h-4" />
+                        </span>
+                        GPS Walk Tracker
+                    </h2>
+                    {isTracking && (
+                        <span className="flex items-center gap-1.5 text-[10px] font-black text-blue-600 bg-blue-50 px-3 py-1.5 rounded-full uppercase">
+                            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
+                            Live GPS
+                        </span>
+                    )}
+                </div>
 
-                <p className="text-xs text-slate-500 mb-4 text-center">
-                    Tracks device motion (Keep page open)
+                <p className="text-xs text-slate-500 font-bold mb-6 max-w-[200px]">
+                    Uses device location to estimate outdoor walking distance & steps.
                 </p>
 
-                <div className="text-5xl font-extrabold text-[#7C3AED] mb-2 tracking-tight">
-                    {steps}
+                <div className="flex-1 flex flex-col justify-center items-center py-2 mb-4">
+                    <div className="text-6xl font-black tracking-tighter text-blue-600 mb-1">
+                        {steps}
+                    </div>
+                    <div className="text-xs font-black uppercase tracking-[0.2em] text-slate-400 mb-4">
+                        Estimated Steps
+                    </div>
+
+                    <div className="flex items-center gap-4 text-sm font-black text-slate-700 bg-slate-50 px-5 py-3 rounded-2xl border border-slate-100">
+                        <Activity className="w-4 h-4 text-blue-500" />
+                        <span>{(distance / 1000).toFixed(2)} KM Distance</span>
+                    </div>
                 </div>
 
-                <div className="text-xs text-slate-400 mb-5 font-mono bg-slate-100 px-3 py-1 rounded-full">
-                    Motion: {isTracking ? `${magnitude} g` : 'Idle'}
-                </div>
-
-                {!permissionGranted && !isTracking ? (
-                    <button
-                        onClick={requestAccess}
-                        className="w-full bg-[#7C3AED] text-white px-4 py-3 rounded-2xl font-semibold hover:bg-violet-700 active:scale-95 transition-all shadow-lg shadow-violet-200"
-                    >
-                        Enable Sensor
-                    </button>
-                ) : (
-                    <button
-                        onClick={isTracking ? stopTracking : startTracking}
-                        className={`w-full px-4 py-3 rounded-2xl font-semibold active:scale-95 transition-all shadow-md ${isTracking
-                                ? 'bg-rose-100 text-rose-600 hover:bg-rose-200'
-                                : 'bg-[#7C3AED] text-white hover:bg-violet-700 shadow-violet-200'
-                            }`}
-                    >
-                        {isTracking ? 'Pause Tracking' : 'Resume Tracking'}
-                    </button>
+                {errorMsg && (
+                    <div className="bg-red-50 text-red-500 text-[10px] font-black uppercase p-3 rounded-xl mb-4 text-center border border-red-100 mx-2">
+                        {errorMsg}
+                    </div>
                 )}
+
+                <button
+                    onClick={isTracking ? stopTracking : startTracking}
+                    className={`w-full py-4 rounded-2xl font-black uppercase tracking-widest transition-all shadow-lg text-xs mt-auto ${isTracking
+                            ? 'bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-100 shadow-none'
+                            : 'bg-blue-600 text-white hover:bg-blue-700 shadow-blue-200 hover:shadow-blue-300'
+                        }`}
+                >
+                    {isTracking ? 'Stop Workout' : 'Start Outdoor Walk'}
+                </button>
             </div>
         </motion.div>
     );
