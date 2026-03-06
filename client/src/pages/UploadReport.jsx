@@ -113,8 +113,8 @@ export default function UploadReport() {
                 let width = img.width;
                 let height = img.height;
 
-                // Max dimension 1200px for reports to stay under limit
-                const MAX_DIM = 1200;
+                // Max dimension 1600px for reports to balance OCR quality and size
+                const MAX_DIM = 1600;
                 if (width > height) {
                   if (width > MAX_DIM) {
                     height *= MAX_DIM / width;
@@ -140,12 +140,12 @@ export default function UploadReport() {
         };
 
         toast.loading('Optimizing image for cloud upload...', { id: 'compressing' });
-        finalFile = await compressImage(finalFile, 0.7); // 70% quality for reports
+        finalFile = await compressImage(finalFile, 0.6); // 60% quality for reports to stay lean
 
-        // If still too big, try even more aggressive compression
-        if (finalFile.size > 4 * 1024 * 1024) {
-          console.log('Still too big, retrying with 0.5 quality');
-          finalFile = await compressImage(fileToUpload.file, 0.5);
+        // Force stay under 3MB to be safe for Vercel 4.5MB total limit
+        if (finalFile.size > 3.5 * 1024 * 1024) {
+          console.log('Still over 3.5MB, reducing quality further...');
+          finalFile = await compressImage(fileToUpload.file, 0.4);
         }
 
         console.log('Final compressed size:', (finalFile.size / 1024 / 1024).toFixed(2), 'MB');

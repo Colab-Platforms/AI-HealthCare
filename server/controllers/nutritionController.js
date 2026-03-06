@@ -849,10 +849,12 @@ exports.quickFoodCheck = async (req, res) => {
     let cloudinaryUrl = null;
 
     console.log('🏁 [QuickCheck] Start - User ID:', req.user?._id);
+    console.log('📑 [QuickCheck] Headers:', req.headers['content-type']);
+    console.log('📦 [QuickCheck] Body keys:', Object.keys(req.body));
 
     // ─── STEP 1: Extract base64 from uploaded file ───
     if (req.file) {
-      console.log('📷 [QuickCheck] File received:', req.file.originalname, 'Size:', req.file.size);
+      console.log('📷 [QuickCheck] File received:', req.file.originalname, 'Type:', req.file.mimetype, 'Size:', req.file.size);
 
       try {
         if (req.file.buffer) {
@@ -905,6 +907,7 @@ exports.quickFoodCheck = async (req, res) => {
     if (imageBase64) {
       try {
         console.log('🧠 Attempting AI image analysis via Anthropic...');
+        console.log('📏 Base64 Length:', imageBase64?.length || 0);
 
         // Use image analysis — send base64 directly to Anthropic Claude Vision
         const imageAnalysis = await nutritionAI.analyzeFromImage(imageBase64, additionalContext || foodDescription || 'Food from image');
@@ -1017,11 +1020,10 @@ exports.quickFoodCheck = async (req, res) => {
       message: 'Food analyzed and saved successfully'
     });
   } catch (error) {
-    console.error('❌ Quick food check error:', error);
-    console.error('❌ Error stack:', error.stack);
+    console.error('❌ [QuickCheck] Fatal error:', error);
     res.status(500).json({
       success: false,
-      message: 'Failed to analyze food',
+      message: error.message || 'Failed to analyze food',
       error: error.message,
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });

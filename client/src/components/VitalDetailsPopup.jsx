@@ -16,12 +16,14 @@ export default function VitalDetailsPopup({ vital, onClose, initialLanguage = 'e
     unit = '',
     normalRange = 'N/A',
     status = 'normal',
+    whatIsThis = '',
     whatItDoes = '',
     lowHighImpact = '',
     topFoods = [],
     symptoms = [],
     // Legacy support for fields that might be passed from old reports or secondary fetch
     description = '',
+    explanation = '',
     recommendations = [],
     foodsToConsume = [],
   } = vital;
@@ -135,6 +137,21 @@ export default function VitalDetailsPopup({ vital, onClose, initialLanguage = 'e
               </div>
             ) : (
               <div className="grid grid-cols-1 gap-4">
+
+                {/* 0. What is this? (Simplest explanation) */}
+                {(whatIsThis || explanation) && (
+                  <div className="bg-amber-50/40 rounded-3xl p-5 border border-amber-100 group">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center">
+                        <Info className="w-4 h-4 text-amber-600" />
+                      </div>
+                      <h3 className="text-xs font-black text-amber-900 uppercase tracking-widest">{language === 'hi' ? `${name} क्या है?` : `What is ${name}?`}</h3>
+                    </div>
+                    <p className="text-sm text-amber-800/80 leading-relaxed font-black">
+                      {translate(whatIsThis || explanation)}
+                    </p>
+                  </div>
+                )}
 
                 {/* 1. What does it do? */}
                 <div className="bg-blue-50/50 rounded-3xl p-5 border border-blue-100 group">

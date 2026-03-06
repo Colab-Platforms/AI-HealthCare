@@ -1,13 +1,8 @@
 const axios = require('axios');
 const { robustJsonParse } = require('../utils/aiParser');
 
-/**
- * AI Nutrition Analyzer using Anthropic Claude Direct API
- * Analyzes food from images or text descriptions
- * Exclusively uses Anthropic direct integration
- */
-
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
+// Using the exact model ID requested by the user
 const CLAUDE_MODEL = 'claude-sonnet-4-6';
 
 class NutritionAI {
@@ -16,17 +11,18 @@ class NutritionAI {
   }
 
   getApiParams() {
-    // Re-read API key in case env changed
-    this.apiKey = process.env.ANTHROPIC_API_KEY;
-    const apiUrl = ANTHROPIC_API_URL;
-    const model = CLAUDE_MODEL;
-    return { apiUrl, model };
+    this.apiKey = process.env.ANTHROPIC_API_KEY ? process.env.ANTHROPIC_API_KEY.trim() : '';
+    return { apiUrl: ANTHROPIC_API_URL, model: CLAUDE_MODEL };
   }
 
   async makeAIRequest(payload) {
     const { apiUrl, model } = this.getApiParams();
+    if (!this.apiKey) {
+      console.error('❌ ANTHROPIC_API_KEY is not defined in environment');
+      throw new Error('ANTHROPIC_API_KEY missing');
+    }
 
-    console.log(`🔄 NutritionAI: Using Anthropic Direct with model: ${model}`);
+    console.log('🔄 [NutritionAI] Request | Model:', model, '| Key:', this.apiKey.substring(0, 10) + '...');
 
     const headers = {
       'x-api-key': this.apiKey,
@@ -35,293 +31,170 @@ class NutritionAI {
     };
 
     try {
-      // Extract system message from messages array if present
-      let systemContent = payload.system || '';
-      let userMessages = payload.messages || [];
-
-      if (!systemContent && userMessages.length > 0 && userMessages[0].role === 'system') {
-        systemContent = userMessages[0].content;
-        userMessages = userMessages.filter(m => m.role !== 'system');
-      }
-
       const requestPayload = {
-        model: model,
-        max_tokens: payload.max_tokens || 2000,
-        system: systemContent,
-        messages: userMessages,
-        temperature: payload.temperature || 0.3
+        model,
+        max_tokens: payload.max_tokens || 4000,
+        system: payload.system || '',
+        messages: payload.messages || [],
+        temperature: 0
       };
 
-      const timeout = 60000;
-      const response = await axios.post(apiUrl, requestPayload, { headers, timeout });
+      // Vision requests can be very slow - using 2-minute timeout
+      const resp = await axios.post(apiUrl, requestPayload, { headers, timeout: 120000 });
+      const text = resp.data?.content?.[0]?.text;
 
-      if (response.data && response.data.content && response.data.content[0]) {
-        const aiResponse = response.data.content[0].text;
-        console.log('✅ NutritionAI: Got response, length:', aiResponse.length);
-        return aiResponse;
-      } else {
-        console.error('❌ Unexpected Anthropic response structure:', JSON.stringify(response.data).substring(0, 500));
-        throw new Error('Invalid response structure from Anthropic API');
+      if (!text) {
+        console.error('❌ [NutritionAI] Empty response body:', resp.data);
+        throw new Error('No content in Anthropic response');
       }
-    } catch (error) {
-      console.error(`❌ NutritionAI Request Error:`, error.response?.data || error.message);
-      throw error;
+
+      return text;
+    } catch (err) {
+      const errorMsg = err.response?.data?.error?.message || err.message;
+      const errorType = err.response?.data?.error?.type;
+
+      console.error('❌ [NutritionAI] API ERROR:', errorMsg);
+
+      // Proactive fallback for model-not-found errors (custom model name issues)
+      if (errorType === 'not_found_error' && model === 'claude-sonnet-4-6') {
+        console.warn('⚠️ [NutritionAI] Model "claude-sonnet-4-6" not found. Falling back to standard Claude 3.5 Sonnet...');
+        const fallbackPayload = { ...payload, model: 'claude-3-5-sonnet-20240620' };
+        // Remove recursion safety or just call once with different model
+        const { apiUrl } = this.getApiParams();
+        const fallbackRequest = {
+          ...requestPayload,
+          model: 'claude-3-5-sonnet-20240620'
+        };
+        try {
+          const fallbackResp = await axios.post(apiUrl, fallbackRequest, { headers, timeout: 120000 });
+          const fallbackText = fallbackResp.data?.content?.[0]?.text;
+          if (fallbackText) return fallbackText;
+        } catch (fallbackErr) {
+          console.error('❌ [NutritionAI] Fallback also failed:', fallbackErr.message);
+        }
+      }
+
+      if (err.response?.data) {
+        console.error('❌ [NutritionAI] Full API Error Data:', JSON.stringify(err.response.data));
+      }
+      throw new Error(`AI Analysis failed: ${errorMsg}`);
     }
   }
 
   _getUnifiedPrompt(context = '') {
-    return `You are a professional nutritionist AI specialized in global cuisine with deep expertise in Indian foods.
+    return `Analyze this food and return ONLY a JSON object.
+    Context: "${context}"
     
-    CONTEXT/DESCRIPTION: "${context}"
-    
-    CRITICAL INSTRUCTIONS:
-    1. IMAGE ANALYSIS: If analyzing an image, identify EVERY food item visible on the plate.
-    2. ACCURACY: Use real-world nutritional values. (e.g., 1 Roti = 70kcal, 1 bowl Rice = 200kcal).
-    3. RANGES: For total nutrition, provide numeric values representing the average in JSON.
-    4. ALTERNATIVES: If the meal is high in calories, oil, or sugar, suggest 3 healthy alternatives.
-    5. BREAKDOWN: Provide micronutrients, health benefits, and specific tips to make this meal healthier.
-
-    IF NO FOOD IS DETECTABLE (Only for images), return:
-    { "error": "UNABLE_TO_DETECT_FOOD", "message": "I couldn't clearly identify any food in this photo. Please try shooting from a top-down angle or ensure better lighting." }
-    
-    RETURN RESPONSE IN THIS EXACT JSON FORMAT:
+    Format:
     {
       "foodItem": {
-        "name": "Primary food name",
-        "description": "Short visual description",
-        "quantity": "Portion size estimate",
-        "nutrition": {
-          "calories": 250, "protein": 8, "carbs": 45, "fats": 5, "fiber": 6, "sugar": 2, "sodium": 150
-        }
+        "name": "Food name",
+        "quantity": "Portion",
+        "nutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0 }
       },
-      "totalNutrition": { "calories": 250, "protein": 8, "carbs": 45, "fats": 5, "fiber": 6, "sugar": 2, "sodium": 150 },
-      "healthScore": 75,
-      "analysis": "Specific nutritional analysis.",
-      "micronutrients": [
-        { "name": "Vitamin C", "value": "12mg", "percentage": 15 }
-      ],
-      "enhancementTips": [
-        { "name": "Add Protein", "benefit": "Better satiety" }
-      ],
-      "healthBenefitsSummary": "Impact on health.",
-      "warnings": ["Warning if unhealthy"],
-      "alternatives": [
-        {
-          "name": "Alternative",
-          "description": "Better choice",
-          "nutrition": { "calories": 150, "protein": 10, "carbs": 20, "fats": 2 },
-          "benefits": "Benefit",
-          "prepTime": "10 mins",
-          "satietyScore": 8
-        }
-      ]
+      "totalNutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0 },
+      "healthScore": 0,
+      "analysis": "2-sentence summary",
+      "micronutrients": [],
+      "enhancementTips": [],
+      "healthBenefitsSummary": "",
+      "warnings": [],
+      "alternatives": []
     }`;
   }
 
-  /**
-   * Analyze food from image
-   */
   async analyzeFromImage(imageBase64, additionalContext = '') {
-    // Strip data URI prefix if present
+    let mediaType = 'image/jpeg'; // Default
+
     if (imageBase64.startsWith('data:')) {
+      // Extract mime type if present
+      const match = imageBase64.match(/^data:([^;]+);base64,/);
+      if (match) {
+        mediaType = match[1];
+      }
       imageBase64 = imageBase64.split(',')[1];
     }
 
-    const imageSizeKB = (imageBase64.length * 0.75) / 1024;
-    console.log(`🖼️ Processing image for AI analysis: ${imageSizeKB.toFixed(2)} KB`);
-
-    if (imageSizeKB > 5120) {
-      throw new Error('Image too large for processing. Please use a smaller image.');
+    // Supported mime types for Anthropic
+    const supportedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!supportedTypes.includes(mediaType)) {
+      console.warn(`⚠️ [NutritionAI] Unsupported media type ${mediaType}, falling back to image/jpeg`);
+      mediaType = 'image/jpeg';
     }
+
+    console.log('🖼️ [NutritionAI] Preparing image for Claude:', mediaType, '| Context:', additionalContext.substring(0, 50));
 
     const prompt = this._getUnifiedPrompt(additionalContext);
-    const systemMsg = 'You are a professional nutritionist AI with expertise in Indian food recognition and accurate nutrition data. You MUST analyze the image carefully and identify all food items visible. Return your analysis as valid JSON only.';
-
     const payload = {
-      max_tokens: 2000,
-      system: systemMsg,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: prompt },
-            {
-              type: 'image',
-              source: {
-                type: 'base64',
-                media_type: 'image/jpeg',
-                data: imageBase64
-              }
-            }
-          ]
-        }
-      ],
-      temperature: 0.3
+      system: 'You are a professional nutritionist AI specialized in Indian and global cuisine. Analyze the food in the image and return ONLY a JSON response. No text before or after the JSON.',
+      messages: [{
+        role: 'user',
+        content: [
+          { type: 'text', text: prompt },
+          { type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } }
+        ]
+      }]
     };
 
     try {
-      const aiResponse = await this.makeAIRequest(payload);
-      return this._parseResponse(aiResponse);
+      const response = await this.makeAIRequest(payload);
+      return this._parseResponse(response);
     } catch (error) {
-      console.error('❌ NutritionAI Image Analysis failed:', error.message);
+      console.error('❌ [NutritionAI] Image analysis failed:', error.message);
       throw error;
     }
   }
 
-  /**
-   * Helper to parse AI response
-   */
-  _parseResponse(aiResponse) {
-    const jsonMatch = aiResponse.match(/(\{[\s\S]*\})/);
-    if (!jsonMatch) {
-      console.error('❌ NutritionAI: No JSON in response:', aiResponse.substring(0, 500));
-      throw new Error('No JSON in AI response');
-    }
-
-    try {
-      const parsedData = robustJsonParse(jsonMatch[1]);
-      return { success: true, data: parsedData, rawResponse: aiResponse };
-    } catch (parseError) {
-      console.error('❌ NutritionAI JSON Parse Error:', parseError.message);
-      throw new Error('AI returned invalid JSON');
-    }
-  }
-
-  /**
-   * Analyze food from text description
-   */
-  async analyzeFromText(foodDescription) {
-    const prompt = `Analyze this food description and provide a detailed nutrition breakdown: "${foodDescription}"
-    
-    Return the response in this EXACT JSON format:
-    {
-      "foodItems": [{ "name": "Food name", "quantity": "Quantity", "nutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0 } }],
-      "totalNutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0 },
-      "healthScore": 0-100,
-      "analysis": "Analysis"
-    }`;
-
-    const systemMsg = 'You are a professional nutritionist AI.';
-    const payload = {
-      max_tokens: 2000,
-      system: systemMsg,
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3
-    };
-
-    try {
-      const aiResponse = await this.makeAIRequest(payload);
-      return this._parseResponse(aiResponse);
-    } catch (error) {
-      console.error('AI Text Analysis Error:', error.message);
-      throw error;
-    }
-  }
-
-  /**
-   * Get personalized meal recommendations
-   */
-  async getMealRecommendations(userGoal, todaySummary, deficiencies = []) {
-    const prompt = `Provide 3-5 INDIAN meal suggestions based on:
-    Goal: ${userGoal.goalType}
-    Deficiencies: ${deficiencies.join(', ')}
-    
-    Today's Intake: ${todaySummary.totalCalories} kcal
-    
-    Return JSON format.`;
-
-    const systemMsg = 'You are a professional nutritionist AI specializing in Indian cuisine.';
-    const payload = {
-      max_tokens: 1500,
-      system: systemMsg,
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.7
-    };
-
-    try {
-      const aiResponse = await this.makeAIRequest(payload);
-      return this._parseResponse(aiResponse);
-    } catch (error) {
-      console.error('AI Recommendations Error:', error.message);
-      throw error;
-    }
-  }
-
-  /**
-   * Quick food check (Unified)
-   */
   async quickFoodCheck(foodDescription) {
     const prompt = this._getUnifiedPrompt(foodDescription);
-    const systemMsg = 'You are a professional nutritionist AI specializing in Indian cuisine.';
     const payload = {
-      max_tokens: 2000,
-      system: systemMsg,
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3
+      system: 'You are a professional nutritionist AI. Respond ONLY with valid JSON.',
+      messages: [{ role: 'user', content: prompt }]
     };
-
-    try {
-      const aiResponse = await this.makeAIRequest(payload);
-      return this._parseResponse(aiResponse);
-    } catch (error) {
-      console.error('Quick Food Check Error:', error.message);
-      throw error;
-    }
+    return this._parseResponse(await this.makeAIRequest(payload));
   }
 
-  /**
-   * Analyze glucose trends with food context
-   */
-  async analyzeGlucoseTrends(userProfile, glucoseReadings, foodLogs, hba1cReadings = []) {
-    const diabetesProfile = userProfile.diabetesProfile || {};
-    const latestGlucose = glucoseReadings[0] || {};
-    const hba1c = hba1cReadings[0] || {};
-
-    const prompt = `Analyze this patient's diabetes management and recent glucose trends.
-
-    USER PROFILE:
-    - Age/Type: ${userProfile.age || 'N/A'}, ${diabetesProfile.diabetesType || 'Diabetes Type not specified'}
-    - Goals: ${diabetesProfile.targetGlucoseRange || 'Normal range'}, ${diabetesProfile.targetHbA1c || '<7.0%'}
-    
-    RECENT GLUCOSE READINGS:
-    ${glucoseReadings.map(r => `- ${r.value} ${r.unit} (${r.readingContext}, recorded: ${r.recordedAt})`).join('\n')}
-    
-    LATEST HbA1c: ${hba1c.value ? hba1c.value + '%' : 'Not provided'}
-    
-    TODAY'S FOOD INTAKE:
-    ${foodLogs.map(l => `- ${l.mealType}: ${l.foodItems.map(f => f.name).join(', ')}`).join('\n')}
-
-    CRITICAL INSTRUCTIONS:
-    1. Identify if the current glucose is within target range using medical best practices.
-    2. Analyze if any recent spikes are correlated with the food logs.
-    3. Provide actionable, concise advice.
-    4. MUST RETURN ONLY VALID JSON.
-    5. recommendations MUST BE AN ARRAY OF SIMPLE STRINGS only.
-
-    RETURN FORMAT (STRICT):
-    {
-      "status": "Short status string (e.g., Stable, Slightly High, Out of Range)",
-      "statusColor": "One of: 'green', 'yellow', 'orange', 'red'",
-      "analysis": "A concise 2-sentence summary of current trends.",
-      "spikeCause": "Likely reason for any high values, or 'None' if stable.",
-      "immediateAction": "The single most important next step.",
-      "recommendations": ["Actionable tip 1", "Actionable tip 2", "Actionable tip 3"]
-    }`;
-
-    const systemMsg = 'You are a professional endocrinologist AI specializing in diabetic trend analysis. You analyze glucose levels, food intake, and HbA1c to provide medical-grade insights. You must only return valid JSON.';
+  async getMealRecommendations(userGoal, todaySummary, deficiencies = []) {
+    const prompt = `Provide 3-5 meal suggestions for: ${userGoal.goalType}. Today's calories: ${todaySummary.totalCalories}. JSON format only.`;
     const payload = {
-      max_tokens: 1500,
-      system: systemMsg,
-      messages: [{ role: 'user', content: prompt }],
-      temperature: 0.3
+      system: 'Professional nutritionist AI.',
+      messages: [{ role: 'user', content: prompt }]
     };
+    return this._parseResponse(await this.makeAIRequest(payload));
+  }
 
+  async analyzeGlucoseTrends(userProfile, glucoseReadings, foodLogs, hba1cReadings = []) {
+    const prompt = `Analyze trends for patient. Data: ${JSON.stringify({ userProfile, glucoseReadings, foodLogs, hba1cReadings })}. JSON format only.`;
+    const payload = {
+      system: 'Professional endocrinologist AI. JSON format only.',
+      messages: [{ role: 'user', content: prompt }]
+    };
+    return this._parseResponse(await this.makeAIRequest(payload));
+  }
+
+  _parseResponse(r) {
+    if (!r) throw new Error('Empty AI response from server');
+
+    // Extract JSON block
+    const start = r.indexOf('{');
+    const end = r.lastIndexOf('}');
+
+    if (start === -1 || end === -1) {
+      console.error('❌ [NutritionAI] No JSON markers found in response');
+      console.error('❌ [NutritionAI] RAW RESPONSE:', r.substring(0, 500) + '...');
+      throw new Error('AI failed to return structured data. Please try again with more details.');
+    }
+
+    const jsonStr = r.substring(start, end + 1);
     try {
-      const aiResponse = await this.makeAIRequest(payload);
-      return this._parseResponse(aiResponse);
-    } catch (error) {
-      console.error('AI Glucose Analysis Error:', error.message);
-      throw error;
+      const parsed = robustJsonParse(jsonStr);
+      if (!parsed) throw new Error('JSON parser returned empty result');
+      return { success: true, data: parsed };
+    } catch (err) {
+      console.error('❌ [NutritionAI] JSON Parse Failed');
+      console.error('❌ [NutritionAI] Problematic snippet:', jsonStr.substring(0, 100) + '...');
+      console.error('❌ [NutritionAI] Tail snippet:', jsonStr.substring(jsonStr.length - 100));
+      throw new Error(`Data processing error: ${err.message}`);
     }
   }
 }

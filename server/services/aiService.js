@@ -71,7 +71,12 @@ JSON STRUCTURE (follow EXACTLY):
   "patientName": "Name from report",
   "reportDate": "YYYY-MM-DD",
   "healthScore": 75,
-  "summary": "Provide a comprehensive, accurate, and detailed executive summary of the patient's health status in layman terms. Avoid complex medical jargon where possible, or explain it simply. Focus on what these results mean for the user's overall wellbeing, identify the most critical findings, and explain why they matter. The summary should be thorough and empathetic.",
+  "summary": "Short 1-2 sentence overview of health status.",
+  "summaryPoints": [
+    "Crucial finding 1 with simple explanation",
+    "Crucial finding 2 with simple explanation",
+    "Overall wellbeing status pointer"
+  ],
   "keyFindings": ["finding1", "finding2", "finding3"],
   "riskFactors": ["risk1", "risk2"],
   "metrics": {
@@ -80,6 +85,7 @@ JSON STRUCTURE (follow EXACTLY):
       "unit": "g/dL", 
       "status": "normal", 
       "normalRange": "12-16",
+      "whatIsThis": "Explain what this metric is in very simple layman terms (e.g. 'Hemoglobin is a protein in red blood cells that carries oxygen')",
       "whatItDoes": "Brief explanation of its role in body",
       "lowHighImpact": "What happens if Low (e.g. Fatigue) vs High (e.g. Risk)",
       "topFoods": ["Food 1", "Food 2"],
@@ -144,7 +150,8 @@ CRITICAL RULES:
 4. Provide EXACTLY 4 meal options for EACH meal category (breakfast, lunch, dinner, snacks).
 5. Use Indian food options when appropriate.
 6. Use numbers for numeric values, not strings.
-7. Do NOT use true/false as unquoted literals in string fields.`;
+7. Always provide at least 3-5 summaryPoints as individual pointers for the user.
+8. Do NOT use true/false as unquoted literals in string fields.`;
 
 exports.analyzeHealthReport = async (reportText, user = {}, imageData = null) => {
   try {

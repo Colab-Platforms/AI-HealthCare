@@ -114,33 +114,43 @@ export default function QuickFoodScan() {
     // Recover binary image (Base64 DataURL -> File)
     if (persistedBinaryImage && !image) {
       try {
-        console.log('🔄 Attempting to recover image from storage...');
+        console.log('🔄 Recovery: Found base64 image, size:', Math.round(persistedBinaryImage.length / 1024), 'KB');
+
+        // Increase safety limit for high-res mobile photos
+        if (persistedBinaryImage.length > 30 * 1024 * 1024) {
+          console.warn('⚠️ Stored image is too large for recovery, size:', Math.round(persistedBinaryImage.length / 1024 / 1024), 'MB');
+          sessionStorage.removeItem('foodScanBinaryImage');
+          return;
+        }
 
         let recoveredFile;
         let previewUrl = persistedBinaryImage;
 
         // Extract mime type and data
         if (persistedBinaryImage.startsWith('data:')) {
-          const [meta, data] = persistedBinaryImage.split(';base64,');
-          const mime = meta.split(':')[1];
-          const binary = atob(data);
-          const array = [];
-          for (let i = 0; i < binary.length; i++) array.push(binary.charCodeAt(i));
-          const blob = new Blob([new Uint8Array(array)], { type: mime });
-          recoveredFile = new File([blob], 'captured_food.jpg', { type: mime });
-
-          // For recovery, create a local URL for the blob as it's more stable for display
-          previewUrl = URL.createObjectURL(recoveredFile);
+          const parts = persistedBinaryImage.split(';base64,');
+          if (parts.length === 2) {
+            const [meta, data] = parts;
+            // Robust mime extraction
+            const mime = meta.split(':')[1]?.split(';')[0] || 'image/jpeg';
+            const binary = atob(data);
+            const array = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) array[i] = binary.charCodeAt(i);
+            const blob = new Blob([array], { type: mime });
+            recoveredFile = new File([blob], 'recovered_food.jpg', { type: mime });
+            previewUrl = URL.createObjectURL(recoveredFile);
+          }
         }
 
         if (recoveredFile) {
           setImage(recoveredFile);
           setImagePreview(previewUrl);
-          console.log('✅ Recovered image successfully — user can now fill details and analyze');
-          toast.success('📸 Image recovered! Fill in details and tap Analyze.', { duration: 3000 });
+          console.log('✅ Recovered successfully');
+          toast.success('📸 Image recovered!', { duration: 2000, id: 'recovery-toast' });
         }
       } catch (e) {
         console.error('❌ Recovery failed:', e);
+        sessionStorage.removeItem('foodScanBinaryImage');
       }
     }
 
@@ -170,17 +180,14 @@ export default function QuickFoodScan() {
 
   // Real-time persistence for inputs - prevent data loss on mobile reloads
   useEffect(() => {
-    if (foodInput) sessionStorage.setItem('foodScanInput', foodInput);
+    if (foodInput) {
+      sessionStorage.setItem('foodScanInput', foodInput);
+    }
     if (imageDetails.quantity || imageDetails.prepMethod || imageDetails.additionalInfo) {
       sessionStorage.setItem('foodScanDetails', JSON.stringify(imageDetails));
     }
-    // Clean up if cleared
-    if (!foodInput && !image) {
-      sessionStorage.removeItem('foodScanInput');
-      sessionStorage.removeItem('foodScanDetails');
-      sessionStorage.removeItem('foodScanBinaryImage');
-    }
-  }, [foodInput, imageDetails, image]);
+    // REMOVED auto-clear logic here as it wipes data on mount before recovery
+  }, [foodInput, imageDetails]); // Removed image from deps trigger
 
   // Prevent navigation/unmounting during analysis - CRITICAL FOR MOBILE
   useEffect(() => {
@@ -352,83 +359,86 @@ export default function QuickFoodScan() {
   };
 
   const handleImageSelect = async (e) => {
-    console.log('--- HANDLE IMAGE SELECT START ---');
+    console.log('📸 handleImageSelect triggered');
     const file = e.target.files?.[0];
-    const inputSource = e.target.id;
+    if (!file) return;
 
-    console.log(`📸 Image selected from ${inputSource}`, file ? {
-      name: file.name,
-      size: `${(file.size / 1024 / 1024).toFixed(2)} MB`,
-      type: file.type
-    } : 'No file');
+    // Use a descriptive toast for high-res images
+    const toastId = toast.loading(file.size > 15 * 1024 * 1024
+      ? 'Optimizing high-quality photo... this may take a moment'
+      : 'Processing image...');
 
-    if (file) {
-      // Check if file is larger than 50MB
-      if (file.size > 50 * 1024 * 1024) {
-        toast.error('Image too large. Please use an image smaller than 50MB');
-        return;
-      }
+    try {
+      // 1. SET PREVIEW IMMEDIATELY (VITAL FOR MOBILE RESPONSIVENESS)
+      const fastPreview = URL.createObjectURL(file);
+      setImagePreview(fastPreview);
+      setImage(file);
+      setResult(null);
+      setShowResultModal(false);
 
-      setCompressing(true);
-      const toastId = toast.loading('Processing image...');
+      // Clear input right away
+      const target = e.target;
+      setTimeout(() => { target.value = ''; }, 100);
 
-      try {
-        // 1. SET INSTANT PREVIEW - Use blob URL for immediate display
-        const fastPreview = URL.createObjectURL(file);
-        setImagePreview(fastPreview);
-        setImage(file);
-        console.log('⚡ Preview set successfully');
+      // 2. CREATE RECOVERY THUMBNAIL (Essential for mobile survivability)
+      // We do this immediately in the background
+      const createThumbnail = (file) => {
+        return new Promise((resolve) => {
+          const reader = new FileReader();
+          reader.readAsDataURL(file);
+          reader.onload = (e) => {
+            const img = new Image();
+            img.src = e.target.result;
+            img.onload = () => {
+              const canvas = document.createElement('canvas');
+              const MAX = 800; // Small enough for sessionStorage, large enough for AI fallback
+              let w = img.width;
+              let h = img.height;
+              if (w > h) { if (w > MAX) { h *= MAX / w; w = MAX; } }
+              else { if (h > MAX) { w *= MAX / h; h = MAX; } }
+              canvas.width = w;
+              canvas.height = h;
+              canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+              const thumbBase64 = canvas.toDataURL('image/jpeg', 0.6);
+              resolve(thumbBase64);
+            };
+          };
+        });
+      };
 
-        // 2. COMPRESS IMAGE IN BACKGROUND
-        await new Promise(resolve => setTimeout(resolve, 300));
-
-        let processedFile;
+      // RUN PERSISTENCE
+      createThumbnail(file).then(thumb => {
         try {
-          processedFile = await compressImage(file);
+          sessionStorage.setItem('foodScanBinaryImage', thumb);
+          console.log('📦 Persistence thumb saved');
+        } catch (err) {
+          console.warn('📦 Persistence failed:', err);
+        }
+      });
+
+      // 3. OFF-LOAD FULL COMPRESSION (FOR UPLOAD)
+      setTimeout(async () => {
+        setCompressing(true);
+        try {
+          console.log('🗜️ Starting background compression for upload...');
+          const processedFile = await compressImage(file);
           if (processedFile && processedFile !== file) {
             setImage(processedFile);
-            console.log('🗜️ Image optimized');
+            console.log('🗜️ Image optimized for upload');
           }
-        } catch (compressionError) {
-          console.warn('Optimization skipped:', compressionError.message);
-          processedFile = file;
-          setImage(processedFile);
+          toast.success('Image ready!', { id: toastId });
+        } catch (err) {
+          console.warn('Compression task failed:', err);
+          toast.dismiss(toastId);
+        } finally {
+          setCompressing(false);
         }
+      }, 500);
 
-        // 3. PERSIST TO SESSION STORAGE (for mobile recovery)
-        // Only persist if image is small enough (< 3MB after compression)
-        if (processedFile.size < 3 * 1024 * 1024) {
-          try {
-            const reader = new FileReader();
-            reader.onloadend = () => {
-              try {
-                sessionStorage.setItem('foodScanBinaryImage', reader.result);
-                console.log('📦 Image persisted to sessionStorage');
-              } catch (storageError) {
-                console.warn('📦 Storage quota exceeded - image not persisted');
-                sessionStorage.removeItem('foodScanBinaryImage');
-              }
-            };
-            reader.readAsDataURL(processedFile);
-          } catch (e) {
-            console.warn('Failed to persist image:', e);
-          }
-        } else {
-          console.log('📦 Image too large for sessionStorage (>3MB), skipping persistence');
-        }
-
-        toast.success(`Image ready! ${(processedFile.size / 1024).toFixed(0)}KB`, { id: toastId });
-
-      } catch (error) {
-        console.error('Image processing error:', error);
-        toast.error('Failed to process image. Please try a different image.', { id: toastId });
-      } finally {
-        setCompressing(false);
-      }
+    } catch (error) {
+      console.error('Select error:', error);
+      toast.error('Failed to load image', { id: toastId });
     }
-
-    // Reset input to allow selecting the same file again
-    e.target.value = '';
   };
 
   const fetchFoodImage = async (foodName) => {
@@ -527,8 +537,9 @@ export default function QuickFoodScan() {
         'nutrition/quick-check',
         formData,
         {
-          // IMPORTANT: Do NOT set Content-Type manually for FormData.
-          // Axios will automatically set it with the correct boundary.
+          headers: {
+            'Content-Type': undefined // CRITICAL: Allow axios to set boundary automatically
+          },
           timeout: 240000, // 4 minutes
           skipAutoLogout: true
         }
@@ -601,23 +612,24 @@ export default function QuickFoodScan() {
       }
 
       if (error.response?.status === 400 && error.response?.data?.error === 'UNABLE_TO_DETECT_FOOD') {
-        setImage(null);
-        setImagePreview(null);
-        toast.error('Could not detect food in image. Please type the food name for accurate results.', {
-          duration: 5000
+        // KEEP the image and preview so user can refine details instead of restarting
+        toast.error("AI couldn't recognize the food in this photo. Please type what it is in the box below!", {
+          duration: 6000
         });
-      } else if (error.code === 'ECONNABORTED') {
-        toast.error('Request timeout. Please try again or use text description.');
+
+        // Ensure we don't clear the image, just stay on this screen
+        const refineSection = document.getElementById('refine-details');
+        if (refineSection) {
+          refineSection.scrollIntoView({ behavior: 'smooth' });
+        }
+      } else if (error.code === 'ECONNABORTED' || (error.message && error.message.includes('timeout'))) {
+        toast.error('Connection timed out. Please try again with details specified.', { id: analysisToastId });
       } else if (error.message && error.message.includes('memory')) {
-        // Handle memory errors specifically
-        toast.error('Image too large for device. Please try a smaller image or type the food name.');
+        toast.error('Image processing failed due to low memory. Please try a smaller file or text search.');
         setImage(null);
         setImagePreview(null);
-      } else if (error.message && error.message.includes('Network Error')) {
-        // Handle network errors
-        toast.error('Network error. Please check your connection and try again.');
       } else {
-        toast.error(error.response?.data?.message || 'Failed to analyze food. Please try again.');
+        toast.error(error.response?.data?.message || 'Something went wrong. Please check your connection or try a text description.', { id: analysisToastId });
       }
     }
   };
@@ -926,7 +938,7 @@ export default function QuickFoodScan() {
                 </div>
               )}
 
-              <div className="bg-white rounded-[2rem] p-6 sm:p-8 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.06)] border border-slate-100 space-y-6">
+              <div id="refine-details" className="bg-white rounded-[2rem] p-6 sm:p-8 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.06)] border border-slate-100 space-y-6">
                 <div className="flex items-center gap-4 mb-2">
                   <div className="w-10 h-10 bg-[#2FC8B9]/10 rounded-xl flex items-center justify-center">
                     <Flame className="w-5 h-5 text-[#2FC8B9]" />

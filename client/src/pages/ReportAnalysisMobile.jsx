@@ -322,22 +322,43 @@ export default function ReportAnalysisMobile() {
                 </div>
 
                 {/* Executive Summary */}
-                {aiAnalysis?.summary && (
-                    <div className="card p-8 shadow-sm">
-                        <div className="flex items-center gap-3 mb-6">
+                {(aiAnalysis?.summary || aiAnalysis?.summaryPoints) && (
+                    <div className="card p-8 shadow-sm relative overflow-hidden">
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full -mr-16 -mt-16"></div>
+
+                        <div className="flex items-center gap-3 mb-6 relative z-10">
                             <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center">
                                 <Activity className="w-5 h-5 text-purple-600" />
                             </div>
                             <h3 className="text-lg font-black text-[#0F172A] tracking-tight uppercase">{isHindi ? 'कार्यकारी सारांश' : 'Executive Summary'}</h3>
                         </div>
 
-                        <p className="text-slate-600 leading-relaxed font-bold text-sm mb-6">
-                            {t(aiAnalysis.summary)}
-                        </p>
+                        {aiAnalysis.summary && (
+                            <p className="text-slate-600 leading-relaxed font-bold text-sm mb-6 relative z-10">
+                                {t(aiAnalysis.summary)}
+                            </p>
+                        )}
 
-                        <div className="bg-purple-50/50 rounded-3xl p-6 border border-purple-100">
-                            <h4 className="text-purple-700 font-black text-[10px] uppercase tracking-wider mb-2">{isHindi ? 'मुख्य अंतर्दृष्टि' : 'Key Insight'}</h4>
-                            <p className="text-purple-900 text-xs leading-relaxed font-bold">
+                        {/* Summary Points - Bullet Points for easier scanning */}
+                        {aiAnalysis.summaryPoints && aiAnalysis.summaryPoints.length > 0 && (
+                            <div className="space-y-3 mb-6 relative z-10">
+                                {aiAnalysis.summaryPoints.map((point, idx) => (
+                                    <div key={idx} className="flex gap-3 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-100/50 transition-all hover:bg-white hover:border-purple-200 shadow-sm">
+                                        <div className="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                                            <div className="w-2 h-2 bg-purple-600 rounded-full" />
+                                        </div>
+                                        <p className="text-xs text-slate-700 font-bold leading-relaxed">{t(point)}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+
+                        <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-3xl p-6 border border-purple-100/50 relative z-10">
+                            <div className="flex items-center gap-2 mb-2">
+                                <Zap className="w-4 h-4 text-purple-600" />
+                                <h4 className="text-purple-700 font-black text-[10px] uppercase tracking-wider">{isHindi ? 'मुख्य अंतर्दृष्टि' : 'Key Insight'}</h4>
+                            </div>
+                            <p className="text-purple-900 text-xs leading-relaxed font-black">
                                 {t(aiAnalysis.keyFindings?.[0] || "Your health markers are generally within range, but some areas require focus.")}
                             </p>
                         </div>
