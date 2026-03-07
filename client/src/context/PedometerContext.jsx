@@ -80,7 +80,7 @@ export const PedometerProvider = ({ children }) => {
         }
     }, []);
 
-    // --- MOTION HANDLER (v5 Super-Accuracy Algorithm) ---
+    // --- MOTION HANDLER (Accelerometer Peak Detection Algorithm) ---
     const handleMotion = useCallback((event) => {
         checkDayRollover();
         sensorCountRef.current++;
@@ -88,7 +88,7 @@ export const PedometerProvider = ({ children }) => {
         let ax = 0, ay = 0, az = 0;
         let hasLinear = false;
 
-        // 1. Get Linear Acceleration (prefer Clean data)
+        // 1. Get Linear Acceleration (Clean accelerometer data without gravity)
         if (event.acceleration && event.acceleration.x !== null) {
             ax = event.acceleration.x || 0;
             ay = event.acceleration.y || 0;
@@ -96,7 +96,7 @@ export const PedometerProvider = ({ children }) => {
             hasLinear = true;
         }
 
-        // 2. High-Pass Filter Fallback (manual gravity removal)
+        // 2. High-Pass Filter Fallback (manual gravity removal if linear not available)
         if (!hasLinear && event.accelerationIncludingGravity) {
             const raw = event.accelerationIncludingGravity;
             if (raw.x === null) return;
@@ -110,68 +110,55 @@ export const PedometerProvider = ({ children }) => {
             az = raw.z - g.z;
         } else if (!hasLinear) return;
 
-        // 3. Compute Magnitude
+        // 3. Compute Resultant Magnitude (Vector sum of X, Y, Z)
         const magnitude = Math.sqrt(ax * ax + ay * ay + az * az);
 
-        // 4. Low-Pass Filter (LPF) for smoothing vibrations
-        const lpfAlpha = 0.25; // Balanced for response vs noise
+        // 4. Low-Pass Filter (LPF) for signal smoothing
+        // This removes high-frequency noise from the accelerometer
+        const lpfAlpha = 0.18;
         prevFilteredMagRef.current = filteredMagRef.current;
         filteredMagRef.current = lpfAlpha * magnitude + (1 - lpfAlpha) * filteredMagRef.current;
 
         const smoothed = filteredMagRef.current;
-        const prev = prevFilteredMagRef.current;
+        const prevSmoothed = prevFilteredMagRef.current;
 
-        // 5. GYRO SHAKE REJECTION (The "Magic" Part)
-        // Calculate the angular velocity sum
-        let angularVelocity = 0;
-        if (gyroActiveRef.current) {
-            const da = Math.abs(gyroAngleRef.current.alpha - lastGyroAngleRef.current.alpha);
-            const db = Math.abs(gyroAngleRef.current.beta - lastGyroAngleRef.current.beta);
-            const dg = Math.abs(gyroAngleRef.current.gamma - lastGyroAngleRef.current.gamma);
-            angularVelocity = da + db + dg;
-        }
-
-        // Shaking usually results in angular velocity > 15 deg per sample
-        // Walking is much smoother and rotational changes are gradual
-        const isCurrentlyShaking = angularVelocity > 15;
-
-        // 6. DYNAMIC STEP DETECTION (Peak/Valley Hysteresis)
-        const PEAK_THRESHOLD = 1.3;   // Standard walking amplitude
-        const VALLEY_THRESHOLD = 0.7;  // Foot landing/valley
-        const MIN_COOLDOWN = 320;      // ~3 steps per sec max speed
-        const MAX_WINDOW = 1200;       // Slow stroll limit
+        // 5. STEP DETECTION PARAMETERS
+        const STEP_THRESHOLD = 1.4;    // Sensitivity threshold for peak detection
+        const STEP_VALLEY = 0.6;      // Sensitivity threshold for valley/landing
+        const STEP_COOLDOWN = 350;    // Minimum ms between steps (approx 2.8 step/sec max)
 
         const now = Date.now();
 
-        // Detect Rising Edge (Start of a step movement)
-        if (!peakDetectedRef.current && smoothed > PEAK_THRESHOLD && prev <= PEAK_THRESHOLD) {
+        // 6. PEAK DETECTION LOGIC
+        // Identifies a peak when the signal goes above our threshold after being below it
+        if (!peakDetectedRef.current && smoothed > STEP_THRESHOLD && prevSmoothed <= STEP_THRESHOLD) {
             peakDetectedRef.current = true;
         }
 
-        // Detect Falling Edge (Step completion)
-        if (peakDetectedRef.current && smoothed < VALLEY_THRESHOLD) {
+        // Complete the step when signal drops below the valley threshold
+        if (peakDetectedRef.current && smoothed < STEP_VALLEY) {
             peakDetectedRef.current = false;
             const timeSinceLast = now - lastStepTimeRef.current;
 
-            // CRITICAL CHECK: Only count if timing is rhythmic AND not shaking
-            if (timeSinceLast >= MIN_COOLDOWN && timeSinceLast <= MAX_WINDOW && !isCurrentlyShaking) {
-                // ✅ VALID STEP COUNTED
+            // Rhythmic check to ensure it's a valid human step and not random vibration
+            if (timeSinceLast >= STEP_COOLDOWN && timeSinceLast <= 1500) {
+                // ✅ ACCURATE STEP DETECTED
                 stepsRef.current += 1;
                 setSteps(stepsRef.current);
 
-                // Persistence
-                if (stepsRef.current % 3 === 0) persistSteps(stepsRef.current);
+                // Batch persist for battery efficiency
+                if (stepsRef.current % 5 === 0) persistSteps(stepsRef.current);
+                lastStepTimeRef.current = now;
             }
-            lastStepTimeRef.current = now;
         }
 
-        // 7. Update Debug Info (Every 0.5 sec)
-        if (sensorCountRef.current % 30 === 0) {
-            setDebugInfo({
+        // 7. Update Debug/Sensor Status Update (reduced frequency for performance)
+        if (sensorCountRef.current % 60 === 0) {
+            setDebugInfo(prev => ({
+                ...prev,
                 readings: sensorCountRef.current,
-                lastMag: smoothed.toFixed(2),
-                gyroActive: gyroActiveRef.current
-            });
+                lastMag: smoothed.toFixed(2)
+            }));
         }
     }, [checkDayRollover]);
 
