@@ -69,6 +69,11 @@ const foodLogSchema = new mongoose.Schema({
   imageUrl: String, // Cloudinary or base64
   aiAnalysis: String, // Full AI response
   notes: String,
+  source: {
+    type: String,
+    enum: ['manual', 'ai_vision', 'meal_plan'],
+    default: 'manual'
+  },
   timestamp: {
     type: Date,
     default: Date.now,

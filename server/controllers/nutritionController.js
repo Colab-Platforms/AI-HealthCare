@@ -85,7 +85,8 @@ exports.logMeal = async (req, res) => {
       enhancementTips,
       healthBenefitsSummary,
       warnings,
-      alternatives
+      alternatives,
+      source
     } = req.body;
 
     if (!mealType || !foodItems || foodItems.length === 0) {
@@ -156,6 +157,7 @@ exports.logMeal = async (req, res) => {
       healthBenefitsSummary,
       warnings: Array.isArray(warnings) ? warnings : [],
       alternatives: Array.isArray(alternatives) ? alternatives : [],
+      source,
       timestamp: timestamp || new Date()
     });
 

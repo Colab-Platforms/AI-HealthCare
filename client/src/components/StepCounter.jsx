@@ -15,7 +15,7 @@ const StepMiniCard = () => {
         <Link to="/step-tracker" className="block">
             <motion.div
                 whileHover={{ y: -5 }}
-                className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm hover:shadow-xl transition-all group overflow-hidden relative"
+                className="bg-white rounded-[2.5rem] p-5 border border-slate-100 shadow-sm hover:shadow-xl transition-all group overflow-hidden relative"
             >
                 {/* Decorative Background */}
                 <div className="absolute -right-4 -bottom-4 opacity-[0.03] rotate-12">
@@ -23,13 +23,13 @@ const StepMiniCard = () => {
                 </div>
 
                 <div className="relative z-10">
-                    <div className="flex justify-between items-start mb-6">
+                    <div className="flex justify-between items-start mb-4">
                         <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-2xl bg-indigo-50 flex items-center justify-center">
-                                <Activity className="w-6 h-6 text-indigo-500" />
+                            <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center">
+                                <Activity className="w-5 h-5 text-indigo-500" />
                             </div>
                             <div>
-                                <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Pedometer</h3>
+                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Pedometer</h3>
                                 <p className="text-sm font-black text-black uppercase tracking-tight">Step Counter</p>
                             </div>
                         </div>
@@ -41,13 +41,13 @@ const StepMiniCard = () => {
                         </div>
                     </div>
 
-                    <div className="flex items-end gap-3 mb-6">
+                    <div className="flex items-end gap-3 mb-4">
                         <span className="text-4xl font-black text-black leading-none">{steps.toLocaleString()}</span>
                         <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pb-1">Steps Today</span>
                     </div>
 
                     {/* Progress Bar */}
-                    <div className="space-y-4">
+                    <div className="space-y-3">
                         <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
                             <motion.div
                                 initial={{ width: 0 }}
@@ -60,10 +60,10 @@ const StepMiniCard = () => {
                         <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
                             <div className="flex items-center gap-1.5 text-orange-500">
                                 <Flame className="w-3.5 h-3.5" />
-                                <span>{calories} Cal Burned</span>
+                                <span>{calories} Cal</span>
                             </div>
                             <span className={goalMet ? 'text-emerald-500' : 'text-slate-400'}>
-                                {goalMet ? '🏆 Goal Met!' : `${Math.round(progress)}% of ${dailyGoal >= 1000 ? `${(dailyGoal / 1000).toFixed(dailyGoal % 1000 === 0 ? 0 : 1)}k` : dailyGoal}`}
+                                {goalMet ? 'Goal Met!' : `${Math.round(progress)}% of ${dailyGoal >= 1000 ? `${(dailyGoal / 1000).toFixed(dailyGoal % 1000 === 0 ? 0 : 1)}k` : dailyGoal}`}
                             </span>
                         </div>
                     </div>

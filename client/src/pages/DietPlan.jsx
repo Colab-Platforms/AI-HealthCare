@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useData } from '../context/DataContext';
 import api, { healthService, nutritionService, dietRecommendationService } from '../services/api';
 import {
   Heart, Clock, ArrowLeft, Flame, Target,
@@ -171,6 +172,7 @@ function LogFoodModal({ meal, mealType, onClose, onLogged }) {
 // Main Component
 export default function DietPlan() {
   const { user } = useAuth();
+  const { invalidateCache } = useData();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [personalizedPlan, setPersonalizedPlan] = useState(null);
@@ -596,8 +598,8 @@ export default function DietPlan() {
                               {/* Option Badge */}
                               <div className="absolute -top-3 left-6 shadow-lg shadow-slate-200">
                                 <span className={`text-[9px] font-black uppercase tracking-[0.2em] px-4 py-1.5 rounded-full flex items-center gap-2 ${idx === 0 ? 'bg-indigo-600 text-white' :
-                                    idx === 1 ? 'bg-emerald-600 text-white' :
-                                      'bg-slate-800 text-white'
+                                  idx === 1 ? 'bg-emerald-600 text-white' :
+                                    'bg-slate-800 text-white'
                                   }`}>
                                   <Sparkles className="w-3 h-3" />
                                   Option {idx + 1}
@@ -701,6 +703,8 @@ export default function DietPlan() {
           onLogged={() => {
             const key = `${logModal.mealType}-logged`;
             setLoggedMeals(p => ({ ...p, [key]: true }));
+            // Invalidate dashboard cache so adherence updates on fresh load
+            invalidateCache(['dashboard', `nutrition_${new Date().toISOString().split('T')[0]}`]);
           }}
         />
       )}

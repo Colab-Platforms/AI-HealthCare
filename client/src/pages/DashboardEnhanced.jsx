@@ -58,54 +58,107 @@ const ProgressRing = ({ progress, size = 120, strokeWidth = 8 }) => {
         </defs>
       </svg>
       <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className="text-3xl font-black text-black tracking-tighter">{progress}%</span>
-        <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] -mt-1">Complete</span>
+        <span className={`font-black text-black tracking-tighter`} style={{ fontSize: size > 80 ? '1.875rem' : '1rem', lineHeight: '1' }}>{progress}%</span>
+        {size > 80 && (
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] -mt-1">Complete</span>
+        )}
       </div>
     </div>
   );
 };
 
 // Diet Adherence Display Card
-const DietAdherenceCard = ({ score, status, loggedCount }) => {
+const DietAdherenceCard = ({ score, status, loggedCount, totalLogged, motivation, macros, missedMeal }) => {
   const navigate = useNavigate();
+  const customLogsCount = Math.max(0, totalLogged - loggedCount);
+
   return (
     <motion.div
       whileHover={{ y: -5 }}
       onClick={() => navigate('/diet-plan')}
-      className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm hover:shadow-xl transition-all cursor-pointer group relative overflow-hidden flex-1"
+      className="bg-white rounded-[2.5rem] p-5 border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)] transition-all cursor-pointer group relative overflow-hidden flex-1"
     >
-      <div className="flex justify-between items-start mb-6">
+      {/* Background Decor */}
+      <div className="absolute top-0 right-0 w-32 h-32 bg-[#2FC8B9]/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-[#2FC8B9]/10 transition-colors"></div>
+
+      <div className="flex justify-between items-start mb-4 relative z-10">
         <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-[#2FC8B9]/10 flex items-center justify-center">
-            <Utensils className="w-6 h-6 text-[#2FC8B9]" />
+          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#2FC8B9]/10 to-[#1db7a6]/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+            <Utensils className="w-5 h-5 text-[#2FC8B9]" />
           </div>
           <div>
-            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Adherence</h3>
-            <p className="text-sm font-black text-black uppercase tracking-tight">Diet Compliance</p>
+            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none">Smart Plan</h3>
+            <p className="text-sm font-black text-black uppercase tracking-tight">Diet Adherence</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`w-2 h-2 rounded-full ${score > 70 ? 'bg-emerald-500' : 'bg-orange-400'} animate-pulse`} />
-          <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-[#2FC8B9] group-hover:text-white transition-all">
+          {missedMeal && (
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="px-2 py-1 bg-rose-50 border border-rose-100 rounded-lg flex items-center gap-1"
+            >
+              <AlertCircle className="w-3 h-3 text-rose-500" />
+              <span className="text-[8px] font-black text-rose-600 uppercase tracking-tighter shrink-0">Missed {missedMeal}</span>
+            </motion.div>
+          )}
+          <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-[#2FC8B9] group-hover:text-white transition-all shadow-sm">
             <ChevronRight className="w-4 h-4" />
           </div>
         </div>
       </div>
 
-      <div className="flex items-center gap-6">
-        <div className={`${score > 70 ? 'text-emerald-500' : 'text-indigo-500'}`}>
-          <ProgressRing progress={score} size={64} strokeWidth={6} />
+      <div className="flex items-center gap-6 relative z-10 mb-5">
+        <div className="relative">
+          <div className={`${score > 70 ? 'text-emerald-500' : 'text-[#2FC8B9]'}`}>
+            <ProgressRing progress={score} size={64} strokeWidth={6} />
+          </div>
         </div>
-        <div>
-          <p className="text-2xl font-black text-black leading-none mb-1">{status}</p>
-          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-            {loggedCount} of 5 meals from plan
-          </p>
+        <div className="flex-1">
+          <div className="flex items-center gap-2 mb-1">
+            <p className="text-2xl font-black text-black leading-none">{status}</p>
+            <div className={`w-2 h-2 rounded-full ${score > 70 ? 'bg-emerald-500' : 'bg-orange-400'} animate-pulse`} />
+          </div>
+
+          <div className="space-y-1">
+            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">
+              {loggedCount} of 5 from plan
+            </p>
+            <p className="text-[9px] font-black text-indigo-600 uppercase italic">
+              {motivation}
+            </p>
+          </div>
         </div>
+      </div>
+
+      {/* Macros Mini-Tracker */}
+      <div className="grid grid-cols-4 gap-2 pt-4 border-t border-slate-50 relative z-10">
+        {[
+          { label: 'Cal', val: macros?.calories || 0, color: 'bg-orange-400' },
+          { label: 'Pro', val: macros?.protein || 0, color: 'bg-[#2FC8B9]' },
+          { label: 'Car', val: macros?.carbs || 0, color: 'bg-indigo-400' },
+          { label: 'Fat', val: macros?.fats || 0, color: 'bg-rose-400' }
+        ].map(m => (
+          <div key={m.label} className="space-y-1.5">
+            <div className="flex justify-between items-center text-[8px] font-black text-slate-400 uppercase tracking-tighter">
+              <span>{m.label}</span>
+              <span>{m.val}%</span>
+            </div>
+            <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${m.val}%` }}
+                transition={{ duration: 1, ease: 'easeOut' }}
+                className={`h-full ${m.color}`}
+              />
+            </div>
+          </div>
+        ))}
       </div>
     </motion.div>
   );
 };
+
 
 
 // Feature Card Component with 3D Visual Elements
@@ -350,9 +403,46 @@ export default function DashboardEnhanced() {
   // DIET ADHERENCE CALCULATION
   const nutritionLogs = dashboardData?.nutritionData?.todayLogs || [];
   const planMealsLogged = nutritionLogs.filter(log => log.source === 'meal_plan').length;
-  const totalRecommendedMeals = 5; // Standard count in DietPlan.jsx
+  const totalLogged = nutritionLogs.length;
+  const totalRecommendedMeals = 5;
   const adherenceScore = Math.min(Math.round((planMealsLogged / totalRecommendedMeals) * 100), 100);
+
+  // Dynamic Motivation Message
+  const motivationMessage =
+    adherenceScore >= 100 ? "Legendary! Perfect score! 🏆" :
+      adherenceScore >= 80 ? "Almost perfect! Just one more! �" :
+        adherenceScore >= 60 ? "You're on fire! Keep it up! 🔥" :
+          adherenceScore >= 40 ? "Great consistency! You're winning. �" :
+            adherenceScore >= 20 ? "Good start! Log your next meal! �" :
+              "Your plan is ready. Let's start! ✨";
+
   const nutritionStatus = adherenceScore >= 80 ? 'Perfect' : adherenceScore >= 40 ? 'On Track' : 'Needs Focus';
+
+  // MACRO PROGRESS CALCULATION
+  const nutritionStats = dashboardData?.nutritionData || {};
+  const macroGoals = {
+    calories: nutritionStats.calorieGoal || 2000,
+    protein: user?.nutritionGoal?.proteinGoal || 150,
+    carbs: user?.nutritionGoal?.carbsGoal || 250,
+    fats: user?.nutritionGoal?.fatGoal || 65
+  };
+
+  const macroPercentages = {
+    calories: Math.min(Math.round((nutritionStats.totalCalories / macroGoals.calories) * 100), 100),
+    protein: Math.min(Math.round((nutritionStats.protein / macroGoals.protein) * 100), 100),
+    carbs: Math.min(Math.round((nutritionStats.carbs / macroGoals.carbs) * 100), 100),
+    fats: Math.min(Math.round((nutritionStats.fats / macroGoals.fats) * 100), 100)
+  };
+
+  // CHECK FOR MISSED MEALS
+  const currentHour = new Date().getHours();
+  let missedMealName = null;
+  const loggedTypes = nutritionLogs.map(l => l.mealType);
+
+  if (currentHour >= 11 && !loggedTypes.includes('breakfast')) missedMealName = 'Breakfast';
+  else if (currentHour >= 16 && !loggedTypes.includes('lunch')) missedMealName = 'Lunch';
+  else if (currentHour >= 22 && !loggedTypes.includes('dinner')) missedMealName = 'Dinner';
+
 
 
   const hasReports = dashboardData?.recentReports?.length > 0;
@@ -486,6 +576,10 @@ export default function DashboardEnhanced() {
               score={adherenceScore}
               status={nutritionStatus}
               loggedCount={planMealsLogged}
+              totalLogged={totalLogged}
+              motivation={motivationMessage}
+              macros={macroPercentages}
+              missedMeal={missedMealName}
             />
           </div>
         </div>
@@ -561,6 +655,10 @@ export default function DashboardEnhanced() {
               score={adherenceScore}
               status={nutritionStatus}
               loggedCount={planMealsLogged}
+              totalLogged={totalLogged}
+              motivation={motivationMessage}
+              macros={macroPercentages}
+              missedMeal={missedMealName}
             />
           </div>
         </div>

@@ -1,4 +1,5 @@
 const HealthReport = require('../models/HealthReport');
+const FoodLog = require('../models/FoodLog');
 const User = require('../models/User');
 const Doctor = require('../models/Doctor');
 const { analyzeHealthReport, compareReports, chatWithReport, generateMetricInfo } = require('../services/aiService');
@@ -570,13 +571,24 @@ exports.getDashboardData = async (req, res) => {
       };
     }
 
-    // 🆕 Get today's nutrition summary
+    // 🆕 Get today's nutrition summary (UTC Consistent)
     const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const nutritionData = await NutritionSummary.findOne({
+    const todayStr = today.toISOString().split('T')[0];
+    const targetDate = new Date(todayStr);
+    targetDate.setUTCHours(0, 0, 0, 0);
+
+    const nutritionDataSummary = await NutritionSummary.findOne({
       userId: req.user._id,
-      date: today
+      date: targetDate
     });
+
+    const tomorrow = new Date(targetDate);
+    tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+
+    const todayLogs = await FoodLog.find({
+      userId: req.user._id,
+      timestamp: { $gte: targetDate, $lt: tomorrow }
+    }).select('source mealType totalNutrition');
 
     const dashboardData = {
       user: { ...req.user.toObject(), password: undefined },
@@ -588,14 +600,23 @@ exports.getDashboardData = async (req, res) => {
       recentReports: reports.slice(0, 5),
       reportTypeCounts,
       streakDays: req.user.streakDays || 0, // Add streak days
-      nutritionData: nutritionData ? {
-        totalCalories: nutritionData.totalCalories,
-        calorieGoal: nutritionData.calorieGoal,
-        protein: nutritionData.totalProtein,
-        carbs: nutritionData.totalCarbs,
-        fats: nutritionData.totalFats,
-        waterIntake: nutritionData.waterIntake
-      } : null
+      nutritionData: nutritionDataSummary ? {
+        totalCalories: nutritionDataSummary.totalCalories,
+        calorieGoal: nutritionDataSummary.calorieGoal,
+        protein: nutritionDataSummary.totalProtein,
+        carbs: nutritionDataSummary.totalCarbs,
+        fats: nutritionDataSummary.totalFats,
+        waterIntake: nutritionDataSummary.waterIntake,
+        todayLogs: todayLogs || []
+      } : {
+        totalCalories: 0,
+        calorieGoal: 2000,
+        protein: 0,
+        carbs: 0,
+        fats: 0,
+        waterIntake: 0,
+        todayLogs: todayLogs || []
+      }
     };
 
     // 🆕 Trigger startup notifications for user (Serverless friendly)
