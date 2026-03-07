@@ -34,6 +34,8 @@ import Supplements from './pages/Supplements';
 import QuickFoodScan from './pages/QuickFoodScan';
 import GlucoseLog from './pages/GlucoseLog';
 
+import StepTracker from './pages/StepTracker';
+
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
   if (loading) return <GenericSkeleton />;
@@ -100,6 +102,7 @@ export default function App() {
         <Route path="/supplements" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Supplements /></Layout></ProtectedRoute>} />
         <Route path="/subscription" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Subscription /></Layout></ProtectedRoute>} />
         <Route path="/diet-plan" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><DietPlan /></Layout></ProtectedRoute>} />
+        <Route path="/step-tracker" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><StepTracker /></Layout></ProtectedRoute>} />
         <Route path="/ai-chat" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><AIChat /></Layout></ProtectedRoute>} />
 
         {/* Doctor Routes */}

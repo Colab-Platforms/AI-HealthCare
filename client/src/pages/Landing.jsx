@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import MinimalHeader from '../components/MinimalHeader';
 import VideoHero from '../components/VideoHero';
+import InteractiveGridFeatures from '../components/InteractiveGridFeatures';
 import FeaturesSection from '../components/FeaturesSection';
 import ProductShowcaseSection from '../components/ProductShowcaseSection';
 // import WhySection from '../components/WhySection';
@@ -793,6 +794,7 @@ export default function Landing() {
     <div className="min-h-screen bg-gradient-to-b from-[#0a1628] via-[#061e33] to-[#0a1628]">
       <MinimalHeader />
       <VideoHero />
+      <InteractiveGridFeatures />
       <FeaturesSection />
       <ProductShowcaseSection />
       {/* <WhySection /> */}
