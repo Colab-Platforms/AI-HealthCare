@@ -65,6 +65,49 @@ const ProgressRing = ({ progress, size = 120, strokeWidth = 8 }) => {
   );
 };
 
+// Diet Adherence Display Card
+const DietAdherenceCard = ({ score, status, loggedCount }) => {
+  const navigate = useNavigate();
+  return (
+    <motion.div
+      whileHover={{ y: -5 }}
+      onClick={() => navigate('/diet-plan')}
+      className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm hover:shadow-xl transition-all cursor-pointer group relative overflow-hidden flex-1"
+    >
+      <div className="flex justify-between items-start mb-6">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-[#2FC8B9]/10 flex items-center justify-center">
+            <Utensils className="w-6 h-6 text-[#2FC8B9]" />
+          </div>
+          <div>
+            <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest">Adherence</h3>
+            <p className="text-sm font-black text-black uppercase tracking-tight">Diet Compliance</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full ${score > 70 ? 'bg-emerald-500' : 'bg-orange-400'} animate-pulse`} />
+          <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-[#2FC8B9] group-hover:text-white transition-all">
+            <ChevronRight className="w-4 h-4" />
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-6">
+        <div className={`${score > 70 ? 'text-emerald-500' : 'text-indigo-500'}`}>
+          <ProgressRing progress={score} size={64} strokeWidth={6} />
+        </div>
+        <div>
+          <p className="text-2xl font-black text-black leading-none mb-1">{status}</p>
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            {loggedCount} of 5 meals from plan
+          </p>
+        </div>
+      </div>
+    </motion.div>
+  );
+};
+
+
 // Feature Card Component with 3D Visual Elements
 const FeatureCard = ({ title, description, link, status, icon: Icon, emoji }) => {
   return (
