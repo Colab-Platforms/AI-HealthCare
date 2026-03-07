@@ -31,20 +31,25 @@ const persistSteps = (count) => {
 
 export const PedometerProvider = ({ children }) => {
     const [steps, setSteps] = useState(() => loadTodaySteps());
-    const [sensorStatus, setSensorStatus] = useState('initializing'); // initializing | needs-permission | active | error
+    const [sensorStatus, setSensorStatus] = useState('initializing');
     const [dailyGoal, setDailyGoal] = useState(() => parseInt(localStorage.getItem('fitcure_step_goal')) || 7000);
     const [debugInfo, setDebugInfo] = useState({ readings: 0, lastMag: 0, gyroActive: false });
 
     // === SENSOR FUSION REFS ===
     const stepsRef = useRef(loadTodaySteps());
     const gravityRef = useRef({ x: 0, y: 0, z: 0 });
-    const filteredAngleRef = useRef(0);
-    const lastTimestampRef = useRef(0);
-    const gyroRateRef = useRef({ alpha: 0, beta: 0, gamma: 0 });
+
+    // Gyro State
+    const gyroAngleRef = useRef({ alpha: 0, beta: 0, gamma: 0 }); // Current angles
+    const lastGyroAngleRef = useRef({ alpha: 0, beta: 0, gamma: 0 }); // For velocity check
     const gyroActiveRef = useRef(false);
+
+    // Filtered Acceleration
     const filteredMagRef = useRef(0);
     const prevFilteredMagRef = useRef(0);
     const peakDetectedRef = useRef(false);
+
+    // Timing and Rhythm
     const lastStepTimeRef = useRef(0);
     const lastSavedDateRef = useRef(getTodayString());
     const wakeLockRef = useRef(null);
@@ -61,7 +66,21 @@ export const PedometerProvider = ({ children }) => {
         }
     }, []);
 
-    // --- Motion Handler (v4 Algorithm) ---
+    // --- GYRO HANDLER ---
+    // Specifically listens for orientation changes to detect "shaking rotation"
+    const handleOrientation = useCallback((event) => {
+        if (event.beta !== null) {
+            lastGyroAngleRef.current = { ...gyroAngleRef.current };
+            gyroAngleRef.current = {
+                alpha: event.alpha || 0,
+                beta: event.beta || 0,
+                gamma: event.gamma || 0
+            };
+            gyroActiveRef.current = true;
+        }
+    }, []);
+
+    // --- MOTION HANDLER (v5 Super-Accuracy Algorithm) ---
     const handleMotion = useCallback((event) => {
         checkDayRollover();
         sensorCountRef.current++;
@@ -69,6 +88,7 @@ export const PedometerProvider = ({ children }) => {
         let ax = 0, ay = 0, az = 0;
         let hasLinear = false;
 
+        // 1. Get Linear Acceleration (prefer Clean data)
         if (event.acceleration && event.acceleration.x !== null) {
             ax = event.acceleration.x || 0;
             ay = event.acceleration.y || 0;
@@ -76,6 +96,7 @@ export const PedometerProvider = ({ children }) => {
             hasLinear = true;
         }
 
+        // 2. High-Pass Filter Fallback (manual gravity removal)
         if (!hasLinear && event.accelerationIncludingGravity) {
             const raw = event.accelerationIncludingGravity;
             if (raw.x === null) return;
@@ -89,69 +110,70 @@ export const PedometerProvider = ({ children }) => {
             az = raw.z - g.z;
         } else if (!hasLinear) return;
 
+        // 3. Compute Magnitude
         const magnitude = Math.sqrt(ax * ax + ay * ay + az * az);
-        const accelAngle = Math.atan2(ay, Math.sqrt(ax * ax + az * az)) * (180 / Math.PI);
-        const now = Date.now();
-        const dt = lastTimestampRef.current > 0 ? (now - lastTimestampRef.current) / 1000 : 0.016;
-        lastTimestampRef.current = now;
 
-        const ALPHA = 0.98;
-        if (gyroActiveRef.current && dt > 0 && dt < 0.5) {
-            const gyroAngleChange = gyroRateRef.current.beta * dt;
-            filteredAngleRef.current = ALPHA * (filteredAngleRef.current + gyroAngleChange) + (1 - ALPHA) * accelAngle;
-        } else {
-            filteredAngleRef.current = accelAngle;
-        }
-
-        const lpfAlpha = 0.3;
+        // 4. Low-Pass Filter (LPF) for smoothing vibrations
+        const lpfAlpha = 0.25; // Balanced for response vs noise
         prevFilteredMagRef.current = filteredMagRef.current;
         filteredMagRef.current = lpfAlpha * magnitude + (1 - lpfAlpha) * filteredMagRef.current;
 
         const smoothed = filteredMagRef.current;
         const prev = prevFilteredMagRef.current;
 
-        let isShaking = false;
+        // 5. GYRO SHAKE REJECTION (The "Magic" Part)
+        // Calculate the angular velocity sum
+        let angularVelocity = 0;
         if (gyroActiveRef.current) {
-            const rotationSum = Math.abs(gyroRateRef.current.alpha) + Math.abs(gyroRateRef.current.beta) + Math.abs(gyroRateRef.current.gamma);
-            if (rotationSum > 80) isShaking = true;
+            const da = Math.abs(gyroAngleRef.current.alpha - lastGyroAngleRef.current.alpha);
+            const db = Math.abs(gyroAngleRef.current.beta - lastGyroAngleRef.current.beta);
+            const dg = Math.abs(gyroAngleRef.current.gamma - lastGyroAngleRef.current.gamma);
+            angularVelocity = da + db + dg;
         }
 
-        const PEAK_THRESHOLD = 1.2;
-        const VALLEY_THRESHOLD = 0.6;
-        const MIN_INT = 300;
-        const MAX_INT = 1200;
+        // Shaking usually results in angular velocity > 15 deg per sample
+        // Walking is much smoother and rotational changes are gradual
+        const isCurrentlyShaking = angularVelocity > 15;
 
+        // 6. DYNAMIC STEP DETECTION (Peak/Valley Hysteresis)
+        const PEAK_THRESHOLD = 1.3;   // Standard walking amplitude
+        const VALLEY_THRESHOLD = 0.7;  // Foot landing/valley
+        const MIN_COOLDOWN = 320;      // ~3 steps per sec max speed
+        const MAX_WINDOW = 1200;       // Slow stroll limit
+
+        const now = Date.now();
+
+        // Detect Rising Edge (Start of a step movement)
         if (!peakDetectedRef.current && smoothed > PEAK_THRESHOLD && prev <= PEAK_THRESHOLD) {
             peakDetectedRef.current = true;
         }
 
+        // Detect Falling Edge (Step completion)
         if (peakDetectedRef.current && smoothed < VALLEY_THRESHOLD) {
             peakDetectedRef.current = false;
             const timeSinceLast = now - lastStepTimeRef.current;
 
-            if (timeSinceLast >= MIN_INT && timeSinceLast <= MAX_INT && !isShaking) {
+            // CRITICAL CHECK: Only count if timing is rhythmic AND not shaking
+            if (timeSinceLast >= MIN_COOLDOWN && timeSinceLast <= MAX_WINDOW && !isCurrentlyShaking) {
+                // ✅ VALID STEP COUNTED
                 stepsRef.current += 1;
                 setSteps(stepsRef.current);
+
+                // Persistence
                 if (stepsRef.current % 3 === 0) persistSteps(stepsRef.current);
             }
             lastStepTimeRef.current = now;
         }
 
+        // 7. Update Debug Info (Every 0.5 sec)
         if (sensorCountRef.current % 30 === 0) {
-            setDebugInfo({ readings: sensorCountRef.current, lastMag: smoothed.toFixed(2), gyroActive: gyroActiveRef.current });
+            setDebugInfo({
+                readings: sensorCountRef.current,
+                lastMag: smoothed.toFixed(2),
+                gyroActive: gyroActiveRef.current
+            });
         }
     }, [checkDayRollover]);
-
-    const handleOrientation = useCallback((event) => {
-        if (event.rotationRate) {
-            gyroRateRef.current = {
-                alpha: event.rotationRate.alpha || 0,
-                beta: event.rotationRate.beta || 0,
-                gamma: event.rotationRate.gamma || 0
-            };
-            gyroActiveRef.current = true;
-        }
-    }, []);
 
     const acquireWakeLock = useCallback(async () => {
         if ('wakeLock' in navigator && !wakeLockRef.current) {
@@ -163,31 +185,38 @@ export const PedometerProvider = ({ children }) => {
     }, []);
 
     const startSensors = useCallback(async () => {
-        const needsPermission = typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function';
+        const needsPermission = typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function';
+
         if (needsPermission) {
             setSensorStatus('needs-permission');
             return;
         }
 
+        // Standard Browsers
         if (window.DeviceMotionEvent) {
             window.addEventListener('devicemotion', handleMotion, true);
+            window.addEventListener('deviceorientation', handleOrientation, true);
             setSensorStatus('active');
             await acquireWakeLock();
         } else {
             setSensorStatus('error');
         }
-    }, [handleMotion, acquireWakeLock]);
+    }, [handleMotion, handleOrientation, acquireWakeLock]);
 
     const requestPermission = async () => {
         try {
-            const perm = await DeviceMotionEvent.requestPermission();
-            if (perm === 'granted') {
+            // Need both motion and orientation for highest accuracy
+            const motionPerm = await DeviceMotionEvent.requestPermission();
+            const orientPerm = await DeviceOrientationEvent.requestPermission();
+
+            if (motionPerm === 'granted' && orientPerm === 'granted') {
                 window.addEventListener('devicemotion', handleMotion, true);
+                window.addEventListener('deviceorientation', handleOrientation, true);
                 setSensorStatus('active');
                 await acquireWakeLock();
                 return true;
             }
-        } catch (e) { console.error(e); }
+        } catch (e) { console.error("Permission error:", e); }
         setSensorStatus('error');
         return false;
     };
@@ -218,11 +247,12 @@ export const PedometerProvider = ({ children }) => {
 
         return () => {
             window.removeEventListener('devicemotion', handleMotion, true);
+            window.removeEventListener('deviceorientation', handleOrientation, true);
             document.removeEventListener('visibilitychange', handleVisibility);
             clearInterval(interval);
             if (wakeLockRef.current) wakeLockRef.current.release();
         };
-    }, [startSensors, checkDayRollover, handleMotion, acquireWakeLock]);
+    }, [startSensors, checkDayRollover, handleMotion, handleOrientation, acquireWakeLock]);
 
     return (
         <PedometerContext.Provider value={{
