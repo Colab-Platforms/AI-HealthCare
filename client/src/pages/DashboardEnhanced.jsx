@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
+
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import {
@@ -302,6 +304,14 @@ export default function DashboardEnhanced() {
     return <DashboardSkeleton />;
   }
 
+  // DIET ADHERENCE CALCULATION
+  const nutritionLogs = dashboardData?.nutritionData?.todayLogs || [];
+  const planMealsLogged = nutritionLogs.filter(log => log.source === 'meal_plan').length;
+  const totalRecommendedMeals = 5; // Standard count in DietPlan.jsx
+  const adherenceScore = Math.min(Math.round((planMealsLogged / totalRecommendedMeals) * 100), 100);
+  const nutritionStatus = adherenceScore >= 80 ? 'Perfect' : adherenceScore >= 40 ? 'On Track' : 'Needs Focus';
+
+
   const hasReports = dashboardData?.recentReports?.length > 0;
   const hasProfile = user?.profile?.age && user?.profile?.gender;
   const hasNutrition = dashboardData?.nutritionTracked;
@@ -426,9 +436,14 @@ export default function DashboardEnhanced() {
             <span className="text-sm font-black uppercase tracking-wider">Upload Report</span>
           </button>
 
-          {/* Pedometer Card - Right below upload */}
-          <div className="mt-3">
+          {/* Metrics Row: Pedometer & Diet Adherence */}
+          <div className="grid grid-cols-1 gap-3">
             <StepCounter />
+            <DietAdherenceCard
+              score={adherenceScore}
+              status={nutritionStatus}
+              loggedCount={planMealsLogged}
+            />
           </div>
         </div>
 
@@ -496,9 +511,14 @@ export default function DashboardEnhanced() {
             <span className="text-base font-black uppercase tracking-widest">Upload Health Report</span>
           </button>
 
-          {/* Pedometer Card - Right below upload (desktop) */}
-          <div className="mt-4">
+          {/* Metrics Grid: Pedometer & Diet Adherence */}
+          <div className="grid grid-cols-2 gap-6">
             <StepCounter />
+            <DietAdherenceCard
+              score={adherenceScore}
+              status={nutritionStatus}
+              loggedCount={planMealsLogged}
+            />
           </div>
         </div>
 
