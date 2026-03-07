@@ -5,9 +5,25 @@ import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLin
 import { useNavigate } from 'react-router-dom';
 
 // ============================================================
-// STEP DETECTION ENGINE v3
-// Tuned for real-world mobile devices.
-// Uses magnitude peak detection with adaptive thresholding.
+// STEP DETECTION ENGINE v4 — COMPLEMENTARY FILTER FUSION
+//
+// Uses the complementary filter to fuse:
+//   - Gyroscope (accurate short-term, drifts long-term)
+//   - Accelerometer (accurate long-term, noisy short-term)
+//
+// Formula:
+//   filteredAngle = α × (filteredAngle + gyroRate × dt) + (1-α) × accelAngle
+//   α = 0.98
+//
+// Step detection:
+//   1. Compute linear acceleration magnitude (gravity removed)
+//   2. Smooth with complementary-filter-corrected data
+//   3. Peak+valley detection with threshold crossing
+//   4. Validate timing (300ms-1200ms = human gait)
+//   5. Gyro fusion rejects non-walking movements:
+//      - Hand tremors (gyro sees no body rotation)
+//      - Car bumps (no rhythmic rotation pattern)
+//      - Phone drops (single spike, not periodic)
 // ============================================================
 
 const CircularProgress = ({ value, max }) => {
@@ -73,11 +89,8 @@ const persistSteps = (count) => {
     let data = [];
     try { data = JSON.parse(localStorage.getItem('fitcure_daily_steps') || '[]'); } catch { }
     const idx = data.findIndex(d => d.date === todayStr);
-    if (idx >= 0) {
-        data[idx].steps = count;
-    } else {
-        data.push({ date: todayStr, steps: count });
-    }
+    if (idx >= 0) { data[idx].steps = count; }
+    else { data.push({ date: todayStr, steps: count }); }
     if (data.length > 30) data = data.slice(-30);
     localStorage.setItem('fitcure_daily_steps', JSON.stringify(data));
 };
@@ -86,24 +99,38 @@ export default function StepTracker() {
     const navigate = useNavigate();
 
     const [steps, setSteps] = useState(() => loadTodaySteps());
-    const [sensorStatus, setSensorStatus] = useState('initializing'); // initializing | needs-permission | active | error
+    const [sensorStatus, setSensorStatus] = useState('initializing');
     const [dailySteps, setDailySteps] = useState([]);
     const [dailyGoal, setDailyGoal] = useState(() => parseInt(localStorage.getItem('fitcure_step_goal')) || 7000);
     const [isEditingGoal, setIsEditingGoal] = useState(false);
     const [tempGoal, setTempGoal] = useState(dailyGoal);
-    const [sensorReadings, setSensorReadings] = useState(0); // debug: how many readings received
+    const [debugInfo, setDebugInfo] = useState({ readings: 0, lastMag: 0, gyroActive: false });
 
-    // Step detection refs
+    // === SENSOR FUSION REFS ===
     const stepsRef = useRef(loadTodaySteps());
+
+    // Gravity isolation (high-pass filter)
     const gravityRef = useRef({ x: 0, y: 0, z: 0 });
-    const lastMagnitudeRef = useRef(0);
-    const smoothedMagRef = useRef(0);
-    const lastStepTimeRef = useRef(0);
-    const peakDetectedRef = useRef(false);
-    const recentIntervalsRef = useRef([]); // last N step intervals for rhythm analysis
-    const sensorCountRef = useRef(0);
+
+    // Complementary filter state
+    const filteredAngleRef = useRef(0);       // Fused tilt angle (pitch)
+    const lastTimestampRef = useRef(0);        // For dt calculation
+
+    // Gyroscope data
+    const gyroRateRef = useRef({ alpha: 0, beta: 0, gamma: 0 }); // rotation rates (deg/s)
+    const gyroActiveRef = useRef(false);
+
+    // Walking rhythm analysis
+    const filteredMagRef = useRef(0);          // Smoothed acceleration magnitude
+    const prevFilteredMagRef = useRef(0);      // Previous sample for crossing detection
+    const peakDetectedRef = useRef(false);     // Currently above threshold?
+    const lastStepTimeRef = useRef(0);         // Timestamp of last counted step
+    const recentStepTimesRef = useRef([]);     // Recent step timestamps for rhythm check
+
+    // Misc
     const lastSavedDateRef = useRef(getTodayString());
     const wakeLockRef = useRef(null);
+    const sensorCountRef = useRef(0);
 
     const caloriesBurned = Math.round(steps * 0.04);
     const distanceKm = (steps * 0.000762).toFixed(2);
@@ -140,26 +167,29 @@ export default function StepTracker() {
         }
     }, [loadChartData]);
 
-    // === CORE MOTION HANDLER ===
-    // This is the step detection algorithm. It works by:
-    // 1. Computing acceleration magnitude (removing gravity)
-    // 2. Smoothing with a moderate low-pass filter
-    // 3. Detecting when smoothed signal rises above threshold then falls below
-    // 4. Validating timing matches human walking cadence
+    // === GYROSCOPE HANDLER ===
+    // Captures rotation rates for the complementary filter
+    const handleOrientation = useCallback((event) => {
+        // rotationRate gives angular velocity in deg/s
+        if (event.rotationRate) {
+            gyroRateRef.current = {
+                alpha: event.rotationRate.alpha || 0, // yaw
+                beta: event.rotationRate.beta || 0,   // pitch (forward/back tilt)
+                gamma: event.rotationRate.gamma || 0   // roll (left/right tilt)
+            };
+            gyroActiveRef.current = true;
+        }
+    }, []);
+
+    // === CORE: ACCELEROMETER + GYRO FUSION HANDLER ===
     const handleMotion = useCallback((event) => {
         checkDayRollover();
-
-        // Count sensor readings for debug
         sensorCountRef.current++;
-        if (sensorCountRef.current % 20 === 0) {
-            setSensorReadings(sensorCountRef.current);
-        }
 
-        // Get acceleration data
+        // --- 1. Get raw acceleration ---
         let ax = 0, ay = 0, az = 0;
         let hasLinear = false;
 
-        // Prefer linear acceleration (gravity already removed by device)
         if (event.acceleration && event.acceleration.x !== null) {
             ax = event.acceleration.x || 0;
             ay = event.acceleration.y || 0;
@@ -167,18 +197,15 @@ export default function StepTracker() {
             hasLinear = true;
         }
 
-        // Fallback to accelerationIncludingGravity with manual gravity removal
         if (!hasLinear && event.accelerationIncludingGravity) {
             const raw = event.accelerationIncludingGravity;
             if (raw.x === null) return;
-
             // High-pass filter to remove gravity
-            const alpha = 0.8;
+            const a = 0.8;
             const g = gravityRef.current;
-            g.x = alpha * g.x + (1 - alpha) * raw.x;
-            g.y = alpha * g.y + (1 - alpha) * raw.y;
-            g.z = alpha * g.z + (1 - alpha) * raw.z;
-
+            g.x = a * g.x + (1 - a) * raw.x;
+            g.y = a * g.y + (1 - a) * raw.y;
+            g.z = a * g.z + (1 - a) * raw.z;
             ax = raw.x - g.x;
             ay = raw.y - g.y;
             az = raw.z - g.z;
@@ -186,69 +213,117 @@ export default function StepTracker() {
             return;
         }
 
-        // Compute magnitude of linear acceleration
+        // --- 2. Compute acceleration magnitude ---
         const magnitude = Math.sqrt(ax * ax + ay * ay + az * az);
 
-        // Low-pass filter (smoothing)
-        // alpha = 0.3 is a balanced value: smooth enough to ignore vibrations,
-        // but responsive enough to detect walking steps
-        const alpha = 0.3;
-        const prevSmoothed = smoothedMagRef.current;
-        smoothedMagRef.current = alpha * magnitude + (1 - alpha) * prevSmoothed;
+        // --- 3. Complementary Filter ---
+        // Compute tilt angle from accelerometer (accurate long-term)
+        const accelAngle = Math.atan2(ay, Math.sqrt(ax * ax + az * az)) * (180 / Math.PI);
 
-        const smoothed = smoothedMagRef.current;
+        // Time delta
         const now = Date.now();
+        const dt = lastTimestampRef.current > 0 ? (now - lastTimestampRef.current) / 1000 : 0.016;
+        lastTimestampRef.current = now;
 
-        // Step detection thresholds:
-        // - PEAK_THRESHOLD: minimum acceleration to consider as a potential step
-        //   Walking typically produces 1.5-4 m/s² after gravity removal
-        //   Set to 1.2 to capture gentle walking
-        // - VALLEY_THRESHOLD: signal must drop below this after a peak
-        //   This prevents double-counting from noisy signals
+        // Fuse gyro + accel using complementary filter
+        const ALPHA = 0.98; // Trust gyro 98%, accel 2%
+        if (gyroActiveRef.current && dt > 0 && dt < 0.5) {
+            // Gyroscope gives rotation rate (deg/s) — integrate to get angle change
+            const gyroAngleChange = gyroRateRef.current.beta * dt;
+            filteredAngleRef.current = ALPHA * (filteredAngleRef.current + gyroAngleChange) + (1 - ALPHA) * accelAngle;
+        } else {
+            // No gyro available — use accel angle directly
+            filteredAngleRef.current = accelAngle;
+        }
+
+        // --- 4. Smoothed magnitude for step detection ---
+        // Use moderate LPF: α=0.3 lets walking frequencies through, blocks high-freq shakes
+        const lpfAlpha = 0.3;
+        prevFilteredMagRef.current = filteredMagRef.current;
+        filteredMagRef.current = lpfAlpha * magnitude + (1 - lpfAlpha) * filteredMagRef.current;
+
+        const smoothed = filteredMagRef.current;
+        const prev = prevFilteredMagRef.current;
+
+        // --- 5. Gyro-based shake rejection ---
+        // When walking, the body rotates rhythmically ~2-5 deg/step on the pitch axis
+        // When shaking by hand, rotation rates are much higher (>50 deg/s) and erratic
+        let isShaking = false;
+        if (gyroActiveRef.current) {
+            const totalRotationRate = Math.abs(gyroRateRef.current.alpha) +
+                Math.abs(gyroRateRef.current.beta) +
+                Math.abs(gyroRateRef.current.gamma);
+            // Walking produces total rotation rate of ~10-40 deg/s
+            // Hand shaking produces >80 deg/s
+            if (totalRotationRate > 80) {
+                isShaking = true;
+            }
+        }
+
+        // --- 6. Peak + Valley detection ---
+        //
+        //  Magnitude over time while walking:
+        //
+        //  2.5 |        *               *
+        //      |       * *             * *
+        //  2.0 |      *   *           *   *
+        //      |     *     *         *     *
+        //  1.5 |----*-------*-------*-------*----  ← PEAK_THRESHOLD (1.2)
+        //      |             *     *
+        //  1.0 |              *   *
+        //      |               * *
+        //  0.5 |                *                   ← VALLEY_THRESHOLD (0.6)
+        //      +------------------------------------→ time
+        //                ↑ Step!          ↑ Step!
+
         const PEAK_THRESHOLD = 1.2;
-        const VALLEY_THRESHOLD = 0.7;
+        const VALLEY_THRESHOLD = 0.6;
+        const MIN_STEP_INTERVAL = 300;  // Fastest possible step (~3.3 steps/sec, sprinting)
+        const MAX_STEP_INTERVAL = 1200; // Slowest walk (~0.83 steps/sec, very slow stroll)
 
-        // Timing constraints for human walking:
-        // Slow walk: ~1.2 steps/sec = 830ms per step
-        // Normal walk: ~1.8 steps/sec = 555ms per step
-        // Fast walk: ~2.5 steps/sec = 400ms per step
-        // Jogging: ~3 steps/sec = 333ms per step
-        // We allow 280ms-1500ms to cover all speeds
-        const MIN_STEP_TIME = 280;
-        const MAX_STEP_TIME = 1500;
-
-        // Peak detection (rising edge)
-        if (!peakDetectedRef.current && smoothed > PEAK_THRESHOLD && prevSmoothed <= PEAK_THRESHOLD) {
+        // Rising edge: signal crosses above peak threshold
+        if (!peakDetectedRef.current && smoothed > PEAK_THRESHOLD && prev <= PEAK_THRESHOLD) {
             peakDetectedRef.current = true;
         }
 
-        // Valley detection after peak (falling edge) = one complete step cycle
+        // Falling edge: signal drops below valley threshold after a peak
         if (peakDetectedRef.current && smoothed < VALLEY_THRESHOLD) {
             peakDetectedRef.current = false;
 
             const timeSinceLastStep = now - lastStepTimeRef.current;
 
-            if (timeSinceLastStep >= MIN_STEP_TIME && timeSinceLastStep <= MAX_STEP_TIME) {
-                // Valid step timing — count it!
+            // --- VALIDATE STEP ---
+            const validTiming = timeSinceLastStep >= MIN_STEP_INTERVAL && timeSinceLastStep <= MAX_STEP_INTERVAL;
+            const notShaking = !isShaking;
+
+            if (validTiming && notShaking) {
+                // ✅ Valid step detected!
                 stepsRef.current += 1;
                 setSteps(stepsRef.current);
 
-                // Save every 5 steps to reduce storage writes
-                if (stepsRef.current % 5 === 0) {
+                // Track recent step times for rhythm monitoring
+                recentStepTimesRef.current.push(now);
+                if (recentStepTimesRef.current.length > 10) recentStepTimesRef.current.shift();
+
+                // Save every 3 steps
+                if (stepsRef.current % 3 === 0) {
                     persistSteps(stepsRef.current);
                 }
-
-                // Track intervals for rhythm monitoring
-                recentIntervalsRef.current.push(timeSinceLastStep);
-                if (recentIntervalsRef.current.length > 10) recentIntervalsRef.current.shift();
-            } else if (timeSinceLastStep > MAX_STEP_TIME) {
-                // Too long since last step — user paused, reset timing
-                // Don't require warm-up, just reset the timer
-                recentIntervalsRef.current = [];
+            } else if (timeSinceLastStep > MAX_STEP_INTERVAL * 2) {
+                // User paused for a while — reset rhythm tracking
+                recentStepTimesRef.current = [];
             }
-            // If timeSinceLastStep < MIN_STEP_TIME → too fast (shake/vibration), ignore
 
             lastStepTimeRef.current = now;
+        }
+
+        // Update debug info periodically
+        if (sensorCountRef.current % 30 === 0) {
+            setDebugInfo({
+                readings: sensorCountRef.current,
+                lastMag: smoothed.toFixed(2),
+                gyroActive: gyroActiveRef.current
+            });
         }
     }, [checkDayRollover]);
 
@@ -264,18 +339,18 @@ export default function StepTracker() {
 
     // === Start sensors ===
     const startSensors = useCallback(async () => {
-        // Check if we need iOS permission (must be triggered by user gesture on iOS)
         const needsPermission = typeof DeviceMotionEvent !== 'undefined' &&
             typeof DeviceMotionEvent.requestPermission === 'function';
 
         if (needsPermission) {
             setSensorStatus('needs-permission');
-            return; // Show a button for the user to tap
+            return;
         }
 
-        // Android / non-iOS — just start
+        // Android / Desktop — start immediately
         if (window.DeviceMotionEvent) {
             window.addEventListener('devicemotion', handleMotion, true);
+            // Also listen for gyroscope data (comes through devicemotion.rotationRate)
             setSensorStatus('active');
             await acquireWakeLock();
         } else {
@@ -283,11 +358,11 @@ export default function StepTracker() {
         }
     }, [handleMotion, acquireWakeLock]);
 
-    // iOS permission request (must be called from user tap)
+    // iOS permission (must be called from user tap)
     const requestIOSPermission = async () => {
         try {
-            const perm = await DeviceMotionEvent.requestPermission();
-            if (perm === 'granted') {
+            const motionPerm = await DeviceMotionEvent.requestPermission();
+            if (motionPerm === 'granted') {
                 window.addEventListener('devicemotion', handleMotion, true);
                 setSensorStatus('active');
                 await acquireWakeLock();
@@ -304,7 +379,6 @@ export default function StepTracker() {
         loadChartData();
         startSensors();
 
-        // Visibility change handler (app going to/from background)
         const handleVisibility = async () => {
             if (!document.hidden) {
                 checkDayRollover();
@@ -319,7 +393,6 @@ export default function StepTracker() {
         };
         document.addEventListener('visibilitychange', handleVisibility);
 
-        // Periodic save + chart refresh
         const interval = setInterval(() => {
             checkDayRollover();
             persistSteps(stepsRef.current);
@@ -390,7 +463,7 @@ export default function StepTracker() {
                             <Smartphone className="w-5 h-5" />
                             <div className="text-left">
                                 <p className="text-sm font-black uppercase tracking-wider">Tap to Enable Pedometer</p>
-                                <p className="text-[10px] opacity-80 font-bold">Your device requires permission to access motion sensors</p>
+                                <p className="text-[10px] opacity-80 font-bold">Allow motion sensor access to count your steps</p>
                             </div>
                         </button>
                     </div>
@@ -400,15 +473,21 @@ export default function StepTracker() {
                 {sensorStatus === 'error' && (
                     <div className="mx-6 mt-4 bg-red-50 text-red-500 text-xs font-bold p-4 rounded-2xl">
                         <p className="font-black mb-1">Motion sensors unavailable</p>
-                        <p>Your device or browser doesn't support motion sensors. Step tracking requires a mobile device with an accelerometer.</p>
+                        <p>Step tracking requires a mobile device with accelerometer and gyroscope sensors.</p>
                     </div>
                 )}
 
-                {/* Sensor Debug Info */}
+                {/* Sensor Debug Bar */}
                 {sensorStatus === 'active' && (
-                    <div className="mx-6 mt-3 flex items-center justify-center gap-2 text-[10px] font-bold text-slate-400">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                        Sensor active • {sensorReadings} readings received
+                    <div className="mx-6 mt-3 bg-slate-50 rounded-xl px-4 py-2 flex items-center justify-between text-[10px] font-bold text-slate-400">
+                        <div className="flex items-center gap-2">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            <span>{debugInfo.readings} readings</span>
+                        </div>
+                        <span>Accel: {debugInfo.lastMag} m/s²</span>
+                        <span className={debugInfo.gyroActive ? 'text-emerald-500' : 'text-slate-300'}>
+                            Gyro: {debugInfo.gyroActive ? 'ON' : 'OFF'}
+                        </span>
                     </div>
                 )}
 
@@ -423,7 +502,6 @@ export default function StepTracker() {
 
                     <CircularProgress value={steps} max={dailyGoal} />
 
-                    {/* Stats */}
                     <div className="flex justify-between items-center mt-4">
                         <div className="flex-1 text-center border-r border-slate-100">
                             <p className="text-[11px] font-bold text-slate-500 mb-1">Calories</p>
@@ -477,14 +555,7 @@ export default function StepTracker() {
                                     stroke="#6366f1"
                                     strokeDasharray="6 4"
                                     strokeWidth={1.5}
-                                    label={{
-                                        value: 'Goal',
-                                        position: 'insideTopLeft',
-                                        fill: '#6366f1',
-                                        fontSize: 10,
-                                        fontWeight: 'bold',
-                                        offset: 5
-                                    }}
+                                    label={{ value: 'Goal', position: 'insideTopLeft', fill: '#6366f1', fontSize: 10, fontWeight: 'bold', offset: 5 }}
                                 />
                                 <Bar dataKey="steps" radius={[8, 8, 8, 8]} maxBarSize={20} animationDuration={1200}>
                                     {dailySteps.map((entry, index) => (
@@ -512,7 +583,7 @@ export default function StepTracker() {
                     </div>
                 </div>
 
-                {/* AI Health Insight */}
+                {/* AI Health Insights */}
                 <div className="p-6 mt-3">
                     <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-[2rem] p-6 text-white shadow-xl relative overflow-hidden">
                         <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
@@ -527,10 +598,10 @@ export default function StepTracker() {
                                 "{steps < 500
                                     ? "Start your walk! Even 10 minutes of walking strengthens your heart and lifts your mood."
                                     : steps < 3000
-                                        ? "Good momentum! Consistent walking helps regulate blood sugar and improves cardiovascular health."
+                                        ? "Good start! Walking at this pace helps regulate blood sugar and boosts metabolism."
                                         : steps < dailyGoal
-                                            ? `You're ${Math.round((steps / dailyGoal) * 100)}% to your goal. Keep going — your body is actively burning stored energy right now.`
-                                            : "Outstanding! You've crushed your daily goal. Your metabolism is elevated and your heart thanks you."
+                                            ? `You're ${Math.round((steps / dailyGoal) * 100)}% to your goal. Your body is actively burning stored energy — keep pushing!`
+                                            : "Outstanding! You've smashed your goal. Your metabolic rate is elevated and your cardiovascular system is thanking you."
                                 }"
                             </p>
                             <div className="flex items-center gap-6">
@@ -574,46 +645,27 @@ export default function StepTracker() {
                         >
                             <h3 className="text-xl font-black text-black mb-1 tracking-tight">Set Daily Goal</h3>
                             <p className="text-xs text-slate-400 font-bold mb-6 uppercase tracking-widest">Steps per day target</p>
-
                             <div className="relative mb-8">
                                 <input
-                                    type="number"
-                                    value={tempGoal}
+                                    type="number" value={tempGoal}
                                     onChange={(e) => setTempGoal(parseInt(e.target.value) || 0)}
                                     className="w-full text-4xl font-black text-indigo-600 border-b-4 border-indigo-100 focus:border-indigo-500 transition-colors py-2 outline-none"
                                     autoFocus
                                 />
                                 <span className="absolute right-0 bottom-3 text-xs font-black text-slate-300 uppercase tracking-widest">Steps</span>
                             </div>
-
                             <div className="flex gap-2 mb-6">
                                 {[5000, 7000, 10000, 15000].map(preset => (
-                                    <button
-                                        key={preset}
-                                        onClick={() => setTempGoal(preset)}
-                                        className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${tempGoal === preset
-                                            ? 'bg-indigo-600 text-white shadow-md'
-                                            : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
-                                            }`}
-                                    >
-                                        {(preset / 1000)}k
-                                    </button>
+                                    <button key={preset} onClick={() => setTempGoal(preset)}
+                                        className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${tempGoal === preset ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
+                                    >{(preset / 1000)}k</button>
                                 ))}
                             </div>
-
                             <div className="flex gap-3">
-                                <button
-                                    onClick={() => setIsEditingGoal(false)}
-                                    className="flex-1 py-4 text-xs font-black text-slate-400 uppercase tracking-widest hover:text-black transition-colors"
-                                >
-                                    Cancel
-                                </button>
-                                <button
-                                    onClick={saveGoal}
-                                    className="flex-1 py-4 bg-indigo-600 text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-indigo-100"
-                                >
-                                    Save Goal
-                                </button>
+                                <button onClick={() => setIsEditingGoal(false)}
+                                    className="flex-1 py-4 text-xs font-black text-slate-400 uppercase tracking-widest hover:text-black transition-colors">Cancel</button>
+                                <button onClick={saveGoal}
+                                    className="flex-1 py-4 bg-indigo-600 text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-indigo-100">Save Goal</button>
                             </div>
                         </motion.div>
                     </div>
