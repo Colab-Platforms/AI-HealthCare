@@ -1,17 +1,13 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Calendar, Footprints, Flame, Target, Activity } from 'lucide-react';
+import { ChevronLeft, Footprints, Flame, Target, Activity, Smartphone } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 
 // ============================================================
-// WALKING DETECTION ENGINE
-// Mimics how real phone pedometers work:
-// 1. Isolate linear acceleration (remove gravity)
-// 2. Focus on vertical axis magnitude
-// 3. Detect periodic peaks matching human gait cadence
-// 4. Require consistent rhythm (rejects random shakes)
-// 5. Use zero-crossing detection for reliable peak finding
+// STEP DETECTION ENGINE v3
+// Tuned for real-world mobile devices.
+// Uses magnitude peak detection with adaptive thresholding.
 // ============================================================
 
 const CircularProgress = ({ value, max }) => {
@@ -58,13 +54,12 @@ const CircularProgress = ({ value, max }) => {
     );
 };
 
-// === Helper: Get today's date string ===
+// === Helpers ===
 const getTodayString = () => {
     const t = new Date();
     return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
 };
 
-// === Helper: Load today's steps from localStorage ===
 const loadTodaySteps = () => {
     try {
         const data = JSON.parse(localStorage.getItem('fitcure_daily_steps') || '[]');
@@ -73,7 +68,6 @@ const loadTodaySteps = () => {
     } catch { return 0; }
 };
 
-// === Helper: Save steps for today ===
 const persistSteps = (count) => {
     const todayStr = getTodayString();
     let data = [];
@@ -84,7 +78,6 @@ const persistSteps = (count) => {
     } else {
         data.push({ date: todayStr, steps: count });
     }
-    // Keep only last 30 days of data
     if (data.length > 30) data = data.slice(-30);
     localStorage.setItem('fitcure_daily_steps', JSON.stringify(data));
 };
@@ -93,35 +86,33 @@ export default function StepTracker() {
     const navigate = useNavigate();
 
     const [steps, setSteps] = useState(() => loadTodaySteps());
-    const [isActive, setIsActive] = useState(false);
-    const [errorMsg, setErrorMsg] = useState('');
+    const [sensorStatus, setSensorStatus] = useState('initializing'); // initializing | needs-permission | active | error
     const [dailySteps, setDailySteps] = useState([]);
-    const [dailyGoal, setDailyGoal] = useState(() => {
-        return parseInt(localStorage.getItem('fitcure_step_goal')) || 7000;
-    });
+    const [dailyGoal, setDailyGoal] = useState(() => parseInt(localStorage.getItem('fitcure_step_goal')) || 7000);
     const [isEditingGoal, setIsEditingGoal] = useState(false);
     const [tempGoal, setTempGoal] = useState(dailyGoal);
+    const [sensorReadings, setSensorReadings] = useState(0); // debug: how many readings received
 
-    // Step detection engine refs
+    // Step detection refs
     const stepsRef = useRef(loadTodaySteps());
     const gravityRef = useRef({ x: 0, y: 0, z: 0 });
-    const filteredAccelRef = useRef(0);
-    const prevFilteredRef = useRef(0);
+    const lastMagnitudeRef = useRef(0);
+    const smoothedMagRef = useRef(0);
     const lastStepTimeRef = useRef(0);
-    const stepCandidateCountRef = useRef(0);
+    const peakDetectedRef = useRef(false);
+    const recentIntervalsRef = useRef([]); // last N step intervals for rhythm analysis
+    const sensorCountRef = useRef(0);
     const lastSavedDateRef = useRef(getTodayString());
     const wakeLockRef = useRef(null);
 
     const caloriesBurned = Math.round(steps * 0.04);
-    const distanceKm = (steps * 0.000762).toFixed(2); // avg stride ~0.762m
+    const distanceKm = (steps * 0.000762).toFixed(2);
 
-    // === Load weekly chart data ===
+    // === Chart data ===
     const loadChartData = useCallback(() => {
         const goal = parseInt(localStorage.getItem('fitcure_step_goal')) || 7000;
         let data = [];
         try { data = JSON.parse(localStorage.getItem('fitcure_daily_steps') || '[]'); } catch { }
-
-        // Build last 7 days
         const chart = [];
         for (let i = 6; i >= 0; i--) {
             const d = new Date();
@@ -137,11 +128,10 @@ export default function StepTracker() {
         setDailySteps(chart);
     }, []);
 
-    // === Auto daily reset check ===
+    // === Day rollover ===
     const checkDayRollover = useCallback(() => {
         const today = getTodayString();
         if (lastSavedDateRef.current !== today) {
-            // New day! Reset steps
             stepsRef.current = 0;
             setSteps(0);
             lastSavedDateRef.current = today;
@@ -150,148 +140,186 @@ export default function StepTracker() {
         }
     }, [loadChartData]);
 
-    // === CORE: Device motion handler (walking detection) ===
+    // === CORE MOTION HANDLER ===
+    // This is the step detection algorithm. It works by:
+    // 1. Computing acceleration magnitude (removing gravity)
+    // 2. Smoothing with a moderate low-pass filter
+    // 3. Detecting when smoothed signal rises above threshold then falls below
+    // 4. Validating timing matches human walking cadence
     const handleMotion = useCallback((event) => {
-        // Day rollover check
         checkDayRollover();
 
-        const acc = event.accelerationIncludingGravity;
-        const pureAcc = event.acceleration;
-        let lx, ly, lz;
-
-        if (pureAcc && pureAcc.x !== null && pureAcc.y !== null) {
-            // Device provides linear acceleration directly (gravity removed)
-            lx = pureAcc.x;
-            ly = pureAcc.y;
-            lz = pureAcc.z;
-        } else if (acc && acc.x !== null) {
-            // Must remove gravity ourselves with high-pass filter
-            const a = 0.8;
-            const g = gravityRef.current;
-            g.x = a * g.x + (1 - a) * acc.x;
-            g.y = a * g.y + (1 - a) * acc.y;
-            g.z = a * g.z + (1 - a) * acc.z;
-            lx = acc.x - g.x;
-            ly = acc.y - g.y;
-            lz = acc.z - g.z;
-        } else {
-            return; // No usable data
+        // Count sensor readings for debug
+        sensorCountRef.current++;
+        if (sensorCountRef.current % 20 === 0) {
+            setSensorReadings(sensorCountRef.current);
         }
 
-        // Magnitude of linear acceleration
-        const magnitude = Math.sqrt(lx * lx + ly * ly + lz * lz);
+        // Get acceleration data
+        let ax = 0, ay = 0, az = 0;
+        let hasLinear = false;
 
-        // Low-pass filter the magnitude (smoothing)
-        // This is the key to rejecting shakes:
-        // Walking produces smooth sinusoidal acceleration
-        // Shaking produces high-frequency spiky acceleration
-        // A strong low-pass filter removes shake frequencies while preserving walk frequencies
-        const alpha = 0.15; // Heavy smoothing — only ~1-2Hz signals pass through (walking cadence)
-        prevFilteredRef.current = filteredAccelRef.current;
-        filteredAccelRef.current = alpha * magnitude + (1 - alpha) * filteredAccelRef.current;
+        // Prefer linear acceleration (gravity already removed by device)
+        if (event.acceleration && event.acceleration.x !== null) {
+            ax = event.acceleration.x || 0;
+            ay = event.acceleration.y || 0;
+            az = event.acceleration.z || 0;
+            hasLinear = true;
+        }
 
+        // Fallback to accelerationIncludingGravity with manual gravity removal
+        if (!hasLinear && event.accelerationIncludingGravity) {
+            const raw = event.accelerationIncludingGravity;
+            if (raw.x === null) return;
+
+            // High-pass filter to remove gravity
+            const alpha = 0.8;
+            const g = gravityRef.current;
+            g.x = alpha * g.x + (1 - alpha) * raw.x;
+            g.y = alpha * g.y + (1 - alpha) * raw.y;
+            g.z = alpha * g.z + (1 - alpha) * raw.z;
+
+            ax = raw.x - g.x;
+            ay = raw.y - g.y;
+            az = raw.z - g.z;
+        } else if (!hasLinear) {
+            return;
+        }
+
+        // Compute magnitude of linear acceleration
+        const magnitude = Math.sqrt(ax * ax + ay * ay + az * az);
+
+        // Low-pass filter (smoothing)
+        // alpha = 0.3 is a balanced value: smooth enough to ignore vibrations,
+        // but responsive enough to detect walking steps
+        const alpha = 0.3;
+        const prevSmoothed = smoothedMagRef.current;
+        smoothedMagRef.current = alpha * magnitude + (1 - alpha) * prevSmoothed;
+
+        const smoothed = smoothedMagRef.current;
         const now = Date.now();
-        const timeSinceLastStep = now - lastStepTimeRef.current;
 
-        // Zero-crossing detection on filtered signal
-        // A step occurs when the filtered signal crosses above threshold from below
-        const THRESHOLD = 1.0; // m/s² — tuned for walking (hand shakes get smoothed out by LPF)
-        const wasBelow = prevFilteredRef.current < THRESHOLD;
-        const isAbove = filteredAccelRef.current >= THRESHOLD;
+        // Step detection thresholds:
+        // - PEAK_THRESHOLD: minimum acceleration to consider as a potential step
+        //   Walking typically produces 1.5-4 m/s² after gravity removal
+        //   Set to 1.2 to capture gentle walking
+        // - VALLEY_THRESHOLD: signal must drop below this after a peak
+        //   This prevents double-counting from noisy signals
+        const PEAK_THRESHOLD = 1.2;
+        const VALLEY_THRESHOLD = 0.7;
 
-        if (wasBelow && isAbove) {
-            // Potential step — validate timing
-            // Human walking cadence: 1.3 - 2.5 steps/sec → 400ms - 770ms per step
-            // Allow slightly wider range: 330ms - 1000ms
-            if (timeSinceLastStep >= 330 && timeSinceLastStep <= 1000) {
-                stepCandidateCountRef.current++;
+        // Timing constraints for human walking:
+        // Slow walk: ~1.2 steps/sec = 830ms per step
+        // Normal walk: ~1.8 steps/sec = 555ms per step
+        // Fast walk: ~2.5 steps/sec = 400ms per step
+        // Jogging: ~3 steps/sec = 333ms per step
+        // We allow 280ms-1500ms to cover all speeds
+        const MIN_STEP_TIME = 280;
+        const MAX_STEP_TIME = 1500;
 
-                // Require 4 consistent steps before we start counting
-                // This is how real pedometers work — they wait for a consistent pattern
-                // This completely eliminates single shakes or random movements
-                if (stepCandidateCountRef.current >= 4) {
-                    // Once pattern is established, count every valid step
-                    stepsRef.current += 1;
-                    setSteps(stepsRef.current);
+        // Peak detection (rising edge)
+        if (!peakDetectedRef.current && smoothed > PEAK_THRESHOLD && prevSmoothed <= PEAK_THRESHOLD) {
+            peakDetectedRef.current = true;
+        }
+
+        // Valley detection after peak (falling edge) = one complete step cycle
+        if (peakDetectedRef.current && smoothed < VALLEY_THRESHOLD) {
+            peakDetectedRef.current = false;
+
+            const timeSinceLastStep = now - lastStepTimeRef.current;
+
+            if (timeSinceLastStep >= MIN_STEP_TIME && timeSinceLastStep <= MAX_STEP_TIME) {
+                // Valid step timing — count it!
+                stepsRef.current += 1;
+                setSteps(stepsRef.current);
+
+                // Save every 5 steps to reduce storage writes
+                if (stepsRef.current % 5 === 0) {
                     persistSteps(stepsRef.current);
                 }
 
-                lastStepTimeRef.current = now;
-            } else if (timeSinceLastStep > 2000) {
-                // User stopped walking for >2 seconds — reset pattern detection
-                stepCandidateCountRef.current = 0;
-                lastStepTimeRef.current = now;
+                // Track intervals for rhythm monitoring
+                recentIntervalsRef.current.push(timeSinceLastStep);
+                if (recentIntervalsRef.current.length > 10) recentIntervalsRef.current.shift();
+            } else if (timeSinceLastStep > MAX_STEP_TIME) {
+                // Too long since last step — user paused, reset timing
+                // Don't require warm-up, just reset the timer
+                recentIntervalsRef.current = [];
             }
-            // If timeSinceLastStep < 330ms, it's too fast (shake) — ignore completely
+            // If timeSinceLastStep < MIN_STEP_TIME → too fast (shake/vibration), ignore
+
+            lastStepTimeRef.current = now;
         }
     }, [checkDayRollover]);
 
-    // === Wake Lock management ===
+    // === Wake Lock ===
     const acquireWakeLock = useCallback(async () => {
-        if ('wakeLock' in navigator) {
+        if ('wakeLock' in navigator && !wakeLockRef.current) {
             try {
                 wakeLockRef.current = await navigator.wakeLock.request('screen');
-                wakeLockRef.current.addEventListener('release', () => {
-                    wakeLockRef.current = null;
-                });
+                wakeLockRef.current.addEventListener('release', () => { wakeLockRef.current = null; });
             } catch { }
         }
     }, []);
 
     // === Start sensors ===
     const startSensors = useCallback(async () => {
-        // iOS permission request
-        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-            try {
-                const perm = await DeviceMotionEvent.requestPermission();
-                if (perm !== 'granted') {
-                    setErrorMsg('Sensor permission denied. Enable in Settings to use pedometer.');
-                    return;
-                }
-            } catch {
-                setErrorMsg('Could not request sensor permissions.');
-                return;
-            }
+        // Check if we need iOS permission (must be triggered by user gesture on iOS)
+        const needsPermission = typeof DeviceMotionEvent !== 'undefined' &&
+            typeof DeviceMotionEvent.requestPermission === 'function';
+
+        if (needsPermission) {
+            setSensorStatus('needs-permission');
+            return; // Show a button for the user to tap
         }
 
+        // Android / non-iOS — just start
         if (window.DeviceMotionEvent) {
             window.addEventListener('devicemotion', handleMotion, true);
-            setIsActive(true);
+            setSensorStatus('active');
             await acquireWakeLock();
         } else {
-            setErrorMsg('Motion sensors not available on this device.');
+            setSensorStatus('error');
         }
     }, [handleMotion, acquireWakeLock]);
 
-    // === Lifecycle: auto-start + background handling ===
-    useEffect(() => {
-        // Load initial data
-        loadChartData();
+    // iOS permission request (must be called from user tap)
+    const requestIOSPermission = async () => {
+        try {
+            const perm = await DeviceMotionEvent.requestPermission();
+            if (perm === 'granted') {
+                window.addEventListener('devicemotion', handleMotion, true);
+                setSensorStatus('active');
+                await acquireWakeLock();
+            } else {
+                setSensorStatus('error');
+            }
+        } catch {
+            setSensorStatus('error');
+        }
+    };
 
-        // Auto-start pedometer
+    // === Lifecycle ===
+    useEffect(() => {
+        loadChartData();
         startSensors();
 
-        // Handle tab visibility changes — re-acquire wake lock and resume
+        // Visibility change handler (app going to/from background)
         const handleVisibility = async () => {
             if (!document.hidden) {
-                // Tab became visible — check day rollover and re-acquire wake lock
                 checkDayRollover();
-                // Reload steps from storage (in case another tab updated)
                 const currentSteps = loadTodaySteps();
                 if (currentSteps > stepsRef.current) {
                     stepsRef.current = currentSteps;
                     setSteps(currentSteps);
                 }
                 loadChartData();
-                if (!wakeLockRef.current) {
-                    await acquireWakeLock();
-                }
+                if (!wakeLockRef.current) await acquireWakeLock();
             }
         };
-
         document.addEventListener('visibilitychange', handleVisibility);
 
-        // Periodic save and day-rollover check (every 10 seconds)
+        // Periodic save + chart refresh
         const interval = setInterval(() => {
             checkDayRollover();
             persistSteps(stepsRef.current);
@@ -309,7 +337,7 @@ export default function StepTracker() {
         };
     }, [startSensors, loadChartData, checkDayRollover, handleMotion, acquireWakeLock]);
 
-    // === Save goal ===
+    // Save goal
     const saveGoal = () => {
         const newGoal = Math.max(tempGoal, 100);
         setDailyGoal(newGoal);
@@ -318,7 +346,7 @@ export default function StepTracker() {
         loadChartData();
     };
 
-    // === Chart tooltip ===
+    // Chart tooltip
     const CustomTooltip = ({ active, payload }) => {
         if (active && payload && payload.length) {
             const d = payload[0].payload;
@@ -343,18 +371,44 @@ export default function StepTracker() {
                 </button>
                 <h1 className="text-lg font-black text-black tracking-tight">Step Tracker</h1>
                 <div className="flex items-center gap-1.5">
-                    <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
+                    <span className={`w-2 h-2 rounded-full ${sensorStatus === 'active' ? 'bg-emerald-500 animate-pulse' : sensorStatus === 'error' ? 'bg-red-400' : 'bg-amber-400 animate-pulse'}`} />
                     <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
-                        {isActive ? 'Live' : 'Off'}
+                        {sensorStatus === 'active' ? 'Live' : sensorStatus === 'needs-permission' ? 'Tap' : sensorStatus === 'error' ? 'Off' : '...'}
                     </span>
                 </div>
             </header>
 
             <div className="flex-1 overflow-y-auto pb-24">
-                {/* Error */}
-                {errorMsg && (
-                    <div className="mx-6 mt-4 bg-red-50 text-red-500 text-xs font-bold p-3 rounded-2xl flex items-center gap-2">
-                        {errorMsg}
+
+                {/* iOS Permission Banner */}
+                {sensorStatus === 'needs-permission' && (
+                    <div className="mx-6 mt-4">
+                        <button
+                            onClick={requestIOSPermission}
+                            className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl p-5 flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-transform"
+                        >
+                            <Smartphone className="w-5 h-5" />
+                            <div className="text-left">
+                                <p className="text-sm font-black uppercase tracking-wider">Tap to Enable Pedometer</p>
+                                <p className="text-[10px] opacity-80 font-bold">Your device requires permission to access motion sensors</p>
+                            </div>
+                        </button>
+                    </div>
+                )}
+
+                {/* Sensor Error */}
+                {sensorStatus === 'error' && (
+                    <div className="mx-6 mt-4 bg-red-50 text-red-500 text-xs font-bold p-4 rounded-2xl">
+                        <p className="font-black mb-1">Motion sensors unavailable</p>
+                        <p>Your device or browser doesn't support motion sensors. Step tracking requires a mobile device with an accelerometer.</p>
+                    </div>
+                )}
+
+                {/* Sensor Debug Info */}
+                {sensorStatus === 'active' && (
+                    <div className="mx-6 mt-3 flex items-center justify-center gap-2 text-[10px] font-bold text-slate-400">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                        Sensor active • {sensorReadings} readings received
                     </div>
                 )}
 
@@ -369,7 +423,7 @@ export default function StepTracker() {
 
                     <CircularProgress value={steps} max={dailyGoal} />
 
-                    {/* Stats Row */}
+                    {/* Stats */}
                     <div className="flex justify-between items-center mt-4">
                         <div className="flex-1 text-center border-r border-slate-100">
                             <p className="text-[11px] font-bold text-slate-500 mb-1">Calories</p>
@@ -424,7 +478,7 @@ export default function StepTracker() {
                                     strokeDasharray="6 4"
                                     strokeWidth={1.5}
                                     label={{
-                                        value: `Goal`,
+                                        value: 'Goal',
                                         position: 'insideTopLeft',
                                         fill: '#6366f1',
                                         fontSize: 10,
@@ -432,22 +486,11 @@ export default function StepTracker() {
                                         offset: 5
                                     }}
                                 />
-                                <Bar
-                                    dataKey="steps"
-                                    radius={[8, 8, 8, 8]}
-                                    maxBarSize={20}
-                                    animationDuration={1200}
-                                >
+                                <Bar dataKey="steps" radius={[8, 8, 8, 8]} maxBarSize={20} animationDuration={1200}>
                                     {dailySteps.map((entry, index) => (
                                         <Cell
                                             key={`cell-${index}`}
-                                            fill={
-                                                entry.steps >= dailyGoal
-                                                    ? '#10b981'     // green — goal met
-                                                    : entry.steps > 0
-                                                        ? '#fb923c' // orange — in progress
-                                                        : '#e2e8f0' // grey — no data
-                                            }
+                                            fill={entry.steps >= dailyGoal ? '#10b981' : entry.steps > 0 ? '#fb923c' : '#e2e8f0'}
                                         />
                                     ))}
                                 </Bar>
@@ -462,11 +505,10 @@ export default function StepTracker() {
                         </ResponsiveContainer>
                     </div>
 
-                    {/* Legend */}
                     <div className="flex items-center justify-center gap-6 mt-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
                         <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-500" /> Goal Met</span>
                         <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-orange-400" /> In Progress</span>
-                        <span className="flex items-center gap-1.5 text-indigo-500">— — Goal Line</span>
+                        <span className="flex items-center gap-1.5 text-indigo-500">— — Goal</span>
                     </div>
                 </div>
 
@@ -502,10 +544,8 @@ export default function StepTracker() {
                                 <div className="h-8 w-[1px] bg-white/20"></div>
                                 <div>
                                     <p className="text-[10px] uppercase font-black opacity-60 mb-1">Progress</p>
-                                    <span className={`text-xs font-black px-2.5 py-0.5 rounded-lg ${steps >= dailyGoal
-                                        ? 'bg-emerald-500/30 text-emerald-300'
-                                        : steps > dailyGoal * 0.5
-                                            ? 'bg-amber-500/30 text-amber-300'
+                                    <span className={`text-xs font-black px-2.5 py-0.5 rounded-lg ${steps >= dailyGoal ? 'bg-emerald-500/30 text-emerald-300'
+                                        : steps > dailyGoal * 0.5 ? 'bg-amber-500/30 text-amber-300'
                                             : 'bg-white/10 text-white/70'
                                         }`}>
                                         {steps >= dailyGoal ? '🏆 Goal Met!' : `${Math.round((steps / dailyGoal) * 100)}%`}
@@ -522,9 +562,7 @@ export default function StepTracker() {
                 {isEditingGoal && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
                         <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
+                            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                             onClick={() => setIsEditingGoal(false)}
                             className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                         />
@@ -548,7 +586,6 @@ export default function StepTracker() {
                                 <span className="absolute right-0 bottom-3 text-xs font-black text-slate-300 uppercase tracking-widest">Steps</span>
                             </div>
 
-                            {/* Quick presets */}
                             <div className="flex gap-2 mb-6">
                                 {[5000, 7000, 10000, 15000].map(preset => (
                                     <button
