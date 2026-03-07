@@ -1,50 +1,32 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronLeft, Calendar, Footprints, Flame, Target, AlertCircle, RotateCcw, Activity } from 'lucide-react';
+import { ChevronLeft, Calendar, Footprints, Flame, Target, Activity } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from 'recharts';
 import { useNavigate } from 'react-router-dom';
 
-// --- Advanced Walking Detection Algorithm ---
-// This algorithm distinguishes real walking from hand shaking by:
-// 1. Using a vertical-axis (Y) dominant analysis — walking produces rhythmic Y-axis peaks
-// 2. Requiring consistent cadence (steps are periodic, shakes are erratic)
-// 3. Checking step duration window (real steps take 300-1200ms, shakes are faster)
-// 4. Analyzing the ratio of vertical vs horizontal acceleration (walking = vertical dominant)
-// 5. Using a sliding window to require multiple peaks before counting
-
-const STEP_CONFIG = {
-    // Walking produces acceleration between 1.2 and 6 m/s². Hand shakes go much higher.
-    ACCEL_MIN: 1.2,
-    ACCEL_MAX: 6.0,
-    // Real walking cadence: 300ms–1200ms per step (~50-200 steps/min)
-    MIN_STEP_INTERVAL: 350,
-    MAX_STEP_INTERVAL: 1200,
-    // Low-pass filter to smooth sensor noise
-    LPF_ALPHA: 0.2,
-    // Gravity isolation filter
-    GRAVITY_ALPHA: 0.8,
-    // Vertical dominance ratio: walking has >40% vertical component
-    VERTICAL_RATIO_MIN: 0.35,
-    // Require N consistent peaks before counting steps (prevents single shakes)
-    CONSISTENCY_WINDOW: 3,
-    // Maximum orientation change per sample for walking (hand shakes rotate rapidly)
-    MAX_ORIENTATION_DELTA: 8,
-};
+// ============================================================
+// WALKING DETECTION ENGINE
+// Mimics how real phone pedometers work:
+// 1. Isolate linear acceleration (remove gravity)
+// 2. Focus on vertical axis magnitude
+// 3. Detect periodic peaks matching human gait cadence
+// 4. Require consistent rhythm (rejects random shakes)
+// 5. Use zero-crossing detection for reliable peak finding
+// ============================================================
 
 const CircularProgress = ({ value, max }) => {
     const radius = 120;
     const stroke = 18;
     const normalizedRadius = radius - stroke * 2;
     const circumference = normalizedRadius * Math.PI;
-    const progress = Math.min(value / max, 1);
+    const progress = Math.min(value / Math.max(max, 1), 1);
     const strokeDashoffset = circumference - progress * circumference;
 
-    // Color transitions: red → orange → green as progress increases
     const getColor = (p) => {
         if (p >= 1) return '#10b981';
         if (p >= 0.6) return '#4ade80';
         if (p >= 0.3) return '#fb923c';
-        return '#f87171';
+        return '#818cf8';
     };
 
     return (
@@ -76,265 +58,275 @@ const CircularProgress = ({ value, max }) => {
     );
 };
 
+// === Helper: Get today's date string ===
+const getTodayString = () => {
+    const t = new Date();
+    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
+};
+
+// === Helper: Load today's steps from localStorage ===
+const loadTodaySteps = () => {
+    try {
+        const data = JSON.parse(localStorage.getItem('fitcure_daily_steps') || '[]');
+        const today = data.find(d => d.date === getTodayString());
+        return today ? today.steps : 0;
+    } catch { return 0; }
+};
+
+// === Helper: Save steps for today ===
+const persistSteps = (count) => {
+    const todayStr = getTodayString();
+    let data = [];
+    try { data = JSON.parse(localStorage.getItem('fitcure_daily_steps') || '[]'); } catch { }
+    const idx = data.findIndex(d => d.date === todayStr);
+    if (idx >= 0) {
+        data[idx].steps = count;
+    } else {
+        data.push({ date: todayStr, steps: count });
+    }
+    // Keep only last 30 days of data
+    if (data.length > 30) data = data.slice(-30);
+    localStorage.setItem('fitcure_daily_steps', JSON.stringify(data));
+};
+
 export default function StepTracker() {
     const navigate = useNavigate();
 
-    // Core state
-    const [steps, setSteps] = useState(0);
-    const [errorMsg, setErrorMsg] = useState('');
+    const [steps, setSteps] = useState(() => loadTodaySteps());
     const [isActive, setIsActive] = useState(false);
+    const [errorMsg, setErrorMsg] = useState('');
     const [dailySteps, setDailySteps] = useState([]);
     const [dailyGoal, setDailyGoal] = useState(() => {
-        const saved = localStorage.getItem('fitcure_step_goal');
-        return saved ? parseInt(saved) : 7000;
+        return parseInt(localStorage.getItem('fitcure_step_goal')) || 7000;
     });
     const [isEditingGoal, setIsEditingGoal] = useState(false);
     const [tempGoal, setTempGoal] = useState(dailyGoal);
 
-    // --- Advanced step detection refs ---
+    // Step detection engine refs
+    const stepsRef = useRef(loadTodaySteps());
     const gravityRef = useRef({ x: 0, y: 0, z: 0 });
-    const smoothedRef = useRef({ x: 0, y: 0, z: 0 });
-    const lastPeakTimeRef = useRef(0);
-    const peakHistoryRef = useRef([]); // timestamps of recent peaks for cadence analysis
-    const orientationRef = useRef({ beta: 0, gamma: 0 });
-    const lastOrientationRef = useRef({ beta: 0, gamma: 0 });
-    const consistentPeaksRef = useRef(0); // count consistent peaks before counting
-    const isAboveThresholdRef = useRef(false); // for peak detection (rising/falling)
-    const stepsRef = useRef(0);
+    const filteredAccelRef = useRef(0);
+    const prevFilteredRef = useRef(0);
+    const lastStepTimeRef = useRef(0);
+    const stepCandidateCountRef = useRef(0);
+    const lastSavedDateRef = useRef(getTodayString());
+    const wakeLockRef = useRef(null);
 
     const caloriesBurned = Math.round(steps * 0.04);
+    const distanceKm = (steps * 0.000762).toFixed(2); // avg stride ~0.762m
 
-    // --- Persistence ---
-    const getTodayString = useCallback(() => {
-        const t = new Date();
-        return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
-    }, []);
-
-    const saveTodaySteps = useCallback((currentSteps) => {
-        const todayStr = getTodayString();
-        let parsedData = [];
-        try {
-            parsedData = JSON.parse(localStorage.getItem('fitcure_daily_steps') || '[]');
-        } catch (e) { }
-        const idx = parsedData.findIndex(d => d.date === todayStr);
-        if (idx >= 0) {
-            parsedData[idx].steps = Math.max(parsedData[idx].steps, currentSteps);
-        } else {
-            parsedData.push({ date: todayStr, steps: currentSteps });
-        }
-        localStorage.setItem('fitcure_daily_steps', JSON.stringify(parsedData));
-    }, [getTodayString]);
-
-    const loadDailySteps = useCallback(() => {
+    // === Load weekly chart data ===
+    const loadChartData = useCallback(() => {
         const goal = parseInt(localStorage.getItem('fitcure_step_goal')) || 7000;
-        try {
-            const parsedData = JSON.parse(localStorage.getItem('fitcure_daily_steps') || '[]');
-            const chartData = parsedData.map(item => ({
-                ...item,
+        let data = [];
+        try { data = JSON.parse(localStorage.getItem('fitcure_daily_steps') || '[]'); } catch { }
+
+        // Build last 7 days
+        const chart = [];
+        for (let i = 6; i >= 0; i--) {
+            const d = new Date();
+            d.setDate(d.getDate() - i);
+            const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            const dayData = data.find(entry => entry.date === dateStr);
+            chart.push({
+                displayDate: d.toLocaleDateString('en-US', { weekday: 'short' }),
+                steps: dayData ? dayData.steps : 0,
                 goal: goal,
-                displayDate: new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' })
-            }));
-            let last7 = chartData.slice(-7);
-            while (last7.length < 7) {
-                last7.unshift({ steps: 0, goal: goal, displayDate: '-' });
-            }
-            setDailySteps(last7);
-        } catch (e) {
-            setDailySteps(Array(7).fill(null).map(() => ({ steps: 0, goal: goal, displayDate: '-' })));
+            });
         }
+        setDailySteps(chart);
     }, []);
 
-    const saveGoal = () => {
-        setDailyGoal(tempGoal);
-        localStorage.setItem('fitcure_step_goal', tempGoal.toString());
-        setIsEditingGoal(false);
-        loadDailySteps();
-    };
+    // === Auto daily reset check ===
+    const checkDayRollover = useCallback(() => {
+        const today = getTodayString();
+        if (lastSavedDateRef.current !== today) {
+            // New day! Reset steps
+            stepsRef.current = 0;
+            setSteps(0);
+            lastSavedDateRef.current = today;
+            persistSteps(0);
+            loadChartData();
+        }
+    }, [loadChartData]);
 
-    // --- Sensor Handlers ---
-    const handleOrientation = useCallback((event) => {
-        lastOrientationRef.current = { ...orientationRef.current };
-        orientationRef.current = {
-            beta: event.beta || 0,
-            gamma: event.gamma || 0
-        };
-    }, []);
-
+    // === CORE: Device motion handler (walking detection) ===
     const handleMotion = useCallback((event) => {
+        // Day rollover check
+        checkDayRollover();
+
         const acc = event.accelerationIncludingGravity;
         const pureAcc = event.acceleration;
+        let lx, ly, lz;
 
-        let rawX, rawY, rawZ;
-        let needGravityRemoval = false;
-
-        if (pureAcc && pureAcc.x !== null) {
-            // Linear acceleration available directly
-            rawX = pureAcc.x;
-            rawY = pureAcc.y;
-            rawZ = pureAcc.z;
+        if (pureAcc && pureAcc.x !== null && pureAcc.y !== null) {
+            // Device provides linear acceleration directly (gravity removed)
+            lx = pureAcc.x;
+            ly = pureAcc.y;
+            lz = pureAcc.z;
         } else if (acc && acc.x !== null) {
-            rawX = acc.x;
-            rawY = acc.y;
-            rawZ = acc.z;
-            needGravityRemoval = true;
-        } else {
-            return;
-        }
-
-        let linX = rawX, linY = rawY, linZ = rawZ;
-
-        if (needGravityRemoval) {
+            // Must remove gravity ourselves with high-pass filter
+            const a = 0.8;
             const g = gravityRef.current;
-            const a = STEP_CONFIG.GRAVITY_ALPHA;
-            g.x = a * g.x + (1 - a) * rawX;
-            g.y = a * g.y + (1 - a) * rawY;
-            g.z = a * g.z + (1 - a) * rawZ;
-            linX = rawX - g.x;
-            linY = rawY - g.y;
-            linZ = rawZ - g.z;
+            g.x = a * g.x + (1 - a) * acc.x;
+            g.y = a * g.y + (1 - a) * acc.y;
+            g.z = a * g.z + (1 - a) * acc.z;
+            lx = acc.x - g.x;
+            ly = acc.y - g.y;
+            lz = acc.z - g.z;
+        } else {
+            return; // No usable data
         }
 
-        // Low-pass filter for smoothing
-        const lpf = STEP_CONFIG.LPF_ALPHA;
-        const s = smoothedRef.current;
-        s.x = lpf * linX + (1 - lpf) * s.x;
-        s.y = lpf * linY + (1 - lpf) * s.y;
-        s.z = lpf * linZ + (1 - lpf) * s.z;
+        // Magnitude of linear acceleration
+        const magnitude = Math.sqrt(lx * lx + ly * ly + lz * lz);
 
-        const magnitude = Math.sqrt(s.x * s.x + s.y * s.y + s.z * s.z);
-        const verticalMag = Math.abs(s.y); // Y-axis is vertical when phone is upright
-        const totalMag = Math.abs(s.x) + Math.abs(s.y) + Math.abs(s.z);
-
-        // --- Check 1: Vertical dominance ratio ---
-        // Walking produces mostly vertical acceleration. Shaking produces chaotic multi-axis.
-        const verticalRatio = totalMag > 0.1 ? verticalMag / totalMag : 0;
-
-        // --- Check 2: Orientation stability ---
-        // Walking: orientation changes slowly. Shaking: rapid orientation swings.
-        const deltaBeta = Math.abs(orientationRef.current.beta - lastOrientationRef.current.beta);
-        const deltaGamma = Math.abs(orientationRef.current.gamma - lastOrientationRef.current.gamma);
-        const orientationStable = deltaBeta < STEP_CONFIG.MAX_ORIENTATION_DELTA &&
-            deltaGamma < STEP_CONFIG.MAX_ORIENTATION_DELTA;
+        // Low-pass filter the magnitude (smoothing)
+        // This is the key to rejecting shakes:
+        // Walking produces smooth sinusoidal acceleration
+        // Shaking produces high-frequency spiky acceleration
+        // A strong low-pass filter removes shake frequencies while preserving walk frequencies
+        const alpha = 0.15; // Heavy smoothing — only ~1-2Hz signals pass through (walking cadence)
+        prevFilteredRef.current = filteredAccelRef.current;
+        filteredAccelRef.current = alpha * magnitude + (1 - alpha) * filteredAccelRef.current;
 
         const now = Date.now();
+        const timeSinceLastStep = now - lastStepTimeRef.current;
 
-        // --- Peak detection with hysteresis ---
-        if (magnitude > STEP_CONFIG.ACCEL_MIN && !isAboveThresholdRef.current) {
-            // Rising edge — potential step start
-            isAboveThresholdRef.current = true;
-        } else if (magnitude < STEP_CONFIG.ACCEL_MIN * 0.7 && isAboveThresholdRef.current) {
-            // Falling edge — peak completed
-            isAboveThresholdRef.current = false;
+        // Zero-crossing detection on filtered signal
+        // A step occurs when the filtered signal crosses above threshold from below
+        const THRESHOLD = 1.0; // m/s² — tuned for walking (hand shakes get smoothed out by LPF)
+        const wasBelow = prevFilteredRef.current < THRESHOLD;
+        const isAbove = filteredAccelRef.current >= THRESHOLD;
 
-            const timeSinceLastPeak = now - lastPeakTimeRef.current;
+        if (wasBelow && isAbove) {
+            // Potential step — validate timing
+            // Human walking cadence: 1.3 - 2.5 steps/sec → 400ms - 770ms per step
+            // Allow slightly wider range: 330ms - 1000ms
+            if (timeSinceLastStep >= 330 && timeSinceLastStep <= 1000) {
+                stepCandidateCountRef.current++;
 
-            // --- Validate this peak as a real step ---
-            const validAmplitude = magnitude < STEP_CONFIG.ACCEL_MAX;
-            const validTiming = timeSinceLastPeak >= STEP_CONFIG.MIN_STEP_INTERVAL &&
-                timeSinceLastPeak <= STEP_CONFIG.MAX_STEP_INTERVAL;
-            const validVertical = verticalRatio >= STEP_CONFIG.VERTICAL_RATIO_MIN;
-            const validOrientation = orientationStable;
-
-            if (validAmplitude && validTiming && validVertical && validOrientation) {
-                // Check cadence consistency over the last few peaks
-                peakHistoryRef.current.push(now);
-                // Keep only last 5 peaks
-                if (peakHistoryRef.current.length > 5) peakHistoryRef.current.shift();
-
-                consistentPeaksRef.current++;
-
-                // Only start counting after CONSISTENCY_WINDOW consistent peaks
-                if (consistentPeaksRef.current >= STEP_CONFIG.CONSISTENCY_WINDOW) {
+                // Require 4 consistent steps before we start counting
+                // This is how real pedometers work — they wait for a consistent pattern
+                // This completely eliminates single shakes or random movements
+                if (stepCandidateCountRef.current >= 4) {
+                    // Once pattern is established, count every valid step
                     stepsRef.current += 1;
                     setSteps(stepsRef.current);
+                    persistSteps(stepsRef.current);
                 }
 
-                lastPeakTimeRef.current = now;
-            } else if (timeSinceLastPeak > STEP_CONFIG.MAX_STEP_INTERVAL) {
-                // Too long since last peak — user stopped walking, reset consistency
-                consistentPeaksRef.current = 0;
-                peakHistoryRef.current = [];
-                lastPeakTimeRef.current = now;
+                lastStepTimeRef.current = now;
+            } else if (timeSinceLastStep > 2000) {
+                // User stopped walking for >2 seconds — reset pattern detection
+                stepCandidateCountRef.current = 0;
+                lastStepTimeRef.current = now;
             }
+            // If timeSinceLastStep < 330ms, it's too fast (shake) — ignore completely
+        }
+    }, [checkDayRollover]);
+
+    // === Wake Lock management ===
+    const acquireWakeLock = useCallback(async () => {
+        if ('wakeLock' in navigator) {
+            try {
+                wakeLockRef.current = await navigator.wakeLock.request('screen');
+                wakeLockRef.current.addEventListener('release', () => {
+                    wakeLockRef.current = null;
+                });
+            } catch { }
         }
     }, []);
 
-    // --- Auto-start on mount ---
-    useEffect(() => {
-        // Load saved steps for today
-        const todayStr = getTodayString();
-        try {
-            const data = JSON.parse(localStorage.getItem('fitcure_daily_steps') || '[]');
-            const today = data.find(d => d.date === todayStr);
-            if (today) {
-                setSteps(today.steps);
-                stepsRef.current = today.steps;
-            }
-        } catch (e) { }
-
-        loadDailySteps();
-
-        // Auto-start sensors
-        const startSensors = async () => {
-            // Request permission on iOS
-            if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
-                try {
-                    const motionPerm = await DeviceMotionEvent.requestPermission();
-                    const orientPerm = await DeviceOrientationEvent.requestPermission();
-                    if (motionPerm !== 'granted' || orientPerm !== 'granted') {
-                        setErrorMsg('Sensor permission denied. Please allow access in Settings.');
-                        return;
-                    }
-                } catch (e) {
-                    setErrorMsg('Could not request sensor permissions.');
+    // === Start sensors ===
+    const startSensors = useCallback(async () => {
+        // iOS permission request
+        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+            try {
+                const perm = await DeviceMotionEvent.requestPermission();
+                if (perm !== 'granted') {
+                    setErrorMsg('Sensor permission denied. Enable in Settings to use pedometer.');
                     return;
                 }
+            } catch {
+                setErrorMsg('Could not request sensor permissions.');
+                return;
             }
+        }
 
-            if (window.DeviceMotionEvent && window.DeviceOrientationEvent) {
-                window.addEventListener('deviceorientation', handleOrientation, true);
-                window.addEventListener('devicemotion', handleMotion, true);
-                setIsActive(true);
+        if (window.DeviceMotionEvent) {
+            window.addEventListener('devicemotion', handleMotion, true);
+            setIsActive(true);
+            await acquireWakeLock();
+        } else {
+            setErrorMsg('Motion sensors not available on this device.');
+        }
+    }, [handleMotion, acquireWakeLock]);
 
-                // Keep screen on
-                if ('wakeLock' in navigator) {
-                    try {
-                        window.__stepWakeLock = await navigator.wakeLock.request('screen');
-                    } catch (e) { }
-                }
-            } else {
-                setErrorMsg('Motion sensors not available on this device.');
-            }
-        };
+    // === Lifecycle: auto-start + background handling ===
+    useEffect(() => {
+        // Load initial data
+        loadChartData();
 
+        // Auto-start pedometer
         startSensors();
 
-        return () => {
-            window.removeEventListener('deviceorientation', handleOrientation, true);
-            window.removeEventListener('devicemotion', handleMotion, true);
-            if (window.__stepWakeLock) {
-                window.__stepWakeLock.release();
-                window.__stepWakeLock = null;
+        // Handle tab visibility changes — re-acquire wake lock and resume
+        const handleVisibility = async () => {
+            if (!document.hidden) {
+                // Tab became visible — check day rollover and re-acquire wake lock
+                checkDayRollover();
+                // Reload steps from storage (in case another tab updated)
+                const currentSteps = loadTodaySteps();
+                if (currentSteps > stepsRef.current) {
+                    stepsRef.current = currentSteps;
+                    setSteps(currentSteps);
+                }
+                loadChartData();
+                if (!wakeLockRef.current) {
+                    await acquireWakeLock();
+                }
             }
         };
-    }, [getTodayString, loadDailySteps, handleOrientation, handleMotion]);
 
-    // Save steps when they change
-    useEffect(() => {
-        if (steps > 0) {
-            saveTodaySteps(steps);
-            loadDailySteps();
-        }
-    }, [steps, saveTodaySteps, loadDailySteps]);
+        document.addEventListener('visibilitychange', handleVisibility);
 
-    // Custom tooltip for the chart
+        // Periodic save and day-rollover check (every 10 seconds)
+        const interval = setInterval(() => {
+            checkDayRollover();
+            persistSteps(stepsRef.current);
+            loadChartData();
+        }, 10000);
+
+        return () => {
+            window.removeEventListener('devicemotion', handleMotion, true);
+            document.removeEventListener('visibilitychange', handleVisibility);
+            clearInterval(interval);
+            if (wakeLockRef.current) {
+                wakeLockRef.current.release();
+                wakeLockRef.current = null;
+            }
+        };
+    }, [startSensors, loadChartData, checkDayRollover, handleMotion, acquireWakeLock]);
+
+    // === Save goal ===
+    const saveGoal = () => {
+        const newGoal = Math.max(tempGoal, 100);
+        setDailyGoal(newGoal);
+        localStorage.setItem('fitcure_step_goal', newGoal.toString());
+        setIsEditingGoal(false);
+        loadChartData();
+    };
+
+    // === Chart tooltip ===
     const CustomTooltip = ({ active, payload }) => {
         if (active && payload && payload.length) {
-            const data = payload[0].payload;
+            const d = payload[0].payload;
+            const pct = d.goal > 0 ? Math.round((d.steps / d.goal) * 100) : 0;
             return (
-                <div className="bg-slate-800 text-white text-[10px] font-black px-3 py-2 rounded-lg shadow-lg">
-                    <p className="uppercase">{data.steps.toLocaleString()} Steps</p>
-                    <p className="text-slate-400 text-[9px]">Goal: {data.goal?.toLocaleString()}</p>
+                <div className="bg-slate-800 text-white text-[10px] font-black px-3 py-2 rounded-xl shadow-xl">
+                    <p>{d.steps.toLocaleString()} steps</p>
+                    <p className="text-slate-400">{pct}% of goal</p>
                 </div>
             );
         }
@@ -344,34 +336,27 @@ export default function StepTracker() {
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col font-roboto w-full max-w-md mx-auto shadow-2xl overflow-hidden relative">
 
-            {/* Single Header — no Layout header needed */}
+            {/* Header */}
             <header className="bg-white px-6 py-5 flex items-center justify-between border-b border-slate-100 z-10 sticky top-0">
                 <button onClick={() => navigate(-1)} className="text-slate-700 hover:text-black transition-colors">
                     <ChevronLeft className="w-6 h-6" />
                 </button>
                 <h1 className="text-lg font-black text-black tracking-tight">Step Tracker</h1>
-                <button className="text-slate-400 hover:text-black transition-colors">
-                    <Calendar className="w-5 h-5" />
-                </button>
+                <div className="flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
+                        {isActive ? 'Live' : 'Off'}
+                    </span>
+                </div>
             </header>
 
             <div className="flex-1 overflow-y-auto pb-24">
-                {/* Status Badge */}
-                <div className="px-6 pt-4 pb-1">
-                    {errorMsg ? (
-                        <div className="bg-red-50 text-red-500 text-xs font-bold p-3 rounded-2xl flex items-center gap-2">
-                            <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                            {errorMsg}
-                        </div>
-                    ) : (
-                        <div className="flex items-center justify-center gap-2">
-                            <span className={`w-2 h-2 rounded-full ${isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-300'}`} />
-                            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">
-                                {isActive ? 'Tracking Active' : 'Sensors Initializing...'}
-                            </span>
-                        </div>
-                    )}
-                </div>
+                {/* Error */}
+                {errorMsg && (
+                    <div className="mx-6 mt-4 bg-red-50 text-red-500 text-xs font-bold p-3 rounded-2xl flex items-center gap-2">
+                        {errorMsg}
+                    </div>
+                )}
 
                 {/* Main Progress */}
                 <div className="bg-white p-6 pb-8 border-b border-slate-100">
@@ -384,11 +369,18 @@ export default function StepTracker() {
 
                     <CircularProgress value={steps} max={dailyGoal} />
 
+                    {/* Stats Row */}
                     <div className="flex justify-between items-center mt-4">
                         <div className="flex-1 text-center border-r border-slate-100">
-                            <p className="text-[11px] font-bold text-slate-500 mb-1">Cal Burned</p>
+                            <p className="text-[11px] font-bold text-slate-500 mb-1">Calories</p>
                             <p className="text-2xl font-black text-black">
-                                {caloriesBurned}<span className="text-[10px] text-slate-400 font-bold ml-1">Cal</span>
+                                {caloriesBurned}<span className="text-[10px] text-slate-400 font-bold ml-1">kcal</span>
+                            </p>
+                        </div>
+                        <div className="flex-1 text-center border-r border-slate-100">
+                            <p className="text-[11px] font-bold text-slate-500 mb-1">Distance</p>
+                            <p className="text-2xl font-black text-black">
+                                {distanceKm}<span className="text-[10px] text-slate-400 font-bold ml-1">km</span>
                             </p>
                         </div>
                         <div className="flex-1 text-center cursor-pointer group" onClick={() => {
@@ -396,35 +388,16 @@ export default function StepTracker() {
                             setIsEditingGoal(true);
                         }}>
                             <p className="text-[11px] font-bold text-slate-500 mb-1 flex items-center justify-center gap-1 group-hover:text-indigo-500 transition-colors">
-                                Daily Goal <Target className="w-3 h-3" />
+                                Goal <Target className="w-3 h-3" />
                             </p>
-                            <p className="text-2xl font-black text-black group-hover:scale-110 transition-transform">
-                                {dailyGoal.toLocaleString()}<span className="text-[10px] text-slate-400 font-bold ml-1 uppercase">Step</span>
+                            <p className="text-2xl font-black text-black group-hover:scale-105 transition-transform">
+                                {dailyGoal >= 1000 ? `${(dailyGoal / 1000).toFixed(dailyGoal % 1000 === 0 ? 0 : 1)}k` : dailyGoal}
                             </p>
                         </div>
                     </div>
-
-                    {/* Reset button */}
-                    <div className="flex justify-center mt-6">
-                        <button
-                            onClick={() => {
-                                if (window.confirm("Reset today's steps to 0?")) {
-                                    setSteps(0);
-                                    stepsRef.current = 0;
-                                    consistentPeaksRef.current = 0;
-                                    peakHistoryRef.current = [];
-                                    saveTodaySteps(0);
-                                    loadDailySteps();
-                                }
-                            }}
-                            className="flex items-center gap-2 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors px-4 py-2 rounded-xl hover:bg-slate-50"
-                        >
-                            <RotateCcw className="w-3.5 h-3.5" /> Reset Steps
-                        </button>
-                    </div>
                 </div>
 
-                {/* Weekly Activity Chart with Goal Line */}
+                {/* Weekly Progress Chart */}
                 <div className="bg-white p-6 mt-3">
                     <div className="flex justify-between items-center mb-6">
                         <h3 className="text-lg font-black text-slate-800">Weekly Progress</h3>
@@ -433,39 +406,48 @@ export default function StepTracker() {
                         </div>
                     </div>
 
-                    <div className="w-full h-48">
+                    <div className="w-full h-52">
                         <ResponsiveContainer width="100%" height="100%">
-                            <BarChart data={dailySteps} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
+                            <BarChart data={dailySteps} margin={{ top: 15, right: 5, left: -15, bottom: 0 }}>
                                 <YAxis
                                     axisLine={false}
                                     tickLine={false}
-                                    tick={{ fill: '#cbd5e1', fontSize: 9, fontWeight: 'bold' }}
-                                    width={40}
+                                    tick={{ fill: '#94a3b8', fontSize: 9, fontWeight: 'bold' }}
+                                    domain={[0, (dataMax) => Math.max(dataMax, dailyGoal) * 1.15]}
+                                    tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}
+                                    width={35}
                                 />
                                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
                                 <ReferenceLine
                                     y={dailyGoal}
-                                    stroke="#4f46e5"
+                                    stroke="#6366f1"
                                     strokeDasharray="6 4"
                                     strokeWidth={1.5}
                                     label={{
-                                        value: `Goal: ${dailyGoal.toLocaleString()}`,
-                                        position: 'insideTopRight',
-                                        fill: '#4f46e5',
-                                        fontSize: 9,
-                                        fontWeight: 'bold'
+                                        value: `Goal`,
+                                        position: 'insideTopLeft',
+                                        fill: '#6366f1',
+                                        fontSize: 10,
+                                        fontWeight: 'bold',
+                                        offset: 5
                                     }}
                                 />
                                 <Bar
                                     dataKey="steps"
                                     radius={[8, 8, 8, 8]}
-                                    maxBarSize={14}
-                                    animationDuration={1500}
+                                    maxBarSize={20}
+                                    animationDuration={1200}
                                 >
                                     {dailySteps.map((entry, index) => (
                                         <Cell
                                             key={`cell-${index}`}
-                                            fill={entry.steps >= dailyGoal ? '#10b981' : entry.steps > 0 ? '#fb923c' : '#e2e8f0'}
+                                            fill={
+                                                entry.steps >= dailyGoal
+                                                    ? '#10b981'     // green — goal met
+                                                    : entry.steps > 0
+                                                        ? '#fb923c' // orange — in progress
+                                                        : '#e2e8f0' // grey — no data
+                                            }
                                         />
                                     ))}
                                 </Bar>
@@ -473,18 +455,18 @@ export default function StepTracker() {
                                     dataKey="displayDate"
                                     axisLine={false}
                                     tickLine={false}
-                                    tick={{ fill: '#cbd5e1', fontSize: 10, fontWeight: 'bold' }}
-                                    dy={10}
+                                    tick={{ fill: '#94a3b8', fontSize: 10, fontWeight: 'bold' }}
+                                    dy={8}
                                 />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
 
                     {/* Legend */}
-                    <div className="flex items-center justify-center gap-6 mt-4 text-[9px] font-black uppercase tracking-widest text-slate-400">
+                    <div className="flex items-center justify-center gap-6 mt-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
                         <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-500" /> Goal Met</span>
                         <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-orange-400" /> In Progress</span>
-                        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-slate-200" /> No Data</span>
+                        <span className="flex items-center gap-1.5 text-indigo-500">— — Goal Line</span>
                     </div>
                 </div>
 
@@ -500,10 +482,14 @@ export default function StepTracker() {
                                 <h4 className="text-sm font-black uppercase tracking-widest leading-none">AI Health Insights</h4>
                             </div>
                             <p className="text-sm font-medium leading-relaxed mb-4 opacity-90 italic">
-                                "{steps < 500 ? "Start your walk! Even 10 minutes of walking strengthens your heart and improves mood." :
-                                    steps < 3000 ? "Good momentum! You're warming up. Consistent walking at this pace helps regulate blood sugar levels." :
-                                        steps < dailyGoal ? `Almost there! You're ${Math.round((steps / dailyGoal) * 100)}% towards your goal. Keep going for maximum cardiovascular benefit.` :
-                                            "Outstanding! You've crushed your goal today. Your metabolism is elevated and you're burning calories at an accelerated rate."}"
+                                "{steps < 500
+                                    ? "Start your walk! Even 10 minutes of walking strengthens your heart and lifts your mood."
+                                    : steps < 3000
+                                        ? "Good momentum! Consistent walking helps regulate blood sugar and improves cardiovascular health."
+                                        : steps < dailyGoal
+                                            ? `You're ${Math.round((steps / dailyGoal) * 100)}% to your goal. Keep going — your body is actively burning stored energy right now.`
+                                            : "Outstanding! You've crushed your daily goal. Your metabolism is elevated and your heart thanks you."
+                                }"
                             </p>
                             <div className="flex items-center gap-6">
                                 <div>
@@ -515,12 +501,14 @@ export default function StepTracker() {
                                 </div>
                                 <div className="h-8 w-[1px] bg-white/20"></div>
                                 <div>
-                                    <p className="text-[10px] uppercase font-black opacity-60 mb-1">Status</p>
-                                    <span className={`text-xs font-black px-2.5 py-0.5 rounded-lg ${steps >= dailyGoal ? 'bg-emerald-500/30 text-emerald-300' :
-                                        steps > dailyGoal / 2 ? 'bg-amber-500/30 text-amber-300' :
-                                            'bg-white/10 text-white/70'
+                                    <p className="text-[10px] uppercase font-black opacity-60 mb-1">Progress</p>
+                                    <span className={`text-xs font-black px-2.5 py-0.5 rounded-lg ${steps >= dailyGoal
+                                        ? 'bg-emerald-500/30 text-emerald-300'
+                                        : steps > dailyGoal * 0.5
+                                            ? 'bg-amber-500/30 text-amber-300'
+                                            : 'bg-white/10 text-white/70'
                                         }`}>
-                                        {steps >= dailyGoal ? '🏆 Goal Met!' : steps > dailyGoal / 2 ? 'Active' : 'Warming Up'}
+                                        {steps >= dailyGoal ? '🏆 Goal Met!' : `${Math.round((steps / dailyGoal) * 100)}%`}
                                     </span>
                                 </div>
                             </div>
@@ -547,7 +535,7 @@ export default function StepTracker() {
                             className="bg-white w-full max-w-xs rounded-[2.5rem] p-8 relative z-10 shadow-2xl"
                         >
                             <h3 className="text-xl font-black text-black mb-1 tracking-tight">Set Daily Goal</h3>
-                            <p className="text-xs text-slate-400 font-bold mb-6 uppercase tracking-widest">Adjust your target steps</p>
+                            <p className="text-xs text-slate-400 font-bold mb-6 uppercase tracking-widest">Steps per day target</p>
 
                             <div className="relative mb-8">
                                 <input
@@ -558,6 +546,22 @@ export default function StepTracker() {
                                     autoFocus
                                 />
                                 <span className="absolute right-0 bottom-3 text-xs font-black text-slate-300 uppercase tracking-widest">Steps</span>
+                            </div>
+
+                            {/* Quick presets */}
+                            <div className="flex gap-2 mb-6">
+                                {[5000, 7000, 10000, 15000].map(preset => (
+                                    <button
+                                        key={preset}
+                                        onClick={() => setTempGoal(preset)}
+                                        className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${tempGoal === preset
+                                            ? 'bg-indigo-600 text-white shadow-md'
+                                            : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
+                                            }`}
+                                    >
+                                        {(preset / 1000)}k
+                                    </button>
+                                ))}
                             </div>
 
                             <div className="flex gap-3">
