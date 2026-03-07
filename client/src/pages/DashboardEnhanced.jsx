@@ -425,6 +425,11 @@ export default function DashboardEnhanced() {
             <Upload className="w-5 h-5" />
             <span className="text-sm font-black uppercase tracking-wider">Upload Report</span>
           </button>
+
+          {/* Pedometer Card - Right below upload */}
+          <div className="mt-3">
+            <StepCounter />
+          </div>
         </div>
 
         {/* Enhanced Header with Greeting, Stats, and Search - Hidden on mobile */}
@@ -490,137 +495,109 @@ export default function DashboardEnhanced() {
             <Upload className="w-6 h-6 group-hover:scale-110 transition-transform" />
             <span className="text-base font-black uppercase tracking-widest">Upload Health Report</span>
           </button>
-        </div>
 
-        {/* Premium Day Selector Card - Matching Image 2 */}
-        <div className="px-3 md:px-0 mb-6 font-roboto">
-          <div className="bg-white rounded-[2.5rem] p-6 shadow-xl border border-slate-100 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#2FC8B9]/10 rounded-full blur-3xl"></div>
-            <div className="flex items-center justify-between mb-8 px-2 relative z-10">
-              <button onClick={handlePrevDate} className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-black transition-all hover:bg-[#2FC8B9] hover:text-white hover:scale-110 active:scale-95">
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-              <h2 className="text-base sm:text-lg font-black text-black flex items-center gap-2 tracking-tight">
-                {selectedDate.toDateString() === new Date().toDateString() ? 'Today, ' : ''}
-                {selectedDate.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
-              </h2>
-              <button onClick={handleNextDate} className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-black transition-all hover:bg-[#2FC8B9] hover:text-white hover:scale-110 active:scale-95 rotate-180">
-                <ArrowLeft className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="flex justify-between items-end gap-1 overflow-visible pb-2 sm:overflow-x-auto sm:scrollbar-hide">
-              {(() => {
-                const daysOfWeek = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-                const weekDays = [];
-                // Generate a window of 7 days around selectedDate
-                const start = new Date(selectedDate);
-                start.setDate(start.getDate() - 3);
-
-                for (let i = 0; i < 7; i++) {
-                  const date = new Date(start);
-                  date.setDate(date.getDate() + i);
-                  weekDays.push({
-                    label: daysOfWeek[date.getDay()],
-                    date: date.getDate(),
-                    fullDate: date,
-                    isToday: date.toDateString() === new Date().toDateString()
-                  });
-                }
-
-                return weekDays.map((dayInfo, index) => {
-                  const isToday = dayInfo.isToday;
-                  const isSelected = selectedDate.toDateString() === dayInfo.fullDate.toDateString();
-
-                  // Calculate completion based on actual data
-                  let completionPercentage = 0;
-                  const dateStr = dayInfo.fullDate.toDateString();
-
-                  // 1. Nutrition Progress
-                  const nutData = isSelected ? nutritionData : null;
-                  const nutritionProgress = nutData?.totalCalories && nutData?.calorieGoal
-                    ? Math.min((nutData.totalCalories / nutData.calorieGoal) * 100, 100)
-                    : 0;
-
-                  // 2. Challenge Progress
-                  const challengeTasks = dashboardData?.user?.challengeData?.[dayInfo.date] || {};
-                  const completedTasksCount = Object.values(challengeTasks).filter(Boolean).length;
-                  const challengeProgress = (completedTasksCount / 4) * 100;
-
-                  // 3. Sleep Progress (from localStorage)
-                  const sleepHistory = JSON.parse(localStorage.getItem('sleep_history') || '[]');
-                  const daySleep = sleepHistory.find(r => new Date(r.date).toDateString() === dateStr);
-                  let sleepProgress = 0;
-                  if (daySleep) {
-                    const totalMinutes = parseInt(daySleep.hours) * 60 + parseInt(daySleep.minutes);
-                    sleepProgress = Math.min((totalMinutes / 480) * 100, 100); // 8h target
-                  }
-
-                  // 4. Diet Logs status
-                  const dietProgress = (nutritionProgress > 0) ? 100 : 0;
-
-                  if (dayInfo.fullDate > new Date()) {
-                    // Don't show progress for future dates
-                    completionPercentage = 0;
-                  } else if (isSelected) {
-                    // Weighted average for the selected day
-                    completionPercentage = Math.round(
-                      (nutritionProgress * 0.3) +
-                      (sleepProgress * 0.2) +
-                      (challengeProgress * 0.3) +
-                      (dietProgress * 0.2)
-                    );
-                  } else {
-                    // For other days, primarily show challenge and sleep completion
-                    completionPercentage = challengeProgress;
-                    if (sleepProgress > 0) {
-                      completionPercentage = Math.round((completionPercentage * 0.6) + (sleepProgress * 0.4));
-                    }
-
-                    // Don't show fallback data for past days - only show actual data
-                    // This prevents new users from seeing fake historical data
-                  }
-
-                  return (
-                    <div
-                      key={index}
-                      className="flex flex-col items-center gap-2 flex-1 min-w-0 cursor-pointer relative z-10"
-                      onClick={() => setSelectedDate(dayInfo.fullDate)}
-                    >
-                      <span className={`text-[9px] font-black uppercase tracking-tight transition-colors ${isSelected ? 'text-[#2FC8B9]' : 'text-slate-500'}`}>
-                        {dayInfo.label}
-                      </span>
-
-                      <div className={`w-9 h-9 sm:w-12 sm:h-12 rounded-full flex items-center justify-center relative transition-all duration-300 ${isSelected ? 'bg-white shadow-[0_0_20px_rgba(47,200,185,0.4)] scale-110 ring-2 ring-[#2FC8B9]' : 'bg-slate-50 hover:bg-slate-100 border border-slate-100'
-                        }`}>
-                        {/* Dynamic SVG Ring */}
-                        <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 48 48">
-                          <circle cx="24" cy="24" r="21" fill="none" stroke={isSelected ? '#F8FAFC' : 'rgba(255,255,255,0.1)'} strokeWidth="3" />
-                          <circle
-                            cx="24" cy="24" r="21" fill="none"
-                            stroke="#2FC8B9" strokeWidth="3"
-                            strokeDasharray={`${(completionPercentage / 100) * 132} 132`}
-                            strokeLinecap="round"
-                            className="transition-all duration-1000"
-                          />
-                        </svg>
-
-                        {isToday ? (
-                          <Flame className={`w-5 h-5 ${isSelected ? 'text-orange-500 fill-orange-500' : 'text-orange-400'}`} />
-                        ) : null}
-
-                      </div>
-
-                      <span className={`text-xs font-black transition-all ${isSelected ? 'text-black scale-110' : 'text-slate-400'}`}>
-                        {dayInfo.date}
-                      </span>
-                    </div>
-                  );
-                });
-              })()}
-            </div>
+          {/* Pedometer Card - Right below upload (desktop) */}
+          <div className="mt-4">
+            <StepCounter />
           </div>
         </div>
+
+        {/* Premium Day Selector Card - Hidden */}
+        {false && (
+          <div className="px-3 md:px-0 mb-6 font-roboto">
+            <div className="bg-white rounded-[2.5rem] p-6 shadow-xl border border-slate-100 relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-[#2FC8B9]/10 rounded-full blur-3xl"></div>
+              <div className="flex items-center justify-between mb-8 px-2 relative z-10">
+                <button onClick={handlePrevDate} className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-black transition-all hover:bg-[#2FC8B9] hover:text-white hover:scale-110 active:scale-95">
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <h2 className="text-base sm:text-lg font-black text-black flex items-center gap-2 tracking-tight">
+                  {selectedDate.toDateString() === new Date().toDateString() ? 'Today, ' : ''}
+                  {selectedDate.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
+                </h2>
+                <button onClick={handleNextDate} className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-black transition-all hover:bg-[#2FC8B9] hover:text-white hover:scale-110 active:scale-95 rotate-180">
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex justify-between items-end gap-1 overflow-visible pb-2 sm:overflow-x-auto sm:scrollbar-hide">
+                {(() => {
+                  const daysOfWeek = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+                  const weekDays = [];
+                  const start = new Date(selectedDate);
+                  start.setDate(start.getDate() - 3);
+
+                  for (let i = 0; i < 7; i++) {
+                    const date = new Date(start);
+                    date.setDate(date.getDate() + i);
+                    weekDays.push({
+                      label: daysOfWeek[date.getDay()],
+                      date: date.getDate(),
+                      fullDate: date,
+                      isToday: date.toDateString() === new Date().toDateString()
+                    });
+                  }
+
+                  return weekDays.map((dayInfo, index) => {
+                    const isToday = dayInfo.isToday;
+                    const isSelected = selectedDate.toDateString() === dayInfo.fullDate.toDateString();
+                    let completionPercentage = 0;
+                    const dateStr = dayInfo.fullDate.toDateString();
+                    const nutData = isSelected ? nutritionData : null;
+                    const nutritionProgress = nutData?.totalCalories && nutData?.calorieGoal
+                      ? Math.min((nutData.totalCalories / nutData.calorieGoal) * 100, 100)
+                      : 0;
+                    const challengeTasks = dashboardData?.user?.challengeData?.[dayInfo.date] || {};
+                    const completedTasksCount = Object.values(challengeTasks).filter(Boolean).length;
+                    const challengeProgress = (completedTasksCount / 4) * 100;
+                    const sleepHistory = JSON.parse(localStorage.getItem('sleep_history') || '[]');
+                    const daySleep = sleepHistory.find(r => new Date(r.date).toDateString() === dateStr);
+                    let sleepProgress = 0;
+                    if (daySleep) {
+                      const totalMinutes = parseInt(daySleep.hours) * 60 + parseInt(daySleep.minutes);
+                      sleepProgress = Math.min((totalMinutes / 480) * 100, 100);
+                    }
+                    const dietProgress = (nutritionProgress > 0) ? 100 : 0;
+                    if (dayInfo.fullDate > new Date()) {
+                      completionPercentage = 0;
+                    } else if (isSelected) {
+                      completionPercentage = Math.round(
+                        (nutritionProgress * 0.3) + (sleepProgress * 0.2) + (challengeProgress * 0.3) + (dietProgress * 0.2)
+                      );
+                    } else {
+                      completionPercentage = challengeProgress;
+                      if (sleepProgress > 0) {
+                        completionPercentage = Math.round((completionPercentage * 0.6) + (sleepProgress * 0.4));
+                      }
+                    }
+
+                    return (
+                      <div
+                        key={index}
+                        className="flex flex-col items-center gap-2 flex-1 min-w-0 cursor-pointer relative z-10"
+                        onClick={() => setSelectedDate(dayInfo.fullDate)}
+                      >
+                        <span className={`text-[9px] font-black uppercase tracking-tight transition-colors ${isSelected ? 'text-[#2FC8B9]' : 'text-slate-500'}`}>
+                          {dayInfo.label}
+                        </span>
+                        <div className={`w-9 h-9 sm:w-12 sm:h-12 rounded-full flex items-center justify-center relative transition-all duration-300 ${isSelected ? 'bg-white shadow-[0_0_20px_rgba(47,200,185,0.4)] scale-110 ring-2 ring-[#2FC8B9]' : 'bg-slate-50 hover:bg-slate-100 border border-slate-100'}`}>
+                          <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 48 48">
+                            <circle cx="24" cy="24" r="21" fill="none" stroke={isSelected ? '#F8FAFC' : 'rgba(255,255,255,0.1)'} strokeWidth="3" />
+                            <circle cx="24" cy="24" r="21" fill="none" stroke="#2FC8B9" strokeWidth="3" strokeDasharray={`${(completionPercentage / 100) * 132} 132`} strokeLinecap="round" className="transition-all duration-1000" />
+                          </svg>
+                          {isToday ? (<Flame className={`w-5 h-5 ${isSelected ? 'text-orange-500 fill-orange-500' : 'text-orange-400'}`} />) : null}
+                        </div>
+                        <span className={`text-xs font-black transition-all ${isSelected ? 'text-black scale-110' : 'text-slate-400'}`}>
+                          {dayInfo.date}
+                        </span>
+                      </div>
+                    );
+                  });
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Sleep Tracker Modal */}
         <SleepTracker isOpen={sleepTrackerOpen} onClose={() => setSleepTrackerOpen(false)} />
@@ -744,8 +721,6 @@ export default function DashboardEnhanced() {
 
         {/* Activity & Management Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mx-3 md:mx-0">
-          {/* Direct Step Counter Component */}
-          <StepCounter />
 
           {/* Diabetes Management Card */}
           <Link
