@@ -1,47 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { Footprints, Flame, ChevronRight, Activity } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
-const getTodayString = () => {
-    const t = new Date();
-    return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}`;
-};
+import { usePedometer } from '../context/PedometerContext';
 
 const StepMiniCard = () => {
-    const [steps, setSteps] = useState(0);
-    const [dailyGoal, setDailyGoal] = useState(7000);
-
-    useEffect(() => {
-        const loadData = () => {
-            // Load goal
-            const savedGoal = localStorage.getItem('fitcure_step_goal');
-            if (savedGoal) setDailyGoal(parseInt(savedGoal));
-
-            // Load today's steps
-            const todayStr = getTodayString();
-            try {
-                const data = JSON.parse(localStorage.getItem('fitcure_daily_steps') || '[]');
-                const today = data.find(d => d.date === todayStr);
-                if (today) setSteps(today.steps);
-                else setSteps(0);
-            } catch { setSteps(0); }
-        };
-
-        loadData();
-
-        // Poll every 2 seconds for live updates
-        const interval = setInterval(loadData, 2000);
-
-        // Listen for cross-tab storage events
-        const handleStorage = () => loadData();
-        window.addEventListener('storage', handleStorage);
-
-        return () => {
-            clearInterval(interval);
-            window.removeEventListener('storage', handleStorage);
-        };
-    }, []);
+    const { steps, dailyGoal } = usePedometer();
 
     const progress = Math.min((steps / Math.max(dailyGoal, 1)) * 100, 100);
     const calories = Math.round(steps * 0.04);

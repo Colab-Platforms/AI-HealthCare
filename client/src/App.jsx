@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
+import { PedometerProvider } from './context/PedometerContext';
 import Layout from './components/Layout';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import GenericSkeleton from './components/skeletons/GenericSkeleton';
@@ -74,50 +75,52 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-white">
-      <PWAInstallPrompt />
-      <Routes>
-        <Route path="/" element={<Landing />} />
-        <Route path="/login" element={getLoginRedirect()} />
-        <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Register />} />
-        <Route path="/register/doctor" element={user ? <Navigate to="/doctor/dashboard" /> : <DoctorRegister />} />
-        <Route path="/forgot-password" element={user ? <Navigate to="/dashboard" /> : <ForgotPassword />} />
+    <PedometerProvider>
+      <div className="min-h-screen bg-white">
+        <PWAInstallPrompt />
+        <Routes>
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={getLoginRedirect()} />
+          <Route path="/register" element={user ? <Navigate to="/dashboard" /> : <Register />} />
+          <Route path="/register/doctor" element={user ? <Navigate to="/doctor/dashboard" /> : <DoctorRegister />} />
+          <Route path="/forgot-password" element={user ? <Navigate to="/dashboard" /> : <ForgotPassword />} />
 
-        {/* Patient Routes */}
-        <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><DashboardEnhanced /></Layout></ProtectedRoute>} />
-        <Route path="/upload" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><UploadReport /></Layout></ProtectedRoute>} />
-        <Route path="/reports" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><AllReports /></Layout></ProtectedRoute>} />
-        <Route path="/reports/:id" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><ReportAnalysisMobile /></Layout></ProtectedRoute>} />
-        <Route path="/reports/:id/summary" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><ReportSummary /></Layout></ProtectedRoute>} />
-        <Route path="/challenge" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Challenge30Days /></Layout></ProtectedRoute>} />
-        <Route path="/diabetes" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><DiabetesCare /></Layout></ProtectedRoute>} />
-        <Route path="/doctors" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Doctors /></Layout></ProtectedRoute>} />
-        <Route path="/consultation/:appointmentId" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Consultation /></ProtectedRoute>} />
-        <Route path="/consultation-summary/:appointmentId" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><ConsultationSummary /></Layout></ProtectedRoute>} />
-        <Route path="/wearables" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Wearables /></Layout></ProtectedRoute>} />
-        <Route path="/nutrition" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Nutrition /></Layout></ProtectedRoute>} />
-        <Route path="/quick-food-scan" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><QuickFoodScan /></Layout></ProtectedRoute>} />
-        <Route path="/glucose-log" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><GlucoseLog /></Layout></ProtectedRoute>} />
-        <Route path="/vital-signs" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><VitalSigns /></Layout></ProtectedRoute>} />
-        <Route path="/supplements" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Supplements /></Layout></ProtectedRoute>} />
-        <Route path="/subscription" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Subscription /></Layout></ProtectedRoute>} />
-        <Route path="/diet-plan" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><DietPlan /></Layout></ProtectedRoute>} />
-        <Route path="/step-tracker" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><StepTracker /></Layout></ProtectedRoute>} />
-        <Route path="/ai-chat" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><AIChat /></Layout></ProtectedRoute>} />
+          {/* Patient Routes */}
+          <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><DashboardEnhanced /></Layout></ProtectedRoute>} />
+          <Route path="/upload" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><UploadReport /></Layout></ProtectedRoute>} />
+          <Route path="/reports" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><AllReports /></Layout></ProtectedRoute>} />
+          <Route path="/reports/:id" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><ReportAnalysisMobile /></Layout></ProtectedRoute>} />
+          <Route path="/reports/:id/summary" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><ReportSummary /></Layout></ProtectedRoute>} />
+          <Route path="/challenge" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Challenge30Days /></Layout></ProtectedRoute>} />
+          <Route path="/diabetes" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><DiabetesCare /></Layout></ProtectedRoute>} />
+          <Route path="/doctors" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Doctors /></Layout></ProtectedRoute>} />
+          <Route path="/consultation/:appointmentId" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Consultation /></ProtectedRoute>} />
+          <Route path="/consultation-summary/:appointmentId" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><ConsultationSummary /></Layout></ProtectedRoute>} />
+          <Route path="/wearables" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Wearables /></Layout></ProtectedRoute>} />
+          <Route path="/nutrition" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Nutrition /></Layout></ProtectedRoute>} />
+          <Route path="/quick-food-scan" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><QuickFoodScan /></Layout></ProtectedRoute>} />
+          <Route path="/glucose-log" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><GlucoseLog /></Layout></ProtectedRoute>} />
+          <Route path="/vital-signs" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><VitalSigns /></Layout></ProtectedRoute>} />
+          <Route path="/supplements" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Supplements /></Layout></ProtectedRoute>} />
+          <Route path="/subscription" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Subscription /></Layout></ProtectedRoute>} />
+          <Route path="/diet-plan" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><DietPlan /></Layout></ProtectedRoute>} />
+          <Route path="/step-tracker" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><StepTracker /></Layout></ProtectedRoute>} />
+          <Route path="/ai-chat" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><AIChat /></Layout></ProtectedRoute>} />
 
-        {/* Doctor Routes */}
-        <Route path="/doctor/dashboard" element={<DoctorRoute><Layout isDoctor><DoctorDashboard /></Layout></DoctorRoute>} />
-        <Route path="/doctor/availability" element={<DoctorRoute><Layout isDoctor><DoctorAvailability /></Layout></DoctorRoute>} />
-        <Route path="/patient/:patientId" element={<DoctorRoute><Layout isDoctor><PatientProfile /></Layout></DoctorRoute>} />
+          {/* Doctor Routes */}
+          <Route path="/doctor/dashboard" element={<DoctorRoute><Layout isDoctor><DoctorDashboard /></Layout></DoctorRoute>} />
+          <Route path="/doctor/availability" element={<DoctorRoute><Layout isDoctor><DoctorAvailability /></Layout></DoctorRoute>} />
+          <Route path="/patient/:patientId" element={<DoctorRoute><Layout isDoctor><PatientProfile /></Layout></DoctorRoute>} />
 
-        {/* Shared Routes */}
-        <Route path="/profile" element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
+          {/* Shared Routes */}
+          <Route path="/profile" element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
 
-        {/* Admin Routes */}
-        <Route path="/admin" element={<AdminRoute><Layout isAdmin><AdminDashboard /></Layout></AdminRoute>} />
+          {/* Admin Routes */}
+          <Route path="/admin" element={<AdminRoute><Layout isAdmin><AdminDashboard /></Layout></AdminRoute>} />
 
-        <Route path="/demo" element={<DemoPreview />} />
-      </Routes>
-    </div>
+          <Route path="/demo" element={<DemoPreview />} />
+        </Routes>
+      </div>
+    </PedometerProvider>
   );
 }
