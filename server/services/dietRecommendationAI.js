@@ -108,7 +108,8 @@ CRITICAL INSTRUCTIONS:
 9. DO NOT provide more than 4 options per meal.
 10. Each meal option MUST include: name, description, calories, protein, and benefits.
 11. Ensure variety - no two options should be similar (e.g., don't have two rice-based meals).
-12. ${promptExtension || ''}
+12. If the user wants to REGENERATE, you MUST provide COMPLETELY DIFFERENT meal options from the standard examples. Give them a fresh variety of new Indian foods.
+13. ${promptExtension || ''}
 
 RETURN JSON ONLY:
 {

@@ -185,6 +185,7 @@ export default function DietPlan() {
   const [likedMeals, setLikedMeals] = useState({});
   const [loggedMeals, setLoggedMeals] = useState({});
   const [showFoodPreferences, setShowFoodPreferences] = useState(false);
+  const [showRegenerateOptions, setShowRegenerateOptions] = useState(false);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -257,12 +258,13 @@ export default function DietPlan() {
     }
   };
 
-  const generateAIPlan = async () => {
+  const generateAIPlan = async (isRegenerate = false, usePreferences = true) => {
+    if (isRegenerate) setShowRegenerateOptions(false);
     setGenerating(true);
     try {
-      const { data } = await dietRecommendationService.generateDietPlan();
+      const { data } = await dietRecommendationService.generateDietPlan({ isRegenerate, usePreferences });
       if (data.success) {
-        toast.success('Diet plan generated successfully!');
+        toast.success(isRegenerate ? 'Diet plan regenerated successfully!' : 'Diet plan generated successfully!');
         fetchPersonalizedPlan();
         fetchPlanHistory();
       } else {
@@ -379,7 +381,7 @@ export default function DietPlan() {
 
             {personalizedPlan && (
               <button
-                onClick={generateAIPlan}
+                onClick={() => setShowRegenerateOptions(true)}
                 disabled={generating}
                 className="flex-1 sm:flex-none flex items-center justify-center gap-2 px-4 py-2 bg-black text-white rounded-xl font-bold text-xs hover:bg-slate-800 transition-all disabled:opacity-50 shadow-lg shadow-black/10"
               >
@@ -427,7 +429,7 @@ export default function DietPlan() {
               </div>
               {user?.nutritionGoal?.calorieGoal && (
                 <button
-                  onClick={generateAIPlan}
+                  onClick={() => generateAIPlan(false)}
                   disabled={generating}
                   className="px-8 py-4 bg-[#2FC8B9] text-white rounded-2xl font-black uppercase text-sm shadow-lg disabled:opacity-50 hover:bg-[#25a89b] transition-colors shrink-0"
                 >
@@ -670,7 +672,7 @@ export default function DietPlan() {
                       Add Favorite Foods
                     </button>
                     <button
-                      onClick={generateAIPlan}
+                      onClick={() => setShowRegenerateOptions(true)}
                       disabled={generating}
                       className="px-6 py-3 bg-black text-white rounded-xl text-xs font-black uppercase hover:bg-slate-800 disabled:opacity-50 flex items-center gap-2 transition-all shadow-lg"
                     >
@@ -712,6 +714,52 @@ export default function DietPlan() {
       {/* Food Preferences Modal */}
       {showFoodPreferences && (
         <FoodPreferences onClose={() => setShowFoodPreferences(false)} />
+      )}
+
+      {/* Regenerate Options Modal */}
+      {showRegenerateOptions && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 transition-opacity duration-300" onClick={() => setShowRegenerateOptions(false)}>
+          <div className="bg-white rounded-3xl p-6 w-full max-w-md animate-in zoom-in-95 duration-200 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl font-black text-slate-800 uppercase tracking-tight">Regenerate Plan</h3>
+              <button onClick={() => setShowRegenerateOptions(false)} className="p-2 hover:bg-slate-100 rounded-full transition-colors bg-slate-50">
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <button
+                onClick={() => generateAIPlan(true, true)}
+                className="w-full text-left p-5 rounded-2xl border-2 border-[#2FC8B9] bg-[#2FC8B9]/5 hover:bg-[#2FC8B9]/10 transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-[#2FC8B9]/10"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-[#2FC8B9] flex items-center justify-center text-white shrink-0 shadow-inner">
+                    <Heart className="w-6 h-6 fill-white" />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-black">Based on My Preferences</h4>
+                    <p className="text-xs text-slate-500 font-bold mt-1 leading-relaxed">Strictly follow my logged favorite foods and dietary restrictions.</p>
+                  </div>
+                </div>
+              </button>
+
+              <button
+                onClick={() => generateAIPlan(true, false)}
+                className="w-full text-left p-5 rounded-2xl border-2 border-indigo-200 bg-indigo-50 hover:bg-indigo-100 transition-all hover:scale-[1.02] hover:shadow-lg hover:shadow-indigo-500/10"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-indigo-500 flex items-center justify-center text-white shrink-0 shadow-inner">
+                    <Sparkles className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-indigo-900">Random Variety</h4>
+                    <p className="text-xs text-indigo-700/80 font-bold mt-1 leading-relaxed">Explore new healthily-aligned meals (ignores preferences).</p>
+                  </div>
+                </div>
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

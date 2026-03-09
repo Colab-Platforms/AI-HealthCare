@@ -18,7 +18,7 @@ import BMIWidget from '../components/BMIWidget';
 import SleepTracker from '../components/SleepTracker';
 import DashboardSkeleton from '../components/skeletons/DashboardSkeleton';
 import NotificationPanel, { useNotificationCount } from '../components/NotificationPanel';
-import StepCounter from '../components/StepCounter';
+import HealthScoreCard from '../components/HealthScoreCard';
 import { healthService } from '../services/api';
 
 // Animated Progress Ring Component
@@ -68,9 +68,22 @@ const ProgressRing = ({ progress, size = 120, strokeWidth = 8 }) => {
 };
 
 // Diet Adherence Display Card
-const DietAdherenceCard = ({ score, status, loggedCount, totalLogged, motivation, macros, missedMeal }) => {
+const DietAdherenceCard = ({ score, status, loggedCount, totalLogged, motivation, macros, missedMeal, activeDietPlan }) => {
   const navigate = useNavigate();
   const customLogsCount = Math.max(0, totalLogged - loggedCount);
+
+  // Determine current meal type based on time
+  const currentHour = new Date().getHours();
+  let currentMealType = 'breakfast';
+  let mealLabel = 'Breakfast';
+
+  if (currentHour >= 5 && currentHour < 10) { currentMealType = 'breakfast'; mealLabel = 'Breakfast'; }
+  else if (currentHour >= 10 && currentHour < 12) { currentMealType = 'midMorningSnack'; mealLabel = 'Mid-Morning Snack'; }
+  else if (currentHour >= 12 && currentHour < 15) { currentMealType = 'lunch'; mealLabel = 'Lunch'; }
+  else if (currentHour >= 15 && currentHour < 19) { currentMealType = 'eveningSnack'; mealLabel = 'Evening Snack'; }
+  else if (currentHour >= 19 || currentHour < 5) { currentMealType = 'dinner'; mealLabel = 'Dinner'; }
+
+  const currentMeals = activeDietPlan?.mealPlan?.[currentMealType] || [];
 
   return (
     <motion.div
@@ -154,6 +167,40 @@ const DietAdherenceCard = ({ score, status, loggedCount, totalLogged, motivation
             </div>
           </div>
         ))}
+      </div>
+
+      {/* Current Meal - Horizontal Scrollable */}
+      <div className="mt-4 pt-3 border-t border-slate-50 relative z-10">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-[9px] font-black text-[#2FC8B9] uppercase tracking-widest">⏰ {mealLabel} Options</span>
+          <span className="text-[8px] font-black text-slate-300 uppercase tracking-wider">
+            {currentMeals.length} items
+          </span>
+        </div>
+        {currentMeals.length > 0 ? (
+          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1">
+            {currentMeals.map((meal, idx) => (
+              <div
+                key={idx}
+                className="min-w-[130px] max-w-[150px] bg-slate-50 rounded-xl p-2.5 border border-slate-100 shrink-0 hover:border-[#2FC8B9]/30 transition-colors"
+              >
+                <p className="text-[10px] font-black text-slate-800 leading-tight truncate">{meal.name}</p>
+                <div className="flex items-center gap-1 mt-1">
+                  <span className="text-[8px] font-bold text-orange-500">{meal.calories || 0} kcal</span>
+                  <span className="text-[8px] text-slate-300">·</span>
+                  <span className="text-[8px] font-bold text-[#2FC8B9]">{meal.protein || 0}g P</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <button
+            onClick={() => navigate('/diet-plan')}
+            className="w-full text-center py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-[#2FC8B9] transition-colors"
+          >
+            No {mealLabel.toLowerCase()} items scheduled → View Full Plan
+          </button>
+        )}
       </div>
     </motion.div>
   );
@@ -278,6 +325,16 @@ export default function DashboardEnhanced() {
   const [sleepTrackerOpen, setSleepTrackerOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [activeDietPlan, setActiveDietPlan] = useState(null);
+  const [storageUpdateTrigger, setStorageUpdateTrigger] = useState(0);
+
+  // Listen for background localStorage changes (e.g. from SleepTracker DB Sync)
+  useEffect(() => {
+    const handleStorageChange = () => {
+      setStorageUpdateTrigger(prev => prev + 1);
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   // Notification state
   const [notifPanelOpen, setNotifPanelOpen] = useState(false);
@@ -571,7 +628,7 @@ export default function DashboardEnhanced() {
 
           {/* Metrics Row: Pedometer & Diet Adherence */}
           <div className="grid grid-cols-1 gap-3">
-            <StepCounter />
+            <HealthScoreCard />
             <DietAdherenceCard
               score={adherenceScore}
               status={nutritionStatus}
@@ -580,6 +637,7 @@ export default function DashboardEnhanced() {
               motivation={motivationMessage}
               macros={macroPercentages}
               missedMeal={missedMealName}
+              activeDietPlan={activeDietPlan}
             />
           </div>
         </div>
@@ -650,7 +708,7 @@ export default function DashboardEnhanced() {
 
           {/* Metrics Grid: Pedometer & Diet Adherence */}
           <div className="grid grid-cols-2 gap-6">
-            <StepCounter />
+            <HealthScoreCard />
             <DietAdherenceCard
               score={adherenceScore}
               status={nutritionStatus}
@@ -659,6 +717,7 @@ export default function DashboardEnhanced() {
               motivation={motivationMessage}
               macros={macroPercentages}
               missedMeal={missedMealName}
+              activeDietPlan={activeDietPlan}
             />
           </div>
         </div>

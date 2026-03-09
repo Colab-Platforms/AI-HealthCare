@@ -945,9 +945,12 @@ exports.quickFoodCheck = async (req, res) => {
 
     console.log('💾 [QuickCheck] Saving to DB...');
 
-    // Ensure alternatives is always an array
+    // Ensure alternatives is always an array of objects
     const alternativesArray = Array.isArray(analysis.data.alternatives)
-      ? analysis.data.alternatives
+      ? analysis.data.alternatives.map(alt => {
+        if (typeof alt === 'string') return { name: alt };
+        return alt;
+      })
       : [];
 
     // Ensure arrays are sanitized properly
@@ -1004,6 +1007,7 @@ exports.quickFoodCheck = async (req, res) => {
       healthBenefitsSummary: analysis.data.healthBenefitsSummary || '',
       alternatives: alternativesArray,
       imageUrl: finalImageUrl,
+      scanType: imageBase64 ? 'image' : 'text',
       timestamp: new Date()
     });
 
@@ -1084,6 +1088,57 @@ exports.getHealthyAlternatives = async (req, res) => {
 
 module.exports = exports;
 
+
+// Save a pre-analyzed food check (e.g. from barcode)
+exports.saveQuickCheck = async (req, res) => {
+  try {
+    const {
+      foodName, quantity, nutrition, healthScore, healthScore10,
+      isHealthy, analysis, micronutrients, enhancementTips,
+      warnings, benefits, healthBenefitsSummary, alternatives, imageUrl, scanType
+    } = req.body;
+
+    const QuickFoodCheck = require('../models/QuickFoodCheck');
+
+    const foodCheck = new QuickFoodCheck({
+      userId: req.user._id,
+      foodName: foodName || 'Unknown Food',
+      quantity: quantity || 'Standard Serving',
+      nutrition: nutrition || {},
+      calories: nutrition?.calories || 0,
+      protein: nutrition?.protein || 0,
+      carbs: nutrition?.carbs || 0,
+      fats: nutrition?.fats || 0,
+      healthScore: healthScore || 50,
+      healthScore10: healthScore10 || (healthScore ? healthScore / 10 : 5),
+      isHealthy: isHealthy || false,
+      analysis: analysis || '',
+      micronutrients: micronutrients || [],
+      enhancementTips: enhancementTips || [],
+      warnings: warnings || [],
+      benefits: benefits || [],
+      healthBenefitsSummary: healthBenefitsSummary || '',
+      alternatives: alternatives || [],
+      imageUrl: imageUrl || '',
+      scanType: scanType || 'barcode'
+    });
+
+    await foodCheck.save();
+
+    res.json({
+      success: true,
+      check: foodCheck,
+      message: 'Scan saved to history'
+    });
+  } catch (error) {
+    console.error('Save quick check error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to save scan result',
+      error: error.message
+    });
+  }
+};
 
 // Get all saved quick food checks for user
 exports.getQuickFoodChecks = async (req, res) => {

@@ -180,13 +180,16 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
     };
 
     // Generate AI-powered diet plan
+    const isRegenerate = req.body?.isRegenerate || false;
+    const promptEx = isRegenerate ? 'regenerate' : '';
+
     const aiDietPlan = await dietRecommendationAI.generatePersonalizedDietPlan(userData, `
       1. Provide EXACTLY 4 DISTINCT meal options for EVERY category (breakfast, midMorningSnack, lunch, eveningSnack, dinner).
       2. Ensure each option is a complete meal with descriptive Indian food names.
       3. Provide nutritional information (calories, protein, carbs, fats) for each individual option.
       4. Ensure the combined nutrition of these options (if user picks one from each category) roughly fulfills the daily targets: ${nutritionGoals.calorieGoal} kcal, ${nutritionGoals.proteinGoal}g protein, ${nutritionGoals.carbsGoal}g carbs, ${nutritionGoals.fatGoal}g fat.
       5. Use ONLY Indian foods and favor affordability.
-      6. TRULY PRIORITIZE the user's specific food preferences for each meal: 
+      6. CRITICAL: If the user has provided specific food preferences, you MUST ONLY generate meals based on those preferences and variations of them. DO NOT generate random foods if they have provided preferences here:
            Breakfast Preferences: ${userData.foodPreferences.mealPreferences?.breakfast?.join(', ') || 'N/A'},
            Lunch Preferences: ${userData.foodPreferences.mealPreferences?.lunch?.join(', ') || 'N/A'},
            Dinner Preferences: ${userData.foodPreferences.mealPreferences?.dinner?.join(', ') || 'N/A'},
@@ -199,8 +202,9 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       11. Each meal option MUST have: name, description, calories, protein, carbs, fats, and benefits.
       12. Ensure variety - no two options should be similar (e.g., don't have two rice-based meals).
       13. Provide a specific 'avoidSuggestions' section in your response listing 3-5 specific smart suggestions of what the user should avoid based on their lab reports or biometric profile.
+      14. ${promptEx}
     `);
-    console.log(`Diet plan generated for user ${userId}. Based on reports: ${hasReports}`);
+    console.log(`Diet plan generated for user ${userId}. Based on reports: ${hasReports}, isRegeneration: ${isRegenerate}`);
 
     // Deactivate old diet plans
     await PersonalizedDietPlan.updateMany(

@@ -252,7 +252,7 @@ export const nutritionService = {
 };
 
 export const dietRecommendationService = {
-  generateDietPlan: () => api.post('diet-recommendations/diet-plan/generate'),
+  generateDietPlan: (data) => api.post('diet-recommendations/diet-plan/generate', data),
   getActiveDietPlan: () => api.get('diet-recommendations/diet-plan/active'),
   getDietPlanHistory: () => api.get('diet-recommendations/diet-plan/history'),
   getDietPlanById: (planId) => api.get(`diet-recommendations/diet-plan/${planId}`),

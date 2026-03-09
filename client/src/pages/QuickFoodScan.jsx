@@ -3,10 +3,12 @@ import api from '../services/api';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';
 import {
-  Loader2, X, Camera, ChefHat, Info, Flame, Heart, Zap, Droplets,
+  Loader2, X, Mic, MicOff, ChefHat, Info, Flame, Heart, Zap, Droplets,
   CheckCircle, AlertCircle, Lightbulb, ArrowLeft, ScanLine, Plus, Activity, Brain, Sparkles,
-  ShieldCheck, TrendingUp, TrendingDown, ChevronRight, Image as ImageIcon
+  ShieldCheck, TrendingUp, TrendingDown, ChevronRight, Image as ImageIcon,
+  Barcode, Search, History
 } from 'lucide-react';
+import BarcodeScanner from '../components/BarcodeScanner';
 
 export default function QuickFoodScan() {
   const navigate = useNavigate();
@@ -82,6 +84,143 @@ export default function QuickFoodScan() {
   const [quantitySuggestions, setQuantitySuggestions] = useState([]);
   const [showMealTypeModal, setShowMealTypeModal] = useState(false);
   const [selectedMealType, setSelectedMealType] = useState('breakfast');
+  const [showBarcodeScanner, setShowBarcodeScanner] = useState(false);
+  const [scanHistory, setScanHistory] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
+  const [activeTab, setActiveTab] = useState('image'); // 'image', 'barcode', 'text'
+
+  // Voice recognition state
+  const [isListening, setIsListening] = useState(false);
+  const [voiceTranscript, setVoiceTranscript] = useState('');
+  const recognitionRef = useRef(null);
+
+  // Initialize Web Speech API (Chrome built-in)
+  useEffect(() => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRecognition) {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'en-IN'; // Indian English for better food name recognition
+
+      recognition.onresult = (event) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+        const currentText = finalTranscript || interimTranscript;
+        setVoiceTranscript(currentText);
+        if (finalTranscript) {
+          setFoodInput(prev => {
+            const newVal = prev ? `${prev}, ${finalTranscript.trim()}` : finalTranscript.trim();
+            setQuantitySuggestions(getQuantitySuggestions(newVal));
+            return newVal;
+          });
+        }
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+        setVoiceTranscript('');
+      };
+
+      recognition.onerror = (event) => {
+        console.error('Speech recognition error:', event.error);
+        setIsListening(false);
+        setVoiceTranscript('');
+        if (event.error === 'not-allowed') {
+          toast.error('Microphone access denied. Please allow mic in browser settings.');
+        } else if (event.error === 'no-speech') {
+          toast.error('No speech detected. Please try again.');
+        } else {
+          toast.error(`Voice error: ${event.error}`);
+        }
+      };
+
+      recognitionRef.current = recognition;
+    }
+  }, []);
+
+  const toggleVoiceInput = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error('Voice recognition not supported. Please use Google Chrome.');
+      return;
+    }
+    // Re-create recognition instance each time (fixes Chrome re-use bugs)
+    if (isListening && recognitionRef.current) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+      return;
+    }
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = 'en-IN';
+
+      recognition.onresult = (event) => {
+        let finalTranscript = '';
+        let interimTranscript = '';
+        for (let i = event.resultIndex; i < event.results.length; i++) {
+          const transcript = event.results[i][0].transcript;
+          if (event.results[i].isFinal) {
+            finalTranscript += transcript;
+          } else {
+            interimTranscript += transcript;
+          }
+        }
+        const currentText = finalTranscript || interimTranscript;
+        setVoiceTranscript(currentText);
+        console.log('🎙️ Voice transcript:', currentText);
+        if (finalTranscript) {
+          setFoodInput(prev => {
+            const newVal = prev ? `${prev}, ${finalTranscript.trim()}` : finalTranscript.trim();
+            setQuantitySuggestions(getQuantitySuggestions(newVal));
+            return newVal;
+          });
+        }
+      };
+
+      recognition.onend = () => {
+        console.log('🎙️ Voice recognition ended');
+        setIsListening(false);
+        setVoiceTranscript('');
+      };
+
+      recognition.onerror = (event) => {
+        console.error('🎙️ Speech recognition error:', event.error);
+        setIsListening(false);
+        setVoiceTranscript('');
+        if (event.error === 'not-allowed') {
+          toast.error('Microphone access denied. Please allow mic in browser settings.');
+        } else if (event.error === 'no-speech') {
+          toast.error('No speech detected. Try again.');
+        } else if (event.error === 'network') {
+          toast.error('Network error. Speech API requires internet.');
+        } else {
+          toast.error(`Voice error: ${event.error}`);
+        }
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+      setIsListening(true);
+      setVoiceTranscript('');
+      toast.success('🎙️ Listening... say your food item', { duration: 2000 });
+      console.log('🎙️ Speech recognition started');
+    } catch (err) {
+      console.error('🎙️ Failed to start speech recognition:', err);
+      toast.error('Failed to start voice. Make sure you\'re on localhost or HTTPS.');
+      setIsListening(false);
+    }
+  };
 
   // Check for persisted result or image on mount (for mobile memory recovery)
   useEffect(() => {
@@ -466,6 +605,24 @@ export default function QuickFoodScan() {
     }
   };
 
+  const fetchScanHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      const response = await api.get('nutrition/quick-checks?limit=10');
+      if (response.data.success) {
+        setScanHistory(response.data.checks);
+      }
+    } catch (error) {
+      console.error('Failed to fetch scan history:', error);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchScanHistory();
+  }, []);
+
   const handleAnalyze = async (e, directImage = null) => {
     if (e) e.preventDefault();
 
@@ -591,6 +748,7 @@ export default function QuickFoodScan() {
 
       isAnalyzing.current = false;
       setLoading(false);
+      fetchScanHistory(); // Refresh history after analysis
       return;
 
     } catch (error) {
@@ -631,6 +789,69 @@ export default function QuickFoodScan() {
       } else {
         toast.error(error.response?.data?.message || 'Something went wrong. Please check your connection or try a text description.', { id: analysisToastId });
       }
+    }
+  };
+
+
+  const handleBarcodeScan = async (barcode) => {
+    setShowBarcodeScanner(false);
+    const scanToastId = toast.loading('Fetching product details...');
+
+    try {
+      const response = await fetch(`https://world.openfoodfacts.org/api/v2/product/${barcode}.json`);
+      const data = await response.json();
+
+      if (data.status === 1) {
+        const product = data.product;
+        // Map Open Food Facts data to our format
+        const nutrition = {
+          calories: Math.round(product.nutriments?.['energy-kcal_100g'] || 0),
+          protein: Math.round(product.nutriments?.proteins_100g || 0),
+          carbs: Math.round(product.nutriments?.carbohydrates_100g || 0),
+          fats: Math.round(product.nutriments?.fat_100g || 0),
+          sugar: Math.round(product.nutriments?.sugars_100g || 0),
+          sodium: Math.round(product.nutriments?.sodium_100g || 0),
+          fiber: Math.round(product.nutriments?.fiber_100g || 0)
+        };
+
+        const resultData = {
+          foodItem: {
+            name: product.product_name || 'Unknown Product',
+            quantity: 'Per 100g', // Standard per 100g from OFF
+            nutrition: nutrition
+          },
+          imageUrl: product.image_url,
+          isHealthy: (product.nutriscore_grade === 'a' || product.nutriscore_grade === 'b'),
+          healthBenefitsSummary: `Ingredients: ${product.ingredients_text || 'No ingredients listed.'}`,
+          analysis: `Barcode: ${barcode}. Classified as ${product.categories || 'Food'}.`,
+          enhancementTips: product.nova_group > 2 ? ['Highly processed food. Try to consume in moderation.', 'Pair with fresh vegetables.'] : ['Healthy choice!'],
+          micronutrients: [
+            { name: 'Calcium', value: `${product.nutriments?.calcium_100g || 0}mg`, percentage: Math.min(Math.round((product.nutriments?.calcium_100g / 1000) * 100), 100) },
+            { name: 'Iron', value: `${product.nutriments?.iron_100g || 0}mg`, percentage: Math.min(Math.round((product.nutriments?.iron_100g / 18) * 100), 100) }
+          ],
+          warnings: product.ingredients_text_with_allergens ? [product.ingredients_text_with_allergens] : []
+        };
+
+        setResult(resultData);
+        setShowResultModal(true);
+        toast.success('Product found!', { id: scanToastId });
+
+        // Save to server history
+        api.post('nutrition/quick-check/save', {
+          ...resultData,
+          foodName: resultData.foodItem.name,
+          quantity: resultData.foodItem.quantity,
+          nutrition: resultData.foodItem.nutrition,
+          scanType: 'barcode'
+        })
+          .then(() => fetchScanHistory())
+          .catch(err => console.error('Failed to save barcode scan:', err));
+      } else {
+        toast.error('Product not found in database', { id: scanToastId });
+      }
+    } catch (error) {
+      console.error('Barcode fetch error:', error);
+      toast.error('Failed to fetch product data', { id: scanToastId });
     }
   };
 
@@ -735,58 +956,121 @@ export default function QuickFoodScan() {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans selection:bg-[#2FC8B9]/20">
-      {/* Premium Glass Header */}
-      <div className="w-full px-6 py-5 bg-white/80 backdrop-blur-2xl border-b border-[#2FC8B9]/10 sticky top-0 z-[100] shadow-[0_4px_20px_-5px_rgba(0,0,0,0.05)]">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => navigate(-1)}
-              className="group p-2.5 bg-white rounded-2xl shadow-sm border border-[#2FC8B9]/5 hover:bg-slate-50 transition-all active:scale-95"
-            >
-              <ArrowLeft className="w-5 h-5 text-slate-600 group-hover:text-[#2FC8B9] transition-colors" />
-            </button>
-            <div>
-              <h1 className="text-xl font-extrabold text-[#1e293b] leading-tight tracking-tight">Food Scanner</h1>
-              <div className="flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#2FC8B9] animate-pulse" />
-                <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">AI Nutrition Analysis</p>
+    <>
+      <div className="min-h-screen bg-[#f8fafc] flex flex-col font-sans selection:bg-[#2FC8B9]/20">
+        {/* Hidden File Inputs */}
+        <input
+          type="file"
+          id="gallery-input"
+          accept="image/*"
+          onChange={handleImageSelect}
+          className="hidden"
+        />
+        {/* Premium Glass Header */}
+        <div className="w-full px-6 py-5 bg-white/80 backdrop-blur-2xl border-b border-[#2FC8B9]/10 sticky top-0 z-[100] shadow-[0_4px_20px_-5px_rgba(0,0,0,0.05)]">
+          <div className="max-w-4xl mx-auto flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => navigate(-1)}
+                className="group p-2.5 bg-white rounded-2xl shadow-sm border border-[#2FC8B9]/5 hover:bg-slate-50 transition-all active:scale-95"
+              >
+                <ArrowLeft className="w-5 h-5 text-slate-600 group-hover:text-[#2FC8B9] transition-colors" />
+              </button>
+              <div>
+                <h1 className="text-xl font-extrabold text-[#1e293b] leading-tight tracking-tight">Food Scanner</h1>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#2FC8B9] animate-pulse" />
+                  <p className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">AI Nutrition Analysis</p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="bg-[#2FC8B9]/10 p-2 rounded-xl border border-[#2FC8B9]/20">
+                <ScanLine className="w-5 h-5 text-[#2FC8B9]" />
               </div>
             </div>
           </div>
-          <div className="flex items-center gap-3">
-            <div className="bg-[#2FC8B9]/10 p-2 rounded-xl border border-[#2FC8B9]/20">
-              <ScanLine className="w-5 h-5 text-[#2FC8B9]" />
-            </div>
-          </div>
         </div>
-      </div>
 
-      {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto pb-32">
-        <div className="max-w-4xl mx-auto px-5 py-8 space-y-8">
+        {/* Main Content Area */}
+        <div className="flex-1 overflow-y-auto pb-32">
+          <div className="max-w-4xl mx-auto px-5 py-8 space-y-8">
 
-          {/* Hero Section - The New Choice UI */}
-          {!imagePreview && (
-            <div className="space-y-6">
-              <div className="relative group">
-                <div className="absolute -inset-0.5 bg-gradient-to-r from-[#2FC8B9] to-[#25a89b] rounded-[2rem] blur opacity-20 group-hover:opacity-30 transition duration-1000"></div>
-                <div className="relative bg-white rounded-[2rem] p-6 sm:p-8 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.08)] border border-slate-100">
+            {/* Hero Section - The New Choice UI */}
+            {!imagePreview && (
+              <div className="space-y-6">
+                <div className="relative group">
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-[#2FC8B9] to-[#25a89b] rounded-[2rem] blur opacity-20 group-hover:opacity-30 transition duration-1000"></div>
                   {(!foodInput.trim() && !imagePreview) && (
-                    <div className="flex flex-col items-center text-center mb-8 animate-in fade-in zoom-in duration-500">
-                      <div className="w-16 h-16 bg-[#2FC8B9]/10 rounded-2xl flex items-center justify-center mb-4 border border-[#2FC8B9]/20">
-                        <ChefHat className="w-8 h-8 text-[#2FC8B9]" />
-                      </div>
-                      <h2 className="text-2xl font-black text-[#1e293b] mb-2">Track Your Meal</h2>
-                      <p className="text-slate-500 text-sm max-w-[280px]">Take a photo or type what you ate for instant nutritional insights.</p>
+                    <div className="flex flex-col items-center text-center mb-6 animate-in fade-in zoom-in duration-500">
+                      <h2 className="text-xl font-black text-[#1e293b] mb-1">Log Your Meal</h2>
+                      <p className="text-slate-400 text-[10px] font-bold uppercase tracking-widest">Select your entry method below</p>
                     </div>
                   )}
 
                   <div className="space-y-4">
-                    {/* Visual Text Input */}
+                    {/* Compact All-in-one Row for Mobile Space Saving */}
+                    <div className="grid grid-cols-3 gap-3 mb-2">
+                      {/* Voice Log Button */}
+                      <button
+                        onClick={toggleVoiceInput}
+                        className={`group flex flex-col items-center justify-center p-4 rounded-[2rem] border transition-all active:scale-95 cursor-pointer hover:shadow-xl ${isListening
+                          ? 'bg-red-500 border-red-400 shadow-lg shadow-red-500/30 animate-pulse'
+                          : 'bg-slate-900 border-slate-800'
+                          }`}
+                      >
+                        <div className={`w-10 h-10 rounded-2xl flex items-center justify-center mb-2 group-hover:scale-110 transition-transform ${isListening ? 'bg-white/20' : 'bg-[#2FC8B9]/10'}`}>
+                          {isListening ? <MicOff className="w-5 h-5 text-white" /> : <Mic className="w-5 h-5 text-[#2FC8B9]" />}
+                        </div>
+                        <span className="text-[9px] font-black text-white uppercase tracking-tighter">{isListening ? 'Stop' : 'Voice'}</span>
+                      </button>
+
+                      {/* Barcode Button */}
+                      <button
+                        onClick={() => setShowBarcodeScanner(true)}
+                        className="group flex flex-col items-center justify-center p-4 bg-white rounded-[2rem] border border-slate-100 shadow-sm transition-all active:scale-95 hover:shadow-lg hover:border-[#2FC8B9]/20"
+                      >
+                        <div className="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                          <Barcode className="w-5 h-5 text-amber-500" />
+                        </div>
+                        <span className="text-[9px] font-black text-slate-800 uppercase tracking-tighter">Barcode</span>
+                      </button>
+
+                      {/* Gallery/Upload Button */}
+                      <label
+                        htmlFor="gallery-input"
+                        className="group flex flex-col items-center justify-center p-4 bg-white rounded-[2rem] border border-slate-100 shadow-sm transition-all active:scale-95 cursor-pointer hover:shadow-lg hover:border-[#2FC8B9]/20"
+                      >
+                        <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
+                          <ImageIcon className="w-5 h-5 text-indigo-500" />
+                        </div>
+                        <span className="text-[9px] font-black text-slate-800 uppercase tracking-tighter">Gallery</span>
+                      </label>
+                    </div>
+
+                    {/* Voice Transcript Live Preview */}
+                    {isListening && (
+                      <div className="bg-red-50 border-2 border-red-200 rounded-2xl p-4 animate-in fade-in duration-300">
+                        <div className="flex items-center gap-3 mb-2">
+                          <div className="w-3 h-3 rounded-full bg-red-500 animate-pulse" />
+                          <span className="text-[10px] font-black text-red-600 uppercase tracking-widest">Listening...</span>
+                        </div>
+                        <p className="text-sm font-bold text-slate-700 min-h-[24px]">
+                          {voiceTranscript || 'Say your food item like "2 roti with dal"...'}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-4 py-1">
+                      <div className="flex-1 h-[1px] bg-slate-50"></div>
+                      <span className="text-[8px] font-black text-slate-300 uppercase tracking-[0.2em]">or search</span>
+                      <div className="flex-1 h-[1px] bg-slate-50"></div>
+                    </div>
+
+                    {/* Visual Text Input - Now secondary but prominent */}
                     <div className="relative">
-                      <div className="absolute left-4 top-1/2 -translate-y-1/2 bg-[#2FC8B9]/10 p-1.5 rounded-lg border border-[#2FC8B9]/20">
-                        <Info className="w-4 h-4 text-[#2FC8B9]" />
+                      <div className="absolute left-4 top-1/2 -translate-y-1/2 bg-[#2FC8B9]/5 p-2 rounded-xl border border-[#2FC8B9]/10">
+                        <Search className="w-4 h-4 text-[#2FC8B9]" />
                       </div>
                       <input
                         type="text"
@@ -797,8 +1081,8 @@ export default function QuickFoodScan() {
                             setShowSuggestions(true);
                           }
                         }}
-                        placeholder="What's on your plate?"
-                        className="w-full pl-14 pr-4 py-6 bg-slate-50/50 border-2 border-[#2FC8B9]/40 rounded-2xl focus:outline-none focus:border-[#2FC8B9] focus:bg-white transition-all text-xl text-slate-800 font-black placeholder-slate-400 shadow-xl"
+                        placeholder="Search meal name..."
+                        className="w-full pl-14 pr-4 py-4 bg-slate-50/50 border-2 border-transparent rounded-[1.5rem] focus:outline-none focus:border-[#2FC8B9]/30 focus:bg-white transition-all text-sm font-bold text-slate-800 placeholder-slate-400"
                       />
 
                       {/* Premium Suggestions Dropdown */}
@@ -818,236 +1102,269 @@ export default function QuickFoodScan() {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-4 py-2">
-                      <div className="flex-1 h-[1px] bg-slate-100"></div>
-                      <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">OR</span>
-                      <div className="flex-1 h-[1px] bg-slate-100"></div>
-                    </div>
-
-                    <input
-                      id="camera-input"
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={handleImageSelect}
-                      className="hidden"
-                      disabled={compressing}
-                    />
-                    <input
-                      id="gallery-input"
-                      type="file"
-                      accept="image/*"
-                      onChange={handleImageSelect}
-                      className="hidden"
-                      disabled={compressing}
-                    />
-
-                    <div className="flex flex-col gap-3">
-                      {/* Scan Button (Direct Camera) */}
-                      <label
-                        htmlFor="camera-input"
-                        className={`w-full group relative overflow-hidden py-5 bg-slate-900 text-white rounded-2xl font-bold text-sm tracking-wide transition-all active:scale-[0.98] shadow-xl hover:shadow-2xl hover:bg-slate-800 flex items-center justify-center cursor-pointer ${compressing ? 'opacity-75 cursor-not-allowed' : ''}`}
-                      >
-                        <div className="relative z-10 flex items-center justify-center gap-3">
-                          {compressing ? (
-                            <>
-                              <Loader2 className="w-5 h-5 animate-spin text-[#2FC8B9]" />
-                              <span>Optimizing Image...</span>
-                            </>
-                          ) : (
-                            <>
-                              <Camera className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                              <span>Scan Food with Camera</span>
-                            </>
-                          )}
-                        </div>
-                        <div className="absolute inset-0 bg-gradient-to-r from-[#2FC8B9]/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                      </label>
-
-                      {/* Gallery Button */}
-                      <label
-                        htmlFor="gallery-input"
-                        className={`w-full group relative overflow-hidden py-4 bg-white text-slate-600 border border-slate-200 rounded-2xl font-bold text-sm tracking-wide transition-all active:scale-[0.98] hover:bg-slate-50 flex items-center justify-center cursor-pointer ${compressing ? 'opacity-75 cursor-not-allowed' : ''}`}
-                      >
-                        <div className="relative z-10 flex items-center justify-center gap-3">
-                          <ImageIcon className="w-5 h-5 text-[#2FC8B9] group-hover:scale-110 transition-transform" />
-                          <span>Select from Gallery</span>
-                        </div>
-                      </label>
-                    </div>
                   </div>
                 </div>
               </div>
+            )}
 
-              {(!foodInput.trim() && !imagePreview) && (
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-emerald-50/50 p-4 rounded-3xl border border-emerald-100 flex flex-col gap-2">
-                    <div className="w-8 h-8 bg-emerald-100 rounded-xl flex items-center justify-center">
-                      <Flame className="w-4 h-4 text-emerald-600" />
-                    </div>
-                    <p className="text-xs font-bold text-emerald-900">Track Calories</p>
-                    <p className="text-[10px] text-emerald-700/80 leading-snug">Instantly see the energy content of your meals.</p>
-                  </div>
-                  <div className="bg-amber-50/50 p-4 rounded-3xl border border-amber-100 flex flex-col gap-2">
-                    <div className="w-8 h-8 bg-amber-100 rounded-xl flex items-center justify-center">
-                      <Zap className="w-4 h-4 text-amber-600" />
-                    </div>
-                    <p className="text-xs font-bold text-amber-900">Health Score</p>
-                    <p className="text-[10px] text-amber-700/80 leading-snug">Know how healthy your food choices are.</p>
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
+            {/* Context Input UI (When typing/image) */}
+            {(foodInput.trim() || imagePreview) && (
+              <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
+                {imagePreview && (
+                  <div className="relative group">
+                    <div className="absolute -inset-1 bg-gradient-to-r from-purple-500 to-orange-500 rounded-[2.2rem] blur opacity-10"></div>
+                    <div className="relative rounded-[2rem] overflow-hidden border-4 border-white shadow-2xl">
+                      <img
+                        src={imagePreview}
+                        alt="Scanned Food"
+                        className="w-full h-72 object-cover transition-transform duration-700 group-hover:scale-105"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60"></div>
 
-          {/* Context Input UI (When typing/image) */}
-          {(foodInput.trim() || imagePreview) && (
-            <div className="space-y-6 animate-in slide-in-from-bottom-4 duration-500">
-              {imagePreview && (
-                <div className="relative group">
-                  <div className="absolute -inset-1 bg-gradient-to-r from-purple-500 to-orange-500 rounded-[2.2rem] blur opacity-10"></div>
-                  <div className="relative rounded-[2rem] overflow-hidden border-4 border-white shadow-2xl">
-                    <img
-                      src={imagePreview}
-                      alt="Scanned Food"
-                      className="w-full h-72 object-cover transition-transform duration-700 group-hover:scale-105"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-60"></div>
+                      <button
+                        onClick={() => {
+                          if (imagePreview && imagePreview.startsWith('blob:')) {
+                            URL.revokeObjectURL(imagePreview);
+                          }
+                          setImage(null);
+                          setImagePreview(null);
+                          setImageDetails({ quantity: '', prepMethod: '', additionalInfo: '' });
+                        }}
+                        className="absolute top-4 right-4 p-2.5 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl hover:bg-red-50 hover:text-red-500 transition-all active:scale-95"
+                      >
+                        <X className="w-5 h-5" />
+                      </button>
 
-                    <button
-                      onClick={() => {
-                        if (imagePreview && imagePreview.startsWith('blob:')) {
-                          URL.revokeObjectURL(imagePreview);
-                        }
-                        setImage(null);
-                        setImagePreview(null);
-                        setImageDetails({ quantity: '', prepMethod: '', additionalInfo: '' });
-                      }}
-                      className="absolute top-4 right-4 p-2.5 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl hover:bg-red-50 hover:text-red-500 transition-all active:scale-95"
-                    >
-                      <X className="w-5 h-5" />
-                    </button>
-
-                    <div className="absolute bottom-4 left-4 flex items-center gap-2">
-                      <div className="bg-white/95 backdrop-blur-md text-[#2FC8B9] px-4 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider shadow-lg flex items-center gap-2">
-                        <CheckCircle className="w-4 h-4" />
-                        Image Ready
+                      <div className="absolute bottom-4 left-4 flex items-center gap-2">
+                        <div className="bg-white/95 backdrop-blur-md text-[#2FC8B9] px-4 py-2 rounded-2xl text-[11px] font-black uppercase tracking-wider shadow-lg flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4" />
+                          Image Ready
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
 
-              <div id="refine-details" className="bg-white rounded-[2rem] p-6 sm:p-8 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.06)] border border-slate-100 space-y-6">
-                <div className="flex items-center gap-4 mb-2">
-                  <div className="w-10 h-10 bg-[#2FC8B9]/10 rounded-xl flex items-center justify-center">
-                    <Flame className="w-5 h-5 text-[#2FC8B9]" />
-                  </div>
-                  <h3 className="text-xl font-extrabold text-[#1e293b]">Refine Details</h3>
-                </div>
-
-                {/* Quantity and Prep Group */}
-                <div className="space-y-6">
-                  <div>
-                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 ml-1">
-                      Serving Quantity
-                    </label>
-
-                    {/* Smart Pills */}
-                    <div className="flex flex-wrap gap-2 mb-3">
-                      {(quantitySuggestions.length > 0 ? quantitySuggestions : ['1 serving', '1 bowl', '1 plate', '100g']).map((qty, index) => (
-                        <button
-                          key={index}
-                          type="button"
-                          onClick={() => setImageDetails({ ...imageDetails, quantity: qty })}
-                          className={`px-3 py-2 rounded-xl text-[11px] font-bold transition-all border-2 ${imageDetails.quantity === qty
-                            ? 'bg-[#2FC8B9] border-[#2FC8B9] text-white shadow-lg shadow-[#2FC8B9]/20'
-                            : 'bg-white border-slate-100 text-slate-600 hover:border-[#2FC8B9]/30'
-                            }`}
-                        >
-                          {qty}
-                        </button>
-                      ))}
+                <div id="refine-details" className="bg-white rounded-[2rem] p-6 sm:p-8 shadow-[0_20px_50px_-12px_rgba(0,0,0,0.06)] border border-slate-100 space-y-6">
+                  <div className="flex items-center gap-4 mb-2">
+                    <div className="w-10 h-10 bg-[#2FC8B9]/10 rounded-xl flex items-center justify-center">
+                      <Flame className="w-5 h-5 text-[#2FC8B9]" />
                     </div>
-
-                    <input
-                      type="text"
-                      value={imageDetails.quantity}
-                      onChange={(e) => setImageDetails({ ...imageDetails, quantity: e.target.value })}
-                      placeholder="Or specify exact amount"
-                      className="w-full px-5 py-3.5 bg-slate-50/80 border-2 border-[#2FC8B9]/20 rounded-xl focus:outline-none focus:border-[#2FC8B9] focus:bg-white transition-all text-sm font-semibold text-slate-800 placeholder-slate-400"
-                    />
+                    <h3 className="text-xl font-extrabold text-[#1e293b]">Refine Details</h3>
                   </div>
 
-                  <div>
-                    <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 ml-1">
-                      Preparation Method
-                    </label>
-                    <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
-                      {[
-                        { label: 'Fried', icon: '🍳' },
-                        { label: 'Baked', icon: '🥐' },
-                        { label: 'Grilled', icon: '🔥' },
-                        { label: 'Home', icon: '🏠' },
-                        { label: 'Dine-in', icon: '🍽️' },
-                        { label: 'Packaged', icon: '📦' }
-                      ].map((method) => (
-                        <button
-                          key={method.label}
-                          type="button"
-                          onClick={() => setImageDetails({ ...imageDetails, prepMethod: method.label })}
-                          className={`p-2.5 rounded-xl transition-all border-2 flex flex-col items-center gap-1.5 ${imageDetails.prepMethod === method.label
-                            ? 'bg-[#2FC8B9] border-[#2FC8B9] text-white shadow-lg shadow-[#2FC8B9]/20'
-                            : 'bg-white border-slate-100 text-slate-600 hover:border-[#2FC8B9]/30'
-                            }`}
-                        >
-                          <span className="text-lg leading-none">{method.icon}</span>
-                          <span className="text-[9px] font-black uppercase tracking-tighter">{method.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                  {/* Quantity and Prep Group */}
+                  <div className="space-y-6">
+                    <div>
+                      <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-3 ml-1">
+                        Serving Quantity
+                      </label>
 
-                  {/* Final Analysis Trigger */}
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleAnalyze();
-                    }}
-                    disabled={loading}
-                    className="w-full group relative overflow-hidden py-5 bg-[#2FC8B9] text-white rounded-[2rem] font-black text-base tracking-widest transition-all active:scale-[0.98] shadow-[0_20px_40px_-12px_rgba(47,200,185,0.3)] disabled:opacity-50"
-                  >
-                    <div className="relative z-10 flex items-center justify-center gap-3 uppercase">
-                      {loading ? (
-                        <>
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          <span>Processing...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Zap className="w-5 h-5 group-hover:animate-pulse" />
-                          <span>Analyze Now</span>
-                        </>
-                      )}
+                      {/* Smart Pills */}
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {(quantitySuggestions.length > 0 ? quantitySuggestions : ['1 serving', '1 bowl', '1 plate', '100g']).map((qty, index) => (
+                          <button
+                            key={index}
+                            type="button"
+                            onClick={() => setImageDetails({ ...imageDetails, quantity: qty })}
+                            className={`px-3 py-2 rounded-xl text-[11px] font-bold transition-all border-2 ${imageDetails.quantity === qty
+                              ? 'bg-[#2FC8B9] border-[#2FC8B9] text-white shadow-lg shadow-[#2FC8B9]/20'
+                              : 'bg-white border-slate-100 text-slate-600 hover:border-[#2FC8B9]/30'
+                              }`}
+                          >
+                            {qty}
+                          </button>
+                        ))}
+                      </div>
+
+                      <input
+                        type="text"
+                        value={imageDetails.quantity}
+                        onChange={(e) => setImageDetails({ ...imageDetails, quantity: e.target.value })}
+                        placeholder="Or specify exact amount"
+                        className="w-full px-5 py-3.5 bg-slate-50/80 border-2 border-[#2FC8B9]/20 rounded-xl focus:outline-none focus:border-[#2FC8B9] focus:bg-white transition-all text-sm font-semibold text-slate-800 placeholder-slate-400"
+                      />
                     </div>
-                    <div className="absolute inset-x-0 bottom-0 h-1 bg-white/20 transform translate-y-2 group-hover:translate-y-0 transition-transform"></div>
-                  </button>
+
+                    <div>
+                      <label className="block text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 ml-1">
+                        Preparation Method
+                      </label>
+                      <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                        {[
+                          { label: 'Fried', icon: '🍳' },
+                          { label: 'Baked', icon: '🥐' },
+                          { label: 'Grilled', icon: '🔥' },
+                          { label: 'Home', icon: '🏠' },
+                          { label: 'Dine-in', icon: '🍽️' },
+                          { label: 'Packaged', icon: '📦' }
+                        ].map((method) => (
+                          <button
+                            key={method.label}
+                            type="button"
+                            onClick={() => setImageDetails({ ...imageDetails, prepMethod: method.label })}
+                            className={`p-2.5 rounded-xl transition-all border-2 flex flex-col items-center gap-1.5 ${imageDetails.prepMethod === method.label
+                              ? 'bg-[#2FC8B9] border-[#2FC8B9] text-white shadow-lg shadow-[#2FC8B9]/20'
+                              : 'bg-white border-slate-100 text-slate-600 hover:border-[#2FC8B9]/30'
+                              }`}
+                          >
+                            <span className="text-lg leading-none">{method.icon}</span>
+                            <span className="text-[9px] font-black uppercase tracking-tighter">{method.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Final Analysis Trigger */}
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        handleAnalyze();
+                      }}
+                      disabled={loading}
+                      className="w-full group relative overflow-hidden py-5 bg-[#2FC8B9] text-white rounded-[2rem] font-black text-base tracking-widest transition-all active:scale-[0.98] shadow-[0_20px_40px_-12px_rgba(47,200,185,0.3)] disabled:opacity-50"
+                    >
+                      <div className="relative z-10 flex items-center justify-center gap-3 uppercase">
+                        {loading ? (
+                          <>
+                            <Loader2 className="w-5 h-5 animate-spin" />
+                            <span>Processing...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Zap className="w-5 h-5 group-hover:animate-pulse" />
+                            <span>Analyze Now</span>
+                          </>
+                        )}
+                      </div>
+                      <div className="absolute inset-x-0 bottom-0 h-1 bg-white/20 transform translate-y-2 group-hover:translate-y-0 transition-transform"></div>
+                    </button>
+                  </div>
                 </div>
               </div>
-            </div>
-          )}
+            )}
 
-          {/* Info Badge */}
-          <div className="max-w-md mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-6 py-3 bg-[#2FC8B9]/5 backdrop-blur-sm rounded-full border border-[#2FC8B9]/20 group">
-              <Info className="w-4 h-4 text-[#2FC8B9] group-hover:rotate-12 transition-transform" />
-              <p className="text-[11px] font-semibold text-[#2FC8B9] tracking-wide">
-                AI analysis is an estimate. Portions may impact accuracy.
-              </p>
+            {/* Recent Scans Section - Newly Added & Space Optimized */}
+            <div className="space-y-6">
+              <div className="flex flex-col gap-4">
+                <div className="flex items-center justify-between px-1">
+                  <h3 className="text-lg font-black text-[#1e293b] uppercase tracking-tight">Recent Scans</h3>
+                  <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-1 rounded-lg uppercase tracking-widest">
+                    {scanHistory.length} Total
+                  </span>
+                </div>
+
+                {/* Tabs Single Row for Mobile */}
+                <div className="flex p-1.5 bg-white rounded-2xl shadow-sm border border-slate-100 overflow-x-auto scrollbar-hide">
+                  {[
+                    { id: 'image', label: 'Uploaded Food', icon: ImageIcon },
+                    { id: 'barcode', label: 'Barcode Food', icon: Barcode },
+                    { id: 'text', label: 'Searched Food', icon: Search }
+                  ].map((tab) => (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl text-[10px] font-black uppercase tracking-tighter transition-all whitespace-nowrap ${activeTab === tab.id
+                        ? 'bg-[#2FC8B9] text-white shadow-lg shadow-[#2FC8B9]/20 scale-[1.02]'
+                        : 'text-slate-500 hover:bg-slate-50'
+                        }`}
+                    >
+                      <tab.icon className={`w-3.5 h-3.5 ${activeTab === tab.id ? 'text-white' : 'text-slate-400'}`} />
+                      {tab.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Unique List-based UI for Recent Scans */}
+              <div className="space-y-3">
+                {loadingHistory ? (
+                  <div className="py-20 flex flex-col items-center justify-center gap-4">
+                    <Loader2 className="w-10 h-10 animate-spin text-[#2FC8B9]/30" />
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Loading History...</p>
+                  </div>
+                ) : scanHistory.filter(item => (item.scanType || (item.imageUrl ? 'image' : 'text')) === activeTab).length === 0 ? (
+                  <div className="bg-white rounded-[2rem] p-10 text-center border border-dashed border-slate-200">
+                    <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto mb-4 grayscale opacity-50">
+                      <History className="w-8 h-8 text-slate-400" />
+                    </div>
+                    <p className="text-sm font-black text-slate-400 uppercase tracking-widest mb-1">No Recent {activeTab}s</p>
+                    <p className="text-[10px] text-slate-300 font-bold">Your logged meals will appear here</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {scanHistory
+                      .filter(item => (item.scanType || (item.imageUrl ? 'image' : 'text')) === activeTab)
+                      .slice(0, 10)
+                      .map((item, idx) => (
+                        <div
+                          key={item._id || idx}
+                          className="group bg-white rounded-3xl p-4 border border-slate-100 shadow-sm hover:shadow-xl hover:border-[#2FC8B9]/20 transition-all flex items-center gap-4 cursor-pointer"
+                          onClick={() => {
+                            // Normalize item to include foodItem structure for the modal
+                            const normalizedItem = {
+                              ...item,
+                              foodItem: item.foodItem || {
+                                name: item.foodName,
+                                quantity: item.quantity,
+                                nutrition: item.nutrition || {
+                                  calories: item.calories,
+                                  protein: item.protein,
+                                  carbs: item.carbs,
+                                  fats: item.fats,
+                                  fiber: item.fiber,
+                                  sugar: item.sugar,
+                                  sodium: item.sodium
+                                }
+                              }
+                            };
+                            setResult(normalizedItem);
+                            setShowResultModal(true);
+                          }}
+                        >
+                          {/* Type Icon */}
+                          <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 transition-transform group-hover:scale-110 ${activeTab === 'image' ? 'bg-indigo-50 text-indigo-500' :
+                            activeTab === 'barcode' ? 'bg-amber-50 text-amber-500' :
+                              'bg-emerald-50 text-[#2FC8B9]'
+                            }`}>
+                            {activeTab === 'image' ? <ImageIcon className="w-6 h-6" /> :
+                              activeTab === 'barcode' ? <Barcode className="w-6 h-6" /> :
+                                <Search className="w-6 h-6" />
+                            }
+                          </div>
+
+                          {/* Content */}
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-black text-slate-800 tracking-tight uppercase truncate">
+                              {item.foodName || (item.foodItem?.name) || item.query || 'Unnamed Item'}
+                            </h4>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              <span className="text-[9px] font-bold text-slate-400 uppercase">
+                                {new Date(item.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                              </span>
+                              <span className="w-1 h-1 rounded-full bg-slate-200" />
+                              <span className="text-[9px] font-black text-[#2FC8B9] uppercase">
+                                {(item.nutrition?.calories || item.calories || item.foodItem?.nutrition?.calories || 0)} kcal
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* Score Insight */}
+                          <div className={`px-3 py-2 rounded-2xl flex flex-col items-center justify-center min-w-[50px] border ${item.healthScore >= 80 ? 'bg-emerald-50 border-emerald-100 text-emerald-600' :
+                            item.healthScore >= 60 ? 'bg-amber-50 border-amber-100 text-amber-600' :
+                              'bg-rose-50 border-rose-100 text-rose-600'
+                            }`}>
+                            <span className="text-xs font-black leading-none">{item.healthScore || 0}</span>
+                            <span className="text-[7px] font-black uppercase tracking-tighter opacity-70">Score</span>
+                          </div>
+                        </div>
+                      ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
-
         </div>
       </div>
 
@@ -1352,81 +1669,81 @@ export default function QuickFoodScan() {
               </div>
             </div>
           </div>
-        )}
+        )
+      }
 
       {/* Meal Type Selector Modal */}
-      {showMealTypeModal && (
-        <div
-          className="fixed inset-0 bg-black/60 z-[10001] flex items-end sm:items-center justify-center"
-          onClick={() => setShowMealTypeModal(false)}
-        >
+      {
+        showMealTypeModal && (
           <div
-            className="bg-white w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl p-6"
-            onClick={(e) => e.stopPropagation()}
+            className="fixed inset-0 bg-black/60 z-[10001] flex items-end sm:items-center justify-center"
+            onClick={() => setShowMealTypeModal(false)}
           >
-            <div className="flex items-center justify-between mb-6">
-              <h3 className="text-xl font-bold text-gray-900">Select Meal Type</h3>
+            <div
+              className="bg-white w-full sm:max-w-md sm:rounded-3xl rounded-t-3xl p-6"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-xl font-bold text-gray-900">Select Meal Type</h3>
+                <button
+                  onClick={() => setShowMealTypeModal(false)}
+                  className="p-2 hover:bg-gray-100 rounded-full"
+                >
+                  <X className="w-5 h-5 text-gray-700" />
+                </button>
+              </div>
+
+              <div className="space-y-3 mb-6">
+                {[
+                  { type: 'breakfast', icon: '🌅', label: 'Breakfast', color: 'from-[#2FC8B9] to-[#25a89b]' },
+                  { type: 'lunch', icon: '☀️', label: 'Lunch', color: 'from-[#2FC8B9] to-[#25a89b]' },
+                  { type: 'dinner', icon: '🌙', label: 'Dinner', color: 'from-[#2FC8B9] to-[#25a89b]' },
+                  { type: 'snack', icon: '🍎', label: 'Snacks', color: 'from-[#2FC8B9] to-[#25a89b]' }
+                ].map((meal) => (
+                  <button
+                    key={meal.type}
+                    onClick={() => setSelectedMealType(meal.type)}
+                    className={`w-full p-4 rounded-xl flex items-center gap-4 transition-all ${selectedMealType === meal.type
+                      ? `bg-gradient-to-r ${meal.color} text-white shadow-lg scale-105`
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      }`}
+                  >
+                    <span className="text-3xl">{meal.icon}</span>
+                    <div className="flex-1 text-left">
+                      <p className="font-bold text-lg">{meal.label}</p>
+                    </div>
+                    {selectedMealType === meal.type && (
+                      <CheckCircle className="w-6 h-6" />
+                    )}
+                  </button>
+                ))}
+              </div>
+
               <button
-                onClick={() => setShowMealTypeModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-full"
+                onClick={logMealToNutrition}
+                disabled={isLogging}
+                className="w-full py-4 bg-[#2FC8B9] text-white rounded-xl font-bold hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-70"
               >
-                <X className="w-5 h-5 text-gray-700" />
+                {isLogging ? (
+                  <>
+                    <Loader2 className="w-5 h-5 animate-spin" />
+                    <span>Logging...</span>
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="w-5 h-5" />
+                    <span>Log to {selectedMealType.charAt(0).toUpperCase() + selectedMealType.slice(1)}</span>
+                  </>
+                )}
               </button>
             </div>
-
-            <div className="space-y-3 mb-6">
-              {[
-                { type: 'breakfast', icon: '🌅', label: 'Breakfast', color: 'from-[#2FC8B9] to-[#25a89b]' },
-                { type: 'lunch', icon: '☀️', label: 'Lunch', color: 'from-[#2FC8B9] to-[#25a89b]' },
-                { type: 'dinner', icon: '🌙', label: 'Dinner', color: 'from-[#2FC8B9] to-[#25a89b]' },
-                { type: 'snack', icon: '🍎', label: 'Snacks', color: 'from-[#2FC8B9] to-[#25a89b]' }
-              ].map((meal) => (
-                <button
-                  key={meal.type}
-                  onClick={() => setSelectedMealType(meal.type)}
-                  className={`w-full p-4 rounded-xl flex items-center gap-4 transition-all ${selectedMealType === meal.type
-                    ? `bg-gradient-to-r ${meal.color} text-white shadow-lg scale-105`
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                    }`}
-                >
-                  <span className="text-3xl">{meal.icon}</span>
-                  <div className="flex-1 text-left">
-                    <p className="font-bold text-lg">{meal.label}</p>
-                  </div>
-                  {selectedMealType === meal.type && (
-                    <CheckCircle className="w-6 h-6" />
-                  )}
-                </button>
-              ))}
-            </div>
-
-            <button
-              onClick={logMealToNutrition}
-              disabled={isLogging}
-              className="w-full py-4 bg-[#2FC8B9] text-white rounded-xl font-bold hover:shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-3 disabled:opacity-70"
-            >
-              {isLogging ? (
-                <>
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                  <span>Logging...</span>
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="w-5 h-5" />
-                  <span>Log to {selectedMealType.charAt(0).toUpperCase() + selectedMealType.slice(1)}</span>
-                </>
-              )}
-            </button>
           </div>
-        </div>
-      )}
+        )
+      }
 
-      {/* Full-Screen Analyzing Overlay - Premium Futuristic Design */}
+      {/* Full-Screen Analyzing Overlay */}
       {loading && (
-        <div
-          className="fixed inset-0 bg-slate-900 z-[10000] flex items-center justify-center overflow-hidden"
-          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, touchAction: 'none' }}
-        >
+        <div className="fixed inset-0 bg-slate-900 z-[10000] flex items-center justify-center overflow-hidden">
           {/* Animated Background Gradients */}
           <div className="absolute top-0 left-0 w-full h-full">
             <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-[#2FC8B9]/20 rounded-full blur-[120px] animate-pulse"></div>
@@ -1434,12 +1751,9 @@ export default function QuickFoodScan() {
           </div>
 
           <div className="relative text-center px-8 w-full max-w-lg">
-            {/* Holographic Scanner Effect */}
             <div className="relative mb-12">
               <div className="w-48 h-48 mx-auto relative">
-                {/* Rotating Outer Ring */}
                 <div className="absolute inset-0 border-[3px] border-dashed border-[#2FC8B9]/30 rounded-full animate-spin" style={{ animationDuration: '8s' }}></div>
-                {/* Glowing Core */}
                 <div className="absolute inset-4 bg-gradient-to-br from-[#2FC8B9] to-[#25a89b] rounded-full p-1 shadow-[0_0_50px_rgba(47,200,185,0.5)]">
                   <div className="w-full h-full bg-slate-900 rounded-full flex items-center justify-center overflow-hidden">
                     <div className="absolute inset-x-0 h-1 bg-[#2FC8B9]/50 blur-sm animate-[scan_2s_linear_infinite]" />
@@ -1456,47 +1770,31 @@ export default function QuickFoodScan() {
               <p className="text-slate-400 font-bold text-sm uppercase tracking-[0.3em]">AI processing active</p>
             </div>
 
-            {/* Smart Progress Feed */}
-            <div className="mt-12 space-y-3 bg-white/5 backdrop-blur-md rounded-[2.5rem] p-8 border border-white/10 shadow-2xl">
-              {[
-                { text: 'Optimizing high-res capture', active: false, done: true },
-                { text: 'Neural food recognition', active: true, done: false },
-                { text: 'Cross-referencing database', active: false, done: false },
-                { text: 'Calculating health impact', active: false, done: false }
-              ].map((step, i) => (
-                <div key={i} className={`flex items-center gap-4 transition-opacity duration-500 ${step.done || step.active ? 'opacity-100' : 'opacity-20'}`}>
-                  {step.done ? (
-                    <div className="w-2 h-2 rounded-full bg-[#2FC8B9] shadow-[0_0_10px_rgba(47,200,185,1)]"></div>
-                  ) : step.active ? (
-                    <div className="w-2 h-2 rounded-full bg-[#2FC8B9] animate-ping"></div>
-                  ) : (
-                    <div className="w-2 h-2 rounded-full bg-slate-600"></div>
-                  )}
-                  <span className={`text-xs font-bold uppercase tracking-widest ${step.active ? 'text-[#2FC8B9]' : 'text-slate-300'}`}>{step.text}</span>
-                </div>
-              ))}
-            </div>
-
             <div className="mt-8 flex items-center justify-center gap-3">
               <Info className="w-4 h-4 text-[#2FC8B9]/70" />
               <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-loose">
                 DO NOT DISCONNECT · ANALYZING COMPOSITION
               </p>
             </div>
-          </div>
-
-          <style dangerouslySetInnerHTML={{
-            __html: `
+            <style dangerouslySetInnerHTML={{
+              __html: `
                 @keyframes scan {
                   0% { transform: translateY(-100%); opacity: 0; }
                   50% { opacity: 1; }
                   100% { transform: translateY(100%); opacity: 0; }
                 }
-                .scrollbar-hide::-webkit-scrollbar { display: none; }
-                .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
               `}} />
+          </div>
         </div>
       )}
-    </div>
+
+      {/* Barcode Scanner View */}
+      {showBarcodeScanner && (
+        <BarcodeScanner
+          onScan={handleBarcodeScan}
+          onClose={() => setShowBarcodeScanner(false)}
+        />
+      )}
+    </>
   );
 }

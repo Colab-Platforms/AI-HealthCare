@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Moon, X, Play, Pause, Edit2, Check, Calendar } from 'lucide-react';
+import { wearableService } from '../services/api';
 import toast from 'react-hot-toast';
 
 export default function SleepTracker({ isOpen, onClose }) {
@@ -34,6 +35,45 @@ export default function SleepTracker({ isOpen, onClose }) {
     if (savedHistory) {
       setSleepHistory(JSON.parse(savedHistory));
     }
+
+    // Sync from database
+    const syncFromDB = async () => {
+      try {
+        const { data } = await wearableService.getDashboard();
+        if (data && data.recentSleep && data.recentSleep.length > 0) {
+          const mappedHistory = data.recentSleep.map(dbRecord => {
+            const start = new Date(dbRecord.bedTime || dbRecord.date);
+            const end = dbRecord.wakeTime ? new Date(dbRecord.wakeTime) : new Date(start.getTime() + (dbRecord.totalSleepMinutes * 60000));
+            const duration = end.getTime() - start.getTime();
+            const hours = Math.floor(dbRecord.totalSleepMinutes / 60);
+            const minutes = dbRecord.totalSleepMinutes % 60;
+            return {
+              id: start.getTime(),
+              date: new Date(dbRecord.date).toISOString(),
+              startTime: start.toISOString(),
+              endTime: end.toISOString(),
+              duration,
+              hours,
+              minutes,
+              quality: dbRecord.sleepScore || 75
+            };
+          });
+
+          // Sort descending and merge with local history (DB takes precedence to restore lost data)
+          mappedHistory.sort((a, b) => new Date(b.date) - new Date(a.date));
+          const finalHistory = mappedHistory.slice(0, 7);
+          setSleepHistory(finalHistory);
+          localStorage.setItem('sleep_history', JSON.stringify(finalHistory));
+
+          // Force a small storage event to tell the dashboard to read new data
+          window.dispatchEvent(new Event('storage'));
+        }
+      } catch (err) {
+        console.error('Failed to sync sleep data from DB:', err);
+      }
+    };
+
+    syncFromDB();
   }, []);
 
   // Update timer every second when tracking
@@ -69,7 +109,7 @@ export default function SleepTracker({ isOpen, onClose }) {
     toast.success('Sleep tracking started 😴');
   };
 
-  const stopSleep = () => {
+  const stopSleep = async () => {
     if (!startTime) return;
 
     const endTime = new Date();
@@ -96,6 +136,31 @@ export default function SleepTracker({ isOpen, onClose }) {
     setElapsedTime(0);
     localStorage.removeItem('sleep_tracking');
 
+    // Save to DB
+    try {
+      const dbPayload = {
+        date: startTime.toISOString(),
+        totalSleepMinutes: Math.floor(duration / 60000),
+        sleepScore: sleepRecord.quality,
+        bedTime: startTime.toISOString(),
+        wakeTime: endTime.toISOString()
+      };
+
+      try {
+        await wearableService.addSleepData('other', dbPayload);
+      } catch (err) {
+        if (err.response?.status === 404) {
+          await wearableService.connectDevice('other', 'Manual Sleep Tracker');
+          await wearableService.addSleepData('other', dbPayload);
+        }
+      }
+    } catch (dbErr) {
+      console.error('Failed to save sleep to DB:', dbErr);
+    }
+
+    // Force Dashboard re-render
+    window.dispatchEvent(new Event('storage'));
+
     toast.success(`Sleep recorded: ${hours}h ${minutes}m 🌙`);
   };
 
@@ -106,7 +171,7 @@ export default function SleepTracker({ isOpen, onClose }) {
     return 40 + Math.floor(Math.random() * 15);
   };
 
-  const saveManualEdit = () => {
+  const saveManualEdit = async () => {
     const hours = parseInt(editHours) || 0;
     const minutes = parseInt(editMinutes) || 0;
 
@@ -138,6 +203,32 @@ export default function SleepTracker({ isOpen, onClose }) {
     setEditMode(false);
     setEditHours('');
     setEditMinutes('');
+
+    // Save to DB
+    try {
+      const dbPayload = {
+        date: selectedDate.toISOString(),
+        totalSleepMinutes: Math.floor(duration / 60000),
+        sleepScore: sleepRecord.quality,
+        bedTime: startTime.toISOString(),
+        wakeTime: endTime.toISOString()
+      };
+
+      try {
+        await wearableService.addSleepData('other', dbPayload);
+      } catch (err) {
+        if (err.response?.status === 404) {
+          await wearableService.connectDevice('other', 'Manual Sleep Tracker');
+          await wearableService.addSleepData('other', dbPayload);
+        }
+      }
+    } catch (dbErr) {
+      console.error('Failed to save sleep to DB:', dbErr);
+    }
+
+    // Force Dashboard re-render
+    window.dispatchEvent(new Event('storage'));
+
     toast.success('Sleep data saved manually ✅');
   };
 

@@ -64,6 +64,11 @@ const quickFoodCheckSchema = new mongoose.Schema({
     prepTime: String
   }],
   imageUrl: String,
+  scanType: {
+    type: String,
+    enum: ['barcode', 'image', 'text'],
+    default: 'text'
+  },
   timestamp: {
     type: Date,
     default: Date.now,

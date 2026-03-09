@@ -51,28 +51,7 @@ class NutritionAI {
       return text;
     } catch (err) {
       const errorMsg = err.response?.data?.error?.message || err.message;
-      const errorType = err.response?.data?.error?.type;
-
       console.error('❌ [NutritionAI] API ERROR:', errorMsg);
-
-      // Proactive fallback for model-not-found errors (custom model name issues)
-      if (errorType === 'not_found_error' && model === 'claude-sonnet-4-6') {
-        console.warn('⚠️ [NutritionAI] Model "claude-sonnet-4-6" not found. Falling back to standard Claude 3.5 Sonnet...');
-        const fallbackPayload = { ...payload, model: 'claude-3-5-sonnet-20240620' };
-        // Remove recursion safety or just call once with different model
-        const { apiUrl } = this.getApiParams();
-        const fallbackRequest = {
-          ...requestPayload,
-          model: 'claude-3-5-sonnet-20240620'
-        };
-        try {
-          const fallbackResp = await axios.post(apiUrl, fallbackRequest, { headers, timeout: 120000 });
-          const fallbackText = fallbackResp.data?.content?.[0]?.text;
-          if (fallbackText) return fallbackText;
-        } catch (fallbackErr) {
-          console.error('❌ [NutritionAI] Fallback also failed:', fallbackErr.message);
-        }
-      }
 
       if (err.response?.data) {
         console.error('❌ [NutritionAI] Full API Error Data:', JSON.stringify(err.response.data));
