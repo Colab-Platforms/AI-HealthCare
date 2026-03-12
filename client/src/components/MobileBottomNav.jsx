@@ -62,10 +62,10 @@ export default function MobileBottomNav() {
   ];
 
   const logActivities = [
-    { label: 'Food Log', icon: Utensils, path: '/nutrition', color: 'text-black', iconBg: 'bg-slate-50', state: { openLogMeal: true } },
-    { label: 'Sleep', icon: Moon, path: '/log-vitals/sleep', color: 'text-black', iconBg: 'bg-slate-50' },
-    { label: 'Weight', icon: Scale, path: '/log-vitals/weight', color: 'text-black', iconBg: 'bg-slate-50' },
-    { label: 'Water', icon: Droplets, path: '/nutrition', color: 'text-black', iconBg: 'bg-slate-50', state: { scrollToWater: true } },
+    { label: 'Food Log', icon: Utensils, path: '/nutrition', color: 'text-orange-500', borderColor: 'border-orange-100', iconBg: 'bg-orange-50', state: { openLogMeal: true } },
+    { label: 'Sleep', icon: Moon, path: '/log-vitals/sleep', color: 'text-blue-500', borderColor: 'border-blue-100', iconBg: 'bg-blue-50' },
+    { label: 'Weight', icon: Scale, path: '/log-vitals/weight', color: 'text-emerald-500', borderColor: 'border-emerald-100', iconBg: 'bg-emerald-50' },
+    { label: 'Water', icon: Droplets, path: '/nutrition', color: 'text-cyan-500', borderColor: 'border-cyan-100', iconBg: 'bg-cyan-50', state: { scrollToWater: true } },
   ];
 
   const exploreServices = []; // Removed to focus on 4 core items
@@ -207,7 +207,7 @@ export default function MobileBottomNav() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[3.5rem] z-[101] md:hidden p-8 pb-12 shadow-[0_-20px_80px_rgba(0,0,0,0.2)] border-t border-slate-100 h-[50vh] overflow-hidden"
+              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[3.5rem] z-[101] md:hidden p-8 pb-12 shadow-[0_-20px_80px_rgba(0,0,0,0.2)] border-t border-slate-100 max-h-[90vh] overflow-y-auto"
             >
               <div className="w-16 h-1.5 bg-slate-100 rounded-full mx-auto mb-10" />
 
@@ -221,7 +221,7 @@ export default function MobileBottomNav() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2">
                 {logActivities.map((act) => {
                   const Icon = act.icon;
                   return (
@@ -230,12 +230,12 @@ export default function MobileBottomNav() {
                       to={act.path}
                       state={act.state}
                       onClick={() => setShowLogModal(false)}
-                      className="flex items-center gap-4 p-5 rounded-[2.5rem] border border-slate-100 bg-white shadow-sm active:scale-95 transition-all group hover:bg-black hover:text-white"
+                      className={`flex flex-col items-center justify-center gap-2 p-4 rounded-[2rem] border ${act.borderColor} bg-white shadow-sm active:scale-95 transition-all group hover:shadow-md`}
                     >
-                      <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center shrink-0 group-hover:bg-white/10">
-                        <Icon className="w-6 h-6 text-black group-hover:text-white" />
+                      <div className={`w-11 h-11 rounded-full ${act.iconBg} flex items-center justify-center shrink-0 transition-transform group-hover:scale-110`}>
+                        <Icon className={`w-5 h-5 ${act.color}`} />
                       </div>
-                      <span className="text-sm font-black tracking-tight uppercase">{act.label}</span>
+                      <span className="text-[10px] font-semibold text-slate-700 tracking-tight uppercase">{act.label}</span>
                     </Link>
                   );
                 })}
