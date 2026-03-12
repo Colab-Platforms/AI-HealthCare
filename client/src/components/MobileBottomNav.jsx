@@ -266,11 +266,11 @@ export default function MobileBottomNav() {
                 <button
                   key={key}
                   onClick={() => setShowLogModal(true)}
-                  className="nav-center-fab flex flex-col items-center justify-center !bg-black !shadow-black/20"
+                  className="nav-center-fab flex flex-col items-center justify-center !shadow-slate-200/50"
                   aria-label={item.label}
                   title={item.label}
                 >
-                  <Icon className="w-8 h-8 text-white" />
+                  <Icon className="w-6 h-6 text-white" />
                 </button>
               );
             }
@@ -280,7 +280,7 @@ export default function MobileBottomNav() {
                 key={key}
                 to={item.path}
                 state={item.state}
-                className={`nav-item-modern flex flex-col items-center justify-center gap-0.5 ${active ? 'active' : ''} text-slate-400 [&.active]:text-white`}
+                className={`nav-item-modern flex flex-col items-center justify-center gap-0.5 ${active ? 'active' : ''} text-slate-400 [&.active]:text-black`}
                 aria-label={item.label}
                 title={item.label}
               >
@@ -292,7 +292,7 @@ export default function MobileBottomNav() {
 
           <Link
             to="/diet-plan"
-            className={`nav-item-modern flex flex-col items-center justify-center gap-0.5 ${isActive('/diet-plan') ? 'active' : ''} text-slate-400 [&.active]:text-white`}
+            className={`nav-item-modern flex flex-col items-center justify-center gap-0.5 ${isActive('/diet-plan') ? 'active' : ''} text-slate-400 [&.active]:text-black`}
             aria-label="Diet Plan"
             title="Diet Plan"
           >
