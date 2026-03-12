@@ -36,7 +36,7 @@ const DashedGauge = ({ value, max = 2400, mode = 'Macro' }) => {
               key={i}
               x1="20" y1="120"
               x2="52" y2="120"
-              stroke={isActive ? '#000000' : '#F5F5F7'}
+              stroke={isActive ? '#A855F7' : '#F5F5F7'}
               strokeWidth="10"
               strokeLinecap="round"
               className="transition-colors duration-700"
@@ -47,10 +47,10 @@ const DashedGauge = ({ value, max = 2400, mode = 'Macro' }) => {
       </svg>
       <div className="absolute bottom-1 flex flex-col items-center">
         <span className="text-2xl font-black text-[#1a1a1a] tracking-tight">
-          {Math.round(value)}{mode === 'Macro' ? ' Kcal' : ''}
+          {Math.round(value)}
         </span>
         <span className="text-[10px] font-bold text-[#888888] mt-0.5">
-          of {max}{mode === 'Macro' ? ' Kcal' : ''}
+          of {max}
         </span>
       </div>
     </div>

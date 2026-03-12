@@ -111,6 +111,8 @@ export default function DietPlan() {
 
   const [loading, setLoading] = useState(true);
   const [activePlan, setActivePlan] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
   const [loggedMeals, setLoggedMeals] = useState({});
@@ -124,12 +126,14 @@ export default function DietPlan() {
   const loadInitialData = async () => {
     try {
       setLoading(true);
-      const [planRes, logsRes] = await Promise.all([
+      const [planRes, logsRes, historyRes] = await Promise.all([
         dietRecommendationService.getActiveDietPlan(),
-        nutritionService.getTodayLogs()
+        nutritionService.getTodayLogs(),
+        dietRecommendationService.getDietPlanHistory()
       ]);
 
       if (planRes.data.success) setActivePlan(planRes.data.dietPlan);
+      if (historyRes.data.success) setHistory(historyRes.data.history);
 
       const logs = logsRes.data?.foodLogs || logsRes.data?.logs || [];
       const loggedMap = {};
@@ -159,6 +163,22 @@ export default function DietPlan() {
       toast.error(err.response?.data?.message || 'Failed to update plan');
     } finally {
       setGenerating(false);
+    }
+  };
+
+  const loadSelectedPlan = async (planId) => {
+    try {
+      setLoading(true);
+      const { data } = await dietRecommendationService.getDietPlanById(planId);
+      if (data.success) {
+        setActivePlan(data.dietPlan);
+        setShowHistory(false);
+        toast.success('Loaded past plan');
+      }
+    } catch (err) {
+      toast.error('Failed to load plan');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -252,6 +272,12 @@ export default function DietPlan() {
               {new Date().toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}
             </span>
           </div>
+          <button
+            onClick={() => setShowHistory(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 md:px-6 md:py-2 bg-white/60 backdrop-blur-md rounded-full text-xs md:text-sm font-medium text-[#1a1a1a] hover:bg-white transition-all border border-white/60 shadow-sm shrink-0"
+          >
+            <Clock className="w-3.5 h-3.5 text-slate-500" /> History
+          </button>
           <button
             onClick={() => setShowPreferences(true)}
             className="flex items-center gap-1.5 px-3 py-1.5 md:px-6 md:py-2 bg-white/60 backdrop-blur-md rounded-full text-xs md:text-sm font-medium text-[#1a1a1a] hover:bg-white transition-all border border-white/60 shadow-sm shrink-0"
@@ -417,6 +443,80 @@ export default function DietPlan() {
       {showPreferences && (
         <FoodPreferences onClose={() => setShowPreferences(false)} />
       )}
+
+      {/* History Modal */}
+      <AnimatePresence>
+        {showHistory && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowHistory(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-lg bg-white rounded-[3rem] overflow-hidden shadow-2xl"
+            >
+              <div className="p-8 border-b border-slate-50 flex items-center justify-between">
+                <div>
+                  <h3 className="text-2xl font-black text-slate-800 tracking-tight">Plan History</h3>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Previous generations</p>
+                </div>
+                <button onClick={() => setShowHistory(false)} className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-black transition-all">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="p-8 max-h-[60vh] overflow-y-auto space-y-4 scrollbar-hide">
+                {history.length > 0 ? (
+                  history.map((plan) => (
+                    <button
+                      key={plan._id}
+                      onClick={() => loadSelectedPlan(plan._id)}
+                      className={`w-full p-6 rounded-3xl border text-left transition-all flex items-center justify-between group ${activePlan?._id === plan._id ? 'bg-black border-black shadow-xl ring-4 ring-black/5' : 'bg-slate-50 border-transparent hover:border-slate-200'}`}
+                    >
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${activePlan?._id === plan._id ? 'bg-white/20 text-white border border-white/20' : 'bg-white text-slate-800 border border-slate-100'}`}>
+                            {plan.fitnessGoal?.replace('_', ' ') || 'General Health'}
+                          </div>
+                          {activePlan?._id === plan._id && (
+                            <div className="flex items-center gap-1 text-emerald-400 text-[9px] font-black uppercase tracking-widest">
+                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                              Active Now
+                            </div>
+                          )}
+                        </div>
+                        <p className={`text-sm font-black ${activePlan?._id === plan._id ? 'text-white' : 'text-slate-800'}`}>
+                          {new Date(plan.createdAt).toLocaleDateString('en-US', {
+                            weekday: 'short',
+                            day: 'numeric',
+                            month: 'short',
+                            year: 'numeric'
+                          })}
+                        </p>
+                        <p className={`text-[10px] font-bold mt-1 ${activePlan?._id === plan._id ? 'text-slate-400' : 'text-slate-400'}`}>
+                          {plan.nutritionGoals?.dailyCalorieTarget} kcal • {plan.foodType || 'Balanced'}
+                        </p>
+                      </div>
+                      <ChevronRight className={`w-5 h-5 transition-transform group-hover:translate-x-1 ${activePlan?._id === plan._id ? 'text-white' : 'text-slate-300'}`} />
+                    </button>
+                  ))
+                ) : (
+                  <div className="py-20 text-center">
+                    <Clock className="w-12 h-12 text-slate-100 mx-auto mb-4" />
+                    <p className="text-sm font-bold text-slate-400">No past plans found</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
