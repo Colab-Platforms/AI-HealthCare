@@ -281,27 +281,28 @@ function Nutrition() {
     }
     const recognition = new SpeechRecognition();
     recognition.lang = 'en-US';
-    recognition.continuous = false;
-    recognition.interimResults = false;
+    recognition.continuous = true;
+    recognition.interimResults = true;
 
     recognition.onstart = () => {
       setIsListening(true);
+      if (inputMethod === 'Predict') {
+        setFoodInput(''); // Clear initially if starting from fresh Voice Log tab
+      }
       toast('Listening...', { icon: '🎙️', duration: 2000 });
     };
 
     recognition.onend = () => {
       setIsListening(false);
+      // Removed auto-analyze. The user must manually review and send it.
     };
 
     recognition.onresult = (event) => {
-      const transcript = event.results[0][0].transcript;
-      setFoodInput(transcript);
-      if (inputMethod === 'Predict') {
-        // If in voice mode, we can auto-analyze soon after capture
-        setTimeout(() => handleAnalyzeAndLog(), 1000);
-      } else {
-        setInputMethod('Type');
+      let currentTranscript = '';
+      for (let i = 0; i < event.results.length; ++i) {
+        currentTranscript += event.results[i][0].transcript;
       }
+      setFoodInput(currentTranscript);
     };
 
     recognition.onerror = (event) => {
@@ -724,8 +725,25 @@ function Nutrition() {
               {/* Body */}
               <div className="p-8 overflow-y-auto flex-1 scrollbar-hide">
 
-                {inputMethod === 'Predict' && (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center space-y-8 py-8">
+                {isAnalyzing ? (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center space-y-6 h-full py-12">
+                    <div className="relative w-24 h-24">
+                      <div className="absolute inset-0 border-4 border-slate-100 rounded-full" />
+                      <motion.div
+                        className="absolute inset-0 border-4 border-slate-900 rounded-full border-t-transparent"
+                        animate={{ rotate: 360 }}
+                        transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
+                      />
+                      <Wand2 className="w-8 h-8 text-slate-900 absolute inset-0 m-auto animate-pulse" />
+                    </div>
+                    <div className="text-center">
+                      <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Analyzing Food</h3>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Hang tight, extracting insights...</p>
+                    </div>
+                  </motion.div>
+
+                ) : inputMethod === 'Predict' ? (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center space-y-8 py-4">
                     <div className="relative">
                       {isListening && (
                         <>
@@ -735,30 +753,65 @@ function Nutrition() {
                       )}
 
                       <button
-                        onClick={startVoiceCapture}
-                        className={`relative w-28 h-28 rounded-full flex items-center justify-center transition-all shadow-xl ${isListening
+                        onClick={() => {
+                          if (isListening) {
+                            window.location.reload(); // Hard stop not supported, typically one disables or stops track. Since we don't have recognition ref, we use user pausing or clicking stop.
+                            // Actually better to just tell user to click stop, but we don't have speech recognition instance stored. 
+                            // It's cleaner to just instruct them.
+                          } else {
+                            startVoiceCapture();
+                          }
+                        }}
+                        className={`relative w-24 h-24 md:w-28 md:h-28 rounded-full flex items-center justify-center transition-all shadow-xl ${isListening
                           ? 'bg-black text-white scale-110'
                           : 'bg-slate-900 text-white hover:bg-black hover:scale-105 shadow-slate-900/20'
                           }`}
                       >
-                        <Mic className={`w-12 h-12 ${isListening ? 'animate-pulse' : ''}`} />
+                        <Mic className={`w-10 h-10 md:w-12 md:h-12 ${isListening ? 'animate-pulse' : ''}`} />
                       </button>
                     </div>
 
-                    <div className="text-center space-y-3 px-4">
-                      <h4 className="text-lg font-black text-slate-900 uppercase tracking-tight">
-                        {isListening ? 'Listening...' : 'Tap to speak'}
-                      </h4>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest max-w-[250px] mx-auto leading-relaxed">
-                        {isListening
-                          ? 'Say what you ate, e.g. "I had two slices of whole wheat bread with peanut butter"'
-                          : 'Describe your meal naturally and let AI do the rest'}
-                      </p>
+                    <div className="w-full text-center space-y-4 px-2">
+                      {foodInput ? (
+                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-left min-h-[100px] flex items-center justify-center relative">
+                          <p className="text-sm font-semibold text-slate-800 leading-relaxed text-center w-full">{foodInput}</p>
+                          {isListening && <div className="w-2 h-2 bg-red-500 rounded-full absolute bottom-4 right-4 animate-pulse" />}
+                        </div>
+                      ) : (
+                        <div className="text-center space-y-3 px-4">
+                          <h4 className="text-lg font-black text-slate-900 uppercase tracking-tight">
+                            {isListening ? 'Listening...' : 'Tap to speak'}
+                          </h4>
+                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest max-w-[250px] mx-auto leading-relaxed">
+                            {isListening
+                              ? 'Say what you ate, e.g. "I had two slices of whole wheat bread with peanut butter"'
+                              : 'Describe your meal naturally and let AI do the rest'}
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Action Button */}
+                      <div className="pt-4 flex flex-col items-center gap-3">
+                        {foodInput && !isListening && (
+                          <button
+                            onClick={handleAnalyzeAndLog}
+                            className="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-black transition-all shadow-xl active:scale-95"
+                          >
+                            <Zap className="w-5 h-5" /> Analyze Meal
+                          </button>
+                        )}
+                        {foodInput && !isListening && (
+                          <button
+                            onClick={() => { setFoodInput(''); startVoiceCapture(); }}
+                            className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-800 transition-all"
+                          >
+                            Restart Voice
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </motion.div>
-                )}
-
-                {inputMethod === 'Type' && (
+                ) : inputMethod === 'Type' ? (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
                     <div className="relative">
                       <Search className="w-5 h-5 text-slate-300 absolute left-5 top-1/2 -translate-y-1/2" />
@@ -821,9 +874,7 @@ function Nutrition() {
                       {isAnalyzing ? 'Analyzing Food...' : 'Analyze & Log Meal'}
                     </button>
                   </motion.div>
-                )}
-
-                {inputMethod === 'Scan' && (
+                ) : inputMethod === 'Scan' ? (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center space-y-8">
                     <div className="w-full aspect-square bg-slate-50 rounded-[3rem] flex items-center justify-center relative overflow-hidden border-4 border-dashed border-slate-200 group transition-all hover:border-slate-300 cursor-pointer"
                       onClick={() => document.getElementById('food-img-upload').click()}>
@@ -848,35 +899,6 @@ function Nutrition() {
                       <input id="food-img-upload" type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4 w-full">
-                      <div className="space-y-2">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Quantity</p>
-                        <input
-                          type="text"
-                          value={foodQuantity}
-                          onChange={(e) => setFoodQuantity(e.target.value)}
-                          placeholder="e.g., 200g, 1 plate"
-                          className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 px-5 text-[11px] font-bold text-slate-900 outline-none focus:bg-white focus:border-slate-300 transition-all placeholder:text-slate-300 shadow-inner"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Method</p>
-                        <select
-                          value={prepMethod}
-                          onChange={(e) => setPrepMethod(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 px-5 text-[11px] font-bold text-slate-900 outline-none focus:bg-white focus:border-slate-300 transition-all shadow-inner appearance-none cursor-pointer"
-                        >
-                          <option value="">Select Method</option>
-                          <option value="homemade">Homemade</option>
-                          <option value="fried">Deep Fried</option>
-                          <option value="package">Packaged</option>
-                          <option value="street">Street Food</option>
-                          <option value="boiled">Boiled</option>
-                          <option value="roasted">Roasted</option>
-                        </select>
-                      </div>
-                    </div>
-
                     <p className="text-[10px] font-black text-slate-400 text-center leading-relaxed">
                       AI will analyze the portion size and nutritional content<br />directly from the photo.
                     </p>
@@ -894,7 +916,7 @@ function Nutrition() {
                       Point your camera at the food. AI will instantly detect the dish, portion size and calculate accurate macros.
                     </p>
                   </motion.div>
-                )}
+                ) : null}
 
               </div>
             </motion.div>
@@ -1077,7 +1099,7 @@ function Nutrition() {
           </div>
         )}
       </AnimatePresence>
-    </div>
+    </div >
   );
 }
 

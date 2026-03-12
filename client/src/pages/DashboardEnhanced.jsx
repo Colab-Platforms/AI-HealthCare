@@ -741,7 +741,7 @@ export default function DashboardEnhanced() {
               ).map((item, idx) => (
                 <div key={idx} className="p-4 bg-slate-50 rounded-2xl flex items-center gap-3">
                   <div className="w-2 h-2 rounded-full bg-[#1A1A1A]" />
-                  <span className="text-sm font-black text-black">{item?.name || item?.foodItems?.[0]?.name}</span>
+                  <span className="text-sm font-semibold text-black">{item?.name || item?.foodItems?.[0]?.name}</span>
                 </div>
               ))}
               {(!(activeMealTab === 'snacks' ? dietPlan?.mealPlan?.snacks : dietPlan?.mealPlan?.[activeMealTab])?.length) && (
@@ -951,42 +951,54 @@ export default function DashboardEnhanced() {
           <h2 className="text-2xl font-medium text-[#1a1a1a]">Your Logged Meals</h2>
           <button onClick={() => navigate('/nutrition')} className="text-sm font-medium text-[#666666] hover:text-[#1a1a1a]">View Menu</button>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="flex overflow-x-auto md:grid md:grid-cols-3 gap-4 md:gap-8 pb-4 md:pb-0 scrollbar-hide snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0">
           {loggedMeals.length > 0 ? (
-            loggedMeals.slice(-3).map((meal, i) => (
-              <div key={i} className="bg-white/80 backdrop-blur-xl rounded-[32px] overflow-hidden border border-white/50 shadow-[0_4px_24px_rgba(0,0,0,0.02)] group hover:shadow-xl transition-all flex flex-col">
-                <div className="h-52 relative overflow-hidden">
-                  <ImageWithFallback src={meal.imageUrl} query={meal.name} alt={meal.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
-                  <div className="absolute top-4 left-4 flex flex-wrap gap-2">
-                    {['Logged', (meal.totalNutrition?.calories || meal.calories) > 300 ? 'High Energy' : 'Balanced'].map(tag => (
-                      <span key={tag} className="px-3 py-1 bg-white/20 backdrop-blur-md text-white border border-white/30 text-[10px] font-bold uppercase tracking-wider rounded-full">
-                        {tag}
+            <>
+              {loggedMeals.slice(0, 3).map((meal, i) => (
+                <div key={i} className="min-w-[85vw] md:min-w-0 snap-center bg-white/80 backdrop-blur-xl rounded-[24px] md:rounded-[32px] overflow-hidden border border-white/50 shadow-[0_4px_24px_rgba(0,0,0,0.02)] group hover:shadow-xl transition-all flex flex-col">
+                  <div className="h-40 md:h-52 relative overflow-hidden">
+                    <ImageWithFallback src={meal.imageUrl} query={meal.name} alt={meal.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+                    <div className="absolute top-4 left-4 flex flex-wrap gap-2">
+                      {['Logged', (meal.totalNutrition?.calories || meal.calories) > 300 ? 'High Energy' : 'Balanced'].map(tag => (
+                        <span key={tag} className="px-3 py-1 bg-white/20 backdrop-blur-md text-white border border-white/30 text-[10px] font-bold uppercase tracking-wider rounded-full">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="absolute bottom-4 left-4 flex gap-2">
+                      <span className="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-md text-[#1a1a1a] text-[10px] font-bold rounded-full shadow-sm">
+                        <Flame className="w-3.5 h-3.5 text-black" /> {meal.totalNutrition?.calories || meal.calories || 0} cal
                       </span>
-                    ))}
+                      <span className="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-md text-[#1a1a1a] text-[10px] font-bold rounded-full shadow-sm">
+                        <Clock className="w-3.5 h-3.5 text-slate-500" /> {meal.mealType || 'Meal'}
+                      </span>
+                    </div>
                   </div>
-                  <div className="absolute bottom-4 left-4 flex gap-2">
-                    <span className="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-md text-[#1a1a1a] text-[10px] font-bold rounded-full shadow-sm">
-                      <Flame className="w-3.5 h-3.5 text-black" /> {meal.totalNutrition?.calories || meal.calories || 0} cal
-                    </span>
-                    <span className="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-md text-[#1a1a1a] text-[10px] font-bold rounded-full shadow-sm">
-                      <Clock className="w-3.5 h-3.5 text-slate-500" /> {meal.mealType || 'Meal'}
-                    </span>
-                  </div>
-                </div>
-                <div className="p-6 lg:p-8 flex-1 flex flex-col">
-                  <h3 className="font-medium text-[#1a1a1a] text-xl mb-5">{meal.name || meal.foodItems?.[0]?.name || 'Logged Meal'}</h3>
-                  <div className="flex gap-3 mt-auto">
-                    <button onClick={() => navigate('/nutrition', { state: { openLogMeal: true, mealType: meal.mealType } })} className="flex-1 py-3 bg-[#1a1a1a] hover:bg-black text-white text-sm font-medium rounded-full transition-all shadow-md">
-                      + Add Again
-                    </button>
-                    <button onClick={() => navigate('/nutrition')} className="w-12 h-12 flex items-center justify-center bg-[#F5F5F7] hover:bg-slate-200 text-[#1a1a1a] text-sm font-bold rounded-full transition-colors border border-white">
-                      <Eye className="w-5 h-5" />
-                    </button>
+                  <div className="p-4 md:p-6 lg:p-8 flex-1 flex flex-col">
+                    <h3 className="font-medium text-[#1a1a1a] text-lg md:text-xl mb-4 md:mb-5">{meal.name || meal.foodItems?.[0]?.name || 'Logged Meal'}</h3>
+                    <div className="flex gap-2 md:gap-3 mt-auto">
+                      <button onClick={() => navigate('/nutrition', { state: { openLogMeal: true, mealType: meal.mealType } })} className="flex-1 py-2.5 md:py-3 bg-[#1a1a1a] hover:bg-black text-white text-xs md:text-sm font-medium rounded-full transition-all shadow-md">
+                        + Add Again
+                      </button>
+                      <button onClick={() => navigate('/nutrition')} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-[#F5F5F7] hover:bg-slate-200 text-[#1a1a1a] text-sm font-bold rounded-full transition-colors border border-white shrink-0">
+                        <Eye className="w-4 h-4 md:w-5 md:h-5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))
+              ))}
+              {loggedMeals.length > 3 && (
+                <div className="min-w-[40vw] md:hidden snap-center flex items-center justify-center p-4">
+                  <button onClick={() => navigate('/nutrition')} className="flex flex-col items-center gap-3 text-slate-500 hover:text-[#1a1a1a]">
+                    <div className="w-14 h-14 rounded-full bg-white shadow-sm border border-slate-100 flex items-center justify-center transition-transform hover:scale-105">
+                      <ArrowUpRight className="w-6 h-6" />
+                    </div>
+                    <span className="text-xs font-black uppercase tracking-widest">View All</span>
+                  </button>
+                </div>
+              )}
+            </>
           ) : (
             <div className="col-span-full p-20 text-center bg-[#FAF9FF] rounded-[3rem] border border-dashed border-[#EBE7FF]">
               <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
