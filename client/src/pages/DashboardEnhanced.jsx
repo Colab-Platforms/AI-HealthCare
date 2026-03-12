@@ -692,10 +692,10 @@ export default function DashboardEnhanced() {
       </motion.div>
 
       {/* 3 Column Grid - Scrollable on mobile with same height items */}
-      <div className="flex overflow-x-auto lg:grid lg:grid-cols-3 gap-6 lg:gap-8 pb-8 lg:pb-0 scrollbar-hide snap-x snap-mandatory h-full items-stretch lg:items-start">
+      <div className="flex overflow-x-auto lg:grid lg:grid-cols-3 gap-4 md:gap-8 pb-8 lg:pb-0 scrollbar-hide snap-x snap-mandatory h-full items-stretch lg:items-start -mx-4 px-4 md:mx-0 md:px-0">
 
         {/* Today's Diet Card */}
-        <div className="min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-[520px] lg:h-full">
+        <div className="min-w-[88vw] lg:min-w-0 snap-center bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-[520px] lg:h-full">
           <div className="flex items-center justify-between gap-2 mb-5 flex-nowrap overflow-hidden">
             <h2 className="text-base sm:text-xl font-black text-black whitespace-nowrap truncate">Today's Diet Plan</h2>
             <div className="flex items-center gap-1 bg-[#F8F9FB] px-1.5 py-1 rounded-lg border border-slate-50 shrink-0">
@@ -758,7 +758,7 @@ export default function DashboardEnhanced() {
         </div>
 
         {/* Nutrient Info Card */}
-        <div className="min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-[520px] lg:h-full">
+        <div className="min-w-[88vw] lg:min-w-0 snap-center bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-[520px] lg:h-full">
           <div className="flex items-center justify-between mb-0.5">
             <h2 className="text-xl font-black text-black">Nutrient Info</h2>
             <button
@@ -849,7 +849,7 @@ export default function DashboardEnhanced() {
         </div>
 
         {/* AI Lab Insights Card */}
-        <div className="min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-[520px] lg:h-full">
+        <div className="min-w-[88vw] lg:min-w-0 snap-center bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-[520px] lg:h-full">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-black text-black">AI Lab Insights</h2>
             <Link to="/upload" className="text-[9px] font-black text-slate-400 uppercase tracking-[0.1em] flex items-center gap-1 hover:text-black group">
@@ -1023,6 +1023,30 @@ export default function DashboardEnhanced() {
           className="flex flex-col h-full"
         >
           <DailyMetricsCard />
+          
+          {/* 30 Day Challenge Mini Card */}
+          <motion.div
+            whileHover={{ scale: 1.02 }}
+            onClick={() => navigate('/challenge')}
+            className="mt-6 bg-gradient-to-br from-[#1a1a1a] to-[#333333] rounded-[24px] p-5 text-white shadow-lg cursor-pointer relative overflow-hidden group"
+          >
+            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+            <div className="flex items-center justify-between relative z-10">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                  <Flame className="w-5 h-5 text-white fill-white" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-black uppercase tracking-widest text-white/70">Challenge</h4>
+                  <p className="text-lg font-bold">12 Day Streak</p>
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-white/50 group-hover:translate-x-1 transition-transform" />
+            </div>
+            <div className="mt-4 h-1.5 bg-white/10 rounded-full overflow-hidden">
+              <div className="h-full bg-white rounded-full w-[40%]" />
+            </div>
+          </motion.div>
         </motion.div>
 
         {/* Nutrition Deficiency Tracker */}
@@ -1173,7 +1197,7 @@ export default function DashboardEnhanced() {
                     <div className={`w-7 h-7 rounded-full flex items-center justify-center border-2 transition-colors flex-shrink-0 ${isCompleted ? 'border-[#1a1a1a] bg-[#1a1a1a]' : 'border-slate-300 group-hover:border-slate-400'}`}>
                       {isCompleted && <CheckCircle2 className="w-4 h-4 text-white" />}
                     </div>
-                    <span className={`text-sm font-black transition-colors uppercase tracking-tight ${isCompleted ? 'text-[#a0a0a0] line-through decoration-[#a0a0a0]' : 'text-[#1a1a1a] group-hover:text-slate-600'}`}>
+                    <span className={`text-sm font-semibold transition-colors uppercase tracking-tight ${isCompleted ? 'text-[#a0a0a0] line-through decoration-[#a0a0a0]' : 'text-[#1a1a1a] group-hover:text-slate-600'}`}>
                       {task}
                     </span>
                   </div>
