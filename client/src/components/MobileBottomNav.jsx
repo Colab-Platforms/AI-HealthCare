@@ -1,7 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { LayoutDashboard, MessageSquare, Utensils, FileText, MoreVertical, Settings, LogOut, Heart, Watch, X, Calendar, ScanLine, Activity, Bell, Plus, Scale, Droplets, Moon, Footprints, Apple } from 'lucide-react';
+import { 
+  LayoutDashboard, MessageSquare, Utensils, FileText, MoreVertical, 
+  Settings, LogOut, Heart, Watch, X, Calendar, ScanLine, 
+  Activity, Bell, Plus, Scale, Droplets, Moon, Footprints, 
+  Apple, Sparkles, Trophy 
+} from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
@@ -16,18 +21,15 @@ export default function MobileBottomNav() {
   // Check if modal is open by looking for modal elements
   useEffect(() => {
     const checkModal = () => {
-      // Check for any fixed overlay with high z-index (modal backdrop)
       const fixedElements = document.querySelectorAll('.fixed');
       let foundModal = false;
 
       fixedElements.forEach(el => {
-        // Check if it's a modal (has backdrop, high z-index, or data-modal)
         const classList = el.className || '';
         const hasBackdrop = classList.includes('bg-black') || classList.includes('bg-slate-900') || classList.includes('inset-0');
         const hasHighZ = classList.includes('z-50') || classList.includes('z-40') || classList.includes('z-[100]') || classList.includes('z-[999]');
         const isDataModal = el.getAttribute('data-modal') === 'true';
 
-        // If it has backdrop/inset and high z-index, it's likely a modal
         if ((hasBackdrop && hasHighZ && el.offsetHeight > 0) || isDataModal) {
           foundModal = true;
         }
@@ -36,13 +38,8 @@ export default function MobileBottomNav() {
       setIsModalOpen(foundModal);
     };
 
-    // Check immediately
     checkModal();
-
-    // Check on a small delay to catch modals that render after this effect
     const timer = setTimeout(checkModal, 100);
-
-    // Watch for changes
     const observer = new MutationObserver(checkModal);
     observer.observe(document.body, { childList: true, subtree: true });
 
@@ -52,7 +49,11 @@ export default function MobileBottomNav() {
     };
   }, [location.pathname, showMoreMenu]);
 
-  const hideNavbar = isModalOpen || showMoreMenu || showLogModal;
+  // Routes where the navbar should be completely hidden
+  const isExcludedPage = location.pathname === '/ai-chat' || location.pathname === '/profile';
+  
+  // Logic to hide the navbar UI but keep the component mounted (to allow the log modal to open)
+  const hideNavbarUI = isModalOpen || showMoreMenu || showLogModal;
 
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Home' },
@@ -63,12 +64,12 @@ export default function MobileBottomNav() {
 
   const logActivities = [
     { label: 'Food Log', icon: Utensils, path: '/nutrition', color: 'text-orange-500', borderColor: 'border-orange-100', iconBg: 'bg-orange-50', state: { openLogMeal: true } },
+    { label: 'Ask AI', icon: Sparkles, path: '/ai-chat', color: 'text-purple-500', borderColor: 'border-purple-100', iconBg: 'bg-purple-50' },
+    { label: 'Challenge', icon: Trophy, path: '/challenge', color: 'text-amber-500', borderColor: 'border-amber-100', iconBg: 'bg-amber-50' },
     { label: 'Sleep', icon: Moon, path: '/log-vitals/sleep', color: 'text-blue-500', borderColor: 'border-blue-100', iconBg: 'bg-blue-50' },
     { label: 'Weight', icon: Scale, path: '/log-vitals/weight', color: 'text-emerald-500', borderColor: 'border-emerald-100', iconBg: 'bg-emerald-50' },
     { label: 'Water', icon: Droplets, path: '/nutrition', color: 'text-cyan-500', borderColor: 'border-cyan-100', iconBg: 'bg-cyan-50', state: { scrollToWater: true } },
   ];
-
-  const exploreServices = []; // Removed to focus on 4 core items
 
   const moreMenuItems = [
     { path: '/profile', icon: Settings, label: 'Profile' },
@@ -83,6 +84,8 @@ export default function MobileBottomNav() {
     navigate('/login');
     setShowMoreMenu(false);
   };
+
+  if (isExcludedPage) return null;
 
   return (
     <>
@@ -110,41 +113,6 @@ export default function MobileBottomNav() {
             {moreMenuItems.map((item) => {
               const Icon = item.icon;
               const active = isActive(item.path);
-
-              if (item.comingSoon) {
-                return (
-                  <div
-                    key={item.label}
-                    className="w-full flex items-center justify-between px-4 py-3.5 text-slate-500 bg-slate-50 rounded-xl opacity-60 cursor-not-allowed text-sm"
-                  >
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-slate-200 flex items-center justify-center">
-                        <Icon className="w-5 h-5" />
-                      </div>
-                      <span className="font-medium">{item.label}</span>
-                    </div>
-                    <span className="text-xs bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full font-semibold">Soon</span>
-                  </div>
-                );
-              }
-
-              if (item.path === '#appointment') {
-                return (
-                  <button
-                    key={item.label}
-                    onClick={() => {
-                      toast.info('Appointment coming soon');
-                      setShowMoreMenu(false);
-                    }}
-                    className="w-full flex items-center gap-3 px-4 py-3.5 text-slate-700 hover:bg-slate-50 rounded-xl transition-all text-sm group"
-                  >
-                    <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center group-hover:bg-slate-200 transition-colors">
-                      <Icon className="w-5 h-5 text-slate-600" />
-                    </div>
-                    <span className="font-medium">{item.label}</span>
-                  </button>
-                );
-              }
 
               return (
                 <Link
@@ -221,7 +189,7 @@ export default function MobileBottomNav() {
                 </button>
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
                 {logActivities.map((act) => {
                   const Icon = act.icon;
                   return (
@@ -254,7 +222,7 @@ export default function MobileBottomNav() {
         )}
       </AnimatePresence>
 
-      <nav className={`mobile-bottom-nav-container ${hideNavbar ? 'hidden' : ''} !bg-white border-t border-slate-200/50 shadow-[0_-5px_20px_rgba(0,0,0,0.03)]`}>
+      <nav className={`mobile-bottom-nav-container ${hideNavbarUI ? 'hidden' : ''} !bg-white border-t border-slate-200/50 shadow-[0_-5px_20px_rgba(0,0,0,0.03)]`}>
         <div className="mobile-bottom-nav">
           {navItems.map((item, index) => {
             const Icon = item.icon;

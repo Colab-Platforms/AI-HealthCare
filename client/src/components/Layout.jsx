@@ -245,7 +245,7 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
         </header>
 
         {/* Mobile Back Button Header - Only for non-dashboard and non-food-scan pages */}
-        {!isDashboardPage && location.pathname !== '/step-tracker' && (
+        {!isDashboardPage && location.pathname !== '/step-tracker' && location.pathname !== '/ai-chat' && (
           <header className="sticky top-0 z-30 backdrop-blur-xl bg-white/95 border-b border-slate-100 md:hidden">
             <div className="flex items-center px-4 py-3 gap-3">
               <button

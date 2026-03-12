@@ -174,7 +174,7 @@ export default function AIChat() {
   };
 
   return (
-    <div className="fixed inset-0 bg-white flex flex-col md:flex-row overflow-hidden pb-[90px] md:pb-0">
+    <div className="fixed inset-0 h-[100dvh] bg-white flex flex-col md:flex-row overflow-hidden md:pb-0 safe-layout">
       {/* Sidebar - Desktop */}
       <div className={`fixed md:relative inset-y-0 left-0 w-80 bg-slate-50 border-r border-slate-100 flex flex-col z-[60] transition-transform duration-500 ease-in-out md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white">
@@ -250,11 +250,11 @@ export default function AIChat() {
         <div ref={chatContainerRef} className="flex-1 overflow-y-auto px-6 py-8 space-y-8 scroll-smooth">
           {messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-4 duration-500`}>
-              <div className={`flex gap-4 max-w-[85%] md:max-w-[70%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                <div className={`w-10 h-10 rounded-xl shrink-0 flex items-center justify-center shadow-lg ${msg.role === 'user' ? 'bg-black' : 'bg-slate-100'}`}>
+              <div className={`flex gap-3 md:gap-4 w-full md:max-w-[75%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                <div className={`w-10 h-10 rounded-xl shrink-0 flex items-center justify-center shadow-lg ${msg.role === 'user' ? 'bg-black' : 'bg-slate-100 hidden md:flex'}`}>
                   {msg.role === 'user' ? <User className="w-5 h-5 text-white" /> : <Bot className="w-5 h-5 text-black" />}
                 </div>
-                <div className={`relative p-5 rounded-2xl shadow-sm ${msg.role === 'user' ? 'bg-black text-white rounded-tr-none' : 'bg-slate-50 text-slate-800 border border-slate-100 rounded-tl-none'}`}>
+                <div className={`relative p-5 rounded-2xl shadow-sm w-full md:w-auto ${msg.role === 'user' ? 'bg-black text-white rounded-tr-none' : 'bg-slate-50 text-slate-800 border border-slate-100 rounded-tl-none md:rounded-tl-none'}`}>
                   <div className="text-sm leading-relaxed font-bold prose prose-slate max-w-none prose-sm">
                     {msg.content}
                   </div>
@@ -275,11 +275,11 @@ export default function AIChat() {
 
           {(streamingText || loading) && (
             <div className="flex justify-start animate-in fade-in duration-300">
-              <div className="flex gap-4 max-w-[85%] md:max-w-[70%]">
-                <div className="w-10 h-10 bg-black rounded-xl shrink-0 flex items-center justify-center shadow-lg">
+              <div className="flex gap-3 md:gap-4 w-full md:max-w-[75%]">
+                <div className="w-10 h-10 bg-black rounded-xl shrink-0 flex items-center justify-center shadow-lg hidden md:flex">
                   <Bot className="w-5 h-5 text-white" />
                 </div>
-                <div className="p-5 rounded-2xl bg-slate-50 text-slate-800 border border-slate-100 rounded-tl-none shadow-sm min-w-[120px]">
+                <div className="p-5 rounded-2xl bg-slate-50 text-slate-800 border border-slate-100 rounded-tl-none shadow-sm min-w-[120px] w-full md:w-auto">
                   {streamingText ? (
                     <div className="text-sm leading-relaxed font-bold whitespace-pre-wrap">
                       {streamingText}
@@ -302,8 +302,8 @@ export default function AIChat() {
         <div className="px-6 py-6 bg-gradient-to-t from-white via-white to-white/0 sticky bottom-0 z-40">
           <div className="max-w-4xl mx-auto">
             <form onSubmit={handleSubmit} className="relative group">
-              <div className="absolute inset-0 bg-black rounded-[2rem] blur-[20px] opacity-[0.03] group-focus-within:opacity-[0.08] transition-opacity"></div>
-              <div className="relative bg-white border-2 border-slate-100 group-focus-within:border-black rounded-[2rem] p-2 flex items-center gap-3 transition-all shadow-xl shadow-black/[0.02]">
+              <div className="absolute inset-0 bg-black rounded-[2rem] blur-[20px] opacity-[0.01] group-focus-within:opacity-[0.04] transition-opacity"></div>
+              <div className="relative bg-white border border-slate-100 focus-within:border-slate-300 rounded-[2rem] p-2 flex items-center gap-3 transition-all shadow-xl shadow-black/[0.02]">
                 <div className="hidden sm:flex w-10 h-10 items-center justify-center text-slate-300">
                   <MessageSquare className="w-5 h-5" />
                 </div>
@@ -313,7 +313,7 @@ export default function AIChat() {
                   onChange={(e) => setInput(e.target.value)}
                   placeholder="Ask about your health reports..."
                   disabled={loading || streaming}
-                  className="flex-1 bg-transparent py-3 px-2 text-sm font-bold text-black focus:outline-none placeholder:text-slate-400 placeholder:font-black placeholder:uppercase placeholder:text-[10px] placeholder:tracking-widest"
+                  className="flex-1 bg-transparent py-3 px-2 text-sm font-bold text-black focus:outline-none focus:ring-0 placeholder:text-slate-400 placeholder:font-black placeholder:uppercase placeholder:text-[10px] placeholder:tracking-widest border-none"
                 />
                 <button
                   type="submit"
