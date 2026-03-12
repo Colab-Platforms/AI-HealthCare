@@ -27,13 +27,14 @@ const Moon = ({ className }) => (
   </svg>
 );
 
-const MEAL_ORDER = ['breakfast', 'midMorningSnack', 'lunch', 'eveningSnack', 'dinner'];
+const MEAL_ORDER = ['breakfast', 'midMorningSnack', 'lunch', 'eveningSnack', 'dinner', 'snacks'];
 const SECTION_INFO = {
   breakfast: { label: 'Breakfast', time: '08:00 AM', emoji: '🍳', icon: Coffee },
   midMorningSnack: { label: 'Morning Snack', time: '11:00 AM', emoji: '🍎', icon: Sun },
   lunch: { label: 'Lunch', time: '01:30 PM', emoji: '🥗', icon: Utensils },
   eveningSnack: { label: 'Evening Snack', time: '05:00 PM', emoji: '☕', icon: Sunset },
   dinner: { label: 'Dinner', time: '08:30 PM', emoji: '🌙', icon: Moon },
+  snacks: { label: 'Healthy Snacks', time: 'Flexible', emoji: '🍿', icon: Coffee },
 };
 
 function getMealName(m) {
@@ -141,6 +142,12 @@ export default function DietPlan() {
         const type = log.mealType;
         const name = log.name || log.foodItems?.[0]?.name;
         loggedMap[`${type}-${name}`] = true;
+        // Add mapping for snack variations
+        if (type === 'snack') {
+          loggedMap[`midMorningSnack-${name}`] = true;
+          loggedMap[`eveningSnack-${name}`] = true;
+          loggedMap[`snacks-${name}`] = true;
+        }
       });
       setLoggedMeals(loggedMap);
 

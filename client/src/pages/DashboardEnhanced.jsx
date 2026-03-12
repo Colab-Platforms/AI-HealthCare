@@ -736,7 +736,7 @@ export default function DashboardEnhanced() {
           ) : (
             <div className="flex-1 space-y-3 mb-6 overflow-y-auto pr-1">
               {(activeMealTab === 'snacks'
-                ? (dietPlan?.mealPlan?.snacks || [])
+                ? [...(dietPlan?.mealPlan?.midMorningSnack || []), ...(dietPlan?.mealPlan?.eveningSnack || []), ...(dietPlan?.mealPlan?.snacks || [])]
                 : (dietPlan?.mealPlan?.[activeMealTab] || [])
               ).map((item, idx) => (
                 <div key={idx} className="p-4 bg-slate-50 rounded-2xl flex items-center gap-3">

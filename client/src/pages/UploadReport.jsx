@@ -243,9 +243,9 @@ export default function UploadReport() {
 
   return (
     <div className="p-4 md:p-8 max-w-[1400px] mx-auto space-y-8 relative font-sans">
-      <div className="text-left mb-8 max-w-3xl">
-        <h1 className="text-4xl md:text-5xl font-light tracking-tight text-[#1a1a1a] mb-4">AI Lab Analyzer</h1>
-        <p className="text-[#666666] text-lg">Upload your medical reports and let our AI translate complex jargon into actionable health insights and visualize your progress over time.</p>
+      <div className="text-left mb-4 md:mb-8 max-w-3xl">
+        <h1 className="text-3xl md:text-5xl font-light tracking-tight text-[#1a1a1a] mb-2 md:mb-4">AI Lab Analyzer</h1>
+        <p className="text-[#666666] text-sm md:text-lg leading-relaxed">Upload your medical reports and let our AI translate complex jargon into actionable health insights.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -260,24 +260,24 @@ export default function UploadReport() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95 }}
-                className={`${glassCard} p-10 min-h-[280px] flex flex-col`}
+                className={`${glassCard} p-6 md:p-10 min-h-[200px] md:min-h-[280px] flex flex-col`}
               >
                 <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#F5F5F7]/50 pointer-events-none" />
 
                 {files.length === 0 ? (
                   <div
                     {...getRootProps()}
-                    className={`relative z-10 group flex-1 border-4 border-dashed rounded-[2rem] p-10 text-center cursor-pointer transition-all duration-500 flex flex-col items-center justify-center ${isDragActive
-                      ? 'border-[#A795C7] bg-[#F8F6FA] scale-[1.02]'
+                    className={`relative z-10 group flex-1 border-2 md:border-4 border-dashed rounded-3xl md:rounded-[2rem] p-6 md:p-10 text-center cursor-pointer transition-all duration-500 flex flex-col items-center justify-center ${isDragActive
+                      ? 'border-[#A795C7] bg-[#F8F6FA] scale-[1.01]'
                       : 'border-slate-100 hover:border-[#A795C7]/50 bg-slate-50/50'
                       }`}
                   >
                     <input {...getInputProps()} />
-                    <div className="w-20 h-20 bg-[#F8F6FA] text-[#A795C7] border border-slate-100/50 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300">
-                      <Upload className="w-8 h-8" />
+                    <div className="w-12 h-12 md:w-20 md:h-20 bg-[#F8F6FA] text-[#A795C7] border border-slate-100/50 rounded-full flex items-center justify-center mb-4 md:mb-6 group-hover:scale-110 transition-transform duration-300">
+                      <Upload className="w-5 h-5 md:w-8 md:h-8" />
                     </div>
-                    <h3 className="font-medium text-2xl text-[#1a1a1a] mb-3">Upload Lab Report</h3>
-                    <p className="text-[#666666] mb-6 max-w-md">Drag & drop your PDF or image here, or click to browse. Max file size: 10MB.</p>
+                    <h3 className="font-medium text-lg md:text-2xl text-[#1a1a1a] mb-1 md:mb-3">Upload Lab Report</h3>
+                    <p className="text-[#666666] text-xs md:text-sm mb-4 md:mb-6 max-w-md">PDF or image. Max size: 10MB.</p>
                     <button className="px-8 py-3.5 bg-[#A795C7] text-white font-medium rounded-full hover:bg-[#9583B5] transition-all">
                       Select File
                     </button>
@@ -335,10 +335,10 @@ export default function UploadReport() {
                 animate={{ opacity: 1, y: 0 }}
                 className={`${glassCard} p-10`}
               >
-                <div className="space-y-10 py-6">
-                  <div className="flex flex-col items-center text-center space-y-4">
+                <div className="space-y-6 md:space-y-10 py-2 md:py-6">
+                  <div className="flex flex-col items-center text-center space-y-3 md:space-y-4">
                     <div className="relative">
-                      <div className="w-24 h-24 rounded-full border-4 border-slate-100 border-t-[#A795C7] animate-spin"></div>
+                      <div className="w-16 h-16 md:w-24 md:h-24 rounded-full border-2 md:border-4 border-slate-100 border-t-[#A795C7] animate-spin"></div>
                       <div className="absolute inset-0 flex items-center justify-center">
                         <FileText className="w-8 h-8 text-[#A795C7] animate-pulse" />
                       </div>
@@ -406,7 +406,7 @@ export default function UploadReport() {
                     <div className="w-2.5 h-2.5 rounded-full bg-[#A795C7]"></div> Recent Report
                   </span>
                 </div>
-                <div className="h-[320px] w-full">
+                <div className="h-[250px] md:h-[320px] w-full">
                   <ResponsiveContainer width="100%" height="100%">
                     <LineChart data={filteredComparisonData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
@@ -662,9 +662,9 @@ export default function UploadReport() {
       </div>
 
       {/* Info Banner */}
-      <div className="bg-[#F8F6FA] rounded-3xl p-6 border border-[#E8E0F5] flex gap-4">
-        <Info className="w-6 h-6 text-[#A795C7] flex-shrink-0" />
-        <p className="text-sm text-[#666666] leading-relaxed font-medium">
+      <div className="bg-[#F8F6FA] rounded-2xl md:rounded-3xl p-4 md:p-6 border border-[#E8E0F5] flex gap-3 md:gap-4">
+        <Info className="w-5 h-5 md:w-6 md:h-6 text-[#A795C7] flex-shrink-0" />
+        <p className="text-xs md:text-sm text-[#666666] leading-relaxed font-medium">
           Our AI analysis provides deep insights but is for educational purposes only. Always consult with a healthcare professional before making medical decisions.
         </p>
       </div>
