@@ -75,16 +75,16 @@ export default function ForgotPassword() {
         <div className="min-h-screen flex bg-white font-sans">
             {/* Left Panel - Branding */}
             <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
-                <div className="absolute inset-0 opacity-20">
-                    <div className="absolute top-20 left-20 w-72 h-72 bg-[#2FC8B9] rounded-full blur-[120px]" />
-                    <div className="absolute bottom-20 right-20 w-96 h-96 bg-[#2FC8B9] rounded-full blur-[120px]" />
+                <div className="absolute inset-0 opacity-10">
+                    <div className="absolute top-20 left-20 w-72 h-72 bg-white rounded-full blur-[120px]" />
+                    <div className="absolute bottom-20 right-20 w-96 h-96 bg-white rounded-full blur-[120px]" />
                 </div>
 
                 <div className="relative z-10 flex flex-col justify-center items-center w-full p-12 text-white">
                     <div className="w-20 h-20 bg-white/20 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-8 border border-white/30">
-                        {step === 1 && <Mail className="w-10 h-10 text-[#2FC8B9]" />}
-                        {step === 2 && <ShieldCheck className="w-10 h-10 text-[#2FC8B9]" />}
-                        {step === 3 && <KeyRound className="w-10 h-10 text-[#2FC8B9]" />}
+                        {step === 1 && <Mail className="w-10 h-10 text-white" />}
+                        {step === 2 && <ShieldCheck className="w-10 h-10 text-white" />}
+                        {step === 3 && <KeyRound className="w-10 h-10 text-white" />}
                     </div>
                     <h1 className="text-4xl font-black mb-4 text-center tracking-tighter uppercase">
                         {step === 1 ? 'Forgot Password?' : step === 2 ? 'Check Your Email' : 'Reset Password'}
@@ -102,13 +102,13 @@ export default function ForgotPassword() {
                 <div className="w-full max-w-md">
                     {/* Mobile Logo */}
                     <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-                        <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center border border-[#2FC8B9]/30 shadow-lg shadow-[#2FC8B9]/10">
-                            <Activity className="w-7 h-7 text-[#2FC8B9]" />
+                        <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center border border-white/10 shadow-lg shadow-black/10">
+                            <Activity className="w-7 h-7 text-white" />
                         </div>
                         <h2 className="text-3xl font-black mb-2 text-black uppercase tracking-tighter">FitCure</h2>
                     </div>
 
-                    <button onClick={() => step === 1 ? navigate('/login') : setStep(step - 1)} className="flex items-center gap-2 mb-6 text-[#2FC8B9] font-black uppercase tracking-tighter text-xs hover:text-black transition-colors">
+                    <button onClick={() => step === 1 ? navigate('/login') : setStep(step - 1)} className="flex items-center gap-2 mb-6 text-black font-black uppercase tracking-tighter text-xs hover:text-slate-600 transition-colors">
                         <ArrowLeft className="w-4 h-4" /> Back to {step === 1 ? 'Login' : 'Previous Step'}
                     </button>
 
@@ -131,7 +131,7 @@ export default function ForgotPassword() {
                                         type="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-xl py-4 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 focus:border-[#2FC8B9] text-black font-bold placeholder:text-slate-400 shadow-sm"
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-xl py-4 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black text-black font-bold placeholder:text-slate-400 shadow-sm"
                                         placeholder="you@example.com"
                                         required
                                     />
@@ -141,7 +141,7 @@ export default function ForgotPassword() {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:shadow-[0_10px_25px_rgba(47,200,185,0.3)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 bg-[#2FC8B9] hover:bg-[#28b5a6]"
+                                className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:bg-slate-900 transition-all flex items-center justify-center gap-2 disabled:opacity-50 bg-black"
                             >
                                 {loading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Send Code <ArrowRight className="w-5 h-5" /></>}
                             </button>
@@ -174,17 +174,17 @@ export default function ForgotPassword() {
                                                     if (i > 0 && e.target.previousSibling) e.target.previousSibling.focus();
                                                 }
                                             }}
-                                            className="w-16 h-20 text-center text-4xl font-black bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 focus:border-[#2FC8B9] text-[#2FC8B9]"
+                                            className="w-16 h-20 text-center text-4xl font-black bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black text-black"
                                         />
                                     ))}
                                 </div>
-                                <p className="text-center mt-6 text-slate-500 text-sm">Didn't receive code? <button type="button" onClick={handleSendCode} className="text-[#2FC8B9] font-bold hover:underline">Resend</button></p>
+                                <p className="text-center mt-6 text-slate-500 text-sm">Didn't receive code? <button type="button" onClick={handleSendCode} className="text-black font-bold hover:underline">Resend</button></p>
                             </div>
 
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:shadow-[0_10px_25px_rgba(47,200,185,0.3)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 bg-[#2FC8B9] hover:bg-[#28b5a6]"
+                                className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:bg-slate-900 transition-all flex items-center justify-center gap-2 disabled:opacity-50 bg-black"
                             >
                                 {loading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Verify Code <ArrowRight className="w-5 h-5" /></>}
                             </button>
@@ -201,7 +201,7 @@ export default function ForgotPassword() {
                                         type={showPassword ? 'text' : 'password'}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-xl py-4 pl-12 pr-12 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 focus:border-[#2FC8B9] text-black font-bold"
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-xl py-4 pl-12 pr-12 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black text-black font-bold"
                                         placeholder="••••••••"
                                         required
                                     />
@@ -232,7 +232,7 @@ export default function ForgotPassword() {
                                         type="password"
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-xl py-4 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 focus:border-[#2FC8B9] text-black font-bold"
+                                        className="w-full bg-slate-50 border border-slate-100 rounded-xl py-4 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black text-black font-bold"
                                         placeholder="••••••••"
                                         required
                                     />
@@ -247,7 +247,7 @@ export default function ForgotPassword() {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:shadow-[0_10px_25px_rgba(47,200,185,0.3)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 bg-[#2FC8B9] hover:bg-[#28b5a6]"
+                                className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:bg-slate-900 transition-all flex items-center justify-center gap-2 disabled:opacity-50 bg-black"
                             >
                                 {loading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Reset Password <ArrowRight className="w-5 h-5" /></>}
                             </button>
@@ -256,10 +256,10 @@ export default function ForgotPassword() {
 
                     <div className="mt-10 p-6 bg-slate-50 rounded-3xl border border-slate-100 relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform">
-                            <ShieldCheck className="w-16 h-16 text-[#2FC8B9]" />
+                            <ShieldCheck className="w-16 h-16 text-black" />
                         </div>
                         <p className="text-xs text-slate-500 font-bold leading-relaxed relative z-10">
-                            <span className="text-[#2FC8B9] uppercase tracking-tighter mr-1">Security Note:</span>
+                            <span className="text-black uppercase tracking-tighter mr-1">Security Note:</span>
                             FitCure AI never asks for your password over email. All password resets are handled through our secure verification system.
                         </p>
                     </div>

@@ -1,772 +1,1084 @@
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import api from '../services/api';
-import toast from 'react-hot-toast';
+import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Loader2, Plus, Trash2, X, Droplets, Flame, Zap, Heart,
-  AlertCircle, CheckCircle, ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, Plus, Camera, Mic, Lightbulb,
+  Sun, Utensils, Cookie, Moon, Minus, Search, Wand2, X,
+  Edit3, Image as ImageIcon,
+  GlassWater, FileEdit, ScanLine, CheckCircle2, Loader2, Zap, Trash2, Clock, Sparkles, AlertCircle, FlaskConical
 } from 'lucide-react';
+import { ImageWithFallback } from '../components/ImageWithFallback';
+import { BarChart, Bar, Cell, ResponsiveContainer, XAxis, Tooltip } from 'recharts';
+import api, { nutritionService, dietRecommendationService } from '../services/api';
+import toast from 'react-hot-toast';
+import { useData } from '../context/DataContext';
 
-export default function Nutrition() {
-  const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [isInitialLoad, setIsInitialLoad] = useState(true);
-  const [todayLogs, setTodayLogs] = useState([]);
-  const [dailySummary, setDailySummary] = useState(null);
-  const [healthGoal, setHealthGoal] = useState(null);
-  const [showAddMeal, setShowAddMeal] = useState(false);
-  const [waterIntake, setWaterIntake] = useState(0);
+function Nutrition() {
+  const { invalidateCache } = useData();
+  const location = useLocation();
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [mealTab, setMealTab] = useState('Breakfast');
+  const [inputMethod, setInputMethod] = useState('Predict'); // 'Predict', 'Type', 'Scan'
+  const [recType, setRecType] = useState('Recommended');
+
+  // Dynamic Data States
+  const [dailySummary, setDailySummary] = useState({
+    caloriesConsumed: 0,
+    calorieTarget: 1800,
+    protein: 0, proteinTarget: 70,
+    carbs: 0, carbsTarget: 200,
+    fats: 0, fatsTarget: 55
+  });
+  const [mealLogs, setMealLogs] = useState({
+    Breakfast: [],
+    Lunch: [],
+    Snack: [],
+    Dinner: []
+  });
+  const [weeklyTrends, setWeeklyTrends] = useState([]);
+  const [waterIntake, setWaterIntake] = useState({ current: 0, target: 8 });
+  const [loading, setLoading] = useState(true);
+  const [recentMeals, setRecentMeals] = useState([]);
+  const [frequentFoods, setFrequentFoods] = useState([]);
+  const [aiInsights, setAiInsights] = useState("Analyzing your eating patterns...");
+  const [mealSuggestions, setMealSuggestions] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
 
-  // Add meal form state - Enhanced
-  const [mealType, setMealType] = useState('breakfast');
-  const [foodDescription, setFoodDescription] = useState('');
-  const [analyzing, setAnalyzing] = useState(false);
+  // Modal Specific States
+  const [foodInput, setFoodInput] = useState('');
+  const [image, setImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
-
-  // Smart suggestions state
-  const [quantity, setQuantity] = useState('');
-  const [servingSize, setServingSize] = useState('medium');
-  const [preparationMethod, setPreparationMethod] = useState('homemade');
-  const [foodItems, setFoodItems] = useState([]);
-  const [showQuantitySuggestions, setShowQuantitySuggestions] = useState(false);
+  const [foodQuantity, setFoodQuantity] = useState('');
+  const [prepMethod, setPrepMethod] = useState('');
+  const [isListening, setIsListening] = useState(false);
 
   useEffect(() => {
     fetchData();
-  }, [selectedDate]);
-
-  // Handle hash navigation for smooth scroll to daily target
-  useEffect(() => {
-    if (window.location.hash === '#daily-target') {
-      setTimeout(() => {
-        document.getElementById('daily-target')?.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center'
-        });
-      }, 100);
+    if (location.state?.openLogMeal) {
+      setIsModalOpen(true);
+      if (location.state?.mealType) setMealTab(location.state.mealType);
     }
-  }, []);
+    if (location.state?.scrollToWater) {
+      setTimeout(() => {
+        document.getElementById('water-section')?.scrollIntoView({ behavior: 'smooth' });
+      }, 500);
+    }
+  }, [location.state, selectedDate]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
-      const headers = { Authorization: `Bearer ${token}` };
-
-      const today = new Date().toISOString().split('T')[0];
-      const isToday = selectedDate === today;
-
-      const [logsRes, summaryRes, goalRes] = await Promise.all([
-        isToday
-          ? api.get('nutrition/logs/today')
-          : api.get(`nutrition/logs?startDate=${selectedDate}&endDate=${selectedDate}`),
-        api.get(`nutrition/summary/daily?date=${selectedDate}`),
-        api.get('nutrition/goals').catch(() => ({ data: { healthGoal: null } }))
+      const date = selectedDate;
+      const [summaryRes, logsRes, weeklyRes, goalsRes, dietRes] = await Promise.all([
+        api.get(`nutrition/summary/daily?date=${date}`),
+        api.get(`nutrition/logs?date=${date}`),
+        api.get('nutrition/summary/weekly'),
+        api.get('nutrition/goals').catch(() => ({ data: { healthGoal: { dailyCalorieTarget: 1800, macroTargets: { protein: 70, carbs: 200, fats: 55 } } } })),
+        dietRecommendationService.getActiveDietPlan().catch(() => ({ data: { dietPlan: null } }))
       ]);
 
-      setTodayLogs(logsRes.data.foodLogs || []);
-      setDailySummary(summaryRes.data.summary);
-      setHealthGoal(goalRes.data.healthGoal);
+      // Summary
+      const summary = summaryRes.data.summary || {};
+      const goals = goalsRes.data.healthGoal || {};
+      setDailySummary({
+        caloriesConsumed: summary.totalCalories || 0,
+        calorieTarget: goals.dailyCalorieTarget || 1800,
+        protein: summary.totalProtein || 0,
+        proteinTarget: goals.macroTargets?.protein || 70,
+        carbs: summary.totalCarbs || 0,
+        carbsTarget: goals.macroTargets?.carbs || 200,
+        fats: summary.totalFats || 0,
+        fatsTarget: goals.macroTargets?.fats || 55
+      });
 
-      // Load water intake from localStorage
-      const savedWater = localStorage.getItem(`waterIntake_${selectedDate}`);
-      setWaterIntake(savedWater ? parseInt(savedWater) : 0);
+      // Logs - Group by mealType
+      const logs = logsRes.data.foodLogs || logsRes.data.logs || [];
+      const grouped = { Breakfast: [], Lunch: [], Snack: [], Dinner: [] };
+      logs.forEach(log => {
+        const type = log.mealType.charAt(0).toUpperCase() + log.mealType.slice(1);
+        if (grouped[type]) grouped[type].push(log);
+        else grouped.Snack.push(log);
+      });
+      setMealLogs(grouped);
+      setRecentMeals(logs.slice(0, 5));
 
-      setIsInitialLoad(false);
+      // Weekly Trends
+      const weekly = weeklyRes.data.weeklyStats?.dailySummaries || [];
+      const chartData = weekly.map(day => ({
+        day: new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' }),
+        value: day.totalCalories,
+        active: new Date(day.date).toISOString().split('T')[0] === date
+      }));
+      setWeeklyTrends(chartData);
+
+      // Water (Assuming it's part of daily summary)
+      setWaterIntake({
+        current: summary.waterIntake || 0,
+        target: goals.waterTarget || 8
+      });
+
+      // Insights & Suggestions
+      if (dietRes.data.dietPlan) {
+        setMealSuggestions(dietRes.data.dietPlan.mealPlan?.lunch || []); // Example: showing lunch suggestions
+        const proteinShort = Math.max(0, (goals.macroTargets?.protein || 70) - (summary.totalProtein || 0));
+        if (proteinShort > 0) {
+          setAiInsights(`You are ${proteinShort}g short on protein today. Try adding some paneer or chicken.`);
+        } else {
+          setAiInsights("Great job! You've met your protein goal for today.");
+        }
+      }
+
     } catch (error) {
-      console.error('Failed to fetch data:', error);
-      toast.error('Failed to load nutrition data');
-      setIsInitialLoad(false);
+      console.error('Failed to fetch nutrition data:', error);
+      toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }
   };
 
-  const handleAddWater = () => {
-    const newWater = waterIntake + 1;
-    setWaterIntake(newWater);
-    localStorage.setItem(`waterIntake_${selectedDate}`, newWater);
-
-    // Check for excessive water consumption (8-9 liters = 32-36 glasses)
-    if (newWater >= 32 && newWater <= 36) {
-      toast('⚠️ You are approaching 8 liters of water. Be mindful of overhydration!', {
-        icon: '💧',
-        duration: 5000,
-        style: {
-          background: '#fef3c7',
-          color: '#92400e',
-          border: '2px solid #fbbf24'
-        }
-      });
-    } else if (newWater > 36) {
-      toast.error('🚨 Warning: You have consumed more than 9 liters of water today! Excessive water intake can be harmful. Please consult a doctor if you feel unwell.', {
-        duration: 7000,
-        style: {
-          background: '#fee2e2',
-          color: '#991b1b',
-          border: '2px solid #ef4444'
-        }
-      });
-    } else {
-      toast.success('Water intake updated! 💧');
-    }
-  };
-
-  const handleRemoveWater = () => {
-    if (waterIntake > 0) {
-      const newWater = waterIntake - 1;
-      setWaterIntake(newWater);
-      localStorage.setItem(`waterIntake_${selectedDate}`, newWater);
-    }
-  };
-
-  // Smart quantity suggestions based on food type
-  const getQuantitySuggestions = (foodName) => {
-    const lowerFood = foodName.toLowerCase();
-
-    // Liquids
-    if (lowerFood.includes('juice') || lowerFood.includes('milk') || lowerFood.includes('water') || lowerFood.includes('tea') || lowerFood.includes('coffee')) {
-      return ['1 cup (250ml)', '1 glass (200ml)', '1 bottle (500ml)', '2 cups (500ml)'];
-    }
-
-    // Rice/Grains
-    if (lowerFood.includes('rice') || lowerFood.includes('pasta') || lowerFood.includes('noodles')) {
-      return ['1 cup', '1.5 cups', '2 cups', '1 bowl'];
-    }
-
-    // Bread/Roti
-    if (lowerFood.includes('bread') || lowerFood.includes('roti') || lowerFood.includes('chapati') || lowerFood.includes('paratha')) {
-      return ['1 piece', '2 pieces', '3 pieces', '4 pieces'];
-    }
-
-    // Fruits
-    if (lowerFood.includes('apple') || lowerFood.includes('banana') || lowerFood.includes('orange') || lowerFood.includes('mango')) {
-      return ['1 small', '1 medium', '1 large', '2 pieces'];
-    }
-
-    // Eggs
-    if (lowerFood.includes('egg')) {
-      return ['1 egg', '2 eggs', '3 eggs', '4 eggs'];
-    }
-
-    // Chicken/Meat
-    if (lowerFood.includes('chicken') || lowerFood.includes('meat') || lowerFood.includes('fish')) {
-      return ['100g', '150g', '200g', '1 piece'];
-    }
-
-    // Default
-    return ['1 serving', '1 plate', '1 bowl', '1 cup'];
-  };
-
-  const addFoodItem = () => {
-    if (!analysisResult || !quantity) {
-      toast.error('Please analyze food and select quantity');
-      return;
-    }
-
-    const newItem = {
-      ...analysisResult.foodItem,
-      quantity,
-      servingSize,
-      preparationMethod,
-      id: Date.now()
-    };
-
-    setFoodItems([...foodItems, newItem]);
-    setFoodDescription('');
-    setAnalysisResult(null);
-    setQuantity('');
-    setShowQuantitySuggestions(false);
-    toast.success('Food item added!');
-  };
-
-  const removeFoodItem = (id) => {
-    setFoodItems(foodItems.filter(item => item.id !== id));
-    toast.success('Item removed');
-  };
-
-  const analyzeFood = async () => {
-    if (!foodDescription.trim()) {
-      toast.error('Please enter a food item');
-      return;
-    }
-
-    setAnalyzing(true);
+  const handleWaterUpdate = async (change) => {
     try {
-      const token = localStorage.getItem('token');
+      const newWater = Math.max(0, waterIntake.current + change);
+      // We don't have a direct water log endpoint in the snippet, 
+      // but usually we log it as a progress or as part of daily sync.
+      // For now, let's update local state and toast.
+      setWaterIntake(prev => ({ ...prev, current: newWater }));
+      await api.post('health/daily-progress', {
+        date: selectedDate,
+        waterIntake: newWater
+      });
+      toast.success('Water intake updated');
+    } catch (error) {
+      toast.error('Failed to update water');
+    }
+  };
 
-      // Build enhanced description with serving size and preparation
-      const enhancedDescription = `${servingSize} ${preparationMethod} ${foodDescription}`;
+  const openModal = (meal) => {
+    setMealTab(meal);
+    setIsModalOpen(true);
+    setAnalysisResult(null);
+    setFoodInput('');
+    setFoodQuantity('');
+    setPrepMethod('');
+    setImage(null);
+    setImagePreview(null);
+  };
 
-      const response = await api.post(
-        'nutrition/quick-check',
-        { foodDescription: enhancedDescription }
-      );
+  // Image Upload Logic from QuickFoodCheck
+  const compressImage = async (file) => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          const maxSize = 1200;
+          if (width > maxSize || height > maxSize) {
+            if (width > height) {
+              height = (height / width) * maxSize;
+              width = maxSize;
+            } else {
+              width = (width / height) * maxSize;
+              height = maxSize;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob((blob) => {
+            if (blob) {
+              resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
+            } else reject(new Error('Canvas conversion failed'));
+          }, 'image/jpeg', 0.8);
+        };
+        img.src = e.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
 
-      setAnalysisResult(response.data.data);
-      setShowQuantitySuggestions(true);
+  const handleImageSelect = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    try {
+      const compressed = await compressImage(file);
+      setImage(compressed);
+      setImagePreview(URL.createObjectURL(compressed));
+    } catch (error) {
+      toast.error('Failed to process image');
+    }
+  };
+
+  const handleAnalyzeAndLog = async () => {
+    if (!foodInput && !image) return;
+    setIsAnalyzing(true);
+    try {
+      const formData = new FormData();
+      formData.append('foodDescription', foodInput || 'Food from image');
+      if (image) formData.append('image', image);
+
+      let context = '';
+      if (foodQuantity) context += `Quantity: ${foodQuantity}. `;
+      if (prepMethod) context += `Preparation: ${prepMethod}.`;
+      if (context) formData.append('additionalContext', context);
+
+      const response = await api.post('nutrition/quick-check', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+        timeout: 60000
+      });
+
+      const result = response.data.data;
+      setAnalysisResult(result);
+      // Instead of auto-logging, we show the result modal first
       toast.success('Food analyzed!');
     } catch (error) {
-      console.error('Analysis error:', error);
-      toast.error('Failed to analyze food');
+      console.error(error);
+      toast.error('Analysis failed');
     } finally {
-      setAnalyzing(false);
+      setIsAnalyzing(false);
     }
   };
 
-  const logMeal = async () => {
-    if (foodItems.length === 0) {
-      toast.error('Please add at least one food item');
-      return;
-    }
-
+  const handleConfirmLog = async (data) => {
     try {
-      const token = localStorage.getItem('token');
-      await api.post(
-        'nutrition/log-meal',
-        {
-          mealType,
-          foodItems: foodItems.map(item => ({
-            ...item,
-            notes: `${item.quantity} - ${item.servingSize} - ${item.preparationMethod}`
-          })),
-          notes: `${foodItems.length} items logged`,
-          timestamp: selectedDate
-        }
-      );
-
-      toast.success('Meal logged successfully!');
-      setShowAddMeal(false);
-      setFoodDescription('');
-      setAnalysisResult(null);
-      setFoodItems([]);
-      setQuantity('');
-      setServingSize('medium');
-      setPreparationMethod('homemade');
+      const logData = {
+        mealType: mealTab.toLowerCase(),
+        foodItems: [{
+          name: data.foodItem?.name || data.foodName,
+          quantity: data.foodItem?.quantity || data.quantity || '1 serving',
+          nutrition: data.foodItem?.nutrition || data.nutrition || {}
+        }],
+        healthScore: data.healthScore,
+        healthScore10: data.healthScore10,
+        micronutrients: data.micronutrients,
+        enhancementTips: data.enhancementTips,
+        healthBenefitsSummary: data.healthBenefitsSummary || data.analysis,
+        warnings: data.warnings,
+        alternatives: data.alternatives,
+        date: selectedDate
+      };
+      await nutritionService.logMeal(logData);
+      toast.success('Added to ' + mealTab);
+      invalidateCache(['dashboard', `nutrition_${selectedDate}`]);
       fetchData();
+      setIsModalOpen(false);
+      setAnalysisResult(null);
     } catch (error) {
-      console.error('Log meal error:', error);
       toast.error('Failed to log meal');
     }
   };
 
-  const deleteMeal = async (id) => {
-    if (!confirm('Delete this meal?')) return;
-
-    try {
-      const token = localStorage.getItem('token');
-      await api.delete(`nutrition/logs/${id}`);
-
-      toast.success('Meal deleted');
-      fetchData();
-    } catch (error) {
-      console.error('Delete error:', error);
-      toast.error('Failed to delete meal');
-    }
-  };
-
-  const getMealIcon = (type) => {
-    const icons = {
-      breakfast: '🌅',
-      lunch: '☀️',
-      dinner: '🌙',
-      snack: '🍎'
-    };
-    return icons[type] || '🍽️';
-  };
-
-  const handlePreviousDay = () => {
-    const date = new Date(selectedDate);
-    date.setDate(date.getDate() - 1);
-    setSelectedDate(date.toISOString().split('T')[0]);
-  };
-
-  const handleNextDay = () => {
-    const date = new Date(selectedDate);
-    date.setDate(date.getDate() + 1);
-    const nextDate = date.toISOString().split('T')[0];
-    const today = new Date().toISOString().split('T')[0];
-
-    // Don't allow future dates
-    if (nextDate > today) {
-      toast.error('Cannot view future dates');
+  const startVoiceCapture = () => {
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+      toast.error("Speech recognition not supported in this browser.");
       return;
     }
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.continuous = false;
+    recognition.interimResults = false;
 
-    setSelectedDate(nextDate);
+    recognition.onstart = () => {
+      setIsListening(true);
+      toast('Listening...', { icon: '🎙️', duration: 2000 });
+    };
+
+    recognition.onend = () => {
+      setIsListening(false);
+    };
+
+    recognition.onresult = (event) => {
+      const transcript = event.results[0][0].transcript;
+      setFoodInput(transcript);
+      if (inputMethod === 'Predict') {
+        // If in voice mode, we can auto-analyze soon after capture
+        setTimeout(() => handleAnalyzeAndLog(), 1000);
+      } else {
+        setInputMethod('Type');
+      }
+    };
+
+    recognition.onerror = (event) => {
+      console.error('Speech Recognition Error:', event.error);
+      setIsListening(false);
+      toast.error('Voice capture failed: ' + event.error);
+    };
+
+    try {
+      recognition.start();
+    } catch (e) {
+      console.error(e);
+      setIsListening(false);
+    }
   };
 
-  const formatDate = (dateStr) => {
-    const date = new Date(dateStr + 'T00:00:00');
-    const today = new Date();
-    const yesterday = new Date(today);
-    yesterday.setDate(yesterday.getDate() - 1);
-
-    if (dateStr === today.toISOString().split('T')[0]) return 'Today';
-    if (dateStr === yesterday.toISOString().split('T')[0]) return 'Yesterday';
-
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  const deleteLog = async (id) => {
+    if (!confirm('Delete this food log?')) return;
+    try {
+      await api.delete(`nutrition/logs/${id}`);
+      toast.success('Deleted');
+      fetchData();
+    } catch (error) {
+      toast.error('Delete failed');
+    }
   };
 
-  if (isInitialLoad && loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
-      </div>
-    );
-  }
+  const changeDate = (days) => {
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() + days);
+    setSelectedDate(d.toISOString().split('T')[0]);
+  };
 
-  const caloriePercentage = dailySummary?.caloriePercentage || 0;
-  const waterGoal = 8; // 8 glasses per day
-  const today = new Date().toISOString().split('T')[0];
-  const isToday = selectedDate === today;
+  const remainingCals = Math.max(0, dailySummary.calorieTarget - dailySummary.caloriesConsumed);
+  const progressPercent = Math.min(100, (dailySummary.caloriesConsumed / dailySummary.calorieTarget) * 100);
 
   return (
-    <div className={`w-full h-full bg-gradient-to-br from-purple-50 via-pink-50 to-orange-100 flex flex-col ${showAddMeal ? 'overflow-hidden' : ''}`}>
-      {/* Subtle refresh indicator */}
-      {loading && !isInitialLoad && (
-        <div className="fixed top-20 right-4 z-50 bg-white rounded-full shadow-lg px-4 py-2 flex items-center gap-2 animate-slide-in-right">
-          <div className="w-4 h-4 border-2 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
-          <span className="text-sm text-slate-600">Refreshing...</span>
-        </div>
-      )}
+    <div className="min-h-screen bg-[#FDFDFD] pb-32 px-4 md:px-6 lg:px-16 pt-8 relative overflow-hidden font-sans text-slate-800">
+      {/* Decorative background glow matching Dashboard - Neutralized */}
+      <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-slate-50/50 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+      <div className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-slate-50/30 rounded-full blur-[100px] translate-x-1/2 pointer-events-none" />
 
-      {/* Main Content with Max Width on Desktop */}
-      <div className="w-full flex-1 overflow-y-auto flex justify-center">
-        <div className="w-full max-w-4xl px-3 md:px-6 lg:px-8 py-4 space-y-4 pb-24">
+      <div className="relative z-10 w-full">
 
-          {/* Date Picker - Above Everything */}
-          <div className="bg-white rounded-2xl p-4 shadow-md border border-gray-200">
-            <div className="flex items-center justify-between">
+        {/* Header */}
+        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4 md:mb-8">
+          <div>
+            <h1 className="text-xl md:text-3xl font-black text-slate-900 leading-tight">Nutrition Tracker</h1>
+            <p className="text-[9px] md:text-sm text-slate-500 mt-1 font-bold uppercase tracking-widest leading-tight">Mindful eating for wellness.</p>
+          </div>
+
+          <div className="flex flex-col gap-4 w-full md:w-auto">
+            <div className="flex items-center justify-between md:justify-center bg-white border border-slate-200 rounded-full px-4 py-2 shadow-sm w-full">
+              <button onClick={() => changeDate(-1)} className="p-1 text-slate-400 hover:text-slate-600"><ChevronLeft className="w-4 h-4" /></button>
+              <span className="text-sm font-semibold px-3 uppercase tracking-tight">
+                {new Date(selectedDate).toDateString() === new Date().toDateString() ? 'Today, ' : ''}
+                {new Date(selectedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+              </span>
+              <button onClick={() => changeDate(1)} className="p-1 text-slate-400 hover:text-slate-600"><ChevronRight className="w-4 h-4" /></button>
+            </div>
+
+            <div className="flex items-center gap-3 overflow-x-auto pb-2 md:pb-0 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
               <button
-                onClick={handlePreviousDay}
-                className="p-2 hover:bg-gray-100 rounded-lg transition"
+                onClick={() => openModal('Lunch')}
+                className="flex-shrink-0 flex items-center gap-1.5 bg-slate-900 text-white px-5 py-3 rounded-full text-sm font-semibold hover:bg-black transition-colors"
               >
-                <ChevronLeft className="w-5 h-5 text-gray-600" />
+                <Plus className="w-4 h-4" /> Log Meal
               </button>
-              <div className="text-center flex-1">
-                <p className="text-xl font-bold text-gray-900">{formatDate(selectedDate)}</p>
-                <p className="text-xs text-gray-500 mt-1">Track your nutrition</p>
-              </div>
+
               <button
-                onClick={handleNextDay}
-                disabled={isToday}
-                className={`p-2 rounded-lg transition ${isToday
-                  ? 'opacity-40 cursor-not-allowed'
-                  : 'hover:bg-gray-100'
-                  }`}
+                onClick={() => { setInputMethod('Scan'); openModal('Lunch'); }}
+                className="flex-shrink-0 flex items-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 px-5 py-3 rounded-full text-sm font-semibold shadow-sm transition-colors"
               >
-                <ChevronRight className="w-5 h-5 text-gray-600" />
+                <Camera className="w-4 h-4" /> Scan
+              </button>
+
+              <button
+                onClick={startVoiceCapture}
+                className="flex-shrink-0 flex items-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 px-5 py-3 rounded-full text-sm font-semibold shadow-sm transition-colors text-slate-800"
+              >
+                <Mic className={`w-4 h-4 ${isListening ? 'text-red-500 animate-pulse' : ''}`} /> Voice
               </button>
             </div>
           </div>
+        </header>
 
-          {!healthGoal && (
-            <div className="bg-amber-50 border-2 border-amber-200 rounded-2xl p-4 flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
-              <div className="flex-1">
-                <p className="font-semibold text-amber-900 mb-2">Set Your Fitness Goal</p>
-                <button
-                  onClick={() => navigate('/profile?tab=goals')}
-                  className="text-sm bg-amber-600 text-white px-3 py-1 rounded-lg hover:bg-amber-700"
-                >
-                  Set Goal Now
-                </button>
+        <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] xl:grid-cols-[1.5fr_1fr] gap-8">
+
+          {/* Left Column */}
+          <div className="space-y-6">
+
+            {/* Daily Calorie Intake Card */}
+            <div className="bg-white rounded-[2.5rem] p-8 md:p-10 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)] border border-slate-100">
+              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-4">Daily Calorie Intake</p>
+              <div className="flex items-center justify-between mb-6 flex-nowrap">
+                <div className="flex items-baseline gap-1 shrink-0">
+                  <span className="text-4xl md:text-6xl font-black text-slate-900 tracking-tighter">{dailySummary.caloriesConsumed}</span>
+                  <span className="text-sm md:text-xl text-slate-400 font-bold">/ {dailySummary.calorieTarget}</span>
+                </div>
+                <div className="flex items-center gap-1.5 md:gap-2 bg-slate-50 px-3 md:px-4 py-2 rounded-2xl border border-slate-100 shadow-sm shrink-0 ml-2">
+                  <div className="text-lg md:text-3xl font-black text-slate-900 leading-none">{Math.round(progressPercent)}%</div>
+                  <div className="text-[7px] md:text-[10px] text-slate-400 uppercase tracking-widest font-black leading-none">GOAL</div>
+                </div>
               </div>
-            </div>
-          )}
+              <p className="text-sm text-slate-500 font-bold mb-8 uppercase tracking-tight">{remainingCals} kcal remaining</p>
 
-          {/* Calories Overview */}
-          {dailySummary && healthGoal && (
-            <div className="bg-gradient-to-br from-purple-500 to-orange-600 rounded-3xl p-6 text-white shadow-lg">
-              <div className="flex items-center justify-between mb-6">
-                <div>
-                  <p className="text-blue-100 text-sm mb-1">Calories Today</p>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-4xl font-bold">{dailySummary.totalCalories}</span>
-                    <span className="text-blue-100">/ {healthGoal.dailyCalorieTarget}</span>
-                  </div>
-                </div>
-                <div className="relative w-24 h-24">
-                  <svg className="w-24 h-24 transform -rotate-90" viewBox="0 0 36 36">
-                    <path
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      fill="none"
-                      stroke="rgba(255,255,255,0.2)"
-                      strokeWidth="3"
-                    />
-                    <path
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                      fill="none"
-                      stroke="white"
-                      strokeWidth="3"
-                      strokeDasharray={`${Math.min(caloriePercentage, 100)}, 100`}
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <span className="text-sm font-bold">{Math.min(caloriePercentage, 100).toFixed(0)}%</span>
-                  </div>
-                </div>
+              {/* Progress Bar */}
+              <div className="h-4 bg-slate-50 rounded-full w-full overflow-hidden mb-10 border border-slate-100">
+                <motion.div initial={{ width: 0 }} animate={{ width: `${progressPercent}%` }} transition={{ duration: 1, ease: "easeOut" }} className="h-full bg-slate-900 rounded-full" />
               </div>
 
               {/* Macros */}
-              <div className="grid grid-cols-3 gap-3">
-                <div className="bg-white/20 rounded-xl p-3 text-center">
-                  <p className="text-xs text-blue-100 mb-1">Protein</p>
-                  <p className="font-bold">{dailySummary.totalProtein.toFixed(0)}g</p>
-                  <p className="text-xs text-blue-100">/ {healthGoal.macroTargets.protein}g</p>
+              <div className="grid grid-cols-3 gap-8">
+                {[
+                  { label: 'PROTEIN', current: dailySummary.protein, target: dailySummary.proteinTarget, color: 'bg-black' },
+                  { label: 'CARBS', current: dailySummary.carbs, target: dailySummary.carbsTarget, color: 'bg-slate-400' },
+                  { label: 'FATS', current: dailySummary.fats, target: dailySummary.fatsTarget, color: 'bg-slate-900' }
+                ].map(macro => (
+                  <div key={macro.label}>
+                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-2">{macro.label}</p>
+                    <p className="text-xs font-black text-slate-900 mb-2 uppercase">{macro.current}G / {macro.target}G</p>
+                    <div className="h-1.5 bg-slate-50 rounded-full overflow-hidden mb-1.5 border border-slate-100">
+                      <div className={`h-full ${macro.color} rounded-full transition-all duration-1000`} style={{ width: `${Math.min(100, (macro.current / macro.target) * 100)}%` }} />
+                    </div>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase">{Math.max(0, macro.target - macro.current)}g remaining</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Meal Timeline */}
+            <div>
+              <h3 className="font-black text-slate-900 uppercase tracking-tight mb-5 text-lg">Meal Timeline</h3>
+              <div className="space-y-4">
+                {[
+                  { name: 'Breakfast', icon: Sun, target: 500 },
+                  { name: 'Lunch', icon: Utensils, target: 800 },
+                  { name: 'Evening Snack', icon: Cookie, target: 200 },
+                  { name: 'Dinner', icon: Moon, target: 300 }
+                ].map((meal) => {
+                  const logs = mealLogs[meal.name] || [];
+                  const cals = logs.reduce((sum, l) => sum + (l.foodItems?.[0]?.nutrition?.calories || 0), 0);
+                  return (
+                    <div key={meal.name} className="p-4 bg-white border border-slate-100 rounded-[2.5rem] shadow-sm hover:border-slate-200 transition-all group">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-5">
+                          <div className="w-14 h-14 rounded-[1.5rem] bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:bg-slate-100 transition-colors">
+                            <meal.icon className="w-6 h-6 text-slate-900" />
+                          </div>
+                          <div>
+                            <span className="font-black text-sm text-slate-900 uppercase tracking-tight">{meal.name}</span>
+                            {logs.length > 0 && (
+                              <div className="flex flex-wrap gap-2 mt-1">
+                                {logs.map(log => (
+                                  <span key={log._id} className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full flex items-center gap-1 group/item">
+                                    {log.foodItems?.[0]?.name}
+                                    <button onClick={() => deleteLog(log._id)} className="text-slate-300 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-all">
+                                      <Trash2 className="w-2.5 h-2.5" />
+                                    </button>
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-6">
+                          <span className="text-xs font-black text-slate-400 uppercase tracking-wider">{cals} of {meal.target} kcal</span>
+                          <button
+                            onClick={() => openModal(meal.name)}
+                            className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center hover:bg-slate-900 hover:text-white transition-all border border-slate-100 shadow-sm"
+                          >
+                            <Plus className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Bottom Row: Recent Meals & Frequent Foods */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm">
+                <div className="flex justify-between items-center mb-6">
+                  <h4 className="font-black text-xs text-slate-900 uppercase tracking-widest">Recent Meals</h4>
+                  <button className="text-[10px] font-black text-slate-400 hover:text-slate-900 uppercase tracking-widest transition-colors">View All</button>
                 </div>
-                <div className="bg-white/20 rounded-xl p-3 text-center">
-                  <p className="text-xs text-blue-100 mb-1">Carbs</p>
-                  <p className="font-bold">{dailySummary.totalCarbs.toFixed(0)}g</p>
-                  <p className="text-xs text-blue-100">/ {healthGoal.macroTargets.carbs}g</p>
+                <div className="space-y-3">
+                  {recentMeals.length > 0 ? recentMeals.map(m => (
+                    <div
+                      key={m._id}
+                      onClick={() => setAnalysisResult(m)}
+                      className="flex justify-between items-center p-4 border border-slate-50 rounded-2xl hover:bg-slate-50 transition-all cursor-pointer group"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-xs font-black text-slate-900 uppercase truncate">{m.foodItems?.[0]?.name}</p>
+                        <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase">
+                          {m.foodItems?.[0]?.nutrition?.calories} kcal • {m.foodItems?.[0]?.nutrition?.protein}g p • {m.mealType}
+                        </p>
+                      </div>
+                      <Plus className="w-4 h-4 text-slate-300 group-hover:text-slate-900 transition-colors" />
+                    </div>
+                  )) : (
+                    <p className="text-[10px] text-slate-400 font-bold italic text-center py-4">No recent meals found</p>
+                  )}
                 </div>
-                <div className="bg-white/20 rounded-xl p-3 text-center">
-                  <p className="text-xs text-blue-100 mb-1">Fats</p>
-                  <p className="font-bold">{dailySummary.totalFats.toFixed(0)}g</p>
-                  <p className="text-xs text-blue-100">/ {healthGoal.macroTargets.fats}g</p>
+              </div>
+
+              <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm">
+                <div className="flex justify-between items-center mb-6">
+                  <h4 className="font-black text-xs text-slate-900 uppercase tracking-widest">Frequent Foods</h4>
+                  <button className="text-[10px] font-black text-slate-400 hover:text-slate-900 uppercase tracking-widest transition-colors">Manage</button>
+                </div>
+                <div className="flex flex-wrap gap-2.5">
+                  {['Curd', 'Chicken', 'Egg', 'Oats', 'Milk', 'Dal'].map(f => (
+                    <div key={f} className="px-4 py-2 border border-slate-100 rounded-xl flex items-center gap-3 hover:bg-slate-50 cursor-pointer transition-all hover:border-slate-300">
+                      <span className="text-[10px] font-black text-slate-900 uppercase">{f}</span>
+                      <span className="text-[10px] text-slate-400 font-bold">120k</span>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
-          )}
 
-          {/* Water Intake */}
-          <div className="bg-gradient-to-br from-purple-400 to-orange-500 rounded-3xl p-6 text-white shadow-lg">
-            <div className="flex items-start justify-between mb-4">
-              <div>
-                <p className="text-cyan-100 text-sm mb-1">Water Reminder</p>
-                <p className="text-2xl font-bold">Drink water stay hydrated</p>
-              </div>
-              <div className="text-4xl">💧</div>
-            </div>
-
-            <p className="text-cyan-100 mb-4">Today you drink <span className="font-bold text-white">{waterIntake} glass</span> of water</p>
-            <p className="text-cyan-100 mb-4 text-sm">{(waterIntake * 0.25).toFixed(2)} L</p>
-
-            {/* Water Glasses */}
-            <div className="grid grid-cols-6 gap-2 mb-4">
-              {Array.from({ length: waterGoal }).map((_, i) => (
-                <div
-                  key={i}
-                  onClick={() => i < waterIntake ? handleRemoveWater() : handleAddWater()}
-                  className={`aspect-square rounded-lg flex items-center justify-center cursor-pointer transition-all transform hover:scale-110 ${i < waterIntake
-                    ? 'bg-white text-blue-500 shadow-lg'
-                    : 'bg-white/30 text-white'
-                    }`}
-                >
-                  <Droplets className="w-5 h-5" />
-                </div>
-              ))}
-            </div>
-
-            <button
-              onClick={handleAddWater}
-              className="w-full bg-white text-blue-600 font-bold py-2 rounded-xl hover:bg-blue-50 transition-all"
-            >
-              + Add Water
-            </button>
           </div>
 
-          {/* Meals Section */}
-          <div id="daily-target" className="scroll-mt-20">
-            <h2 className="text-lg font-bold text-gray-900 mb-4">My Daily Target</h2>
+          {/* Right Column */}
+          <div className="space-y-6">
 
-            {/* Meal Cards */}
-            <div className="space-y-3">
-              {['breakfast', 'lunch', 'snack', 'dinner'].map((type) => {
-                const mealLogs = todayLogs.filter(log => log.mealType === type);
-                const mealCalories = mealLogs.reduce((sum, log) => sum + (log.totalNutrition?.calories || 0), 0);
+            {/* Insights */}
+            <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm flex flex-col gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100">
+                <Lightbulb className="w-6 h-6 text-slate-900" />
+              </div>
+              <div>
+                <h4 className="font-black text-base text-slate-900 mb-1 uppercase tracking-tight">Today's Insights</h4>
+                <p className="text-sm text-slate-500 font-bold leading-relaxed">{aiInsights}</p>
+              </div>
+            </div>
 
-                return (
-                  <div key={type} className="bg-gradient-to-br from-purple-500 to-orange-600 rounded-2xl p-4 text-white shadow-md">
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <p className="text-sm opacity-90 capitalize">{type}</p>
-                        <p className="text-2xl font-bold">{mealCalories} Kcal</p>
-                      </div>
-                      <span className="text-3xl">{getMealIcon(type)}</span>
+            {/* Smart Meal Suggestions */}
+            <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm">
+              <h4 className="font-black text-base text-slate-900 mb-6 uppercase tracking-tight">Smart Meal Suggestions</h4>
+
+              <div className="flex gap-6 mb-8 overflow-x-auto pb-1 scrollbar-hide">
+                {['Recommended', 'High Protein', 'Balanced', 'Low Carb'].map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setRecType(tab)}
+                    className={`text-[10px] font-black uppercase tracking-widest pb-2 transition-all border-b-2 whitespace-nowrap ${recType === tab ? 'text-slate-900 border-slate-900' : 'text-slate-400 border-transparent hover:text-slate-600'}`}
+                  >
+                    {tab}
+                  </button>
+                ))}
+              </div>
+
+              {mealSuggestions.length > 0 ? (
+                <div className="border border-slate-50 rounded-[2rem] overflow-hidden group hover:shadow-xl transition-all duration-500">
+                  <div className="h-44 relative bg-slate-100">
+                    <ImageWithFallback
+                      src={mealSuggestions[0].image}
+                      query={mealSuggestions[0].name}
+                      alt={mealSuggestions[0].name}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg text-[9px] font-black text-slate-900 shadow-lg tracking-widest uppercase">
+                      Based on your goals
                     </div>
-
-                    {mealLogs.length > 0 ? (
-                      <div className="space-y-2 mb-3">
-                        {mealLogs.map((log) => (
-                          <div key={log._id} className="bg-white/20 rounded-lg p-2 flex items-center justify-between">
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">{log.foodItems?.[0]?.name || 'Food'}</p>
-                              <p className="text-xs opacity-75">{log.totalNutrition?.calories} cal</p>
-                            </div>
-                            <button
-                              onClick={() => deleteMeal(log._id)}
-                              className="p-1 hover:bg-white/30 rounded-lg transition"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-                        ))}
+                  </div>
+                  <div className="p-6">
+                    <h5 className="font-black text-lg text-slate-900 mb-4 tracking-tight uppercase leading-none">{mealSuggestions[0].name}</h5>
+                    <div className="flex justify-between items-center mb-6">
+                      <div className="flex gap-4">
+                        <div className="flex flex-col">
+                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">PRO</span>
+                          <span className="text-xs font-black text-slate-900">{mealSuggestions[0].protein || '14'}g</span>
+                        </div>
+                        <div className="flex flex-col border-l border-slate-100 pl-4">
+                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">CAL</span>
+                          <span className="text-xs font-black text-slate-900">{mealSuggestions[0].calories || '380'}</span>
+                        </div>
                       </div>
-                    ) : null}
-
-                    <button
-                      onClick={() => {
-                        if (!healthGoal) {
-                          toast.error('Please set your fitness goal first');
-                          return;
-                        }
-                        setMealType(type);
-                        setShowAddMeal(true);
-                      }}
-                      className="w-full bg-white/30 hover:bg-white/40 text-white font-bold py-2 rounded-lg transition-all flex items-center justify-center gap-2"
-                    >
-                      <Plus className="w-5 h-5" />
-                      Add {type.charAt(0).toUpperCase() + type.slice(1)}
+                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
+                        <Clock className="w-3 h-3" /> 20 MIN
+                      </span>
+                    </div>
+                    <div className="flex gap-2 mb-6">
+                      {['HIGH PROTEIN', 'MUSCLE SUPPORT'].map(t => (
+                        <span key={t} className="bg-slate-50 text-slate-400 text-[8px] font-black px-3 py-1.5 rounded-lg tracking-widest uppercase">{t}</span>
+                      ))}
+                    </div>
+                    <button className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-lg active:scale-95">
+                      View Recipe
                     </button>
                   </div>
-                );
-              })}
+                </div>
+              ) : (
+                <div className="text-center py-10 bg-slate-50 rounded-[2rem] border border-dashed border-slate-200">
+                  <Utensils className="w-10 h-10 text-slate-300 mx-auto mb-3" />
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Generating personalized plan...</p>
+                </div>
+              )}
             </div>
+
+            {/* Water Intake */}
+            <div id="water-section" className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden flex items-center justify-between group">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-700" />
+
+              <div className="relative z-10 flex-1">
+                <h4 className="font-black text-[10px] uppercase tracking-widest mb-6 text-white/40">Water Intake</h4>
+                <div className="flex items-center gap-6 mb-6">
+                  <button onClick={() => handleWaterUpdate(-1)} className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center hover:bg-white/20 transition-all active:scale-90 border border-white/5"><Minus className="w-5 h-5" /></button>
+                  <span className="text-6xl font-black tracking-tighter">{waterIntake.current}</span>
+                  <button onClick={() => handleWaterUpdate(1)} className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center hover:bg-white/20 transition-all active:scale-90 border border-white/5"><Plus className="w-5 h-5" /></button>
+                </div>
+                <div className="space-y-3">
+                  <div className="h-1.5 bg-white/10 rounded-full overflow-hidden w-full border border-white/5">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min(100, (waterIntake.current / waterIntake.target) * 100)}%` }}
+                      className="h-full bg-white rounded-full shadow-[0_0_15px_rgba(255,255,255,0.5)]"
+                    />
+                  </div>
+                  <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">{waterIntake.current} out of {waterIntake.target} glasses</p>
+                </div>
+              </div>
+              <div className="relative z-10 ml-8 flex flex-col items-center gap-3">
+                <GlassWater className="w-16 h-16 text-white/90 drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" strokeWidth={1} />
+                <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em] whitespace-nowrap">1 Glass (250 ml)</span>
+              </div>
+            </div>
+
+            {/* Weekly Trends */}
+            <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm">
+              <div className="flex justify-between items-center mb-8">
+                <h4 className="font-black text-xs text-slate-900 uppercase tracking-widest">Weekly Trends</h4>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">LAST 7 DAYS</span>
+              </div>
+              <div className="h-44 mb-8">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={weeklyTrends}>
+                    <Tooltip
+                      cursor={{ fill: '#f8fafc' }}
+                      contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.1)', padding: '12px' }}
+                      labelStyle={{ fontWeight: '900', color: '#1e293b', fontSize: '10px', textTransform: 'uppercase' }}
+                    />
+                    <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={32}>
+                      {weeklyTrends.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.active ? '#1e293b' : '#f1f5f9'} className="transition-all duration-300 hover:opacity-80" />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+              <p className="text-[11px] text-slate-500 font-bold mb-6 leading-relaxed uppercase tracking-tight">
+                Your average daily intake is <span className="text-slate-900">1,680 kcal</span>. Your intake is <span className="text-emerald-600">12% lower</span> than last week.
+              </p>
+              <div className="inline-flex items-center gap-2.5 bg-slate-50 text-slate-900 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-slate-100 shadow-sm">
+                <CheckCircle2 className="w-4 h-4 text-black" /> GOOD PROGRESS
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
 
       {/* Add Meal Modal */}
-      {showAddMeal && (
-        <div
-          className="fixed inset-0 bg-black/50 z-50 flex items-end md:items-center md:justify-center"
-          onClick={() => {
-            setShowAddMeal(false);
-            setFoodDescription('');
-            setAnalysisResult(null);
-            setFoodItems([]);
-            setQuantity('');
-            setServingSize('medium');
-            setPreparationMethod('homemade');
-            setShowQuantitySuggestions(false);
-          }}
-        >
-          <div
-            className="bg-white w-full md:w-full md:max-w-2xl rounded-t-3xl md:rounded-3xl p-6 max-h-[85vh] md:max-h-[90vh] overflow-y-auto md:mb-0"
-            onClick={(e) => e.stopPropagation()}
+      <AnimatePresence>
+        {isModalOpen && (
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            data-modal="true"
+            className="fixed inset-0 z-[999] flex items-center justify-center p-0 md:p-4 bg-slate-900/40 backdrop-blur-md"
           >
-            <div className="flex items-center justify-between mb-6">
-              <h2 className="text-2xl font-bold text-gray-900">Add {mealType.charAt(0).toUpperCase() + mealType.slice(1)}</h2>
-              <button
-                onClick={() => {
-                  setShowAddMeal(false);
-                  setFoodDescription('');
-                  setAnalysisResult(null);
-                  setFoodItems([]);
-                  setQuantity('');
-                  setServingSize('medium');
-                  setPreparationMethod('homemade');
-                  setShowQuantitySuggestions(false);
-                }}
-                className="p-2 hover:bg-gray-100 rounded-lg"
-              >
-                <X className="w-6 h-6" />
-              </button>
-            </div>
+            <motion.div
+              initial={{ scale: 0.95, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 20, opacity: 0 }}
+              className="bg-white w-full max-w-md rounded-t-[2.5rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col h-[90vh] md:max-h-[90vh] border border-slate-100"
+            >
+              {/* Header */}
+              <div className="p-8 pb-4 border-b border-slate-50">
+                <div className="flex justify-between items-center mb-8">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Dietary Protocol</span>
+                    <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Add to {mealTab}</h3>
+                  </div>
+                  <button onClick={() => setIsModalOpen(false)} className="w-10 h-10 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center transition-all border border-slate-100">
+                    <X className="w-5 h-5 text-slate-400" />
+                  </button>
+                </div>
 
-            {/* Added Food Items List */}
-            {foodItems.length > 0 && (
-              <div className="mb-4 space-y-2">
-                <h3 className="text-sm font-semibold text-gray-700">Added Items ({foodItems.length})</h3>
-                {foodItems.map((item) => (
-                  <div key={item.id} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg">
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">{item.name}</p>
-                      <p className="text-xs text-gray-500">{item.quantity} • {item.servingSize} • {item.preparationMethod}</p>
-                      <p className="text-xs text-gray-600 mt-1">{item.nutrition?.calories || 0} cal</p>
-                    </div>
+                <div className="flex gap-2 mb-8 overflow-x-auto pb-1 scrollbar-hide">
+                  {['Breakfast', 'Lunch', 'Snack', 'Dinner'].map(tab => (
                     <button
-                      onClick={() => removeFoodItem(item.id)}
-                      className="p-2 hover:bg-red-100 rounded-lg text-red-600"
+                      key={tab} onClick={() => setMealTab(tab)}
+                      className={`text-[10px] font-black px-5 py-2 rounded-full transition-all uppercase tracking-widest whitespace-nowrap ${mealTab === tab ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-900 hover:bg-slate-50'}`}
                     >
-                      <Trash2 className="w-4 h-4" />
+                      {tab}
                     </button>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
 
-            {!analysisResult ? (
-              <div className="space-y-4">
-                {/* Serving Size */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Serving Size</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {['small', 'medium', 'large'].map((size) => (
+                <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+                  {[
+                    { name: 'Scan', icon: ScanLine },
+                    { name: 'Type', icon: FileEdit },
+                    { name: 'Predict', icon: Mic }
+                  ].map(tab => (
+                    <button
+                      key={tab.name} onClick={() => setInputMethod(tab.name)}
+                      className={`flex-1 flex items-center justify-center gap-2 py-3 text-[10px] font-black rounded-xl transition-all uppercase tracking-widest ${inputMethod === tab.name ? 'bg-white shadow-xl text-slate-900' : 'text-slate-400 hover:text-slate-900'}`}
+                    >
+                      <tab.icon className="w-4 h-4" /> {tab.name === 'Predict' ? 'Voice Log' : tab.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="p-8 overflow-y-auto flex-1 scrollbar-hide">
+
+                {inputMethod === 'Predict' && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center space-y-8 py-8">
+                    <div className="relative">
+                      {isListening && (
+                        <>
+                          <div className="absolute inset-0 rounded-full bg-slate-400 opacity-20 animate-ping" />
+                          <div className="absolute -inset-4 rounded-full bg-slate-400 opacity-10 animate-ping" style={{ animationDelay: '0.2s' }} />
+                        </>
+                      )}
+
                       <button
-                        key={size}
-                        onClick={() => setServingSize(size)}
-                        className={`py-2 px-4 rounded-lg font-medium transition-all ${servingSize === size
-                          ? 'bg-blue-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        onClick={startVoiceCapture}
+                        className={`relative w-28 h-28 rounded-full flex items-center justify-center transition-all shadow-xl ${isListening
+                          ? 'bg-black text-white scale-110'
+                          : 'bg-slate-900 text-white hover:bg-black hover:scale-105 shadow-slate-900/20'
                           }`}
                       >
-                        {size.charAt(0).toUpperCase() + size.slice(1)}
+                        <Mic className={`w-12 h-12 ${isListening ? 'animate-pulse' : ''}`} />
                       </button>
-                    ))}
-                  </div>
-                </div>
+                    </div>
 
-                {/* Preparation Method */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Preparation Method</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {['homemade', 'baked', 'fried', 'grilled', 'steamed', 'raw'].map((method) => (
-                      <button
-                        key={method}
-                        onClick={() => setPreparationMethod(method)}
-                        className={`py-2 px-3 rounded-lg text-sm font-medium transition-all ${preparationMethod === method
-                          ? 'bg-emerald-600 text-white'
-                          : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                      >
-                        {method.charAt(0).toUpperCase() + method.slice(1)}
+                    <div className="text-center space-y-3 px-4">
+                      <h4 className="text-lg font-black text-slate-900 uppercase tracking-tight">
+                        {isListening ? 'Listening...' : 'Tap to speak'}
+                      </h4>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest max-w-[250px] mx-auto leading-relaxed">
+                        {isListening
+                          ? 'Say what you ate, e.g. "I had two slices of whole wheat bread with peanut butter"'
+                          : 'Describe your meal naturally and let AI do the rest'}
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+
+                {inputMethod === 'Type' && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
+                    <div className="relative">
+                      <Search className="w-5 h-5 text-slate-300 absolute left-5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={foodInput}
+                        onChange={(e) => setFoodInput(e.target.value)}
+                        placeholder="Search for food or describe..."
+                        className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-12 pr-12 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold"
+                      />
+                      <button onClick={startVoiceCapture} className={`p-2 absolute right-4 top-1/2 -translate-y-1/2 rounded-xl transition-all ${isListening ? 'bg-red-50 text-red-500 animate-pulse' : 'text-slate-300 hover:text-slate-900 hover:bg-slate-100'}`}>
+                        <Mic className="w-5 h-5" />
                       </button>
-                    ))}
-                  </div>
-                </div>
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Food Item</label>
-                  <input
-                    type="text"
-                    value={foodDescription}
-                    onChange={(e) => setFoodDescription(e.target.value)}
-                    placeholder="e.g., Chicken rice with vegetables"
-                    className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none"
-                    onKeyPress={(e) => e.key === 'Enter' && analyzeFood()}
-                  />
-                </div>
-
-                <button
-                  onClick={analyzeFood}
-                  disabled={analyzing || !foodDescription.trim()}
-                  className="w-full bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  {analyzing ? (
-                    <>
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                      Analyzing...
-                    </>
-                  ) : (
-                    <>
-                      <Flame className="w-5 h-5" />
-                      Analyze Food
-                    </>
-                  )}
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-4">
-                {/* Nutrition Card */}
-                <div className="bg-gradient-to-br from-purple-500 to-orange-600 rounded-2xl p-4 text-white">
-                  <h3 className="font-bold text-white mb-4">{analysisResult.foodItem?.name}</h3>
-
-                  <div className="grid grid-cols-2 gap-3 mb-4">
-                    <div className="bg-white/20 rounded-xl p-3 text-center">
-                      <Flame className="w-5 h-5 text-orange-300 mx-auto mb-1" />
-                      <p className="text-xs text-blue-100">Calories</p>
-                      <p className="text-xl font-bold text-white">{analysisResult.foodItem?.nutrition?.calories || 0}</p>
-                    </div>
-                    <div className="bg-white/20 rounded-xl p-3 text-center">
-                      <Heart className="w-5 h-5 text-red-300 mx-auto mb-1" />
-                      <p className="text-xs text-blue-100">Protein</p>
-                      <p className="text-xl font-bold text-white">{analysisResult.foodItem?.nutrition?.protein || 0}g</p>
-                    </div>
-                    <div className="bg-white/20 rounded-xl p-3 text-center">
-                      <Zap className="w-5 h-5 text-yellow-300 mx-auto mb-1" />
-                      <p className="text-xs text-blue-100">Carbs</p>
-                      <p className="text-xl font-bold text-white">{analysisResult.foodItem?.nutrition?.carbs || 0}g</p>
-                    </div>
-                    <div className="bg-white/20 rounded-xl p-3 text-center">
-                      <Droplets className="w-5 h-5 text-cyan-300 mx-auto mb-1" />
-                      <p className="text-xs text-blue-100">Fats</p>
-                      <p className="text-xl font-bold text-white">{analysisResult.foodItem?.nutrition?.fats || 0}g</p>
-                    </div>
-                  </div>
-
-                  {analysisResult.isHealthy ? (
-                    <div className="flex items-center gap-2 text-white bg-white/20 px-3 py-2 rounded-lg">
-                      <CheckCircle className="w-5 h-5" />
-                      <span className="text-sm font-medium">Healthy Choice</span>
-                    </div>
-                  ) : (
-                    <div className="flex items-center gap-2 text-white bg-white/20 px-3 py-2 rounded-lg">
-                      <AlertCircle className="w-5 h-5" />
-                      <span className="text-sm font-medium">Not Ideal</span>
-                    </div>
-                  )}
-                </div>
-
-                {/* Quantity Selection */}
-                {showQuantitySuggestions && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Select Quantity</label>
-                    <div className="grid grid-cols-2 gap-2">
-                      {getQuantitySuggestions(analysisResult.foodItem?.name || '').map((qty) => (
-                        <button
-                          key={qty}
-                          onClick={() => setQuantity(qty)}
-                          className={`py-3 px-4 rounded-lg font-medium transition-all ${quantity === qty
-                            ? 'bg-cyan-600 text-white ring-2 ring-cyan-300'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                            }`}
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Quantity</p>
+                        <input
+                          type="text"
+                          value={foodQuantity}
+                          onChange={(e) => setFoodQuantity(e.target.value)}
+                          placeholder="e.g., 2 bowls, 500g"
+                          className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-12 pr-12 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold placeholder:text-slate-400"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">How was it made?</p>
+                        <select
+                          value={prepMethod}
+                          onChange={(e) => setPrepMethod(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 px-5 text-[11px] font-bold text-slate-900 outline-none focus:bg-white focus:border-slate-300 transition-all appearance-none cursor-pointer"
                         >
-                          {qty}
+                          <option value="">Select Method</option>
+                          <option value="homemade">Homemade</option>
+                          <option value="fried">Deep Fried</option>
+                          <option value="package">Packaged/Processed</option>
+                          <option value="street">Street Food</option>
+                          <option value="boiled">Boiled/Steamed</option>
+                          <option value="roasted">Roasted/Grilled</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Quick search tags</p>
+                    <div className="flex flex-wrap gap-2.5">
+                      {['Apple', 'Rice & Dal', 'Paneer Sabzi', 'Oats', 'Coffee'].map(tag => (
+                        <button key={tag} onClick={() => setFoodInput(tag)} className="px-4 py-2 border border-slate-100 rounded-xl text-[10px] font-black text-slate-400 hover:text-slate-900 hover:bg-slate-50 transition-all uppercase tracking-widest">
+                          {tag}
                         </button>
                       ))}
                     </div>
-                    <input
-                      type="text"
-                      value={quantity}
-                      onChange={(e) => setQuantity(e.target.value)}
-                      placeholder="Or enter custom quantity"
-                      className="w-full mt-2 px-4 py-2 border-2 border-gray-200 rounded-lg focus:border-cyan-500 focus:outline-none text-sm"
-                    />
-                  </div>
+
+                    <button
+                      onClick={handleAnalyzeAndLog}
+                      disabled={isAnalyzing || !foodInput}
+                      className="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-black transition-all shadow-xl active:scale-95 disabled:opacity-50"
+                    >
+                      {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5 text-white" />}
+                      {isAnalyzing ? 'Analyzing Food...' : 'Analyze & Log Meal'}
+                    </button>
+                  </motion.div>
                 )}
 
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      setAnalysisResult(null);
-                      setFoodDescription('');
-                      setQuantity('');
-                      setShowQuantitySuggestions(false);
-                    }}
-                    className="flex-1 bg-gray-200 text-gray-900 font-bold py-3 rounded-xl hover:bg-gray-300"
-                  >
-                    Back
-                  </button>
-                  <button
-                    onClick={addFoodItem}
-                    disabled={!quantity}
-                    className="flex-1 bg-cyan-600 text-white font-bold py-3 rounded-xl hover:bg-cyan-700 disabled:opacity-50 flex items-center justify-center gap-2"
-                  >
-                    <Plus className="w-5 h-5" />
-                    Add Item
-                  </button>
+                {inputMethod === 'Scan' && (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center space-y-8">
+                    <div className="w-full aspect-square bg-slate-50 rounded-[3rem] flex items-center justify-center relative overflow-hidden border-4 border-dashed border-slate-200 group transition-all hover:border-slate-300 cursor-pointer"
+                      onClick={() => document.getElementById('food-img-upload').click()}>
+
+                      {imagePreview ? (
+                        <img src={imagePreview} className="w-full h-full object-cover" />
+                      ) : (
+                        <>
+                          <div className="absolute top-10 left-10 w-12 h-12 border-t-4 border-l-4 border-slate-200 rounded-tl-2xl group-hover:border-slate-400 transition-colors" />
+                          <div className="absolute top-10 right-10 w-12 h-12 border-t-4 border-r-4 border-slate-200 rounded-tr-2xl group-hover:border-slate-400 transition-colors" />
+                          <div className="absolute bottom-10 left-10 w-12 h-12 border-b-4 border-l-4 border-slate-200 rounded-bl-2xl group-hover:border-slate-400 transition-colors" />
+                          <div className="absolute bottom-10 right-10 w-12 h-12 border-b-4 border-r-4 border-slate-200 rounded-br-2xl group-hover:border-slate-400 transition-colors" />
+
+                          <div className="text-center space-y-4">
+                            <div className="w-20 h-20 bg-white rounded-3xl shadow-xl flex items-center justify-center mx-auto transition-transform duration-500 group-hover:rotate-12">
+                              <Camera className="w-10 h-10 text-slate-900" />
+                            </div>
+                            <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Click to upload photo</p>
+                          </div>
+                        </>
+                      )}
+                      <input id="food-img-upload" type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4 w-full">
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Quantity</p>
+                        <input
+                          type="text"
+                          value={foodQuantity}
+                          onChange={(e) => setFoodQuantity(e.target.value)}
+                          placeholder="e.g., 200g, 1 plate"
+                          className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 px-5 text-[11px] font-bold text-slate-900 outline-none focus:bg-white focus:border-slate-300 transition-all placeholder:text-slate-300 shadow-inner"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Method</p>
+                        <select
+                          value={prepMethod}
+                          onChange={(e) => setPrepMethod(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 px-5 text-[11px] font-bold text-slate-900 outline-none focus:bg-white focus:border-slate-300 transition-all shadow-inner appearance-none cursor-pointer"
+                        >
+                          <option value="">Select Method</option>
+                          <option value="homemade">Homemade</option>
+                          <option value="fried">Deep Fried</option>
+                          <option value="package">Packaged</option>
+                          <option value="street">Street Food</option>
+                          <option value="boiled">Boiled</option>
+                          <option value="roasted">Roasted</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    <p className="text-[10px] font-black text-slate-400 text-center leading-relaxed">
+                      AI will analyze the portion size and nutritional content<br />directly from the photo.
+                    </p>
+
+                    <button
+                      onClick={handleAnalyzeAndLog}
+                      disabled={isAnalyzing || !image}
+                      className="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-black transition-all shadow-xl active:scale-95 disabled:opacity-50"
+                    >
+                      {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5 text-white" />}
+                      {isAnalyzing ? 'Analyzing Image...' : 'Analyze Photo'}
+                    </button>
+
+                    <p className="text-[10px] text-slate-400 text-center font-bold px-8 leading-relaxed uppercase tracking-tight">
+                      Point your camera at the food. AI will instantly detect the dish, portion size and calculate accurate macros.
+                    </p>
+                  </motion.div>
+                )}
+
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {analysisResult && (
+          <div className="fixed inset-0 z-[1001] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setAnalysisResult(null)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-2xl bg-white rounded-t-[3rem] md:rounded-[3rem] shadow-[0_32px_120px_rgba(0,0,0,0.15)] overflow-hidden h-[95vh] md:max-h-[90vh] flex flex-col"
+            >
+              {/* Premium Black & White Header */}
+              <div className="p-6 md:p-10 bg-slate-900 text-white relative overflow-hidden shrink-0">
+                <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full blur-3xl -mr-32 -mt-32" />
+                <div className="relative z-10">
+                  <div className="flex justify-between items-start mb-4 md:mb-8">
+                    <div className="w-12 h-12 md:w-16 md:h-16 bg-white/10 backdrop-blur-md rounded-[1.2rem] md:rounded-[1.5rem] flex items-center justify-center border border-white/10">
+                      <Sparkles className="w-6 h-6 md:w-8 md:h-8 text-white" />
+                    </div>
+                    <button onClick={() => setAnalysisResult(null)} className="w-10 h-10 md:w-12 md:h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all border border-white/10">
+                      <X className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                    </button>
+                  </div>
+                  <h2 className="text-2xl md:text-4xl font-black tracking-tighter uppercase leading-none mb-4 max-w-[90%]">
+                    {analysisResult.foodItem?.name || analysisResult.foodName || analysisResult.foodItems?.[0]?.name}
+                  </h2>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <span className="text-[10px] font-black bg-white/10 border border-white/10 px-4 py-2 rounded-xl tracking-[0.1em] uppercase">
+                      {analysisResult.foodItem?.quantity || analysisResult.quantity || '1 serving'}
+                    </span>
+                    <span className="text-[10px] font-black bg-white/10 border border-white/10 px-4 py-2 rounded-xl tracking-[0.1em] uppercase flex items-center gap-2">
+                      <Zap className="w-3 h-3 text-white" />
+                      Score: {analysisResult.healthScore || analysisResult.healthScore10 * 10 || 0}/100
+                    </span>
+                  </div>
                 </div>
               </div>
-            )}
 
-            {/* Log All Button */}
-            {foodItems.length > 0 && !analysisResult && (
-              <button
-                onClick={logMeal}
-                className="w-full mt-4 bg-green-600 text-white font-bold py-3 rounded-xl hover:bg-green-700 flex items-center justify-center gap-2"
-              >
-                <CheckCircle className="w-5 h-5" />
-                Log {foodItems.length} Item{foodItems.length > 1 ? 's' : ''}
-              </button>
-            )}
+              <div className="p-10 space-y-10 overflow-y-auto scrollbar-hide">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {[
+                    { label: 'Calories', value: analysisResult.foodItem?.nutrition?.calories || analysisResult.totalNutrition?.calories || analysisResult.nutrition?.calories || analysisResult.calories || 0, unit: 'kcal' },
+                    { label: 'Protein', value: analysisResult.foodItem?.nutrition?.protein || analysisResult.totalNutrition?.protein || analysisResult.nutrition?.protein || analysisResult.protein || 0, unit: 'g' },
+                    { label: 'Carbs', value: analysisResult.foodItem?.nutrition?.carbs || analysisResult.totalNutrition?.carbs || analysisResult.nutrition?.carbs || analysisResult.carbs || 0, unit: 'g' },
+                    { label: 'Fats', value: analysisResult.foodItem?.nutrition?.fats || analysisResult.totalNutrition?.fats || analysisResult.nutrition?.fats || analysisResult.fats || 0, unit: 'g' }
+                  ].map((m) => (
+                    <div key={m.label} className="bg-white p-5 rounded-[2rem] text-center border-2 border-slate-900 flex flex-col justify-center shadow-sm">
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{m.label}</p>
+                      <p className="text-2xl font-black text-slate-900 tracking-tighter leading-none">{m.value}<span className="text-[10px] ml-0.5 text-slate-400 font-bold uppercase">{m.unit}</span></p>
+                    </div>
+                  ))}
+                </div>
+
+                {/* AI Analysis Summary */}
+                <div>
+                  <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2.5">
+                    <Lightbulb className="w-4 h-4 text-slate-900" /> Health Summary
+                  </h4>
+                  <p className="text-sm text-slate-600 font-medium leading-relaxed bg-slate-50 p-6 md:p-8 rounded-[2rem] md:rounded-[2.5rem] border border-slate-100 italic relative">
+                    <span className="text-4xl text-slate-200 absolute top-2 left-2 md:top-4 md:left-4 font-serif">"</span>
+                    {analysisResult.analysis || analysisResult.healthBenefitsSummary || "Detailed nutritional analysis successfully processed by our AI."}
+                  </p>
+                </div>
+
+                {/* Micronutrients & Benefits */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-6">
+                    <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest flex items-center gap-2.5">
+                      <FlaskConical className="w-4 h-4" /> Micronutrients
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {(analysisResult.micronutrients || []).length > 0 ? (
+                        analysisResult.micronutrients.map((micro, i) => (
+                          <div key={i} className="px-4 py-2 bg-white border border-slate-100 rounded-xl text-[10px] font-bold text-slate-600 shadow-sm uppercase">
+                            {typeof micro === 'string' ? micro : micro.name}
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-[10px] text-slate-400 font-bold uppercase italic">Rich in minerals & antioxidants.</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest flex items-center gap-2.5">
+                      <Sparkles className="w-4 h-4" /> Health Benefits
+                    </h4>
+                    <div className="space-y-3">
+                      {(analysisResult.healthBenefits || analysisResult.benefits || []).slice(0, 2).map((benefit, i) => (
+                        <div key={i} className="flex gap-3 text-[11px] font-bold text-slate-900 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                          <CheckCircle2 className="w-4 h-4 text-slate-900 shrink-0" />
+                          <span>{typeof benefit === 'string' ? benefit : benefit.name}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Healthy Optimizations - "What can be added to make it more healthier" */}
+                <div>
+                  <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest mb-6 flex items-center gap-2.5">
+                    <Zap className="w-4 h-4" /> Healthy Optimizations
+                  </h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {(analysisResult.enhancementTips || []).slice(0, 2).map((tip, i) => (
+                      <div key={i} className="flex gap-4 p-5 bg-black text-white rounded-[2rem] shadow-xl items-center border border-white/10 transition-transform hover:scale-[1.02]">
+                        <Plus className="w-5 h-5 text-white shrink-0" />
+                        <p className="text-xs font-black leading-snug uppercase tracking-tight">{typeof tip === 'string' ? tip : tip.name || tip.benefit}</p>
+                      </div>
+                    ))}
+                    {(!analysisResult.enhancementTips || analysisResult.enhancementTips.length === 0) && (
+                      <div className="col-span-2 p-6 bg-slate-50 rounded-[2rem] text-center border border-slate-100">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Balanced as is. Pair with hydration.</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Alternatives & Considerations */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-6">
+                    <h4 className="text-[10px] font-black text-slate-900 uppercase tracking-widest flex items-center gap-2.5">
+                      <Utensils className="w-4 h-4" /> Alternatives
+                    </h4>
+                    <div className="flex flex-wrap gap-2">
+                      {analysisResult.alternatives?.map((alt, i) => (
+                        <div key={i} className="bg-white text-slate-900 px-5 py-2.5 rounded-2xl text-[10px] font-black uppercase tracking-widest border border-slate-200 shadow-sm hover:border-slate-900 transition-colors">
+                          {typeof alt === 'string' ? alt : alt.name}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="space-y-6">
+                    <h4 className="text-[10px] font-black text-black uppercase tracking-widest flex items-center gap-2.5">
+                      <AlertCircle className="w-4 h-4" aria-hidden="true" /> Considerations
+                    </h4>
+                    <div className="space-y-3">
+                      {(analysisResult.warnings || []).length > 0 ? (
+                        analysisResult.warnings.map((w, i) => (
+                          <div key={i} className="flex gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                            <X className="w-4 h-4 text-black shrink-0 mt-0.5" />
+                            <p className="text-xs font-bold text-slate-900 leading-tight">{w}</p>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Safe & Nutritious</p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Log Button */}
+                {(!analysisResult._id?.toString().startsWith('log') && !recentMeals.find(m => m._id === analysisResult._id)) && (
+                  <div className="pt-6 pb-20 md:pb-6">
+                    <button
+                      onClick={() => handleConfirmLog(analysisResult)}
+                      className="w-full py-6 bg-slate-900 hover:bg-black text-white rounded-[2.5rem] text-[13px] font-black uppercase tracking-[0.2em] shadow-2xl transition-all active:scale-[0.98] flex items-center justify-center gap-4 group"
+                    >
+                      <CheckCircle2 className="w-6 h-6 group-hover:scale-110 transition-transform" /> Log This Meal
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }
+
+export default Nutrition;

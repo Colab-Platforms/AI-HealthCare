@@ -1,254 +1,485 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import React, { useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import {
-  TrendingUp, Plus, Droplet, Activity, Calendar, Bell, ChevronDown,
-  Info, AlertCircle, CheckCircle
+  Plus, Target, Calendar, Clock, Droplet, Loader2
 } from 'lucide-react';
+import {
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, BarChart, Bar, Cell
+} from 'recharts';
+import api from '../services/api';
 import toast from 'react-hot-toast';
+import { useAuth } from '../context/AuthContext';
 
 export default function DiabetesCare() {
   const { user } = useAuth();
-  const [selectedMetric, setSelectedMetric] = useState('HbA1c');
-  const [glucoseReadings, setGlucoseReadings] = useState([]);
-  const [currentHbA1c, setCurrentHbA1c] = useState(5.8);
-  const [dailyAvg, setDailyAvg] = useState(108);
+  const [activeChart, setActiveChart] = useState('glucose');
+  const [readingCategory, setReadingCategory] = useState('Glucose');
+  const [glucoseContext, setGlucoseContext] = useState('Fasting');
+  const [readingValue, setReadingValue] = useState('');
+  const [readingDate, setReadingDate] = useState(new Date().toISOString().split('T')[0]);
+  const [readingTime, setReadingTime] = useState(new Date().toTimeString().slice(0, 5));
+  const [saving, setSaving] = useState(false);
+  const [analyzingAi, setAnalyzingAi] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // Load glucose readings from localStorage
-  useEffect(() => {
-    const saved = localStorage.getItem('glucose_readings');
-    if (saved) {
-      setGlucoseReadings(JSON.parse(saved));
-    } else {
-      // Sample data
-      const sampleReadings = [
-        { id: 1, type: 'Fasting', value: 98, time: 'Today • 08:00 AM', status: 'optimal', date: new Date().toISOString() },
-        { id: 2, type: 'Post-Meal', value: 142, time: 'Today • 01:30 PM', status: 'monitor', date: new Date().toISOString() },
-        { id: 3, type: 'HbA1c', value: 5.8, time: 'Feb 15 • Last Lab', status: 'target', date: '2026-02-15' }
-      ];
-      setGlucoseReadings(sampleReadings);
-      localStorage.setItem('glucose_readings', JSON.stringify(sampleReadings));
+  // Real-time data from API
+  const [recentLogs, setRecentLogs] = useState([]);
+  const [glucoseChartData, setGlucoseChartData] = useState([]);
+  const [hba1cChartData, setHba1cChartData] = useState([]);
+  const [avgFasting, setAvgFasting] = useState('--');
+  const [latestHba1c, setLatestHba1c] = useState('--');
+  const [aiInsight, setAiInsight] = useState('');
+
+  const glassCard = "bg-white/80 backdrop-blur-2xl border border-white/50 rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.04)]";
+
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      // Fetch glucose readings
+      const glucoseRes = await api.get('metrics/blood_sugar', { params: { limit: 50 } });
+      const glucoseReadings = glucoseRes.data?.data || glucoseRes.data || [];
+
+      // Fetch HbA1c readings
+      const hba1cRes = await api.get('metrics/hba1c', { params: { limit: 20 } });
+      const hba1cReadings = hba1cRes.data?.data || hba1cRes.data || [];
+
+      // Build recent logs (last 6 readings combined)
+      const allReadings = [
+        ...glucoseReadings.map(r => ({ ...r, type: 'Glucose' })),
+        ...hba1cReadings.map(r => ({ ...r, type: 'HbA1c' }))
+      ].sort((a, b) => new Date(b.recordedAt || b.createdAt) - new Date(a.recordedAt || a.createdAt))
+        .slice(0, 6);
+
+      setRecentLogs(allReadings);
+
+      // Average fasting glucose
+      const fastingReadings = glucoseReadings.filter(r => (r.readingContext || '').toLowerCase() === 'fasting');
+      if (fastingReadings.length > 0) {
+        const avg = Math.round(fastingReadings.reduce((sum, r) => sum + (r.value || 0), 0) / fastingReadings.length);
+        setAvgFasting(avg);
+      }
+
+      // Latest HbA1c
+      if (hba1cReadings.length > 0) {
+        setLatestHba1c(hba1cReadings[0].value);
+      }
+
+      // Build glucose chart data — group by day
+      const dayMap = {};
+      glucoseReadings.forEach(r => {
+        const date = new Date(r.recordedAt || r.createdAt);
+        const dayKey = date.toLocaleDateString('en-US', { weekday: 'short' });
+        if (!dayMap[dayKey]) dayMap[dayKey] = { date: dayKey, fasting: null, preMeal: null, postMeal: null, random: null };
+        const ctx = (r.readingContext || '').toLowerCase().replace(/-/g, '');
+        if (ctx === 'fasting') dayMap[dayKey].fasting = r.value;
+        else if (ctx === 'premeal' || ctx === 'pre meal') dayMap[dayKey].preMeal = r.value;
+        else if (ctx === 'postmeal' || ctx === 'post meal') dayMap[dayKey].postMeal = r.value;
+        else if (ctx === 'random') dayMap[dayKey].random = r.value;
+      });
+      setGlucoseChartData(Object.values(dayMap).slice(0, 7));
+
+      // Build HbA1c chart data
+      const hba1cChart = hba1cReadings.slice(0, 6).reverse().map(r => ({
+        month: new Date(r.recordedAt || r.createdAt).toLocaleDateString('en-US', { month: 'short' }),
+        value: r.value
+      }));
+      setHba1cChartData(hba1cChart);
+
+      // AI insight is fetched on-demand only (user clicks Analyze button)
+
+    } catch (error) {
+      console.error('Failed to fetch diabetes data:', error);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
-  // Weekly progress data for chart
-  const weeklyData = [
-    { day: 'Tue', value: 105 },
-    { day: 'Wed', value: 110 },
-    { day: 'Thu', value: 115 },
-    { day: 'Fri', value: 108 },
-    { day: 'Sat', value: 102 },
-    { day: 'Sun', value: 108 }
-  ];
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
-  const getStatusColor = (status) => {
-    switch (status) {
-      case 'optimal': return 'text-green-600 bg-green-100';
-      case 'monitor': return 'text-orange-600 bg-orange-100';
-      case 'target': return 'text-red-600 bg-red-100';
-      default: return 'text-gray-600 bg-gray-100';
+  const fetchAiAnalysis = async () => {
+    setAnalyzingAi(true);
+    setAiInsight('');
+    try {
+      const analysisRes = await api.get('metrics/analysis/glucose');
+      const data = analysisRes.data?.data;
+      if (data?.insight) {
+        setAiInsight(data.insight);
+      } else if (data?.recommendations) {
+        const recs = data.recommendations;
+        if (typeof recs === 'string') setAiInsight(recs);
+        else if (recs.immediate || recs.shortTerm || recs.lifestyle) {
+          const parts = [];
+          if (recs.immediate?.length) parts.push('Immediate: ' + recs.immediate.join('. '));
+          if (recs.shortTerm?.length) parts.push('Short-term: ' + recs.shortTerm.join('. '));
+          if (recs.lifestyle?.length) parts.push('Lifestyle: ' + recs.lifestyle.join('. '));
+          setAiInsight(parts.join(' | ') || JSON.stringify(recs));
+        } else {
+          setAiInsight(JSON.stringify(recs));
+        }
+      } else if (data?.status) {
+        setAiInsight(`Status: ${data.status}. ${data.statusMessage || ''}`);
+      } else {
+        setAiInsight('Analysis complete. No specific insights available yet — log more readings for better analysis.');
+      }
+    } catch (error) {
+      console.error('AI analysis error:', error);
+      setAiInsight('Could not generate analysis right now. Please try again later.');
+    } finally {
+      setAnalyzingAi(false);
     }
   };
 
-  const getStatusText = (status) => {
-    switch (status) {
-      case 'optimal': return 'OPTIMAL';
-      case 'monitor': return 'MONITOR';
-      case 'target': return 'TARGET';
-      default: return 'NORMAL';
+  const handleSaveReading = async () => {
+    if (!readingValue) {
+      toast.error('Please enter a value');
+      return;
+    }
+    setSaving(true);
+    try {
+      const recordedAt = new Date(`${readingDate}T${readingTime}:00`).toISOString();
+      await api.post('metrics', {
+        type: readingCategory === 'HbA1c' ? 'hba1c' : 'blood_sugar',
+        value: parseFloat(readingValue),
+        unit: readingCategory === 'HbA1c' ? '%' : 'mg/dL',
+        readingContext: readingCategory === 'HbA1c' ? 'lab' : glucoseContext.toLowerCase(),
+        recordedAt
+      });
+      toast.success(`${readingCategory} reading saved!`);
+      setReadingValue('');
+      // Reset date/time to now
+      setReadingDate(new Date().toISOString().split('T')[0]);
+      setReadingTime(new Date().toTimeString().slice(0, 5));
+      fetchData();
+    } catch (error) {
+      console.error('Failed to save reading:', error);
+      toast.error('Failed to save reading');
+    } finally {
+      setSaving(false);
     }
   };
 
-  const getIconColor = (type) => {
-    switch (type) {
-      case 'Fasting': return 'bg-green-100 text-green-600';
-      case 'Post-Meal': return 'bg-orange-100 text-orange-600';
-      case 'HbA1c': return 'bg-red-100 text-red-600';
-      default: return 'bg-gray-100 text-gray-600';
+  const getLogStatus = (reading) => {
+    if (reading.type === 'HbA1c') {
+      return reading.value <= 5.7 ? 'excellent' : reading.value <= 6.4 ? 'warning' : 'high';
     }
+    const ctx = (reading.readingContext || '').toLowerCase();
+    if (ctx === 'fasting') return reading.value <= 99 ? 'good' : reading.value <= 125 ? 'warning' : 'high';
+    if (ctx.includes('post')) return reading.value <= 140 ? 'good' : reading.value <= 199 ? 'warning' : 'high';
+    return reading.value <= 140 ? 'good' : 'warning';
+  };
+
+  const formatLogDate = (dateStr) => {
+    const d = new Date(dateStr);
+    const now = new Date();
+    const isToday = d.toDateString() === now.toDateString();
+    const isYesterday = d.toDateString() === new Date(now - 86400000).toDateString();
+    const time = d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+    if (isToday) return `Today, ${time}`;
+    if (isYesterday) return `Yesterday, ${time}`;
+    return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}, ${time}`;
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
-      <div className="max-w-4xl mx-auto p-4 space-y-6">
-        
-        {/* Welcome Message - Mobile Only */}
-        <div className="md:hidden flex items-center justify-between">
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-orange-600 flex items-center justify-center text-white text-sm font-bold shadow-md flex-shrink-0">
-              {user?.name?.[0]?.toUpperCase() || 'U'}
-            </div>
-            <h1 className="text-sm font-bold text-slate-800 truncate">
-              {(() => {
-                const hour = new Date().getHours();
-                if (hour < 12) return 'Good Morning';
-                if (hour < 18) return 'Good Afternoon';
-                return 'Good Evening';
-              })()}, {user?.name?.split(' ')[0] || 'there'}!
-            </h1>
-          </div>
-          <button className="w-9 h-9 rounded-full bg-white shadow-md flex items-center justify-center hover:shadow-lg transition-all flex-shrink-0">
-            <Bell className="w-4 h-4 text-slate-700" />
-          </button>
+    <div className="p-4 md:p-8 max-w-[1400px] mx-auto space-y-8 font-sans">
+
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
+        <div>
+          <h1 className="text-4xl md:text-5xl font-light tracking-tight text-[#1a1a1a] mb-2">Diabetes Log</h1>
+          <p className="text-[#666666] text-lg">Comprehensive tracking for Glucose and HbA1c metrics.</p>
         </div>
-
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl md:text-3xl font-bold text-slate-900">Diabetes Care</h1>
-            <p className="text-sm text-slate-600 mt-1">Glycemic Control & Trends</p>
-          </div>
-          <button className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-blue-600 text-white flex items-center justify-center shadow-lg hover:bg-blue-700 transition-all">
-            <Plus className="w-6 h-6 md:w-7 md:h-7" />
-          </button>
-        </div>
-
-        {/* Weekly Progress Chart */}
-        <div className="bg-white rounded-3xl p-6 shadow-lg">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-                <TrendingUp className="w-5 h-5 text-blue-600" />
-              </div>
-              <h2 className="text-lg font-bold text-slate-900">WEEKLY PROGRESS</h2>
+        <div className="flex gap-4">
+          <div className="bg-white px-5 py-3 rounded-2xl border border-slate-100 shadow-sm flex flex-col">
+            <span className="text-[10px] uppercase tracking-widest font-bold text-[#888888] mb-1">Avg Fasting</span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-black text-[#9583BC]">{avgFasting}</span>
+              <span className="text-xs font-bold text-[#a0a0a0]">mg/dL</span>
             </div>
-            <button className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 rounded-lg text-sm font-medium text-slate-700">
-              {selectedMetric}
-              <ChevronDown className="w-4 h-4" />
-            </button>
           </div>
-
-          {/* Simple Line Chart */}
-          <div className="relative h-48 mb-4">
-            <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-              <defs>
-                <linearGradient id="chartGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.3" />
-                  <stop offset="100%" stopColor="#3b82f6" stopOpacity="0" />
-                </linearGradient>
-              </defs>
-              {/* Background area */}
-              <path
-                d="M 0 40 Q 16.67 35 33.33 30 T 66.67 45 T 100 40 L 100 100 L 0 100 Z"
-                fill="url(#chartGradient)"
-              />
-              {/* Line */}
-              <path
-                d="M 0 40 Q 16.67 35 33.33 30 T 66.67 45 T 100 40"
-                fill="none"
-                stroke="#3b82f6"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
-          </div>
-
-          {/* Days */}
-          <div className="grid grid-cols-6 gap-2 text-center text-xs text-slate-500">
-            {weeklyData.map((day, idx) => (
-              <div key={idx}>{day.day}</div>
-            ))}
-          </div>
-        </div>
-
-        {/* Current Metrics */}
-        <div className="grid grid-cols-2 gap-4">
-          {/* HbA1c Card */}
-          <div className="bg-gradient-to-br from-slate-800 to-slate-900 rounded-3xl p-5 text-white shadow-xl">
-            <p className="text-slate-400 text-xs uppercase tracking-wide mb-2">CURRENT HBA1C</p>
-            <div className="flex items-baseline gap-2 mb-3">
-              <span className="text-4xl font-bold">{currentHbA1c}</span>
-              <span className="text-green-400 text-lg">%</span>
-            </div>
-            <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-purple-400 to-orange-400 rounded-full" style={{ width: '60%' }} />
-            </div>
-            <p className="text-xs text-cyan-400 mt-2 uppercase tracking-wide">Target Range</p>
-          </div>
-
-          {/* Daily Average Card */}
-          <div className="bg-white rounded-3xl p-5 shadow-lg border-2 border-slate-200">
-            <p className="text-slate-600 text-xs uppercase tracking-wide mb-2">DAILY AVG</p>
-            <div className="flex items-baseline gap-2 mb-3">
-              <span className="text-4xl font-bold text-slate-900">{dailyAvg}</span>
-              <span className="text-slate-500 text-sm">mg/dL</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Activity className="w-4 h-4 text-blue-600" />
-              <span className="text-xs text-blue-600 font-semibold uppercase">Stable Baseline</span>
+          <div className="bg-white px-5 py-3 rounded-2xl border border-slate-100 shadow-sm flex flex-col">
+            <span className="text-[10px] uppercase tracking-widest font-bold text-[#888888] mb-1">Latest HbA1c</span>
+            <div className="flex items-baseline gap-2">
+              <span className="text-2xl font-black text-[#1a1a1a]">{latestHba1c}</span>
+              <span className="text-xs font-bold text-[#a0a0a0]">%</span>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Recent Activity */}
-        <div className="bg-white rounded-3xl p-6 shadow-lg">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-slate-900">RECENT ACTIVITY</h2>
-            <Link to="/diabetes/history" className="text-sm text-blue-600 font-semibold hover:underline">
-              View All
-            </Link>
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
 
-          <div className="space-y-3">
-            {glucoseReadings.map((reading) => (
-              <div key={reading.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 transition-all">
-                <div className="flex items-center gap-4 flex-1">
-                  <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${getIconColor(reading.type)}`}>
-                    <Droplet className="w-6 h-6" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-slate-900">{reading.type} Reading</h3>
-                    <p className="text-sm text-slate-500">{reading.time}</p>
-                  </div>
-                </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold text-slate-900">
-                    {reading.value}
-                    <span className="text-sm text-slate-500 ml-1">
-                      {reading.type === 'HbA1c' ? '%' : 'MG/DL'}
-                    </span>
-                  </p>
-                  <span className={`text-xs px-2 py-1 rounded-full font-semibold uppercase ${getStatusColor(reading.status)}`}>
-                    {getStatusText(reading.status)}
-                  </span>
+        {/* Left Column: Log Form & Recent History */}
+        <div className="lg:col-span-1 space-y-8">
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className={`${glassCard} p-6 md:p-8 relative overflow-hidden`}
+          >
+            <div className="absolute top-0 right-0 w-32 h-32 bg-[#9583BC]/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
+
+            <h3 className="text-xl font-bold text-[#1a1a1a] mb-6 flex items-center gap-2">
+              <Plus className="w-5 h-5 text-[#9583BC]" /> Log New Reading
+            </h3>
+
+            <div className="space-y-5 relative z-10">
+              <div>
+                <label className="block text-xs font-bold text-[#666666] uppercase tracking-wide mb-2">Category</label>
+                <div className="grid grid-cols-2 gap-2 p-1 bg-[#F5F5F7] rounded-xl border border-white">
+                  {['Glucose', 'HbA1c'].map(type => (
+                    <button
+                      key={type}
+                      onClick={() => setReadingCategory(type)}
+                      className={`py-2 text-xs font-bold rounded-lg transition-all ${readingCategory === type ? 'bg-white text-[#9583BC] shadow-sm' : 'text-[#888888] hover:text-[#1a1a1a]'}`}
+                    >
+                      {type}
+                    </button>
+                  ))}
                 </div>
               </div>
-            ))}
-          </div>
+
+              {readingCategory === 'Glucose' && (
+                <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
+                  <label className="block text-xs font-bold text-[#666666] uppercase tracking-wide mb-2">Context</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {['Fasting', 'Pre-Meal', 'Post-Meal', 'Random'].map(context => (
+                      <button
+                        key={context}
+                        onClick={() => setGlucoseContext(context)}
+                        className={`py-2 px-3 text-xs font-bold rounded-xl border transition-all mt-1 ${glucoseContext === context ? 'bg-[#9583BC]/10 border-[#9583BC] text-[#9583BC]' : 'bg-white border-slate-200 text-[#888888] hover:border-[#9583BC]/50'}`}
+                      >
+                        {context}
+                      </button>
+                    ))}
+                  </div>
+                </motion.div>
+              )}
+
+              <div>
+                <label className="block text-xs font-bold text-[#666666] uppercase tracking-wide mb-2">Value {readingCategory === 'HbA1c' ? '(%)' : '(mg/dL)'}</label>
+                <input
+                  type="number"
+                  value={readingValue}
+                  onChange={(e) => setReadingValue(e.target.value)}
+                  placeholder={readingCategory === 'HbA1c' ? 'e.g. 6.1' : 'e.g. 105'}
+                  className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-[#9583BC] focus:ring-2 focus:ring-[#E0D4FF] outline-none transition-all bg-white font-medium text-lg placeholder:text-slate-300"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-[#666666] uppercase tracking-wide mb-2">Date</label>
+                  <div className="relative">
+                    <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#888888] pointer-events-none" />
+                    <input
+                      type="date"
+                      value={readingDate}
+                      onChange={(e) => setReadingDate(e.target.value)}
+                      className="w-full pl-9 pr-3 py-3 rounded-xl border border-slate-200 bg-white text-[#1a1a1a] text-sm font-medium focus:border-[#9583BC] focus:ring-2 focus:ring-[#E0D4FF] outline-none transition-all"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-[#666666] uppercase tracking-wide mb-2">Time</label>
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#888888] pointer-events-none" />
+                    <input
+                      type="time"
+                      value={readingTime}
+                      onChange={(e) => setReadingTime(e.target.value)}
+                      className="w-full pl-9 pr-3 py-3 rounded-xl border border-slate-200 bg-white text-[#1a1a1a] text-sm font-medium focus:border-[#9583BC] focus:ring-2 focus:ring-[#E0D4FF] outline-none transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={handleSaveReading}
+                disabled={saving || !readingValue}
+                className="w-full py-4 mt-2 bg-[#9583BC] text-white rounded-xl font-bold shadow-lg hover:bg-[#8574ab] transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
+              >
+                {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
+                {saving ? 'Saving...' : 'Save to Log'}
+              </button>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className={`${glassCard} p-6`}
+          >
+            <h3 className="text-lg font-bold text-[#1a1a1a] mb-4">Recent Logs</h3>
+            <div className="space-y-3">
+              {loading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="w-6 h-6 animate-spin text-[#9583BC]" />
+                </div>
+              ) : recentLogs.length === 0 ? (
+                <div className="text-center py-8">
+                  <Droplet className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                  <p className="text-sm text-[#888888]">No readings logged yet. Start by adding your first reading above.</p>
+                </div>
+              ) : (
+                recentLogs.map((log, i) => {
+                  const status = getLogStatus(log);
+                  return (
+                    <div key={log._id || i} className="flex items-center justify-between p-3 rounded-[16px] bg-[#F5F5F7]/80 border border-transparent hover:border-slate-200 transition-all cursor-default">
+                      <div className="flex items-center gap-4">
+                        <div className={`w-12 h-12 rounded-full flex flex-col items-center justify-center font-black ${status === 'excellent' || status === 'good' ? 'bg-[#F0FDF4] text-[#16A34A]' :
+                          status === 'warning' ? 'bg-[#FFF8F5] text-[#FF8A66]' : 'bg-[#FFF0F0] text-[#EF4444]'
+                          }`}>
+                          <span className="text-sm leading-none">{log.value}</span>
+                          <span className="text-[8px] uppercase tracking-wider">{log.type === 'HbA1c' ? '%' : 'mg'}</span>
+                        </div>
+                        <div>
+                          <div className="font-bold text-[#1a1a1a] text-sm">{log.type}</div>
+                          <div className="text-xs text-[#888888] font-medium">
+                            {log.readingContext || 'Lab'} • {formatLogDate(log.recordedAt || log.createdAt)}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </motion.div>
         </div>
 
-        {/* Smart Forecast */}
-        <div className="bg-gradient-to-br from-purple-50 to-orange-50 rounded-3xl p-6 border-2 border-blue-200">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-xl bg-blue-600 flex items-center justify-center flex-shrink-0">
-              <Info className="w-6 h-6 text-white" />
-            </div>
-            <div className="flex-1">
-              <h3 className="text-lg font-bold text-blue-900 mb-2">SMART FORECAST</h3>
-              <p className="text-sm text-blue-800 leading-relaxed">
-                Your post-meal glucose has increased by 4% compared to last week. Consider tracking fiber intake to stabilize spikes.
-              </p>
-            </div>
-          </div>
-        </div>
+        {/* Right Column: Charts */}
+        <div className="lg:col-span-2 space-y-8">
 
-        {/* Quick Tips */}
-        <div className="bg-white rounded-3xl p-6 shadow-lg">
-          <h2 className="text-lg font-bold text-slate-900 mb-4">Quick Tips</h2>
-          <div className="space-y-3">
-            <div className="flex items-start gap-3">
-              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-slate-700">Test fasting glucose before breakfast for accurate baseline readings</p>
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className={`${glassCard} p-6 md:p-8`}
+          >
+            <div className="flex flex-col xl:flex-row justify-between items-start xl:items-center mb-8 gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-[#1a1a1a]">Detailed Analytics</h2>
+                <p className="text-[#666666] text-sm mt-1">Visualize your trends across different metrics</p>
+              </div>
+
+              <div className="flex flex-wrap bg-[#F5F5F7] p-1.5 rounded-2xl md:rounded-full border border-white shadow-sm gap-1">
+                <button
+                  onClick={() => setActiveChart('glucose')}
+                  className={`px-4 py-2 text-sm font-bold rounded-xl md:rounded-full transition-all ${activeChart === 'glucose' ? 'bg-[#9583BC] text-white shadow-sm' : 'text-[#888888] hover:text-[#1a1a1a]'}`}
+                >
+                  Daily Glucose
+                </button>
+                <button
+                  onClick={() => setActiveChart('hba1c')}
+                  className={`px-4 py-2 text-sm font-bold rounded-xl md:rounded-full transition-all ${activeChart === 'hba1c' ? 'bg-[#9583BC] text-white shadow-sm' : 'text-[#888888] hover:text-[#1a1a1a]'}`}
+                >
+                  HbA1c Trends
+                </button>
+              </div>
             </div>
-            <div className="flex items-start gap-3">
-              <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-slate-700">Check post-meal levels 2 hours after eating to monitor spikes</p>
+
+            <div className="h-[350px] w-full">
+              {loading ? (
+                <div className="flex items-center justify-center h-full">
+                  <Loader2 className="w-8 h-8 animate-spin text-[#9583BC]" />
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  {activeChart === 'glucose' ? (
+                    glucoseChartData.length > 0 ? (
+                      <LineChart data={glucoseChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                        <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fill: '#888888', fontSize: 12, fontWeight: 500 }} dy={10} />
+                        <YAxis domain={[60, 180]} axisLine={false} tickLine={false} tick={{ fill: '#888888', fontSize: 12 }} />
+                        <Tooltip contentStyle={{ borderRadius: '16px', border: '1px solid #f1f5f9', boxShadow: '0 8px 30px rgba(0,0,0,0.08)', fontWeight: 500 }} cursor={{ stroke: '#F5F5F7', strokeWidth: 32 }} />
+                        <ReferenceLine y={100} stroke="#16A34A" strokeDasharray="3 3" opacity={0.5} />
+                        <ReferenceLine y={140} stroke="#FF8A66" strokeDasharray="3 3" opacity={0.5} />
+                        <Line name="Fasting" type="monotone" dataKey="fasting" stroke="#9583BC" strokeWidth={3} dot={{ r: 4, fill: '#9583BC', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} connectNulls />
+                        <Line name="Pre-Meal" type="monotone" dataKey="preMeal" stroke="#4FA7C7" strokeWidth={3} dot={{ r: 4, fill: '#4FA7C7', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} connectNulls />
+                        <Line name="Post-Meal" type="monotone" dataKey="postMeal" stroke="#FF8A66" strokeWidth={3} dot={{ r: 4, fill: '#FF8A66', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} connectNulls />
+                        <Line name="Random" type="monotone" dataKey="random" stroke="#d8cceb" strokeWidth={3} dot={{ r: 4, fill: '#d8cceb', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 6 }} connectNulls />
+                      </LineChart>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full">
+                        <Droplet className="w-10 h-10 text-slate-300 mb-3" />
+                        <p className="text-sm text-[#888888]">No glucose readings yet. Log your first reading to see trends.</p>
+                      </div>
+                    )
+                  ) : (
+                    hba1cChartData.length > 0 ? (
+                      <BarChart data={hba1cChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barSize={48}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                        <XAxis dataKey="month" axisLine={false} tickLine={false} tick={{ fill: '#888888', fontSize: 12, fontWeight: 500 }} dy={10} />
+                        <YAxis domain={[5, 8]} axisLine={false} tickLine={false} tick={{ fill: '#888888', fontSize: 12 }} tickFormatter={(val) => `${val}%`} />
+                        <Tooltip cursor={{ fill: '#F5F5F7' }} contentStyle={{ borderRadius: '16px', border: '1px solid #f1f5f9', boxShadow: '0 8px 30px rgba(0,0,0,0.08)', fontWeight: 500 }} />
+                        <ReferenceLine y={6.5} stroke="#FF8A66" strokeDasharray="4 4" label={{ position: 'top', value: 'High Risk (>6.5%)', fill: '#FF8A66', fontSize: 10 }} />
+                        <Bar dataKey="value" name="HbA1c %" radius={[6, 6, 6, 6]}>
+                          {hba1cChartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.value >= 6.5 ? '#FF8A66' : '#9583BC'} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center h-full">
+                        <Droplet className="w-10 h-10 text-slate-300 mb-3" />
+                        <p className="text-sm text-[#888888]">No HbA1c readings yet. Log a lab result to see trends.</p>
+                      </div>
+                    )
+                  )}
+                </ResponsiveContainer>
+              )}
             </div>
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-orange-600 flex-shrink-0 mt-0.5" />
-              <p className="text-sm text-slate-700">Aim for HbA1c below 7% for optimal diabetes management</p>
+
+            {/* Legend */}
+            <div className="flex flex-wrap justify-center gap-6 mt-8 pt-6 border-t border-slate-100">
+              {activeChart === 'glucose' && (
+                <>
+                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#9583BC]"></div><span className="text-xs font-bold text-[#666666] uppercase tracking-wider">Fasting</span></div>
+                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#4FA7C7]"></div><span className="text-xs font-bold text-[#666666] uppercase tracking-wider">Pre-Meal</span></div>
+                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#FF8A66]"></div><span className="text-xs font-bold text-[#666666] uppercase tracking-wider">Post-Meal</span></div>
+                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-full bg-[#d8cceb]"></div><span className="text-xs font-bold text-[#666666] uppercase tracking-wider">Random</span></div>
+                </>
+              )}
+              {activeChart === 'hba1c' && (
+                <>
+                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-md bg-[#9583BC]"></div><span className="text-xs font-bold text-[#666666] uppercase tracking-wider">Healthy Range</span></div>
+                  <div className="flex items-center gap-2"><div className="w-3 h-3 rounded-md bg-[#FF8A66]"></div><span className="text-xs font-bold text-[#666666] uppercase tracking-wider">High Risk</span></div>
+                </>
+              )}
             </div>
-          </div>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className={`${glassCard} p-6 md:p-8 bg-gradient-to-br from-[#9583BC] to-[#715c99] text-white border-none`}
+          >
+            <div className="flex items-start gap-4">
+              <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center shrink-0">
+                <Target className="w-6 h-6 text-white" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between mb-2">
+                  <h3 className="text-xl font-bold">AI Insight</h3>
+                  <button
+                    onClick={fetchAiAnalysis}
+                    disabled={analyzingAi}
+                    className="px-4 py-1.5 bg-white/20 hover:bg-white/30 text-white text-xs font-bold rounded-full transition-all disabled:opacity-50 flex items-center gap-2"
+                  >
+                    {analyzingAi ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Target className="w-3.5 h-3.5" />}
+                    {analyzingAi ? 'Analyzing...' : 'Analyze My Trends'}
+                  </button>
+                </div>
+                <p className="text-white/90 leading-relaxed text-sm">
+                  {analyzingAi ? 'Analyzing your glucose patterns, food consumption and HbA1c trends...' : (aiInsight || `Tap "Analyze My Trends" to get AI-powered insights on your glucose & HbA1c patterns based on your food intake and logged readings.`)}
+                </p>
+              </div>
+            </div>
+          </motion.div>
         </div>
       </div>
     </div>

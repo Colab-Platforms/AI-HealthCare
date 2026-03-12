@@ -34,7 +34,7 @@ const foodLogSchema = new mongoose.Schema({
   },
   mealType: {
     type: String,
-    enum: ['breakfast', 'lunch', 'dinner', 'snack'],
+    enum: ['breakfast', 'lunch', 'dinner', 'snack', 'midMorningSnack', 'eveningSnack', 'morning_snack', 'evening_snack', 'other'],
     required: true
   },
   foodItems: [foodItemSchema],

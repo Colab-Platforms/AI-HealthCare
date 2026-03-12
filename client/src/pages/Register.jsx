@@ -1,19 +1,13 @@
-import { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { Activity, Mail, Lock, User, Eye, EyeOff, ArrowRight, Stethoscope, Heart, ArrowLeft, Scale, Ruler, Droplet, Cigarette, Wine, Moon, Dumbbell, Target, TrendingUp, TrendingDown, Minus, Plus, X, CheckCircle2, Loader2, Syringe, Utensils, Calendar, Tablets } from 'lucide-react';
+import api from '../services/api';
+import { Activity, Mail, Lock, User, Eye, EyeOff, ArrowRight, ArrowLeft, Heart, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import HealthProgressAnimation from '../components/HealthProgressAnimation';
 
 export default function Register() {
-  const location = useLocation();
-  const searchParams = new URLSearchParams(location.search);
-
-  // Always skip role selection and start at step 2 (basic info)
-  const [step, setStep] = useState(2);
-  const [userType, setUserType] = useState('patient'); // Always patient
+  const [step, setStep] = useState(1);
   const [formData, setFormData] = useState({
-    // Basic Info
     name: '',
     email: '',
     phone: '',
@@ -21,1272 +15,485 @@ export default function Register() {
     confirmPassword: '',
     age: '',
     gender: '',
-    // Health Profile
-    height: '', // cm
-    weight: '', // kg
+    height: '',
+    weight: '',
     bloodGroup: '',
-    dietaryPreference: 'non-vegetarian',
     activityLevel: 'sedentary',
-    // Lifestyle (Smoking, alcohol, sleep, stress, water, conditions)
-    smoker: false,
-    alcohol: false,
-    sleepHours: '7',
-    stressLevel: 'moderate',
-    waterIntake: '8',
-    chronicConditions: [], // This will store conditions including diabetes if they have it
-    // Diabetes Profile (Conditional)
-    isDiabetic: 'no', // 'yes' or 'no'
-    diabetesType: '',
-    diagnosisYear: '',
-    diabetesStatus: '',
-    hba1c: '',
-    glucoseMonitoring: '',
-    fastingGlucose: '',
-    postMealGlucose: '',
-    testingFrequency: '',
-    onMedication: false,
-    medicationType: [],
-    insulinTiming: '',
-    recentDosageChange: false,
-    // Goals
-    primaryGoal: 'general_health',
-    nutritionGoal: 'general_health',
-    targetWeight: '',
-    weeklyGoal: '0.5'
+    allergies: '',
+    isDiabetic: 'no',
+    dietaryPreference: 'non-vegetarian'
   });
+
+  const [verificationCode, setVerificationCode] = useState(['', '', '', '', '', '']);
+
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  // Step state variables
-  const [customCondition, setCustomCondition] = useState('');
-  const [customMedication, setCustomMedication] = useState('');
-  const [customAllergy, setCustomAllergy] = useState('');
-  const [customFoodRestriction, setCustomFoodRestriction] = useState('');
-  const { register } = useAuth();
+  const [isVerified, setIsVerified] = useState(false);
+  const { register, refreshUser, user } = useAuth();
   const navigate = useNavigate();
 
-  const handleRoleSelect = (role) => {
-    if (role === 'doctor') {
-      navigate('/register/doctor');
+  // Handle flow control and automatic step skipping
+  useEffect(() => {
+    if (user) {
+      if (!user.profile?.age) {
+        // User logged in but profile not complete
+        if (isVerified) {
+          setStep(2);
+        } else {
+          setStep(1.5);
+        }
+      } else if (user.profile?.age) {
+        // User fully registered and profile complete
+        navigate('/dashboard');
+      }
+    }
+  }, [user, navigate, isVerified]);
+
+  const handleNext = async (e) => {
+    e.preventDefault();
+    if (!formData.name || !formData.email || !formData.phone || !formData.password) {
+      toast.error('Please fill in all required fields');
+      return;
+    }
+    if (formData.phone.length !== 10) {
+      toast.error('Phone number must be exactly 10 digits');
+      return;
+    }
+    if (formData.password !== formData.confirmPassword) {
+      toast.error('Passwords do not match');
+      return;
+    }
+    const pwdRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*])(?=.*[0-9]).{6,}$/;
+    if (!pwdRegex.test(formData.password)) {
+      toast.error('Password must contain 1 uppercase, 1 special char, and 1 number');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await register(formData.name, formData.email, formData.phone, formData.password, {}, null);
+      toast.success('Registration success! Please verify your email.', { icon: '📧' });
+      setStep(1.5);
+    } catch (error) {
+      const msg = error.response?.data?.message || 'Registration failed';
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleVerifyEmail = async () => {
+    const code = verificationCode.join('');
+    if (code.length !== 6) {
+      toast.error('Please enter the 6-digit code');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await api.post('auth/verify-email', {
+        email: formData.email,
+        code: code
+      });
+      toast.success('Email verified! Let\'s setup your profile.');
+      setIsVerified(true);
+      setStep(2);
+    } catch (error) {
+      const msg = error.response?.data?.message || 'Verification failed';
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendCode = async () => {
+    try {
+      await api.post('auth/resend-verify-code', { email: formData.email });
+      toast.success('Verification code resent to your email');
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to resend code');
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match');
-      return;
-    }
-    if (!formData.age || !formData.gender) {
-      toast.error('Please provide your age and gender');
+    if (!formData.name || !formData.age || !formData.gender || !formData.activityLevel || !formData.height || !formData.weight) {
+      toast.error('Please fill in all mandatory profile fields');
       return;
     }
 
     setLoading(true);
 
-    const attemptRegister = async (retryCount = 0) => {
-      try {
-        const profileData = {
-          age: parseInt(formData.age),
-          gender: formData.gender,
-          height: formData.height ? parseFloat(formData.height) : undefined,
-          weight: formData.weight ? parseFloat(formData.weight) : undefined,
-          bloodGroup: formData.bloodGroup || undefined,
-          dietaryPreference: formData.dietaryPreference,
-          activityLevel: formData.activityLevel,
-          medicalHistory: {
-            conditions: formData.chronicConditions.includes('Diabetes')
-              ? formData.chronicConditions
-              : formData.isDiabetic === 'yes' ? ['Diabetes', ...formData.chronicConditions] : formData.chronicConditions
-          },
-          lifestyle: {
-            smoker: formData.smoker,
-            alcohol: formData.alcohol,
-            sleepHours: parseInt(formData.sleepHours),
-            stressLevel: formData.stressLevel,
-            waterIntake: parseInt(formData.waterIntake)
-          },
-          diabetesProfile: formData.isDiabetic === 'yes' ? {
-            type: formData.diabetesType,
-            diagnosisYear: formData.diagnosisYear,
-            status: formData.diabetesStatus,
-            hba1c: formData.hba1c,
-            glucoseMonitoring: formData.glucoseMonitoring,
-            fastingGlucose: formData.fastingGlucose,
-            postMealGlucose: formData.postMealGlucose,
-            testingFrequency: formData.testingFrequency,
-            onMedication: formData.onMedication,
-            medicationType: formData.medicationType,
-            insulinTiming: formData.insulinTiming,
-            recentDosageChange: formData.recentDosageChange
-          } : undefined
-        };
-
-        const nutritionGoal = {
-          goal: formData.primaryGoal || formData.nutritionGoal,
-          targetWeight: formData.targetWeight ? parseFloat(formData.targetWeight) : null,
-          weeklyGoal: parseFloat(formData.weeklyGoal)
-        };
-
-        await register(formData.name, formData.email, formData.phone, formData.password, profileData, nutritionGoal);
-        toast.success('Account created successfully!');
-        navigate('/dashboard');
-      } catch (error) {
-        const status = error.response?.status;
-        const errorMsg = error.response?.data?.message || 'Registration failed';
-
-        // Handle 503 (database connection) errors with retry
-        if (status === 503 && retryCount < 2) {
-          console.log(`Database connection failed, retrying... (attempt ${retryCount + 1}/2)`);
-          toast.loading('Connecting to database, please wait...');
-
-          // Wait 2 seconds before retrying
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          return attemptRegister(retryCount + 1);
+    try {
+      const profileData = {
+        age: parseInt(formData.age),
+        gender: formData.gender,
+        dietaryPreference: formData.dietaryPreference,
+        height: parseFloat(formData.height),
+        weight: parseFloat(formData.weight),
+        bloodGroup: formData.bloodGroup || undefined,
+        activityLevel: formData.activityLevel,
+        allergies: formData.allergies ? formData.allergies.split(',').map(a => a.trim()).filter(a => a) : [],
+        medicalHistory: {
+          conditions: formData.isDiabetic === 'yes' ? ['Diabetes'] : []
         }
+      };
 
-        if (!error.response) {
-          toast.error('Network error - Check if server is running');
-        } else if (status === 503) {
-          toast.error('Database temporarily unavailable. Please try again in a moment.');
-        } else {
-          toast.error(errorMsg);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
+      const nutritionGoal = {
+        goal: 'general_health',
+        targetWeight: parseFloat(formData.weight),
+        weeklyGoal: 0.5
+      };
 
-    await attemptRegister();
-  };
+      await api.put('auth/profile', {
+        name: formData.name,
+        profile: profileData,
+        nutritionGoal: nutritionGoal
+      });
+      await refreshUser();
 
-  const nextStep = () => {
-    // Validation for each step
-    if (step === 2) {
-      if (!formData.name || !formData.email || !formData.phone || !formData.password || !formData.age || !formData.gender) {
-        toast.error('Please fill in all basic fields');
-        return;
-      }
-      if (formData.phone.length !== 10) {
-        toast.error('Phone number must be exactly 10 digits');
-        return;
-      }
-      if (formData.password !== formData.confirmPassword) {
-        toast.error('Passwords do not match');
-        return;
-      }
-      const pwdRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*])(?=.*[0-9]).{6,}$/;
-      if (!pwdRegex.test(formData.password)) {
-        toast.error('Password must contain 1 uppercase, 1 special char, and 1 number');
-        return;
-      }
-    }
-    if (step === 3) {
-      if (!formData.height || !formData.weight) {
-        toast.error('Please provide height and weight');
-        return;
-      }
-    }
-    if (step === 5 && formData.isDiabetic === 'no') {
-      setStep(6);
-      return;
-    }
-    setStep(step + 1);
-  };
-
-  const prevStep = () => {
-    if (step === 2) {
-      // Go back to landing page instead of role selection
-      navigate('/');
-    } else {
-      setStep(step - 1);
+      toast.success('Registration completed successfully!');
+      navigate('/dashboard');
+    } catch (error) {
+      const msg = error.response?.data?.message || 'Profile completion failed';
+      toast.error(msg);
+    } finally {
+      setLoading(false);
     }
   };
 
-  const toggleArrayItem = (field, item) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: prev[field].includes(item)
-        ? prev[field].filter(i => i !== item)
-        : [...prev[field], item]
-    }));
-  };
-
-  const addCustomItem = (field, value) => {
-    if (value && !formData[field].includes(value)) {
-      setFormData(prev => ({
-        ...prev,
-        [field]: [...prev[field], value]
-      }));
-    }
-  };
-
-  const removeItem = (field, item) => {
-    setFormData(prev => ({
-      ...prev,
-      [field]: prev[field].filter(i => i !== item)
-    }));
-  };
-
-  // Step 2: Patient Registration Form - Basic Info
-  if (step === 2) {
-    return (
-      <div className="min-h-screen flex bg-white">
-        {/* Left Panel with Animation - Desktop Only */}
-        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
+  return (
+    <div className="min-h-screen flex bg-white">
+      {/* Visual Left Panel */}
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
+        <div className="absolute inset-0 opacity-20">
           <div className="absolute inset-0 opacity-20">
-            <div className="absolute top-20 left-20 w-72 h-72 bg-[#2FC8B9] rounded-full blur-[120px]" />
-            <div className="absolute bottom-20 right-20 w-96 h-96 bg-[#2FC8B9] rounded-full blur-[120px]" />
-          </div>
-          <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
-            {/* Animated Medical Icon */}
-            <div className="relative w-32 h-32 mb-8">
-              <div className="absolute inset-0 bg-white/20 backdrop-blur-xl rounded-full animate-pulse"></div>
-              <div className="absolute inset-4 bg-white/30 backdrop-blur-xl rounded-full flex items-center justify-center">
-                <Heart className="w-12 h-12 animate-pulse" />
-              </div>
-              {/* Progress Ring */}
-              <svg className="absolute inset-0 w-full h-full -rotate-90">
-                <circle cx="64" cy="64" r="60" stroke="white" strokeOpacity="0.2" strokeWidth="4" fill="none" />
-                <circle
-                  cx="64" cy="64" r="60"
-                  stroke="white"
-                  strokeWidth="4"
-                  fill="none"
-                  strokeDasharray="377"
-                  strokeDashoffset={377 - (377 * 0.16)}
-                  className="transition-all duration-500"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
-
-            <h1 className="text-4xl font-bold mb-4 text-center">Your Health Journey Starts Here</h1>
-            <p className="text-xl text-white/80 text-center max-w-md mb-6">
-              Get personalized health insights, diet plans, and supplement recommendations based on your unique profile.
-            </p>
-
-            {/* Progress Steps */}
-            <div className="flex items-center gap-2 mt-4">
-              <div className="flex items-center gap-1">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 2 ? 'bg-[#2FC8B9] text-white' : 'bg-white/10'}`}>
-                  <span className="text-sm font-bold">1</span>
-                </div>
-                <span className="text-xs">Basic</span>
-              </div>
-              <div className="w-8 h-0.5 bg-white/20"></div>
-              <div className="flex items-center gap-1">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 3 ? 'bg-[#2FC8B9] text-white' : 'bg-white/10'}`}>
-                  <span className="text-sm font-bold">2</span>
-                </div>
-                <span className="text-xs">Health</span>
-              </div>
-              <div className="w-8 h-0.5 bg-white/20"></div>
-              <div className="flex items-center gap-1">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 4 ? 'bg-[#2FC8B9] text-white' : 'bg-white/10'}`}>
-                  <span className="text-sm font-bold">3</span>
-                </div>
-                <span className="text-xs">Lifestyle</span>
-              </div>
-              <div className="w-8 h-0.5 bg-white/20"></div>
-              <div className="flex items-center gap-1">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 5 ? 'bg-[#2FC8B9] text-white' : 'bg-white/10'}`}>
-                  <span className="text-sm font-bold">4</span>
-                </div>
-                <span className="text-xs">Diabetes</span>
-              </div>
-              <div className="w-8 h-0.5 bg-white/20"></div>
-              <div className="flex items-center gap-1">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center ${step >= 6 ? 'bg-[#2FC8B9] text-white' : 'bg-white/10'}`}>
-                  <span className="text-sm font-bold">5</span>
-                </div>
-                <span className="text-xs">Goals</span>
-              </div>
-            </div>
-
-            <p className="text-sm text-white/70 mt-6">Step {step - 1} of 5 - {step === 2 ? 'Basic Info' : step === 3 ? 'Health Profile' : step === 4 ? 'Lifestyle' : step === 5 ? 'Diabetes' : 'Goals'}</p>
+            <div className="absolute top-20 left-20 w-72 h-72 bg-slate-400/20 rounded-full blur-[120px]" />
+            <div className="absolute bottom-20 right-20 w-96 h-96 bg-slate-600/20 rounded-full blur-[120px]" />
           </div>
         </div>
-
-        {/* Right Panel - Form */}
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="w-full max-w-md">
-            {/* Mobile Logo */}
-            <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-              <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center border border-[#2FC8B9]/30 shadow-lg shadow-[#2FC8B9]/10">
-                <Activity className="w-7 h-7 text-[#2FC8B9]" />
-              </div>
-              <span className="text-2xl font-black text-black uppercase tracking-tighter">FitCure</span>
+        <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
+          <div className="relative w-32 h-32 mb-8">
+            <div className="absolute inset-0 bg-white/20 backdrop-blur-xl rounded-full animate-pulse"></div>
+            <div className="absolute inset-4 bg-white/30 backdrop-blur-xl rounded-full flex items-center justify-center">
+              <Heart className="w-12 h-12" />
             </div>
+          </div>
+          <h1 className="text-4xl font-bold mb-4 text-center">Your Health Journey Starts Here</h1>
+          <p className="text-xl text-white/80 text-center max-w-md mb-6">
+            Get personalized health insights and proactive care management.
+          </p>
+          <div className="flex gap-2">
+            <div className={`w-12 h-2 rounded-full ${step >= 1 ? 'bg-white' : 'bg-white/20'}`}></div>
+            <div className={`w-12 h-2 rounded-full ${step >= 2 ? 'bg-white' : 'bg-white/20'}`}></div>
+          </div>
+        </div>
+      </div>
 
-            <button onClick={() => navigate('/')} className="flex items-center gap-2 mb-6 text-[#2FC8B9] font-black uppercase tracking-tighter text-xs hover:text-black transition-colors">
-              <ArrowLeft className="w-4 h-4" /> Back
-            </button>
-
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-black mb-2 text-black uppercase tracking-tighter">Your Health Profile</h2>
-              <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Step 1 of 5 • Global Health Identity</p>
+      {/* Main Registration Form Area */}
+      <div className="flex-1 flex items-center justify-center p-8">
+        <div className="w-full max-w-md">
+          {/* Mobile Identity */}
+          <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
+            <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center border border-slate-200 shadow-lg">
+              <Activity className="w-7 h-7 text-white" />
             </div>
+            <span className="text-2xl font-black text-black uppercase tracking-tighter">FitCure</span>
+          </div>
 
-            <form onSubmit={(e) => { e.preventDefault(); nextStep(); }} className="space-y-4">
+          <div className="mb-8 relative">
+            {step > 1 && (
+              <button onClick={() => setStep(step - 0.5)} className="absolute -top-6 left-0 flex items-center gap-1 text-black font-black uppercase text-xs hover:text-slate-600 transition-all">
+                <ArrowLeft className="w-4 h-4" /> Back
+              </button>
+            )}
+            <h2 className="text-3xl font-black mb-2 text-black uppercase tracking-tighter mt-2">
+              {step === 1 ? 'Create Account' : step === 1.5 ? 'Verify Email' : 'Setup Profile'}
+            </h2>
+            <p className="text-slate-500 font-bold uppercase text-xs tracking-widest">
+              Step {step === 1.5 ? '1.5' : step === 1 ? '1' : '2'} of 2 • {step === 1 ? 'Credentials' : step === 1.5 ? 'Verification' : 'Health Identity'}
+            </p>
+          </div>
+
+          {step === 1 ? (
+            <form onSubmit={handleNext} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2 text-slate-700">Full Name *</label>
+                <label className="block text-sm font-medium mb-1 text-slate-700">Full Name *</label>
                 <div className="relative">
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 focus:border-[#2FC8B9] text-black font-bold placeholder:text-slate-400"
+                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold placeholder:text-slate-400"
                     placeholder="John Doe"
                     required
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-slate-700">Age *</label>
-                  <input
-                    type="number"
-                    value={formData.age}
-                    onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-                    className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 border border-slate-200 text-slate-900 placeholder:text-slate-400 font-bold"
-                    placeholder="25"
-                    min="1"
-                    max="120"
-                    required
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2 text-slate-700">Gender *</label>
-                  <select
-                    value={formData.gender}
-                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                    className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 border border-slate-200 text-slate-900 font-bold"
-                    required
-                  >
-                    <option value="" className="text-slate-900">Select</option>
-                    <option value="male" className="text-slate-900">Male</option>
-                    <option value="female" className="text-slate-900">Female</option>
-                    <option value="other" className="text-slate-900">Other</option>
-                  </select>
-                </div>
-              </div>
-
               <div>
-                <label className="block text-sm font-medium mb-2 text-slate-700">Phone Number *</label>
-                <div className="relative">
-                  <Activity className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, '').slice(0, 10);
-                      setFormData({ ...formData, phone: val });
-                    }}
-                    className="w-full bg-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 border border-slate-200 text-slate-900 placeholder:text-slate-400 font-bold"
-                    placeholder="10 digit phone number"
-                    required
-                  />
-                </div>
-                {formData.phone && formData.phone.length !== 10 && (
-                  <p className="text-[10px] text-red-500 mt-1 font-bold">Must be 10 digits</p>
-                )}
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2 text-slate-700">Email Address *</label>
+                <label className="block text-sm font-medium mb-1 text-slate-700">Email Address *</label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                   <input
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full bg-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 border border-slate-200 text-slate-900 placeholder:text-slate-400 font-bold"
-                    placeholder="you@example.com"
+                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold placeholder:text-slate-400"
+                    placeholder="you@email.com"
                     required
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-slate-700">Password *</label>
+                <label className="block text-sm font-medium mb-1 text-slate-700">Phone Number *</label>
+                <div className="relative">
+                  <Activity className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold placeholder:text-slate-400"
+                    placeholder="10 digit number"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1 text-slate-700">Password *</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                   <input
-                    type={showPassword ? 'text' : 'password'}
+                    type={showPassword ? "text" : "password"}
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full bg-white rounded-xl py-3 pl-12 pr-12 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 border border-slate-200 text-slate-900 placeholder:text-slate-400 font-bold"
+                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-12 pr-12 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black text-black font-bold placeholder:text-slate-400"
                     placeholder="••••••••"
                     required
                   />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
-                {formData.password && (
-                  <div className="mt-2 space-y-1">
-                    <p className={`text-[10px] font-bold flex items-center gap-1 ${/[A-Z]/.test(formData.password) ? 'text-green-500' : 'text-slate-400'}`}>
-                      {/[A-Z]/.test(formData.password) ? '✓' : '○'} One uppercase letter
-                    </p>
-                    <p className={`text-[10px] font-bold flex items-center gap-1 ${/[0-9]/.test(formData.password) ? 'text-green-500' : 'text-slate-400'}`}>
-                      {/[0-9]/.test(formData.password) ? '✓' : '○'} One number
-                    </p>
-                    <p className={`text-[10px] font-bold flex items-center gap-1 ${/[!@#$%^&*]/.test(formData.password) ? 'text-green-500' : 'text-slate-400'}`}>
-                      {/[!@#$%^&*]/.test(formData.password) ? '✓' : '○'} One special character
-                    </p>
-                  </div>
-                )}
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-slate-700">Confirm Password *</label>
+                <label className="block text-sm font-medium mb-1 text-slate-700">Confirm Password *</label>
                 <div className="relative">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
                   <input
                     type="password"
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    className="w-full bg-white rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 border border-slate-200 text-slate-900 placeholder:text-slate-400 font-bold"
+                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold placeholder:text-slate-400"
                     placeholder="••••••••"
                     required
                   />
                 </div>
-                {formData.confirmPassword && (
-                  <p className={`text-[10px] mt-1 font-bold ${formData.password === formData.confirmPassword ? 'text-green-500' : 'text-red-500'}`}>
-                    {formData.password === formData.confirmPassword ? '✓ Passwords match' : '✗ Passwords do not match'}
-                  </p>
-                )}
               </div>
 
-              <button
-                type="submit"
-                className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:shadow-[0_10px_25px_rgba(47,200,185,0.3)] transition-all flex items-center justify-center gap-2 bg-[#2FC8B9] hover:bg-[#28b5a6]"
-              >
-                Continue Setup <ArrowRight className="w-5 h-5" />
+              <button type="submit" className="w-full py-4 mt-6 text-white font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 bg-black hover:bg-slate-900 shadow-xl">
+                Register & Verify <ArrowRight className="w-5 h-5" />
               </button>
+
+              <div className="mt-6 text-center text-sm font-bold text-slate-500">
+                Already registered? <Link to="/login" className="text-black border-b border-black uppercase text-xs hover:text-slate-600 hover:border-slate-600 transition">Sign In</Link>
+              </div>
             </form>
-
-            <p className="text-center mt-6 text-slate-600">
-              Already have an account?{' '}
-              <Link to="/login" className="font-black text-[#2FC8B9] hover:text-black transition-colors uppercase text-xs tracking-widest">Sign in</Link>
-            </p>
-
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Step 3: Health Profile
-  if (step === 3) {
-    return (
-      <div className="min-h-screen flex bg-white">
-        {/* Left Panel - Desktop Only */}
-        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
-          <div className="absolute inset-0 opacity-20">
-            <div className="absolute top-20 left-20 w-72 h-72 bg-[#2FC8B9] rounded-full blur-[120px]" />
-            <div className="absolute bottom-20 right-20 w-96 h-96 bg-[#2FC8B9] rounded-full blur-[120px]" />
-          </div>
-          <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
-            <div className="relative w-32 h-32 mb-8">
-              <div className="absolute inset-0 bg-white/20 backdrop-blur-xl rounded-full animate-pulse"></div>
-              <div className="absolute inset-4 bg-white/30 backdrop-blur-xl rounded-full flex items-center justify-center">
-                <Scale className="w-12 h-12" />
+          ) : step === 1.5 ? (
+            <div className="space-y-6 text-center">
+              <div className="w-20 h-20 bg-[#F5F5F7] rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-dashed border-black/20">
+                <Mail className="w-8 h-8 text-black" />
               </div>
-              <svg className="absolute inset-0 w-full h-full -rotate-90">
-                <circle cx="64" cy="64" r="60" stroke="white" strokeOpacity="0.2" strokeWidth="4" fill="none" />
-                <circle
-                  cx="64" cy="64" r="60"
-                  stroke="white"
-                  strokeWidth="4"
-                  fill="none"
-                  strokeDasharray="377"
-                  strokeDashoffset={377 - (377 * 0.40)}
-                  className="transition-all duration-500"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
-
-            <h1 className="text-4xl font-bold mb-4 text-center">Health Profile</h1>
-            <p className="text-xl text-white/80 text-center max-w-md mb-6">
-              Help us calculate your personalized nutrition goals based on your body metrics.
-            </p>
-
-            <p className="text-sm text-white/70 mt-6">Step 2 of 5</p>
-          </div>
-        </div>
-
-        <div className="flex-1 flex items-center justify-center p-8">
-          <div className="w-full max-w-md">
-            {/* Mobile Logo */}
-            <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-              <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center border border-[#2FC8B9]/30 shadow-lg shadow-[#2FC8B9]/10">
-                <Activity className="w-7 h-7 text-[#2FC8B9]" />
+              <div className="space-y-2">
+                <p className="text-black font-bold text-lg">Verification Email Sent!</p>
+                <p className="text-slate-500 text-sm">We've sent a 6-digit verification code to <span className="text-black font-black uppercase text-xs px-2 py-0.5 bg-slate-100 rounded">{formData.email}</span></p>
               </div>
-              <span className="text-2xl font-black text-black uppercase tracking-tighter">FitCure</span>
+              <div className="flex justify-center gap-3">
+                {verificationCode.map((digit, i) => (
+                  <input
+                    key={i}
+                    id={`otp-${i}`}
+                    type="text"
+                    maxLength="1"
+                    value={digit}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/\D/g, '');
+                      const newCode = [...verificationCode];
+                      newCode[i] = val;
+                      setVerificationCode(newCode);
+                      if (val && i < 5) {
+                        document.getElementById(`otp-${i + 1}`).focus();
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Backspace' && !verificationCode[i] && i > 0) {
+                        document.getElementById(`otp-${i - 1}`).focus();
+                      }
+                    }}
+                    className="w-10 h-12 bg-slate-50 border border-slate-200 rounded-lg text-center font-black text-lg focus:ring-2 focus:ring-slate-900/10 focus:border-black focus:outline-none text-black"
+                  />
+                ))}
+              </div>
+              <div className="space-y-3">
+                <button
+                  onClick={handleVerifyEmail}
+                  disabled={loading}
+                  className="w-full py-4 bg-black text-white font-black uppercase tracking-widest rounded-xl shadow-xl hover:bg-slate-900 transition-all flex items-center justify-center gap-2"
+                >
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Confirm Verification'}
+                </button>
+                <button onClick={handleResendCode} className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-black">Resend Code</button>
+              </div>
             </div>
-
-            <button onClick={prevStep} className="flex items-center gap-2 mb-6 text-[#2FC8B9] font-black uppercase tracking-tighter text-xs hover:text-black transition-colors">
-              <ArrowLeft className="w-4 h-4" /> Back
-            </button>
-
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-black mb-2 text-black uppercase tracking-tighter">Health Profile</h2>
-              <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Step 2 of 5 • Global Health Identity</p>
-            </div>
-
-            <form onSubmit={(e) => { e.preventDefault(); nextStep(); }} className="space-y-4">
+          ) : (
+            <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-slate-700">Height (cm) *</label>
-                  <div className="relative">
-                    <Ruler className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input
-                      type="number"
-                      value={formData.height}
-                      onChange={(e) => setFormData(prev => ({ ...prev, height: e.target.value }))}
-                      className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 focus:border-[#2FC8B9] text-black font-bold placeholder:text-slate-400"
-                      placeholder="170"
-                      min="100"
-                      max="250"
-                      step="0.1"
-                      required
-                    />
-                  </div>
+                  <label className="block text-sm font-medium mb-1 text-slate-700">Age *</label>
+                  <input
+                    type="number"
+                    value={formData.age}
+                    onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold"
+                    placeholder="Years"
+                    min="1" max="120"
+                    required
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-2 text-slate-700">Weight (kg) *</label>
-                  <div className="relative">
-                    <Scale className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
-                    <input
-                      type="number"
-                      value={formData.weight}
-                      onChange={(e) => setFormData(prev => ({ ...prev, weight: e.target.value }))}
-                      className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 focus:border-[#2FC8B9] text-black font-bold placeholder:text-slate-400"
-                      placeholder="70"
-                      min="30"
-                      max="300"
-                      step="0.1"
-                      required
-                    />
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2 text-slate-700">Blood Group</label>
-                <div className="relative">
-                  <Droplet className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                  <label className="block text-sm font-medium mb-1 text-slate-700">Gender *</label>
                   <select
-                    value={formData.bloodGroup}
-                    onChange={(e) => setFormData(prev => ({ ...prev, bloodGroup: e.target.value }))}
-                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 focus:border-[#2FC8B9] text-black font-bold"
+                    value={formData.gender}
+                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold"
+                    required
                   >
-                    <option value="" className="text-black">Select (Optional)</option>
-                    <option value="A+" className="text-black">A+</option>
-                    <option value="A-" className="text-black">A-</option>
-                    <option value="B+" className="text-black">B+</option>
-                    <option value="B-" className="text-black">B-</option>
-                    <option value="AB+" className="text-black">AB+</option>
-                    <option value="AB-" className="text-black">AB-</option>
-                    <option value="O+" className="text-black">O+</option>
-                    <option value="O-" className="text-black">O-</option>
+                    <option value="">Select</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
                   </select>
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium mb-2 text-slate-700">Dietary Preference *</label>
-                <select
-                  value={formData.dietaryPreference}
-                  onChange={(e) => setFormData(prev => ({ ...prev, dietaryPreference: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 focus:border-[#2FC8B9] text-black font-bold"
-                  required
-                >
-                  <option value="non-vegetarian" className="text-black">Non-Vegetarian</option>
-                  <option value="vegetarian" className="text-black">Vegetarian</option>
-                  <option value="vegan" className="text-black">Vegan</option>
-                  <option value="eggetarian" className="text-black">Eggetarian</option>
-                </select>
-                <p className="text-[10px] mt-1 text-slate-500 font-bold uppercase tracking-wider">This helps us recommend suitable diet plans</p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-slate-700">Height (cm) *</label>
+                  <input
+                    type="number"
+                    value={formData.height}
+                    onChange={(e) => setFormData({ ...formData, height: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold"
+                    placeholder="170"
+                    min="100" max="250"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-slate-700">Weight (kg) *</label>
+                  <input
+                    type="number"
+                    value={formData.weight}
+                    onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold"
+                    placeholder="70"
+                    min="30" max="300"
+                    required
+                  />
+                </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2 text-slate-700">Activity Level *</label>
+                <label className="block text-sm font-medium mb-1 text-slate-700">Activity Level *</label>
                 <select
                   value={formData.activityLevel}
-                  onChange={(e) => setFormData(prev => ({ ...prev, activityLevel: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 focus:border-[#2FC8B9] text-black font-bold"
+                  onChange={(e) => setFormData({ ...formData, activityLevel: e.target.value })}
+                  className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black text-black font-bold"
                   required
                 >
-                  <option value="sedentary" className="text-black">Sedentary (Little or no exercise)</option>
-                  <option value="lightly_active" className="text-black">Lightly Active (1-3 days/week)</option>
-                  <option value="moderately_active" className="text-black">Moderately Active (3-5 days/week)</option>
-                  <option value="very_active" className="text-black">Very Active (6-7 days/week)</option>
-                  <option value="extremely_active" className="text-black">Extremely Active (Athlete)</option>
+                  <option value="sedentary">Sedentary (Little or no exercise)</option>
+                  <option value="lightly_active">Lightly Active (1-3 days/week)</option>
+                  <option value="moderately_active">Moderately Active (3-5 days/week)</option>
+                  <option value="very_active">Very Active (6-7 days/week)</option>
+                  <option value="extremely_active">Extremely Active (Athlete)</option>
                 </select>
-                <p className="text-[10px] mt-1 text-slate-500 font-bold uppercase tracking-wider">Used to calculate your daily calorie needs</p>
               </div>
 
-              <button
-                type="submit"
-                className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:shadow-[0_10px_25_rgba(47,200,185,0.3)] transition-all flex items-center justify-center gap-2 bg-[#2FC8B9] hover:bg-[#28b5a6]"
-              >
-                Continue Setup <ArrowRight className="w-5 h-5" />
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Step 5: Diabetes Profile (Conditional)
-  if (step === 5) {
-    return (
-      <div className="min-h-screen flex bg-white">
-        {/* Left Panel */}
-        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
-          <div className="absolute inset-0 opacity-20">
-            <div className="absolute top-20 left-20 w-72 h-72 bg-[#2FC8B9] rounded-full blur-[120px]" />
-            <div className="absolute bottom-20 right-20 w-96 h-96 bg-[#2FC8B9] rounded-full blur-[120px]" />
-          </div>
-          <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
-            <div className="relative w-32 h-32 mb-8">
-              <div className="absolute inset-0 bg-white/20 backdrop-blur-xl rounded-full animate-pulse"></div>
-              <div className="absolute inset-4 bg-white/30 backdrop-blur-xl rounded-full flex items-center justify-center">
-                <Activity className="w-12 h-12" />
-              </div>
-            </div>
-            <h1 className="text-4xl font-bold mb-4 text-center">Diabetes Information</h1>
-            <p className="text-xl text-white/80 text-center max-w-md mb-6">
-              Skip this if you don't have diabetes. This helps us tailor your glucose management plan.
-            </p>
-            <p className="text-sm text-white/70 mt-6">Step 4 of 5</p>
-          </div>
-        </div>
-
-        <div className="flex-1 flex items-center justify-center p-8 overflow-y-auto">
-          <div className="w-full max-w-md py-8">
-            {/* Mobile Logo */}
-            <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-              <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center border border-[#2FC8B9]/30 shadow-lg shadow-[#2FC8B9]/10">
-                <Activity className="w-7 h-7 text-[#2FC8B9]" />
-              </div>
-              <span className="text-2xl font-black text-black uppercase tracking-tighter">FitCure</span>
-            </div>
-
-            <button onClick={prevStep} className="flex items-center gap-2 mb-6 text-[#2FC8B9] font-black uppercase tracking-tighter text-xs hover:text-black transition-colors">
-              <ArrowLeft className="w-4 h-4" /> Back
-            </button>
-
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-black mb-2 text-black uppercase tracking-tighter">Are you diabetic?</h2>
-              <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Step 4 of 5 • Detailed health check</p>
-            </div>
-
-            <form onSubmit={(e) => { e.preventDefault(); nextStep(); }} className="space-y-6">
-              <div className="flex gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
-                <label className="flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-all hover:bg-white bg-transparent border-transparent has-[:checked]:bg-white has-[:checked]:border-[#2FC8B9]/30 has-[:checked]:shadow-sm">
-                  <input type="radio" checked={formData.isDiabetic === 'no'} onChange={() => setFormData({ ...formData, isDiabetic: 'no', diabetesType: '' })} className="text-[#2FC8B9]" />
-                  <span className="font-bold text-slate-800">No</span>
-                </label>
-                <label className="flex-1 flex items-center justify-center gap-2 p-3 rounded-lg border cursor-pointer transition-all hover:bg-white bg-transparent border-transparent has-[:checked]:bg-white has-[:checked]:border-[#2FC8B9]/30 has-[:checked]:shadow-sm">
-                  <input type="radio" checked={formData.isDiabetic === 'yes'} onChange={() => setFormData({ ...formData, isDiabetic: 'yes' })} className="text-[#2FC8B9]" />
-                  <span className="font-bold text-slate-800">Yes</span>
-                </label>
-              </div>
-
-              {formData.isDiabetic === 'yes' && (
-                <div className="space-y-6 animate-in fade-in slide-in-from-top-4 duration-300">
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-slate-700">Diabetes Type</label>
-                    <select
-                      value={formData.diabetesType}
-                      onChange={(e) => setFormData({ ...formData, diabetesType: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-black font-bold"
-                    >
-                      <option value="">Select Type</option>
-                      <option value="Type 1">Type 1</option>
-                      <option value="Type 2">Type 2</option>
-                      <option value="Prediabetes">Prediabetes</option>
-                      <option value="Gestational">Gestational</option>
-                    </select>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium mb-2 text-slate-700">Diagnosis Year</label>
-                      <input type="number" value={formData.diagnosisYear} onChange={(e) => setFormData({ ...formData, diagnosisYear: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-black font-bold placeholder:text-slate-400" placeholder="2020" />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium mb-2 text-slate-700">HbA1c (%)</label>
-                      <input type="number" step="0.1" value={formData.hba1c} onChange={(e) => setFormData({ ...formData, hba1c: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-black font-bold placeholder:text-slate-400" placeholder="6.5" />
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-slate-700">Are you on medication?</label>
-                    <div className="flex gap-4 mb-4">
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" checked={!formData.onMedication} onChange={() => setFormData({ ...formData, onMedication: false, medicationType: [] })} className="text-[#2FC8B9]" />
-                        <span className="text-sm font-bold text-slate-800">No</span>
-                      </label>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input type="radio" checked={formData.onMedication} onChange={() => setFormData({ ...formData, onMedication: true })} className="text-[#2FC8B9]" />
-                        <span className="text-sm font-bold text-slate-800">Yes</span>
-                      </label>
-                    </div>
-
-                    {formData.onMedication && (
-                      <div className="animate-in fade-in slide-in-from-top-2 duration-200">
-                        <label className="block text-xs font-bold mb-2 text-slate-500 uppercase">Medicine Name</label>
-                        <div className="relative">
-                          <Tablets className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                          <input
-                            type="text"
-                            value={customMedication}
-                            onChange={(e) => setCustomMedication(e.target.value)}
-                            onBlur={() => {
-                              if (customMedication) {
-                                setFormData(prev => ({ ...prev, medicationType: [customMedication] }));
-                              }
-                            }}
-                            className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-10 pr-4 text-black font-bold placeholder:text-slate-400"
-                            placeholder="e.g. Metformin"
-                          />
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              <button type="submit" className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:shadow-[0_10px_25px_rgba(47,200,185,0.3)] transition-all flex items-center justify-center gap-2 bg-[#2FC8B9] hover:bg-[#28b5a6]">
-                Finalize Steps <ArrowRight className="w-5 h-5" />
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Step 4: Lifestyle Habits & Conditions
-  if (step === 4) {
-    const diseaseSuggestions = [
-      'Hypertension', 'Type 1 Diabetes', 'Type 2 Diabetes', 'Thyroid Disorder',
-      'PCOS/PCOD', 'Asthma', 'Arthritis', 'Chronic Kidney Disease',
-      'Heart Disease', 'Cholesterol', 'Migraine', 'Acid Reflux',
-      'Anxiety', 'Depression', 'Insomnia', 'Fatty Liver', 'Anemia',
-      'Eczema', 'Psoriasis', 'Sleep Apnea', 'Celiac Disease', 'IBD', 'IBS',
-      'Tuberculosis', 'COPD', 'Gout', 'Lupus', 'Epilepsy'
-    ];
-
-    const filteredSuggestions = customCondition.length > 0
-      ? diseaseSuggestions.filter(d =>
-        d.toLowerCase().includes(customCondition.toLowerCase()) &&
-        !formData.chronicConditions.includes(d)
-      )
-      : [];
-
-    return (
-      <div className="min-h-screen flex bg-white">
-        {/* Left Panel */}
-        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
-          <div className="absolute inset-0 opacity-20">
-            <div className="absolute top-20 left-20 w-72 h-72 bg-[#2FC8B9] rounded-full blur-[120px]" />
-            <div className="absolute bottom-20 right-20 w-96 h-96 bg-[#2FC8B9] rounded-full blur-[120px]" />
-          </div>
-          <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
-            <div className="relative w-32 h-32 mb-8">
-              <div className="absolute inset-0 bg-white/20 backdrop-blur-xl rounded-full animate-pulse"></div>
-              <div className="absolute inset-4 bg-white/30 backdrop-blur-xl rounded-full flex items-center justify-center">
-                <Activity className="w-12 h-12" />
-              </div>
-            </div>
-            <h1 className="text-4xl font-bold mb-4 text-center">Lifestyle & Health</h1>
-            <p className="text-xl text-white/80 text-center max-w-md mb-6">
-              Tell us about your daily habits and any existing health conditions.
-            </p>
-            <p className="text-sm text-white/70 mt-6">Step 3 of 5</p>
-          </div>
-        </div>
-
-        <div className="flex-1 flex items-center justify-center p-8 overflow-y-auto">
-          <div className="w-full max-w-md py-8">
-            {/* Mobile Logo */}
-            <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-              <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center border border-[#2FC8B9]/30 shadow-lg shadow-[#2FC8B9]/10">
-                <Activity className="w-7 h-7 text-[#2FC8B9]" />
-              </div>
-              <span className="text-2xl font-black text-black uppercase tracking-tighter">FitCure</span>
-            </div>
-
-            <button onClick={prevStep} className="flex items-center gap-2 mb-6 text-[#2FC8B9] font-black uppercase tracking-tighter text-xs hover:text-black transition-colors">
-              <ArrowLeft className="w-4 h-4" /> Back
-            </button>
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-black mb-2 text-black uppercase tracking-tighter">Lifestyle & Conditions</h2>
-              <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Step 3 of 5 • Health History</p>
-            </div>
-
-            <form onSubmit={(e) => { e.preventDefault(); nextStep(); }} className="space-y-6">
               <div className="grid grid-cols-2 gap-4">
-                <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <Cigarette className="w-5 h-5 text-slate-400" />
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={formData.smoker} onChange={(e) => setFormData({ ...formData, smoker: e.target.checked })} className="text-[#2FC8B9]" />
-                    <span className="text-sm font-bold text-slate-700">Smoker</span>
-                  </label>
+                <div className="col-span-1">
+                  <label className="block text-sm font-medium mb-1 text-slate-700">Blood Group</label>
+                  <select
+                    value={formData.bloodGroup}
+                    onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold"
+                  >
+                    <option value="">Optional</option>
+                    <option value="A+">A+</option>
+                    <option value="A-">A-</option>
+                    <option value="B+">B+</option>
+                    <option value="B-">B-</option>
+                    <option value="AB+">AB+</option>
+                    <option value="AB-">AB-</option>
+                    <option value="O+">O+</option>
+                    <option value="O-">O-</option>
+                  </select>
                 </div>
-                <div className="flex items-center gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                  <Wine className="w-5 h-5 text-slate-400" />
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input type="checkbox" checked={formData.alcohol} onChange={(e) => setFormData({ ...formData, alcohol: e.target.checked })} className="text-[#2FC8B9]" />
-                    <span className="text-sm font-bold text-slate-700">Alcohol</span>
-                  </label>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2 text-slate-700">Sleep Hours/Night: <span className="text-[#2FC8B9]">{formData.sleepHours}h</span></label>
-                <input type="range" min="4" max="12" value={formData.sleepHours} onChange={(e) => setFormData({ ...formData, sleepHours: e.target.value })} className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-[#2FC8B9]" />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2 text-slate-700">Stress Level</label>
-                <select value={formData.stressLevel} onChange={(e) => setFormData({ ...formData, stressLevel: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-black font-bold">
-                  <option value="low">Low</option>
-                  <option value="moderate">Moderate</option>
-                  <option value="high">High</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2 text-slate-700">Water Intake (Glasses/Day): <span className="text-[#2FC8B9]">{formData.waterIntake}</span></label>
-                <input type="range" min="1" max="15" value={formData.waterIntake} onChange={(e) => setFormData({ ...formData, waterIntake: e.target.value })} className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-[#2FC8B9]" />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2 text-slate-700">Chronic Conditions (If any)</label>
-
-                {/* Search / Type Field */}
-                <div className="relative mb-3">
+                <div className="col-span-1">
+                  <label className="block text-sm font-medium mb-1 text-slate-700">Allergies</label>
                   <input
                     type="text"
-                    value={customCondition}
-                    onChange={(e) => setCustomCondition(e.target.value)}
-                    placeholder="Search or type disease..."
-                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 focus:border-[#2FC8B9] text-black font-bold placeholder:text-slate-400"
+                    value={formData.allergies}
+                    onChange={(e) => setFormData({ ...formData, allergies: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black text-black font-bold placeholder:text-slate-400"
+                    placeholder="e.g. Peanuts, Dust"
                   />
-
-                  {/* Suggestions Dropdown */}
-                  {filteredSuggestions.length > 0 && (
-                    <div className="absolute z-20 w-full mt-1 bg-white border border-slate-100 rounded-xl shadow-xl max-h-48 overflow-y-auto">
-                      {filteredSuggestions.map(suggestion => (
-                        <button
-                          key={suggestion}
-                          type="button"
-                          onClick={() => {
-                            addCustomItem('chronicConditions', suggestion);
-                            setCustomCondition('');
-                          }}
-                          className="w-full text-left px-4 py-3 hover:bg-slate-50 text-sm font-bold text-slate-700 border-b border-slate-50 last:border-0"
-                        >
-                          {suggestion}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Manual Add Button */}
-                  {customCondition && !filteredSuggestions.includes(customCondition) && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        addCustomItem('chronicConditions', customCondition);
-                        setCustomCondition('');
-                      }}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 px-3 py-1 bg-[#2FC8B9] text-white text-[10px] font-black uppercase rounded-lg hover:bg-[#28b5a6]"
-                    >
-                      Add Custom
-                    </button>
-                  )}
-                </div>
-
-                {/* Selected Conditions Tags */}
-                <div className="flex flex-wrap gap-2">
-                  {formData.chronicConditions.length === 0 && !customCondition && (
-                    <button
-                      type="button"
-                      onClick={() => setFormData({ ...formData, chronicConditions: [] })}
-                      className="px-3 py-1 rounded-full text-[10px] font-black uppercase bg-[#2FC8B9] text-white"
-                    >
-                      None selected
-                    </button>
-                  )}
-                  {formData.chronicConditions.map(cond => (
-                    <div
-                      key={cond}
-                      className="flex items-center gap-1 px-3 py-1 bg-[#2FC8B9]/10 text-[#2FC8B9] border border-[#2FC8B9]/20 rounded-full text-[10px] font-black uppercase"
-                    >
-                      {cond}
-                      <button
-                        type="button"
-                        onClick={() => removeItem('chronicConditions', cond)}
-                        className="p-0.5 hover:bg-[#2FC8B9]/20 rounded-full"
-                      >
-                        <X className="w-2.5 h-2.5" />
-                      </button>
-                    </div>
-                  ))}
                 </div>
               </div>
 
-              {/* Medication Status */}
-              <div className="pt-4 border-t border-slate-100">
-                <label className="block text-sm font-medium mb-3 text-slate-700 font-bold">Are you on any medication?</label>
-                <div className="flex gap-4 mb-4">
-                  <label className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border cursor-pointer transition-all hover:bg-slate-50 border-slate-100 has-[:checked]:bg-[#2FC8B9]/5 has-[:checked]:border-[#2FC8B9]/30">
-                    <input
-                      type="radio"
-                      name="medication_check"
-                      checked={!formData.onMedication}
-                      onChange={() => setFormData({ ...formData, onMedication: false, medicationType: [] })}
-                      className="text-[#2FC8B9] focus:ring-[#2FC8B9]"
-                    />
-                    <span className="text-sm font-bold text-slate-800">No</span>
-                  </label>
-                  <label className="flex-1 flex items-center justify-center gap-2 p-3 rounded-xl border cursor-pointer transition-all hover:bg-slate-50 border-slate-100 has-[:checked]:bg-[#2FC8B9]/5 has-[:checked]:border-[#2FC8B9]/30">
-                    <input
-                      type="radio"
-                      name="medication_check"
-                      checked={formData.onMedication}
-                      onChange={() => setFormData({ ...formData, onMedication: true })}
-                      className="text-[#2FC8B9] focus:ring-[#2FC8B9]"
-                    />
-                    <span className="text-sm font-bold text-slate-800">Yes</span>
-                  </label>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-slate-700">Are you Diabetic? *</label>
+                  <select
+                    value={formData.isDiabetic}
+                    onChange={(e) => setFormData({ ...formData, isDiabetic: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold"
+                    required
+                  >
+                    <option value="no">No</option>
+                    <option value="yes">Yes</option>
+                  </select>
                 </div>
-
-                {formData.onMedication && (
-                  <div className="animate-in fade-in slide-in-from-top-2 duration-300">
-                    <label className="block text-xs font-bold mb-2 text-slate-500 uppercase">Medicine Name</label>
-                    <div className="relative">
-                      <Tablets className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                      <input
-                        type="text"
-                        value={customMedication}
-                        onChange={(e) => {
-                          setCustomMedication(e.target.value);
-                          if (e.target.value) {
-                            setFormData(prev => ({ ...prev, medicationType: [e.target.value] }));
-                          }
-                        }}
-                        className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 focus:border-[#2FC8B9] text-black font-bold placeholder:text-slate-400"
-                        placeholder="e.g. Metformin, Amlodipine"
-                      />
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <button type="submit" className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:shadow-[0_10px_25px_rgba(47,200,185,0.3)] transition-all flex items-center justify-center gap-2 bg-[#2FC8B9] hover:bg-[#28b5a6]">
-                Continue <ArrowRight className="w-5 h-5" />
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Step 7: Final - Nutrition Goals
-  if (step === 7) {
-    const calculateEstimate = () => {
-      if (!formData.targetWeight || !formData.weight) return null;
-      const diff = Math.abs(parseFloat(formData.targetWeight) - parseFloat(formData.weight));
-      const weeks = Math.ceil(diff / parseFloat(formData.weeklyGoal));
-      return weeks;
-    };
-
-    const estimatedWeeks = calculateEstimate();
-
-    return (
-      <div className="min-h-screen flex bg-gradient-to-br from-purple-50 to-orange-50">
-        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-br from-purple-500 via-pink-500 to-orange-600">
-          <div className="absolute inset-0">
-            <div className="absolute top-20 left-20 w-72 h-72 bg-white/10 rounded-full blur-3xl" />
-            <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
-          </div>
-          <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
-            <div className="relative w-32 h-32 mb-8">
-              <div className="absolute inset-0 bg-white/20 backdrop-blur-xl rounded-full animate-pulse"></div>
-              <div className="absolute inset-4 bg-white/30 backdrop-blur-xl rounded-full flex items-center justify-center">
-                <Target className="w-12 h-12" />
-              </div>
-              <svg className="absolute inset-0 w-full h-full -rotate-90">
-                <circle cx="64" cy="64" r="60" stroke="white" strokeOpacity="0.2" strokeWidth="4" fill="none" />
-                <circle
-                  cx="64" cy="64" r="60"
-                  stroke="white"
-                  strokeWidth="4"
-                  fill="none"
-                  strokeDasharray="377"
-                  strokeDashoffset={377 - (377 * 1.0)}
-                  className="transition-all duration-500"
-                  strokeLinecap="round"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center">
-                <CheckCircle2 className="w-16 h-16 text-white/80 animate-pulse" />
-              </div>
-            </div>
-
-            <h1 className="text-4xl font-bold mb-4 text-center">Final Step!</h1>
-            <p className="text-xl text-white/80 text-center max-w-md mb-6">
-              We'll calculate your personalized nutrition plan based on your goals.
-            </p>
-
-            <div className="mt-6 text-center">
-              <p className="text-lg font-bold text-white mb-2">🎉 Almost Complete!</p>
-              <p className="text-sm text-white/70">One more step to unlock your personalized health plan</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="flex-1 flex items-center justify-center p-8 overflow-y-auto">
-          <div className="w-full max-w-md py-8">
-            <button onClick={prevStep} className="flex items-center gap-2 mb-6 text-cyan-700 hover:text-cyan-800">
-              <ArrowLeft className="w-4 h-4" /> Back
-            </button>
-
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-bold mb-2 text-slate-900">Nutrition Goals</h2>
-              <p className="text-cyan-700">Step 6 of 6 - Final step!</p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Goal Selection */}
-              <div>
-                <label className="block text-sm font-medium mb-3 text-slate-900">What's your primary nutrition goal?</label>
-                <div className="grid grid-cols-2 gap-3">
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, nutritionGoal: 'weight_loss', primaryGoal: 'weight_loss' })}
-                    className={`p-4 rounded-xl border-2 transition-all ${formData.nutritionGoal === 'weight_loss'
-                      ? 'border-[#2FC8B9] bg-[#2FC8B9]/5'
-                      : 'border-slate-200 bg-white hover:border-[#2FC8B9]/30'
-                      }`}
+                <div>
+                  <label className="block text-sm font-medium mb-1 text-slate-700">Diet Preference *</label>
+                  <select
+                    value={formData.dietaryPreference}
+                    onChange={(e) => setFormData({ ...formData, dietaryPreference: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold"
+                    required
                   >
-                    <TrendingDown className={`w-8 h-8 mx-auto mb-2 ${formData.nutritionGoal === 'weight_loss' ? 'text-[#2FC8B9]' : 'text-slate-400'}`} />
-                    <p className="text-sm font-black text-black uppercase tracking-tighter">Weight Loss</p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, nutritionGoal: 'weight_gain', primaryGoal: 'weight_gain' })}
-                    className={`p-4 rounded-xl border-2 transition-all ${formData.nutritionGoal === 'weight_gain'
-                      ? 'border-[#2FC8B9] bg-[#2FC8B9]/5'
-                      : 'border-slate-200 bg-white hover:border-[#2FC8B9]/30'
-                      }`}
-                  >
-                    <TrendingUp className={`w-8 h-8 mx-auto mb-2 ${formData.nutritionGoal === 'weight_gain' ? 'text-[#2FC8B9]' : 'text-slate-400'}`} />
-                    <p className="text-sm font-black text-black uppercase tracking-tighter">Weight Gain</p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, nutritionGoal: 'muscle_gain', primaryGoal: 'muscle_gain' })}
-                    className={`p-4 rounded-xl border-2 transition-all ${formData.nutritionGoal === 'muscle_gain'
-                      ? 'border-[#2FC8B9] bg-[#2FC8B9]/5'
-                      : 'border-slate-200 bg-white hover:border-[#2FC8B9]/30'
-                      }`}
-                  >
-                    <Dumbbell className={`w-8 h-8 mx-auto mb-2 ${formData.nutritionGoal === 'muscle_gain' ? 'text-[#2FC8B9]' : 'text-slate-400'}`} />
-                    <p className="text-sm font-black text-black uppercase tracking-tighter">Muscle Gain</p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, nutritionGoal: 'maintain', primaryGoal: 'maintain' })}
-                    className={`p-4 rounded-xl border-2 transition-all ${formData.nutritionGoal === 'maintain'
-                      ? 'border-[#2FC8B9] bg-[#2FC8B9]/5'
-                      : 'border-slate-200 bg-white hover:border-[#2FC8B9]/30'
-                      }`}
-                  >
-                    <Minus className={`w-8 h-8 mx-auto mb-2 ${formData.nutritionGoal === 'maintain' ? 'text-[#2FC8B9]' : 'text-slate-400'}`} />
-                    <p className="text-sm font-black text-black uppercase tracking-tighter">Maintain</p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setFormData({ ...formData, nutritionGoal: 'general_health', primaryGoal: 'general_health' })}
-                    className={`p-4 rounded-xl border-2 transition-all col-span-2 ${formData.nutritionGoal === 'general_health'
-                      ? 'border-[#2FC8B9] bg-[#2FC8B9]/5'
-                      : 'border-slate-200 bg-white hover:border-[#2FC8B9]/30'
-                      }`}
-                  >
-                    <Heart className={`w-8 h-8 mx-auto mb-2 ${formData.nutritionGoal === 'general_health' ? 'text-[#2FC8B9]' : 'text-slate-400'}`} />
-                    <p className="text-sm font-black text-black uppercase tracking-tighter">General Health</p>
-                  </button>
+                    <option value="non-vegetarian">Non-Vegetarian</option>
+                    <option value="vegetarian">Vegetarian</option>
+                    <option value="vegan">Vegan</option>
+                    <option value="eggetarian">Eggetarian</option>
+                  </select>
                 </div>
-              </div>
-
-              {/* Target Weight & Weekly Goal */}
-              {(formData.nutritionGoal === 'weight_loss' || formData.nutritionGoal === 'weight_gain') && (
-                <div className="bg-white rounded-xl p-4 space-y-4 border border-cyan-200">
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-slate-900">
-                      Target Weight (kg)
-                    </label>
-                    <input
-                      type="number"
-                      value={formData.targetWeight}
-                      onChange={(e) => setFormData({ ...formData, targetWeight: e.target.value })}
-                      className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-[#2FC8B9]/30 border border-slate-200 text-slate-900 placeholder:text-slate-400 font-bold"
-                      placeholder={formData.weight}
-                      min="30"
-                      max="300"
-                      step="0.1"
-                    />
-                    <p className="text-xs mt-1 text-slate-600">Current: {formData.weight} kg</p>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium mb-2 text-slate-900">
-                      Weekly Goal
-                    </label>
-                    <select
-                      value={formData.weeklyGoal}
-                      onChange={(e) => setFormData({ ...formData, weeklyGoal: e.target.value })}
-                      className="w-full bg-white rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-cyan-500 border border-cyan-200 text-slate-900"
-                    >
-                      <option value="0.25" className="text-slate-900">0.25 kg/week (Slow & Steady)</option>
-                      <option value="0.5" className="text-slate-900">0.5 kg/week (Recommended)</option>
-                      <option value="1" className="text-slate-900">1 kg/week (Aggressive)</option>
-                    </select>
-                  </div>
-
-                  {estimatedWeeks && (
-                    <div className="bg-cyan-50 rounded-xl p-3 border border-cyan-200">
-                      <p className="text-sm text-cyan-900">
-                        <strong>Estimated time:</strong> {estimatedWeeks} weeks ({Math.ceil(estimatedWeeks / 4)} months)
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Info Box */}
-              <div className="bg-cyan-50 rounded-xl p-4 border border-cyan-200">
-                <p className="text-sm text-cyan-900 font-medium">
-                  What happens next? We'll calculate your personalized daily calorie and macro goals based on your profile and goals. You can adjust these anytime from your nutrition dashboard.
-                </p>
               </div>
 
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:shadow-[0_10px_25px_rgba(47,200,185,0.3)] transition-all flex items-center justify-center gap-3 disabled:opacity-50 bg-[#2FC8B9] hover:bg-[#28b5a6]"
+                className="w-full py-4 mt-8 text-white font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 bg-black hover:bg-slate-900 shadow-xl disabled:opacity-70 disabled:cursor-not-allowed"
               >
-                {loading ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
-                ) : (
-                  <>Create Account & Calculate Goals <ArrowRight className="w-5 h-5" /></>
-                )}
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Finalize & Enter Dashboard'}
               </button>
             </form>
-          </div>
+          )}
         </div>
       </div>
-    );
-  }
-
-  // Fallback - should not reach here
-  // Step 6: Goals
-  if (step === 6) {
-    return (
-      <div className="min-h-screen flex bg-white">
-        {/* Left Panel */}
-        <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
-          <div className="absolute inset-0 opacity-20">
-            <div className="absolute top-20 left-20 w-72 h-72 bg-[#2FC8B9] rounded-full blur-[120px]" />
-            <div className="absolute bottom-20 right-20 w-96 h-96 bg-[#2FC8B9] rounded-full blur-[120px]" />
-          </div>
-          <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
-            <div className="relative w-32 h-32 mb-8">
-              <div className="absolute inset-0 bg-white/20 backdrop-blur-xl rounded-full animate-pulse"></div>
-              <div className="absolute inset-4 bg-white/30 backdrop-blur-xl rounded-full flex items-center justify-center">
-                <Target className="w-12 h-12" />
-              </div>
-            </div>
-            <h1 className="text-4xl font-bold mb-4 text-center">Set Your Goals</h1>
-            <p className="text-xl text-white/80 text-center max-w-md mb-6">
-              Define your target and we'll help you reach it with precision.
-            </p>
-            <p className="text-sm text-white/70 mt-6">Step 5 of 5</p>
-          </div>
-        </div>
-
-        <div className="flex-1 flex items-center justify-center p-8 overflow-y-auto">
-          <div className="w-full max-w-md py-8">
-            {/* Mobile Logo */}
-            <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-              <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center border border-[#2FC8B9]/30 shadow-lg shadow-[#2FC8B9]/10">
-                <Activity className="w-7 h-7 text-[#2FC8B9]" />
-              </div>
-              <span className="text-2xl font-black text-black uppercase tracking-tighter">FitCure</span>
-            </div>
-
-            <button onClick={prevStep} className="flex items-center gap-2 mb-6 text-[#2FC8B9] font-black uppercase tracking-tighter text-xs hover:text-black transition-colors">
-              <ArrowLeft className="w-4 h-4" /> Back
-            </button>
-
-            <div className="text-center mb-8">
-              <h2 className="text-3xl font-black mb-2 text-black uppercase tracking-tighter">Health Goals</h2>
-              <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">Step 5 of 5 • The finish line!</p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div>
-                <label className="block text-sm font-medium mb-2 text-slate-700">Primary Goal</label>
-                <select value={formData.primaryGoal} onChange={(e) => setFormData({ ...formData, primaryGoal: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-black font-bold">
-                  <option value="weight_loss">Weight Loss</option>
-                  <option value="weight_gain">Weight Gain</option>
-                  <option value="maintain">Maintain Weight</option>
-                  <option value="general_health">General Health</option>
-                  <option value="diabetes_management">Diabetes Management</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2 text-slate-700">Target Weight (kg)</label>
-                <input type="number" step="0.1" value={formData.targetWeight} onChange={(e) => setFormData({ ...formData, targetWeight: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-black font-bold placeholder:text-slate-400" placeholder="65" />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium mb-2 text-slate-700">Weekly Goal (kg/week)</label>
-                <select value={formData.weeklyGoal} onChange={(e) => setFormData({ ...formData, weeklyGoal: e.target.value })} className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-black font-bold">
-                  <option value="0.25">0.25 kg (Steady)</option>
-                  <option value="0.5">0.5 kg (Recommended)</option>
-                  <option value="1.0">1.0 kg (Aggressive)</option>
-                </select>
-              </div>
-
-              <button type="submit" disabled={loading} className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:shadow-[0_10px_25_rgba(47,200,185,0.3)] transition-all flex items-center justify-center gap-2 bg-[#2FC8B9] hover:bg-[#28b5a6] disabled:opacity-50">
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Create Account <ArrowRight className="w-5 h-5" /></>}
-              </button>
-            </form>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  return null;
+    </div >
+  );
 }

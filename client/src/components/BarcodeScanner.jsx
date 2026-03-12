@@ -59,12 +59,12 @@ const BarcodeScanner = ({ onScan, onClose }) => {
                 {/* Header */}
                 <div className="flex items-center justify-between mb-6 shrink-0">
                     <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-2xl bg-[#2FC8B9]/20 flex items-center justify-center border border-[#2FC8B9]/30">
-                            <ScanLine className="w-6 h-6 text-[#2FC8B9]" />
+                        <div className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20">
+                            <ScanLine className="w-6 h-6 text-white" />
                         </div>
                         <div>
                             <h2 className="text-xl font-black text-white tracking-tight uppercase">Smart Scan</h2>
-                            <p className="text-[9px] font-black text-[#2FC8B9] uppercase tracking-[0.2em] leading-none mt-1">Focus on packet barcode</p>
+                            <p className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none mt-1">Focus on packet barcode</p>
                         </div>
                     </div>
                     <button
@@ -85,7 +85,7 @@ const BarcodeScanner = ({ onScan, onClose }) => {
                             <p className="text-white font-bold text-sm mb-6 uppercase tracking-wider">{error}</p>
                             <button
                                 onClick={() => window.location.reload()}
-                                className="px-6 py-3 bg-[#2FC8B9] text-white rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                                className="px-6 py-3 bg-white text-black rounded-xl font-black text-[10px] uppercase tracking-widest shadow-lg active:scale-95 transition-all"
                             >
                                 Refresh App
                             </button>
@@ -140,8 +140,8 @@ const BarcodeScanner = ({ onScan, onClose }) => {
                     border-radius: 2.5rem !important;
                 }
                 #${readerId} button {
-                    background-color: #2FC8B9 !important;
-                    color: white !important;
+                    background-color: white !important;
+                    color: black !important;
                     border: none !important;
                     padding: 12px 24px !important;
                     border-radius: 12px !important;

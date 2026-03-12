@@ -30,7 +30,7 @@ export default function VitalSigns() {
     try {
       const { data } = await healthService.getReports();
       setReports(data);
-      
+
       // Auto-select the latest report
       if (data.length > 0) {
         setSelectedReportId(data[0]._id);
@@ -60,7 +60,7 @@ export default function VitalSigns() {
       symptoms: Array.isArray(metricData.symptoms) ? metricData.symptoms : [],
       severity: metricData.severity || ''
     };
-    
+
     setSelectedMetric(metricInfo);
     setShowMetricModal(true);
   };
@@ -84,7 +84,7 @@ export default function VitalSigns() {
   // Get chart data for selected vital across all reports
   const getVitalChartData = (vitalKey) => {
     if (!vitalKey) return [];
-    
+
     return reports
       .filter(r => r.aiAnalysis?.metrics?.[vitalKey])
       .reverse() // Oldest first
@@ -101,16 +101,16 @@ export default function VitalSigns() {
   // Calculate trend
   const calculateTrend = (chartData) => {
     if (chartData.length < 2) return { direction: 'stable', change: 0, percentChange: 0 };
-    
+
     const latest = chartData[chartData.length - 1].value;
     const previous = chartData[chartData.length - 2].value;
     const change = latest - previous;
     const percentChange = ((change / previous) * 100).toFixed(1);
-    
+
     let direction = 'stable';
     if (change > 0) direction = 'up';
     else if (change < 0) direction = 'down';
-    
+
     return { direction, change: change.toFixed(2), percentChange };
   };
 
@@ -128,25 +128,25 @@ export default function VitalSigns() {
     const trend = calculateTrend(chartData);
     const latest = chartData[chartData.length - 1];
     const isNormal = latest.status === 'normal';
-    
+
     // Metrics where LOWER is better
     const lowerIsBetter = [
-      'Cholesterol', 'LDL', 'Triglycerides', 'Blood Sugar', 'Glucose', 
+      'Cholesterol', 'LDL', 'Triglycerides', 'Blood Sugar', 'Glucose',
       'HbA1c', 'Blood Pressure', 'Systolic', 'Diastolic', 'Weight', 'BMI'
     ];
-    
+
     // Metrics where HIGHER is better
     const higherIsBetter = [
       'HDL', 'Hemoglobin', 'RBC', 'Vitamin D', 'Vitamin B12', 'Iron', 'Calcium'
     ];
-    
+
     const isLowerBetter = lowerIsBetter.some(m => vitalName.toLowerCase().includes(m.toLowerCase()));
     const isHigherBetter = higherIsBetter.some(m => vitalName.toLowerCase().includes(m.toLowerCase()));
-    
+
     // Determine if trend is good or bad
     let isGoodTrend = false;
     let message = '';
-    
+
     if (trend.direction === 'stable') {
       if (isNormal) {
         message = `✅ Your ${vitalName} is stable and within normal range. Great job maintaining your health!`;
@@ -178,7 +178,7 @@ export default function VitalSigns() {
         isGoodTrend = isNormal;
       }
     }
-    
+
     return {
       message,
       color: isGoodTrend ? 'text-green-700' : 'text-amber-700',
@@ -197,7 +197,7 @@ export default function VitalSigns() {
     return (
       <div className="max-w-4xl mx-auto space-y-6 animate-fade-in p-4">
         <div className="flex items-center gap-4 mb-6">
-          <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-cyan-400 font-medium transition-colors">
+          <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-black font-medium transition-colors">
             <ArrowLeft className="w-4 h-4" /> Back to Dashboard
           </Link>
         </div>
@@ -212,7 +212,7 @@ export default function VitalSigns() {
           </p>
           <Link
             to="/upload"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-semibold hover:bg-slate-900 transition-colors"
           >
             <Upload className="w-5 h-5" />
             Upload Report
@@ -234,11 +234,11 @@ export default function VitalSigns() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-cyan-400 font-medium transition-colors mb-2">
+          <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-black font-medium transition-colors mb-2">
             <ArrowLeft className="w-4 h-4" /> Back to Dashboard
           </Link>
           <h1 className="text-3xl font-bold text-slate-800 flex items-center gap-3">
-            <Activity className="w-8 h-8 text-red-500" />
+            <Activity className="w-8 h-8 text-black" />
             Vital Signs
           </h1>
           <p className="text-slate-600 mt-2">View your health metrics from reports</p>
@@ -250,7 +250,7 @@ export default function VitalSigns() {
             <select
               value={selectedReportId || ''}
               onChange={(e) => setSelectedReportId(e.target.value)}
-              className="appearance-none px-4 py-3 pr-10 bg-white border-2 border-slate-200 rounded-xl text-sm font-medium text-slate-800 hover:border-cyan-400 focus:border-cyan-500 focus:outline-none cursor-pointer transition-colors"
+              className="appearance-none px-4 py-3 pr-10 bg-white border-2 border-slate-200 rounded-xl text-sm font-medium text-slate-800 hover:border-black focus:border-black focus:outline-none cursor-pointer transition-colors"
             >
               {reports.map(report => (
                 <option key={report._id} value={report._id}>
@@ -265,7 +265,7 @@ export default function VitalSigns() {
 
       {/* Selected Report Info */}
       {selectedReport && (
-        <div className="bg-gradient-to-r from-purple-500 to-orange-500 rounded-2xl p-6 text-white">
+        <div className="bg-black rounded-2xl p-6 text-white">
           <div className="flex items-center gap-3 mb-2">
             <FileText className="w-6 h-6" />
             <h2 className="text-xl font-bold">{selectedReport.reportType}</h2>
@@ -290,13 +290,13 @@ export default function VitalSigns() {
               <h2 className="text-xl font-bold text-slate-800">Vital Progress Tracker</h2>
               <p className="text-slate-600 text-sm">Select a vital to see its progress over time</p>
             </div>
-            
+
             {/* Vital Selector Dropdown */}
             <div className="relative min-w-[200px]">
               <select
                 value={selectedVitalForGraph || ''}
                 onChange={(e) => setSelectedVitalForGraph(e.target.value)}
-                className="appearance-none w-full px-4 py-3 pr-10 bg-gradient-to-r from-purple-50 to-orange-50 border-2 border-cyan-200 rounded-xl text-sm font-medium text-slate-800 hover:border-cyan-400 focus:border-cyan-500 focus:outline-none cursor-pointer transition-colors"
+                className="appearance-none w-full px-4 py-3 pr-10 bg-slate-50 border-2 border-slate-200 rounded-xl text-sm font-medium text-slate-800 hover:border-black focus:border-black focus:outline-none cursor-pointer transition-colors"
               >
                 <option value="">Select Vital</option>
                 {allMetrics.map(metric => (
@@ -305,7 +305,7 @@ export default function VitalSigns() {
                   </option>
                 ))}
               </select>
-              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-cyan-600 pointer-events-none" />
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
             </div>
           </div>
 
@@ -322,16 +322,15 @@ export default function VitalSigns() {
                     </p>
                     <p className="text-xs text-slate-500 mt-1">Normal: {chartData[chartData.length - 1].normalRange}</p>
                   </div>
-                  
+
                   <div className="text-right">
                     <p className="text-sm text-slate-600 mb-2">Trend</p>
-                    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold ${
-                      trend.direction === 'up' 
-                        ? 'bg-blue-100 text-blue-700' 
+                    <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full font-bold ${trend.direction === 'up'
+                        ? 'bg-black text-white'
                         : trend.direction === 'down'
-                        ? 'bg-purple-100 text-purple-700'
-                        : 'bg-slate-100 text-slate-700'
-                    }`}>
+                          ? 'bg-slate-200 text-black'
+                          : 'bg-slate-100 text-slate-700'
+                      }`}>
                       {trend.direction === 'up' ? (
                         <>
                           <TrendingUp className="w-5 h-5" />
@@ -360,26 +359,26 @@ export default function VitalSigns() {
                   <AreaChart data={chartData}>
                     <defs>
                       <linearGradient id="vitalGradient" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="5%" stopColor="#06b6d4" stopOpacity={0.3} />
-                        <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
+                        <stop offset="5%" stopColor="#000000" stopOpacity={0.1} />
+                        <stop offset="95%" stopColor="#000000" stopOpacity={0} />
                       </linearGradient>
                     </defs>
                     <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-                    <XAxis 
-                      dataKey="date" 
-                      stroke="#94a3b8" 
+                    <XAxis
+                      dataKey="date"
+                      stroke="#94a3b8"
                       fontSize={12}
                       tickLine={false}
                     />
-                    <YAxis 
-                      stroke="#94a3b8" 
+                    <YAxis
+                      stroke="#94a3b8"
                       fontSize={12}
                       tickLine={false}
                     />
                     <Tooltip
-                      contentStyle={{ 
-                        backgroundColor: '#fff', 
-                        border: '2px solid #06b6d4', 
+                      contentStyle={{
+                        backgroundColor: '#fff',
+                        border: '2px solid #000',
                         borderRadius: '12px',
                         padding: '12px'
                       }}
@@ -389,14 +388,14 @@ export default function VitalSigns() {
                         selectedVitalForGraph
                       ]}
                     />
-                    <Area 
-                      type="monotone" 
-                      dataKey="value" 
-                      stroke="#06b6d4" 
+                    <Area
+                      type="monotone"
+                      dataKey="value"
+                      stroke="#000000"
                       strokeWidth={3}
                       fill="url(#vitalGradient)"
-                      dot={{ fill: '#06b6d4', strokeWidth: 2, r: 5 }}
-                      activeDot={{ r: 7, fill: '#0891b2' }}
+                      dot={{ fill: '#000000', strokeWidth: 2, r: 5 }}
+                      activeDot={{ r: 7, fill: '#000000' }}
                     />
                   </AreaChart>
                 </ResponsiveContainer>
@@ -408,11 +407,10 @@ export default function VitalSigns() {
                   <div key={idx} className="p-3 bg-slate-50 rounded-lg border border-slate-200">
                     <p className="text-xs text-slate-500 mb-1">{point.date}</p>
                     <p className="text-lg font-bold text-slate-800">{point.value}</p>
-                    <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-semibold ${
-                      point.status === 'normal' 
-                        ? 'bg-emerald-100 text-emerald-700'
-                        : 'bg-red-100 text-red-700'
-                    }`}>
+                    <span className={`inline-block mt-1 px-2 py-0.5 rounded text-xs font-semibold ${point.status === 'normal'
+                        ? 'bg-slate-900 text-white'
+                        : 'bg-slate-100 text-black'
+                      }`}>
                       {point.status}
                     </span>
                   </div>
@@ -425,13 +423,13 @@ export default function VitalSigns() {
                   <div className="flex items-start gap-3">
                     <div className="flex-shrink-0 mt-0.5">
                       {interpretation.icon === 'good' ? (
-                        <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-full bg-black flex items-center justify-center">
                           <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                           </svg>
                         </div>
                       ) : interpretation.icon === 'warning' ? (
-                        <div className="w-8 h-8 rounded-full bg-amber-500 flex items-center justify-center">
+                        <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center">
                           <AlertCircle className="w-5 h-5 text-white" />
                         </div>
                       ) : (
@@ -475,13 +473,12 @@ export default function VitalSigns() {
               <button
                 key={key}
                 onClick={() => handleMetricClick(key, metric)}
-                className={`p-5 rounded-xl border-2 text-left transition-all hover:scale-105 hover:shadow-lg cursor-pointer ${
-                  metric.status === 'normal'
-                    ? 'bg-emerald-50 border-emerald-200 hover:border-emerald-300'
+                className={`p-5 rounded-xl border-2 text-left transition-all hover:scale-105 hover:shadow-lg cursor-pointer ${metric.status === 'normal'
+                    ? 'bg-white border-slate-100 hover:border-black'
                     : metric.status === 'high' || metric.status === 'low'
-                    ? 'bg-red-50 border-red-200 hover:border-red-300'
-                    : 'bg-amber-50 border-amber-200 hover:border-amber-300'
-                }`}
+                      ? 'bg-slate-50 border-slate-200 hover:border-black'
+                      : 'bg-white border-slate-100 hover:border-black'
+                  }`}
               >
                 <p className="text-sm text-slate-600 font-medium mb-2">{key}</p>
                 <p className="text-2xl font-bold text-slate-800 mb-2">
@@ -489,13 +486,12 @@ export default function VitalSigns() {
                 </p>
                 <p className="text-xs text-slate-600 mb-3">Normal: {metric.normalRange}</p>
                 <span
-                  className={`inline-block px-3 py-1 rounded-full text-xs font-semibold ${
-                    metric.status === 'normal'
-                      ? 'bg-emerald-100 text-emerald-700'
+                  className={`inline-block px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${metric.status === 'normal'
+                      ? 'bg-black text-white'
                       : metric.status === 'high' || metric.status === 'low'
-                      ? 'bg-red-100 text-red-700'
-                      : 'bg-amber-100 text-amber-700'
-                  }`}
+                        ? 'bg-slate-200 text-black'
+                        : 'bg-slate-100 text-slate-800'
+                    }`}
                 >
                   {metric.status.toUpperCase()}
                 </span>
@@ -512,7 +508,7 @@ export default function VitalSigns() {
           </p>
           <Link
             to="/upload"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-red-500 text-white rounded-xl font-semibold hover:bg-red-600 transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white rounded-xl font-semibold hover:bg-slate-900 transition-colors"
           >
             <Upload className="w-5 h-5" />
             Upload New Report

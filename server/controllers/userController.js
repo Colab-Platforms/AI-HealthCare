@@ -27,7 +27,7 @@ exports.getFoodPreferences = async (req, res) => {
 // Save user food preferences
 exports.saveFoodPreferences = async (req, res) => {
   try {
-    const { preferredFoods, foodsToAvoid, dietaryRestrictions } = req.body;
+    const { preferredFoods, foodsToAvoid, dietaryRestrictions, mealPreferences } = req.body;
 
     const user = await User.findById(req.user.id);
 
@@ -39,6 +39,12 @@ exports.saveFoodPreferences = async (req, res) => {
       preferredFoods: preferredFoods || [],
       foodsToAvoid: foodsToAvoid || [],
       dietaryRestrictions: dietaryRestrictions || [],
+      mealPreferences: mealPreferences || {
+        breakfast: [],
+        lunch: [],
+        snacks: [],
+        dinner: []
+      },
       lastUpdated: new Date()
     };
 

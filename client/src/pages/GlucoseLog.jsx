@@ -394,7 +394,7 @@ const GlucoseLog = () => {
                   onChange={handleEditChange}
                   onBlur={handleEditBlur}
                   onKeyDown={handleEditKeyDown}
-                  className="w-24 text-5xl font-extrabold text-center bg-transparent outline-none border-b-2 border-[#2FC8B9] text-slate-800"
+                  className="w-24 text-5xl font-extrabold text-center bg-transparent outline-none border-b-2 border-black text-slate-800"
                   autoFocus
                 />
                 <span className="text-sm text-gray-400 font-semibold tracking-wider">
@@ -403,13 +403,13 @@ const GlucoseLog = () => {
               </div>
             ) : (
               <button onClick={handleEditStart} className="group">
-                <div className="text-5xl font-extrabold text-slate-800 leading-none group-hover:text-[#2FC8B9] transition-colors">
+                <div className="text-5xl font-extrabold text-slate-800 leading-none group-hover:text-black transition-colors">
                   {currentReading}
                 </div>
                 <div className="text-sm text-gray-400 font-semibold tracking-wider mt-1">
                   MG/DL
                 </div>
-                <div className="text-[10px] text-[#2FC8B9] opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="text-[10px] text-black opacity-0 group-hover:opacity-100 transition-opacity">
                   tap to edit
                 </div>
               </button>
@@ -427,7 +427,7 @@ const GlucoseLog = () => {
           </button>
           <button
             onClick={() => setShowLogModal(true)}
-            className="flex-[1.5] bg-[#2FC8B9] text-white shadow-lg shadow-[#2FC8B9]/20 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-[#1db7a6] transition-all focus:scale-95 flex items-center justify-center gap-2"
+            className="flex-[1.5] bg-black text-white shadow-lg shadow-black/20 py-3.5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-slate-900 transition-all focus:scale-95 flex items-center justify-center gap-2"
           >
             <Droplet className="w-4 h-4" />
             Log Glucose
@@ -446,7 +446,7 @@ const GlucoseLog = () => {
             <div className="relative">
               <button
                 onClick={() => setShowTrendDropdown(!showTrendDropdown)}
-                className="flex items-center gap-1.5 text-sm font-semibold text-[#2FC8B9] bg-[#2FC8B9]/10 px-3 py-1.5 rounded-full"
+                className="flex items-center gap-1.5 text-sm font-semibold text-black bg-slate-100 px-3 py-1.5 rounded-full"
               >
                 {trendType === "blood_sugar"
                   ? "Glucose"
@@ -462,7 +462,7 @@ const GlucoseLog = () => {
                       setTrendType("blood_sugar");
                       setShowTrendDropdown(false);
                     }}
-                    className={`w-full text-left px-4 py-2.5 text-sm font-medium hover:bg-blue-50 ${trendType === "blood_sugar" ? "text-blue-600 bg-blue-50/50" : "text-slate-700"}`}
+                    className={`w-full text-left px-4 py-2.5 text-sm font-medium hover:bg-slate-50 ${trendType === "blood_sugar" ? "text-black bg-slate-50/50" : "text-slate-700"}`}
                   >
                     Glucose
                   </button>
@@ -471,7 +471,7 @@ const GlucoseLog = () => {
                       setTrendType("hba1c");
                       setShowTrendDropdown(false);
                     }}
-                    className={`w-full text-left px-4 py-2.5 text-sm font-medium hover:bg-blue-50 ${trendType === "hba1c" ? "text-blue-600 bg-blue-50/50" : "text-slate-700"}`}
+                    className={`w-full text-left px-4 py-2.5 text-sm font-medium hover:bg-slate-50 ${trendType === "hba1c" ? "text-black bg-slate-50/50" : "text-slate-700"}`}
                   >
                     HbA1c
                   </button>
@@ -480,7 +480,7 @@ const GlucoseLog = () => {
                       setTrendType("weight");
                       setShowTrendDropdown(false);
                     }}
-                    className={`w-full text-left px-4 py-2.5 text-sm font-medium hover:bg-blue-50 ${trendType === "weight" ? "text-blue-600 bg-blue-50/50" : "text-slate-700"}`}
+                    className={`w-full text-left px-4 py-2.5 text-sm font-medium hover:bg-slate-50 ${trendType === "weight" ? "text-black bg-slate-50/50" : "text-slate-700"}`}
                   >
                     Weight
                   </button>
@@ -600,37 +600,37 @@ const GlucoseLog = () => {
                 </button>
                 <button
                   onClick={() => setGlucoseFilterContext("fasting")}
-                  className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${glucoseFilterContext === "fasting" ? "bg-blue-100 text-blue-700 border border-blue-200" : "bg-blue-50/50 text-blue-400"}`}
+                  className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${glucoseFilterContext === "fasting" ? "bg-[#1e293b] text-white" : "bg-slate-50 text-slate-400"}`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-sm rotate-45 ${glucoseFilterContext === "fasting" ? "bg-blue-600" : "bg-blue-300"}`} />{" "}
+                  <span className={`w-1.5 h-1.5 rounded-sm rotate-45 ${glucoseFilterContext === "fasting" ? "bg-white" : "bg-slate-300"}`} />{" "}
                   Fasting
                 </button>
                 <button
                   onClick={() => setGlucoseFilterContext("before-meal")}
-                  className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${glucoseFilterContext === "before-meal" ? "bg-blue-100 text-blue-700 border border-blue-200" : "bg-blue-50/50 text-blue-400"}`}
+                  className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${glucoseFilterContext === "before-meal" ? "bg-[#1e293b] text-white" : "bg-slate-50 text-slate-400"}`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-sm ${glucoseFilterContext === "before-meal" ? "bg-blue-600" : "bg-blue-300"}`} />{" "}
+                  <span className={`w-1.5 h-1.5 rounded-sm ${glucoseFilterContext === "before-meal" ? "bg-white" : "bg-slate-300"}`} />{" "}
                   Pre-meal
                 </button>
                 <button
                   onClick={() => setGlucoseFilterContext("after-meal")}
-                  className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${glucoseFilterContext === "after-meal" ? "bg-blue-100 text-blue-700 border border-blue-200" : "bg-blue-50/50 text-blue-400"}`}
+                  className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${glucoseFilterContext === "after-meal" ? "bg-[#1e293b] text-white" : "bg-slate-50 text-slate-400"}`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-sm rotate-45 ${glucoseFilterContext === "after-meal" ? "bg-blue-600" : "bg-blue-300"}`} />{" "}
+                  <span className={`w-1.5 h-1.5 rounded-sm rotate-45 ${glucoseFilterContext === "after-meal" ? "bg-white" : "bg-slate-300"}`} />{" "}
                   Post-meal
                 </button>
                 <button
                   onClick={() => setGlucoseFilterContext("bedtime")}
-                  className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${glucoseFilterContext === "bedtime" ? "bg-blue-100 text-blue-700 border border-blue-200" : "bg-blue-50/50 text-blue-400"}`}
+                  className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${glucoseFilterContext === "bedtime" ? "bg-slate-800 text-white" : "bg-slate-50 text-slate-400"}`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${glucoseFilterContext === "bedtime" ? "bg-blue-600" : "bg-blue-300"}`} />{" "}
+                  <span className={`w-1.5 h-1.5 rounded-full ${glucoseFilterContext === "bedtime" ? "bg-white" : "bg-slate-300"}`} />{" "}
                   Bedtime
                 </button>
                 <button
                   onClick={() => setGlucoseFilterContext("random")}
-                  className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${glucoseFilterContext === "random" ? "bg-blue-100 text-blue-700 border border-blue-200" : "bg-blue-50/50 text-blue-400"}`}
+                  className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${glucoseFilterContext === "random" ? "bg-slate-800 text-white" : "bg-slate-50 text-slate-400"}`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${glucoseFilterContext === "random" ? "bg-blue-600" : "bg-blue-300"}`} />{" "}
+                  <span className={`w-1.5 h-1.5 rounded-full ${glucoseFilterContext === "random" ? "bg-white" : "bg-slate-300"}`} />{" "}
                   Random
                 </button>
               </div>
@@ -640,10 +640,8 @@ const GlucoseLog = () => {
             <div className="mt-6 pt-4 border-t border-gray-100">
               {recentReadings.length > 0 ? (
                 <div className={`p-4 rounded-2xl flex items-center gap-3 ${recentReadings[0].value >= 70 && recentReadings[0].value <= 130
-                  ? "bg-emerald-50 text-emerald-700"
-                  : recentReadings[0].value > 130
-                    ? "bg-red-50 text-red-700"
-                    : "bg-orange-50 text-orange-700"
+                  ? "bg-slate-50 text-slate-700 border border-slate-100"
+                  : "bg-slate-900 text-white"
                   }`}>
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${recentReadings[0].value >= 70 && recentReadings[0].value <= 130
                     ? "bg-emerald-100"
@@ -676,16 +674,16 @@ const GlucoseLog = () => {
           <div className="bg-white/90 backdrop-blur-md rounded-3xl p-6 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-white mt-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center">
-                  <span className="text-purple-600 font-bold text-xs">AI</span>
+                <div className="w-8 h-8 rounded-lg bg-black flex items-center justify-center">
+                  <span className="text-white font-bold text-xs">AI</span>
                 </div>
                 <h3 className="font-bold text-slate-800">Glucose Analysis</h3>
               </div>
               {aiLoading && (
                 <div className="flex items-center gap-1">
-                  <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce" />
-                  <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce delay-100" />
-                  <div className="w-1.5 h-1.5 bg-purple-400 rounded-full animate-bounce delay-200" />
+                  <div className="w-1.5 h-1.5 bg-black rounded-full animate-bounce" />
+                  <div className="w-1.5 h-1.5 bg-black rounded-full animate-bounce delay-100" />
+                  <div className="w-1.5 h-1.5 bg-black rounded-full animate-bounce delay-200" />
                 </div>
               )}
             </div>
@@ -696,7 +694,7 @@ const GlucoseLog = () => {
                   <div className={`mt-1 w-3 h-3 rounded-full flex-shrink-0 ${aiAnalysis.statusColor === 'green' ? 'bg-green-500 text-green-500' : aiAnalysis.statusColor === 'yellow' ? 'bg-yellow-500 text-yellow-500' : aiAnalysis.statusColor === 'orange' ? 'bg-orange-500 text-orange-500' : 'bg-red-500 text-red-500'}`} />
                   <div>
                     <h4 className="text-sm font-bold text-slate-800 mb-1">
-                      Status: <span className={aiAnalysis.statusColor === 'green' ? 'text-green-600' : aiAnalysis.statusColor === 'red' ? 'text-red-600' : 'text-orange-600'}>{aiAnalysis.status}</span>
+                      Status: <span className={aiAnalysis.statusColor === 'green' ? 'text-black' : 'text-slate-600'}>{aiAnalysis.status}</span>
                     </h4>
                     <p className="text-sm text-slate-600 leading-relaxed">
                       {aiAnalysis.analysis}
@@ -705,13 +703,13 @@ const GlucoseLog = () => {
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div className="p-4 rounded-2xl border border-blue-50 bg-blue-50/30">
-                    <p className="text-[10px] font-bold text-blue-500 uppercase tracking-wider mb-1">Potential Cause</p>
+                  <div className="p-4 rounded-2xl border border-slate-100 bg-white">
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Potential Cause</p>
                     <p className="text-sm font-semibold text-slate-800">{aiAnalysis.spikeCause}</p>
                   </div>
-                  <div className="p-4 rounded-2xl border border-purple-50 bg-purple-50/30">
-                    <p className="text-[10px] font-bold text-purple-500 uppercase tracking-wider mb-1">Immediate Action</p>
-                    <p className="text-sm font-semibold text-slate-800">{aiAnalysis.immediateAction}</p>
+                  <div className="p-4 rounded-2xl bg-black">
+                    <p className="text-[10px] font-bold text-white/60 uppercase tracking-wider mb-1">Immediate Action</p>
+                    <p className="text-sm font-bold text-white">{aiAnalysis.immediateAction}</p>
                   </div>
                 </div>
 
@@ -731,7 +729,7 @@ const GlucoseLog = () => {
                   Generated by AI based on your overall data and daily food logs.
                 </p>
                 <div className="flex justify-center pt-2">
-                  <button onClick={fetchAiAnalysis} className="text-[10px] font-bold text-purple-600 hover:text-purple-800 uppercase tracking-widest flex items-center gap-1 opacity-60 hover:opacity-100 transition-opacity">
+                  <button onClick={fetchAiAnalysis} className="text-[10px] font-bold text-black hover:text-slate-600 uppercase tracking-widest flex items-center gap-1 opacity-60 hover:opacity-100 transition-opacity">
                     <Activity className="w-3 h-3" /> Re-analyze Trends
                   </button>
                 </div>
@@ -742,7 +740,7 @@ const GlucoseLog = () => {
                   <p className="text-sm text-slate-500 mb-4 font-medium italic">No recent analysis found. Log readings for automatic analysis.</p>
                   <button
                     onClick={fetchAiAnalysis}
-                    className="px-8 py-3 bg-[#2FC8B9] text-white rounded-full text-xs font-black uppercase tracking-widest shadow-xl shadow-[#2FC8B9]/20 hover:scale-105 transition-all"
+                    className="px-8 py-3 bg-black text-white rounded-full text-xs font-black uppercase tracking-widest shadow-xl shadow-black/20 hover:scale-105 transition-all"
                   >
                     Generate First Analysis
                   </button>
@@ -752,7 +750,7 @@ const GlucoseLog = () => {
 
             {aiLoading && !aiAnalysis && (
               <div className="py-12 flex flex-col items-center justify-center">
-                <div className="w-12 h-12 border-4 border-purple-100 border-t-purple-600 rounded-full animate-spin mb-4" />
+                <div className="w-12 h-12 border-4 border-slate-100 border-t-black rounded-full animate-spin mb-4" />
                 <p className="text-sm font-medium text-slate-500">AI is analyzing your readings and food logs...</p>
               </div>
             )}

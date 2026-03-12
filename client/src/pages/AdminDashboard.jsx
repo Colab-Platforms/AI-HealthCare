@@ -25,7 +25,7 @@ export default function AdminDashboard() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-[60vh]">
-        <div className="w-12 h-12 border-4 border-cyan-500/20 border-t-cyan-500 rounded-full animate-spin" />
+        <div className="w-12 h-12 border-4 border-black/20 border-t-black rounded-full animate-spin" />
       </div>
     );
   }
@@ -63,22 +63,22 @@ function OverviewTab({ stats }) {
   return (
     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
       <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm hover:shadow-md transition-all">
-        <div className="w-12 h-12 rounded-2xl bg-blue-50 flex items-center justify-center mb-4">
-          <Users className="w-6 h-6 text-blue-600" />
+        <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+          <Users className="w-6 h-6 text-black" />
         </div>
         <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Total Patients</p>
         <p className="text-3xl font-black text-slate-900 mt-1">{stats.stats?.totalUsers || 0}</p>
       </div>
       <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm hover:shadow-md transition-all">
-        <div className="w-12 h-12 rounded-2xl bg-emerald-50 flex items-center justify-center mb-4">
-          <CheckCircle className="w-6 h-6 text-emerald-600" />
+        <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+          <CheckCircle className="w-6 h-6 text-black" />
         </div>
         <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Active Today</p>
         <p className="text-3xl font-black text-slate-900 mt-1">{stats.stats?.activeUsers || 0}</p>
       </div>
       <div className="bg-white rounded-3xl border border-slate-100 p-6 shadow-sm hover:shadow-md transition-all">
-        <div className="w-12 h-12 rounded-2xl bg-purple-50 flex items-center justify-center mb-4">
-          <FileText className="w-6 h-6 text-purple-600" />
+        <div className="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center mb-4">
+          <FileText className="w-6 h-6 text-black" />
         </div>
         <p className="text-sm font-bold text-slate-400 uppercase tracking-wider">Processed Reports</p>
         <p className="text-3xl font-black text-slate-900 mt-1">{stats.stats?.totalReports || 0}</p>
@@ -148,7 +148,7 @@ function UsersTab() {
                 <tr key={user._id} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="py-4 px-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-white font-bold">
+                      <div className="w-10 h-10 rounded-xl bg-black flex items-center justify-center text-white font-bold">
                         {user.name?.[0]?.toUpperCase()}
                       </div>
                       <div>
@@ -158,7 +158,7 @@ function UsersTab() {
                     </div>
                   </td>
                   <td className="py-4 px-4">
-                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${user.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider ${user.isActive ? 'bg-slate-100 text-black' : 'bg-slate-50 text-slate-500'
                       }`}>
                       {user.isActive ? 'Active' : 'Banned'}
                     </span>
@@ -170,13 +170,13 @@ function UsersTab() {
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => viewUserDetails(user._id)}
-                        className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
+                        className="p-2 text-slate-400 hover:text-black hover:bg-slate-100 rounded-lg transition-all"
                       >
                         <FileText className="w-5 h-5" />
                       </button>
                       <button
                         onClick={() => handleToggleStatus(user._id, user.isActive)}
-                        className={`p-2 rounded-lg transition-all ${user.isActive ? 'text-slate-400 hover:text-red-600 hover:bg-red-50' : 'text-emerald-500 hover:bg-emerald-50'
+                        className={`p-2 rounded-lg transition-all ${user.isActive ? 'text-slate-400 hover:text-slate-900 hover:bg-slate-100' : 'text-black hover:bg-slate-50'
                           }`}
                       >
                         {user.isActive ? <XCircle className="w-5 h-5" /> : <CheckCircle className="w-5 h-5" />}
@@ -196,7 +196,7 @@ function UsersTab() {
           <div className="bg-white w-full max-w-4xl max-h-[90vh] rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden animate-slide-up">
             <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-3xl bg-blue-600 flex items-center justify-center text-white text-2xl font-black">
+                <div className="w-16 h-16 rounded-3xl bg-black flex items-center justify-center text-white text-2xl font-black">
                   {selectedUser.name?.[0]?.toUpperCase()}
                 </div>
                 <div>
@@ -229,7 +229,7 @@ function UsersTab() {
                 </div>
                 <div className="p-5 bg-slate-50 rounded-3xl border border-slate-100">
                   <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Role</p>
-                  <p className="text-lg font-bold text-blue-600 capitalize">{selectedUser.role}</p>
+                  <p className="text-lg font-bold text-black capitalize">{selectedUser.role}</p>
                 </div>
               </div>
 
@@ -237,7 +237,7 @@ function UsersTab() {
               <div className="grid md:grid-cols-2 gap-8">
                 <div className="space-y-4">
                   <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                    <Activity className="w-5 h-5 text-blue-500" /> Lifestyle & Health
+                    <Activity className="w-5 h-5 text-black" /> Lifestyle & Health
                   </h3>
                   <div className="bg-white border border-slate-100 rounded-3xl p-6 space-y-3 shadow-sm hover:shadow-md transition-all">
                     <DetailItem label="Dietary Preference" value={selectedUser.profile?.dietaryPreference} />
@@ -252,7 +252,7 @@ function UsersTab() {
 
                 <div className="space-y-4">
                   <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                    <Target className="w-5 h-5 text-orange-500" /> Nutrition & Goals
+                    <Target className="w-5 h-5 text-black" /> Nutrition & Goals
                   </h3>
                   <div className="bg-white border border-slate-100 rounded-3xl p-6 space-y-3 shadow-sm hover:shadow-md transition-all">
                     <DetailItem label="Primary Goal" value={selectedUser.nutritionGoal?.goal?.replace('_', ' ')} />
@@ -280,7 +280,7 @@ function UsersTab() {
               <div className="grid md:grid-cols-2 gap-8">
                 <div className="space-y-4">
                   <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                    <Activity className="w-5 h-5 text-emerald-500" /> Diabetes Profile
+                    <Activity className="w-5 h-5 text-black" /> Diabetes Profile
                   </h3>
                   <div className="bg-white border border-slate-100 rounded-3xl p-6 space-y-3 shadow-sm hover:shadow-md transition-all min-h-[160px]">
                     {selectedUser.profile?.diabetesProfile?.type ? (
@@ -302,7 +302,7 @@ function UsersTab() {
 
                 <div className="space-y-4">
                   <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                    <AlertCircle className="w-5 h-5 text-red-500" /> Medical History
+                    <AlertCircle className="w-5 h-5 text-black" /> Medical History
                   </h3>
                   <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm hover:shadow-md transition-all min-h-[160px]">
                     <div className="space-y-4">
@@ -325,7 +325,7 @@ function UsersTab() {
                         {selectedUser.profile?.medicalHistory?.currentMedications?.length > 0 ? (
                           <div className="flex flex-wrap gap-2">
                             {selectedUser.profile.medicalHistory.currentMedications.map((m, i) => (
-                              <span key={i} className="px-3 py-1 bg-blue-50 text-blue-600 rounded-full text-[10px] font-black uppercase tracking-wider ring-1 ring-blue-100">
+                              <span key={i} className="px-3 py-1 bg-slate-100 text-black rounded-full text-[10px] font-black uppercase tracking-wider ring-1 ring-slate-200">
                                 {m}
                               </span>
                             ))}
@@ -342,14 +342,14 @@ function UsersTab() {
               {/* Activity Timeline */}
               <div className="space-y-4">
                 <h3 className="text-lg font-black text-slate-900 flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-purple-500" /> Recent System Activity
+                  <Clock className="w-5 h-5 text-black" /> Recent System Activity
                 </h3>
                 <div className="bg-slate-50 border border-slate-100 rounded-[2rem] p-6">
                   {selectedUser.activity?.length > 0 ? (
                     <div className="space-y-4">
                       {selectedUser.activity.map((item, i) => (
                         <div key={i} className="flex items-center gap-4 bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.type === 'report' ? 'bg-purple-50 text-purple-600' : 'bg-blue-50 text-blue-600'
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${item.type === 'report' ? 'bg-slate-100 text-black' : 'bg-slate-50 text-slate-700'
                             }`}>
                             {item.type === 'report' ? <FileText className="w-5 h-5" /> : <Calendar className="w-5 h-5" />}
                           </div>
@@ -357,7 +357,7 @@ function UsersTab() {
                             <p className="font-bold text-slate-900 text-sm">{item.title}</p>
                             <p className="text-xs text-slate-500">{new Date(item.date).toLocaleDateString()} • {new Date(item.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
                           </div>
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${item.status === 'completed' || item.status === 'confirmed' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${item.status === 'completed' || item.status === 'confirmed' ? 'bg-slate-100 text-black' : 'bg-slate-50 text-slate-500'
                             }`}>
                             {item.status}
                           </span>

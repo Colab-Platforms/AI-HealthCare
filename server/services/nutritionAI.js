@@ -61,24 +61,29 @@ class NutritionAI {
   }
 
   _getUnifiedPrompt(context = '') {
-    return `Analyze this food and return ONLY a JSON object.
+    return `Analyze this food item and return ONLY a JSON object.
     Context: "${context}"
     
-    Format:
+    SPECIAL INSTRUCTIONS:
+    1. If the food is considered "junk food" or "unhealthy" (high in processed sugar, trans fats, or sodium), explicitly list its disadvantages and common health risks in the "warnings" array.
+    2. In "enhancementTips", include specific steps on how to make this meal healthier (e.g., ingredients to swap, cooking methods to change).
+    3. Always provide 3-5 healthier alternatives in the "alternatives" array.
+    
+    JSON STRUCTURE:
     {
       "foodItem": {
         "name": "Food name",
-        "quantity": "Portion",
+        "quantity": "Portion size seen or described",
         "nutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0 }
       },
       "totalNutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0 },
-      "healthScore": 0,
-      "analysis": "2-sentence summary",
-      "micronutrients": [],
-      "enhancementTips": [],
-      "healthBenefitsSummary": "",
-      "warnings": [],
-      "alternatives": []
+      "healthScore": 0, (0-100 scale)
+      "analysis": "Short 2-sentence summary of health impact",
+      "micronutrients": ["Vitamins/Minerals"],
+      "enhancementTips": ["Tip 1", "Tip 2"],
+      "healthBenefitsSummary": "Key positive impact if any",
+      "warnings": ["Warning 1/Disadvantage for junk food"],
+      "alternatives": ["Alternative 1", "Alternative 2"]
     }`;
   }
 

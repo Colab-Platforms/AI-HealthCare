@@ -132,7 +132,7 @@ export default function VitalDetailsPopup({ vital, onClose, initialLanguage = 'e
 
             {loading ? (
               <div className="flex flex-col items-center justify-center py-12">
-                <div className="w-8 h-8 border-4 border-slate-200 border-t-[#2FC8B9] rounded-full animate-spin mb-4"></div>
+                <div className="w-8 h-8 border-4 border-slate-200 border-t-black rounded-full animate-spin mb-4"></div>
                 <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Generating Insights...</p>
               </div>
             ) : (

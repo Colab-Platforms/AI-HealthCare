@@ -82,12 +82,19 @@ exports.register = async (req, res) => {
     let user = null;
     try {
       console.log('Creating user in database...');
+      // Generate 6-digit verification code
+      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const verificationExpire = Date.now() + 15 * 60 * 1000; // 15 mins
+
       user = await User.create({
         name,
         email,
         phone,
         password,
         role: userRole,
+        isEmailVerified: false,
+        emailVerificationCode: verificationCode,
+        emailVerificationExpire: verificationExpire,
         profile: profile || {},
         nutritionGoal: calculatedGoals ? {
           goal: nutritionGoal.goal,
@@ -114,7 +121,7 @@ exports.register = async (req, res) => {
             height: profile.height,
             age: profile.age,
             gender: profile.gender,
-            activityLevel: profile.activityLevel || 'moderate',
+            activityLevel: profile.activityLevel || 'sedentary',
             isActive: true
           });
           console.log('Initial HealthGoal created for user');
@@ -123,6 +130,9 @@ exports.register = async (req, res) => {
           // Don't fail the whole registration if this fails
         }
       }
+      // Send verification email
+      const emailService = require('../services/emailService');
+      await emailService.sendVerificationCode(user.email, user.name, verificationCode);
     } catch (createError) {
       console.error('User creation error:', createError.message);
       console.error('User creation error code:', createError.code);
@@ -354,6 +364,36 @@ exports.updateProfile = async (req, res) => {
       let bmiChanged = false;
       let newBmi = user.healthMetrics?.bmi;
 
+      // Calculate nutrition goals correctly if nutritionGoal is provided (e.g. from profile completion after register)
+      if (req.body.nutritionGoal && user.profile.age && user.profile.gender && newWeight && newHeight) {
+        try {
+          const calculatedGoals = calculateNutritionGoals({
+            age: user.profile.age,
+            gender: user.profile.gender,
+            weight: newWeight,
+            height: newHeight,
+            activityLevel: user.profile.activityLevel || 'sedentary',
+            goal: req.body.nutritionGoal.goal || 'general_health',
+            targetWeight: req.body.nutritionGoal.targetWeight,
+            weeklyGoal: req.body.nutritionGoal.weeklyGoal || 0.5
+          });
+
+          user.nutritionGoal = {
+            goal: req.body.nutritionGoal.goal,
+            targetWeight: req.body.nutritionGoal.targetWeight,
+            weeklyGoal: req.body.nutritionGoal.weeklyGoal,
+            ...calculatedGoals,
+            autoCalculated: true
+          };
+          user.markModified('nutritionGoal');
+        } catch (calcError) {
+          console.error('Nutrition goal calculation error:', calcError.message);
+        }
+      } else if (req.body.nutritionGoal) {
+        user.nutritionGoal = { ...user.nutritionGoal, ...req.body.nutritionGoal };
+        user.markModified('nutritionGoal');
+      }
+
       // Detecting changes in height or weight
       if (newHeight !== oldHeight || newWeight !== oldWeight) {
         if (newHeight && newWeight) {
@@ -376,6 +416,24 @@ exports.updateProfile = async (req, res) => {
 
           // The pre-save hook in HealthGoal will handle target recalculations
           await healthGoal.save();
+        } else if (req.body.nutritionGoal) {
+          // Create initial HealthGoal record for early registration profile completion
+          try {
+            await HealthGoal.create({
+              userId: user._id,
+              goalType: req.body.nutritionGoal.goal || 'health_improvement',
+              currentWeight: newWeight,
+              targetWeight: req.body.nutritionGoal.targetWeight || newWeight,
+              height: newHeight,
+              age: user.profile.age,
+              gender: user.profile.gender,
+              activityLevel: user.profile.activityLevel || 'sedentary',
+              isActive: true
+            });
+            console.log('Initial HealthGoal created for user through profile setup');
+          } catch (goalError) {
+            console.error('Failed to create initial HealthGoal:', goalError.message);
+          }
         }
       }
 
@@ -576,6 +634,74 @@ exports.resetPassword = async (req, res) => {
     await user.save();
 
     res.json({ success: true, message: 'Password reset successful. You can now login.' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+// @desc    Verify Email
+// @route   POST /api/auth/verify-email
+exports.verifyEmail = async (req, res) => {
+  try {
+    const { email, code } = req.body;
+    console.log(`[Verification] Attempting to verify email: ${email} with code: ${code}`);
+
+    const user = await User.findOne({
+      email,
+      emailVerificationCode: code,
+      emailVerificationExpire: { $gt: Date.now() }
+    });
+
+    if (!user) {
+      console.log(`[Verification] FAILED: No match for code ${code} or expired for ${email}`);
+      return res.status(400).json({ message: 'Invalid or expired verification code' });
+    }
+
+    console.log(`[Verification] SUCCESS: Code matched for ${email}`);
+
+    user.isEmailVerified = true;
+    user.emailVerificationCode = undefined;
+    user.emailVerificationExpire = undefined;
+    await user.save();
+
+    res.json({
+      success: true,
+      message: 'Email verified successfully',
+      user: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        isEmailVerified: user.isEmailVerified
+      }
+    });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Resend Verification Code
+// @route   POST /api/auth/resend-verify-code
+exports.resendVerificationCode = async (req, res) => {
+  try {
+    const { email } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    if (user.isEmailVerified) {
+      return res.status(400).json({ message: 'Email already verified' });
+    }
+
+    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    user.emailVerificationCode = verificationCode;
+    user.emailVerificationExpire = Date.now() + 15 * 60 * 1000;
+    await user.save();
+
+    const emailService = require('../services/emailService');
+    await emailService.sendVerificationCode(user.email, user.name, verificationCode);
+
+    res.json({ success: true, message: 'Verification code resent' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

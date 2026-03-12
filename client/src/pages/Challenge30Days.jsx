@@ -181,24 +181,24 @@ export default function Challenge30Days() {
       {loading ? (
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="text-center">
-            <div className="w-16 h-16 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4" />
+            <div className="w-16 h-16 border-4 border-slate-200 border-t-black rounded-full animate-spin mx-auto mb-4" />
             <p className="text-slate-600">Loading your challenge...</p>
           </div>
         </div>
       ) : (
         <>
           {/* New Select Day Card UI */}
-          <div className="bg-cyan-50 rounded-[2rem] p-4 md:p-6 shadow-sm relative overflow-hidden border border-cyan-100/50">
+          <div className="bg-white rounded-[2rem] p-4 md:p-6 shadow-sm relative overflow-hidden border border-slate-100">
             <div className="flex items-center justify-between mb-8">
               <button
                 onClick={() => setCurrentDay(Math.max(1, currentDay - 1))}
-                className="w-8 h-8 rounded-full bg-white/80 flex items-center justify-center text-cyan-600 hover:bg-white transition-colors shadow-sm"
+                className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors shadow-sm"
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
 
               <div className="text-center">
-                <h2 className="text-base md:text-lg font-black text-cyan-900 uppercase tracking-tight">
+                <h2 className="text-base md:text-lg font-black text-slate-900 uppercase tracking-tight">
                   {currentDay === 1 ? 'Today, ' : `Day ${currentDay}, `}
                   {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                 </h2>
@@ -206,7 +206,7 @@ export default function Challenge30Days() {
 
               <button
                 onClick={() => setCurrentDay(Math.min(30, currentDay + 1))}
-                className="w-8 h-8 rounded-full bg-white/80 flex items-center justify-center text-cyan-600 hover:bg-white transition-colors rotate-180 shadow-sm"
+                className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-600 hover:bg-slate-100 transition-colors rotate-180 shadow-sm"
               >
                 <ArrowLeft className="w-4 h-4" />
               </button>
@@ -249,7 +249,7 @@ export default function Challenge30Days() {
                             cy="28"
                             r="25"
                             fill="none"
-                            stroke={isSelected ? '#F0FDFA' : 'rgba(255,255,255,0.2)'}
+                            stroke={isSelected ? '#f8fafc' : 'rgba(0,0,0,0.02)'}
                             strokeWidth="4"
                           />
                           <circle
@@ -257,7 +257,7 @@ export default function Challenge30Days() {
                             cy="28"
                             r="25"
                             fill="none"
-                            stroke="#2FC8B9"
+                            stroke="#000000"
                             strokeWidth="4"
                             strokeDasharray={`${(progress / 100) * 157} 157`}
                             strokeLinecap="round"
@@ -266,13 +266,13 @@ export default function Challenge30Days() {
                         </svg>
 
                         {isSelected ? (
-                          <Flame className="w-5 h-5 text-orange-500 relative z-10 fill-orange-500" />
+                          <Flame className="w-5 h-5 text-black relative z-10 fill-black" />
                         ) : (
                           <div className="w-3 h-3 rounded-full bg-slate-200/50" />
                         )}
                       </button>
 
-                      <span className={`text-xs font-black ${isSelected ? 'text-cyan-700' : 'text-slate-400'}`}>
+                      <span className={`text-xs font-black ${isSelected ? 'text-slate-900' : 'text-slate-400'}`}>
                         {day}
                       </span>
                     </div>
@@ -282,11 +282,10 @@ export default function Challenge30Days() {
             </div>
           </div>
 
-          {/* Stats Summary Section */}
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white rounded-[1.5rem] p-4 shadow-sm border border-slate-100 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center">
-                <Flame className="w-5 h-5 text-orange-500" />
+              <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center">
+                <Flame className="w-5 h-5 text-black" />
               </div>
               <div>
                 <p className="text-xl font-black text-slate-900">{streak}</p>
@@ -295,8 +294,8 @@ export default function Challenge30Days() {
             </div>
 
             <div className="bg-white rounded-[1.5rem] p-4 shadow-sm border border-slate-100 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-cyan-50 flex items-center justify-center">
-                <Trophy className="w-5 h-5 text-cyan-500" />
+              <div className="w-10 h-10 rounded-xl bg-slate-50 flex items-center justify-center">
+                <Trophy className="w-5 h-5 text-black" />
               </div>
               <div>
                 <p className="text-xl font-black text-slate-900">{getCompletedDays()}</p>
@@ -315,7 +314,7 @@ export default function Challenge30Days() {
                 </p>
               </div>
               <div className="text-right">
-                <div className="text-xl font-black text-[#2FC8B9]">
+                <div className="text-xl font-black text-black">
                   {getDayProgress(currentDay).toFixed(0)}%
                 </div>
               </div>
@@ -324,7 +323,7 @@ export default function Challenge30Days() {
             {/* Progress Bar */}
             <div className="w-full bg-slate-50 rounded-full h-2 mb-6 border border-slate-100">
               <div
-                className="h-2 rounded-full bg-[#2FC8B9] shadow-[0_0_10px_rgba(47,200,185,0.3)] transition-all duration-500"
+                className="h-2 rounded-full bg-black shadow-[0_0_10px_rgba(0,0,0,0.1)] transition-all duration-500"
                 style={{ width: `${getDayProgress(currentDay)}%` }}
               />
             </div>
@@ -338,8 +337,8 @@ export default function Challenge30Days() {
                     key={task.id}
                     onClick={() => toggleTask(currentDay, task.id)}
                     className={`w-full flex items-center gap-3 p-3 rounded-2xl border transition-all ${isCompleted
-                      ? 'bg-emerald-50 border-emerald-100'
-                      : 'bg-slate-50 border-slate-100 hover:border-cyan-200'
+                      ? 'bg-slate-50 border-slate-200'
+                      : 'bg-slate-50 border-slate-100 hover:border-slate-300'
                       }`}
                   >
                     <div className="text-3xl">{task.icon}</div>
@@ -350,7 +349,7 @@ export default function Challenge30Days() {
                     </div>
                     <div>
                       {isCompleted ? (
-                        <CheckCircle className="w-6 h-6 text-emerald-500" />
+                        <CheckCircle className="w-6 h-6 text-black" />
                       ) : (
                         <Circle className="w-6 h-6 text-slate-300" />
                       )}
@@ -362,7 +361,7 @@ export default function Challenge30Days() {
           </div>
 
           {/* Achievements */}
-          <div className="bg-[#2FC8B9] rounded-[2rem] p-4 md:p-6 text-white shadow-lg shadow-cyan-100">
+          <div className="bg-black rounded-[2rem] p-4 md:p-6 text-white shadow-lg">
             <div className="flex items-center gap-3 mb-4">
               <Award className="w-6 h-6" />
               <h3 className="text-lg font-black uppercase tracking-tight">Achievements</h3>
@@ -390,23 +389,23 @@ export default function Challenge30Days() {
           {/* Tips */}
           <div className="bg-white rounded-[2rem] border border-slate-100 p-4 md:p-6 shadow-sm">
             <h3 className="text-sm font-black text-slate-900 uppercase tracking-tight mb-4 flex items-center gap-2">
-              <span className="p-1 bg-cyan-50 text-[#2FC8B9] rounded-lg">💡</span> Tips for Success
+              <span className="p-1 bg-slate-50 text-black rounded-lg">💡</span> Tips for Success
             </h3>
             <ul className="space-y-2 text-slate-600">
               <li className="flex items-start gap-2">
-                <span className="text-cyan-500 mt-1">•</span>
+                <span className="text-slate-400 mt-1">•</span>
                 <span>Complete all 4 tasks daily to maintain your streak</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-cyan-500 mt-1">•</span>
+                <span className="text-slate-400 mt-1">•</span>
                 <span>Set reminders on your phone for each task</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-cyan-500 mt-1">•</span>
+                <span className="text-slate-400 mt-1">•</span>
                 <span>Start with easier tasks and gradually increase difficulty</span>
               </li>
               <li className="flex items-start gap-2">
-                <span className="text-cyan-500 mt-1">•</span>
+                <span className="text-slate-400 mt-1">•</span>
                 <span>Share your progress with friends for accountability</span>
               </li>
             </ul>

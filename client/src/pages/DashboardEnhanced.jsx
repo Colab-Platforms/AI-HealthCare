@@ -1,1662 +1,1348 @@
-import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import {
-  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Area, AreaChart, Bar, BarChart, Legend
-} from 'recharts';
-import {
-  Heart, Upload, Utensils, FileText, Activity, TrendingUp, User,
-  Calendar, MessageSquare, Pill, Apple, Dumbbell, Brain, Shield, Sparkles,
-  CheckCircle, Target, Award, ChevronRight, Zap, Sun, Droplets,
-  BarChart3, ArrowRight, ArrowLeft, Star, Flame, Trophy, Moon, Wind, Bell, ChevronLeft, ArrowUp,
-  AlertCircle, AlertTriangle, Plus, TrendingDown
+  Flame, Moon, Utensils, Activity, Sparkles, TrendingUp, TrendingDown,
+  ChevronRight, Plus, FileText, AlertCircle, Droplet,
+  Search, Sun, Clock, Heart, Apple, Info, Target, Calendar,
+  ArrowUpRight, Upload, Coffee, Dumbbell, MessageCircle, BarChart3,
+  Circle, Smile, FlaskConical, Leaf, Pill, CheckCircle2, Zap, Eye,
+  UtensilsCrossed, UploadCloud
 } from 'lucide-react';
-import BMIWidget from '../components/BMIWidget';
-import SleepTracker from '../components/SleepTracker';
-import DashboardSkeleton from '../components/skeletons/DashboardSkeleton';
-import NotificationPanel, { useNotificationCount } from '../components/NotificationPanel';
-import HealthScoreCard from '../components/HealthScoreCard';
-import { healthService } from '../services/api';
+import toast from 'react-hot-toast';
+import { Link, useNavigate } from 'react-router-dom';
+import {
+  ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
+  Tooltip, CartesianGrid, PieChart, Pie, Cell, LineChart, Line
+} from 'recharts';
+import { motion, AnimatePresence } from 'framer-motion';
+import { getFoodImage } from '../services/imageService';
+import api, { nutritionService } from '../services/api';
+import { ImageWithFallback } from '../components/ImageWithFallback';
 
-// Animated Progress Ring Component
-const ProgressRing = ({ progress, size = 120, strokeWidth = 8 }) => {
-  const radius = (size - strokeWidth) / 2;
-  const circumference = radius * 2 * Math.PI;
-  const offset = circumference - (progress / 100) * circumference;
+const DashedGauge = ({ value, max = 2400, mode = 'Macro' }) => {
+  const percentage = max > 0 ? Math.min((value / max) * 100, 100) : 0;
+  const totalDashes = 18;
+  const activeDashes = Math.round((percentage / 100) * totalDashes);
 
   return (
-    <div className="relative inline-flex items-center justify-center">
-      <svg width={size} height={size} className="transform -rotate-90">
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke="#f1f5f9"
-          strokeWidth={strokeWidth}
-          fill="none"
-        />
-        <circle
-          cx={size / 2}
-          cy={size / 2}
-          r={radius}
-          stroke="url(#healthGradient)"
-          strokeWidth={strokeWidth}
-          fill="none"
-          strokeDasharray={circumference}
-          strokeDashoffset={offset}
-          strokeLinecap="round"
-          className="transition-all duration-1000 ease-out"
-        />
-        <defs>
-          <linearGradient id="healthGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#2FC8B9" />
-            <stop offset="100%" stopColor="#1db7a6" />
-          </linearGradient>
-        </defs>
+    <div className="relative flex flex-col items-center justify-center pt-1 pb-1">
+      <svg width="200" height="100" viewBox="0 0 240 120" className="overflow-visible">
+        {Array.from({ length: totalDashes }).map((_, i) => {
+          const angle = 180 - (i * (180 / (totalDashes - 1)));
+          const isActive = i <= activeDashes;
+          return (
+            <line
+              key={i}
+              x1="20" y1="120"
+              x2="52" y2="120"
+              stroke={isActive ? '#000000' : '#F5F5F7'}
+              strokeWidth="10"
+              strokeLinecap="round"
+              className="transition-colors duration-700"
+              transform={`rotate(${angle} 120 120)`}
+            />
+          );
+        })}
       </svg>
-      <div className="absolute inset-0 flex flex-col items-center justify-center">
-        <span className={`font-black text-black tracking-tighter`} style={{ fontSize: size > 80 ? '1.875rem' : '1rem', lineHeight: '1' }}>{progress}%</span>
-        {size > 80 && (
-          <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em] -mt-1">Complete</span>
-        )}
+      <div className="absolute bottom-1 flex flex-col items-center">
+        <span className="text-2xl font-black text-[#1a1a1a] tracking-tight">
+          {Math.round(value)}{mode === 'Macro' ? ' Kcal' : ''}
+        </span>
+        <span className="text-[10px] font-bold text-[#888888] mt-0.5">
+          of {max}{mode === 'Macro' ? ' Kcal' : ''}
+        </span>
       </div>
     </div>
   );
 };
 
-// Diet Adherence Display Card
-const DietAdherenceCard = ({ score, status, loggedCount, totalLogged, motivation, macros, missedMeal, activeDietPlan }) => {
-  const navigate = useNavigate();
-  const customLogsCount = Math.max(0, totalLogged - loggedCount);
+const NutrientProgressRow = ({ label, value, icon: Icon, color = "bg-black", iconBg = "bg-slate-50", iconColor = "text-black" }) => (
+  <div className="w-full mb-5 last:mb-0">
+    <div className="flex items-center justify-between mb-1.5">
+      <div className="flex items-center gap-4">
+        <div className={`w-10 h-10 rounded-full ${iconBg} flex items-center justify-center ${iconColor} border border-white shadow-sm`}>
+          <Icon className="w-4 h-4" />
+        </div>
+        <span className="text-base font-black text-slate-800">{label}</span>
+      </div>
+      <span className="text-sm font-black text-slate-400">{Math.round(value)}%</span>
+    </div>
+    <div className="w-full h-2 bg-[#F1F1F4] rounded-full overflow-hidden">
+      <div
+        className={`h-full ${color} rounded-full transition-all duration-1000`}
+        style={{ width: `${Math.min(value, 100)}%` }}
+      />
+    </div>
+  </div>
+);
 
-  // Determine current meal type based on time
-  const currentHour = new Date().getHours();
-  let currentMealType = 'breakfast';
-  let mealLabel = 'Breakfast';
+const MealGallaryCard = ({ item, mealType, onClick }) => {
+  const [image, setImage] = useState(null);
 
-  if (currentHour >= 5 && currentHour < 10) { currentMealType = 'breakfast'; mealLabel = 'Breakfast'; }
-  else if (currentHour >= 10 && currentHour < 12) { currentMealType = 'midMorningSnack'; mealLabel = 'Mid-Morning Snack'; }
-  else if (currentHour >= 12 && currentHour < 15) { currentMealType = 'lunch'; mealLabel = 'Lunch'; }
-  else if (currentHour >= 15 && currentHour < 19) { currentMealType = 'eveningSnack'; mealLabel = 'Evening Snack'; }
-  else if (currentHour >= 19 || currentHour < 5) { currentMealType = 'dinner'; mealLabel = 'Dinner'; }
+  useEffect(() => {
+    let isMounted = true;
+    if (item?.name) {
+      getFoodImage(item.name).then(img => {
+        if (isMounted && img) setImage(img);
+      });
+    }
+    return () => { isMounted = false; };
+  }, [item?.name]);
 
-  const currentMeals = activeDietPlan?.mealPlan?.[currentMealType] || [];
+  const tag = item?.tag || (item?.calories < 200 ? 'LOW CALORIE' : item?.protein > 10 ? 'HIGH PROTEIN' : 'HEALTHY');
 
   return (
-    <motion.div
-      whileHover={{ y: -5 }}
-      onClick={() => navigate('/diet-plan')}
-      className="bg-white rounded-[2.5rem] p-5 border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.04)] hover:shadow-[0_20px_50px_rgba(0,0,0,0.1)] transition-all cursor-pointer group relative overflow-hidden flex-1"
-    >
-      {/* Background Decor */}
-      <div className="absolute top-0 right-0 w-32 h-32 bg-[#2FC8B9]/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-[#2FC8B9]/10 transition-colors"></div>
-
-      <div className="flex justify-between items-start mb-4 relative z-10">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-[#2FC8B9]/10 to-[#1db7a6]/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <Utensils className="w-5 h-5 text-[#2FC8B9]" />
-          </div>
-          <div>
-            <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] leading-none">Smart Plan</h3>
-            <p className="text-sm font-black text-black uppercase tracking-tight">Diet Adherence</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2">
-          {missedMeal && (
-            <motion.div
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              className="px-2 py-1 bg-rose-50 border border-rose-100 rounded-lg flex items-center gap-1"
-            >
-              <AlertCircle className="w-3 h-3 text-rose-500" />
-              <span className="text-[8px] font-black text-rose-600 uppercase tracking-tighter shrink-0">Missed {missedMeal}</span>
-            </motion.div>
-          )}
-          <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center group-hover:bg-[#2FC8B9] group-hover:text-white transition-all shadow-sm">
-            <ChevronRight className="w-4 h-4" />
-          </div>
-        </div>
-      </div>
-
-      <div className="flex items-center gap-6 relative z-10 mb-5">
-        <div className="relative">
-          <div className={`${score > 70 ? 'text-emerald-500' : 'text-[#2FC8B9]'}`}>
-            <ProgressRing progress={score} size={64} strokeWidth={6} />
-          </div>
-        </div>
-        <div className="flex-1">
-          <div className="flex items-center gap-2 mb-1">
-            <p className="text-2xl font-black text-black leading-none">{status}</p>
-            <div className={`w-2 h-2 rounded-full ${score > 70 ? 'bg-emerald-500' : 'bg-orange-400'} animate-pulse`} />
-          </div>
-
-          <div className="space-y-1">
-            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest leading-none">
-              {loggedCount} of 5 from plan
-            </p>
-            <p className="text-[9px] font-black text-indigo-600 uppercase italic">
-              {motivation}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Macros Mini-Tracker */}
-      <div className="grid grid-cols-4 gap-2 pt-4 border-t border-slate-50 relative z-10">
-        {[
-          { label: 'Cal', val: macros?.calories || 0, color: 'bg-orange-400' },
-          { label: 'Pro', val: macros?.protein || 0, color: 'bg-[#2FC8B9]' },
-          { label: 'Car', val: macros?.carbs || 0, color: 'bg-indigo-400' },
-          { label: 'Fat', val: macros?.fats || 0, color: 'bg-rose-400' }
-        ].map(m => (
-          <div key={m.label} className="space-y-1.5">
-            <div className="flex justify-between items-center text-[8px] font-black text-slate-400 uppercase tracking-tighter">
-              <span>{m.label}</span>
-              <span>{m.val}%</span>
-            </div>
-            <div className="h-1 w-full bg-slate-100 rounded-full overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${m.val}%` }}
-                transition={{ duration: 1, ease: 'easeOut' }}
-                className={`h-full ${m.color}`}
-              />
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Current Meal - Horizontal Scrollable */}
-      <div className="mt-4 pt-3 border-t border-slate-50 relative z-10">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-[9px] font-black text-[#2FC8B9] uppercase tracking-widest">⏰ {mealLabel} Options</span>
-          <span className="text-[8px] font-black text-slate-300 uppercase tracking-wider">
-            {currentMeals.length} items
-          </span>
-        </div>
-        {currentMeals.length > 0 ? (
-          <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1">
-            {currentMeals.map((meal, idx) => (
-              <div
-                key={idx}
-                className="min-w-[130px] max-w-[150px] bg-slate-50 rounded-xl p-2.5 border border-slate-100 shrink-0 hover:border-[#2FC8B9]/30 transition-colors"
-              >
-                <p className="text-[10px] font-black text-slate-800 leading-tight truncate">{meal.name}</p>
-                <div className="flex items-center gap-1 mt-1">
-                  <span className="text-[8px] font-bold text-orange-500">{meal.calories || 0} kcal</span>
-                  <span className="text-[8px] text-slate-300">·</span>
-                  <span className="text-[8px] font-bold text-[#2FC8B9]">{meal.protein || 0}g P</span>
-                </div>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <button
-            onClick={() => navigate('/diet-plan')}
-            className="w-full text-center py-2 text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-[#2FC8B9] transition-colors"
-          >
-            No {mealLabel.toLowerCase()} items scheduled → View Full Plan
-          </button>
-        )}
-      </div>
-    </motion.div>
-  );
-};
-
-
-
-// Feature Card Component with 3D Visual Elements
-const FeatureCard = ({ title, description, link, status, icon: Icon, emoji }) => {
-  return (
-    <Link to={link} className="group">
-      <div className="bg-white rounded-[2.5rem] h-full flex flex-col overflow-hidden border border-slate-100 shadow-[0_10px_40px_rgba(0,0,0,0.03)] hover:shadow-[0_25px_60px_-15px_rgba(0,0,0,0.1)] transition-all duration-500 transform hover:-translate-y-2">
-        <div className="h-44 bg-slate-50 relative overflow-hidden group-hover:bg-[#2FC8B9]/5 transition-colors">
-          {/* Subtle Background Pattern */}
-          <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#000_1px,transparent_1px)] [background-size:20px_20px]"></div>
-
-          {/* 3D Floating Elements */}
-          <div className="absolute top-1/2 right-8 transform -translate-y-1/2">
-            <div className="relative w-24 h-24 group-hover:scale-110 transition-transform duration-700">
-              <div className="absolute inset-0 bg-white shadow-[0_15px_35px_rgba(0,0,0,0.08)] rounded-[2rem] flex items-center justify-center border border-slate-100 group-hover:rotate-6 transition-transform">
-                <span className="text-5xl filter drop-shadow-sm">{emoji}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Icon Badge */}
-          <div className="absolute top-6 left-6 z-10">
-            <div className="w-14 h-14 rounded-2xl bg-[#2FC8B9]/10 flex items-center justify-center shadow-inner group-hover:bg-[#2FC8B9]/20 transition-all border border-[#2FC8B9]/10">
-              <Icon className="w-7 h-7 text-[#2FC8B9]" />
-            </div>
-          </div>
-
-          {/* Status Badge */}
-          {status && (
-            <div className="absolute top-6 right-6 z-10">
-              <span className="px-3 py-1 bg-white rounded-full text-[9px] font-black text-black shadow-sm uppercase tracking-widest border border-slate-100">
-                {status}
-              </span>
+    <div
+      onClick={() => onClick && onClick({ ...item, image })}
+      className={`min-w-[180px] rounded-[2.2rem] p-4 group transition-all border flex flex-col snap-start cursor-pointer bg-white border-slate-50/50 hover:bg-white hover:shadow-xl hover:shadow-slate-100`}>
+      <div className="relative h-40 mb-3">
+        <div className="w-full h-full rounded-[1.5rem] overflow-hidden bg-slate-50">
+          {image ? (
+            <img
+              src={item?.imageUrl || image}
+              alt={item?.name}
+              className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&q=80';
+              }}
+            />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-slate-200">
+              <Utensils className="w-8 h-8 opacity-10" />
             </div>
           )}
         </div>
-
-        <div className="p-8 flex-1 flex flex-col">
-          <h3 className="text-xl font-black text-black mb-2 tracking-tight">
-            {title}
-          </h3>
-          <p className="text-xs text-slate-400 font-bold leading-relaxed flex-1">{description}</p>
-          <div className="mt-6 flex items-center text-black group-hover:text-[#2FC8B9] text-[10px] font-black uppercase tracking-[0.25em] transition-colors">
-            <span>Explore Now</span>
-            <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-2 transition-transform" />
-          </div>
+        <div className="absolute top-2.5 right-2.5 px-2.5 py-1.5 bg-white/90 backdrop-blur-md rounded-full text-[9px] font-black text-black shadow-sm flex items-center gap-1">
+          {(item?.totalNutrition?.calories || item?.nutrition?.calories || item?.calories || 0)} <span className="text-slate-400 text-[8px] font-bold">KCAL</span>
         </div>
       </div>
-    </Link>
-  );
-};
-
-// Quick Action Card Component
-const QuickActionCard = ({ icon: Icon, title, subtitle, link, comingSoon }) => {
-  const content = (
-    <div className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm hover:shadow-xl hover:border-[#2FC8B9]/20 transition-all duration-500 group relative overflow-hidden h-full">
-      <div className="w-14 h-14 rounded-2xl bg-black flex items-center justify-center mb-6 group-hover:rotate-6 transition-all shadow-lg group-hover:shadow-[#2FC8B9]/20">
-        <Icon className="w-7 h-7 text-[#2FC8B9]" />
+      <div className="px-1">
+        <h4 className="text-base font-black text-black mb-1 truncate tracking-tight">{item?.name || item?.foodItems?.[0]?.name || 'Healthy Dish'}</h4>
+        <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{tag}</div>
       </div>
-      <h4 className="font-black text-black text-base mb-1 tracking-tight">{title}</h4>
-      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{subtitle}</p>
-      {comingSoon && (
-        <div className="absolute top-6 right-6">
-          <span className="px-2.5 py-1 bg-slate-100 text-slate-500 text-[8px] font-black rounded-full border border-slate-200 uppercase tracking-tighter">
-            SOON
-          </span>
-        </div>
-      )}
     </div>
   );
-  return comingSoon ? content : <Link to={link}>{content}</Link>;
 };
 
-// Get Started Step Component
-const GetStartedStep = ({ number, title, description, completed, active, icon: Icon }) => {
-  return (
-    <div className={`relative flex items-center gap-6 p-6 rounded-[2rem] transition-all duration-500 ${active ? 'bg-[#2FC8B9] border border-[#2FC8B9]/10 shadow-2xl scale-[1.02]' :
-      completed ? 'bg-white border border-slate-100 opacity-60' :
-        'bg-slate-50 border border-slate-100'
-      }`}>
-      <div className={`relative flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center font-black text-xl transition-all ${completed ? 'bg-black text-white' :
-        active ? 'bg-white text-[#2FC8B9] animate-pulse shadow-[0_0_20px_rgba(255,255,255,0.3)]' :
-          'bg-white text-slate-300 border border-slate-100'
+const LabMetricsItem = ({ label, value, status, icon: Icon = Activity }) => (
+  <div className="p-4 bg-[#F8F9FA]/50 rounded-[2rem] flex items-center justify-between mb-3 border border-transparent hover:border-slate-100 hover:bg-white transition-all">
+    <div className="flex items-center gap-4">
+      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-slate-400 shadow-sm">
+        <Icon className="w-4 h-4" />
+      </div>
+      <div>
+        <h4 className="text-[15px] font-black text-[#1A1A1A] leading-tight">{label}</h4>
+      </div>
+    </div>
+    <div className="text-right">
+      <div className="text-[15px] font-black text-[#1A1A1A] leading-tight mb-0.5">{value}</div>
+      <div className={`text-[9px] font-black uppercase tracking-widest ${status?.toLowerCase().includes('high') || status?.toLowerCase().includes('risk') ? 'text-black' : 'text-[#888888]'
         }`}>
-        {completed ? <CheckCircle className="w-8 h-8" /> :
-          active ? <Icon className="w-8 h-8" /> :
-            number}
+        {status}
       </div>
-      <div className="flex-1 min-w-0">
-        <h4 className={`text-base font-black uppercase tracking-tight mb-0.5 ${active ? 'text-white' : 'text-black'}`}>
-          {title}
-        </h4>
-        <p className={`text-[11px] font-bold uppercase tracking-wider ${active ? 'text-black/60' : 'text-slate-400'}`}>
-          {description}
-        </p>
-      </div>
-      {completed && (
-        <div className="absolute -top-2 -right-2">
-          <div className="w-8 h-8 bg-white rounded-full flex items-center justify-center border-2 border-[#2FC8B9] shadow-lg">
-            <CheckCircle className="w-5 h-5 text-[#2FC8B9]" />
-          </div>
+    </div>
+  </div>
+);
+
+const DiabetesMonitor = ({ onLog }) => {
+  const [reading, setReading] = useState('');
+  const [type, setType] = useState('Fasting');
+  const [loading, setLoading] = useState(false);
+
+  const handleSave = async () => {
+    if (!reading) return;
+    setLoading(true);
+    try {
+      await api.post('health/glucose', { value: reading, type, date: new Date() });
+      setReading('');
+      if (onLog) onLog();
+    } catch (err) {
+      console.error("Failed to log glucose:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-sm mb-12">
+      <div className="flex items-center justify-between mb-2">
+        <div>
+          <h2 className="text-2xl font-black text-black uppercase tracking-tight">Diabetes Monitor</h2>
+          <p className="text-sm font-bold text-slate-400">Track glucose, blood sugar & HbA1c</p>
         </div>
-      )}
+        <button className="flex items-center gap-2 bg-white px-6 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest border border-slate-100 shadow-sm hover:shadow-md transition-all">
+          <Plus className="w-4 h-4" />
+          Log Reading
+        </button>
+      </div>
+
+      <div className="mt-8 flex flex-col lg:flex-row items-center gap-4 bg-slate-50 p-4 rounded-full border border-slate-100 mb-10">
+        <div className="flex items-center gap-2 flex-1">
+          {['Fasting', 'Post-Meal', 'Random'].map(t => (
+            <button
+              key={t}
+              onClick={() => setType(t)}
+              className={`px-8 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${type === t ? 'bg-white text-black shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+            >
+              {t}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-3 w-full lg:w-auto">
+          <input
+            type="number"
+            placeholder="Glucose (mg/dL)"
+            value={reading}
+            onChange={(e) => setReading(e.target.value)}
+            className="flex-1 lg:w-48 bg-transparent px-6 py-2 content-center text-sm font-bold focus:outline-none placeholder:text-slate-300"
+          />
+          <button
+            onClick={handleSave}
+            disabled={loading}
+            className="bg-slate-900 text-white px-10 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest hover:bg-black transition-all disabled:opacity-50"
+          >
+            {loading ? '...' : 'Save'}
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-slate-50 rounded-[2rem] p-8 text-center border border-slate-100">
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">Glucose</p>
+          <div className="flex items-baseline justify-center gap-2 mb-2">
+            <span className="text-3xl font-black text-black">110</span>
+            <span className="text-[10px] font-bold text-slate-400">mg/dL</span>
+          </div>
+          <span className="px-5 py-1.5 bg-white text-black rounded-full text-[9px] font-black border border-slate-100 uppercase tracking-widest">Normal</span>
+        </div>
+        <div className="bg-slate-50 rounded-[2rem] p-8 text-center border border-slate-100">
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">Avg Sugar</p>
+          <div className="flex items-baseline justify-center gap-2 mb-2">
+            <span className="text-3xl font-black text-black">126</span>
+            <span className="text-[10px] font-bold text-slate-400">mg/dL</span>
+          </div>
+          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">-3%</span>
+        </div>
+        <div className="bg-slate-50 rounded-[2rem] p-8 text-center border border-slate-100">
+          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">HbA1c</p>
+          <div className="flex items-baseline justify-center gap-2 mb-2">
+            <span className="text-3xl font-black text-black">5.8</span>
+            <span className="text-[10px] font-bold text-slate-400">%</span>
+          </div>
+          <span className="px-5 py-1.5 bg-white text-black rounded-full text-[9px] font-black border border-slate-100 uppercase tracking-widest">Good</span>
+        </div>
+      </div>
     </div>
   );
 };
+
+const DailyMetricsCard = () => {
+  const { user } = useAuth();
+  const { dashboardData, nutritionData, wearableData } = useData();
+
+  // Real data with fallback to 0 or --
+  const weight = user?.profile?.weight || '--';
+  const steps = wearableData?.todayMetrics?.steps || dashboardData?.stepsToday || '0';
+  const water = nutritionData?.totalWater || nutritionData?.waterIntake || '0';
+  const navigate = useNavigate();
+
+  return (
+    <div className="bg-white rounded-[28px] p-4 lg:p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col h-full border border-slate-100/50">
+      <div className="mb-8">
+        <h3 className="text-xl font-medium text-[#1a1a1a]">Daily Vitals</h3>
+        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">QUICK LOG</p>
+      </div>
+
+      <div className="space-y-4 flex-1">
+        <div className="bg-[#F5F5F7] p-5 rounded-[24px] border border-white flex items-center justify-between group hover:bg-white hover:shadow-sm transition-all">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
+              <Target className="w-5 h-5 text-black" />
+            </div>
+            <div>
+              <p className="text-[9px] font-bold text-slate-400 uppercase">WEIGHT</p>
+              <p className="text-lg font-medium text-black">{weight} <span className="text-xs font-normal text-slate-400">kg</span></p>
+            </div>
+          </div>
+          <button onClick={() => navigate('/log-vitals/weight')} className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors">
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="bg-[#F5F5F7] p-5 rounded-[24px] border border-white flex items-center justify-between group hover:bg-white hover:shadow-sm transition-all">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
+              <Activity className="w-5 h-5 text-black" />
+            </div>
+            <div>
+              <p className="text-[9px] font-bold text-slate-400 uppercase">STEPS</p>
+              <p className="text-lg font-medium text-black">{Number(steps).toLocaleString()} <span className="text-xs font-normal text-slate-400">steps</span></p>
+            </div>
+          </div>
+          <button onClick={() => navigate('/log-vitals/steps')} className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors">
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+
+        <div className="bg-[#F5F5F7] p-5 rounded-[24px] border border-white flex items-center justify-between group hover:bg-white hover:shadow-sm transition-all">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
+              <Droplet className="w-5 h-5 text-slate-400" />
+            </div>
+            <div>
+              <p className="text-[9px] font-bold text-slate-400 uppercase">WATER</p>
+              <p className="text-lg font-medium text-black">{water} <span className="text-xs font-normal text-slate-400">L</span></p>
+            </div>
+          </div>
+          <button onClick={() => navigate('/nutrition')} className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors">
+            <Plus className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const MealDetailModal = ({ meal, onClose, onAdd }) => {
+  const [loading, setLoading] = useState(true);
+  const [aiData, setAiData] = useState(null);
+
+  useEffect(() => {
+    const fetchAiData = async () => {
+      setLoading(true);
+      try {
+        const response = await api.post('nutrition/quick-check', {
+          foodDescription: `${meal.name} ${meal.quantity || ''}`
+        });
+        if (response.data.success) {
+          setAiData(response.data.data);
+        }
+      } catch (err) {
+        console.error("Failed to fetch AI data:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    if (meal) fetchAiData();
+  }, [meal]);
+
+  if (!meal) return null;
+
+  const data = aiData || {
+    foodItem: {
+      name: meal.name,
+      quantity: meal.quantity || '1 serving',
+      nutrition: {
+        calories: meal.calories || 0,
+        protein: meal.protein || 0,
+        carbs: meal.carbs || 0,
+        fats: meal.fats || 0,
+        fiber: 0,
+        sugar: 0,
+        sodium: 0
+      }
+    },
+    healthScore10: 7,
+    healthBenefitsSummary: 'Loading dietary insights...',
+    isHealthy: true
+  };
+
+  const healthScore = Math.round(data.healthScore10 * 10 || 70);
+  const nutrition = data.foodItem.nutrition;
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-6">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+      />
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        className="relative w-full max-w-xl bg-white rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+      >
+        {/* Header Section */}
+        <div className="p-8 pb-4 flex items-start justify-between">
+          <div className="flex items-center gap-6">
+            <div className="relative w-20 h-20 flex items-center justify-center">
+              <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
+                <circle cx="50" cy="50" r="45" fill="none" stroke="#F5F5F7" strokeWidth="8" />
+                <circle
+                  cx="50" cy="50" r="45" fill="none" stroke="#1A1A1A" strokeWidth="8"
+                  strokeDasharray={283}
+                  strokeDashoffset={283 - (283 * healthScore) / 100}
+                  strokeLinecap="round"
+                  className="transition-all duration-1000 ease-out"
+                />
+              </svg>
+              <div className="flex flex-col items-center justify-center z-10">
+                <span className="text-xl font-black text-black">{healthScore}</span>
+                <span className="text-[8px] font-bold text-slate-400">/ 100</span>
+              </div>
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <span className="px-3 py-1 bg-slate-100 text-black text-[9px] font-black uppercase tracking-widest rounded-full">
+                  {data.isHealthy ? 'Healthy Choice' : 'Indulgence'}
+                </span>
+                {nutrition.calories < 200 && (
+                  <span className="px-3 py-1 bg-slate-900 text-white text-[9px] font-black uppercase tracking-widest rounded-full">
+                    Low Calorie
+                  </span>
+                )}
+              </div>
+              <h2 className="text-3xl font-black text-black tracking-tight">{data.foodItem.name}</h2>
+              <p className="text-sm font-bold text-slate-400 mt-1 uppercase tracking-widest">
+                ⚡ {data.foodItem.quantity}
+              </p>
+            </div>
+          </div>
+          <button onClick={onClose} className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center hover:bg-slate-100 transition-all border border-slate-100">
+            <Plus className="w-5 h-5 rotate-45 text-slate-400" />
+          </button>
+        </div>
+
+        <div className="px-8 overflow-y-auto pb-8 scrollbar-hide">
+          {/* Main Image */}
+          <div className="relative h-64 rounded-3xl overflow-hidden mb-8 border border-slate-100">
+            <ImageWithFallback
+              src={meal.image || (data.imageUrl)}
+              foodName={meal.name}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute bottom-4 right-4 px-4 py-1.5 bg-white/90 backdrop-blur-md rounded-full text-[9px] font-black uppercase tracking-widest text-black shadow-sm border border-white">
+              Analyzed Image
+            </div>
+          </div>
+
+          {/* Macros Grid */}
+          <div className="grid grid-cols-4 gap-4 p-6 bg-[#FDFDFD] rounded-[32px] border border-slate-100 shadow-sm mb-6">
+            <div className="text-center">
+              <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-2 border border-slate-100">
+                <Flame className="w-4 h-4 text-black" />
+              </div>
+              <div className="text-lg font-black text-black leading-none">{Math.round(nutrition.calories)}</div>
+              <div className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1">Calories</div>
+            </div>
+            <div className="text-center">
+              <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-2 border border-slate-100">
+                <Zap className="w-4 h-4 text-black" />
+              </div>
+              <div className="text-lg font-black text-black leading-none">{Math.round(nutrition.protein)}g</div>
+              <div className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1">Protein</div>
+            </div>
+            <div className="text-center">
+              <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-2 border border-slate-100">
+                <Activity className="w-4 h-4 text-black" />
+              </div>
+              <div className="text-lg font-black text-black leading-none">{Math.round(nutrition.carbs)}g</div>
+              <div className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1">Carbs</div>
+            </div>
+            <div className="text-center">
+              <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center mx-auto mb-2 border border-slate-100">
+                <Heart className="w-4 h-4 text-black" />
+              </div>
+              <div className="text-lg font-black text-black leading-none">{Math.round(nutrition.fats)}g</div>
+              <div className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1">Fats</div>
+            </div>
+
+            <div className="col-span-4 mt-4 pt-4 border-t border-slate-50 flex justify-center gap-6">
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Fiber: <span className="text-black">{nutrition.fiber || 0}g</span></span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sugar: <span className="text-black">{nutrition.sugar || 0}g</span></span>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-1.5 h-1.5 rounded-full bg-slate-200" />
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Sodium: <span className="text-black">{nutrition.sodium || 0}mg</span></span>
+              </div>
+            </div>
+          </div>
+
+          {/* Health Benefits Section */}
+          <div className="p-6 bg-slate-50 rounded-[32px] border border-slate-100">
+            <div className="flex items-center gap-3 mb-3">
+              <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm">
+                <Info className="w-4 h-4 text-black" />
+              </div>
+              <h3 className="text-[11px] font-black uppercase tracking-widest text-black">Health Benefits</h3>
+            </div>
+            <p className="text-sm font-medium text-slate-600 leading-relaxed">
+              {data.healthBenefitsSummary}
+            </p>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="p-8 pt-0">
+          <button
+            onClick={() => onAdd(data.foodItem)}
+            className="w-full py-5 bg-slate-900 hover:bg-black text-white rounded-[24px] font-black uppercase tracking-widest shadow-xl shadow-black/10 transition-all flex items-center justify-center gap-3"
+          >
+            <Plus className="w-5 h-5" /> Add to Diet Plan
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
+
+// --- Main Component ---
 
 export default function DashboardEnhanced() {
   const { user } = useAuth();
+  const { dashboardData, nutritionData, wearableData, fetchDashboard, fetchNutrition, fetchDietPlan, fetchWearable } = useData();
   const navigate = useNavigate();
-  const { dashboardData, loading, fetchDashboard, fetchNutrition, nutritionData, fetchDietPlan } = useData();
-  const [completionProgress, setCompletionProgress] = useState(0);
-  const [isInitialLoad, setIsInitialLoad] = useState(!dashboardData);
-  const [selectedMetric, setSelectedMetric] = useState(null);
-  const [isMetricDropdownOpen, setIsMetricDropdownOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [sleepTrackerOpen, setSleepTrackerOpen] = useState(false);
-  const [selectedDate, setSelectedDate] = useState(new Date());
-  const [activeDietPlan, setActiveDietPlan] = useState(null);
-  const [storageUpdateTrigger, setStorageUpdateTrigger] = useState(0);
 
-  // Listen for background localStorage changes (e.g. from SleepTracker DB Sync)
-  useEffect(() => {
-    const handleStorageChange = () => {
-      setStorageUpdateTrigger(prev => prev + 1);
-    };
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
-
-  // Notification state
-  const [notifPanelOpen, setNotifPanelOpen] = useState(false);
-  const bellRef = useRef(null);
-  const notifCount = useNotificationCount();
-
-  // Report comparison state
-  const [reportComparison, setReportComparison] = useState(null);
-  const [comparisonLoading, setComparisonLoading] = useState(true);
-
-  const handlePrevDate = () => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() - 1);
-    setSelectedDate(d);
-  };
-
-  const handleNextDate = () => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() + 1);
-    setSelectedDate(d);
-  };
-
-  // Get time-based greeting
-  const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Morning';
-    if (hour < 18) return 'Afternoon';
-    return 'Evening';
-  };
-
-  // Handle search submit - redirect to AI Chat with query
-  const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    if (searchQuery.trim()) {
-      navigate('/ai-chat', { state: { initialQuery: searchQuery } });
+  const [dietPlan, setDietPlan] = useState(null);
+  const [loggedMeals, setLoggedMeals] = useState([]);
+  const [isDiabetic, setIsDiabetic] = useState(false);
+  const [selectedMealForModal, setSelectedMealForModal] = useState(null);
+  const [showMealModal, setShowMealModal] = useState(false);
+  const [nutrientMode, setNutrientMode] = useState('Macro');
+  const [activeMealTab, setActiveMealTab] = useState('breakfast');
+  const [activeDiabetesTab, setActiveDiabetesTab] = useState('Fasting');
+  const [activeTrendTab, setActiveTrendTab] = useState('Calories');
+  const [scrollProgress, setScrollProgress] = useState(0);
+  const [completedTasks, setCompletedTasks] = useState(() => {
+    const saved = localStorage.getItem('carePlanTasks');
+    if (!saved) return [0, 2];
+    try {
+      const { tasks, date } = JSON.parse(saved);
+      const today = new Date().toISOString().split('T')[0];
+      if (date === today) return tasks;
+      return []; // Reset for new day
+    } catch (e) {
+      return [0, 2];
     }
-  };
+  });
+
+  useEffect(() => {
+    const today = new Date().toISOString().split('T')[0];
+    localStorage.setItem('carePlanTasks', JSON.stringify({
+      tasks: completedTasks,
+      date: today
+    }));
+  }, [completedTasks]);
+  const [trendTimeRange, setTrendTimeRange] = useState('1W');
+  const scrollContainerRef = useRef(null);
+  const scrollTrackRef = useRef(null);
+  const isDragging = useRef(false);
 
   useEffect(() => {
     const loadData = async () => {
-      const [dash, diet] = await Promise.all([
-        fetchDashboard(),
-        fetchDietPlan()
-      ]);
-      if (diet) setActiveDietPlan(diet);
-      setIsInitialLoad(false);
+      try {
+        await Promise.all([
+          fetchDashboard(),
+          fetchNutrition(new Date().toISOString().split('T')[0]),
+          fetchWearable(),
+          fetchDietPlan().then(plan => setDietPlan(plan)),
+          nutritionService.getTodayLogs().then(res => setLoggedMeals(res.data?.foodLogs || res.data?.logs || []))
+        ]);
+
+        const diabeticStatus = user?.profile?.medicalHistory?.conditions?.includes('Diabetes') ||
+          user?.profile?.diabetesProfile?.type ||
+          user?.profile?.medicalStatus?.isDiabetic;
+        setIsDiabetic(!!diabeticStatus);
+      } catch (err) {
+        console.error("Dashboard mount load error:", err);
+      }
     };
     loadData();
-  }, [fetchDashboard, fetchDietPlan]);
+  }, [user]);
 
-  // Fetch report comparison data
+  // Calculate current meal based on time for initial state
   useEffect(() => {
-    const fetchComparison = async () => {
-      try {
-        setComparisonLoading(true);
-        const { data } = await healthService.getReportComparison();
-        setReportComparison(data);
-      } catch (error) {
-        console.error('Failed to fetch report comparison:', error);
-      } finally {
-        setComparisonLoading(false);
-      }
-    };
-    fetchComparison();
+    const hour = new Date().getHours();
+    if (hour < 11) setActiveMealTab('breakfast');
+    else if (hour < 16) setActiveMealTab('lunch');
+    else setActiveMealTab('dinner');
   }, []);
 
-  // Fetch nutrition data when selectedDate changes
-  useEffect(() => {
-    const dateStr = selectedDate.toISOString().split('T')[0];
-    fetchNutrition(dateStr);
-  }, [selectedDate, fetchNutrition]);
+  const calorieDelta = (nutritionData?.totalCalories || 0) - (nutritionData?.calorieGoal || 2000);
+  const isOverLimit = calorieDelta > 0;
 
-  // Watch for cache invalidation (dashboardData becomes null)
-  useEffect(() => {
-    if (!dashboardData && !loading.dashboard && !isInitialLoad) {
-      fetchDashboard();
+  const handleScroll = () => {
+    if (scrollContainerRef.current && !isDragging.current) {
+      const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
+      const progress = (scrollLeft / (scrollWidth - clientWidth)) * 100;
+      setScrollProgress(progress);
     }
-  }, [dashboardData, loading.dashboard, fetchDashboard, isInitialLoad]);
+  };
 
-  // Initialize selected metric
-  useEffect(() => {
-    if (dashboardData?.recentReports?.length > 0 && !selectedMetric) {
-      // Find first report with metrics
-      const reportWithMetrics = dashboardData.recentReports.find(r => r.aiAnalysis?.metrics);
-      if (reportWithMetrics) {
-        const firstKey = Object.keys(reportWithMetrics.aiAnalysis.metrics)[0];
-        if (firstKey) setSelectedMetric(firstKey);
-      }
-    }
-  }, [dashboardData, selectedMetric]);
+  const handleDrag = (e) => {
+    if (!isDragging.current || !scrollTrackRef.current || !scrollContainerRef.current) return;
+    const track = scrollTrackRef.current.getBoundingClientRect();
+    const x = e.clientX - track.left;
+    const scrollableWidth = scrollContainerRef.current.scrollWidth - scrollContainerRef.current.clientWidth;
+    const progress = Math.max(0, Math.min(100, (x / track.width) * 100));
+    setScrollProgress(progress);
+    scrollContainerRef.current.scrollLeft = (progress / 100) * scrollableWidth;
+  };
 
-  // Refetch data when user returns to dashboard (page becomes visible)
   useEffect(() => {
-    const handleVisibilityChange = () => {
-      if (!document.hidden && dashboardData) {
-        // Force refresh when page becomes visible again
-        fetchDashboard(true);
-      }
+    const mouseUp = () => { isDragging.current = false; };
+    const mouseMove = (e) => handleDrag(e);
+    window.addEventListener('mouseup', mouseUp);
+    window.addEventListener('mousemove', mouseMove);
+    return () => {
+      window.removeEventListener('mouseup', mouseUp);
+      window.removeEventListener('mousemove', mouseMove);
     };
+  }, []);
 
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-  }, [fetchDashboard, dashboardData]);
-
-  useEffect(() => {
-    if (dashboardData) {
-      let completed = 0;
-      const steps = 4;
-      if (user?.profile?.age && user?.profile?.gender) completed++;
-      if (dashboardData.recentReports?.length > 0) completed++;
-      if (dashboardData.nutritionTracked) completed++;
-      if (dashboardData.wearableConnected) completed++;
-      const progress = Math.round((completed / steps) * 100);
-      setTimeout(() => setCompletionProgress(progress), 300);
+  const scrollBy = (direction) => {
+    if (scrollContainerRef.current) {
+      const amount = 300;
+      scrollContainerRef.current.scrollBy({ left: direction * amount, behavior: 'smooth' });
     }
-  }, [dashboardData, user]);
-
-  // Only show skeleton on initial load with no cached data
-  if (isInitialLoad && loading.dashboard && !dashboardData) {
-    return <DashboardSkeleton />;
-  }
-
-  // DIET ADHERENCE CALCULATION
-  const nutritionLogs = dashboardData?.nutritionData?.todayLogs || [];
-  const planMealsLogged = nutritionLogs.filter(log => log.source === 'meal_plan').length;
-  const totalLogged = nutritionLogs.length;
-  const totalRecommendedMeals = 5;
-  const adherenceScore = Math.min(Math.round((planMealsLogged / totalRecommendedMeals) * 100), 100);
-
-  // Dynamic Motivation Message
-  const motivationMessage =
-    adherenceScore >= 100 ? "Legendary! Perfect score! 🏆" :
-      adherenceScore >= 80 ? "Almost perfect! Just one more! �" :
-        adherenceScore >= 60 ? "You're on fire! Keep it up! 🔥" :
-          adherenceScore >= 40 ? "Great consistency! You're winning. �" :
-            adherenceScore >= 20 ? "Good start! Log your next meal! �" :
-              "Your plan is ready. Let's start! ✨";
-
-  const nutritionStatus = adherenceScore >= 80 ? 'Perfect' : adherenceScore >= 40 ? 'On Track' : 'Needs Focus';
-
-  // MACRO PROGRESS CALCULATION
-  const nutritionStats = dashboardData?.nutritionData || {};
-  const macroGoals = {
-    calories: nutritionStats.calorieGoal || 2000,
-    protein: user?.nutritionGoal?.proteinGoal || 150,
-    carbs: user?.nutritionGoal?.carbsGoal || 250,
-    fats: user?.nutritionGoal?.fatGoal || 65
   };
 
-  const macroPercentages = {
-    calories: Math.min(Math.round((nutritionStats.totalCalories / macroGoals.calories) * 100), 100),
-    protein: Math.min(Math.round((nutritionStats.protein / macroGoals.protein) * 100), 100),
-    carbs: Math.min(Math.round((nutritionStats.carbs / macroGoals.carbs) * 100), 100),
-    fats: Math.min(Math.round((nutritionStats.fats / macroGoals.fats) * 100), 100)
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning';
+    if (hour < 17) return 'Good afternoon';
+    return 'Good evening';
   };
-
-  // CHECK FOR MISSED MEALS
-  const currentHour = new Date().getHours();
-  let missedMealName = null;
-  const loggedTypes = nutritionLogs.map(l => l.mealType);
-
-  if (currentHour >= 11 && !loggedTypes.includes('breakfast')) missedMealName = 'Breakfast';
-  else if (currentHour >= 16 && !loggedTypes.includes('lunch')) missedMealName = 'Lunch';
-  else if (currentHour >= 22 && !loggedTypes.includes('dinner')) missedMealName = 'Dinner';
-
-
-
-  const hasReports = dashboardData?.recentReports?.length > 0;
-  const hasProfile = user?.profile?.age && user?.profile?.gender;
-  const hasNutrition = dashboardData?.nutritionTracked;
-  const hasWearable = dashboardData?.wearableConnected;
-  const healthScore = dashboardData?.user?.healthMetrics?.healthScore || dashboardData?.latestAnalysis?.healthScore;
-  const isDiabetic = user?.profile?.medicalHistory?.conditions?.includes('Diabetes') || user?.profile?.diabetesProfile?.type;
-  const glucoseData = JSON.parse(localStorage.getItem('glucoseData') || '[]');
-  const latestGlucose = glucoseData.length > 0 ? glucoseData[0].value : null;
-
-  // Extract all unique metrics from reports
-  const allAvailableMetrics = {};
-  if (dashboardData?.recentReports) {
-    dashboardData.recentReports.forEach(report => {
-      if (report.aiAnalysis?.metrics) {
-        Object.entries(report.aiAnalysis.metrics).forEach(([key, data]) => {
-          if (!allAvailableMetrics[key]) {
-            allAvailableMetrics[key] = {
-              name: key.replace(/([A-Z])/g, ' $1').trim(),
-              unit: data.unit || '',
-              history: []
-            };
-          }
-        });
-      }
-    });
-  }
-
-  // Populate history for each metric
-  Object.keys(allAvailableMetrics).forEach(metricKey => {
-    dashboardData?.recentReports?.forEach(report => {
-      const metricData = report.aiAnalysis?.metrics?.[metricKey];
-      if (metricData) {
-        allAvailableMetrics[metricKey].history.push({
-          date: new Date(report.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          value: parseFloat(metricData.value) || 0,
-          fullDate: new Date(report.createdAt)
-        });
-      }
-    });
-    // Sort history by date
-    allAvailableMetrics[metricKey].history.sort((a, b) => a.fullDate - b.fullDate);
-  });
-
-  const availableMetricKeys = Object.keys(allAvailableMetrics);
-  const currentMetricKey = selectedMetric || availableMetricKeys[0];
-  const currentMetric = allAvailableMetrics[currentMetricKey];
 
   return (
-    <div className="min-h-screen bg-white font-roboto">
-      {/* Subtle refresh indicator - only shows when refreshing with cached data */}
-      {loading.dashboard && dashboardData && (
-        <div className="fixed top-20 right-4 z-50 bg-white rounded-full shadow-lg px-4 py-2 flex items-center gap-2 animate-slide-in-right border border-[#2FC8B9]/10">
-          <div className="w-4 h-4 border-2 border-[#2FC8B9]/30 border-t-[#2FC8B9] rounded-full animate-spin" />
-          <span className="text-sm text-slate-500 font-bold">Refreshing...</span>
+    <div className="min-h-screen bg-[#FDFDFD] pb-32 px-4 md:px-6 lg:px-16 pt-8 relative overflow-hidden">
+      {/* Decorative background glow */}
+      <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-slate-100/30 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+      <div className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-slate-100/20 rounded-full blur-[100px] translate-x-1/2 pointer-events-none" />
+
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 md:mb-16 pt-4"
+      >
+        <div className="flex flex-col md:block">
+          <h1 className="text-3xl md:text-5xl font-light tracking-tight text-[#1a1a1a] whitespace-nowrap">
+            {getGreeting()}, <span className="font-medium">{user?.name?.split(' ')[0] || 'Mike'}!</span>
+          </h1>
+          <p className="text-[#666666] mt-1 md:mt-2 text-sm md:text-lg">Let's make this day productive.</p>
         </div>
-      )}
-
-      <div className="w-full mx-auto space-y-6 animate-fade-in pb-20 px-0 md:px-4">
-
-        {/* Mobile-Only Header - Compact */}
-        <div className="pt-4 space-y-3 md:hidden px-3">
-          {/* Welcome Message and Notification */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {/* Profile Picture - Clickable */}
-              <button
-                onClick={() => navigate('/profile')}
-                className="w-12 h-12 rounded-full overflow-hidden shadow-md border-2 border-[#2FC8B9] hover:scale-105 transition-transform flex-shrink-0"
-              >
-                {user?.profilePicture ? (
-                  <img src={user.profilePicture} alt={user?.name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full bg-black flex items-center justify-center text-white text-lg font-black">
-                    {user?.name?.[0]?.toUpperCase() || 'U'}
-                  </div>
-                )}
-              </button>
-
-              {/* Greeting and Stats */}
-              <div>
-                <h1 className="text-lg font-black text-black flex items-center gap-2">
-                  {getGreeting()}, <span className="text-[#2FC8B9]">{user?.name?.split(' ')[0] || 'there'}!</span>
-                </h1>
-                <div className="flex items-center gap-2 text-[10px] text-slate-500 uppercase tracking-widest font-black">
-                  <span>{nutritionData?.totalCalories || 0} cal</span>
-                  <span className="text-slate-300">•</span>
-                  <span className="text-emerald-500">
-                    {healthScore || 82}% Score
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Notification Bell */}
-            <div className="relative">
-              <button
-                ref={bellRef}
-                onClick={() => setNotifPanelOpen(!notifPanelOpen)}
-                className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center hover:shadow-lg transition-all"
-              >
-                <Bell className="w-5 h-5 text-slate-700" />
-                {notifCount > 0 && (
-                  <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-[9px] font-black animate-pulse">
-                    {notifCount > 9 ? '9+' : notifCount}
-                  </span>
-                )}
-              </button>
-              <NotificationPanel
-                isOpen={notifPanelOpen}
-                onClose={() => setNotifPanelOpen(false)}
-                triggerRef={bellRef}
-              />
-            </div>
-          </div>
-
-          {/* Upload Report Button */}
+        <div className="grid grid-cols-3 lg:flex items-center gap-2 lg:gap-3 pb-2 lg:pb-0 w-full lg:w-auto">
+          <button onClick={() => navigate('/nutrition', { state: { openLogMeal: true, mealType: 'Breakfast' } })} className="flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-1 py-3 lg:px-6 bg-white/60 backdrop-blur-md rounded-[20px] lg:rounded-full text-[9px] lg:text-sm font-black text-[#1a1a1a] hover:bg-white transition-all border border-white/60 shadow-sm">
+            <UtensilsCrossed className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-slate-500" /> <span>Log Meal</span>
+          </button>
+          <button onClick={() => navigate('/log-vitals/sleep')} className="flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-1 py-3 lg:px-6 bg-white/60 backdrop-blur-md rounded-[20px] lg:rounded-full text-[9px] lg:text-sm font-black text-[#1a1a1a] hover:bg-white transition-all border border-white/60 shadow-sm">
+            <Moon className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-slate-500" /> <span>Log Sleep</span>
+          </button>
           <button
             onClick={() => navigate('/upload')}
-            className="w-full bg-gradient-to-r from-[#2FC8B9] to-[#1db7a6] text-white rounded-2xl px-6 py-4 flex items-center justify-center gap-3 shadow-lg hover:shadow-xl transition-all active:scale-95"
+            className="flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-1 py-3 lg:px-6 bg-[#1a1a1a] text-white rounded-[20px] lg:rounded-full text-[9px] lg:text-sm font-black hover:bg-black transition-all shadow-md"
           >
-            <Upload className="w-5 h-5" />
-            <span className="text-sm font-black uppercase tracking-wider">Upload Report</span>
+            <Upload className="w-3.5 h-3.5 lg:w-4 lg:h-4" /> <span>Upload</span>
           </button>
-
-          {/* Metrics Row: Pedometer & Diet Adherence */}
-          <div className="grid grid-cols-1 gap-3">
-            <HealthScoreCard />
-            <DietAdherenceCard
-              score={adherenceScore}
-              status={nutritionStatus}
-              loggedCount={planMealsLogged}
-              totalLogged={totalLogged}
-              motivation={motivationMessage}
-              macros={macroPercentages}
-              missedMeal={missedMealName}
-              activeDietPlan={activeDietPlan}
-            />
-          </div>
         </div>
+      </motion.div>
 
-        {/* Enhanced Header with Greeting, Stats, and Search - Hidden on mobile */}
-        <div className="pt-8 space-y-6 hidden md:block px-3 md:px-0">
-          {/* Top Row: Profile, Greeting, Stats, Notification */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              {/* Profile Picture */}
-              <button
-                onClick={() => navigate('/profile')}
-                className="w-16 h-16 rounded-[1.5rem] overflow-hidden shadow-inner border-2 border-[#2FC8B9]/10 relative group hover:scale-105 transition-transform flex-shrink-0"
-              >
-                <div className="absolute inset-0 bg-[#2FC8B9]/5 rounded-[1.5rem] blur-xl opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                {user?.profilePicture ? (
-                  <img src={user.profilePicture} alt={user?.name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full bg-slate-50 flex items-center justify-center text-[#2FC8B9] text-2xl font-black">
-                    {user?.name?.[0]?.toUpperCase() || 'U'}
-                  </div>
-                )}
-              </button>
-
-              {/* Greeting and Stats */}
-              <div>
-                <h1 className="text-3xl font-black text-black tracking-tighter uppercase leading-none">
-                  Welcome, {user?.name?.split(' ')[0] || 'User'}
-                </h1>
-                <div className="flex items-center gap-4 mt-2 text-[10px] text-slate-500 font-bold uppercase tracking-[0.2em]">
-                  <span className="flex items-center gap-1.5"><Flame className="w-3.5 h-3.5 text-orange-500" /> {dashboardData?.nutritionData?.totalCalories || 0} kcal burned</span>
-                  <span className="w-1.5 h-1.5 rounded-full bg-slate-200"></span>
-                  <span className="flex items-center gap-1.5"><Activity className="w-3.5 h-3.5 text-[#2FC8B9]" /> {dashboardData?.user?.healthMetrics?.healthScore || 82}% Efficiency</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Notification & Actions */}
-            <div className="flex items-center gap-3 relative">
-              <button
-                ref={bellRef}
-                onClick={() => setNotifPanelOpen(!notifPanelOpen)}
-                className="w-12 h-12 rounded-2xl bg-white border border-slate-100 shadow-sm flex items-center justify-center text-slate-400 hover:text-black hover:border-black transition-all group relative"
-              >
-                <Bell className="w-6 h-6 group-hover:animate-swing" />
-                {notifCount > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 rounded-full flex items-center justify-center text-white text-[9px] font-black animate-pulse">
-                    {notifCount > 9 ? '9+' : notifCount}
-                  </span>
-                )}
-              </button>
-              <NotificationPanel
-                isOpen={notifPanelOpen}
-                onClose={() => setNotifPanelOpen(false)}
-                triggerRef={bellRef}
-              />
-            </div>
+      {/* Today's Focus Banner */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="hidden md:flex bg-white/80 backdrop-blur-xl rounded-[32px] p-6 lg:p-8 flex-col md:flex-row items-start md:items-center justify-between relative overflow-hidden group gap-6 border border-white/50 shadow-[0_4px_24px_rgba(0,0,0,0.02)] mb-10"
+      >
+        <div className="absolute right-0 top-0 w-64 h-64 bg-slate-100/30 rounded-full blur-3xl" />
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 w-full relative z-10">
+          <div className="w-16 h-16 rounded-full bg-[#F5F5F7] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
+            <AlertCircle className="w-8 h-8 text-black" />
           </div>
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <h3 className="text-xl font-medium text-[#1a1a1a]">{isOverLimit ? 'Calorie Alert' : 'Nutritional Progress'}</h3>
+              <span className={`text-[11px] px-3 py-1 rounded-full uppercase tracking-widest font-bold shadow-sm ${isOverLimit ? 'bg-black text-white' : 'bg-slate-50 text-slate-800'}`}>
+                {isOverLimit ? `+${Math.round(calorieDelta)} kcal over` : 'On Target'}
+              </span>
+            </div>
+            <p className="text-[#666666] text-base leading-relaxed">
+              {isOverLimit
+                ? "You've exceeded today's calorie target. Balance it out with one of these quick exercises:"
+                : "Great work! You're staying within your calorie target. Keep up this healthy momentum."}
+            </p>
 
-          {/* Upload Report Button - Desktop */}
-          <button
-            onClick={() => navigate('/upload')}
-            className="w-full bg-gradient-to-r from-[#2FC8B9] to-[#1db7a6] text-white rounded-[2rem] px-8 py-6 flex items-center justify-center gap-4 shadow-xl hover:shadow-2xl transition-all active:scale-[0.98] group"
-          >
-            <Upload className="w-6 h-6 group-hover:scale-110 transition-transform" />
-            <span className="text-base font-black uppercase tracking-widest">Upload Health Report</span>
-          </button>
-
-          {/* Metrics Grid: Pedometer & Diet Adherence */}
-          <div className="grid grid-cols-2 gap-6">
-            <HealthScoreCard />
-            <DietAdherenceCard
-              score={adherenceScore}
-              status={nutritionStatus}
-              loggedCount={planMealsLogged}
-              totalLogged={totalLogged}
-              motivation={motivationMessage}
-              macros={macroPercentages}
-              missedMeal={missedMealName}
-              activeDietPlan={activeDietPlan}
-            />
-          </div>
-        </div>
-
-        {/* Premium Day Selector Card - Hidden */}
-        {false && (
-          <div className="px-3 md:px-0 mb-6 font-roboto">
-            <div className="bg-white rounded-[2.5rem] p-6 shadow-xl border border-slate-100 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-[#2FC8B9]/10 rounded-full blur-3xl"></div>
-              <div className="flex items-center justify-between mb-8 px-2 relative z-10">
-                <button onClick={handlePrevDate} className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-black transition-all hover:bg-[#2FC8B9] hover:text-white hover:scale-110 active:scale-95">
-                  <ArrowLeft className="w-5 h-5" />
+            {isOverLimit && (
+              <div className="flex flex-wrap gap-3 mt-5">
+                <button className="flex items-center gap-2 px-4 py-2 bg-[#F5F5F7] hover:bg-white text-[#1a1a1a] rounded-full transition-all text-sm font-medium border border-slate-200 shadow-sm">
+                  <Flame className="w-4 h-4 text-slate-500" /> 30 Min Walk (-150 kcal)
                 </button>
-                <h2 className="text-base sm:text-lg font-black text-black flex items-center gap-2 tracking-tight">
-                  {selectedDate.toDateString() === new Date().toDateString() ? 'Today, ' : ''}
-                  {selectedDate.toLocaleDateString('en-US', { day: 'numeric', month: 'long', year: 'numeric' })}
-                </h2>
-                <button onClick={handleNextDate} className="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-black transition-all hover:bg-[#2FC8B9] hover:text-white hover:scale-110 active:scale-95 rotate-180">
-                  <ArrowLeft className="w-5 h-5" />
+                <button className="flex items-center gap-2 px-4 py-2 bg-[#F5F5F7] hover:bg-white text-[#1a1a1a] rounded-full transition-all text-sm font-medium border border-slate-200 shadow-sm">
+                  <Activity className="w-4 h-4 text-slate-500" /> 20 Min HIIT (-200 kcal)
+                </button>
+                <button className="flex items-center gap-2 px-4 py-2 bg-[#F5F5F7] hover:bg-white text-[#1a1a1a] rounded-full transition-all text-sm font-medium border border-slate-200 shadow-sm">
+                  <Zap className="w-4 h-4 text-slate-500" /> 45 Min Yoga (-180 kcal)
                 </button>
               </div>
-
-              <div className="flex justify-between items-end gap-1 overflow-visible pb-2 sm:overflow-x-auto sm:scrollbar-hide">
-                {(() => {
-                  const daysOfWeek = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
-                  const weekDays = [];
-                  const start = new Date(selectedDate);
-                  start.setDate(start.getDate() - 3);
-
-                  for (let i = 0; i < 7; i++) {
-                    const date = new Date(start);
-                    date.setDate(date.getDate() + i);
-                    weekDays.push({
-                      label: daysOfWeek[date.getDay()],
-                      date: date.getDate(),
-                      fullDate: date,
-                      isToday: date.toDateString() === new Date().toDateString()
-                    });
-                  }
-
-                  return weekDays.map((dayInfo, index) => {
-                    const isToday = dayInfo.isToday;
-                    const isSelected = selectedDate.toDateString() === dayInfo.fullDate.toDateString();
-                    let completionPercentage = 0;
-                    const dateStr = dayInfo.fullDate.toDateString();
-                    const nutData = isSelected ? nutritionData : null;
-                    const nutritionProgress = nutData?.totalCalories && nutData?.calorieGoal
-                      ? Math.min((nutData.totalCalories / nutData.calorieGoal) * 100, 100)
-                      : 0;
-                    const challengeTasks = dashboardData?.user?.challengeData?.[dayInfo.date] || {};
-                    const completedTasksCount = Object.values(challengeTasks).filter(Boolean).length;
-                    const challengeProgress = (completedTasksCount / 4) * 100;
-                    const sleepHistory = JSON.parse(localStorage.getItem('sleep_history') || '[]');
-                    const daySleep = sleepHistory.find(r => new Date(r.date).toDateString() === dateStr);
-                    let sleepProgress = 0;
-                    if (daySleep) {
-                      const totalMinutes = parseInt(daySleep.hours) * 60 + parseInt(daySleep.minutes);
-                      sleepProgress = Math.min((totalMinutes / 480) * 100, 100);
-                    }
-                    const dietProgress = (nutritionProgress > 0) ? 100 : 0;
-                    if (dayInfo.fullDate > new Date()) {
-                      completionPercentage = 0;
-                    } else if (isSelected) {
-                      completionPercentage = Math.round(
-                        (nutritionProgress * 0.3) + (sleepProgress * 0.2) + (challengeProgress * 0.3) + (dietProgress * 0.2)
-                      );
-                    } else {
-                      completionPercentage = challengeProgress;
-                      if (sleepProgress > 0) {
-                        completionPercentage = Math.round((completionPercentage * 0.6) + (sleepProgress * 0.4));
-                      }
-                    }
-
-                    return (
-                      <div
-                        key={index}
-                        className="flex flex-col items-center gap-2 flex-1 min-w-0 cursor-pointer relative z-10"
-                        onClick={() => setSelectedDate(dayInfo.fullDate)}
-                      >
-                        <span className={`text-[9px] font-black uppercase tracking-tight transition-colors ${isSelected ? 'text-[#2FC8B9]' : 'text-slate-500'}`}>
-                          {dayInfo.label}
-                        </span>
-                        <div className={`w-9 h-9 sm:w-12 sm:h-12 rounded-full flex items-center justify-center relative transition-all duration-300 ${isSelected ? 'bg-white shadow-[0_0_20px_rgba(47,200,185,0.4)] scale-110 ring-2 ring-[#2FC8B9]' : 'bg-slate-50 hover:bg-slate-100 border border-slate-100'}`}>
-                          <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 48 48">
-                            <circle cx="24" cy="24" r="21" fill="none" stroke={isSelected ? '#F8FAFC' : 'rgba(255,255,255,0.1)'} strokeWidth="3" />
-                            <circle cx="24" cy="24" r="21" fill="none" stroke="#2FC8B9" strokeWidth="3" strokeDasharray={`${(completionPercentage / 100) * 132} 132`} strokeLinecap="round" className="transition-all duration-1000" />
-                          </svg>
-                          {isToday ? (<Flame className={`w-5 h-5 ${isSelected ? 'text-orange-500 fill-orange-500' : 'text-orange-400'}`} />) : null}
-                        </div>
-                        <span className={`text-xs font-black transition-all ${isSelected ? 'text-black scale-110' : 'text-slate-400'}`}>
-                          {dayInfo.date}
-                        </span>
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-            </div>
+            )}
           </div>
-        )}
-
-        {/* Sleep Tracker Modal */}
-        <SleepTracker isOpen={sleepTrackerOpen} onClose={() => setSleepTrackerOpen(false)} />
-
-        {/* 4 Main Health Cards - Nutrition, Sleep, Diet Plan, Mind */}
-        <div className="grid grid-cols-2 gap-3 sm:gap-6 px-3 md:px-0">
-          {/* Nutrition Card */}
-          <Link
-            to="/nutrition"
-            className="card p-4 sm:p-6 group relative overflow-hidden bg-white border border-slate-100"
-          >
-            <div className="absolute top-0 right-0 w-24 h-24 bg-[#2FC8B9]/5 rounded-full blur-2xl -mr-10 -mt-10"></div>
-            <div className="flex items-center justify-between mb-3 relative z-10">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[#2FC8B9]/10 flex items-center justify-center group-hover:rotate-12 transition-transform shadow-sm">
-                <Flame className="w-6 h-6 sm:w-7 sm:h-7 text-[#2FC8B9]" />
-              </div>
-              {nutritionData?.averageHealthScore > 0 && (
-                <div className={`px-2 py-1 rounded-lg text-[10px] font-black shadow-lg flex flex-col items-center justify-center min-w-[36px] ${nutritionData.averageHealthScore >= 80 ? 'bg-[#2FC8B9] text-white' :
-                  nutritionData.averageHealthScore >= 60 ? 'bg-amber-400 text-white' :
-                    'bg-rose-500 text-white'
-                  }`}>
-                  <span className="leading-none">{Math.round(nutritionData.averageHealthScore)}</span>
-                  <span className="text-[6px] opacity-80 tracking-tighter uppercase font-black">Score</span>
-                </div>
-              )}
-            </div>
-            <h3 className="text-slate-500 text-[10px] sm:text-xs font-black mb-1 uppercase tracking-[0.15em] relative z-10">Nutrition</h3>
-            <p className="text-2xl sm:text-3xl font-black text-black mb-1 relative z-10">
-              {nutritionData?.totalCalories || 0} <span className="text-base sm:text-lg opacity-40 font-medium">kcal</span>
-            </p>
-            <p className="text-[10px] sm:text-xs text-[#2FC8B9] font-black uppercase tracking-widest relative z-10">
-              {nutritionData?.calorieGoal
-                ? `${Math.round((nutritionData.totalCalories / nutritionData.calorieGoal) * 100)}% Goal`
-                : 'Track meals'}
-            </p>
-          </Link>
-
-          {/* Sleep Card */}
-          <button
-            onClick={() => setSleepTrackerOpen(true)}
-            className="card p-4 sm:p-6 group relative overflow-hidden text-left bg-white border border-slate-100"
-          >
-            <div className="absolute top-0 right-0 w-24 h-24 bg-[#2FC8B9]/5 rounded-full blur-2xl -mr-10 -mt-10"></div>
-            <div className="flex items-center justify-between mb-3 relative z-10">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[#2FC8B9]/10 flex items-center justify-center group-hover:rotate-12 transition-transform shadow-sm">
-                <Moon className="w-6 h-6 sm:w-7 sm:h-7 text-[#2FC8B9]" />
-              </div>
-            </div>
-            <h3 className="text-slate-500 text-[10px] sm:text-xs font-black mb-1 uppercase tracking-[0.15em] relative z-10">Sleep</h3>
-            <p className="text-2xl sm:text-3xl font-black text-black mb-1 relative z-10">
-              {(() => {
-                const sleepHistory = JSON.parse(localStorage.getItem('sleep_history') || '[]');
-                const selectedDateStr = selectedDate.toDateString();
-                const daySleep = sleepHistory.find(r => new Date(r.date).toDateString() === selectedDateStr);
-                if (daySleep) {
-                  return `${daySleep.hours}h ${daySleep.minutes}m`;
-                }
-                return '0h 0m';
-              })()}
-            </p>
-            <p className="text-[10px] sm:text-xs text-slate-400 font-bold relative z-10">
-              {(() => {
-                const sleepHistory = JSON.parse(localStorage.getItem('sleep_history') || '[]');
-                const selectedDateStr = selectedDate.toDateString();
-                const daySleep = sleepHistory.find(r => new Date(r.date).toDateString() === selectedDateStr);
-                if (daySleep) {
-                  const totalMinutes = daySleep.hours * 60 + daySleep.minutes;
-                  const efficiency = Math.round((totalMinutes / 480) * 100); // 8 hours = 480 minutes
-                  return `${efficiency}% Efficiency`;
-                }
-                return 'Track sleep';
-              })()}
-            </p>
-          </button>
-
-          {/* Diet Plan Card */}
-          <Link
-            to="/diet-plan"
-            className="card p-4 sm:p-6 group relative overflow-hidden bg-white border border-slate-100"
-          >
-            <div className="absolute top-0 right-0 w-24 h-24 bg-[#2FC8B9]/5 rounded-full blur-2xl -mr-10 -mt-10"></div>
-            <div className="flex items-center justify-between mb-3 relative z-10">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[#2FC8B9]/10 flex items-center justify-center group-hover:rotate-12 transition-transform shadow-sm">
-                <Utensils className="w-6 h-6 sm:w-7 sm:h-7 text-[#2FC8B9]" />
-              </div>
-            </div>
-            <h3 className="text-slate-500 text-[10px] sm:text-xs font-black mb-1 uppercase tracking-[0.15em] relative z-10">Diet Plan</h3>
-            <p className="text-base sm:text-lg font-black text-black mb-1 relative z-10 leading-tight">
-              {(() => {
-                if (!activeDietPlan) return 'No active plan';
-                const hour = new Date().getHours();
-                if (hour < 9) return <>Upcoming <br /> Breakfast</>;
-                if (hour >= 9 && hour < 14) return <>Upcoming <br /> Lunch</>;
-                if (hour >= 14 && hour < 17) return <>Upcoming <br /> Snacks</>;
-                return <>Upcoming <br /> Dinner</>;
-              })()}
-            </p>
-            <p className="text-[10px] sm:text-xs text-slate-400 font-bold relative z-10">
-              {activeDietPlan ? 'Personalized plan' : 'Generate plan'}
-            </p>
-          </Link>
-
-          {/* Mind Card */}
-          <Link
-            to="/challenge"
-            className="card p-4 sm:p-6 group relative overflow-hidden bg-white border border-slate-100"
-          >
-            <div className="absolute top-0 right-0 w-24 h-24 bg-[#2FC8B9]/5 rounded-full blur-2xl -mr-10 -mt-10"></div>
-            <div className="flex items-center justify-between mb-3 relative z-10">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-[#2FC8B9]/10 flex items-center justify-center group-hover:rotate-12 transition-transform shadow-sm">
-                <Wind className="w-6 h-6 sm:w-7 sm:h-7 text-[#2FC8B9]" />
-              </div>
-            </div>
-            <h3 className="text-slate-500 text-[10px] sm:text-xs font-black mb-1 uppercase tracking-[0.15em] relative z-10">Mind</h3>
-            <p className="text-2xl sm:text-3xl font-black text-black mb-1 relative z-10">
-              {dashboardData?.streakDays || user?.challengeStreak || 0} <span className="text-base sm:text-lg opacity-40 font-medium">days</span>
-            </p>
-            <p className="text-[10px] sm:text-xs text-slate-400 font-bold relative z-10 text-[#2FC8B9]">Daily Streak</p>
-          </Link>
         </div>
+      </motion.div>
 
-        {/* Activity & Management Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mx-3 md:mx-0">
+      {/* 3 Column Grid - Scrollable on mobile with same height items */}
+      <div className="flex overflow-x-auto lg:grid lg:grid-cols-3 gap-6 lg:gap-8 pb-8 lg:pb-0 scrollbar-hide snap-x snap-mandatory h-full items-stretch lg:items-start">
 
-          {/* Diabetes Management Card */}
-          <Link
-            to="/glucose-log"
-            className="block bg-white rounded-[2.5rem] shadow-sm p-6 sm:p-8 hover:shadow-xl transition-all group relative overflow-hidden border border-slate-100"
-          >
-            {/* Decorative Droplet Watermark */}
-            <div className="absolute bottom-4 right-4 opacity-[0.03] pointer-events-none">
-              <Droplets className="w-32 h-32 text-[#2FC8B9]" />
-            </div>
-
-            {/* Content */}
-            <div className="relative z-10">
-              {/* Top Row: Icon + Title + Badge */}
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-2xl bg-black flex items-center justify-center shadow-lg">
-                    <Droplets className="w-6 h-6 text-[#2FC8B9]" />
-                  </div>
-                  <span className="text-xs font-black text-black uppercase tracking-[0.2em]">
-                    {isDiabetic ? "Diabetes Care" : "Blood Sugar"}
-                  </span>
-                </div>
-                {latestGlucose && (
-                  <span className="px-4 py-1.5 bg-[#2FC8B9] text-white rounded-full text-[10px] font-black shadow-sm tracking-widest uppercase">
-                    {latestGlucose >= 70 && latestGlucose <= 130 ? 'IN RANGE' : (latestGlucose > 130 ? 'HIGH' : 'LOW')}
-                  </span>
-                )}
-              </div>
-
-              {/* Large Reading */}
-              <div className="flex items-baseline gap-3 mb-2">
-                <span className="text-5xl font-black text-black tracking-tighter">
-                  {latestGlucose || '--'}
-                </span>
-                <span className="text-xs text-slate-400 font-black tracking-widest uppercase">MG/DL</span>
-              </div>
-
-              {/* Description */}
-              <p className="text-slate-500 text-sm mb-6 leading-relaxed max-w-sm font-bold">
-                {latestGlucose ? "Your recent reading is logged. Tap to manage or view progress." : "Track your blood sugar levels to get personalized insights."}
-              </p>
-
-              {/* CTA Link */}
-              <div className="flex items-center gap-2 text-[#2FC8B9] font-black text-xs uppercase tracking-widest group-hover:gap-4 transition-all">
-                <span>{latestGlucose ? "Enter Care Center" : "Log First Reading"}</span>
-                <ChevronRight className="w-4 h-4" />
-              </div>
-            </div>
-          </Link>
-        </div>
-
-        {/* AI Health Insights Section - Only shown if user has reports */}
-        {
-          hasReports && (
-            <div className="space-y-6 mx-3 md:mx-0">
-              {/* AI Health Insights - Main Card */}
-              <div className="bg-[#2FC8B9] rounded-[2.5rem] p-8 sm:p-10 shadow-2xl relative overflow-hidden group">
-                {/* Decorative Elements */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl pointer-events-none"></div>
-                <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2 blur-2xl pointer-events-none"></div>
-                <Sparkles className="absolute top-8 right-12 w-16 h-16 text-white/20 group-hover:scale-110 transition-transform duration-500" />
-
-                <div className="relative z-10">
-                  <div className="flex items-center gap-2 mb-6">
-                    <Sparkles className="w-5 h-5 text-white" />
-                    <span className="text-xs font-black text-white uppercase tracking-[0.2em]">AI Insights</span>
-                  </div>
-
-                  <h2 className="text-2xl sm:text-3xl font-black text-white mb-4 tracking-tight leading-tight">
-                    {dashboardData.recentReports[0]?.reportType || 'Health Report'} Analysis
-                    <span className="block text-lg font-medium text-white/90 mt-1">
-                      ({new Date(dashboardData.recentReports[0]?.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })})
-                    </span>
-                  </h2>
-
-                  <p className="text-white/80 text-sm sm:text-base leading-relaxed mb-10 max-w-xl font-bold italic">
-                    "{dashboardData.latestAnalysis?.summary?.split('.')[0]}... {dashboardData.latestAnalysis?.summary?.split('.')[1]}."
-                  </p>
-
-                  <Link
-                    to={`/reports/${dashboardData.recentReports[0]?._id}`}
-                    className="inline-flex items-center gap-3 bg-black text-white px-10 py-5 rounded-2xl font-black uppercase tracking-widest transition-all hover:bg-slate-900 shadow-xl group"
-                  >
-                    Analysis Details
-                    <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                  </Link>
-                </div>
-              </div>
-
-              {/* Health Progress Comparison - Replaces Wellness Score */}
-              <div className="bg-white rounded-[2.5rem] p-6 sm:p-10 shadow-sm border border-slate-100 relative overflow-hidden">
-                {comparisonLoading ? (
-                  <div className="flex items-center justify-center py-12">
-                    <div className="w-10 h-10 border-3 border-[#2FC8B9]/20 border-t-[#2FC8B9] rounded-full animate-spin" />
-                  </div>
-                ) : reportComparison?.hasData ? (
-                  <>
-                    {/* Header with score change */}
-                    <div className="flex justify-between items-start mb-6 relative z-10">
-                      <div>
-                        <span className="text-xs font-black text-[#2FC8B9] uppercase tracking-widest">Health Progress</span>
-                        <div className="flex items-baseline gap-3 mt-3">
-                          <span className="text-5xl sm:text-6xl font-black text-black tracking-tighter">
-                            {reportComparison.latestReport.healthScore}%
-                          </span>
-                          {reportComparison.hasComparison && reportComparison.scoreChange !== 0 && (
-                            <span className={`flex items-center gap-1 text-sm font-black ${reportComparison.scoreChange > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                              {reportComparison.scoreChange > 0 ? <TrendingUp className="w-4 h-4" /> : <TrendingDown className="w-4 h-4" />}
-                              {reportComparison.scoreChange > 0 ? '+' : ''}{reportComparison.scoreChange}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        {reportComparison.hasComparison ? (
-                          <div className={`px-3 py-1.5 rounded-xl text-xs font-black ${reportComparison.scoreChange > 0 ? 'bg-emerald-50 text-emerald-600' : reportComparison.scoreChange < 0 ? 'bg-red-50 text-red-500' : 'bg-slate-50 text-slate-500'}`}>
-                            {reportComparison.scoreChange > 0 ? '📈 Improved' : reportComparison.scoreChange < 0 ? '📉 Declined' : '📊 Stable'}
-                          </div>
-                        ) : (
-                          <div className="px-3 py-1.5 rounded-xl text-xs font-black bg-[#2FC8B9]/10 text-[#2FC8B9]">
-                            🌟 Baseline Set
-                          </div>
-                        )}
-                        <p className="text-[10px] text-slate-400 font-bold mt-2 uppercase tracking-wider">
-                          {reportComparison.totalReports} report{reportComparison.totalReports > 1 ? 's' : ''} analyzed
-                        </p>
-                      </div>
-                    </div>
-
-                    {/* Score History Chart */}
-                    <div className="h-48 sm:h-56 w-full mt-4 -mx-2 sm:mx-0">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <AreaChart data={reportComparison.scoreHistory} margin={{ top: 10, right: 10, left: -15, bottom: 5 }}>
-                          <defs>
-                            <linearGradient id="scoreGradientMain" x1="0" y1="0" x2="0" y2="1">
-                              <stop offset="5%" stopColor="#2FC8B9" stopOpacity={0.3} />
-                              <stop offset="95%" stopColor="#2FC8B9" stopOpacity={0} />
-                            </linearGradient>
-                          </defs>
-                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                          <XAxis
-                            dataKey="dateLabel"
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
-                          />
-                          <YAxis
-                            axisLine={false}
-                            tickLine={false}
-                            tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
-                            domain={[0, 100]}
-                          />
-                          <Tooltip
-                            content={({ active, payload }) => {
-                              if (active && payload && payload.length) {
-                                return (
-                                  <div className="bg-black shadow-2xl rounded-2xl p-4 border border-[#2FC8B9]/20">
-                                    <p className="text-[10px] font-black text-[#2FC8B9] uppercase mb-1 tracking-wider">{payload[0].payload.dateLabel}</p>
-                                    <p className="text-sm font-black text-white">{payload[0].value}% Health Score</p>
-                                    <p className="text-[10px] text-white/60 mt-1">{payload[0].payload.type}</p>
-                                  </div>
-                                );
-                              }
-                              return null;
-                            }}
-                          />
-                          <Area
-                            type="monotone"
-                            dataKey="score"
-                            stroke="#2FC8B9"
-                            strokeWidth={4}
-                            fillOpacity={1}
-                            fill="url(#scoreGradientMain)"
-                            dot={{ r: 4, fill: '#2FC8B9', strokeWidth: 2, stroke: '#fff' }}
-                            activeDot={{ r: 6, fill: '#2FC8B9', strokeWidth: 2, stroke: '#fff' }}
-                          />
-                        </AreaChart>
-                      </ResponsiveContainer>
-                    </div>
-
-                    {/* Comparison Metrics Grid */}
-                    {reportComparison.comparisonMetrics?.length > 0 && (
-                      <div className="mt-6">
-                        <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-4">Biomarker Comparison</h4>
-                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                          {reportComparison.comparisonMetrics.slice(0, 6).map((metric, idx) => (
-                            <div key={idx} className="bg-slate-50 rounded-2xl p-3 border border-slate-100">
-                              <p className="text-[10px] text-slate-500 font-bold truncate">{metric.name}</p>
-                              <div className="flex items-end gap-1 mt-1">
-                                <span className="text-lg font-black text-black">{metric.latestValue}</span>
-                                <span className="text-[10px] text-slate-400 font-bold mb-0.5">{metric.unit}</span>
-                              </div>
-                              {metric.change !== 0 && (
-                                <div className={`flex items-center gap-1 mt-1 text-[10px] font-black ${metric.changePercent > 0 ? 'text-emerald-500' : 'text-red-500'}`}>
-                                  {metric.changePercent > 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                                  {metric.changePercent > 0 ? '+' : ''}{metric.changePercent}% from last
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* AI Insights */}
-                    {reportComparison.insights?.length > 0 && (
-                      <div className="mt-8">
-                        <div className="flex items-center gap-2 mb-4">
-                          <Sparkles className="w-4 h-4 text-[#2FC8B9]" />
-                          <h4 className="text-xs font-black text-slate-400 uppercase tracking-widest">AI Analysis</h4>
-                        </div>
-                        <div className="grid grid-cols-1 gap-3">
-                          {reportComparison.insights.map((insight, idx) => {
-                            const isPositive = insight.type === 'positive';
-                            const isWarning = insight.type === 'warning';
-
-                            return (
-                              <div
-                                key={idx}
-                                className={`group relative overflow-hidden rounded-[2rem] p-5 flex items-center gap-5 transition-all hover:scale-[1.02] active:scale-[0.98] shadow-sm hover:shadow-xl
-                                  ${isPositive ? 'bg-gradient-to-br from-emerald-500/10 via-emerald-50/50 to-white border border-emerald-100/50' :
-                                    isWarning ? 'bg-gradient-to-br from-orange-500/10 via-orange-50/50 to-white border border-orange-100/50' :
-                                      'bg-gradient-to-br from-blue-500/10 via-blue-50/50 to-white border border-blue-100/50'
-                                  }`}
-                              >
-                                {/* Animated background element */}
-                                <div className={`absolute -right-4 -top-4 w-24 h-24 rounded-full blur-2xl opacity-20 transition-all group-hover:scale-150
-                                  ${isPositive ? 'bg-emerald-400' : isWarning ? 'bg-orange-400' : 'bg-blue-400'}`} />
-
-                                <div className={`flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center shadow-inner transition-transform group-hover:rotate-12
-                                  ${isPositive ? 'bg-emerald-100 text-emerald-600' :
-                                    isWarning ? 'bg-orange-100 text-orange-600' :
-                                      'bg-blue-100 text-blue-600'
-                                  }`}>
-                                  {isPositive ? <TrendingUp className="w-7 h-7" /> :
-                                    isWarning ? <TrendingDown className="w-7 h-7" /> :
-                                      <Activity className="w-7 h-7" />}
-                                </div>
-
-                                <div className="flex-1 relative z-10">
-                                  <div className="flex items-center gap-2 mb-1">
-                                    <span className={`text-[10px] font-black uppercase tracking-[0.2em] 
-                                      ${isPositive ? 'text-emerald-500' : isWarning ? 'text-orange-500' : 'text-blue-500'}`}>
-                                      {isPositive ? 'Improvement' : isWarning ? 'Attention' : 'Analysis'}
-                                    </span>
-                                    {insight.icon && <span className="text-sm">{insight.icon}</span>}
-                                  </div>
-                                  <p className="text-sm font-black text-slate-800 leading-tight">
-                                    {insight.text}
-                                  </p>
-                                </div>
-
-                                <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-black group-hover:translate-x-1 transition-all" />
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  /* No comparison available */
-                  <div className="text-center py-8">
-                    <div className="w-16 h-16 rounded-full bg-[#2FC8B9]/10 flex items-center justify-center mx-auto mb-4">
-                      <BarChart3 className="w-8 h-8 text-[#2FC8B9]" />
-                    </div>
-                    <h3 className="text-xl font-black text-black mb-2">Health Progress Tracking</h3>
-                    <p className="text-sm text-slate-500 font-bold max-w-sm mx-auto mb-6">
-                      {reportComparison?.message || 'Upload at least 2 health reports to see your progress comparison and trends.'}
-                    </p>
-                    {dashboardData?.healthScores?.length > 0 && (
-                      <div className="h-32 w-full mt-4 -mx-2">
-                        <ResponsiveContainer width="100%" height="100%">
-                          <AreaChart data={dashboardData.healthScores?.slice(-7) || []}>
-                            <defs>
-                              <linearGradient id="scoreGradient2" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="#2FC8B9" stopOpacity={0.1} />
-                                <stop offset="95%" stopColor="#2FC8B9" stopOpacity={0} />
-                              </linearGradient>
-                            </defs>
-                            <Area type="monotone" dataKey="score" stroke="#2FC8B9" strokeWidth={3} fillOpacity={1} fill="url(#scoreGradient2)" />
-                          </AreaChart>
-                        </ResponsiveContainer>
-                      </div>
-                    )}
-                    <Link
-                      to="/upload"
-                      className="inline-flex items-center gap-2 mt-4 px-6 py-3 bg-[#2FC8B9] text-white rounded-2xl font-black text-sm uppercase tracking-wider hover:bg-[#1db7a6] transition-all shadow-lg"
-                    >
-                      <Upload className="w-4 h-4" />
-                      Upload Report
-                    </Link>
-                  </div>
-                )}
-              </div>
-
-              {/* Biomarker Trends Section */}
-              <div className="bg-white rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-slate-100">
-                <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-lg font-black text-black tracking-tight uppercase">Biomarker Trends</h3>
-                  <button className="text-[#2FC8B9] text-xs font-black uppercase tracking-widest flex items-center gap-1 group">
-                    View All
-                    <ArrowRight className="w-3 h-3 group-hover:gap-2 transition-all" />
-                  </button>
-                </div>
-
-                {/* Biomarker Selector & Chart */}
-                <div className="space-y-6 sm:space-y-8">
-                  {/* Custom Styled Select with Trend Summary */}
-                  <div className="relative">
-                    <button
-                      onClick={() => setIsMetricDropdownOpen(!isMetricDropdownOpen)}
-                      className="w-full bg-slate-50 rounded-3xl p-4 sm:p-6 border border-slate-100 flex items-center justify-between hover:border-[#2FC8B9]/20 transition-all text-left"
-                    >
-                      <div>
-                        <span className="text-black font-black block sm:inline">
-                          {currentMetric?.name || 'Core Biomarker'}
-                        </span>
-                        {currentMetric && currentMetric.history.length > 0 && (
-                          <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider mt-1">
-                            Current: {currentMetric.history[currentMetric.history.length - 1]?.value} {currentMetric.unit}
-                          </p>
-                        )}
-                      </div>
-                      <ChevronRight className={`w-5 h-5 text-[#2FC8B9] transition-transform ${isMetricDropdownOpen ? 'rotate-[-90deg]' : 'rotate-90'}`} />
-                    </button>
-
-                    {isMetricDropdownOpen && (
-                      <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-3xl shadow-2xl border border-slate-100 z-50 py-4 max-h-64 overflow-y-auto anima-fade-in">
-                        {availableMetricKeys.map(key => (
-                          <button
-                            key={key}
-                            onClick={() => {
-                              setSelectedMetric(key);
-                              setIsMetricDropdownOpen(false);
-                            }}
-                            className={`w-full px-6 py-4 text-left hover:bg-slate-50 transition-colors text-sm font-bold ${selectedMetric === key ? 'text-[#2FC8B9]' : 'text-slate-600'}`}
-                          >
-                            {allAvailableMetrics[key].name}
-                          </button>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Trend Graph */}
-                  <div className="h-64 sm:h-72 w-full relative -mx-2 sm:mx-0 pr-4 sm:pr-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <AreaChart data={currentMetric?.history || []} margin={{ top: 20, right: 30, left: 0, bottom: 20 }}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                        <XAxis
-                          dataKey="date"
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
-                          dy={8}
-                          interval="preserveStartEnd"
-                          minTickGap={20}
-                        />
-                        <YAxis
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }}
-                          dx={-8}
-                          width={45}
-                          domain={['dataMin - 1', 'dataMax + 1']}
-                        />
-                        <Tooltip
-                          content={({ active, payload }) => {
-                            if (active && payload && payload.length) {
-                              return (
-                                <div className="bg-black shadow-2xl rounded-2xl p-4 border border-[#2FC8B9]/20 shadow-[#2FC8B9]/10">
-                                  <p className="text-[10px] font-black text-[#2FC8B9] uppercase mb-1 tracking-wider">{payload[0].payload.date}</p>
-                                  <p className="text-sm font-black text-white">{payload[0].value} {currentMetric?.unit}</p>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Area
-                          type="monotone"
-                          dataKey="value"
-                          stroke="#2FC8B9"
-                          strokeWidth={4}
-                          fill="#2FC8B9"
-                          fillOpacity={0.05}
-                          dot={{ r: 5, fill: '#2FC8B9', strokeWidth: 3, stroke: '#fff' }}
-                          activeDot={{ r: 7, fill: '#2FC8B9', strokeWidth: 3, stroke: '#fff', shadow: '0 0 15px rgba(47,200,185,0.4)' }}
-                        />
-                      </AreaChart>
-                    </ResponsiveContainer>
-                  </div>
-
-                  {/* Current Metric Status */}
-                  {currentMetric && (
-                    <div className="bg-[#F0FDF4] rounded-3xl p-5 sm:p-6 border border-emerald-100 flex items-center justify-between">
-                      <div>
-                        <h4 className="text-sm font-bold text-slate-800 mb-1">{currentMetric.name}</h4>
-                        <p className="text-[10px] sm:text-xs text-slate-500 font-medium lowercase">Target: Normal Range</p>
-                        <div className="flex items-baseline gap-2 mt-2 sm:mt-4">
-                          <span className="text-3xl sm:text-4xl font-black text-emerald-600">
-                            {currentMetric.history[currentMetric.history.length - 1]?.value}
-                          </span>
-                          <span className="text-xs sm:text-sm font-bold text-emerald-600/70">{currentMetric.unit}</span>
-                          {currentMetric.history.length > 1 && (
-                            <TrendingUp className={`w-5 h-5 text-emerald-500 ${currentMetric.history[currentMetric.history.length - 1].value < currentMetric.history[currentMetric.history.length - 2].value ? 'transform rotate-180' : ''
-                              }`} />
-                          )}
-                        </div>
-                      </div>
-                      <div className="bg-white px-3 sm:px-4 py-2 rounded-full text-[10px] sm:text-[11px] font-black text-emerald-600 uppercase shadow-sm border border-emerald-50">
-                        Stable
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Metrics Overview - Counts */}
-              <div className="bg-white rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-slate-100">
-                <h3 className="text-lg font-black text-black tracking-tight mb-6 sm:mb-8 uppercase">Vitality Overview</h3>
-                <div className="grid grid-cols-3 gap-3 sm:gap-4 pb-2 sm:pb-0">
-                  <div className="bg-slate-50 rounded-3xl p-4 sm:p-6 border border-slate-100 text-center group hover:scale-105 transition-transform">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-sm">
-                      <span className="text-xl sm:text-2xl font-black text-[#2FC8B9]">
-                        {Object.values(dashboardData.latestAnalysis?.metrics || {}).filter(m => m.status === 'normal' || m.status?.toLowerCase() === 'normal').length || 4}
-                      </span>
-                    </div>
-                    <span className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest block">Optimal</span>
-                  </div>
-                  <div className="bg-slate-50 rounded-3xl p-4 sm:p-6 border border-slate-100 text-center group hover:scale-105 transition-transform">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-sm">
-                      <span className="text-xl sm:text-2xl font-black text-amber-500">
-                        {Object.values(dashboardData.latestAnalysis?.metrics || {}).filter(m => m.status === 'moderate' || m.status === 'warning' || m.status?.toLowerCase().includes('borderline')).length || 2}
-                      </span>
-                    </div>
-                    <span className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest block">Moderate</span>
-                  </div>
-                  <div className="bg-slate-50 rounded-3xl p-4 sm:p-6 border border-slate-100 text-center group hover:scale-105 transition-transform">
-                    <div className="w-10 h-10 sm:w-12 sm:h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-sm">
-                      <span className="text-xl sm:text-2xl font-black text-rose-500">
-                        {Object.values(dashboardData.latestAnalysis?.metrics || {}).filter(m => ['low', 'high', 'critical'].includes(m.status?.toLowerCase())).length || 2}
-                      </span>
-                    </div>
-                    <span className="text-[9px] sm:text-[10px] font-black text-slate-500 uppercase tracking-widest block">Review</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Critical Deficiencies Section */}
-              <div className="bg-slate-50 rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-slate-100">
-                <div className="flex items-center gap-4 mb-6 sm:mb-8">
-                  <div className="w-11 h-11 rounded-2xl bg-black flex items-center justify-center">
-                    <AlertCircle className="w-6 h-6 text-[#2FC8B9]" />
-                  </div>
-                  <h3 className="text-lg font-black text-black tracking-tight uppercase">Critical Alerts</h3>
-                </div>
-
-                <div className="space-y-3 sm:space-y-4">
-                  {(dashboardData.latestAnalysis?.deficiencies?.length > 0 ? dashboardData.latestAnalysis.deficiencies : [
-                    { name: 'Vitamin D Deficiency', severity: 'High' },
-                    { name: 'Iron Insufficiency', severity: 'Moderate' }
-                  ]).map((def, idx) => (
-                    <Link
-                      key={idx}
-                      to={`/reports/${dashboardData.recentReports[0]?._id}`}
-                      className="flex items-center justify-between bg-white rounded-3xl p-5 border border-slate-100 hover:border-[#2FC8B9]/20 transition-all group shadow-sm"
-                    >
-                      <div className="flex items-center gap-4 overflow-hidden">
-                        <div className={`w-10 h-10 rounded-2xl flex-shrink-0 flex items-center justify-center bg-slate-50 group-hover:bg-[#2FC8B9]/10`}>
-                          <AlertTriangle className="w-5 h-5 text-amber-500 group-hover:text-[#2FC8B9] transition-colors" />
-                        </div>
-                        <div className="min-w-0">
-                          <h4 className="font-black text-black group-hover:text-[#2FC8B9] transition-colors text-sm sm:text-base truncate">{def.name}</h4>
-                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
-                            {def.severity || 'High'} Priority
-                          </p>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-[#2FC8B9] transition-all flex-shrink-0" />
-                    </Link>
-                  ))}
-
-                  <Link
-                    to="/nutrition"
-                    className="w-full mt-4 bg-black hover:bg-[#2FC8B9] text-white font-black text-xs sm:text-sm uppercase tracking-[0.2em] py-5 rounded-3xl transition-all shadow-lg flex items-center justify-center gap-2 group"
-                  >
-                    Personalized Diet Plan
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
-                  </Link>
-                </div>
-              </div>
-            </div>
-          )
-        }
-
-        {/* Recent Reports and Recommendations Section */}
-        <div className="grid md:grid-cols-2 gap-6 px-3 md:px-0">
-          {/* Recent Tests Column */}
-          <div className="bg-white rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-slate-100">
-            <div className="flex items-center justify-between mb-8">
-              <h3 className="text-lg font-black text-black uppercase tracking-tight">Recent Tests</h3>
-              <Link to="/reports" className="text-[10px] font-black text-[#2FC8B9] uppercase tracking-widest hover:underline transition-all">View All</Link>
-            </div>
-            <div className="space-y-4">
-              {dashboardData?.recentReports?.length > 0 ? (
-                dashboardData.recentReports.slice(0, 3).map((report, idx) => (
-                  <Link
-                    key={report._id || idx}
-                    to={report._id ? `/reports/${report._id}` : "#"}
-                    className="flex items-center justify-between p-4 bg-slate-50 hover:bg-white border border-transparent hover:border-slate-100 rounded-3xl transition-all group shadow-sm"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shadow-inner text-slate-400 group-hover:text-[#2FC8B9] transition-colors">
-                        <FileText className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <h4 className="font-black text-black group-hover:text-[#2FC8B9] transition-colors text-sm">{report.reportType}</h4>
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
-                          {new Date(report.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4">
-                      <span className={`text-[10px] font-black uppercase tracking-widest ${report.status === 'completed' ? 'text-[#2FC8B9]' : 'text-amber-500'
-                        }`}>
-                        {report.status === 'completed' ? 'Analyzed' : 'In Progress'}
-                      </span>
-                      <ChevronRight className="w-4 h-4 text-slate-300 group-hover:text-[#2FC8B9] transition-colors" />
-                    </div>
-                  </Link>
-                ))
-              ) : (
-                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 text-center">
-                  <FileText className="w-8 h-8 text-slate-300 mx-auto mb-3" />
-                  <p className="text-sm font-black text-slate-500 uppercase tracking-widest">No reports yet</p>
-                  <p className="text-[10px] text-slate-400 mt-2">Upload your first health report to get started</p>
-                </div>
-              )}
+        {/* Today's Diet Card */}
+        <div className="min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-[520px] lg:h-full">
+          <div className="flex items-center justify-between gap-2 mb-5 flex-nowrap overflow-hidden">
+            <h2 className="text-base sm:text-xl font-black text-black whitespace-nowrap truncate">Today's Diet Plan</h2>
+            <div className="flex items-center gap-1 bg-[#F8F9FB] px-1.5 py-1 rounded-lg border border-slate-50 shrink-0">
+              <Calendar className="w-2.5 h-2.5 text-slate-400" />
+              <span className="text-[8px] font-black text-slate-500 uppercase tracking-tighter">
+                {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+              </span>
             </div>
           </div>
 
-          {/* Recommended Tests Column */}
-          <div className="bg-white rounded-[2.5rem] p-6 sm:p-8 shadow-sm border border-slate-100">
-            <div className="flex items-center gap-4 mb-8">
-              <div className="w-11 h-11 rounded-2xl bg-black flex items-center justify-center">
-                <Activity className="w-6 h-6 text-[#2FC8B9]" />
-              </div>
-              <h3 className="text-lg font-black text-black uppercase tracking-tight leading-tight">Elite Choices</h3>
-            </div>
-            <div className="space-y-4">
-              {dashboardData?.recentReports?.length > 0 ? (
-                [
-                  { name: 'Vitamin B12 Panel', reason: 'Low intake detected in food log', type: 'Test' },
-                  { name: 'Omega-3 (1000mg)', reason: 'To support heart and brain health', type: 'Supplement' },
-                  { name: 'HbA1c Test', reason: 'Important for diabetes monitoring', type: 'Test' },
-                  { name: 'Vitamin D3 (2000 IU)', reason: 'Low sun exposure detected', type: 'Supplement' }
-                ].map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-4 bg-slate-50 rounded-3xl group cursor-pointer hover:bg-white border border-transparent hover:border-slate-100 transition-all">
-                    <div className="flex flex-col">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="font-black text-black">{item.name}</h4>
-                        <span className={`text-[8px] font-black uppercase tracking-tighter px-2 py-0.5 rounded-md ${item.type === 'Test' ? 'bg-black text-white' : 'bg-[#2FC8B9] text-white'
-                          }`}>
-                          {item.type}
-                        </span>
-                      </div>
-                      <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{item.reason}</p>
-                    </div>
-                    <button className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center shadow-sm text-black hover:bg-[#2FC8B9] hover:text-white transition-all">
-                      <Plus className="w-5 h-5" />
-                    </button>
-                  </div>
-                ))
-              ) : (
-                <div className="p-6 bg-slate-50 rounded-3xl border border-slate-100 text-center">
-                  <Activity className="w-8 h-8 text-slate-300 mx-auto mb-3" />
-                  <p className="text-sm font-black text-slate-500 uppercase tracking-widest">No recommendations yet</p>
-                  <p className="text-[10px] text-slate-400 mt-2">Upload health reports to get personalized recommendations</p>
-                </div>
-              )}
-            </div>
+          {/* Segmented Control */}
+          <div className="flex p-1 bg-[#F8F9FB] rounded-2xl mb-6 overflow-x-auto scrollbar-hide">
+            {['breakfast', 'lunch', 'snacks', 'dinner'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveMealTab(tab)}
+                className={`flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-tight transition-all px-4 min-w-max ${activeMealTab === tab ? 'bg-[#1A1A1A] text-white shadow-md' : 'text-[#888888] hover:text-[#1A1A1A]'
+                  }`}
+              >
+                {tab === 'snacks' ? 'Snacks' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
           </div>
-        </div>
 
-        {/* 30 Days Challenge Card - Compact Performance Variant */}
-        <div className="mx-3 md:mx-0">
-          <Link
-            to="/challenge"
-            className="block relative group overflow-hidden bg-white/80 backdrop-blur-3xl rounded-[2.5rem] border border-black/5 shadow-[0_20px_50px_rgba(0,0,0,0.05)] p-6 transition-all duration-700 hover:shadow-[0_40px_80px_rgba(0,0,0,0.1)] hover:-translate-y-2 mb-12"
-          >
-            <div className="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-[#2FC8B9]/10 rounded-full blur-[100px] group-hover:bg-[#2FC8B9]/20 transition-all duration-1000"></div>
-            <div className="absolute bottom-0 left-0 -ml-20 -mb-20 w-80 h-80 bg-black/5 rounded-full blur-[100px]"></div>
-
-            <div className="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center shadow-xl shadow-black/10 transform group-hover:rotate-6 transition-transform duration-500">
-                  <Trophy className="w-6 h-6 text-[#2FC8B9]" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-black text-black tracking-tight leading-none uppercase">30 Days Challenge</h2>
-                  <p className="text-slate-500 font-bold uppercase text-[9px] tracking-[0.2em] mt-1.5">Sculpt your future, day by day</p>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <div className="px-4 py-2 bg-black text-white rounded-xl text-[9px] font-black uppercase tracking-widest flex items-center gap-2 transition-transform hover:bg-[#2FC8B9] hover:scale-105">
-                  Start
-                  <ArrowRight className="w-3.5 h-3.5" />
-                </div>
-                <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-[#2FC8B9] group-hover:translate-x-1 transition-all" />
-              </div>
+          {/* Meal Items List (Vertical, no images) */}
+          {(!dietPlan || !dietPlan.mealPlan) ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-slate-50 rounded-3xl mb-6">
+              <Target className="w-12 h-12 text-slate-300 mb-4" />
+              <p className="text-sm font-bold text-slate-800 mb-2">Set your fitness goal</p>
+              <p className="text-xs text-slate-400 mb-4">Set your fitness goal to see your personalized diet plan</p>
+              <button
+                onClick={() => navigate('/diet-plan')}
+                className="px-8 py-3 bg-black text-white rounded-full text-xs font-black uppercase tracking-widest shadow-xl shadow-black/20 hover:scale-105 transition-all"
+              >
+                Create Diet Plan
+              </button>
             </div>
-
-            {/* Micro Stats - Inline */}
-            <div className="grid grid-cols-4 gap-3 mt-4 relative z-10">
-              {['💧', '🏋️', '🥩', '⚡'].map((emoji, i) => (
-                <div key={i} className="bg-slate-50/50 backdrop-blur-sm rounded-xl p-2 text-center border border-slate-100 group-hover:bg-[#2FC8B9]/5 transition-all text-base">
-                  {emoji}
+          ) : (
+            <div className="flex-1 space-y-3 mb-6 overflow-y-auto pr-1">
+              {(activeMealTab === 'snacks'
+                ? (dietPlan?.mealPlan?.snacks || [])
+                : (dietPlan?.mealPlan?.[activeMealTab] || [])
+              ).map((item, idx) => (
+                <div key={idx} className="p-4 bg-slate-50 rounded-2xl flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-[#1A1A1A]" />
+                  <span className="text-sm font-black text-black">{item?.name || item?.foodItems?.[0]?.name}</span>
                 </div>
               ))}
+              {(!(activeMealTab === 'snacks' ? dietPlan?.mealPlan?.snacks : dietPlan?.mealPlan?.[activeMealTab])?.length) && (
+                <div className="p-4 bg-slate-50/50 rounded-2xl text-center">
+                  <p className="text-xs text-slate-400">No meals planned for this time</p>
+                </div>
+              )}
             </div>
-          </Link>
+          )}
+
+          <button className="w-full bg-[#1A1A1A] text-white py-4 rounded-2xl text-[13px] font-black uppercase tracking-tight hover:bg-black transition-all flex items-center justify-center gap-2 shadow-sm">
+            View Full Plan <ArrowUpRight className="w-4 h-4 ml-1" />
+          </button>
         </div>
 
-        <div>
-          <div className="flex items-center gap-4 mb-8">
-            <div className="w-12 h-12 rounded-2xl bg-black flex items-center justify-center">
-              <Sparkles className="w-6 h-6 text-[#2FC8B9]" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-black text-black tracking-tight leading-none uppercase">Did You Know?</h2>
-              <p className="text-slate-500 text-sm font-bold mt-1">Science-backed nutrition secrets</p>
-            </div>
+        {/* Nutrient Info Card */}
+        <div className="min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-[520px] lg:h-full">
+          <div className="flex items-center justify-between mb-0.5">
+            <h2 className="text-xl font-black text-black">Nutrient Info</h2>
+            <button
+              onClick={() => navigate('/nutrition')}
+              className="w-8 h-8 rounded-full bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-black shadow-sm group"
+            >
+              <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+            </button>
           </div>
-          <div className="md:grid md:grid-cols-2 lg:grid-cols-4 md:gap-4 flex md:flex-none overflow-x-auto gap-4 pb-4 md:pb-0 snap-x snap-mandatory scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
-            <div className="min-w-[280px] md:min-w-0 snap-center bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm hover:shadow-xl hover:border-[#2FC8B9]/10 transition-all">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="text-4xl drop-shadow-md">🥑</div>
-                <div className="w-11 h-11 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100">
-                  <Apple className="w-6 h-6 text-[#2FC8B9]" />
-                </div>
-              </div>
-              <h3 className="font-black text-black mb-3 text-lg">Guava Power</h3>
-              <p className="text-sm text-slate-500 leading-relaxed font-bold">
-                One guava contains <span className="text-[#2FC8B9] font-black">3g of protein</span> - more than most fruits in nature!
-              </p>
-            </div>
-            <div className="min-w-[280px] md:min-w-0 snap-center bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm hover:shadow-xl hover:border-[#2FC8B9]/10 transition-all">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="text-4xl drop-shadow-md">🥬</div>
-                <div className="w-11 h-11 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100">
-                  <Droplets className="w-6 h-6 text-[#2FC8B9]" />
-                </div>
-              </div>
-              <h3 className="font-black text-black mb-3 text-lg">Spinach Iron</h3>
-              <p className="text-sm text-slate-500 leading-relaxed font-bold">
-                Spinach packs <span className="text-[#2FC8B9] font-black">2.7mg of iron</span> per 100g - super blood support fuel.
-              </p>
-            </div>
-            <div className="min-w-[280px] md:min-w-0 snap-center bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm hover:shadow-xl hover:border-[#2FC8B9]/10 transition-all">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="text-4xl drop-shadow-md">🥜</div>
-                <div className="w-11 h-11 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100">
-                  <Zap className="w-6 h-6 text-[#2FC8B9]" />
-                </div>
-              </div>
-              <h3 className="font-black text-black mb-3 text-lg">Almond Energy</h3>
-              <p className="text-sm text-slate-500 leading-relaxed font-bold">
-                Just <span className="text-[#2FC8B9] font-black">23 almonds</span> provide 6g protein and fats for better brain power.
-              </p>
-            </div>
-            <div className="min-w-[280px] md:min-w-0 snap-center bg-white rounded-[2.5rem] border border-slate-100 p-8 shadow-sm hover:shadow-xl hover:border-[#2FC8B9]/10 transition-all">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="text-4xl drop-shadow-md">🥚</div>
-                <div className="w-11 h-11 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100">
-                  <Sun className="w-6 h-6 text-[#2FC8B9]" />
-                </div>
-              </div>
-              <h3 className="font-black text-black mb-3 text-lg">Egg Vitamin D</h3>
-              <p className="text-sm text-slate-500 leading-relaxed font-bold">
-                One egg yolk has <span className="text-[#2FC8B9] font-black">40 IU Vitamin D</span> - essential for bone density.
-              </p>
-            </div>
+          <p className="text-[10px] font-black text-[#A1A1A1] uppercase tracking-[0.1em] mb-4">DAILY TARGETS</p>
+
+          <DashedGauge
+            value={nutrientMode === 'Macro' ? (nutritionData?.totalCalories || dashboardData?.nutritionData?.totalCalories || 0) : 85}
+            max={nutrientMode === 'Macro' ? (user?.nutritionGoal?.calorieGoal || nutritionData?.calorieGoal || 0) : 100}
+            mode={nutrientMode}
+          />
+
+          <div className="flex justify-center gap-8 border-b border-slate-50 mb-8 pb-0.5">
+            <button
+              onClick={() => setNutrientMode('Macro')}
+              className={`text-xs font-black uppercase tracking-widest pb-2.5 px-2 transition-all relative ${nutrientMode === 'Macro' ? 'text-black' : 'text-slate-300 hover:text-slate-400'
+                }`}
+            >
+              Macro
+              {nutrientMode === 'Macro' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-black" />}
+            </button>
+            <button
+              onClick={() => setNutrientMode('Micro')}
+              className={`text-xs font-black uppercase tracking-widest pb-2.5 px-2 transition-all relative ${nutrientMode === 'Micro' ? 'text-black' : 'text-slate-300 hover:text-slate-400'
+                }`}
+            >
+              Micro
+              {nutrientMode === 'Micro' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-black" />}
+            </button>
+          </div>
+
+          <div className="flex-1 space-y-4 pt-2">
+            {nutrientMode === 'Macro' ? (
+              <>
+                <NutrientProgressRow
+                  label="Protein"
+                  value={(() => {
+                    const goal = user?.nutritionGoal?.proteinGoal || nutritionData?.proteinGoal || 150;
+                    const val = nutritionData?.totalProtein || dashboardData?.nutritionData?.totalProtein || 0;
+                    return goal > 0 ? (val / goal) * 100 : 0;
+                  })()}
+                  icon={Circle} color="bg-black" iconBg="bg-slate-50" iconColor="text-black"
+                />
+                <NutrientProgressRow
+                  label="Fats"
+                  value={(() => {
+                    const goal = user?.nutritionGoal?.fatGoal || nutritionData?.fatsGoal || 65;
+                    const val = nutritionData?.totalFats || dashboardData?.nutritionData?.totalFats || 0;
+                    return goal > 0 ? (val / goal) * 100 : 0;
+                  })()}
+                  icon={Smile} color="bg-slate-600" iconBg="bg-slate-50" iconColor="text-slate-600"
+                />
+                <NutrientProgressRow
+                  label="Carbs"
+                  value={(() => {
+                    const goal = user?.nutritionGoal?.carbsGoal || nutritionData?.carbsGoal || 200;
+                    const val = nutritionData?.totalCarbs || dashboardData?.nutritionData?.totalCarbs || 0;
+                    return goal > 0 ? (val / goal) * 100 : 0;
+                  })()}
+                  icon={Heart} color="bg-slate-400" iconBg="bg-slate-50" iconColor="text-slate-400"
+                />
+              </>
+            ) : (
+              <>
+                <NutrientProgressRow
+                  label="Fiber"
+                  value={((nutritionData?.totalFiber || 0) / 30) * 100}
+                  icon={Sparkles} color="bg-black" iconBg="bg-slate-50" iconColor="text-black"
+                />
+                <NutrientProgressRow
+                  label="Sugar"
+                  value={((nutritionData?.totalSugar || 0) / 50) * 100}
+                  icon={Droplet} color="bg-slate-600" iconBg="bg-slate-50" iconColor="text-slate-600"
+                />
+                <NutrientProgressRow
+                  label="Sodium"
+                  value={((nutritionData?.totalSodium || 0) / 2300) * 100}
+                  icon={AlertCircle} color="bg-slate-400" iconBg="bg-slate-50" iconColor="text-slate-400"
+                />
+              </>
+            )}
           </div>
         </div>
-        {/* CTA Footer */}
-        {/* CTA Footer - Reduced Size */}
-        <div className="bg-[#2FC8B9] rounded-[2.5rem] p-6 sm:p-8 text-white relative overflow-hidden group shadow-2xl">
-          <div className="absolute top-0 left-1/2 w-[500px] h-[500px] bg-white/10 rounded-full -translate-y-1/2 -translate-x-1/2 blur-[100px] pointer-events-none"></div>
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative z-10">
-            <div className="text-center md:text-left">
-              <h3 className="text-2xl sm:text-3xl font-black mb-2 tracking-tighter uppercase leading-none">Elevate Your Journey</h3>
-              <p className="text-white/80 font-bold text-xs sm:text-base max-w-lg">Advanced AI intelligence optimized for your wellness trajectory.</p>
-            </div>
-            <Link
-              to="/ai-chat"
-              className="px-8 py-4 bg-black text-white rounded-2xl font-black uppercase tracking-[0.2em] transition-all hover:bg-slate-900 shadow-2xl flex items-center gap-3 hover:scale-105 active:scale-95 text-xs"
-            >
-              <MessageSquare className="w-4 h-4 text-[#2FC8B9]" />
-              Initialize AI
-              <ArrowRight className="w-4 h-4 group-hover:translate-x-2 transition-transform" />
+
+        {/* AI Lab Insights Card */}
+        <div className="min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-[520px] lg:h-full">
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-black text-black">AI Lab Insights</h2>
+            <Link to="/upload" className="text-[9px] font-black text-slate-400 uppercase tracking-[0.1em] flex items-center gap-1 hover:text-black group">
+              UPLOAD REPORT <ArrowUpRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </Link>
           </div>
-        </div>
 
-        <div className="mt-12 mb-8 px-4">
-          <div className="bg-slate-50 border border-slate-100 rounded-3xl p-6 text-center">
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-relaxed max-w-2xl mx-auto">
-              Medical Disclaimer: The AI-generated insights, health scores, and diet recommendations provided by this platform are for informational and educational purposes only. This is not medical advice. Always consult with a qualified healthcare professional before making any changes to your medication, diet, or exercise routine.
+          <div className="space-y-3 flex-1 overflow-y-auto max-h-[300px] pr-2 scrollbar-thin scrollbar-thumb-black scrollbar-track-transparent">
+            {dashboardData?.latestAnalysis?.metrics ? (
+              Object.entries(dashboardData.latestAnalysis.metrics).map(([key, val]) => (
+                <LabMetricsItem
+                  key={key}
+                  label={key}
+                  value={typeof val === 'object' ? `${val.value} ${val.unit || ''}` : val}
+                  status={(typeof val === 'object' && val.status) ? val.status : "Normal"}
+                  icon={key.toLowerCase().includes('glucose') ? Droplet : key.toLowerCase().includes('hb') ? Circle : Activity}
+                />
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-3xl text-center">
+                <UploadCloud className="w-10 h-10 text-slate-300 mb-3" />
+                <p className="text-xs font-black text-slate-400 uppercase tracking-widest leading-loose">Upload your 1st report to get vitals details here</p>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-8 p-6 bg-white rounded-[2rem] border border-[#F1F1F4] relative group shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="w-4 h-4 text-black" />
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">AI RECOMMENDATION</span>
+            </div>
+            <p className="text-[12px] font-medium text-[#1A1A1A] leading-relaxed">
+              "{dashboardData?.latestAnalysis?.recommendations?.lifestyle?.[0] || 'Reduce refined sugar intake. Add 20g fiber daily.'}"
             </p>
           </div>
         </div>
-      </div >
-    </div >
+
+      </div>
+
+      {/* Scroll Indicator for mobile */}
+      <div className="flex lg:hidden justify-center gap-2 mb-8 -mt-4">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${scrollProgress >= (i * 33 - 5) && scrollProgress <= ((i + 1) * 33 + 5) ? 'w-6 bg-black' : 'w-2 bg-slate-200'}`} />
+        ))}
+      </div>
+
+      {/* Diabetes Monitor Block */}
+      {
+        isDiabetic && (
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="bg-white/80 backdrop-blur-2xl border border-white/50 rounded-[32px] p-6 md:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] relative overflow-hidden mt-12 mb-12"
+          >
+            {/* Subtle inside gradient */}
+            <div className="absolute inset-0 bg-gradient-to-r from-[#F5F5F7]/80 to-white/30 pointer-events-none" />
+
+            <div className="relative z-10">
+              <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
+                <div>
+                  <h2 className="text-2xl font-medium text-[#1a1a1a] mb-1">Diabetes Monitor</h2>
+                  <p className="text-[#666666] text-sm font-medium">Track glucose & HbA1c</p>
+                </div>
+                <button onClick={() => navigate('/diabetes')} className="mt-4 md:mt-0 px-6 py-2.5 bg-white shadow-sm border border-slate-200 hover:bg-slate-50 text-[#1a1a1a] rounded-full font-medium transition-all flex items-center gap-2">
+                  <Plus className="w-4 h-4 text-[#1a1a1a]" /> Log Reading
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                {[
+                  { label: 'Glucose', val: dashboardData?.latestAnalysis?.metrics?.Glucose?.value || '110', unit: 'mg/dL', status: dashboardData?.latestAnalysis?.metrics?.Glucose?.status || 'Normal', color: 'text-slate-700', bg: 'bg-[#F5F5F7]' },
+                  { label: 'HbA1c', val: dashboardData?.latestAnalysis?.metrics?.HbA1c?.value || '5.8', unit: '%', status: dashboardData?.latestAnalysis?.metrics?.HbA1c?.status || 'Good', color: 'text-slate-700', bg: 'bg-[#F5F5F7]' }
+                ].map((stat, i) => (
+                  <div key={stat.label} className="bg-white/90 border border-white shadow-sm rounded-[24px] p-6 flex flex-col items-center justify-center relative group hover:bg-white transition-all hover:shadow-md">
+                    <span className="text-[#888888] text-[11px] font-bold uppercase tracking-widest mb-2">{stat.label}</span>
+                    <div className="flex items-baseline gap-1 mb-3">
+                      <span className="text-4xl font-light text-[#1a1a1a] tracking-tight">{stat.val}</span>
+                      <span className="text-sm font-medium text-[#a0a0a0]">{stat.unit}</span>
+                    </div>
+                    <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider bg-slate-100 text-slate-800`}>
+                      {stat.status}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </motion.div>
+        )}
+
+      {/* Your Logged Meals */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.5 }}
+        className="mb-12"
+      >
+        <div className="flex items-center justify-between mb-6 px-2">
+          <h2 className="text-2xl font-medium text-[#1a1a1a]">Your Logged Meals</h2>
+          <button onClick={() => navigate('/nutrition')} className="text-sm font-medium text-[#666666] hover:text-[#1a1a1a]">View Menu</button>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+          {loggedMeals.length > 0 ? (
+            loggedMeals.slice(-3).map((meal, i) => (
+              <div key={i} className="bg-white/80 backdrop-blur-xl rounded-[32px] overflow-hidden border border-white/50 shadow-[0_4px_24px_rgba(0,0,0,0.02)] group hover:shadow-xl transition-all flex flex-col">
+                <div className="h-52 relative overflow-hidden">
+                  <ImageWithFallback src={meal.imageUrl} query={meal.name} alt={meal.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
+                  <div className="absolute top-4 left-4 flex flex-wrap gap-2">
+                    {['Logged', (meal.totalNutrition?.calories || meal.calories) > 300 ? 'High Energy' : 'Balanced'].map(tag => (
+                      <span key={tag} className="px-3 py-1 bg-white/20 backdrop-blur-md text-white border border-white/30 text-[10px] font-bold uppercase tracking-wider rounded-full">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="absolute bottom-4 left-4 flex gap-2">
+                    <span className="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-md text-[#1a1a1a] text-[10px] font-bold rounded-full shadow-sm">
+                      <Flame className="w-3.5 h-3.5 text-black" /> {meal.totalNutrition?.calories || meal.calories || 0} cal
+                    </span>
+                    <span className="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-md text-[#1a1a1a] text-[10px] font-bold rounded-full shadow-sm">
+                      <Clock className="w-3.5 h-3.5 text-slate-500" /> {meal.mealType || 'Meal'}
+                    </span>
+                  </div>
+                </div>
+                <div className="p-6 lg:p-8 flex-1 flex flex-col">
+                  <h3 className="font-medium text-[#1a1a1a] text-xl mb-5">{meal.name || meal.foodItems?.[0]?.name || 'Logged Meal'}</h3>
+                  <div className="flex gap-3 mt-auto">
+                    <button onClick={() => navigate('/nutrition', { state: { openLogMeal: true, mealType: meal.mealType } })} className="flex-1 py-3 bg-[#1a1a1a] hover:bg-black text-white text-sm font-medium rounded-full transition-all shadow-md">
+                      + Add Again
+                    </button>
+                    <button onClick={() => navigate('/nutrition')} className="w-12 h-12 flex items-center justify-center bg-[#F5F5F7] hover:bg-slate-200 text-[#1a1a1a] text-sm font-bold rounded-full transition-colors border border-white">
+                      <Eye className="w-5 h-5" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="col-span-full p-20 text-center bg-[#FAF9FF] rounded-[3rem] border border-dashed border-[#EBE7FF]">
+              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
+                <Utensils className="w-10 h-10 text-slate-200" />
+              </div>
+              <h3 className="text-2xl font-black text-slate-800 uppercase tracking-tight mb-2">No Meals Logged Yet</h3>
+              <p className="text-slate-400 font-bold text-base max-w-sm mx-auto">Start logging your meals to see your nutritional history and personalized suggestions here.</p>
+              <button onClick={() => navigate('/nutrition')} className="mt-8 px-10 py-4 bg-slate-900 text-white rounded-full text-sm font-black uppercase tracking-widest hover:bg-black transition-all">Log Your First Meal</button>
+            </div>
+          )}
+        </div>
+      </motion.div>
+
+      {/* Bottom Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-8">
+
+        {/* Daily Vitals (Weight, Steps, Sleep) */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.6 }}
+          className="flex flex-col h-full"
+        >
+          <DailyMetricsCard />
+        </motion.div>
+
+        {/* Nutrition Deficiency Tracker */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.7 }}
+          className="bg-white rounded-[28px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden flex flex-col h-full border border-slate-100/50"
+        >
+          <div className="flex items-center justify-between mb-6 shrink-0">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#F5F5F7] flex items-center justify-center">
+                <FlaskConical className="w-5 h-5 text-[#1a1a1a]" />
+              </div>
+              <h3 className="text-xl font-medium text-[#1a1a1a]">Nutrition Deficiency</h3>
+            </div>
+            <button className="text-[11px] font-bold text-[#666666] hover:text-[#1a1a1a] uppercase tracking-wide">Detailed &rarr;</button>
+          </div>
+          <div className="space-y-6 flex-1 overflow-y-auto pr-2 pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+            {dashboardData?.latestAnalysis?.deficiencies?.length > 0 ? (
+              dashboardData.latestAnalysis.deficiencies.map((item, i) => {
+                const isRisk = item.status === 'Risk';
+                const statusColor = isRisk ? 'text-white bg-black' : 'text-black bg-slate-100';
+                const barColor = isRisk ? 'bg-black' : 'bg-slate-400';
+
+                return (
+                  <div key={i} className="flex flex-col gap-2">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-[#1a1a1a]">{item.name}</span>
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor}`}>
+                          {item.status}
+                        </span>
+                      </div>
+                      <div className="text-xs text-[#888888]">
+                        <span className="font-bold text-[#1a1a1a] text-sm">{item.currentValue || item.current}</span>/{item.normalRange || item.target} {item.unit}
+                      </div>
+                    </div>
+
+                    <div className="h-2 w-full bg-[#F5F5F7] rounded-full overflow-hidden">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${item.percent || 0}%` }}
+                        transition={{ duration: 1, delay: 0.8 + (i * 0.1) }}
+                        className={`h-full ${barColor} rounded-full`}
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-1.5 mt-1 p-3 bg-[#F5F5F7]/50 rounded-[16px] border border-white">
+                      <div className="flex items-start gap-2 text-xs text-[#666666]">
+                        <Leaf className="w-3.5 h-3.5 text-[#1a1a1a] flex-shrink-0 mt-0.5" />
+                        <span><span className="font-medium text-[#1a1a1a]">Eat more:</span> {item.food || 'Leafy greens'}</span>
+                      </div>
+                      <div className="flex items-start gap-2 text-xs text-[#666666]">
+                        <Pill className="w-3.5 h-3.5 text-[#1a1a1a] flex-shrink-0 mt-0.5" />
+                        <span><span className="font-medium text-[#1a1a1a]">Supplement:</span> {item.supplement || 'Check report'}</span>
+                      </div>
+                    </div>
+                  </div>
+                )
+              })
+            ) : (
+              <div className="flex flex-col items-center justify-center p-10 bg-slate-50 rounded-[2rem] border border-dashed border-slate-200 text-center">
+                <FlaskConical className="w-10 h-10 text-slate-300 mb-4" />
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-loose">
+                  Upload your report to get <br /> nutritional analysis
+                </p>
+              </div>
+            )}
+          </div>
+        </motion.div>
+
+        {/* Care Plan */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.8 }}
+          className="bg-white rounded-[28px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100/50 flex flex-col"
+        >
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-[#F5F5F7] flex items-center justify-center border border-white shadow-sm">
+                <FileText className="w-5 h-5 text-[#1a1a1a]" />
+              </div>
+              <h3 className="text-xl font-medium text-[#1a1a1a]">Care Plan</h3>
+            </div>
+            <span className="text-3xl font-light text-[#1a1a1a]">
+              {completedTasks.length}
+              <span className="text-lg text-[#888888]">/{(dashboardData?.latestAnalysis?.recommendations?.lifestyle?.length || 4)}</span>
+            </span>
+          </div>
+          <div className="space-y-5 flex-1 min-h-0 overflow-y-auto pr-1">
+            {(() => {
+              const defaultTasks = [
+                'Drink 3L Water',
+                'Morning walk 20 mins',
+                'Take Multivitamins',
+                '8 Hours Sleep'
+              ];
+
+              // Check for various health conditions from profile and analysis metrics
+              const metrics = dashboardData?.latestAnalysis?.metrics || {};
+              const conditions = user?.profile?.medicalHistory?.conditions || [];
+
+              const hasCondition = (name) => conditions.some(c => c.toLowerCase().includes(name.toLowerCase()));
+              const isHigh = (name) => {
+                const metric = Object.values(metrics).find(m => m.name?.toLowerCase().includes(name.toLowerCase()) || m.label?.toLowerCase().includes(name.toLowerCase()));
+                return metric?.status?.toLowerCase().includes('high') || metric?.status?.toLowerCase().includes('risk');
+              };
+
+              if (isDiabetic || hasCondition('diabetes')) {
+                defaultTasks[0] = 'Check Glucose Level';
+                defaultTasks[2] = 'Sugar-free Breakfast';
+              }
+
+              if (hasCondition('hypertension') || isHigh('pressure')) {
+                defaultTasks.push('Check Blood Pressure');
+                defaultTasks[0] = 'Low Sodium Meals';
+              }
+
+              if (hasCondition('anemia') || isHigh('hemoglobin')) {
+                defaultTasks.push('Iron-rich Foods');
+                defaultTasks[2] = 'Take Iron Supplement';
+              }
+
+              if (isHigh('cholesterol')) {
+                defaultTasks.push('Omega-3 Supplement');
+                defaultTasks[3] = 'Fiber-rich Dinner';
+              }
+
+              if (isOverLimit) {
+                defaultTasks[1] = 'Extra 15m Cardio';
+                if (defaultTasks.length < 5) defaultTasks.push('Log Extra Calories');
+              }
+
+              return (dashboardData?.latestAnalysis?.recommendations?.lifestyle || defaultTasks.slice(0, 5)).map((task, i) => {
+                const isCompleted = completedTasks.includes(i);
+                return (
+                  <div
+                    key={i}
+                    className="flex items-center gap-4 group cursor-pointer"
+                    onClick={() => {
+                      setCompletedTasks(prev =>
+                        prev.includes(i) ? prev.filter(t => t !== i) : [...prev, i]
+                      );
+                    }}
+                  >
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center border-2 transition-colors flex-shrink-0 ${isCompleted ? 'border-[#1a1a1a] bg-[#1a1a1a]' : 'border-slate-300 group-hover:border-slate-400'}`}>
+                      {isCompleted && <CheckCircle2 className="w-4 h-4 text-white" />}
+                    </div>
+                    <span className={`text-sm font-black transition-colors uppercase tracking-tight ${isCompleted ? 'text-[#a0a0a0] line-through decoration-[#a0a0a0]' : 'text-[#1a1a1a] group-hover:text-slate-600'}`}>
+                      {task}
+                    </span>
+                  </div>
+                );
+              });
+            })()}
+          </div>
+          <div className="mt-8 pt-6 border-t border-slate-100">
+            <div className="h-1.5 bg-[#F5F5F7] rounded-full overflow-hidden mb-3">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${(completedTasks.length / (dashboardData?.latestAnalysis?.recommendations?.lifestyle?.length || 4)) * 100}%` }}
+                transition={{ duration: 1, delay: 1 }}
+                className="h-full bg-[#1a1a1a] rounded-full"
+              />
+            </div>
+            <p className="text-xs text-center text-[#888888] font-bold uppercase tracking-wider">
+              {(dashboardData?.latestAnalysis?.recommendations?.lifestyle?.length || 4) - completedTasks.length} tasks remaining
+            </p>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Health Trends */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.85 }}
+        className="bg-white/80 backdrop-blur-xl border border-white/50 rounded-[32px] p-6 lg:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] relative overflow-hidden mb-8"
+      >
+        <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-[#F5F5F7] flex items-center justify-center border border-white shadow-sm">
+              <TrendingUp className="w-5 h-5 text-[#1a1a1a]" />
+            </div>
+            <div>
+              <h3 className="text-xl font-medium text-[#1a1a1a]">Health Trends</h3>
+              <p className="text-[#666666] text-sm">Monitor your progress over time</p>
+            </div>
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+            <div className="bg-[#F5F5F7] p-1.5 rounded-full flex gap-1 border border-white shadow-sm overflow-x-auto">
+              {['1W', '1M', '3M'].map(range => (
+                <button
+                  key={range}
+                  onClick={() => setTrendTimeRange(range)}
+                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${trendTimeRange === range
+                    ? 'bg-[#1a1a1a] text-white shadow-sm'
+                    : 'text-[#666666] hover:text-[#1a1a1a]'
+                    }`}
+                >
+                  {range}
+                </button>
+              ))}
+            </div>
+            <div className="bg-[#F5F5F7] p-1.5 rounded-full flex gap-1 border border-white shadow-sm overflow-x-auto">
+              {['Calories', 'Sleep', 'Steps', 'Weight'].map(tab => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTrendTab(tab)}
+                  className={`px-6 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${activeTrendTab === tab
+                    ? 'bg-white text-[#1a1a1a] shadow-sm'
+                    : 'text-[#666666] hover:text-[#1a1a1a]'
+                    }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="h-[300px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <AreaChart data={(dashboardData?.history || []).filter(h => {
+              if (!h.date) return false;
+              const date = new Date(h.date);
+              date.setHours(0, 0, 0, 0);
+              const now = new Date();
+              now.setHours(23, 59, 59, 999);
+              const diffMs = now.getTime() - date.getTime();
+              const diffDays = diffMs / (1000 * 60 * 60 * 24);
+
+              if (trendTimeRange === '1W') return diffDays < 7 && diffDays >= 0;
+              if (trendTimeRange === '1M') return diffDays < 30 && diffDays >= 0;
+              if (trendTimeRange === '3M') return diffDays < 90 && diffDays >= 0;
+              return diffDays >= 0;
+            }).map(h => ({
+              date: new Date(h.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+              value: activeTrendTab === 'Calories' ? h.calories : activeTrendTab === 'Steps' ? h.steps : activeTrendTab === 'Sleep' ? h.sleep : h.weight
+            }))}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+              <XAxis
+                dataKey="date"
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: '#888888', fontSize: 12 }}
+                dy={10}
+              />
+              <YAxis
+                axisLine={false}
+                tickLine={false}
+                tick={{ fill: '#888888', fontSize: 12 }}
+                dx={-10}
+              />
+              <Tooltip
+                contentStyle={{ borderRadius: '16px', border: '1px solid #f1f5f9', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+                formatter={(value) => [`${value}`, activeTrendTab]}
+                labelStyle={{ color: '#888888', marginBottom: '4px' }}
+              />
+              <defs>
+                <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#000000" stopOpacity={0.1} />
+                  <stop offset="95%" stopColor="#000000" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <Area
+                type="monotone"
+                dataKey="value"
+                stroke="#000000"
+                strokeWidth={4}
+                fillOpacity={1}
+                fill="url(#colorValue)"
+                activeDot={{ r: 6, fill: '#1a1a1a', strokeWidth: 2, stroke: '#fff' }}
+              />
+            </AreaChart>
+          </ResponsiveContainer>
+        </div>
+      </motion.div>
+
+      {/* AI Insight Footer */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.9 }}
+        className="bg-[#1a1a1a] text-white rounded-[32px] p-6 lg:p-8 mb-8 shadow-xl shadow-black/5 flex flex-col md:flex-row items-start md:items-center gap-6 relative overflow-hidden group"
+      >
+        <div className="absolute right-0 top-0 w-64 h-64 bg-white/5 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2" />
+        <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 relative z-10 group-hover:scale-110 transition-transform duration-300 border border-white/10">
+          <Zap className="w-6 h-6 text-white" />
+        </div>
+        <div className="relative z-10 flex-1">
+          <h3 className="font-medium text-xl mb-2">AI Health Insight</h3>
+          <p className="text-[#a0a0a0] font-medium leading-relaxed max-w-4xl text-base">
+            {dashboardData?.latestAnalysis?.recommendations?.lifestyle?.[0] ||
+              `${user?.name?.split(' ')[0] || 'Mike'}, your glucose variability increased after dinner yesterday. Boosting your fiber intake by 8g during your evening meal today could stabilize your nighttime metabolic rate.`}
+          </p>
+        </div>
+        <button onClick={() => navigate('/ai-chat')} className="relative z-10 mt-4 md:mt-0 px-8 py-3 bg-white hover:bg-slate-100 text-[#1a1a1a] text-sm font-medium rounded-full transition-all shadow-md whitespace-nowrap">
+          Ask AI Assistant
+        </button>
+      </motion.div>
+      <AnimatePresence>
+        {showMealModal && (
+          <MealDetailModal
+            meal={selectedMealForModal}
+            onClose={() => setShowMealModal(false)}
+            onAdd={async (foodItem) => {
+              try {
+                await api.post('nutrition/log-meal', {
+                  mealType: activeMealTab === 'snacks' ? 'snack' : activeMealTab,
+                  foodItems: [{
+                    name: foodItem.name,
+                    quantity: foodItem.quantity,
+                    nutrition: foodItem.nutrition
+                  }],
+                  timestamp: new Date()
+                });
+                toast.success('Meal added to your logs!');
+                setShowMealModal(false);
+                fetchDashboard(true);
+                // Refresh logged meals
+                nutritionService.getTodayLogs().then(res => setLoggedMeals(res.data?.foodLogs || res.data?.logs || []));
+              } catch (err) {
+                toast.error('Failed to log meal');
+              }
+            }}
+          />
+        )}
+      </AnimatePresence>
+    </div>
   );
 }

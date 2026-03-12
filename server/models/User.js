@@ -8,6 +8,9 @@ const userSchema = new mongoose.Schema({
   password: { type: String, required: true, minlength: 6 },
   role: { type: String, enum: ['patient', 'client', 'doctor', 'admin'], default: 'patient' },
   isActive: { type: Boolean, default: true },
+  isEmailVerified: { type: Boolean, default: false },
+  emailVerificationCode: String,
+  emailVerificationExpire: Date,
   profilePicture: { type: String }, // Cloudinary URL
   resetPasswordCode: String,
   resetPasswordExpire: Date,

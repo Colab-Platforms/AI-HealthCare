@@ -237,7 +237,7 @@ const LogGlucoseModal = ({ isOpen, onClose, onSave }) => {
             <div className="mb-8 relative">
               {/* Center indicator (teal triangle) */}
               <div className="flex justify-center mb-1">
-                <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-t-[10px] border-l-transparent border-r-transparent border-t-[#2FC8B9]" />
+                <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-t-[10px] border-l-transparent border-r-transparent border-t-black" />
               </div>
 
               <div className="flex items-center gap-2">
@@ -340,7 +340,7 @@ const LogGlucoseModal = ({ isOpen, onClose, onSave }) => {
                     key={type.id}
                     onClick={() => setReadingType(type.id)}
                     className={`w-full p-4 rounded-2xl border-2 transition-all duration-200 ${readingType === type.id
-                      ? "border-[#2FC8B9] bg-[#2FC8B9]/10 shadow-sm"
+                      ? "border-black bg-slate-50 shadow-sm"
                       : "border-gray-200 bg-white hover:border-gray-300"
                       }`}
                   >
@@ -358,7 +358,7 @@ const LogGlucoseModal = ({ isOpen, onClose, onSave }) => {
                       </div>
                       <div
                         className={`w-6 h-6 rounded-full border-2 flex items-center justify-center flex-shrink-0 ml-3 transition-all ${readingType === type.id
-                          ? "border-[#2FC8B9] bg-[#2FC8B9]"
+                          ? "border-black bg-black"
                           : "border-gray-300"
                           }`}
                       >
@@ -375,7 +375,7 @@ const LogGlucoseModal = ({ isOpen, onClose, onSave }) => {
             {/* Save Button */}
             <button
               onClick={handleSave}
-              className="w-full bg-[#2FC8B9] text-white py-4 rounded-full font-bold text-base hover:bg-[#1db7a6] transition-all shadow-lg shadow-[#2FC8B9]/30 active:scale-[0.98]"
+              className="w-full bg-black text-white py-4 rounded-full font-bold text-base hover:bg-slate-900 transition-all shadow-lg shadow-black/20 active:scale-[0.98]"
             >
               Save Reading
             </button>

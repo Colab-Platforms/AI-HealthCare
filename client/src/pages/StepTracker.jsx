@@ -14,10 +14,10 @@ const CircularProgress = ({ value, max }) => {
     const strokeDashoffset = circumference - progress * circumference;
 
     const getColor = (p) => {
-        if (p >= 1) return '#10b981';
-        if (p >= 0.6) return '#4ade80';
-        if (p >= 0.3) return '#fb923c';
-        return '#818cf8';
+        if (p >= 1) return '#000000';
+        if (p >= 0.6) return '#334155';
+        if (p >= 0.3) return '#64748b';
+        return '#94a3b8';
     };
 
     return (
@@ -35,8 +35,8 @@ const CircularProgress = ({ value, max }) => {
                 />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-end -bottom-2">
-                <div className="w-12 h-12 bg-green-50 rounded-2xl flex items-center justify-center mb-2">
-                    <Footprints className="w-7 h-7 text-green-500 transform -rotate-12" />
+                <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center mb-2">
+                    <Footprints className="w-7 h-7 text-black transform -rotate-12" />
                 </div>
                 <span className="text-4xl font-extrabold tracking-tight" style={{ color: getColor(progress) }}>
                     {value.toLocaleString()}
@@ -109,7 +109,7 @@ export default function StepTracker() {
                 </button>
                 <h1 className="text-lg font-black text-black tracking-tight">Step Tracker</h1>
                 <div className="flex items-center gap-1.5">
-                    <span className={`w-2 h-2 rounded-full ${sensorStatus === 'active' ? 'bg-emerald-500 animate-pulse' : sensorStatus === 'error' ? 'bg-red-400' : 'bg-amber-400 animate-pulse'}`} />
+                    <span className={`w-2 h-2 rounded-full ${sensorStatus === 'active' ? 'bg-black animate-pulse' : sensorStatus === 'error' ? 'bg-slate-300' : 'bg-slate-400 animate-pulse'}`} />
                     <span className="text-[9px] font-black uppercase tracking-widest text-slate-400">
                         {sensorStatus === 'active' ? 'Live' : sensorStatus === 'needs-permission' ? 'Tap' : sensorStatus === 'error' ? 'Off' : '...'}
                     </span>
@@ -121,7 +121,7 @@ export default function StepTracker() {
                     <div className="mx-6 mt-4">
                         <button
                             onClick={requestPermission}
-                            className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-2xl p-5 flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-transform"
+                            className="w-full bg-black text-white rounded-2xl p-5 flex items-center justify-center gap-3 shadow-lg active:scale-95 transition-transform"
                         >
                             <Smartphone className="w-5 h-5" />
                             <div className="text-left">
@@ -142,11 +142,11 @@ export default function StepTracker() {
                 {sensorStatus === 'active' && (
                     <div className="mx-6 mt-3 bg-slate-50 rounded-xl px-4 py-2 flex items-center justify-between text-[10px] font-bold text-slate-400">
                         <div className="flex items-center gap-2">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-black animate-pulse" />
                             <span>{debugInfo.readings} readings</span>
                         </div>
                         <span>Accel: {debugInfo.lastMag} m/s²</span>
-                        <span className={debugInfo.gyroActive ? 'text-emerald-500' : 'text-slate-300'}>
+                        <span className={debugInfo.gyroActive ? 'text-black' : 'text-slate-300'}>
                             Gyro: {debugInfo.gyroActive ? 'ON' : 'OFF'}
                         </span>
                     </div>
@@ -155,8 +155,8 @@ export default function StepTracker() {
                 <div className="bg-white p-6 pb-8 border-b border-slate-100">
                     <div className="text-center mb-2">
                         <h2 className="text-xl font-bold text-slate-700 leading-tight">
-                            You have walked <span className="text-indigo-500 font-black">{steps.toLocaleString()}</span><br />
-                            <span className="text-indigo-400 font-black">steps</span> today
+                            You have walked <span className="text-black font-black">{steps.toLocaleString()}</span><br />
+                            <span className="text-slate-800 font-black">steps</span> today
                         </h2>
                     </div>
 
@@ -179,7 +179,7 @@ export default function StepTracker() {
                             setTempGoal(dailyGoal);
                             setIsEditingGoal(true);
                         }}>
-                            <p className="text-[11px] font-bold text-slate-500 mb-1 flex items-center justify-center gap-1 group-hover:text-indigo-500 transition-colors">
+                            <p className="text-[11px] font-bold text-slate-500 mb-1 flex items-center justify-center gap-1 group-hover:text-black transition-colors">
                                 Goal <Target className="w-3 h-3" />
                             </p>
                             <p className="text-2xl font-black text-black group-hover:scale-105 transition-transform">
@@ -211,16 +211,16 @@ export default function StepTracker() {
                                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'transparent' }} />
                                 <ReferenceLine
                                     y={dailyGoal}
-                                    stroke="#6366f1"
+                                    stroke="#000000"
                                     strokeDasharray="6 4"
                                     strokeWidth={1.5}
-                                    label={{ value: 'Goal', position: 'insideTopLeft', fill: '#6366f1', fontSize: 10, fontWeight: 'bold', offset: 5 }}
+                                    label={{ value: 'Goal', position: 'insideTopLeft', fill: '#000000', fontSize: 10, fontWeight: 'bold', offset: 5 }}
                                 />
                                 <Bar dataKey="steps" radius={[8, 8, 8, 8]} maxBarSize={20} animationDuration={1200}>
                                     {dailyStepsHistory.map((entry, index) => (
                                         <Cell
                                             key={`cell-${index}`}
-                                            fill={entry.steps >= dailyGoal ? '#10b981' : entry.steps > 0 ? '#fb923c' : '#e2e8f0'}
+                                            fill={entry.steps >= dailyGoal ? '#000000' : entry.steps > 0 ? '#64748b' : '#e2e8f0'}
                                         />
                                     ))}
                                 </Bar>
@@ -236,14 +236,14 @@ export default function StepTracker() {
                     </div>
 
                     <div className="flex items-center justify-center gap-6 mt-3 text-[9px] font-black uppercase tracking-widest text-slate-400">
-                        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-emerald-500" /> Goal Met</span>
-                        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-orange-400" /> In Progress</span>
-                        <span className="flex items-center gap-1.5 text-indigo-500">— — Goal</span>
+                        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-black" /> Goal Met</span>
+                        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-sm bg-slate-500" /> In Progress</span>
+                        <span className="flex items-center gap-1.5 text-black">— — Goal</span>
                     </div>
                 </div>
 
                 <div className="p-6 mt-3">
-                    <div className="bg-gradient-to-br from-indigo-600 to-purple-700 rounded-[2rem] p-6 text-white shadow-xl relative overflow-hidden">
+                    <div className="bg-black rounded-[2rem] p-6 text-white shadow-xl relative overflow-hidden">
                         <div className="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-2xl"></div>
                         <div className="relative z-10">
                             <div className="flex items-center gap-3 mb-4">
@@ -286,14 +286,14 @@ export default function StepTracker() {
                                 <input
                                     type="number" value={tempGoal}
                                     onChange={(e) => setTempGoal(parseInt(e.target.value) || 0)}
-                                    className="w-full text-4xl font-black text-indigo-600 border-b-4 border-indigo-100 focus:border-indigo-500 transition-colors py-2 outline-none"
+                                    className="w-full text-4xl font-black text-black border-b-4 border-slate-100 focus:border-black transition-colors py-2 outline-none"
                                     autoFocus
                                 />
                             </div>
                             <div className="flex gap-2 mb-6">
                                 {[5000, 7000, 10000, 15000].map(preset => (
                                     <button key={preset} onClick={() => setTempGoal(preset)}
-                                        className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${tempGoal === preset ? 'bg-indigo-600 text-white shadow-md' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
+                                        className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${tempGoal === preset ? 'bg-black text-white shadow-md' : 'bg-slate-50 text-slate-400 hover:bg-slate-100'}`}
                                     >{(preset / 1000)}k</button>
                                 ))}
                             </div>
@@ -301,7 +301,7 @@ export default function StepTracker() {
                                 <button onClick={() => setIsEditingGoal(false)}
                                     className="flex-1 py-4 text-xs font-black text-slate-400 uppercase tracking-widest hover:text-black transition-colors">Cancel</button>
                                 <button onClick={handleSaveGoal}
-                                    className="flex-1 py-4 bg-indigo-600 text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-indigo-100">Save Goal</button>
+                                    className="flex-1 py-4 bg-black text-white text-xs font-black uppercase tracking-widest rounded-2xl shadow-lg shadow-slate-100">Save Goal</button>
                             </div>
                         </motion.div>
                     </div>

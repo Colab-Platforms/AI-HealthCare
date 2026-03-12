@@ -25,7 +25,8 @@ export default function ReportAnalysisMobile() {
     const [selectedMetric, setSelectedMetric] = useState(null);
     const [showMetricModal, setShowMetricModal] = useState(false);
 
-    // Simple Hindi translation helper
+    const glassCard = "bg-white/80 backdrop-blur-2xl border border-white/50 rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.04)]";
+
     const t = (text) => {
         if (!isHindi || !text) return text;
         return hindiCache[text] || text;
@@ -41,7 +42,6 @@ export default function ReportAnalysisMobile() {
             const aiAnalysis = report?.aiAnalysis;
             if (!aiAnalysis) return;
 
-            // Collect all translatable strings
             const textsToTranslate = [
                 aiAnalysis.summary,
                 ...(aiAnalysis.keyFindings || []),
@@ -65,7 +65,6 @@ export default function ReportAnalysisMobile() {
                 ])
             ].filter(Boolean);
 
-            // Batch translate
             const batchText = textsToTranslate.join('\n---SPLIT---\n');
             const { data } = await api.post('translate', {
                 text: batchText,
@@ -105,24 +104,24 @@ export default function ReportAnalysisMobile() {
     }, [id]);
 
     if (loading) return (
-        <div className="flex items-center justify-center h-screen bg-slate-50">
+        <div className="flex items-center justify-center h-screen bg-white">
             <div className="text-center">
-                <div className="w-16 h-16 border-4 border-blue-500/20 border-t-blue-600 rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-slate-500 font-medium">Analyzing Report...</p>
+                <div className="w-16 h-16 border-4 border-[#F5F5F7] border-t-[#A795C7] rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-[#888888] font-medium">Loading Report...</p>
             </div>
         </div>
     );
 
     if (!report) return (
-        <div className="flex flex-col items-center justify-center h-screen bg-slate-50 px-6">
-            <AlertTriangle className="w-16 h-16 text-amber-500 mb-4" />
-            <h2 className="text-xl font-bold text-slate-800 mb-2">Report Not Found</h2>
-            <p className="text-slate-500 text-center mb-6">We couldn't find the report you're looking for.</p>
+        <div className="flex flex-col items-center justify-center h-screen bg-white px-6">
+            <AlertTriangle className="w-16 h-16 text-[#FF8A66] mb-4" />
+            <h2 className="text-xl font-bold text-[#1a1a1a] mb-2">Report Not Found</h2>
+            <p className="text-[#666666] text-center mb-6">We couldn't find the report you're looking for.</p>
             <button
-                onClick={() => navigate('/dashboard')}
-                className="w-full py-3 bg-blue-600 text-white font-bold rounded-xl shadow-lg"
+                onClick={() => navigate('/upload')}
+                className="px-8 py-3 bg-[#1a1a1a] text-white font-bold rounded-full"
             >
-                Back to Dashboard
+                Back to AI Analyzer
             </button>
         </div>
     );
@@ -137,22 +136,17 @@ export default function ReportAnalysisMobile() {
         low: metricsList.filter(([_, m]) => m.status === 'low' || m.status === 'high').length
     };
 
-    const getStatusColor = (status) => {
-        if (status === 'normal' || status === 'good') return 'emerald';
-        if (status === 'borderline' || status === 'moderate') return 'amber';
-        return 'red';
+    const getStatusStyle = (status) => {
+        if (status === 'normal' || status === 'good') return { text: 'text-[#16A34A]', bg: 'bg-[#F0FDF4]', border: 'border-[#BBF7D0]', dot: 'bg-[#16A34A]' };
+        if (status === 'borderline' || status === 'moderate') return { text: 'text-[#FF8A66]', bg: 'bg-[#FFF8F5]', border: 'border-[#FFE8E0]', dot: 'bg-[#FF8A66]' };
+        return { text: 'text-[#EF4444]', bg: 'bg-[#FFF0F0]', border: 'border-[#FFC9C9]', dot: 'bg-[#EF4444]' };
     };
 
     const handleShare = () => {
         const shareText = `Check out my ${report.reportType} health report analysis! Health Score: ${aiAnalysis?.healthScore}/100`;
         const shareUrl = window.location.href;
-
         if (navigator.share) {
-            navigator.share({
-                title: 'Health Report Analysis',
-                text: shareText,
-                url: shareUrl
-            }).catch(() => {
+            navigator.share({ title: 'Health Report Analysis', text: shareText, url: shareUrl }).catch(() => {
                 window.open(`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`, '_blank');
             });
         } else {
@@ -161,10 +155,7 @@ export default function ReportAnalysisMobile() {
     };
 
     const handleMetricClick = (metricName, metricData) => {
-        setSelectedMetric({
-            name: metricName,
-            ...metricData
-        });
+        setSelectedMetric({ name: metricName, ...metricData });
         setShowMetricModal(true);
     };
 
@@ -175,133 +166,104 @@ export default function ReportAnalysisMobile() {
 
     const handleDownload = async () => {
         const reportElement = document.getElementById('report-mobile-content');
-        if (!reportElement) {
-            toast.error('Could not find report content');
-            return;
-        }
-
+        if (!reportElement) { toast.error('Could not find report content'); return; }
         const toastId = toast.loading('Preparing PDF...');
-
         try {
-            // Temporarily hide elements that shouldn't be in the PDF
             const actionButtons = reportElement.querySelectorAll('.no-pdf');
             actionButtons.forEach(btn => btn.style.display = 'none');
-
-            const canvas = await html2canvas(reportElement, {
-                scale: 2,
-                useCORS: true,
-                logging: false,
-                backgroundColor: '#ffffff',
-                windowWidth: 375 // Use mobile width
-            });
-
-            // Restore hidden elements
+            const canvas = await html2canvas(reportElement, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff', windowWidth: 375 });
             actionButtons.forEach(btn => btn.style.display = '');
-
             const imgData = canvas.toDataURL('image/png');
             const pdf = new jsPDF('p', 'mm', 'a4');
             const pdfWidth = pdf.internal.pageSize.getWidth();
             const pdfHeight = pdf.internal.pageSize.getHeight();
-
-            const imgWidth = canvas.width;
-            const imgHeight = canvas.height;
-
-            const ratio = pdfWidth / imgWidth;
-            let heightLeft = imgHeight * ratio;
+            const ratio = pdfWidth / canvas.width;
+            let heightLeft = canvas.height * ratio;
             let position = 0;
-
-            pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight * ratio);
+            pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, canvas.height * ratio);
             heightLeft -= pdfHeight;
-
             while (heightLeft >= 0) {
-                position = heightLeft - imgHeight * ratio;
+                position = heightLeft - canvas.height * ratio;
                 pdf.addPage();
-                pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight * ratio);
+                pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, canvas.height * ratio);
                 heightLeft -= pdfHeight;
             }
-
             pdf.save(`Health_Report_${id.substring(0, 8)}.pdf`);
             toast.success('Report downloaded!', { id: toastId });
         } catch (error) {
-            console.error('PDF Generation Error:', error);
-            toast.error('Failed to generate PDF. Opening print...', { id: toastId });
+            toast.error('Failed to generate PDF.', { id: toastId });
             window.print();
         }
     };
 
     return (
-        <div id="report-mobile-content" className="min-h-screen pb-20 font-sans bg-slate-50">
-            {/* Navbar */}
-            {/* Redundant back button removed as it's in the header */}
+        <div id="report-mobile-content" className="min-h-screen pb-20 font-sans bg-white">
+            <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-8">
 
-            <div className="px-6 mb-8 flex items-center justify-between gap-4">
-                <div className="flex-1 min-w-0">
-                    <h1 className="text-2xl font-black text-[#0F172A] tracking-tight truncate whitespace-nowrap">{isHindi ? 'रिपोर्ट विश्लेषण' : 'Report Analysis'}</h1>
-                    <p className="text-slate-500 font-medium mt-0.5 text-xs">{isHindi ? 'AI-संचालित स्वास्थ्य अंतर्दृष्टि' : 'AI-Powered Health Insights'}</p>
-                </div>
-                <div className="flex gap-2 flex-shrink-0 no-pdf">
-                    <button
-                        onClick={translateReport}
-                        disabled={translating}
-                        className={`p-2.5 bg-white rounded-xl shadow-sm border border-slate-100 ${isHindi ? 'text-blue-600 border-blue-200 bg-blue-50' : 'text-slate-600'} transition-all flex items-center gap-1.5`}
-                        title="Translate to Hindi"
-                    >
-                        <Languages className="w-5 h-5" />
-                        {translating ? <span className="text-[10px] font-bold">...</span> : isHindi ? <span className="text-[10px] font-bold">EN</span> : <span className="text-[10px] font-bold">HI</span>}
-                    </button>
-                    <button
-                        onClick={handleShare}
-                        className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-100 text-[#25D366] hover:bg-emerald-50 transition-colors"
-                        title="Share on WhatsApp"
-                    >
-                        <Share2 className="w-5 h-5" />
-                    </button>
-                    <button
-                        onClick={handleDownload}
-                        className="p-2.5 bg-white rounded-xl shadow-sm border border-slate-100 text-slate-600 hover:bg-slate-50 transition-colors"
-                        title="Download PDF"
-                    >
-                        <Download className="w-5 h-5" />
-                    </button>
-                </div>
-            </div>
-
-            {showMetricModal && selectedMetric && (
-                <VitalDetailsPopup
-                    metric={selectedMetric}
-                    onClose={closeMetricModal}
-                    initialLanguage={isHindi ? 'Hindi' : 'English'}
-                />
-            )}
-
-            {/* Main Content */}
-            <div className="px-4 space-y-6">
-                {/* Lab Report Card */}
-                <div className="card card-gradient p-8 text-slate-900 shadow-2xl relative overflow-hidden ring-1 ring-white/50">
-                    <div className="absolute top-0 right-0 w-48 h-48 bg-white/20 rounded-full blur-3xl -mr-20 -mt-20"></div>
-
-                    <div className="flex items-center gap-3 mb-6 relative z-10">
-                        <div className="w-10 h-10 bg-white/40 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/50 shadow-inner">
-                            <FileText className="w-5 h-5 text-purple-700" />
+                {/* Header */}
+                <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
+                        <button
+                            onClick={() => navigate('/upload')}
+                            className="w-10 h-10 bg-[#F5F5F7] rounded-full flex items-center justify-center text-[#1a1a1a] hover:bg-slate-200 transition-all flex-shrink-0 no-pdf"
+                        >
+                            <ArrowLeft className="w-5 h-5" />
+                        </button>
+                        <div className="min-w-0">
+                            <h1 className="text-2xl md:text-4xl font-light tracking-tight text-[#1a1a1a] truncate">{isHindi ? 'रिपोर्ट विश्लेषण' : 'Report Analysis'}</h1>
+                            <p className="text-[#888888] text-sm font-medium">{isHindi ? 'AI-संचालित स्वास्थ्य अंतर्दृष्टि' : 'AI-Powered Health Insights'}</p>
                         </div>
-                        <span className="text-[10px] font-black tracking-[0.25em] text-slate-800 uppercase">Lab Report</span>
+                    </div>
+                    <div className="flex gap-2 flex-shrink-0 no-pdf">
+                        <button
+                            onClick={translateReport}
+                            disabled={translating}
+                            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isHindi ? 'bg-[#A795C7] text-white' : 'bg-[#F5F5F7] text-[#666666] hover:bg-slate-200'}`}
+                            title="Translate"
+                        >
+                            <Languages className="w-4 h-4" />
+                        </button>
+                        <button onClick={handleShare} className="w-10 h-10 bg-[#F5F5F7] rounded-full flex items-center justify-center text-[#666666] hover:bg-slate-200 transition-all" title="Share">
+                            <Share2 className="w-4 h-4" />
+                        </button>
+                        <button onClick={handleDownload} className="w-10 h-10 bg-[#F5F5F7] rounded-full flex items-center justify-center text-[#666666] hover:bg-slate-200 transition-all" title="Download">
+                            <Download className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+
+                {showMetricModal && selectedMetric && (
+                    <VitalDetailsPopup
+                        metric={selectedMetric}
+                        onClose={closeMetricModal}
+                        initialLanguage={isHindi ? 'Hindi' : 'English'}
+                    />
+                )}
+
+                {/* Lab Report Card */}
+                <div className={`${glassCard} p-6 md:p-8 relative overflow-hidden`}>
+                    <div className="absolute top-0 right-0 w-40 h-40 bg-[#A795C7]/10 rounded-full blur-3xl -mr-16 -mt-16"></div>
+
+                    <div className="flex items-center gap-3 mb-5 relative z-10">
+                        <div className="w-10 h-10 bg-[#F5F5F7] rounded-full flex items-center justify-center">
+                            <FileText className="w-5 h-5 text-[#A795C7]" />
+                        </div>
+                        <span className="text-[10px] font-bold tracking-widest text-[#888888] uppercase">Lab Report</span>
                     </div>
 
-                    <h2 className="text-2xl font-black mb-4 flex items-center gap-2 overflow-hidden relative z-10">
-                        <span className="truncate whitespace-nowrap">{report.reportType}</span>
-                        <span className="text-sm font-bold opacity-60 shrink-0">({new Date(report.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })})</span>
+                    <h2 className="text-2xl font-bold text-[#1a1a1a] mb-4 relative z-10">
+                        {report.reportType}
+                        <span className="text-sm font-medium text-[#a0a0a0] ml-2">({new Date(report.createdAt).toLocaleDateString('en-US', { month: 'short', year: 'numeric' })})</span>
                     </h2>
 
-                    <div className="space-y-4 relative z-10">
-                        <div className="flex items-center gap-3 text-slate-700">
-                            <Calendar className="w-4 h-4 opacity-60" />
-                            <span className="text-sm font-bold">
-                                {new Date(report.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
-                            </span>
+                    <div className="space-y-3 relative z-10">
+                        <div className="flex items-center gap-3 text-[#666666]">
+                            <Calendar className="w-4 h-4 text-[#a0a0a0]" />
+                            <span className="text-sm font-medium">{new Date(report.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
                         </div>
-                        <div className="flex items-center gap-3 text-slate-700 overflow-hidden">
-                            <User2 className="w-4 h-4 opacity-60 shrink-0" />
-                            <span className="text-sm font-bold truncate whitespace-nowrap">
+                        <div className="flex items-center gap-3 text-[#666666]">
+                            <User2 className="w-4 h-4 text-[#a0a0a0]" />
+                            <span className="text-sm font-medium truncate">
                                 {report.patientName || 'Patient Name'}
                                 {report.patientAge ? ` • ${report.patientAge}Y` : ''}
                                 {report.patientGender ? ` • ${report.patientGender}` : ''}
@@ -309,79 +271,70 @@ export default function ReportAnalysisMobile() {
                         </div>
                     </div>
 
-                    <div className="absolute top-6 right-6 bg-white/40 backdrop-blur-md border border-white/60 rounded-xl px-3 py-1.5 text-center shadow-lg z-10">
-                        <div className="flex items-center justify-center gap-1.5">
-                            <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
-                            <span className="text-[10px] font-black uppercase tracking-widest text-slate-800">Analyzed</span>
+                    <div className="absolute top-6 right-6 bg-[#F0FDF4] border border-[#BBF7D0] rounded-full px-3 py-1.5 z-10">
+                        <div className="flex items-center gap-1.5">
+                            <span className="w-2 h-2 bg-[#16A34A] rounded-full animate-pulse"></span>
+                            <span className="text-[10px] font-bold uppercase tracking-widest text-[#16A34A]">Analyzed</span>
                         </div>
-                    </div>
-
-                    <div className="absolute bottom-[-20px] right-8 opacity-5">
-                        <FileText className="w-32 h-32" />
                     </div>
                 </div>
 
                 {/* Executive Summary */}
                 {(aiAnalysis?.summary || aiAnalysis?.summaryPoints) && (
-                    <div className="card p-8 shadow-sm relative overflow-hidden">
-                        <div className="absolute top-0 right-0 w-32 h-32 bg-purple-500/5 rounded-full -mr-16 -mt-16"></div>
-
-                        <div className="flex items-center gap-3 mb-6 relative z-10">
-                            <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center">
-                                <Activity className="w-5 h-5 text-purple-600" />
+                    <div className={`${glassCard} p-6 md:p-8`}>
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-10 h-10 bg-[#F5F5F7] rounded-full flex items-center justify-center">
+                                <Activity className="w-5 h-5 text-[#A795C7]" />
                             </div>
-                            <h3 className="text-lg font-black text-[#0F172A] tracking-tight uppercase">{isHindi ? 'कार्यकारी सारांश' : 'Executive Summary'}</h3>
+                            <h3 className="text-lg font-bold text-[#1a1a1a]">{isHindi ? 'कार्यकारी सारांश' : 'Executive Summary'}</h3>
                         </div>
 
                         {aiAnalysis.summary && (
-                            <p className="text-slate-600 leading-relaxed font-bold text-sm mb-6 relative z-10">
-                                {t(aiAnalysis.summary)}
-                            </p>
+                            <p className="text-[#666666] leading-relaxed text-sm mb-6">{t(aiAnalysis.summary)}</p>
                         )}
 
-                        {/* Summary Points - Bullet Points for easier scanning */}
                         {aiAnalysis.summaryPoints && aiAnalysis.summaryPoints.length > 0 && (
-                            <div className="space-y-3 mb-6 relative z-10">
+                            <div className="space-y-3 mb-6">
                                 {aiAnalysis.summaryPoints.map((point, idx) => (
-                                    <div key={idx} className="flex gap-3 bg-slate-50/80 p-3.5 rounded-2xl border border-slate-100/50 transition-all hover:bg-white hover:border-purple-200 shadow-sm">
-                                        <div className="w-6 h-6 bg-purple-100 rounded-full flex items-center justify-center shrink-0 mt-0.5">
-                                            <div className="w-2 h-2 bg-purple-600 rounded-full" />
+                                    <div key={idx} className="flex gap-3 bg-[#F5F5F7]/50 p-4 rounded-2xl border border-white/50">
+                                        <div className="w-6 h-6 bg-[#A795C7]/10 rounded-full flex items-center justify-center shrink-0 mt-0.5">
+                                            <div className="w-2 h-2 bg-[#A795C7] rounded-full" />
                                         </div>
-                                        <p className="text-xs text-slate-700 font-bold leading-relaxed">{t(point)}</p>
+                                        <p className="text-xs text-[#666666] font-medium leading-relaxed">{t(point)}</p>
                                     </div>
                                 ))}
                             </div>
                         )}
 
-                        <div className="bg-gradient-to-br from-purple-50 to-indigo-50 rounded-3xl p-6 border border-purple-100/50 relative z-10">
+                        <div className="bg-gradient-to-br from-[#A795C7]/10 to-[#9583BC]/5 rounded-2xl p-5 border border-[#A795C7]/20">
                             <div className="flex items-center gap-2 mb-2">
-                                <Zap className="w-4 h-4 text-purple-600" />
-                                <h4 className="text-purple-700 font-black text-[10px] uppercase tracking-wider">{isHindi ? 'मुख्य अंतर्दृष्टि' : 'Key Insight'}</h4>
+                                <Zap className="w-4 h-4 text-[#A795C7]" />
+                                <h4 className="text-[#A795C7] font-bold text-[10px] uppercase tracking-widest">{isHindi ? 'मुख्य अंतर्दृष्टि' : 'Key Insight'}</h4>
                             </div>
-                            <p className="text-purple-900 text-xs leading-relaxed font-black">
+                            <p className="text-[#1a1a1a] text-sm leading-relaxed font-medium">
                                 {t(aiAnalysis.keyFindings?.[0] || "Your health markers are generally within range, but some areas require focus.")}
                             </p>
                         </div>
                     </div>
                 )}
 
-                {/* Health Metrics Header */}
-                <div className="mt-8">
+                {/* Health Metrics */}
+                <div>
                     <div className="flex items-center justify-between mb-6 px-2">
-                        <h3 className="text-lg font-black text-[#0F172A] tracking-tight uppercase">{isHindi ? 'स्वास्थ्य मेट्रिक्स' : 'Health Metrics'}</h3>
-                        <div className="flex gap-1 overflow-x-auto pb-1 no-scrollbar">
+                        <h3 className="text-lg font-bold text-[#1a1a1a]">{isHindi ? 'स्वास्थ्य मेट्रिक्स' : 'Health Metrics'}</h3>
+                        <div className="flex gap-1.5 overflow-x-auto pb-1">
                             {[
-                                { id: 'all', label: isHindi ? 'सभी' : 'All', color: 'slate' },
-                                { id: 'normal', label: isHindi ? 'सामान्य' : 'Normal', color: 'emerald' },
-                                { id: 'borderline', label: isHindi ? 'सीमारेखा' : 'Borderline', color: 'amber' },
-                                { id: 'abnormal', label: isHindi ? 'असामान्य' : 'High/Low', color: 'red' }
+                                { id: 'all', label: isHindi ? 'सभी' : 'All' },
+                                { id: 'normal', label: isHindi ? 'सामान्य' : 'Normal' },
+                                { id: 'borderline', label: isHindi ? 'सीमारेखा' : 'Borderline' },
+                                { id: 'abnormal', label: isHindi ? 'असामान्य' : 'High/Low' }
                             ].map(filter => (
                                 <button
                                     key={filter.id}
                                     onClick={() => setMetricFilter(filter.id)}
-                                    className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest border-2 transition-all whitespace-nowrap ${metricFilter === filter.id
-                                        ? `bg-${filter.color}-500 text-white border-${filter.color}-500 shadow-md`
-                                        : `bg-white text-${filter.color}-600 border-${filter.color}-100`
+                                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition-all whitespace-nowrap ${metricFilter === filter.id
+                                        ? 'bg-[#1a1a1a] text-white'
+                                        : 'bg-[#F5F5F7] text-[#888888] hover:text-[#1a1a1a]'
                                         }`}
                                 >
                                     {filter.label}
@@ -390,32 +343,32 @@ export default function ReportAnalysisMobile() {
                         </div>
                     </div>
 
-                    {/* Metrics Summary Boxes */}
+                    {/* Metric Summary */}
                     <div className="grid grid-cols-3 gap-4 mb-6">
-                        <div className="bg-white rounded-3xl p-4 text-center border border-slate-100 shadow-sm">
-                            <div className="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                                <CheckCircle className="w-5 h-5 text-emerald-500" />
+                        <div className={`${glassCard} p-4 text-center`}>
+                            <div className="w-10 h-10 bg-[#F0FDF4] rounded-full flex items-center justify-center mx-auto mb-3">
+                                <CheckCircle className="w-5 h-5 text-[#16A34A]" />
                             </div>
-                            <p className="text-2xl font-black text-slate-800 mb-1">{metricCounts.good}</p>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{isHindi ? 'अच्छा' : 'Good'}</p>
+                            <p className="text-2xl font-bold text-[#1a1a1a] mb-1">{metricCounts.good}</p>
+                            <p className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">{isHindi ? 'अच्छा' : 'Good'}</p>
                         </div>
-                        <div className="bg-white rounded-3xl p-4 text-center border border-slate-100 shadow-sm">
-                            <div className="w-10 h-10 bg-amber-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                                <AlertCircle className="w-5 h-5 text-amber-500" />
+                        <div className={`${glassCard} p-4 text-center`}>
+                            <div className="w-10 h-10 bg-[#FFF8F5] rounded-full flex items-center justify-center mx-auto mb-3">
+                                <AlertCircle className="w-5 h-5 text-[#FF8A66]" />
                             </div>
-                            <p className="text-2xl font-black text-slate-800 mb-1">{metricCounts.moderate}</p>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{isHindi ? 'मध्यम' : 'Moderate'}</p>
+                            <p className="text-2xl font-bold text-[#1a1a1a] mb-1">{metricCounts.moderate}</p>
+                            <p className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">{isHindi ? 'मध्यम' : 'Moderate'}</p>
                         </div>
-                        <div className="bg-white rounded-3xl p-4 text-center border border-slate-100 shadow-sm">
-                            <div className="w-10 h-10 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-3">
-                                <AlertTriangle className="w-5 h-5 text-red-500" />
+                        <div className={`${glassCard} p-4 text-center`}>
+                            <div className="w-10 h-10 bg-[#FFF0F0] rounded-full flex items-center justify-center mx-auto mb-3">
+                                <AlertTriangle className="w-5 h-5 text-[#EF4444]" />
                             </div>
-                            <p className="text-2xl font-black text-slate-800 mb-1">{metricCounts.low}</p>
-                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{isHindi ? 'कम' : 'Low'}</p>
+                            <p className="text-2xl font-bold text-[#1a1a1a] mb-1">{metricCounts.low}</p>
+                            <p className="text-[10px] font-bold text-[#888888] uppercase tracking-widest">{isHindi ? 'कम' : 'Low'}</p>
                         </div>
                     </div>
 
-                    {/* Individual Metric Cards - 2 per row grid */}
+                    {/* Individual Metric Cards */}
                     <div className="grid grid-cols-2 gap-3">
                         {metricsList
                             .filter(([_, m]) => {
@@ -426,32 +379,30 @@ export default function ReportAnalysisMobile() {
                                 return true;
                             })
                             .map(([key, metric]) => {
-                                const color = getStatusColor(metric.status);
+                                const style = getStatusStyle(metric.status);
                                 return (
                                     <button
                                         key={key}
                                         onClick={() => handleMetricClick(key, metric)}
-                                        className={`card p-4 border-2 border-${color}-100 relative overflow-hidden flex flex-col justify-between text-left transition-all active:scale-95`}
+                                        className={`${glassCard} p-4 text-left transition-all hover:shadow-md active:scale-95 flex flex-col justify-between`}
                                     >
-                                        <div className={`absolute top-0 right-0 w-16 h-16 bg-${color}-500/5 rounded-full -mr-8 -mt-8`}></div>
-
-                                        <div className="relative z-1 mb-2">
-                                            <h4 className="text-[11px] font-black text-slate-800 leading-tight">
+                                        <div className="mb-3">
+                                            <h4 className="text-[11px] font-bold text-[#1a1a1a] leading-tight">
                                                 {key.replace(/([A-Z])/g, ' $1').trim()}
                                             </h4>
-                                            <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest mt-1">
+                                            <p className="text-[9px] font-medium text-[#a0a0a0] uppercase tracking-wider mt-1">
                                                 {metric.normalRange} {metric.unit}
                                             </p>
                                         </div>
 
-                                        <div className="flex items-center justify-between mt-auto relative z-1">
+                                        <div className="flex items-center justify-between mt-auto">
                                             <div className="flex items-baseline gap-1">
-                                                <span className={`text-xl font-black text-${color}-600`}>{metric.value}</span>
-                                                <span className="text-slate-400 font-bold text-[8px] uppercase">{metric.unit}</span>
+                                                <span className={`text-xl font-bold ${style.text}`}>{metric.value}</span>
+                                                <span className="text-[#a0a0a0] font-medium text-[8px] uppercase">{metric.unit}</span>
                                             </div>
-                                            <div className={`px-1.5 py-0.5 bg-${color}-100/80 text-${color}-700 rounded-full border border-${color}-200`}>
-                                                <span className="text-[7px] font-black uppercase tracking-tighter">{metric.status}</span>
-                                            </div>
+                                            <span className={`px-2 py-0.5 ${style.bg} ${style.text} rounded-full text-[8px] font-bold uppercase tracking-wider border ${style.border}`}>
+                                                {metric.status}
+                                            </span>
                                         </div>
                                     </button>
                                 );
@@ -459,43 +410,45 @@ export default function ReportAnalysisMobile() {
                     </div>
                 </div>
 
-                {/* Deficiencies Section */}
+                {/* Deficiencies */}
                 {aiAnalysis?.deficiencies?.length > 0 && (
-                    <div className="mt-12 bg-[#FFF8F8] rounded-[2.5rem] p-8 border border-red-100 shadow-sm">
-                        <div className="flex items-center gap-3 mb-8">
-                            <AlertTriangle className="w-6 h-6 text-red-500" />
-                            <h3 className="text-lg font-black text-[#0F172A] tracking-tight uppercase">Deficiencies Detected</h3>
+                    <div className={`${glassCard} p-6 md:p-8`}>
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-10 h-10 bg-[#FFF0F0] rounded-full flex items-center justify-center">
+                                <AlertTriangle className="w-5 h-5 text-[#EF4444]" />
+                            </div>
+                            <h3 className="text-lg font-bold text-[#1a1a1a]">{isHindi ? 'कमियां पाई गईं' : 'Deficiencies Detected'}</h3>
                         </div>
 
-                        <div className="space-y-6">
+                        <div className="space-y-4">
                             {aiAnalysis.deficiencies.map((def, i) => (
-                                <div key={i} className="bg-white rounded-3xl p-6 shadow-md border-2 border-red-50 relative overflow-hidden">
-                                    <div className="absolute top-0 left-0 w-1.5 h-full bg-red-500"></div>
-                                    <div className="flex justify-between items-start mb-4">
-                                        <h4 className="font-black text-[#0F172A] text-lg">{t(def.name)}</h4>
-                                        <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${def.severity === 'severe' ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'
+                                <div key={i} className="bg-[#F5F5F7]/50 rounded-2xl p-5 border border-white/50 relative overflow-hidden">
+                                    <div className="absolute top-0 left-0 w-1 h-full bg-[#FF8A66]"></div>
+                                    <div className="flex justify-between items-start mb-4 pl-3">
+                                        <h4 className="font-bold text-[#1a1a1a] text-base">{t(def.name)}</h4>
+                                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${def.severity === 'severe' ? 'bg-[#FFF0F0] text-[#EF4444]' : 'bg-[#FFF8F5] text-[#FF8A66]'
                                             }`}>
                                             {def.severity || 'Moderate'}
                                         </span>
                                     </div>
 
-                                    <div className="grid grid-cols-2 gap-3 mb-4">
-                                        <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{isHindi ? 'वर्तमान स्तर' : 'Current Level'}</p>
-                                            <p className="text-base font-black text-slate-800">{def.currentValue || 'N/A'}</p>
+                                    <div className="grid grid-cols-2 gap-3 mb-4 pl-3">
+                                        <div className="bg-white rounded-xl p-3 border border-slate-100">
+                                            <p className="text-[10px] font-bold text-[#a0a0a0] uppercase tracking-wider mb-1">{isHindi ? 'वर्तमान स्तर' : 'Current Level'}</p>
+                                            <p className="text-base font-bold text-[#1a1a1a]">{def.currentValue || 'N/A'}</p>
                                         </div>
-                                        <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{isHindi ? 'सामान्य सीमा' : 'Normal Range'}</p>
-                                            <p className="text-base font-black text-slate-600">{def.normalRange || 'N/A'}</p>
+                                        <div className="bg-white rounded-xl p-3 border border-slate-100">
+                                            <p className="text-[10px] font-bold text-[#a0a0a0] uppercase tracking-wider mb-1">{isHindi ? 'सामान्य सीमा' : 'Normal Range'}</p>
+                                            <p className="text-base font-bold text-[#666666]">{def.normalRange || 'N/A'}</p>
                                         </div>
                                     </div>
 
                                     {def.symptoms?.length > 0 && (
-                                        <div className="mt-4 pt-4 border-t border-slate-100">
-                                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-2">{isHindi ? 'इन लक्षणों की जांच करें' : 'Check for these symptoms'}</p>
+                                        <div className="mt-3 pt-3 border-t border-slate-100 pl-3">
+                                            <p className="text-[10px] font-bold text-[#a0a0a0] uppercase tracking-wider mb-2">{isHindi ? 'इन लक्षणों की जांच करें' : 'Check for these symptoms'}</p>
                                             <div className="flex flex-wrap gap-1.5">
                                                 {def.symptoms.map((symp, si) => (
-                                                    <span key={si} className="px-2 py-1 bg-blue-50 text-blue-600 text-[10px] font-bold rounded-lg border border-blue-100">
+                                                    <span key={si} className="px-2.5 py-1 bg-[#A795C7]/10 text-[#A795C7] text-[10px] font-bold rounded-full border border-[#A795C7]/20">
                                                         {t(symp)}
                                                     </span>
                                                 ))}
@@ -508,35 +461,36 @@ export default function ReportAnalysisMobile() {
                     </div>
                 )}
 
-                {/* Diet Plan Section */}
+                {/* Diet Plan */}
                 {aiAnalysis?.dietPlan && (
-                    <div className="mt-12 bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100">
+                    <div className={`${glassCard} p-6 md:p-8`}>
                         <div className="flex items-center gap-3 mb-4">
-                            <Apple className="w-6 h-6 text-emerald-500" />
-                            <h3 className="text-lg font-black text-[#0F172A] tracking-tight uppercase">{isHindi ? 'व्यक्तिगत आहार योजना' : 'Personalized Diet Plan'}</h3>
+                            <div className="w-10 h-10 bg-[#F0FDF4] rounded-full flex items-center justify-center">
+                                <Apple className="w-5 h-5 text-[#16A34A]" />
+                            </div>
+                            <h3 className="text-lg font-bold text-[#1a1a1a]">{isHindi ? 'व्यक्तिगत आहार योजना' : 'Personalized Diet Plan'}</h3>
                         </div>
 
-                        <p className="text-slate-500 font-medium text-sm leading-relaxed mb-8">
+                        <p className="text-[#888888] text-sm leading-relaxed mb-6">
                             {isHindi ? 'आपकी कमियों और फिटनेस लक्ष्यों के आधार पर, हमने प्राकृतिक खाद्य स्रोतों के माध्यम से इष्टतम स्तरों को बहाल करने में मदद करने के लिए एक पोषण योजना तैयार की है।' : 'Based on your deficiencies and fitness goals, we\'ve curated a nutrition plan to help restore optimal levels through natural food sources.'}
                         </p>
 
-                        <div className="space-y-6">
-                            {/* Category-wise Diet */}
+                        <div className="space-y-4">
                             {[
-                                { label: isHindi ? 'नाश्ता अनुशंसाएं' : 'Breakfast Recommendatons', items: aiAnalysis.dietPlan.breakfast?.slice(0, 4) || [], color: 'blue' },
-                                { label: isHindi ? 'दोपहर के भोजन के विकल्प' : 'Lunch Options', items: aiAnalysis.dietPlan.lunch?.slice(0, 4) || [], color: 'emerald' },
-                                { label: isHindi ? 'रात के खाने के सुझाव' : 'Dinner Suggestions', items: aiAnalysis.dietPlan.dinner?.slice(0, 4) || [], color: 'purple' },
-                                { label: isHindi ? 'स्वस्थ स्नैक्स' : 'Healthy Snacks', items: aiAnalysis.dietPlan.snacks?.slice(0, 4) || [], color: 'amber' }
+                                { label: isHindi ? 'नाश्ता' : 'Breakfast', items: aiAnalysis.dietPlan.breakfast?.slice(0, 4) || [], icon: '🌅' },
+                                { label: isHindi ? 'दोपहर का भोजन' : 'Lunch', items: aiAnalysis.dietPlan.lunch?.slice(0, 4) || [], icon: '☀️' },
+                                { label: isHindi ? 'रात का खाना' : 'Dinner', items: aiAnalysis.dietPlan.dinner?.slice(0, 4) || [], icon: '🌙' },
+                                { label: isHindi ? 'स्नैक्स' : 'Snacks', items: aiAnalysis.dietPlan.snacks?.slice(0, 4) || [], icon: '🍎' }
                             ].map((group, idx) => (
                                 group.items.length > 0 && (
-                                    <div key={idx} className="bg-slate-50 rounded-3xl p-6 border border-slate-200/50">
+                                    <div key={idx} className="bg-[#F5F5F7]/50 rounded-2xl p-5 border border-white/50">
                                         <div className="flex items-center gap-2 mb-4">
-                                            <UtensilsCrossed className={`w-4 h-4 text-${group.color}-500`} />
-                                            <h4 className="font-extrabold text-slate-800 text-[10px] uppercase tracking-tight">{group.label}</h4>
+                                            <span className="text-lg">{group.icon}</span>
+                                            <h4 className="font-bold text-[#1a1a1a] text-xs uppercase tracking-wider">{group.label}</h4>
                                         </div>
                                         <div className="flex flex-wrap gap-2">
                                             {group.items.map((item, i) => (
-                                                <div key={i} className="px-4 py-2 bg-white rounded-2xl text-[10px] font-bold text-slate-800 border border-slate-200/60 shadow-sm leading-tight">
+                                                <div key={i} className="px-3 py-2 bg-white rounded-xl text-xs font-medium text-[#666666] border border-slate-100 shadow-sm">
                                                     {t(item.meal || item)}
                                                 </div>
                                             ))}
@@ -548,34 +502,32 @@ export default function ReportAnalysisMobile() {
                     </div>
                 )}
 
-                {/* Health Tips Section */}
+                {/* Health Tips */}
                 {(aiAnalysis?.recommendations?.lifestyle?.length > 0 || aiAnalysis?.dietPlan?.tips?.length > 0) && (
-                    <div className="mt-12 bg-[#F0FDF4] rounded-[2.5rem] p-8 border border-emerald-100 shadow-sm">
-                        <div className="flex items-center gap-3 mb-8">
-                            <Activity className="w-6 h-6 text-emerald-600" />
-                            <h3 className="text-lg font-black text-[#0F172A] tracking-tight uppercase">Personalized Health Tips</h3>
+                    <div className={`${glassCard} p-6 md:p-8 bg-gradient-to-br from-[#A795C7] to-[#715c99] border-none`}>
+                        <div className="flex items-center gap-3 mb-6">
+                            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                                <Zap className="w-5 h-5 text-white" />
+                            </div>
+                            <h3 className="text-lg font-bold text-white">{isHindi ? 'स्वास्थ्य सुझाव' : 'Personalized Health Tips'}</h3>
                         </div>
 
-                        <div className="space-y-4">
+                        <div className="space-y-3">
                             {(aiAnalysis.recommendations?.lifestyle || aiAnalysis.dietPlan?.tips || []).map((tip, idx) => (
-                                <div key={idx} className="bg-white rounded-3xl p-6 flex gap-4 shadow-sm border border-slate-100 group relative overflow-hidden">
-                                    <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-gradient-to-b from-purple-400 to-orange-600"></div>
-                                    <div className="w-10 h-10 bg-slate-50 rounded-full flex items-center justify-center shrink-0">
-                                        <Zap className="w-5 h-5 text-blue-500" />
+                                <div key={idx} className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 flex gap-3 border border-white/10">
+                                    <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center shrink-0">
+                                        <span className="text-white text-xs font-bold">{idx + 1}</span>
                                     </div>
-                                    <div>
-                                        <h4 className="font-black text-[8px] uppercase tracking-[0.15em] text-slate-400 mb-1">{isHindi ? 'अनुशंसा' : 'Recommendation'} {idx + 1}</h4>
-                                        <p className="text-xs text-slate-700 leading-relaxed font-bold">{t(tip)}</p>
-                                    </div>
+                                    <p className="text-sm text-white/90 leading-relaxed font-medium">{t(tip)}</p>
                                 </div>
                             ))}
                         </div>
                     </div>
                 )}
 
-                {/* Footer Disclaimer */}
-                <div className="mt-12 px-8 pb-8 text-center">
-                    <p className="text-slate-400 text-xs leading-relaxed font-medium">
+                {/* Footer */}
+                <div className="text-center px-4 pb-8">
+                    <p className="text-[#a0a0a0] text-xs leading-relaxed font-medium">
                         Disclaimer: This AI analysis is for informational wellness support only and should not replace professional medical advice. Always consult with a healthcare provider.
                     </p>
                 </div>
@@ -589,6 +541,6 @@ export default function ReportAnalysisMobile() {
                     t={t}
                 />
             )}
-        </div >
+        </div>
     );
 }

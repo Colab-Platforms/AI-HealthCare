@@ -6,15 +6,15 @@ export default function MealInsightPopup({ meal, onClose }) {
     const healthScore = Math.round(meal.healthScore10 * 10 || meal.healthScore || 0);
 
     const getScoreColor = (score) => {
-        if (score >= 80) return 'text-emerald-500';
-        if (score >= 60) return 'text-amber-500';
-        return 'text-rose-500';
+        if (score >= 80) return 'text-black';
+        if (score >= 60) return 'text-slate-600';
+        return 'text-slate-800';
     };
 
     const getScoreBg = (score) => {
-        if (score >= 80) return 'bg-emerald-50 border-emerald-100';
-        if (score >= 60) return 'bg-amber-50 border-amber-100';
-        return 'bg-rose-50 border-rose-100';
+        if (score >= 80) return 'bg-slate-50 border-slate-100';
+        if (score >= 60) return 'bg-white border-slate-50';
+        return 'bg-slate-50 border-slate-100';
     };
 
     const nutrition = meal.totalNutrition || (meal.foodItems?.[0]?.nutrition) || {};
@@ -29,7 +29,7 @@ export default function MealInsightPopup({ meal, onClose }) {
                 <div className={`p-8 ${getScoreBg(healthScore).split(' ')[0]} border-b border-slate-100 relative shrink-0`}>
                     <div className="flex items-center justify-between mb-6">
                         <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100">
-                            <Brain className="w-6 h-6 text-[#2FC8B9]" />
+                            <Brain className="w-6 h-6 text-black" />
                         </div>
                         <button
                             onClick={onClose}
@@ -62,10 +62,10 @@ export default function MealInsightPopup({ meal, onClose }) {
                     {/* Macronutrients Grid */}
                     <div className="grid grid-cols-4 gap-3">
                         {[
-                            { label: "CALORIES", value: Math.round(nutrition.calories || 0), unit: "kcal", color: "text-orange-600" },
-                            { label: "PROTEIN", value: Math.round(nutrition.protein || 0), unit: "g", color: "text-blue-600" },
-                            { label: "CARBS", value: Math.round(nutrition.carbs || 0), unit: "g", color: "text-emerald-600" },
-                            { label: "FATS", value: Math.round(nutrition.fats || 0), unit: "g", color: "text-rose-600" },
+                            { label: "CALORIES", value: Math.round(nutrition.calories || 0), unit: "kcal", color: "text-black" },
+                            { label: "PROTEIN", value: Math.round(nutrition.protein || 0), unit: "g", color: "text-black" },
+                            { label: "CARBS", value: Math.round(nutrition.carbs || 0), unit: "g", color: "text-black" },
+                            { label: "FATS", value: Math.round(nutrition.fats || 0), unit: "g", color: "text-black" },
                         ].map((stat) => (
                             <div key={stat.label} className="bg-slate-50 rounded-2xl p-3 border border-slate-100/50 text-center">
                                 <p className="text-[8px] font-black text-slate-400 uppercase tracking-tighter mb-1.5">{stat.label}</p>
@@ -77,8 +77,8 @@ export default function MealInsightPopup({ meal, onClose }) {
                     {/* Health Benefits Summary */}
                     <div className="space-y-4">
                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 bg-blue-50 rounded-xl flex items-center justify-center border border-blue-100">
-                                <ShieldCheck className="w-4 h-4 text-blue-500" />
+                            <div className="w-8 h-8 bg-slate-900 rounded-xl flex items-center justify-center border border-slate-800">
+                                <ShieldCheck className="w-4 h-4 text-white" />
                             </div>
                             <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Medical Analysis</h3>
                         </div>
@@ -91,16 +91,16 @@ export default function MealInsightPopup({ meal, onClose }) {
                     {meal.warnings && meal.warnings.length > 0 && (
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-rose-50 rounded-xl flex items-center justify-center border border-rose-100">
-                                    <AlertTriangle className="w-4 h-4 text-rose-500" />
+                                <div className="w-8 h-8 bg-slate-100 rounded-xl flex items-center justify-center border border-slate-200">
+                                    <AlertTriangle className="w-4 h-4 text-black" />
                                 </div>
                                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Health Warnings</h3>
                             </div>
                             <div className="space-y-2">
                                 {meal.warnings.map((warning, idx) => (
-                                    <div key={idx} className="p-4 bg-rose-50 border border-rose-100 rounded-2xl flex items-start gap-3">
-                                        <div className="w-1.5 h-1.5 rounded-full bg-rose-500 mt-1.5 shrink-0" />
-                                        <p className="text-xs font-bold text-rose-700">{warning}</p>
+                                    <div key={idx} className="p-4 bg-slate-50 border border-slate-100 rounded-2xl flex items-start gap-3">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-black mt-1.5 shrink-0" />
+                                        <p className="text-xs font-bold text-slate-700">{warning}</p>
                                     </div>
                                 ))}
                             </div>
@@ -111,22 +111,22 @@ export default function MealInsightPopup({ meal, onClose }) {
                     {meal.micronutrients && meal.micronutrients.length > 0 && (
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-purple-50 rounded-xl flex items-center justify-center border border-purple-100">
-                                    <Activity className="w-4 h-4 text-purple-500" />
+                                <div className="w-8 h-8 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100">
+                                    <Activity className="w-4 h-4 text-black" />
                                 </div>
                                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Micronutrients</h3>
                             </div>
                             <div className="grid grid-cols-2 gap-4">
                                 {meal.micronutrients.map((micro, idx) => (
-                                    <div key={idx} className="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm group hover:border-purple-200 transition-all">
+                                    <div key={idx} className="bg-white border border-slate-100 p-4 rounded-2xl shadow-sm group hover:border-black transition-all">
                                         <div className="flex justify-between items-center mb-1">
                                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{micro.name}</p>
-                                            <span className="text-[10px] font-black text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-md">{micro.percentage || 0}%</span>
+                                            <span className="text-[10px] font-black text-white bg-black px-1.5 py-0.5 rounded-md">{micro.percentage || 0}%</span>
                                         </div>
                                         <p className="text-lg font-black text-slate-800 mb-2">{micro.value || '--'}</p>
                                         <div className="w-full h-1.5 bg-slate-50 rounded-full overflow-hidden border border-slate-100">
                                             <div
-                                                className="h-full bg-gradient-to-r from-blue-400 to-purple-500 transition-all duration-1000"
+                                                className="h-full bg-black transition-all duration-1000"
                                                 style={{ width: `${micro.percentage || 0}%` }}
                                             />
                                         </div>
@@ -140,8 +140,8 @@ export default function MealInsightPopup({ meal, onClose }) {
                     {meal.alternatives && meal.alternatives.length > 0 && (
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-emerald-50 rounded-xl flex items-center justify-center border border-emerald-100">
-                                    <Sparkles className="w-4 h-4 text-emerald-500" />
+                                <div className="w-8 h-8 bg-slate-900 rounded-xl flex items-center justify-center border border-slate-800">
+                                    <Sparkles className="w-4 h-4 text-white" />
                                 </div>
                                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Healthier Alternatives</h3>
                             </div>
@@ -155,10 +155,10 @@ export default function MealInsightPopup({ meal, onClose }) {
                                         <p className="text-xs text-slate-500 font-bold leading-relaxed">{alt.description}</p>
                                         {alt.nutrition && (
                                             <div className="mt-3 flex gap-3">
-                                                <span className="text-[10px] font-black text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
+                                                <span className="text-[10px] font-black text-white bg-black px-2 py-1 rounded-lg">
                                                     {alt.nutrition.calories} kcal
                                                 </span>
-                                                <span className="text-[10px] font-black text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">
+                                                <span className="text-[10px] font-black text-slate-400 bg-slate-100 px-2 py-1 rounded-lg">
                                                     P: {alt.nutrition.protein}g
                                                 </span>
                                             </div>
@@ -173,15 +173,15 @@ export default function MealInsightPopup({ meal, onClose }) {
                     {meal.enhancementTips && meal.enhancementTips.length > 0 && (
                         <div className="space-y-4">
                             <div className="flex items-center gap-3">
-                                <div className="w-8 h-8 bg-amber-50 rounded-xl flex items-center justify-center border border-amber-100">
-                                    <Zap className="w-4 h-4 text-amber-500" />
+                                <div className="w-8 h-8 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100">
+                                    <Zap className="w-4 h-4 text-black" />
                                 </div>
                                 <h3 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em]">Upgrade this Meal</h3>
                             </div>
                             <div className="space-y-2">
                                 {meal.enhancementTips.map((tip, idx) => (
                                     <div key={idx} className="flex items-center gap-3 p-4 bg-white border border-slate-100 rounded-3xl shadow-sm hover:shadow-md transition-all">
-                                        <div className="w-10 h-10 bg-amber-500 text-white rounded-full flex items-center justify-center shrink-0 shadow-lg shadow-amber-200">
+                                        <div className="w-10 h-10 bg-black text-white rounded-full flex items-center justify-center shrink-0 shadow-lg shadow-black/10">
                                             <Zap className="w-5 h-5 fill-white" />
                                         </div>
                                         <div>
@@ -201,7 +201,7 @@ export default function MealInsightPopup({ meal, onClose }) {
                 <div className="p-6 bg-slate-50 text-center border-t border-slate-100 shrink-0">
                     <div className="inline-flex items-center gap-2">
                         <div className="p-1 bg-white rounded-md border border-slate-200">
-                            <Info className="w-3 h-3 text-[#2FC8B9]" />
+                            <Info className="w-3 h-3 text-black" />
                         </div>
                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">Analyzed by HealthCare AI System</p>
                     </div>

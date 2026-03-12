@@ -151,7 +151,7 @@ const LogWeightModal = ({ isOpen, onClose, onSave }) => {
 
             <div className="mb-8 relative">
               <div className="flex justify-center mb-1">
-                <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-t-[10px] border-l-transparent border-r-transparent border-t-[#2FC8B9]" />
+                <div className="w-0 h-0 border-l-[8px] border-r-[8px] border-t-[10px] border-l-transparent border-r-transparent border-t-black" />
               </div>
 
               <div className="flex items-center gap-2">
@@ -244,7 +244,7 @@ const LogWeightModal = ({ isOpen, onClose, onSave }) => {
 
             <button
               onClick={handleSave}
-              className="w-full bg-[#2FC8B9] text-white py-4 rounded-full font-bold text-base hover:bg-[#1db7a6] transition-all shadow-lg shadow-[#2FC8B9]/30 active:scale-[0.98]"
+              className="w-full bg-black text-white py-4 rounded-full font-bold text-base hover:bg-slate-900 transition-all shadow-lg shadow-black/20 active:scale-[0.98]"
             >
               Save Reading
             </button>

@@ -171,14 +171,12 @@ export default function ComprehensiveReportAnalysis() {
     fetchReport();
   }, [id]);
 
-  if (loading) return (
-    <div className="flex items-center justify-center h-[60vh]">
-      <div className="text-center">
-        <div className="w-16 h-16 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin mx-auto mb-4" />
-        <p className="text-slate-400">Analyzing your report...</p>
-      </div>
+  <div className="flex items-center justify-center h-[60vh]">
+    <div className="text-center">
+      <div className="w-16 h-16 border-4 border-slate-200 border-t-black rounded-full animate-spin mx-auto mb-4" />
+      <p className="text-slate-400">Analyzing your report...</p>
     </div>
-  );
+  </div>
 
   if (!report) return <div className="text-center py-12 text-slate-400">Report not found</div>;
 
@@ -186,9 +184,7 @@ export default function ComprehensiveReportAnalysis() {
   const healthScore = aiAnalysis?.healthScore || 0;
 
   const getHealthScoreColor = (score) => {
-    if (score >= 80) return 'from-purple-500 to-orange-600';
-    if (score >= 60) return 'from-purple-500 to-orange-600';
-    return 'from-purple-500 to-orange-600';
+    return 'from-slate-900 via-slate-800 to-black';
   };
 
   const getMetricStatusColor = (status) => {
@@ -207,7 +203,7 @@ export default function ComprehensiveReportAnalysis() {
     <div id="comprehensive-report-content" className="max-w-7xl mx-auto space-y-8 p-4 pb-12 bg-white">
       {/* Back Button */}
       <div className="flex items-center justify-between no-pdf">
-        <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-[#2FC8B9] font-black uppercase text-[10px] tracking-widest transition-all">
+        <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-black font-black uppercase text-[10px] tracking-widest transition-all">
           <ArrowLeft className="w-4 h-4" /> {isHindi ? 'डैशबोर्ड पर वापस जाएं' : 'Back to Dashboard'}
         </Link>
         <div className="flex gap-2">
@@ -249,9 +245,9 @@ export default function ComprehensiveReportAnalysis() {
 
       {/* Executive Summary */}
       {aiAnalysis?.summary && (
-        <div className="bg-white rounded-2xl border-2 border-blue-200 p-6 md:p-8 shadow-sm">
+        <div className="bg-white rounded-2xl border-2 border-slate-100 p-6 md:p-8 shadow-sm">
           <h2 className="text-xl md:text-2xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <Activity className="w-5 h-5 md:w-6 md:h-6 text-blue-500" /> {isHindi ? 'रिपोर्ट सारांश' : 'Report Summary'}
+            <Activity className="w-5 h-5 md:w-6 md:h-6 text-black" /> {isHindi ? 'रिपोर्ट सारांश' : 'Report Summary'}
           </h2>
           <p className="text-slate-700 leading-relaxed text-base md:text-lg whitespace-pre-wrap">{t(aiAnalysis.summary)}</p>
         </div>
@@ -266,7 +262,7 @@ export default function ComprehensiveReportAnalysis() {
           <div className="space-y-3">
             {aiAnalysis.keyFindings.map((finding, i) => (
               <div key={i} className="flex items-start gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <CheckCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-1" />
+                <CheckCircle className="w-5 h-5 text-black flex-shrink-0 mt-1" />
                 <p className="text-slate-700 text-base">{t(finding)}</p>
               </div>
             ))}
@@ -279,7 +275,7 @@ export default function ComprehensiveReportAnalysis() {
         <div className="bg-white rounded-2xl border-2 border-slate-200 p-4 md:p-8 shadow-sm">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <h2 className="text-xl md:text-2xl font-bold text-slate-800 flex items-center gap-2">
-              <Activity className="w-5 h-5 md:w-6 md:h-6 text-cyan-500" /> {isHindi ? 'स्वास्थ्य मेट्रिक्स - विस्तृत विश्लेषण' : 'Health Metrics - Detailed Analysis'}
+              <Activity className="w-5 h-5 md:w-6 md:h-6 text-black" /> {isHindi ? 'स्वास्थ्य मेट्रिक्स - विस्तृत विश्लेषण' : 'Health Metrics - Detailed Analysis'}
             </h2>
             <div className="flex gap-1.5 flex-wrap">
               {[
@@ -416,14 +412,14 @@ export default function ComprehensiveReportAnalysis() {
             )}
 
             {aiAnalysis.dietPlan.lunch?.length > 0 && (
-              <div className="p-4 md:p-6 bg-blue-50 rounded-xl border-2 border-blue-200">
-                <h3 className="font-bold text-blue-700 mb-3 text-base md:text-lg">☀️ {isHindi ? 'दोपहर का भोजन' : 'Lunch'}</h3>
+              <div className="p-4 md:p-6 bg-slate-50 rounded-xl border-2 border-slate-200">
+                <h3 className="font-bold text-slate-800 mb-3 text-base md:text-lg">☀️ {isHindi ? 'दोपहर का भोजन' : 'Lunch'}</h3>
                 <div className="space-y-4">
                   {aiAnalysis.dietPlan.lunch.map((item, i) => (
-                    <div key={i} className="p-3 bg-white rounded-lg border border-blue-100">
-                      <p className="font-semibold text-blue-800 text-sm md:text-base">{t(item.meal)}</p>
-                      {item.nutrients && <p className="text-[10px] md:text-xs text-blue-600/80 mt-1">{isHindi ? 'पोषक तत्व' : 'Nutrients'}: {Array.isArray(item.nutrients) ? item.nutrients.join(', ') : t(item.nutrients)}</p>}
-                      {item.tip && <p className="text-[10px] md:text-xs text-blue-500 italic mt-1">💡 {t(item.tip)}</p>}
+                    <div key={i} className="p-3 bg-white rounded-lg border border-slate-100">
+                      <p className="font-semibold text-black text-sm md:text-base">{t(item.meal)}</p>
+                      {item.nutrients && <p className="text-[10px] md:text-xs text-slate-600 mt-1">{isHindi ? 'पोषक तत्व' : 'Nutrients'}: {Array.isArray(item.nutrients) ? item.nutrients.join(', ') : t(item.nutrients)}</p>}
+                      {item.tip && <p className="text-[10px] md:text-xs text-slate-500 italic mt-1">💡 {t(item.tip)}</p>}
                     </div>
                   ))}
                 </div>
@@ -431,14 +427,14 @@ export default function ComprehensiveReportAnalysis() {
             )}
 
             {aiAnalysis.dietPlan.dinner?.length > 0 && (
-              <div className="p-4 md:p-6 bg-purple-50 rounded-xl border-2 border-purple-200">
-                <h3 className="font-bold text-purple-700 mb-3 text-base md:text-lg">🌙 {isHindi ? 'रात का खाना' : 'Dinner'}</h3>
+              <div className="p-4 md:p-6 bg-slate-100 rounded-xl border-2 border-slate-200">
+                <h3 className="font-bold text-slate-800 mb-3 text-base md:text-lg">🌙 {isHindi ? 'रात का खाना' : 'Dinner'}</h3>
                 <div className="space-y-4">
                   {aiAnalysis.dietPlan.dinner.map((item, i) => (
-                    <div key={i} className="p-3 bg-white rounded-lg border border-purple-100">
-                      <p className="font-semibold text-purple-800 text-sm md:text-base">{t(item.meal)}</p>
-                      {item.nutrients && <p className="text-[10px] md:text-xs text-purple-600/80 mt-1">{isHindi ? 'पोषक तत्व' : 'Nutrients'}: {Array.isArray(item.nutrients) ? item.nutrients.join(', ') : t(item.nutrients)}</p>}
-                      {item.tip && <p className="text-[10px] md:text-xs text-purple-500 italic mt-1">💡 {t(item.tip)}</p>}
+                    <div key={i} className="p-3 bg-white rounded-lg border border-slate-100">
+                      <p className="font-semibold text-black text-sm md:text-base">{t(item.meal)}</p>
+                      {item.nutrients && <p className="text-[10px] md:text-xs text-slate-600 mt-1">{isHindi ? 'पोषक तत्व' : 'Nutrients'}: {Array.isArray(item.nutrients) ? item.nutrients.join(', ') : t(item.nutrients)}</p>}
+                      {item.tip && <p className="text-[10px] md:text-xs text-slate-500 italic mt-1">💡 {t(item.tip)}</p>}
                     </div>
                   ))}
                 </div>
@@ -461,16 +457,16 @@ export default function ComprehensiveReportAnalysis() {
             )}
 
             {aiAnalysis.dietPlan.hydration && (
-              <div className="p-4 md:p-6 bg-cyan-50 rounded-xl border-2 border-cyan-200">
-                <h3 className="font-bold text-cyan-700 mb-3 text-base md:text-lg">💧 {isHindi ? 'हाइड्रेशन' : 'Hydration'}</h3>
-                <p className="text-sm text-cyan-700">{t(aiAnalysis.dietPlan.hydration)}</p>
+              <div className="p-4 md:p-6 bg-slate-50 rounded-xl border-2 border-slate-200">
+                <h3 className="font-bold text-black mb-3 text-base md:text-lg">💧 {isHindi ? 'हाइड्रेशन' : 'Hydration'}</h3>
+                <p className="text-sm text-slate-700">{t(aiAnalysis.dietPlan.hydration)}</p>
               </div>
             )}
 
             {aiAnalysis.dietPlan.mealTiming && (
-              <div className="p-4 md:p-6 bg-indigo-50 rounded-xl border-2 border-indigo-200">
-                <h3 className="font-bold text-indigo-700 mb-3 text-base md:text-lg">⏰ {isHindi ? 'भोजन का समय' : 'Meal Timing'}</h3>
-                <p className="text-sm text-indigo-700">{t(aiAnalysis.dietPlan.mealTiming)}</p>
+              <div className="p-4 md:p-6 bg-slate-100 rounded-xl border-2 border-slate-200">
+                <h3 className="font-bold text-black mb-3 text-base md:text-lg">⏰ {isHindi ? 'भोजन का समय' : 'Meal Timing'}</h3>
+                <p className="text-sm text-slate-700">{t(aiAnalysis.dietPlan.mealTiming)}</p>
               </div>
             )}
           </div>
@@ -487,9 +483,9 @@ export default function ComprehensiveReportAnalysis() {
           </div>
 
           {aiAnalysis.dietPlan.notes && (
-            <div className="mt-6 p-6 bg-blue-50 rounded-xl border-2 border-blue-200">
-              <h3 className="font-bold text-blue-700 mb-2">📝 {isHindi ? 'विशेष नोट' : 'Special Notes'}</h3>
-              <p className="text-sm text-blue-700">{t(aiAnalysis.dietPlan.notes)}</p>
+            <div className="mt-6 p-6 bg-slate-50 rounded-xl border-2 border-slate-200">
+              <h3 className="font-bold text-black mb-2">📝 {isHindi ? 'विशेष नोट' : 'Special Notes'}</h3>
+              <p className="text-sm text-slate-700">{t(aiAnalysis.dietPlan.notes)}</p>
             </div>
           )}
         </div>
@@ -499,7 +495,7 @@ export default function ComprehensiveReportAnalysis() {
       {aiAnalysis?.fitnessPlan && Object.keys(aiAnalysis.fitnessPlan).length > 0 && (
         <div className="bg-white rounded-2xl border-2 border-slate-200 p-6 md:p-8 shadow-sm">
           <h2 className="text-xl md:text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <Dumbbell className="w-5 h-5 md:w-6 md:h-6 text-blue-600" /> {isHindi ? 'व्यक्तिगत फिटनेस योजना' : 'Personalized Fitness Plan'}
+            <Dumbbell className="w-5 h-5 md:w-6 md:h-6 text-black" /> {isHindi ? 'व्यक्तिगत फिटनेस योजना' : 'Personalized Fitness Plan'}
           </h2>
           <div className="grid md:grid-cols-2 gap-6">
             {aiAnalysis.fitnessPlan.cardio && (

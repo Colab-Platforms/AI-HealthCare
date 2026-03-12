@@ -162,6 +162,7 @@ try {
     { path: '/api/doctors', module: './routes/doctorRoutes' },
     { path: '/api/admin', module: './routes/adminRoutes' },
     { path: '/api/wearables', module: './routes/wearableRoutes' },
+    { path: '/api/wearable', module: './routes/wearableRoutes' },
     { path: '/api/nutrition', module: './routes/nutritionRoutes' },
     { path: '/api/diet-recommendations', module: './routes/dietRecommendationRoutes' },
     { path: '/api/users', module: './routes/userRoutes' },

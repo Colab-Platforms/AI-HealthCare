@@ -1,12 +1,18 @@
 const express = require('express');
 const router = express.Router();
-const { register, registerDoctor, login, getProfile, updateProfile, getSubscription, createAdmin, uploadProfilePicture } = require('../controllers/authController');
+const {
+    register, registerDoctor, login, getProfile, updateProfile,
+    getSubscription, createAdmin, uploadProfilePicture,
+    verifyEmail, resendVerificationCode
+} = require('../controllers/authController');
 const { protect, authorize } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 
 router.post('/register', register);
 router.post('/register/doctor', registerDoctor);
 router.post('/login', login);
+router.post('/verify-email', verifyEmail);
+router.post('/resend-verify-code', resendVerificationCode);
 router.post('/forgot-password', require('../controllers/authController').forgotPassword);
 router.post('/verify-reset-code', require('../controllers/authController').verifyResetCode);
 router.post('/reset-password', require('../controllers/authController').resetPassword);

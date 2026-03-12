@@ -18,7 +18,7 @@ export default function PWAInstallPrompt() {
     if (dismissedTime) {
       const timeSinceDismissed = Date.now() - parseInt(dismissedTime);
       const twoMinutes = 2 * 60 * 1000; // 2 minutes in milliseconds
-      
+
       if (timeSinceDismissed < twoMinutes) {
         // Set timeout to show after remaining time
         const remainingTime = twoMinutes - timeSinceDismissed;
@@ -84,7 +84,7 @@ export default function PWAInstallPrompt() {
     setShowPrompt(false);
     // Store dismissal time
     localStorage.setItem('pwa-install-dismissed', Date.now().toString());
-    
+
     // Show again after 2 minutes
     setTimeout(() => {
       setShowPrompt(true);
@@ -111,10 +111,10 @@ export default function PWAInstallPrompt() {
         {/* Circular main button */}
         <button
           onClick={handleInstallClick}
-          className="w-16 h-16 rounded-full bg-gradient-to-br from-[#2FC8B9] to-[#1db7a6] shadow-2xl flex items-center justify-center border-2 border-white hover:scale-110 transition-transform active:scale-95"
+          className="w-12 h-12 rounded-full bg-black shadow-xl flex items-center justify-center border-2 border-white hover:scale-110 transition-transform active:scale-95"
           aria-label="Install App"
         >
-          <Download className="w-7 h-7 text-white" />
+          <Download className="w-5 h-5 text-white" />
         </button>
       </div>
     </div>

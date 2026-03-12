@@ -6,6 +6,7 @@ const { analyzeHealthReport, compareReports, chatWithReport, generateMetricInfo 
 const pdfParse = require('pdf-parse');
 const fs = require('fs');
 const NutritionSummary = require('../models/NutritionSummary');
+const DailyProgress = require('../models/DailyProgress');
 const cache = require('../utils/cache');
 const cloudinary = require('../services/cloudinary');
 
@@ -590,6 +591,47 @@ exports.getDashboardData = async (req, res) => {
       timestamp: { $gte: targetDate, $lt: tomorrow }
     }).select('source mealType totalNutrition');
 
+    // 🆕 Get 90-day history for trends (Real-time data)
+    const ninetyDaysAgo = new Date(targetDate);
+    ninetyDaysAgo.setUTCDate(ninetyDaysAgo.getUTCDate() - 89);
+
+    const historySummary = await NutritionSummary.find({
+      userId: req.user._id,
+      date: { $gte: ninetyDaysAgo, $lte: targetDate }
+    }).sort({ date: 1 });
+
+    const WearableData = require('../models/WearableData');
+    const wearable = await withTimeout(WearableData.findOne({ user: req.user._id }));
+
+    // Map history to a consistent format for the last 90 days
+    const history = [];
+    for (let i = 0; i < 90; i++) {
+      const d = new Date(ninetyDaysAgo);
+      d.setUTCDate(d.getUTCDate() + i);
+      const dStr = d.toISOString().split('T')[0];
+
+      const nutrition = historySummary.find(h => h.date.toISOString().split('T')[0] === dStr);
+
+      // Extract steps and sleep from wearable data
+      let steps = 0;
+      let sleep = 0;
+      if (wearable) {
+        const daily = wearable.dailyMetrics?.find(m => m.date.toISOString().split('T')[0] === dStr);
+        if (daily) steps = daily.steps || 0;
+
+        const sleepDay = wearable.sleepData?.find(s => s.date && s.date.toISOString().split('T')[0] === dStr);
+        if (sleepDay) sleep = (sleepDay.totalSleepMinutes || 0) / 60;
+      }
+
+      history.push({
+        date: dStr,
+        calories: nutrition?.totalCalories || 0,
+        steps,
+        sleep,
+        weight: req.user.profile?.weight || 70
+      });
+    }
+
     const dashboardData = {
       user: { ...req.user.toObject(), password: undefined },
       healthScores,
@@ -599,22 +641,18 @@ exports.getDashboardData = async (req, res) => {
       totalReports: await HealthReport.countDocuments({ user: req.user._id }),
       recentReports: reports.slice(0, 5),
       reportTypeCounts,
+      history, // 🆕 Add trend history
       streakDays: req.user.streakDays || 0, // Add streak days
-      nutritionData: nutritionDataSummary ? {
-        totalCalories: nutritionDataSummary.totalCalories,
-        calorieGoal: nutritionDataSummary.calorieGoal,
-        protein: nutritionDataSummary.totalProtein,
-        carbs: nutritionDataSummary.totalCarbs,
-        fats: nutritionDataSummary.totalFats,
-        waterIntake: nutritionDataSummary.waterIntake,
-        todayLogs: todayLogs || []
-      } : {
-        totalCalories: 0,
-        calorieGoal: 2000,
-        protein: 0,
-        carbs: 0,
-        fats: 0,
-        waterIntake: 0,
+      nutritionData: {
+        totalCalories: nutritionDataSummary?.totalCalories || 0,
+        calorieGoal: req.user.nutritionGoal?.calorieGoal || 2100,
+        protein: nutritionDataSummary?.totalProtein || 0,
+        proteinGoal: req.user.nutritionGoal?.proteinGoal || 150,
+        carbs: nutritionDataSummary?.totalCarbs || 0,
+        carbsGoal: req.user.nutritionGoal?.carbsGoal || 200,
+        fats: nutritionDataSummary?.totalFats || 0,
+        fatsGoal: req.user.nutritionGoal?.fatGoal || 65,
+        waterIntake: nutritionDataSummary?.waterIntake || 0,
         todayLogs: todayLogs || []
       }
     };
@@ -1083,5 +1121,70 @@ exports.getReportComparison = async (req, res) => {
   } catch (error) {
     console.error('Report comparison error:', error);
     res.status(500).json({ message: error.message });
+  }
+};
+
+// Sync daily progress endpoint
+exports.syncDailyProgress = async (req, res) => {
+  try {
+    const { date, totalScore, nutritionScore, sleepScore, hydrationScore, stressScore, waterIntake } = req.body;
+
+    if (!date) {
+      return res.status(400).json({ message: 'Date is required' });
+    }
+
+    const progress = await DailyProgress.findOneAndUpdate(
+      { userId: req.user._id, date },
+      {
+        totalScore: totalScore || 0,
+        nutritionScore: nutritionScore || 0,
+        sleepScore: sleepScore || 0,
+        hydrationScore: hydrationScore || 0,
+        stressScore: stressScore || 0,
+        waterIntake: waterIntake || 0,
+        updatedAt: Date.now()
+      },
+      { new: true, upsert: true }
+    );
+
+    // Also update NutritionSummary if waterIntake is provided
+    if (waterIntake !== undefined) {
+      try {
+        const NutritionSummary = require('../models/NutritionSummary');
+        const targetDate = new Date(date);
+        targetDate.setUTCHours(0, 0, 0, 0);
+
+        await NutritionSummary.findOneAndUpdate(
+          { userId: req.user._id, date: targetDate },
+          { waterIntake: Number(waterIntake) },
+          { upsert: true }
+        );
+      } catch (err) {
+        console.error('Failed to sync water to nutrition summary:', err);
+      }
+    }
+
+    res.json({ success: true, progress });
+  } catch (error) {
+    console.error('Daily progress sync error:', error);
+    res.status(500).json({ message: 'Failed to sync daily progress' });
+  }
+};
+
+// Get daily progress for a given date
+exports.getDailyProgress = async (req, res) => {
+  try {
+    const { date } = req.params;
+
+    if (!date) {
+      return res.status(400).json({ message: 'Date is required' });
+    }
+
+    const progress = await DailyProgress.findOne({ userId: req.user._id, date });
+
+    res.json({ success: true, progress });
+  } catch (error) {
+    console.error('Get daily progress error:', error);
+    res.status(500).json({ message: 'Failed to get daily progress' });
   }
 };

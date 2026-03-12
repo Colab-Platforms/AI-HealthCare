@@ -38,7 +38,7 @@ export default function Profile() {
     height: user?.profile?.height || '',
     age: user?.profile?.age || '',
     gender: user?.profile?.gender || 'male',
-    activityLevel: 'moderate',
+    activityLevel: user?.profile?.activityLevel || 'sedentary',
     dietaryPreference: user?.profile?.dietaryPreference || 'non-vegetarian'
   });
   const [formData, setFormData] = useState({
@@ -50,6 +50,8 @@ export default function Profile() {
       height: user?.profile?.height || '',
       weight: user?.profile?.weight || '',
       bloodGroup: user?.profile?.bloodGroup || '',
+      activityLevel: user?.profile?.activityLevel || 'sedentary',
+      allergies: user?.profile?.allergies ? user.profile.allergies.join(', ') : '',
       medicalHistory: {
         conditions: user?.profile?.medicalHistory?.conditions || []
       },
@@ -92,7 +94,7 @@ export default function Profile() {
         api.get('doctor/appointments'),
         api.get('health/reports'),
         api.get('metrics/summary/latest?types=heart_rate,blood_pressure'),
-        api.get('wearable/dashboard')
+        api.get('wearables/dashboard')
       ]);
 
       setExtraData({
@@ -112,7 +114,10 @@ export default function Profile() {
   useEffect(() => {
     fetchHealthGoal();
     fetchExtraData();
-  }, []);
+    if (searchParams.get('tab') === 'goals') {
+      setExpandedSection('goals');
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (user) {
@@ -166,6 +171,7 @@ export default function Profile() {
           age: formData.profile.age ? Number(formData.profile.age) : undefined,
           height: formData.profile.height ? Number(formData.profile.height) : undefined,
           weight: formData.profile.weight ? Number(formData.profile.weight) : undefined,
+          allergies: formData.profile.allergies ? formData.profile.allergies.split(',').map(a => a.trim()).filter(Boolean) : [],
           lifestyle: {
             ...formData.profile.lifestyle,
             sleepHours: Number(formData.profile.lifestyle.sleepHours),
@@ -348,8 +354,8 @@ export default function Profile() {
 
   return (
     <div className="w-full relative min-h-screen bg-slate-50 overflow-x-hidden animate-fade-in pb-24">
-      {/* Blue Header Background */}
-      <div className="absolute top-0 left-0 right-0 h-48 md:h-64 bg-[#2563EB]" />
+      {/* Black Header Background */}
+      <div className="absolute top-0 left-0 right-0 h-48 md:h-64 bg-black" />
 
       <div className="relative z-10 px-4 md:px-8 pt-8 md:pt-12 max-w-5xl mx-auto space-y-6">
         {/* Profile Header Card */}
@@ -391,7 +397,19 @@ export default function Profile() {
                 <span className="text-slate-300">•</span>
                 <span>{user?.profile?.age ? `${user.profile.age} years old` : 'Age not set'}</span>
               </div>
-              <div className="inline-flex items-center px-4 py-1 bg-[#EFF6FF] text-[#2563EB] rounded-2xl text-[10px] md:text-xs font-bold border border-[#DBEAFE]">
+              <div className="flex flex-col gap-1 mt-2">
+                <div className="flex items-center gap-2 text-xs text-slate-400 font-bold uppercase tracking-widest">
+                  <Mail className="w-3.5 h-3.5" />
+                  {user?.email}
+                </div>
+                {user?.profile?.phone && (
+                  <div className="flex items-center gap-2 text-xs text-slate-400 font-bold uppercase tracking-widest">
+                    <Phone className="w-3.5 h-3.5" />
+                    {user.profile.phone}
+                  </div>
+                )}
+              </div>
+              <div className="inline-flex items-center px-4 py-1 bg-black text-white rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-widest mt-3">
                 {user?.subscription?.plan || 'Free'} Member
               </div>
             </div>
@@ -667,6 +685,32 @@ export default function Profile() {
                                 <option value="eggetarian">Eggetarian</option>
                               </select>
                             </div>
+                            <div>
+                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Activity Level</label>
+                              <select
+                                name="profile.activityLevel"
+                                value={formData.profile.activityLevel}
+                                onChange={handleChange}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
+                              >
+                                <option value="sedentary">Sedentary (Little/no exercise)</option>
+                                <option value="lightly_active">Lightly Active (1-3 days/week)</option>
+                                <option value="moderately_active">Moderately Active (3-5 days/week)</option>
+                                <option value="very_active">Very Active (6-7 days/week)</option>
+                                <option value="extremely_active">Extremely Active (Athlete)</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Allergies (Comma separated)</label>
+                              <input
+                                type="text"
+                                name="profile.allergies"
+                                value={formData.profile.allergies}
+                                onChange={handleChange}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
+                                placeholder="e.g. Peanuts, Dust"
+                              />
+                            </div>
                           </div>
 
                           {/* Lifestyle Habits */}
@@ -783,7 +827,7 @@ export default function Profile() {
                         <button
                           type="submit"
                           disabled={loading}
-                          className="w-full py-3 bg-blue-600 text-white rounded-xl text-sm font-bold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+                          className="w-full py-4 bg-black text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xl active:scale-95"
                         >
                           {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                           Update Profile Info
@@ -824,8 +868,10 @@ export default function Profile() {
                               className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800"
                             >
                               <option value="weight_loss">Weight Loss</option>
+                              <option value="weight_gain">Weight Gain</option>
                               <option value="muscle_gain">Muscle Gain</option>
-                              <option value="maintenance">Maintenance</option>
+                              <option value="maintain">Maintenance</option>
+                              <option value="general_health">General Health Improvement</option>
                             </select>
                           </div>
                           <div>
@@ -847,9 +893,11 @@ export default function Profile() {
                               onChange={handleGoalChange}
                               className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4"
                             >
-                              <option value="sedentary">Sedentary</option>
-                              <option value="moderate">Moderate</option>
-                              <option value="active">Very Active</option>
+                              <option value="sedentary">Sedentary (Little or no exercise)</option>
+                              <option value="lightly_active">Lightly Active (1-3 days/week)</option>
+                              <option value="moderately_active">Moderately Active (3-5 days/week)</option>
+                              <option value="very_active">Very Active (6-7 days/week)</option>
+                              <option value="extremely_active">Extremely Active (Athlete)</option>
                             </select>
                           </div>
                         </div>
@@ -895,56 +943,23 @@ export default function Profile() {
               <div className="space-y-6">
                 <h3 className="text-xl font-bold text-slate-900">Account Control</h3>
                 <div className="space-y-3">
-                  <button className="w-full flex items-center justify-between p-5 bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-md hover:scale-[1.01] transition-all group">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center">
-                        <FileText className="w-6 h-6" />
-                      </div>
-                      <div className="text-left">
-                        <h4 className="font-bold text-slate-900">Medical History</h4>
-                        <p className="text-sm text-slate-500">View your medical reports</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="w-6 h-6 text-slate-300 group-hover:text-slate-600 transition-colors" />
-                  </button>
                   <button
                     onClick={logout}
-                    className="w-full flex items-center justify-between p-5 bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-md hover:scale-[1.01] transition-all group lg:mt-6"
+                    className="w-full flex items-center justify-between p-6 bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-md hover:scale-[1.01] transition-all group"
                   >
                     <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center">
-                        <LogOut className="w-6 h-6" />
+                      <div className="w-14 h-14 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center group-hover:bg-red-500 group-hover:text-white transition-all">
+                        <LogOut className="w-7 h-7" />
                       </div>
                       <div className="text-left">
-                        <h4 className="font-bold text-slate-900">Sign Out</h4>
-                        <p className="text-sm text-slate-500">Securely exit your account</p>
+                        <h4 className="font-black text-slate-900 uppercase tracking-tight">Sign Out</h4>
+                        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest text-[10px]">Securely exit your account</p>
                       </div>
                     </div>
+                    <ChevronRight className="w-6 h-6 text-slate-300 group-hover:text-slate-900 transition-colors" />
                   </button>
                 </div>
               </div>
-
-              <div className="space-y-6">
-                <h3 className="text-xl font-bold text-slate-900">Preferences</h3>
-                <div className="bg-white rounded-[2rem] p-6 border border-slate-100 shadow-sm">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-slate-50 text-slate-400 flex items-center justify-center border border-slate-100">
-                        <Bell className="w-6 h-6" />
-                      </div>
-                      <div>
-                        <h4 className="font-bold text-slate-900">Notifications</h4>
-                        <p className="text-xs text-slate-500">Health & goal reminders</p>
-                      </div>
-                    </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
-                      <input type="checkbox" className="sr-only peer" defaultChecked />
-                      <div className="w-12 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#2563EB]"></div>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
             </div>
           </div>
         </div>

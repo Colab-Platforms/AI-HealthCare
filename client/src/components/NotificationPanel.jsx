@@ -4,13 +4,13 @@ import { Bell, X, Check, CheckCheck, Trash2, Clock, Utensils, Moon, BarChart3, A
 import { notificationService } from '../services/api';
 
 const typeConfig = {
-    food_reminder: { icon: Utensils, color: '#FF6B35', bg: '#FFF4EE' },
-    sleep_reminder: { icon: Moon, color: '#6C5CE7', bg: '#F3F0FF' },
-    macro_update: { icon: BarChart3, color: '#2FC8B9', bg: '#EEFBF9' },
-    diet_adherence: { icon: Apple, color: '#00B894', bg: '#E8FDF5' },
-    health_insight: { icon: Sparkles, color: '#E17055', bg: '#FFF0ED' },
-    report_comparison: { icon: FileText, color: '#0984E3', bg: '#E8F4FD' },
-    goal_progress: { icon: Target, color: '#FDCB6E', bg: '#FFFBE8' }
+    food_reminder: { icon: Utensils, color: '#000000', bg: '#f8fafc' },
+    sleep_reminder: { icon: Moon, color: '#000000', bg: '#f1f5f9' },
+    macro_update: { icon: BarChart3, color: '#000000', bg: '#f8fafc' },
+    diet_adherence: { icon: Apple, color: '#000000', bg: '#f1f5f9' },
+    health_insight: { icon: Sparkles, color: '#000000', bg: '#f8fafc' },
+    report_comparison: { icon: FileText, color: '#000000', bg: '#f1f5f9' },
+    goal_progress: { icon: Target, color: '#000000', bg: '#f8fafc' }
 };
 
 export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
@@ -169,13 +169,13 @@ export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
             {/* Header */}
             <div className="sticky top-0 bg-white/95 backdrop-blur-md px-5 py-4 border-b border-slate-100 flex items-center justify-between z-10 flex-shrink-0">
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-[#2FC8B9]/10 flex items-center justify-center">
-                        <Bell className="w-5 h-5 text-[#2FC8B9]" />
+                    <div className="w-10 h-10 rounded-2xl bg-black/5 flex items-center justify-center">
+                        <Bell className="w-5 h-5 text-black" />
                     </div>
                     <div>
                         <h3 className="text-sm font-black text-black uppercase tracking-wider">Notifications</h3>
                         {unreadCount > 0 && (
-                            <p className="text-[10px] text-[#2FC8B9] font-bold">{unreadCount} unread</p>
+                            <p className="text-[10px] text-slate-400 font-bold">{unreadCount} unread</p>
                         )}
                     </div>
                 </div>
@@ -187,7 +187,7 @@ export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
                                 className="p-2 rounded-xl hover:bg-slate-100 transition-colors group"
                                 title="Mark all as read"
                             >
-                                <CheckCheck className="w-4 h-4 text-slate-400 group-hover:text-[#2FC8B9]" />
+                                <CheckCheck className="w-4 h-4 text-slate-400 group-hover:text-black" />
                             </button>
                             <button
                                 onClick={handleClearAll}
@@ -211,7 +211,7 @@ export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
             <div className="overflow-y-auto flex-1">
                 {loading ? (
                     <div className="flex items-center justify-center py-12">
-                        <div className="w-8 h-8 border-3 border-[#2FC8B9]/20 border-t-[#2FC8B9] rounded-full animate-spin" />
+                        <div className="w-8 h-8 border-3 border-slate-100 border-t-black rounded-full animate-spin" />
                     </div>
                 ) : notifications.length === 0 ? (
                     <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
@@ -235,7 +235,7 @@ export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
                                     key={notif._id}
                                     onClick={() => handleNotificationClick(notif)}
                                     className={`group flex items-start gap-3 px-5 py-4 cursor-pointer transition-all
-                    ${!notif.read ? 'bg-[#2FC8B9]/[0.03]' : 'hover:bg-slate-50'}
+                    ${!notif.read ? 'bg-slate-50' : 'hover:bg-slate-50'}
                     border-b border-slate-50 last:border-b-0`}
                                 >
                                     {/* Icon */}
@@ -253,7 +253,7 @@ export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
                                                 {notif.title}
                                             </h4>
                                             {!notif.read && (
-                                                <div className="w-2.5 h-2.5 rounded-full bg-[#2FC8B9] flex-shrink-0 mt-1.5 animate-pulse" />
+                                                <div className="w-2.5 h-2.5 rounded-full bg-black flex-shrink-0 mt-1.5 animate-pulse" />
                                             )}
                                         </div>
                                         <p className={`text-xs text-slate-500 mt-1 leading-relaxed ${!isExpanded ? 'line-clamp-2' : ''}`}>
@@ -263,7 +263,7 @@ export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
                                         {isExpanded && notif.actionUrl && (
                                             <button
                                                 onClick={(e) => handleActionClick(notif, e)}
-                                                className="mt-3 text-xs font-bold px-3 py-1.5 rounded-lg bg-[#2FC8B9]/10 text-[#2FC8B9] hover:bg-[#2FC8B9]/20 transition-colors"
+                                                className="mt-3 text-xs font-bold px-3 py-1.5 rounded-lg bg-black text-white hover:bg-slate-900 transition-colors"
                                             >
                                                 View Details
                                             </button>
@@ -282,8 +282,8 @@ export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
                                                             key={macro}
                                                             className="px-2 py-1 rounded-lg text-[10px] font-bold"
                                                             style={{
-                                                                backgroundColor: pct >= 80 && pct <= 110 ? '#EEFBF9' : pct > 110 ? '#FFF0ED' : '#FFF8E1',
-                                                                color: pct >= 80 && pct <= 110 ? '#2FC8B9' : pct > 110 ? '#E17055' : '#F39C12'
+                                                                backgroundColor: '#f8fafc',
+                                                                color: '#000000'
                                                             }}
                                                         >
                                                             {macro.charAt(0).toUpperCase() + macro.slice(1)}: {pct}%
@@ -304,10 +304,10 @@ export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
                                         {!notif.read && (
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif._id); }}
-                                                className="p-1.5 rounded-lg hover:bg-[#2FC8B9]/10 transition-colors"
+                                                className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
                                                 title="Mark as read"
                                             >
-                                                <Check className="w-3.5 h-3.5 text-[#2FC8B9]" />
+                                                <Check className="w-3.5 h-3.5 text-black" />
                                             </button>
                                         )}
                                         <button

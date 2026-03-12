@@ -181,7 +181,7 @@ const BMICategory = ({ bmi }) => {
   const getCategory = () => {
     if (bmi < 16) return { label: 'Severe Underweight', color: 'border-rose-200 text-rose-600 bg-rose-50/30' };
     if (bmi < 18.5) return { label: 'Underweight', color: 'border-amber-200 text-amber-600 bg-amber-50/30' };
-    if (bmi < 25) return { label: 'Optimal Range', color: 'border-[#2FC8B9]/30 text-[#2FC8B9] bg-[#2FC8B9]/5' };
+    if (bmi < 25) return { label: 'Optimal Range', color: 'border-black/20 text-black bg-slate-50' };
     if (bmi < 30) return { label: 'Overweight', color: 'border-amber-200 text-amber-600 bg-amber-50/30' };
     if (bmi < 35) return { label: 'Obese', color: 'border-rose-200 text-rose-600 bg-rose-50/30' };
     return { label: 'Severe Obese', color: 'border-rose-300 text-rose-700 bg-rose-100/30' };
@@ -250,16 +250,16 @@ export default function BMIWidget() {
 
   if (!bmi) {
     return (
-      <div className="bg-white rounded-2xl border-2 border-[#2FC8B9]/20 p-6 shadow-sm">
+      <div className="bg-white rounded-2xl border-2 border-slate-100 p-6 shadow-sm">
         <div className="text-center">
-          <Target className="w-12 h-12 text-[#2FC8B9] mx-auto mb-3" />
+          <Target className="w-12 h-12 text-black mx-auto mb-3" />
           <h3 className="text-lg font-bold text-black mb-2">Complete Your Profile</h3>
           <p className="text-sm text-slate-500 mb-4">
             Add your height and weight to see your BMI and get personalized recommendations
           </p>
           <a
             href="/profile"
-            className="inline-block px-6 py-2 bg-[#2FC8B9] text-white rounded-xl font-medium hover:bg-[#25a89b] transition-colors"
+            className="inline-block px-6 py-2 bg-black text-white rounded-xl font-medium hover:bg-slate-900 transition-colors"
           >
             Update Profile
           </a>
@@ -325,7 +325,7 @@ export default function BMIWidget() {
                   </div>
                   <Link
                     to="/profile?tab=goals"
-                    className="px-4 py-2 bg-[#2FC8B9] text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-[#25a89b] transition-all"
+                    className="px-4 py-2 bg-black text-white rounded-xl text-xs font-black uppercase tracking-wider hover:bg-slate-900 transition-all"
                   >
                     Change
                   </Link>
@@ -334,7 +334,7 @@ export default function BMIWidget() {
             ) : (
               <Link
                 to="/profile?tab=goals"
-                className="w-full py-4 bg-[#2FC8B9] text-white rounded-2xl font-black uppercase tracking-widest hover:bg-[#25a89b] transition-all flex items-center justify-center gap-2 text-sm shadow-[0_10px_20px_-5px_rgba(47,200,185,0.3)]"
+                className="w-full py-4 bg-black text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-900 transition-all flex items-center justify-center gap-2 text-sm shadow-[0_10px_20px_-5px_rgba(0,0,0,0.1)]"
               >
                 <Target className="w-4 h-4" />
                 Set Your Goal

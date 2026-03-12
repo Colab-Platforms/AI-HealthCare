@@ -48,7 +48,52 @@ exports.analyzeFood = async (req, res) => {
     } else {
       // Analyze from text
       console.log('Analyzing from text...');
-      analysis = await nutritionAI.analyzeFromText(foodDescription);
+
+      // --- CACHING LOGIC: Check if we already have this food analyzed in the DB (GLOBAL CACHE) ---
+      const existingCheck = await QuickFoodCheck.findOne({
+        foodName: { $regex: new RegExp(`^${foodDescription.trim()}$`, 'i') }
+      }).sort({ timestamp: -1 });
+
+      if (existingCheck) {
+        console.log('📦 Found cached analysis for:', foodDescription);
+        analysis = {
+          data: {
+            foodItem: {
+              name: existingCheck.foodName,
+              nutrition: existingCheck.nutrition,
+              healthScore: existingCheck.healthScore,
+              healthScore10: existingCheck.healthScore10,
+              micronutrients: existingCheck.micronutrients,
+              enhancementTips: existingCheck.enhancementTips,
+              warnings: existingCheck.warnings,
+              benefits: existingCheck.benefits,
+              healthBenefitsSummary: existingCheck.healthBenefitsSummary,
+              alternatives: existingCheck.alternatives
+            }
+          }
+        };
+      } else {
+        analysis = await nutritionAI.quickFoodCheck(foodDescription);
+
+        // Save to cache for future use
+        if (analysis?.data?.foodItem) {
+          const cacheEntry = new QuickFoodCheck({
+            userId: req.user._id,
+            foodName: foodDescription.trim(),
+            nutrition: analysis.data.foodItem.nutrition,
+            healthScore: analysis.data.foodItem.healthScore,
+            healthScore10: analysis.data.foodItem.healthScore10,
+            micronutrients: analysis.data.foodItem.micronutrients,
+            enhancementTips: analysis.data.foodItem.enhancementTips,
+            warnings: analysis.data.foodItem.warnings,
+            benefits: analysis.data.foodItem.benefits,
+            healthBenefitsSummary: analysis.data.foodItem.healthBenefitsSummary,
+            alternatives: analysis.data.foodItem.alternatives,
+            scanType: 'text'
+          });
+          await cacheEntry.save();
+        }
+      }
     }
 
     console.log('Food analysis completed successfully');
@@ -112,10 +157,22 @@ exports.logMeal = async (req, res) => {
     const sanitizeTips = (data) => {
       if (!Array.isArray(data)) return [];
       return data.map(item => {
-        if (typeof item === 'string') return { name: item, benefit: item };
+        if (typeof item === 'string') return { name: 'Tip', benefit: item };
         return {
           name: item.name || 'Tip',
           benefit: item.benefit || item.description || ''
+        };
+      });
+    };
+
+    const sanitizeAlternatives = (data) => {
+      if (!Array.isArray(data)) return [];
+      return data.map(item => {
+        if (typeof item === 'string') return { name: item, description: item };
+        return {
+          name: item.name || 'Alternative',
+          description: item.description || item.benefits || '',
+          benefits: item.benefits || ''
         };
       });
     };
@@ -156,9 +213,9 @@ exports.logMeal = async (req, res) => {
       enhancementTips: sanitizeTips(enhancementTips),
       healthBenefitsSummary,
       warnings: Array.isArray(warnings) ? warnings : [],
-      alternatives: Array.isArray(alternatives) ? alternatives : [],
+      alternatives: sanitizeAlternatives(alternatives),
       source,
-      timestamp: timestamp || new Date()
+      timestamp: timestamp || req.body.date || new Date()
     });
 
     await foodLog.save();
@@ -472,15 +529,25 @@ exports.logWeight = async (req, res) => {
     await metric.save({ maxTimeMS: 30000 });
     console.log('Weight metric saved successfully');
 
-    // Also update user profile weight
+    // Also update user profile weight and BMI
     const User = require('../models/User');
     const user = await withTimeout(User.findById(req.user._id));
     if (user) {
       user.profile = user.profile || {};
       user.profile.weight = Number(weight);
+
+      // Recalculate BMI if height exists
+      if (user.profile.height) {
+        const heightInMeters = user.profile.height / 100;
+        const bmi = Number((Number(weight) / (heightInMeters * heightInMeters)).toFixed(1));
+        user.healthMetrics = user.healthMetrics || {};
+        user.healthMetrics.bmi = bmi;
+      }
+
       user.markModified('profile');
+      user.markModified('healthMetrics');
       await user.save({ maxTimeMS: 30000 });
-      console.log('User profile weight updated');
+      console.log('User profile weight and BMI updated');
     }
 
     // Update health goal if exists
@@ -509,6 +576,56 @@ exports.logWeight = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to log weight',
+      error: error.message
+    });
+  }
+};
+
+// Log water
+exports.logWater = async (req, res) => {
+  try {
+    const { waterIntake, date } = req.body;
+    const queryDate = date ? new Date(date) : new Date();
+    const targetDate = new Date(queryDate.toISOString().split('T')[0]);
+    targetDate.setUTCHours(0, 0, 0, 0);
+
+    console.log('Logging water:', { userId: req.user._id, waterIntake, date: targetDate });
+
+    // Update NutritionSummary
+    let summary = await NutritionSummary.findOne({
+      userId: req.user._id,
+      date: targetDate
+    });
+
+    if (!summary) {
+      summary = new NutritionSummary({
+        userId: req.user._id,
+        date: targetDate
+      });
+    }
+
+    summary.waterIntake = Number(waterIntake);
+    await summary.save();
+
+    // Also update DailyProgress for dashboard metrics
+    const dateStr = targetDate.toISOString().split('T')[0];
+    const DailyProgress = require('../models/DailyProgress');
+    await DailyProgress.findOneAndUpdate(
+      { userId: req.user._id, date: dateStr },
+      { waterIntake: Number(waterIntake) },
+      { upsert: true, new: true }
+    );
+
+    res.json({
+      success: true,
+      waterIntake: summary.waterIntake,
+      message: 'Water intake logged successfully'
+    });
+  } catch (error) {
+    console.error('Log water error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to log water',
       error: error.message
     });
   }
@@ -816,6 +933,7 @@ async function updateDailySummary(userId, date) {
     summary.totalSodium = totals.totalSodium;
     summary.averageHealthScore = totals.averageHealthScore;
     summary.mealsLogged = mealsLogged;
+    // Keep waterIntake as is, unless we want to reset it (unlikely)
 
     if (healthGoal) {
       summary.calorieGoal = healthGoal.dailyCalorieTarget;
@@ -936,6 +1054,22 @@ exports.quickFoodCheck = async (req, res) => {
       }
     } else {
       console.log('📝 Using text analysis for:', foodDescription);
+
+      // CACHE CHECK: Look for previous analysis of the same food globally
+      const existingCheck = await QuickFoodCheck.findOne({
+        foodName: { $regex: new RegExp(`^${foodDescription.trim()}$`, 'i') }
+      }).sort({ timestamp: -1 });
+
+      if (existingCheck) {
+        console.log('♻️ [QuickCheck] Reusing cached analysis for:', foodDescription);
+        return res.json({
+          success: true,
+          data: existingCheck,
+          isCached: true,
+          message: 'Retrieved from history'
+        });
+      }
+
       analysis = await nutritionAI.quickFoodCheck(foodDescription);
     }
 

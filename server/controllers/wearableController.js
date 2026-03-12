@@ -4,9 +4,9 @@ const WearableData = require('../models/WearableData');
 exports.connectDevice = async (req, res) => {
   try {
     const { deviceType, deviceName } = req.body;
-    
+
     let wearable = await WearableData.findOne({ user: req.user._id, deviceType });
-    
+
     if (wearable) {
       wearable.isConnected = true;
       wearable.deviceName = deviceName || wearable.deviceName;
@@ -20,7 +20,7 @@ exports.connectDevice = async (req, res) => {
         isConnected: true
       });
     }
-    
+
     res.status(201).json(wearable);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -35,11 +35,11 @@ exports.disconnectDevice = async (req, res) => {
       { isConnected: false },
       { new: true }
     );
-    
+
     if (!wearable) {
       return res.status(404).json({ message: 'Device not found' });
     }
-    
+
     res.json({ message: 'Device disconnected', wearable });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -60,30 +60,40 @@ exports.getConnectedDevices = async (req, res) => {
 // Sync daily metrics (simulated - in real app would come from device API)
 exports.syncDailyMetrics = async (req, res) => {
   try {
-    const { deviceType, metrics } = req.body;
-    
-    const wearable = await WearableData.findOne({ user: req.user._id, deviceType });
+    const { deviceType = 'other', metrics } = req.body;
+
+    let wearable = await WearableData.findOne({ user: req.user._id, deviceType });
     if (!wearable) {
-      return res.status(404).json({ message: 'Device not connected' });
+      if (deviceType === 'other') {
+        wearable = await WearableData.create({
+          user: req.user._id,
+          deviceType: 'other',
+          deviceName: 'Manual Entry',
+          isConnected: true,
+          dailyMetrics: []
+        });
+      } else {
+        return res.status(404).json({ message: 'Device not connected' });
+      }
     }
 
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     // Check if today's metrics exist
     const existingIndex = wearable.dailyMetrics.findIndex(
       m => new Date(m.date).toDateString() === today.toDateString()
     );
-    
+
     if (existingIndex >= 0) {
       wearable.dailyMetrics[existingIndex] = { ...wearable.dailyMetrics[existingIndex], ...metrics, date: today };
     } else {
       wearable.dailyMetrics.push({ ...metrics, date: today });
     }
-    
+
     wearable.lastSyncedAt = new Date();
     await wearable.save();
-    
+
     res.json(wearable);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -94,19 +104,19 @@ exports.syncDailyMetrics = async (req, res) => {
 exports.addHeartRate = async (req, res) => {
   try {
     const { deviceType, bpm, type } = req.body;
-    
+
     const wearable = await WearableData.findOne({ user: req.user._id, deviceType });
     if (!wearable) {
       return res.status(404).json({ message: 'Device not connected' });
     }
 
     wearable.heartRate.push({ bpm, type, timestamp: new Date() });
-    
+
     // Keep only last 100 readings
     if (wearable.heartRate.length > 100) {
       wearable.heartRate = wearable.heartRate.slice(-100);
     }
-    
+
     await wearable.save();
     res.json(wearable);
   } catch (error) {
@@ -117,16 +127,38 @@ exports.addHeartRate = async (req, res) => {
 // Add sleep data
 exports.addSleepData = async (req, res) => {
   try {
-    const { deviceType, sleepData } = req.body;
-    
-    const wearable = await WearableData.findOne({ user: req.user._id, deviceType });
+    const { deviceType = 'other', sleepData } = req.body;
+
+    let wearable = await WearableData.findOne({ user: req.user._id, deviceType });
     if (!wearable) {
-      return res.status(404).json({ message: 'Device not connected' });
+      if (deviceType === 'other') {
+        wearable = await WearableData.create({
+          user: req.user._id,
+          deviceType: 'other',
+          deviceName: 'Manual Entry',
+          isConnected: true,
+          sleepData: []
+        });
+      } else {
+        return res.status(404).json({ message: 'Device not connected' });
+      }
     }
 
-    wearable.sleepData.push(sleepData);
+    const targetDate = sleepData.date ? new Date(sleepData.date) : new Date();
+    targetDate.setHours(0, 0, 0, 0);
+
+    const existingIndex = wearable.sleepData.findIndex(
+      s => new Date(s.date).toDateString() === targetDate.toDateString()
+    );
+
+    if (existingIndex >= 0) {
+      wearable.sleepData[existingIndex] = { ...sleepData, date: targetDate };
+    } else {
+      wearable.sleepData.push({ ...sleepData, date: targetDate });
+    }
+
     await wearable.save();
-    
+
     res.json(wearable);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -137,7 +169,7 @@ exports.addSleepData = async (req, res) => {
 exports.getWearableDashboard = async (req, res) => {
   try {
     const wearables = await WearableData.find({ user: req.user._id, isConnected: true });
-    
+
     if (!wearables.length) {
       return res.json({ connected: false, devices: [] });
     }
@@ -159,12 +191,12 @@ exports.getWearableDashboard = async (req, res) => {
     // Get today's metrics
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     for (const wearable of wearables) {
       const todayData = wearable.dailyMetrics.find(
         m => new Date(m.date).toDateString() === today.toDateString()
       );
-      
+
       if (todayData) {
         dashboard.todayMetrics = dashboard.todayMetrics || { steps: 0, caloriesBurned: 0, activeMinutes: 0, distance: 0 };
         dashboard.todayMetrics.steps += todayData.steps || 0;
@@ -206,16 +238,16 @@ exports.generateDemoData = async (req, res) => {
   try {
     // Only allow in development mode
     if (process.env.NODE_ENV === 'production') {
-      return res.status(403).json({ 
+      return res.status(403).json({
         message: 'Demo data generation is disabled in production',
         error: 'DEMO_DATA_DISABLED'
       });
     }
 
     const { deviceType } = req.body;
-    
+
     let wearable = await WearableData.findOne({ user: req.user._id, deviceType });
-    
+
     if (!wearable) {
       wearable = await WearableData.create({
         user: req.user._id,
@@ -270,9 +302,9 @@ exports.generateDemoData = async (req, res) => {
     wearable.heartRate = heartRate;
     wearable.sleepData = sleepData;
     wearable.lastSyncedAt = new Date();
-    
+
     await wearable.save();
-    
+
     res.json({ message: 'Demo data generated', wearable });
   } catch (error) {
     res.status(500).json({ message: error.message });

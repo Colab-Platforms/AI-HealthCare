@@ -2,7 +2,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Calendar, FileText, Settings, LogOut,
-  Bell, Search, Activity, Watch, Clock, Apple, MessageSquare, Utensils, ArrowLeft
+  Bell, Search, Activity, Watch, Clock, Apple, MessageSquare, Utensils, ArrowLeft,
+  Droplet, Brain, TrendingUp, Sun, Moon, MessageCircle, BarChart3, Dumbbell
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import TextSelectionPopup from './TextSelectionPopup';
@@ -14,13 +15,12 @@ import { useRef } from 'react';
 
 const patientNavItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/ai-chat', icon: MessageSquare, label: 'AI Assistant' },
-  { path: '/upload', icon: FileText, label: 'My Reports' },
+  { path: '/diabetes', icon: Droplet, label: 'Diabetes' },
+  { path: '/upload', icon: Brain, label: 'AI Analyzer' },
   { path: '/nutrition', icon: Utensils, label: 'Nutrition' },
-  { path: '/diet-plan', icon: Apple, label: 'Diet Plan' },
-  { path: '/profile', icon: Settings, label: 'Profile' },
-  { path: '/doctors', icon: Calendar, label: 'Appointments', comingSoon: true },
-  { path: '/wearables', icon: Watch, label: 'Devices', comingSoon: true }
+  { path: '/diet-plan', icon: FileText, label: 'Diet Plan' },
+  { path: '/progress', icon: BarChart3, label: 'Progress' },
+  { path: '/exercises', icon: Dumbbell, label: 'Exercises' }
 ];
 
 const doctorNavItems = [
@@ -114,27 +114,34 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
           {/* Logo - Fixed at top */}
           <div className="p-8 shrink-0 border-b border-slate-50">
             <Link to={homeLink} className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-[#2FC8B9]/10 border border-[#2FC8B9]/20 shadow-[0_0_15px_rgba(47,200,185,0.2)]">
-                <Activity className="w-6 h-6 text-[#2FC8B9]" />
+              <div className="w-8 h-8 rounded-full flex items-center justify-center border-2 border-slate-900 bg-white">
+                <div className="w-4 h-4 rounded-full border-2 border-slate-900"></div>
               </div>
               <div className="min-w-0">
-                <p className="font-black text-black text-lg tracking-tighter uppercase leading-none">FitCure</p>
-                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1 truncate">{portalName}</p>
+                <p className="font-black text-black text-xl tracking-tighter">FitCure</p>
               </div>
             </Link>
           </div>
 
           {/* Navigation - Scrollable middle section */}
           <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
-            {navItems.map(({ path, icon: Icon, label, comingSoon }) => {
+            {navItems.map(({ path, icon: Icon, label, comingSoon, badge, isDiabeticOnly }) => {
+              // Conditionally hide diabetes if not diabetic
+              const isDiabetic = user?.profile?.medicalHistory?.conditions?.includes('Diabetes') || user?.profile?.diabetesProfile?.type;
+              if (isDiabeticOnly && !isDiabetic) return null;
+
               if (comingSoon) {
                 return (
-                  <div
-                    key={path}
-                    className="flex items-center gap-4 px-4 py-4 rounded-2xl font-bold transition-all cursor-not-allowed opacity-30 text-slate-300"
-                  >
-                    <Icon className="w-5 h-5" />
-                    <span className="text-sm uppercase tracking-widest">{label}</span>
+                  <div key={path} className="flex items-center justify-between px-5 py-3.5 rounded-2xl transition-all cursor-not-allowed text-slate-400">
+                    <div className="flex items-center gap-4">
+                      <Icon className="w-5 h-5 opacity-40" />
+                      <span className="text-sm font-bold tracking-tight">{label}</span>
+                    </div>
+                    {badge && (
+                      <span className="bg-slate-100 text-slate-500 text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">
+                        {badge}
+                      </span>
+                    )}
                   </div>
                 );
               }
@@ -146,13 +153,20 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
                   key={path}
                   to={path}
                   onClick={() => setSidebarOpen(false)}
-                  className={`flex items-center gap-4 px-5 py-4 rounded-2xl font-black transition-all group ${isActive
-                    ? 'bg-[#2FC8B9] text-white shadow-[0_10px_20px_-10px_rgba(47,200,185,0.5)]'
-                    : 'text-slate-500 hover:text-black hover:bg-slate-50'
+                  className={`flex items-center justify-between px-5 py-3.5 rounded-2xl font-bold transition-all group ${isActive
+                    ? 'bg-slate-900 text-white shadow-lg'
+                    : 'text-slate-400 hover:text-black hover:bg-slate-50'
                     }`}
                 >
-                  <Icon className={`w-5 h-5 transition-colors ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-[#2FC8B9]'}`} />
-                  <span className="text-xs uppercase tracking-[0.2em]">{label}</span>
+                  <div className="flex items-center gap-4">
+                    <Icon className={`w-5 h-5 transition-colors ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-black'}`} />
+                    <span className="text-sm tracking-tight">{label}</span>
+                  </div>
+                  {badge && !isActive && (
+                    <span className="bg-slate-100 text-slate-500 text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">
+                      {badge}
+                    </span>
+                  )}
                 </Link>
               );
             })}
@@ -168,11 +182,12 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
                   className="w-10 h-10 rounded-xl object-cover shrink-0 shadow-lg"
                 />
               ) : (
-                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-[#2FC8B9] shadow-lg">
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-black shadow-lg">
                   <span className="font-black text-white">{user?.name?.[0]?.toUpperCase()}</span>
                 </div>
               )}
               <div className="flex-1 min-w-0">
+                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Elite Menu</p>
                 <p className="text-xs font-black truncate text-black uppercase tracking-wider">
                   {isDoctor() ? `DR. ${user?.name}` : user?.name}
                 </p>
@@ -197,63 +212,32 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
 
       {/* Main Content - Add left margin for fixed sidebar on desktop */}
       <div className="flex-1 flex flex-col min-h-screen lg:ml-64">
-        {/* Desktop Header - Show on all pages */}
-        <header className="sticky top-0 z-30 backdrop-blur-xl bg-white/80 border-b border-slate-100 hidden md:block">
-          <div className="flex items-center justify-between px-8 py-5">
-            <div className="flex items-center gap-6">
-              <h1 className="text-xl font-black text-black uppercase tracking-tight">
-                {location.pathname === '/dashboard'
-                  ? `Welcome, ${user?.name?.split(' ')[0] || 'User'}`
-                  : (navItems.find(item => item.path === location.pathname)?.label || 'Dashboard')}
-              </h1>
+        {/* Desktop Header - Now visible on mobile too */}
+        <header className="sticky top-0 z-30 bg-white/40 backdrop-blur-md">
+          <div className="flex items-center justify-between lg:justify-end px-6 md:px-12 py-4 md:py-6 gap-6">
+            {/* Logo for mobile */}
+            <div className="flex lg:hidden items-center gap-3">
+              <Link to={homeLink} className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center border-2 border-slate-900 bg-white">
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-900"></div>
+                </div>
+                <p className="font-black text-black text-lg tracking-tighter">FitCure</p>
+              </Link>
             </div>
 
-            <div className="flex items-center gap-6 overflow-hidden">
-              {/* Search */}
-              <div className="hidden lg:flex items-center">
-                <div className="relative group">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 group-focus-within:text-[#2FC8B9] transition-colors" />
-                  <input
-                    type="text"
-                    placeholder="Search metrics..."
-                    className="w-64 pl-12 pr-6 py-3 rounded-2xl text-xs font-bold focus:outline-none bg-slate-50 border border-slate-100 focus:border-[#2FC8B9]/30 transition-all placeholder-slate-400"
-                  />
-                </div>
-              </div>
+            <div className="flex items-center gap-4">
 
-              {/* Notifications */}
-              <button
-                ref={notificationTriggerRef}
-                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                className={`relative p-3 rounded-2xl transition-all flex-shrink-0 border transition-all ${isNotificationOpen
-                  ? 'bg-[#2FC8B9] border-[#2FC8B9] text-white shadow-lg'
-                  : 'bg-slate-50 border-slate-100 text-slate-400 hover:text-[#2FC8B9] hover:bg-white hover:shadow-sm'
-                  }`}
-              >
-                <Bell className="w-5 h-5" />
-                <span className="absolute top-3 right-3 w-2.5 h-2.5 bg-[#2FC8B9] rounded-full border-2 border-white" />
-              </button>
-
-              <NotificationPanel
-                isOpen={isNotificationOpen}
-                onClose={() => setIsNotificationOpen(false)}
-                triggerRef={notificationTriggerRef}
-              />
-
-              {/* Profile Icon - Click to go to profile */}
+              {/* Profile Image - Large and Round as per image */}
               <button
                 onClick={() => navigate('/profile')}
-                className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-[#2FC8B9] shadow-lg hover:shadow-xl transition-all cursor-pointer overflow-hidden"
-                title="Go to Profile"
+                className="w-10 h-10 rounded-full overflow-hidden border border-slate-100 shadow-sm hover:ring-4 hover:ring-slate-100 transition-all pointer-events-auto"
               >
                 {user?.profilePicture ? (
-                  <img
-                    src={user.profilePicture}
-                    alt={user.name}
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" />
                 ) : (
-                  <span className="font-black text-white">{user?.name?.[0]?.toUpperCase()}</span>
+                  <div className="w-full h-full bg-slate-900 flex items-center justify-center">
+                    <img src="https://avatar.iran.liara.run/public/boy" alt="User" className="w-full h-full object-cover opacity-80" />
+                  </div>
                 )}
               </button>
             </div>
@@ -261,7 +245,7 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
         </header>
 
         {/* Mobile Back Button Header - Only for non-dashboard and non-food-scan pages */}
-        {!isDashboardPage && location.pathname !== '/quick-food-scan' && location.pathname !== '/step-tracker' && (
+        {!isDashboardPage && location.pathname !== '/step-tracker' && (
           <header className="sticky top-0 z-30 backdrop-blur-xl bg-white/95 border-b border-slate-100 md:hidden">
             <div className="flex items-center px-4 py-3 gap-3">
               <button

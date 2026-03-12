@@ -134,7 +134,9 @@ export const healthService = {
   chatAboutReport: (id, message, chatHistory) => api.post(`health/reports/${id}/chat`, { message, chatHistory }),
   askAI: (data) => api.post('health/ai-chat', data),
   getMetricInfo: (data) => api.post('health/metric-info', data),
-  getReportComparison: () => api.get('health/report-comparison')
+  getReportComparison: () => api.get('health/report-comparison'),
+  syncDailyProgress: (data) => api.post('health/daily-progress', data),
+  getDailyProgress: (date) => api.get(`health/daily-progress/${date}`)
 };
 
 export const authService = {

@@ -170,8 +170,8 @@ function Hero() {
 
           {/* Subheadline */}
           <p className="text-lg md:text-xl text-slate-600 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Join 10,000+ people who've transformed their health with personalized AI analysis,
-            nutrition plans, and expert doctor connections—all from your medical reports.
+            Join 10,000+ people who've transformed their health with personalized AI analysis
+            and actionable nutrition plans—all from your medical reports.
           </p>
 
 
@@ -241,11 +241,7 @@ function Features() {
       title: "Report Analysis",
       description: "Upload your medical reports and get instant AI-powered analysis with personalized health insights.",
     },
-    {
-      icon: Users,
-      title: "Expert Doctor Network",
-      description: "Connect with verified healthcare professionals recommended based on your specific health needs.",
-    },
+
     {
       icon: Brain,
       title: "AI Health Assistant",
@@ -308,7 +304,7 @@ function HowItWorks() {
     {
       number: "03",
       title: "Take action on insights",
-      description: "Follow personalized nutrition plans, connect with recommended doctors, and track your health improvements over time.",
+      description: "Follow personalized nutrition plans and track your health improvements over time.",
       image: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Banner-ai-diagnostic.jpg?v=1768294903",
     },
   ];
@@ -392,7 +388,6 @@ function Pricing() {
         "Unlimited report uploads",
         "Advanced AI analysis",
         "Personalized nutrition plans",
-        "Doctor recommendations",
         "Priority support",
         "Health trend analysis",
         "Supplement recommendations",
@@ -409,7 +404,6 @@ function Pricing() {
         "Up to 5 family members",
         "Family health dashboard",
         "Shared health insights",
-        "Family doctor network",
         "Emergency health alerts",
       ],
       popular: false,
@@ -501,7 +495,7 @@ function Testimonials() {
   const testimonials = [
     {
       stars: 5,
-      quote: "FitCure identified my vitamin D deficiency that my doctor missed. The personalized nutrition plan has completely transformed my energy levels and overall health. I feel like I have a personal health advisor in my pocket.",
+      quote: "FitCure identified my vitamin D deficiency that traditional methods missed. The personalized nutrition plan has completely transformed my energy levels and overall health. I feel like I have a personal health advisor in my pocket.",
       author: "Sarah Johnson",
       role: "Marketing Manager",
       location: "San Francisco",
@@ -509,7 +503,7 @@ function Testimonials() {
     },
     {
       stars: 5,
-      quote: "As a busy professional, I never had time to properly analyze my health reports. FitCure does it instantly and gives me actionable insights. The doctor recommendations were spot-on and saved me months of searching.",
+      quote: "As a busy professional, I never had time to properly analyze my health reports. FitCure does it instantly and gives me actionable insights and personalized recommendations that saved me months of searching.",
       author: "Michael Chen",
       role: "Software Engineer",
       location: "Seattle",
@@ -621,19 +615,15 @@ function FAQ() {
     },
     {
       question: "How accurate is the AI analysis?",
-      answer: "Our AI has been trained on millions of medical records and achieves 98% accuracy in data extraction and analysis. However, our insights are meant to supplement, not replace, professional medical advice. We always recommend consulting with healthcare professionals for serious health concerns.",
+      answer: "Our AI has been trained on millions of medical records and achieves 98% accuracy in data extraction and analysis. However, our insights are meant to supplement, not replace, professional medical advice.",
     },
     {
       question: "Is my health data secure and private?",
       answer: "Absolutely. We use bank-level encryption to protect your data and are fully HIPAA compliant. Your health information is never shared with third parties without your explicit consent. You have complete control over your data and can delete it at any time.",
     },
     {
-      question: "Can I connect with real doctors through the platform?",
-      answer: "Yes! Based on your AI analysis, we recommend verified healthcare professionals who specialize in your specific health needs. Our network includes thousands of doctors, specialists, and healthcare providers who understand our AI insights.",
-    },
-    {
       question: "What if I don't have any medical reports?",
-      answer: "No problem! You can start by taking our comprehensive health assessment, or we can help you understand what tests to request from your doctor. We also provide guidance on essential health screenings based on your age, gender, and health goals.",
+      answer: "No problem! You can start by taking our comprehensive health assessment. We also provide guidance on essential health screenings based on your age, gender, and health goals.",
     },
     {
       question: "Can I cancel my subscription anytime?",
@@ -762,7 +752,7 @@ function Footer() {
             <ul className="space-y-3 text-sm">
               <li><a href="#" className="text-white/60 hover:text-white transition-colors">Help Center</a></li>
               <li><a href="#" className="text-white/60 hover:text-white transition-colors">Health Guides</a></li>
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors">Find a Doctor</a></li>
+
               <li><a href="#" className="text-white/60 hover:text-white transition-colors">Partner with Us</a></li>
             </ul>
           </div>
@@ -794,7 +784,6 @@ export default function Landing() {
     <div className="min-h-screen bg-gradient-to-b from-[#0a1628] via-[#061e33] to-[#0a1628]">
       <MinimalHeader />
       <VideoHero />
-      <InteractiveGridFeatures />
       <FeaturesSection />
       <ProductShowcaseSection />
       {/* <WhySection /> */}

@@ -13,7 +13,9 @@ const {
   deleteReport,
   saveChallengeData,
   getChallengeData,
-  getReportComparison
+  getReportComparison,
+  syncDailyProgress,
+  getDailyProgress
 } = require('../controllers/healthController');
 const { protect } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -31,5 +33,9 @@ router.post('/ai-chat', protect, aiChat);
 router.post('/metric-info', protect, getMetricInfo);
 router.post('/challenge', protect, saveChallengeData);
 router.get('/challenge', protect, getChallengeData);
+
+// Daily Progress Synchronization Routes
+router.post('/daily-progress', protect, syncDailyProgress);
+router.get('/daily-progress/:date', protect, getDailyProgress);
 
 module.exports = router;

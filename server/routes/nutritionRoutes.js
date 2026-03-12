@@ -18,6 +18,7 @@ router.post('/goals', nutritionController.setHealthGoal);
 router.put('/goals', nutritionController.updateHealthGoal);
 router.get('/goals', nutritionController.getHealthGoal);
 router.post('/log-weight', nutritionController.logWeight);
+router.post('/log-water', nutritionController.logWater);
 
 // Nutrition Summary - SPECIFIC ROUTES BEFORE PARAMETERIZED ROUTES
 router.get('/summary/daily', nutritionController.getDailySummary);
