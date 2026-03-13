@@ -264,10 +264,8 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
         {/* Page Content */}
         <main className="flex-1 main-content-mobile overflow-x-hidden w-full" style={
           location.pathname === '/nutrition' || location.pathname === '/ai-chat'
-            ? { padding: 0, backgroundColor: 'white' }
-            : location.pathname === '/dashboard' || location.pathname === '/glucose-log'
-              ? { padding: 0 }
-              : { padding: 0 }
+            ? { padding: 0, backgroundColor: 'transparent' }
+            : { padding: 0 }
         }>
           {children}
         </main>
