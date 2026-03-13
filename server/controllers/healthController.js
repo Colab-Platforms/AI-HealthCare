@@ -659,10 +659,60 @@ exports.getDashboardData = async (req, res) => {
     const stepGoal = healthGoal?.stepGoal || 10000;
     const sleepGoal = healthGoal?.sleepGoal || 8;
 
+// Helper to generate insights based on profile if no reports exist
+const generateProfileInsights = (user) => {
+  if (!user || !user.profile) return null;
+
+  const { age, weight, height, activityLevel, gender } = user.profile;
+  const bmi = (weight && height) ? (weight / ((height / 100) ** 2)).toFixed(1) : null;
+  
+  let lifestyleAdvice = "";
+  let dietaryGoal = "Maintain balanced nutrition";
+  
+  if (activityLevel === 'sedentary') {
+    lifestyleAdvice = "Consider adding a 15-minute daily walk to boost your metabolism.";
+  } else if (bmi && bmi > 25) {
+    lifestyleAdvice = "Focus on a balanced diet and regular exercise for healthy weight management.";
+    dietaryGoal = "Higher protein, controlled portions";
+  } else if (bmi && bmi < 18.5) {
+    lifestyleAdvice = "Focus on nutrient-dense foods to support healthy weight gain.";
+    dietaryGoal = "Higher calorie, protein-rich foods";
+  } else {
+    lifestyleAdvice = "Maintain your current activity level and stay hydrated for optimal performance.";
+  }
+
+  // Generate basic metrics based only on known data
+  const basicMetrics = {};
+  if (bmi) {
+    basicMetrics["BMI"] = { 
+      value: bmi, 
+      status: bmi > 25 ? "Overweight" : bmi < 18.5 ? "Underweight" : "Healthy", 
+      normalRange: "18.5 - 24.9" 
+    };
+  }
+
+  // Create a realistic, personalized summary based only on what we know
+  let summaryParts = [`Welcome to your health dashboard.`];
+  if (bmi) summaryParts.push(`Your calculated BMI is ${bmi}.`);
+  summaryParts.push(lifestyleAdvice);
+  summaryParts.push(`Upload your first medical report for a complete AI health analysis and personalized deficiency tracking.`);
+
+  return {
+    healthScore: 75,
+    summary: summaryParts.join(' '),
+    metrics: basicMetrics,
+    deficiencies: [], // Empty to trigger the "Upload your report" UI
+    recommendations: {
+      lifestyle: [lifestyleAdvice, "Aim for 7-9 hours of consistent sleep.", "Monitor your daily step count."],
+      nutritional: ["Drink 2-3L of water daily.", "Increase fiber intake with whole grains.", `Focus on: ${dietaryGoal}`]
+    }
+  };
+};
+
     const dashboardData = {
       user: { ...req.user.toObject(), password: undefined },
       healthScores,
-      latestAnalysis: latestReport?.aiAnalysis || null,
+      latestAnalysis: latestReport?.aiAnalysis || generateProfileInsights(req.user),
       latestReportId: latestReport?._id,
       latestComparison, // 🆕 Add comparison data
       totalReports: await HealthReport.countDocuments({ user: req.user._id }),
@@ -941,6 +991,11 @@ exports.saveChallengeData = async (req, res) => {
     const user = await User.findById(req.user._id);
     user.challengeData = challengeData;
     user.streakDays = streak;
+    
+    // Set start date if this is the first time saving challenge data
+    if (!user.challengeStartDate) {
+      user.challengeStartDate = new Date();
+    }
 
     // Mark as modified for Mixed type
     user.markModified('challengeData');
@@ -950,7 +1005,8 @@ exports.saveChallengeData = async (req, res) => {
     res.json({
       message: 'Challenge data saved successfully',
       streakDays: streak,
-      challengeData: user.challengeData
+      challengeData: user.challengeData,
+      challengeStartDate: user.challengeStartDate
     });
   } catch (error) {
     console.error('Save challenge error:', error);
@@ -961,11 +1017,17 @@ exports.saveChallengeData = async (req, res) => {
 // Get challenge data
 exports.getChallengeData = async (req, res) => {
   try {
-    const user = await withTimeout(User.findById(req.user._id).select('challengeData streakDays'));
+    let user = await withTimeout(User.findById(req.user._id).select('challengeData streakDays challengeStartDate'));
+
+    if (!user.challengeStartDate) {
+      user.challengeStartDate = new Date();
+      await user.save();
+    }
 
     res.json({
       challengeData: user.challengeData || {},
-      streakDays: user.streakDays || 0
+      streakDays: user.streakDays || 0,
+      challengeStartDate: user.challengeStartDate
     });
   } catch (error) {
     console.error('Get challenge error:', error);

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Scale, Footprints, Moon, ArrowLeft, Calendar, Save, Plus, Flame, Clock } from 'lucide-react';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, CartesianGrid } from 'recharts';
+import { LineChart, Line, BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, CartesianGrid } from 'recharts';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import api from '../services/api';
@@ -27,7 +27,13 @@ export default function LogVitals() {
     const [value, setValue] = useState('');
     const [sleepHours, setSleepHours] = useState('');
     const [sleepMins, setSleepMins] = useState('');
-    const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+    // Use local-aware date string for initial state (YYYY-MM-DD)
+    const getLocalDateString = () => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    };
+
+    const [date, setDate] = useState(getLocalDateString());
     const [loading, setLoading] = useState(false);
 
     useEffect(() => {
@@ -37,7 +43,6 @@ export default function LogVitals() {
     }, [metric]);
 
     useEffect(() => {
-        // Fetch dashboard data if it's not already loaded, fixing the "lost data on refresh" bug
         const loadData = async () => {
             if (!dashboardData) {
                 await fetchDashboard();
@@ -46,21 +51,49 @@ export default function LogVitals() {
         loadData();
     }, []);
 
+    // Get data for the SPECIFIC selected date
+    const selectedDateItem = useMemo(() => {
+        if (!dashboardData?.history) return null;
+        return dashboardData.history.find(h => h.date === date);
+    }, [dashboardData, date]);
+
     const history = useMemo(() => {
         if (!dashboardData?.history) return [];
-        return dashboardData.history.slice(-7).map(item => {
+        
+        // Find index of selected date to shift the window if needed
+        const selectedIdx = dashboardData.history.findIndex(h => h.date === date);
+        const todayStr = getLocalDateString();
+        const todayIdx = dashboardData.history.findIndex(h => h.date === todayStr);
+        
+        let end = dashboardData.history.length;
+        let start = Math.max(0, end - 7);
+
+        // If selected date is outside the default last 7 days ending today, shift the window
+        if (selectedIdx !== -1 && selectedIdx < todayIdx - 3) {
+            end = Math.min(dashboardData.history.length, selectedIdx + 4);
+            start = Math.max(0, end - 7);
+        }
+
+        return dashboardData.history.slice(start, end).map(item => {
             const [year, month, day] = item.date.split('-');
             const localDate = new Date(year, month - 1, day);
             return {
                 ...item,
-                day: localDate.toLocaleDateString('en-US', { weekday: 'short' })
+                day: localDate.toLocaleDateString('en-US', { weekday: 'short' }),
+                dateFull: item.date,
+                isSelected: item.date === date
             };
         });
-    }, [dashboardData]);
+    }, [dashboardData, date]);
 
-    const currentWeight = dashboardData?.history?.slice(-1)[0]?.weight || user?.profile?.weight || 72.5;
-    const currentSteps = dashboardData?.stepsToday || dashboardData?.history?.slice(-1)[0]?.steps || 0;
-    const currentSleep = dashboardData?.sleepToday || dashboardData?.history?.slice(-1)[0]?.sleep || 0;
+    // Fallback logic for weight: if no entry for selected date, use latest history entry or profile
+    const latestHistoryWeight = dashboardData?.history?.slice().reverse().find(h => h.weight > 0)?.weight;
+    const currentWeight = selectedDateItem?.weight || latestHistoryWeight || user?.profile?.weight || 72.5;
+    
+    // Steps and Sleep are 0 if not logged for that specific day
+    const currentSteps = selectedDateItem?.steps || 0;
+    const currentSleep = selectedDateItem?.sleep || 0;
+    
     const currentSleepHrs = Math.floor(currentSleep);
     const currentSleepMins = Math.round((currentSleep - currentSleepHrs) * 60);
 
@@ -219,12 +252,12 @@ export default function LogVitals() {
                                         <div className="flex flex-col items-center justify-center p-6 md:p-8 bg-white/60 backdrop-blur-md rounded-[32px] border border-white shadow-sm relative overflow-hidden">
                                             <div className="absolute top-6 right-6 flex items-center gap-2">
                                                 <div className="w-2 h-2 rounded-full bg-[#C8BFF0] animate-pulse"></div>
-                                                <span className="text-[10px] font-bold text-[#888888] tracking-widest uppercase">LIVE</span>
+                                                <span className="text-[10px] font-bold text-[#888888] tracking-widest uppercase">{date === getLocalDateString() ? 'LIVE' : 'SELECTED'}</span>
                                             </div>
 
                                             <div className="text-center mb-8 mt-2">
                                                 <h2 className="text-2xl md:text-3xl font-light text-[#1a1a1a]">
-                                                    Current Weight <span className="font-semibold text-[#1a1a1a]">{currentWeight} kg</span>
+                                                    Weight on <span className="font-semibold text-[#1a1a1a]">{new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>: <span className="font-semibold text-[#1a1a1a]">{currentWeight} kg</span>
                                                 </h2>
                                             </div>
 
@@ -398,12 +431,12 @@ export default function LogVitals() {
                                         <div className="flex flex-col items-center justify-center p-6 md:p-8 bg-white/60 backdrop-blur-md rounded-[32px] border border-white shadow-sm relative overflow-hidden">
                                             <div className="absolute top-6 right-6 flex items-center gap-2">
                                                 <div className="w-2 h-2 rounded-full bg-[#D4F1A5] animate-pulse"></div>
-                                                <span className="text-[10px] font-bold text-[#888888] tracking-widest uppercase">LIVE</span>
+                                                <span className="text-[10px] font-bold text-[#888888] tracking-widest uppercase">{date === getLocalDateString() ? 'LIVE' : 'SELECTED'}</span>
                                             </div>
 
                                             <div className="text-center mb-8 mt-2">
                                                 <h2 className="text-2xl md:text-3xl font-light text-[#1a1a1a]">
-                                                    You have walked <span className="font-semibold text-[#1a1a1a]">{currentSteps.toLocaleString()} steps</span> today
+                                                    Steps on <span className="font-semibold text-[#1a1a1a]">{new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>: <span className="font-semibold text-[#1a1a1a]">{currentSteps.toLocaleString()}</span>
                                                 </h2>
                                             </div>
 
@@ -566,10 +599,17 @@ export default function LogVitals() {
                                                     <ReferenceLine y={stepGoal} stroke="#FF6B6B" strokeDasharray="6 6" strokeWidth={2} label={{ value: `Goal: ${stepGoal >= 1000 ? (stepGoal/1000).toFixed(0)+'k' : stepGoal}`, position: 'right', fill: '#FF6B6B', fontSize: 10, fontWeight: 'bold' }} />
                                                     <Bar
                                                         dataKey="steps"
-                                                        fill="#D4F1A5"
                                                         radius={[8, 8, 0, 0]}
                                                         maxBarSize={40}
-                                                    />
+                                                    >
+                                                        {history.map((entry, index) => (
+                                                            <Cell 
+                                                                key={`cell-${index}`} 
+                                                                fill={entry.isSelected ? '#B8E570' : '#D4F1A5'} 
+                                                                fillOpacity={entry.isSelected ? 1 : 0.7}
+                                                            />
+                                                        ))}
+                                                    </Bar>
                                                 </BarChart>
                                             </ResponsiveContainer>
                                         </div>
@@ -596,12 +636,12 @@ export default function LogVitals() {
                                         <div className="flex flex-col items-center justify-center p-6 md:p-8 bg-white/60 backdrop-blur-md rounded-[32px] border border-white shadow-sm relative overflow-hidden">
                                             <div className="absolute top-6 right-6 flex items-center gap-2">
                                                 <div className="w-2 h-2 rounded-full bg-[#E2F0FD] animate-pulse"></div>
-                                                <span className="text-[10px] font-bold text-[#888888] tracking-widest uppercase">LAST NIGHT</span>
+                                                <span className="text-[10px] font-bold text-[#888888] tracking-widest uppercase">{date === getLocalDateString() ? 'LIVE' : 'SELECTED'}</span>
                                             </div>
 
                                             <div className="text-center mb-8 mt-2">
                                                 <h2 className="text-2xl md:text-3xl font-light text-[#1a1a1a]">
-                                                    You slept <span className="font-semibold text-[#1a1a1a]">{currentSleepHrs}h {currentSleepMins}m</span>
+                                                    Sleep on <span className="font-semibold text-[#1a1a1a]">{new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>: <span className="font-semibold text-[#1a1a1a]">{currentSleepHrs}h {currentSleepMins}m</span>
                                                 </h2>
                                             </div>
 
@@ -775,10 +815,17 @@ export default function LogVitals() {
                                                     <ReferenceLine y={sleepGoal} stroke="#FF6B6B" strokeDasharray="6 6" strokeWidth={2} label={{ value: `Goal: ${sleepGoal}h`, position: 'right', fill: '#FF6B6B', fontSize: 10, fontWeight: 'bold' }} />
                                                     <Bar
                                                         dataKey="sleep"
-                                                        fill="#E2F0FD"
                                                         radius={[8, 8, 0, 0]}
                                                         maxBarSize={40}
-                                                    />
+                                                    >
+                                                        {history.map((entry, index) => (
+                                                            <Cell 
+                                                                key={`cell-${index}`} 
+                                                                fill={entry.isSelected ? '#A5D1FF' : '#E2F0FD'} 
+                                                                fillOpacity={entry.isSelected ? 1 : 0.7}
+                                                            />
+                                                        ))}
+                                                    </Bar>
                                                 </BarChart>
                                             </ResponsiveContainer>
                                         </div>

@@ -732,6 +732,33 @@ export default function QuickFoodCheck() {
             </div>
           </div>
 
+          {/* New: Health Benefits Highlights */}
+          {(result.benefits || result.healthBenefits) && (result.benefits || result.healthBenefits).length > 0 && (
+            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <h4 className="text-xs font-black text-slate-700 tracking-tight uppercase">Health Benefits</h4>
+              </div>
+              <div className="space-y-3">
+                {(result.benefits || result.healthBenefits).map((benefit, i) => (
+                  <div key={i} className="flex gap-3 items-start text-[11px] text-slate-900 bg-emerald-50/30 p-4 rounded-2xl border border-emerald-100/50">
+                    <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                    {typeof benefit === 'string' ? (
+                      <span className="font-bold">{benefit}</span>
+                    ) : (
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-black tracking-tight text-emerald-900">{benefit.name}</span>
+                        <span className="font-medium text-emerald-700">{benefit.benefit || benefit.description}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Micronutrients Section */}
           <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
             <div className="flex items-center gap-3 mb-5">
@@ -741,23 +768,37 @@ export default function QuickFoodCheck() {
               <h4 className="text-xs font-black text-slate-700 tracking-tight uppercase">Key Micronutrients</h4>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {(result.micronutrients || []).map((micro, i) => (
-                <div key={i} className="bg-white rounded-xl p-3 border border-slate-100 shadow-sm">
-                  <div className="flex justify-between items-center mb-1.5">
-                    <span className="text-[10px] font-black text-slate-700 truncate">{typeof micro === 'object' ? micro.name : micro}</span>
-                    <span className="text-[10px] font-black text-black">{typeof micro === 'object' ? micro.percentage : '--'}%</span>
+            <div 
+              className={`grid grid-cols-1 gap-3 overflow-y-auto pr-1 ${result.micronutrients?.length > 3 ? 'max-h-[220px]' : ''}`}
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              <style>{`.hide-scrollbar::-webkit-scrollbar { display: none; }`}</style>
+              <div className="grid grid-cols-2 gap-3 hide-scrollbar">
+                {(result.micronutrients || []).map((micro, i) => (
+                  <div key={i} className="bg-white rounded-xl p-3 border border-slate-100 shadow-sm hover:border-slate-300 transition-colors">
+                    <div className="flex justify-between items-start mb-1.5">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-black text-slate-700 truncate">{typeof micro === 'object' ? micro.name : micro}</p>
+                        {typeof micro === 'object' && micro.dailyRecommendation && (
+                          <p className="text-[8px] font-bold text-slate-400 uppercase">Rec: {micro.dailyRecommendation}</p>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-black text-black shrink-0 ml-1">
+                        {typeof micro === 'object' && micro.amount ? `${micro.amount}${micro.unit || ''}` : ''} 
+                        {typeof micro === 'object' && micro.percentage ? ` (${micro.percentage}%)` : ' Rich'}
+                      </span>
+                    </div>
+                    <div className="h-1 bg-slate-50 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-black rounded-full"
+                        style={{ width: `${(typeof micro === 'object' && micro.percentage) ? Math.min(100, micro.percentage) : 25}%` }}
+                      />
+                    </div>
                   </div>
-                  <div className="h-1 bg-slate-50 rounded-full overflow-hidden">
-                    <div
-                      className="h-full bg-black rounded-full"
-                      style={{ width: `${typeof micro === 'object' ? micro.percentage : 20}%` }}
-                    />
-                  </div>
-                </div>
-              ))}
+                ))}
+              </div>
               {(!result.micronutrients || result.micronutrients.length === 0) && (
-                <p className="text-[10px] font-bold text-slate-400 italic text-center col-span-2">Micronutrient analysis pending...</p>
+                <p className="text-[10px] font-bold text-slate-400 italic text-center py-4">Micronutrient analysis pending...</p>
               )}
             </div>
           </div>
@@ -768,18 +809,18 @@ export default function QuickFoodCheck() {
               <div className="w-8 h-8 rounded-xl bg-black flex items-center justify-center text-white">
                 <Sparkles className="w-4 h-4" />
               </div>
-              <h4 className="text-xs font-black text-black tracking-tight uppercase">Make it even Healthier</h4>
+              <h4 className="text-xs font-black text-black tracking-tight uppercase">Healthy Optimizations</h4>
             </div>
 
-            <div className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {(result.enhancementTips || []).map((tip, i) => (
-                <div key={i} className="bg-slate-50 rounded-xl p-3 flex items-center gap-3 border border-slate-100 shadow-sm transition-transform hover:scale-[1.01]">
-                  <div className="w-6 h-6 rounded-full bg-black flex items-center justify-center text-white shrink-0">
+                <div key={i} className="bg-slate-900 text-white rounded-2xl p-4 flex items-center gap-3 border border-slate-800 shadow-lg transition-transform hover:scale-[1.02]">
+                  <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white shrink-0">
                     <Plus className="w-3 h-3 font-bold" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-xs font-black text-slate-800 uppercase tracking-tight">{typeof tip === 'object' ? tip.name : tip}</p>
-                    <p className="text-[9px] font-bold text-slate-400 truncate uppercase mt-0.5">{typeof tip === 'object' ? tip.benefit : 'Adds nutritional value'}</p>
+                    <p className="text-[10px] font-black uppercase tracking-tight leading-tight">{typeof tip === 'object' ? tip.name : tip}</p>
+                    <p className="text-[8px] font-bold text-slate-400 truncate uppercase mt-1">{typeof tip === 'object' && tip.benefit ? tip.benefit : 'Improves health profile'}</p>
                   </div>
                 </div>
               ))}

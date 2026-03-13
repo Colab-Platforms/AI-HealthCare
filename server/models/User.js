@@ -122,6 +122,7 @@ const userSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.Mixed,
     default: {}
   },
+  challengeStartDate: Date,
   streakDays: { type: Number, default: 0 }
 }, { timestamps: true, strict: false });
 

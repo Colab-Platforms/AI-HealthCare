@@ -24,6 +24,9 @@ export default function Challenge30Days() {
   });
   const [challengeData, setChallengeData] = useState({});
   const [streak, setStreak] = useState(0);
+  const [challengeStartDate, setChallengeStartDate] = useState(() => {
+    return localStorage.getItem('challengeStartDate');
+  });
   const [loading, setLoading] = useState(true);
 
   const glassCard = "bg-white/80 backdrop-blur-xl border border-white/50 rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.02)]";
@@ -36,6 +39,21 @@ export default function Challenge30Days() {
   useEffect(() => {
     localStorage.setItem('challenge30DaysCurrentDay', currentDay);
   }, [currentDay]);
+
+  useEffect(() => {
+    if (challengeStartDate) {
+      const start = new Date(challengeStartDate);
+      start.setHours(0, 0, 0, 0);
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      const diffMs = now - start;
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
+
+      if (diffDays > 0 && diffDays <= 30) {
+        setCurrentDay(diffDays);
+      }
+    }
+  }, [challengeStartDate]);
 
   const loadChallengeData = async () => {
     setLoading(true);
@@ -54,10 +72,15 @@ export default function Challenge30Days() {
     try {
       const response = await api.get('health/challenge');
       const data = response.data.challengeData || {};
+      const startDate = response.data.challengeStartDate;
+      
       setChallengeData(data);
       setStreak(response.data.streakDays || 0);
+      if (startDate) setChallengeStartDate(startDate);
+      
       localStorage.setItem('challenge30Days', JSON.stringify(data));
       localStorage.setItem('challenge30DaysStreak', response.data.streakDays || 0);
+      if (startDate) localStorage.setItem('challengeStartDate', startDate);
     } catch (error) {
       console.error('Failed to load challenge data:', error);
     } finally {
@@ -67,13 +90,14 @@ export default function Challenge30Days() {
 
   const saveChallengeData = async (newData) => {
     let localStreak = 0;
-    const days = Object.keys(newData).map(Number).sort((a, b) => b - a);
-
-    for (const day of days) {
-      const dayData = newData[day];
+    for (let d = 1; d <= 30; d++) {
+      const dayData = newData[d];
       const completedTasks = Object.values(dayData || {}).filter(Boolean).length;
-      if (completedTasks >= CHALLENGE_TASKS.length) localStreak++;
-      else break;
+      if (completedTasks >= CHALLENGE_TASKS.length) {
+        localStreak++;
+      } else {
+        break;
+      }
     }
 
     setStreak(localStreak);

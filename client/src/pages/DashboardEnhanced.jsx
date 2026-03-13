@@ -57,21 +57,26 @@ const DashedGauge = ({ value, max = 2400, mode = 'Macro' }) => {
   );
 };
 
-const NutrientProgressRow = ({ label, value, icon: Icon, color = "bg-black", iconBg = "bg-slate-50", iconColor = "text-black" }) => (
-  <div className="w-full mb-5 last:mb-0">
-    <div className="flex items-center justify-between mb-1.5">
-      <div className="flex items-center gap-4">
-        <div className={`w-10 h-10 rounded-full ${iconBg} flex items-center justify-center ${iconColor} border border-white shadow-sm`}>
-          <Icon className="w-4 h-4" />
+const NutrientProgressRow = ({ label, value, targetLabel, icon: Icon, color = "bg-black", iconBg = "bg-slate-50", iconColor = "text-black" }) => (
+  <div className="group">
+    <div className="flex justify-between items-center mb-1.5 px-1">
+      <div className="flex items-center gap-2">
+        <div className={`w-6 h-6 rounded-lg ${iconBg} flex items-center justify-center`}>
+          <Icon className={`w-3.5 h-3.5 ${iconColor}`} />
         </div>
-        <span className="text-base font-black text-slate-800">{label}</span>
+        <span className="text-[10px] font-black text-slate-800 uppercase tracking-tight">{label}</span>
       </div>
-      <span className="text-sm font-black text-slate-400">{Math.round(value)}%</span>
+      <div className="text-right">
+        <span className="text-[10px] font-black text-black">{Math.round(value)}%</span>
+        {targetLabel && <span className="text-[8px] font-bold text-slate-400 uppercase tracking-tighter block -mt-0.5">{targetLabel}</span>}
+      </div>
     </div>
-    <div className="w-full h-2 bg-[#F1F1F4] rounded-full overflow-hidden">
-      <div
-        className={`h-full ${color} rounded-full transition-all duration-1000`}
-        style={{ width: `${Math.min(value, 100)}%` }}
+    <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100/50">
+      <motion.div
+        initial={{ width: 0 }}
+        animate={{ width: `${Math.min(value, 100)}%` }}
+        transition={{ duration: 1, ease: "easeOut" }}
+        className={`h-full ${color} rounded-full`}
       />
     </div>
   </div>
@@ -601,6 +606,9 @@ export default function DashboardEnhanced() {
     };
   }, []);
 
+  const cardCount = 3;
+  const activeIndex = scrollProgress / (100 / (cardCount - 1 || 1));
+
   const scrollBy = (direction) => {
     if (scrollContainerRef.current) {
       const amount = 300;
@@ -649,6 +657,317 @@ export default function DashboardEnhanced() {
         </div>
       </motion.div>
 
+      {/* 3 Column Grid - Scrollable on mobile with Stack Effect */}
+      <div 
+        ref={scrollContainerRef}
+        onScroll={handleScroll}
+        className="flex overflow-x-auto lg:grid lg:grid-cols-3 gap-6 md:gap-8 pb-10 md:pb-12 lg:pb-0 scrollbar-hide snap-x snap-mandatory h-full items-stretch lg:items-start -mx-4 px-8 md:mx-0 md:px-0 mt-8 mb-6"
+      >
+        {/* Card 1: Nutrient Info (Reordered to be first) */}
+        <motion.div 
+          style={{
+            scale: typeof window !== 'undefined' && window.innerWidth < 1024 ? 1 - (Math.abs(0 - activeIndex) * 0.05) : 1,
+            filter: typeof window !== 'undefined' && window.innerWidth < 1024 ? `blur(${Math.abs(0 - activeIndex) * 3}px)` : 'none',
+            zIndex: 10 - Math.round(Math.abs(0 - activeIndex)),
+            opacity: typeof window !== 'undefined' && window.innerWidth < 1024 ? 1 - (Math.abs(0 - activeIndex) * 0.2) : 1
+          }}
+          className="min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-[520px] lg:h-full relative overflow-hidden group"
+        >
+          <div className="absolute top-0 right-0 w-32 h-32 bg-purple-50/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+          
+          <div className="flex items-center justify-between mb-0.5 relative z-10">
+            <h2 className="text-xl font-black text-black">Nutrient Info</h2>
+            <button
+              onClick={() => navigate('/nutrition')}
+              className="w-8 h-8 rounded-full bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-black shadow-sm group"
+            >
+              <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+            </button>
+          </div>
+          <p className="text-[10px] font-black text-[#A1A1A1] uppercase tracking-[0.1em] mb-4 relative z-10">DAILY TARGETS</p>
+
+          <div className="relative z-10">
+            {(() => {
+              const driTargets = {
+                fiber: 30,
+                sugar: 50,
+                sodium: 2300,
+                vitaminA: 900,
+                vitaminC: 90,
+                vitaminD: 20,
+                vitaminB12: 2.4,
+                iron: 18,
+                calcium: 1000
+              };
+
+              const microScores = [
+                ((nutritionData?.totalFiber || 0) / driTargets.fiber) * 100,
+                ((nutritionData?.totalSugar || 0) / driTargets.sugar) * 100,
+                ((nutritionData?.totalSodium || 0) / driTargets.sodium) * 100,
+                ((nutritionData?.totalVitaminA || 0) / driTargets.vitaminA) * 100,
+                ((nutritionData?.totalVitaminC || 0) / driTargets.vitaminC) * 100,
+                ((nutritionData?.totalIron || 0) / driTargets.iron) * 100
+              ];
+              const avgMicro = Math.min(Math.round(microScores.reduce((a, b) => a + b, 0) / microScores.length), 100);
+
+              return (
+                <DashedGauge
+                  value={nutrientMode === 'Macro' ? (nutritionData?.totalCalories || dashboardData?.nutritionData?.totalCalories || 0) : avgMicro}
+                  max={nutrientMode === 'Macro' ? (user?.nutritionGoal?.calorieGoal || nutritionData?.calorieGoal || 2000) : 100}
+                  mode={nutrientMode}
+                />
+              );
+            })()}
+          </div>
+
+          <div className="flex justify-center gap-8 border-b border-slate-50 mb-8 pb-0.5 relative z-10">
+            <button
+              onClick={() => setNutrientMode('Macro')}
+              className={`text-xs font-black uppercase tracking-widest pb-2.5 px-2 transition-all relative ${nutrientMode === 'Macro' ? 'text-black' : 'text-slate-300 hover:text-slate-400'
+                }`}
+            >
+              Macro
+              {nutrientMode === 'Macro' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-black" />}
+            </button>
+            <button
+              onClick={() => setNutrientMode('Micro')}
+              className={`text-xs font-black uppercase tracking-widest pb-2.5 px-2 transition-all relative ${nutrientMode === 'Micro' ? 'text-black' : 'text-slate-300 hover:text-slate-400'
+                }`}
+            >
+              Micro
+              {nutrientMode === 'Micro' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-black" />}
+            </button>
+          </div>
+
+          <div className="flex-1 space-y-4 pt-2 relative z-10">            {nutrientMode === 'Macro' ? (
+              <div className="space-y-4">
+                <NutrientProgressRow
+                  label="Protein"
+                  value={(() => {
+                    const goal = user?.nutritionGoal?.proteinGoal || nutritionData?.proteinGoal || 150;
+                    const val = nutritionData?.totalProtein || dashboardData?.nutritionData?.totalProtein || 0;
+                    return goal > 0 ? (val / goal) * 100 : 0;
+                  })()}
+                  targetLabel={`${user?.nutritionGoal?.proteinGoal || nutritionData?.proteinGoal || 150}g target`}
+                  icon={Flame} color="bg-black" iconBg="bg-slate-50" iconColor="text-black"
+                />
+                <NutrientProgressRow
+                  label="Fats"
+                  value={(() => {
+                    const goal = user?.nutritionGoal?.fatGoal || nutritionData?.fatGoal || 65;
+                    const val = nutritionData?.totalFats || dashboardData?.nutritionData?.totalFats || 0;
+                    return goal > 0 ? (val / goal) * 100 : 0;
+                  })()}
+                  targetLabel={`${user?.nutritionGoal?.fatGoal || nutritionData?.fatGoal || 65}g max`}
+                  icon={Smile} color="bg-slate-600" iconBg="bg-slate-50" iconColor="text-slate-600"
+                />
+                <NutrientProgressRow
+                  label="Carbs"
+                  value={(() => {
+                    const goal = user?.nutritionGoal?.carbsGoal || nutritionData?.carbsGoal || 200;
+                    const val = nutritionData?.totalCarbs || dashboardData?.nutritionData?.totalCarbs || 0;
+                    return goal > 0 ? (val / goal) * 100 : 0;
+                  })()}
+                  targetLabel={`${user?.nutritionGoal?.carbsGoal || nutritionData?.carbsGoal || 200}g target`}
+                  icon={Heart} color="bg-slate-400" iconBg="bg-slate-50" iconColor="text-slate-400"
+                />
+              </div>
+
+            ) : (
+              <div className="space-y-4 overflow-y-auto max-h-[300px] pr-2 scrollbar-hide py-1">
+                <NutrientProgressRow
+                  label="Fiber"
+                  value={((nutritionData?.totalFiber || 0) / 30) * 100}
+                  targetLabel="30g recommended"
+                  icon={Sparkles} color="bg-emerald-500" iconBg="bg-emerald-50" iconColor="text-emerald-500"
+                />
+                <NutrientProgressRow
+                  label="Iron"
+                  value={((nutritionData?.totalIron || 0) / 18) * 100}
+                  targetLabel="18mg target"
+                  icon={Zap} color="bg-orange-500" iconBg="bg-orange-50" iconColor="text-orange-500"
+                />
+                <NutrientProgressRow
+                  label="Vitamin C"
+                  value={((nutritionData?.totalVitaminC || 0) / 90) * 100}
+                  targetLabel="90mg target"
+                  icon={Sun} color="bg-yellow-500" iconBg="bg-yellow-50" iconColor="text-yellow-500"
+                />
+                <NutrientProgressRow
+                  label="Vitamin A"
+                  value={((nutritionData?.totalVitaminA || 0) / 900) * 100}
+                  targetLabel="900mcg target"
+                  icon={Eye} color="bg-purple-500" iconBg="bg-purple-50" iconColor="text-purple-500"
+                />
+                <NutrientProgressRow
+                  label="Calcium"
+                  value={((nutritionData?.totalCalcium || 0) / 1000) * 100}
+                  targetLabel="1000mg target"
+                  icon={Target} color="bg-blue-500" iconBg="bg-blue-50" iconColor="text-blue-500"
+                />
+                <NutrientProgressRow
+                  label="Vitamin D"
+                  value={((nutritionData?.totalVitaminD || 0) / 20) * 100}
+                  targetLabel="20mcg target"
+                  icon={Sun} color="bg-amber-500" iconBg="bg-amber-50" iconColor="text-amber-500"
+                />
+                <NutrientProgressRow
+                  label="B12"
+                  value={((nutritionData?.totalVitaminB12 || 0) / 2.4) * 100}
+                  targetLabel="2.4mcg target"
+                  icon={FlaskConical} color="bg-red-500" iconBg="bg-red-50" iconColor="text-red-500"
+                />
+                <NutrientProgressRow
+                  label="Sodium"
+                  value={((nutritionData?.totalSodium || 0) / 2300) * 100}
+                  targetLabel="2300mg max"
+                  icon={AlertCircle} color="bg-slate-400" iconBg="bg-slate-50" iconColor="text-slate-400"
+                />
+                <NutrientProgressRow
+                  label="Sugar"
+                  value={((nutritionData?.totalSugar || 0) / 50) * 100}
+                  targetLabel="50g max"
+                  icon={Droplet} color="bg-slate-600" iconBg="bg-slate-50" iconColor="text-slate-600"
+                />
+              </div>
+            )}
+          </div>
+        </motion.div>
+
+        {/* Card 2: Today's Diet Plan */}
+        <motion.div 
+          style={{
+            scale: typeof window !== 'undefined' && window.innerWidth < 1024 ? 1 - (Math.abs(1 - activeIndex) * 0.05) : 1,
+            filter: typeof window !== 'undefined' && window.innerWidth < 1024 ? `blur(${Math.abs(1 - activeIndex) * 3}px)` : 'none',
+            zIndex: 10 - Math.round(Math.abs(1 - activeIndex)),
+            opacity: typeof window !== 'undefined' && window.innerWidth < 1024 ? 1 - (Math.abs(1 - activeIndex) * 0.2) : 1
+          }}
+          className="min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-[520px] lg:h-full"
+        >
+          <div className="flex items-center justify-between gap-2 mb-5 flex-nowrap overflow-hidden">
+            <h2 className="text-base sm:text-xl font-black text-black whitespace-nowrap truncate">Today's Diet Plan</h2>
+            <div className="flex items-center gap-1 bg-[#F8F9FB] px-1.5 py-1 rounded-lg border border-slate-50 shrink-0">
+              <Calendar className="w-2.5 h-2.5 text-slate-400" />
+              <span className="text-[8px] font-black text-slate-500 uppercase tracking-tighter">
+                {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+              </span>
+            </div>
+          </div>
+
+          <div className="flex p-1 bg-[#F8F9FB] rounded-2xl mb-6 overflow-x-auto scrollbar-hide">
+            {['breakfast', 'lunch', 'snacks', 'dinner'].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setActiveMealTab(tab)}
+                className={`flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-tight transition-all px-4 min-w-max ${activeMealTab === tab ? 'bg-[#1A1A1A] text-white shadow-md' : 'text-[#888888] hover:text-[#1A1A1A]'
+                  }`}
+              >
+                {tab === 'snacks' ? 'Snacks' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </button>
+            ))}
+          </div>
+
+          {(!dietPlan || !dietPlan.mealPlan) ? (
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-slate-50 rounded-3xl mb-6">
+              <Target className="w-12 h-12 text-slate-300 mb-4" />
+              <p className="text-sm font-bold text-slate-800 mb-2">Set your fitness goal</p>
+              <p className="text-xs text-slate-400 mb-4">Set your fitness goal to see your personalized diet plan</p>
+              <button
+                onClick={() => navigate('/diet-plan')}
+                className="px-8 py-3 bg-black text-white rounded-full text-xs font-black uppercase tracking-widest shadow-xl shadow-black/20 hover:scale-105 transition-all"
+              >
+                Create Diet Plan
+              </button>
+            </div>
+          ) : (
+            <div className="flex-1 space-y-3 mb-6 overflow-y-auto pr-1">
+              {(activeMealTab === 'snacks'
+                ? [...(dietPlan?.mealPlan?.midMorningSnack || []), ...(dietPlan?.mealPlan?.eveningSnack || []), ...(dietPlan?.mealPlan?.snacks || [])]
+                : (dietPlan?.mealPlan?.[activeMealTab] || [])
+              ).map((item, idx) => (
+                <div key={idx} className="p-4 bg-slate-50 rounded-2xl flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-[#1A1A1A]" />
+                  <span className="text-sm font-semibold text-black">{item?.name || item?.foodItems?.[0]?.name}</span>
+                </div>
+              ))}
+              {(!(activeMealTab === 'snacks' ? dietPlan?.mealPlan?.snacks : dietPlan?.mealPlan?.[activeMealTab])?.length) && (
+                <div className="p-4 bg-slate-50/50 rounded-2xl text-center">
+                  <p className="text-xs text-slate-400">No meals planned for this time</p>
+                </div>
+              )}
+            </div>
+          )}
+
+          <button className="w-full bg-[#1A1A1A] text-white py-4 rounded-2xl text-[13px] font-black uppercase tracking-tight hover:bg-black transition-all flex items-center justify-center gap-2 shadow-sm">
+            View Full Plan <ArrowUpRight className="w-4 h-4 ml-1" />
+          </button>
+        </motion.div>
+
+        {/* Card 3: AI Lab Insights */}
+        <motion.div 
+          style={{
+            scale: typeof window !== 'undefined' && window.innerWidth < 1024 ? 1 - (Math.abs(2 - activeIndex) * 0.05) : 1,
+            filter: typeof window !== 'undefined' && window.innerWidth < 1024 ? `blur(${Math.abs(2 - activeIndex) * 3}px)` : 'none',
+            zIndex: 10 - Math.round(Math.abs(2 - activeIndex)),
+            opacity: typeof window !== 'undefined' && window.innerWidth < 1024 ? 1 - (Math.abs(2 - activeIndex) * 0.2) : 1
+          }}
+          className="min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-[520px] lg:h-full"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-xl font-black text-black">AI Lab Insights</h2>
+            <Link to="/upload" className="text-[9px] font-black text-slate-400 uppercase tracking-[0.1em] flex items-center gap-1 hover:text-black group">
+              UPLOAD REPORT <ArrowUpRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+            </Link>
+          </div>
+
+          <div className="space-y-3 flex-1 overflow-y-auto max-h-[300px] pr-2 scrollbar-thin scrollbar-thumb-black scrollbar-track-transparent">
+            {dashboardData?.latestAnalysis?.metrics ? (
+              Object.entries(dashboardData.latestAnalysis.metrics).map(([key, val]) => (
+                <LabMetricsItem
+                  key={key}
+                  label={key}
+                  value={typeof val === 'object' ? `${val.value} ${val.unit || ''}` : val}
+                  status={(typeof val === 'object' && val.status) ? val.status : "Normal"}
+                  icon={key.toLowerCase().includes('glucose') ? Droplet : key.toLowerCase().includes('hb') ? Circle : Activity}
+                />
+              ))
+            ) : (
+              <div className="flex flex-col items-center justify-center p-8 bg-slate-50/50 rounded-3xl text-center border border-dashed border-slate-200">
+                <UploadCloud className="w-10 h-10 text-slate-300 mb-4" />
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 leading-loose">No Health Reports Found</p>
+                <button 
+                  onClick={() => navigate('/upload')}
+                  className="px-6 py-2.5 bg-black text-white text-[10px] font-black uppercase tracking-widest rounded-full hover:scale-105 transition-all shadow-lg"
+                >
+                  Upload Report
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-8 p-6 bg-white rounded-[2rem] border border-[#F1F1F4] relative group shadow-sm">
+            <div className="flex items-center gap-2 mb-3">
+              <Sparkles className="w-4 h-4 text-black" />
+              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">AI RECOMMENDATION</span>
+            </div>
+            <p className="text-[12px] font-medium text-[#1A1A1A] leading-relaxed">
+              {dashboardData?.latestAnalysis?.recommendations?.lifestyle?.[0] ? (
+                `"${dashboardData.latestAnalysis.recommendations.lifestyle[0]}"`
+              ) : (
+                "Personalized health analysis will appear here once you upload your first lab report or log enough meals."
+              )}
+            </p>
+          </div>
+        </motion.div>
+      </div>
+
+      {/* Scroll Indicator for mobile */}
+      <div className="flex lg:hidden justify-center gap-2 mb-10 -mt-2">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${Math.abs(activeIndex - i) < 0.5 ? 'w-6 bg-black' : 'w-2 bg-slate-200'}`} />
+        ))}
+      </div>
+
       {/* Today's Focus Banner */}
       <motion.div
         initial={{ opacity: 0, y: 15 }}
@@ -690,211 +1009,6 @@ export default function DashboardEnhanced() {
           </div>
         </div>
       </motion.div>
-
-      {/* 3 Column Grid - Scrollable on mobile with same height items */}
-      <div className="flex overflow-x-auto lg:grid lg:grid-cols-3 gap-4 md:gap-8 pb-8 lg:pb-0 scrollbar-hide snap-x snap-mandatory h-full items-stretch lg:items-start -mx-4 px-4 md:mx-0 md:px-0">
-
-        {/* Today's Diet Card */}
-        <div className="min-w-[88vw] lg:min-w-0 snap-center bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-[520px] lg:h-full">
-          <div className="flex items-center justify-between gap-2 mb-5 flex-nowrap overflow-hidden">
-            <h2 className="text-base sm:text-xl font-black text-black whitespace-nowrap truncate">Today's Diet Plan</h2>
-            <div className="flex items-center gap-1 bg-[#F8F9FB] px-1.5 py-1 rounded-lg border border-slate-50 shrink-0">
-              <Calendar className="w-2.5 h-2.5 text-slate-400" />
-              <span className="text-[8px] font-black text-slate-500 uppercase tracking-tighter">
-                {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-              </span>
-            </div>
-          </div>
-
-          {/* Segmented Control */}
-          <div className="flex p-1 bg-[#F8F9FB] rounded-2xl mb-6 overflow-x-auto scrollbar-hide">
-            {['breakfast', 'lunch', 'snacks', 'dinner'].map((tab) => (
-              <button
-                key={tab}
-                onClick={() => setActiveMealTab(tab)}
-                className={`flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-tight transition-all px-4 min-w-max ${activeMealTab === tab ? 'bg-[#1A1A1A] text-white shadow-md' : 'text-[#888888] hover:text-[#1A1A1A]'
-                  }`}
-              >
-                {tab === 'snacks' ? 'Snacks' : tab.charAt(0).toUpperCase() + tab.slice(1)}
-              </button>
-            ))}
-          </div>
-
-          {/* Meal Items List (Vertical, no images) */}
-          {(!dietPlan || !dietPlan.mealPlan) ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-slate-50 rounded-3xl mb-6">
-              <Target className="w-12 h-12 text-slate-300 mb-4" />
-              <p className="text-sm font-bold text-slate-800 mb-2">Set your fitness goal</p>
-              <p className="text-xs text-slate-400 mb-4">Set your fitness goal to see your personalized diet plan</p>
-              <button
-                onClick={() => navigate('/diet-plan')}
-                className="px-8 py-3 bg-black text-white rounded-full text-xs font-black uppercase tracking-widest shadow-xl shadow-black/20 hover:scale-105 transition-all"
-              >
-                Create Diet Plan
-              </button>
-            </div>
-          ) : (
-            <div className="flex-1 space-y-3 mb-6 overflow-y-auto pr-1">
-              {(activeMealTab === 'snacks'
-                ? [...(dietPlan?.mealPlan?.midMorningSnack || []), ...(dietPlan?.mealPlan?.eveningSnack || []), ...(dietPlan?.mealPlan?.snacks || [])]
-                : (dietPlan?.mealPlan?.[activeMealTab] || [])
-              ).map((item, idx) => (
-                <div key={idx} className="p-4 bg-slate-50 rounded-2xl flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-[#1A1A1A]" />
-                  <span className="text-sm font-semibold text-black">{item?.name || item?.foodItems?.[0]?.name}</span>
-                </div>
-              ))}
-              {(!(activeMealTab === 'snacks' ? dietPlan?.mealPlan?.snacks : dietPlan?.mealPlan?.[activeMealTab])?.length) && (
-                <div className="p-4 bg-slate-50/50 rounded-2xl text-center">
-                  <p className="text-xs text-slate-400">No meals planned for this time</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          <button className="w-full bg-[#1A1A1A] text-white py-4 rounded-2xl text-[13px] font-black uppercase tracking-tight hover:bg-black transition-all flex items-center justify-center gap-2 shadow-sm">
-            View Full Plan <ArrowUpRight className="w-4 h-4 ml-1" />
-          </button>
-        </div>
-
-        {/* Nutrient Info Card */}
-        <div className="min-w-[88vw] lg:min-w-0 snap-center bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-[520px] lg:h-full">
-          <div className="flex items-center justify-between mb-0.5">
-            <h2 className="text-xl font-black text-black">Nutrient Info</h2>
-            <button
-              onClick={() => navigate('/nutrition')}
-              className="w-8 h-8 rounded-full bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-black shadow-sm group"
-            >
-              <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-            </button>
-          </div>
-          <p className="text-[10px] font-black text-[#A1A1A1] uppercase tracking-[0.1em] mb-4">DAILY TARGETS</p>
-
-          <DashedGauge
-            value={nutrientMode === 'Macro' ? (nutritionData?.totalCalories || dashboardData?.nutritionData?.totalCalories || 0) : 85}
-            max={nutrientMode === 'Macro' ? (user?.nutritionGoal?.calorieGoal || nutritionData?.calorieGoal || 0) : 100}
-            mode={nutrientMode}
-          />
-
-          <div className="flex justify-center gap-8 border-b border-slate-50 mb-8 pb-0.5">
-            <button
-              onClick={() => setNutrientMode('Macro')}
-              className={`text-xs font-black uppercase tracking-widest pb-2.5 px-2 transition-all relative ${nutrientMode === 'Macro' ? 'text-black' : 'text-slate-300 hover:text-slate-400'
-                }`}
-            >
-              Macro
-              {nutrientMode === 'Macro' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-black" />}
-            </button>
-            <button
-              onClick={() => setNutrientMode('Micro')}
-              className={`text-xs font-black uppercase tracking-widest pb-2.5 px-2 transition-all relative ${nutrientMode === 'Micro' ? 'text-black' : 'text-slate-300 hover:text-slate-400'
-                }`}
-            >
-              Micro
-              {nutrientMode === 'Micro' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-black" />}
-            </button>
-          </div>
-
-          <div className="flex-1 space-y-4 pt-2">
-            {nutrientMode === 'Macro' ? (
-              <>
-                <NutrientProgressRow
-                  label="Protein"
-                  value={(() => {
-                    const goal = user?.nutritionGoal?.proteinGoal || nutritionData?.proteinGoal || 150;
-                    const val = nutritionData?.totalProtein || dashboardData?.nutritionData?.totalProtein || 0;
-                    return goal > 0 ? (val / goal) * 100 : 0;
-                  })()}
-                  icon={Circle} color="bg-black" iconBg="bg-slate-50" iconColor="text-black"
-                />
-                <NutrientProgressRow
-                  label="Fats"
-                  value={(() => {
-                    const goal = user?.nutritionGoal?.fatGoal || nutritionData?.fatsGoal || 65;
-                    const val = nutritionData?.totalFats || dashboardData?.nutritionData?.totalFats || 0;
-                    return goal > 0 ? (val / goal) * 100 : 0;
-                  })()}
-                  icon={Smile} color="bg-slate-600" iconBg="bg-slate-50" iconColor="text-slate-600"
-                />
-                <NutrientProgressRow
-                  label="Carbs"
-                  value={(() => {
-                    const goal = user?.nutritionGoal?.carbsGoal || nutritionData?.carbsGoal || 200;
-                    const val = nutritionData?.totalCarbs || dashboardData?.nutritionData?.totalCarbs || 0;
-                    return goal > 0 ? (val / goal) * 100 : 0;
-                  })()}
-                  icon={Heart} color="bg-slate-400" iconBg="bg-slate-50" iconColor="text-slate-400"
-                />
-              </>
-            ) : (
-              <>
-                <NutrientProgressRow
-                  label="Fiber"
-                  value={((nutritionData?.totalFiber || 0) / 30) * 100}
-                  icon={Sparkles} color="bg-black" iconBg="bg-slate-50" iconColor="text-black"
-                />
-                <NutrientProgressRow
-                  label="Sugar"
-                  value={((nutritionData?.totalSugar || 0) / 50) * 100}
-                  icon={Droplet} color="bg-slate-600" iconBg="bg-slate-50" iconColor="text-slate-600"
-                />
-                <NutrientProgressRow
-                  label="Sodium"
-                  value={((nutritionData?.totalSodium || 0) / 2300) * 100}
-                  icon={AlertCircle} color="bg-slate-400" iconBg="bg-slate-50" iconColor="text-slate-400"
-                />
-              </>
-            )}
-          </div>
-        </div>
-
-        {/* AI Lab Insights Card */}
-        <div className="min-w-[88vw] lg:min-w-0 snap-center bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-[520px] lg:h-full">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-black text-black">AI Lab Insights</h2>
-            <Link to="/upload" className="text-[9px] font-black text-slate-400 uppercase tracking-[0.1em] flex items-center gap-1 hover:text-black group">
-              UPLOAD REPORT <ArrowUpRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-            </Link>
-          </div>
-
-          <div className="space-y-3 flex-1 overflow-y-auto max-h-[300px] pr-2 scrollbar-thin scrollbar-thumb-black scrollbar-track-transparent">
-            {dashboardData?.latestAnalysis?.metrics ? (
-              Object.entries(dashboardData.latestAnalysis.metrics).map(([key, val]) => (
-                <LabMetricsItem
-                  key={key}
-                  label={key}
-                  value={typeof val === 'object' ? `${val.value} ${val.unit || ''}` : val}
-                  status={(typeof val === 'object' && val.status) ? val.status : "Normal"}
-                  icon={key.toLowerCase().includes('glucose') ? Droplet : key.toLowerCase().includes('hb') ? Circle : Activity}
-                />
-              ))
-            ) : (
-              <div className="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-3xl text-center">
-                <UploadCloud className="w-10 h-10 text-slate-300 mb-3" />
-                <p className="text-xs font-black text-slate-400 uppercase tracking-widest leading-loose">Upload your 1st report to get vitals details here</p>
-              </div>
-            )}
-          </div>
-
-          <div className="mt-8 p-6 bg-white rounded-[2rem] border border-[#F1F1F4] relative group shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <Sparkles className="w-4 h-4 text-black" />
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">AI RECOMMENDATION</span>
-            </div>
-            <p className="text-[12px] font-medium text-[#1A1A1A] leading-relaxed">
-              "{dashboardData?.latestAnalysis?.recommendations?.lifestyle?.[0] || 'Reduce refined sugar intake. Add 20g fiber daily.'}"
-            </p>
-          </div>
-        </div>
-
-      </div>
-
-      {/* Scroll Indicator for mobile */}
-      <div className="flex lg:hidden justify-center gap-2 mb-8 -mt-4">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${scrollProgress >= (i * 33 - 5) && scrollProgress <= ((i + 1) * 33 + 5) ? 'w-6 bg-black' : 'w-2 bg-slate-200'}`} />
-        ))}
-      </div>
 
       {/* Diabetes Monitor Block */}
       {
@@ -1038,7 +1152,7 @@ export default function DashboardEnhanced() {
                 </div>
                 <div>
                   <h4 className="text-sm font-black uppercase tracking-widest text-white/70">Challenge</h4>
-                  <p className="text-lg font-bold">12 Day Streak</p>
+                  <p className="text-lg font-bold">{dashboardData?.streakDays || 0} Day Streak</p>
                 </div>
               </div>
               <ChevronRight className="w-5 h-5 text-white/50 group-hover:translate-x-1 transition-transform" />
@@ -1343,8 +1457,9 @@ export default function DashboardEnhanced() {
         <div className="relative z-10 flex-1">
           <h3 className="font-medium text-xl mb-2">AI Health Insight</h3>
           <p className="text-[#a0a0a0] font-medium leading-relaxed max-w-4xl text-base">
-            {dashboardData?.latestAnalysis?.recommendations?.lifestyle?.[0] ||
-              `${user?.name?.split(' ')[0] || 'Mike'}, your glucose variability increased after dinner yesterday. Boosting your fiber intake by 8g during your evening meal today could stabilize your nighttime metabolic rate.`}
+            {dashboardData?.latestAnalysis?.summary || 
+             dashboardData?.latestAnalysis?.recommendations?.lifestyle?.[0] ||
+             `${user?.name?.split(' ')[0] || 'User'}, explore your personalized health insights by logging more data or uploading a medical report.`}
           </p>
         </div>
         <button onClick={() => navigate('/ai-chat')} className="relative z-10 mt-4 md:mt-0 px-8 py-3 bg-white hover:bg-slate-100 text-[#1a1a1a] text-sm font-medium rounded-full transition-all shadow-md whitespace-nowrap">

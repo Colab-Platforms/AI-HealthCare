@@ -6,7 +6,7 @@ import {
   User, Save, Heart, AlertCircle, Camera, Mail, Phone, Target,
   Activity, Droplet, Cigarette, Wine, Moon, Apple, Dumbbell, Pill, Upload,
   Bell, ShieldCheck, ChevronRight, LogOut, FileText, Settings, CheckCircle2,
-  TrendingUp, TrendingDown, Clock
+  TrendingUp, TrendingDown, Clock, Sparkles
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import BMIWidget from '../components/BMIWidget';
@@ -28,6 +28,7 @@ export default function Profile() {
     metrics: {},
     recentActivity: [],
     wearable: null,
+    latestAnalysis: null,
     loading: true
   });
   const [expandedSection, setExpandedSection] = useState(null); // 'profile' or 'goals'
@@ -52,6 +53,7 @@ export default function Profile() {
       height: user?.profile?.height || '',
       weight: user?.profile?.weight || '',
       bloodGroup: user?.profile?.bloodGroup || '',
+      phone: user?.phone || user?.profile?.phone || '',
       activityLevel: user?.profile?.activityLevel || 'sedentary',
       allergies: user?.profile?.allergies ? user.profile.allergies.join(', ') : '',
       medicalHistory: {
@@ -98,7 +100,8 @@ export default function Profile() {
         api.get('doctor/appointments'),
         api.get('health/reports'),
         api.get('metrics/summary/latest?types=heart_rate,blood_pressure'),
-        api.get('wearables/dashboard')
+        api.get('wearables/dashboard'),
+        api.get('health/dashboard')
       ]);
 
       setExtraData({
@@ -107,6 +110,7 @@ export default function Profile() {
         metrics: summaryRes.data,
         recentActivity: aptRes.data.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 4),
         wearable: wearableRes.data,
+        latestAnalysis: dashRes.data.latestAnalysis,
         loading: false
       });
     } catch (e) {
@@ -170,6 +174,7 @@ export default function Profile() {
     try {
       const payload = {
         name: formData.name,
+        phone: formData.profile.phone,
         profile: {
           ...formData.profile,
           age: formData.profile.age ? Number(formData.profile.age) : undefined,
@@ -393,6 +398,7 @@ export default function Profile() {
               >
                 <Camera className="w-6 h-6 text-white" />
               </button>
+              <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
             </div>
 
             {/* User Info */}
@@ -408,10 +414,10 @@ export default function Profile() {
                   <Mail className="w-3.5 h-3.5" />
                   {user?.email}
                 </div>
-                {user?.profile?.phone && (
+                {(user?.phone || user?.profile?.phone) && (
                   <div className="flex items-center gap-2 text-xs text-slate-400 font-bold uppercase tracking-widest">
                     <Phone className="w-3.5 h-3.5" />
-                    {user.profile.phone}
+                    {user?.phone || user?.profile?.phone}
                   </div>
                 )}
               </div>
@@ -475,231 +481,297 @@ export default function Profile() {
           </div>
         )}
 
-        <div className="space-y-10 animate-slide-up">
-          {/* Health Metrics Section */}
-          <div className="space-y-6 pt-4">
-            <h3 className="text-xl md:text-2xl font-bold text-slate-900">Health Metrics</h3>
-            <div className="flex overflow-x-auto pb-4 gap-4 md:grid md:grid-cols-2 lg:grid-cols-4 md:overflow-visible no-scrollbar">
-              {/* Heart Rate Card */}
-              {extraData.metrics?.heart_rate && (
-                <div className="bg-[#ECFDF5] rounded-3xl p-6 border border-[#D1FAE5] hover:shadow-lg transition-all group flex flex-col justify-between h-full min-h-[140px]">
-                  <div className="flex justify-between items-start">
-                    <div className="p-2.5 bg-white rounded-xl text-[#059669] shadow-sm">
-                      <Heart className="w-6 h-6 fill-[#059669]" />
-                    </div>
-                    <div className="p-1 px-2.5 bg-[#FEF2F2] rounded-full flex items-center gap-1 text-[#EF4444] text-xs font-bold border border-[#FEE2E2]">
-                      <TrendingDown className="w-3 h-3" /> 4%
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-slate-500 font-medium text-sm mt-4">Heart Rate</h4>
-                    <div className="flex items-baseline gap-1 mt-1">
-                      <span className="text-2xl font-bold text-slate-900">{extraData.metrics?.heart_rate?.value}</span>
-                      <span className="text-slate-400 font-medium text-xs">bpm</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Blood Pressure Card */}
-              {extraData.metrics?.blood_pressure && (
-                <div className="bg-[#EFF6FF] rounded-3xl p-6 border border-[#DBEAFE] hover:shadow-lg transition-all group flex flex-col justify-between h-full min-h-[140px]">
-                  <div className="flex justify-between items-start">
-                    <div className="p-2.5 bg-white rounded-xl text-[#3B82F6] shadow-sm">
-                      <Activity className="w-6 h-6" />
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-slate-500 font-medium text-sm mt-4">Blood Pressure</h4>
-                    <div className="flex items-baseline gap-1 mt-1">
-                      <span className="text-2xl font-bold text-slate-900">{`${extraData.metrics.blood_pressure.value}/${extraData.metrics.blood_pressure.systolic || 80}`}</span>
-                      <span className="text-slate-400 font-medium text-xs">mmHg</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Steps Card */}
-              {extraData.wearable?.todayMetrics?.steps && (
-                <div className="bg-[#F0FDF4] rounded-3xl p-6 border border-[#DCFCE7] hover:shadow-lg transition-all group flex flex-col justify-between h-full min-h-[140px]">
-                  <div className="flex justify-between items-start">
-                    <div className="p-2.5 bg-white rounded-xl text-[#22C55E] shadow-sm">
-                      <TrendingUp className="w-6 h-6" />
-                    </div>
-                    <div className="p-1 px-2.5 bg-[#F0FDF4] rounded-full flex items-center gap-1 text-[#22C55E] text-xs font-bold border border-[#DCFCE7]">
-                      <TrendingUp className="w-3 h-3" /> 12%
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-slate-500 font-medium text-sm mt-4">Steps Today</h4>
-                    <div className="flex items-baseline gap-1 mt-1">
-                      <span className="text-2xl font-bold text-slate-900">{extraData.wearable.todayMetrics.steps.toLocaleString()}</span>
-                      <span className="text-slate-400 font-medium text-xs">steps</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Sleep Card */}
-              {extraData.wearable?.todayMetrics?.sleepHours && (
-                <div className="bg-[#F5F3FF] rounded-3xl p-6 border border-[#EDE9FE] hover:shadow-lg transition-all group flex flex-col justify-between h-full min-h-[140px]">
-                  <div className="flex justify-between items-start">
-                    <div className="p-2.5 bg-white rounded-xl text-[#8B5CF6] shadow-sm">
-                      <Moon className="w-6 h-6" />
-                    </div>
-                  </div>
-                  <div>
-                    <h4 className="text-slate-500 font-medium text-sm mt-4">Sleep</h4>
-                    <div className="flex items-baseline gap-1 mt-1">
-                      <span className="text-2xl font-bold text-slate-900">{extraData.wearable.todayMetrics.sleepHours}</span>
-                      <span className="text-slate-400 font-medium text-xs">hours</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Initial message if no metrics captured */}
-              {!extraData.metrics?.heart_rate && !extraData.metrics?.blood_pressure && !extraData.wearable?.todayMetrics?.steps && (
-                <div className="col-span-full py-8 text-center bg-slate-50 rounded-3xl border border-dashed border-slate-200">
-                  <p className="text-slate-500 font-medium">No health metrics captured yet. Start logging data to see insights here.</p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* AI Health Insights */}
-          <div className="space-y-6">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 bg-purple-100 text-purple-600 rounded-lg">
-                <Activity className="w-5 h-5" />
-              </div>
-              <h3 className="text-xl md:text-2xl font-bold text-slate-900">AI Health Insights</h3>
-            </div>
-            <div className="bg-[#F8FAFF] rounded-[2rem] p-6 md:p-8 border border-[#EBF2FF] relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-purple-200/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-              <div className="relative flex gap-5 md:gap-6">
-                <div className="w-14 h-14 md:w-16 md:h-16 rounded-3xl bg-white shadow-sm flex items-center justify-center flex-shrink-0 text-purple-600">
-                  <Activity className="w-8 h-8 md:w-10 md:h-10" />
-                </div>
-                <div className="space-y-2">
-                  <h4 className="text-lg md:text-xl font-bold text-slate-900">Great Progress!</h4>
-                  <p className="text-slate-600 leading-relaxed max-w-2xl text-sm md:text-base">
-                    {user?.healthAnalysis?.summary || "Your cardiovascular health has improved by 12% this month. Keep maintaining your exercise routine for optimal results and better longevity."}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Bottom Sections: Activity & Quick Actions */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-            {/* Profile & Goal Summaries - Single Page Edit */}
-            <div className="space-y-6">
-              <h3 className="text-xl font-bold text-slate-900">Personalize Your Health</h3>
-              <div className="space-y-4">
-                {/* Profile Details Card - Editable in place */}
-                <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden transition-all duration-300">
-                  <div
-                    onClick={() => setExpandedSection(expandedSection === 'profile' ? null : 'profile')}
-                    className="p-6 flex items-center justify-between cursor-pointer hover:bg-slate-50"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center">
-                        <User className="w-6 h-6" />
+        <div className="space-y-12 animate-slide-up pb-12">
+          {/* Main Content Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
+            {/* Left Column: Personalization (2/3 width) */}
+            <div className="lg:col-span-2 space-y-8">
+              <div className="space-y-6">
+                <h3 className="text-xl font-bold text-slate-900">Personalize Your Health</h3>
+                <div className="space-y-4">
+                  {/* General Profile Details Card */}
+                  <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden transition-all duration-300">
+                    <div
+                      onClick={() => setExpandedSection(expandedSection === 'profile' ? null : 'profile')}
+                      className="p-6 flex items-center justify-between cursor-pointer hover:bg-slate-50"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center">
+                          <User className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-slate-900">General Profile Details</h4>
+                          <p className="text-sm text-slate-500">Edit age, weight, blood group, etc.</p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-bold text-slate-900">General Profile Details</h4>
-                        <p className="text-sm text-slate-500">Edit age, weight, blood group, etc.</p>
-                      </div>
+                      <ChevronRight className={`w-6 h-6 text-slate-300 transition-transform duration-300 ${expandedSection === 'profile' ? 'rotate-90' : ''}`} />
                     </div>
-                    <ChevronRight className={`w-6 h-6 text-slate-300 transition-transform duration-300 ${expandedSection === 'profile' ? 'rotate-90' : ''}`} />
-                  </div>
 
-                  {expandedSection === 'profile' && (
-                    <div className="px-6 pb-8 pt-2 animate-fade-in">
-                      <form onSubmit={handleSubmit} className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div>
-                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Age</label>
-                            <input
-                              type="number"
-                              name="profile.age"
-                              value={formData.profile.age}
-                              onChange={handleChange}
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:ring-0 focus:outline-none"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Gender</label>
-                            <select
-                              name="profile.gender"
-                              value={formData.profile.gender}
-                              onChange={handleChange}
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
-                            >
-                              <option value="male">Male</option>
-                              <option value="female">Female</option>
-                              <option value="other">Other</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Height (cm)</label>
-                            <input
-                              type="number"
-                              name="profile.height"
-                              value={formData.profile.height}
-                              onChange={handleChange}
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Weight (kg)</label>
-                            <input
-                              type="number"
-                              name="profile.weight"
-                              value={formData.profile.weight}
-                              onChange={handleChange}
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
-                            />
-                          </div>
-                          <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+                    {expandedSection === 'profile' && (
+                      <div className="px-6 pb-8 pt-2 animate-fade-in">
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
-                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Blood Group</label>
+                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Age</label>
+                              <input
+                                type="number"
+                                name="profile.age"
+                                value={formData.profile.age}
+                                onChange={handleChange}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:ring-0 focus:outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Gender</label>
                               <select
-                                name="profile.bloodGroup"
-                                value={formData.profile.bloodGroup}
+                                name="profile.gender"
+                                value={formData.profile.gender}
                                 onChange={handleChange}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
                               >
-                                <option value="">Select</option>
-                                {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => (
-                                  <option key={bg} value={bg}>{bg}</option>
-                                ))}
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
                               </select>
                             </div>
                             <div>
-                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Dietary Preference</label>
-                              <select
-                                name="profile.dietaryPreference"
-                                value={formData.profile.dietaryPreference}
+                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Height (cm)</label>
+                              <input
+                                type="number"
+                                name="profile.height"
+                                value={formData.profile.height}
                                 onChange={handleChange}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Weight (kg)</label>
+                              <input
+                                type="number"
+                                name="profile.weight"
+                                value={formData.profile.weight}
+                                onChange={handleChange}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
+                              />
+                            </div>
+                            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+                              <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Blood Group</label>
+                                <select
+                                  name="profile.bloodGroup"
+                                  value={formData.profile.bloodGroup}
+                                  onChange={handleChange}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
+                                >
+                                  <option value="">Select</option>
+                                  {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => (
+                                    <option key={bg} value={bg}>{bg}</option>
+                                  ))}
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Dietary Preference</label>
+                                <select
+                                  name="profile.dietaryPreference"
+                                  value={formData.profile.dietaryPreference}
+                                  onChange={handleChange}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800"
+                                >
+                                  <option value="non-vegetarian">Non-Vegetarian</option>
+                                  <option value="vegetarian">Vegetarian</option>
+                                  <option value="vegan">Vegan</option>
+                                  <option value="eggetarian">Eggetarian</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Activity Level</label>
+                                <select
+                                  name="profile.activityLevel"
+                                  value={formData.profile.activityLevel}
+                                  onChange={handleChange}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
+                                >
+                                  <option value="sedentary">Sedentary (Little/no exercise)</option>
+                                  <option value="lightly_active">Lightly Active (1-3 days/week)</option>
+                                  <option value="moderately_active">Moderately Active (3-5 days/week)</option>
+                                  <option value="very_active">Very Active (6-7 days/week)</option>
+                                  <option value="extremely_active">Extremely Active (Athlete)</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Phone Number</label>
+                                <input
+                                  type="text"
+                                  name="profile.phone"
+                                  value={formData.profile.phone}
+                                  onChange={handleChange}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
+                                  placeholder="e.g. +1 234 567 890"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Lifestyle Section */}
+                            <div className="md:col-span-2 pt-4 border-t border-slate-100">
+                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Stress Level</label>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                <select
+                                  name="profile.lifestyle.stressLevel"
+                                  value={formData.profile.lifestyle.stressLevel}
+                                  onChange={handleChange}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-xs font-bold"
+                                >
+                                  <option value="low">Low</option>
+                                  <option value="moderate">Moderate</option>
+                                  <option value="high">High</option>
+                                </select>
+                                <div className="flex items-center gap-4 mt-2">
+                                  <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      name="profile.lifestyle.smoker"
+                                      checked={formData.profile.lifestyle.smoker}
+                                      onChange={handleChange}
+                                      className="w-4 h-4 text-blue-600 rounded"
+                                    />
+                                    <span className="text-xs font-bold text-slate-400 uppercase">Smoker</span>
+                                  </label>
+                                  <label className="flex items-center gap-2 cursor-pointer">
+                                    <input
+                                      type="checkbox"
+                                      name="profile.lifestyle.alcohol"
+                                      checked={formData.profile.lifestyle.alcohol}
+                                      onChange={handleChange}
+                                      className="w-4 h-4 text-blue-600 rounded"
+                                    />
+                                    <span className="text-xs font-bold text-slate-400 uppercase">Alcohol</span>
+                                  </label>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Medical History */}
+                            <div className="md:col-span-2 pt-4 border-t border-slate-100">
+                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Medical Conditions (Comma separated)</label>
+                              <input
+                                type="text"
+                                value={formData.profile.medicalHistory.conditions.join(', ')}
+                                onChange={(e) => {
+                                  const conditions = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    profile: {
+                                      ...prev.profile,
+                                      medicalHistory: { ...prev.profile.medicalHistory, conditions }
+                                    }
+                                  }));
+                                }}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800"
+                                placeholder="e.g. Diabetes, Hypertension"
+                              />
+                            </div>
+
+                            {/* Diabetes Profile */}
+                            {formData.profile.diabetesProfile && (
+                              <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+                                <div>
+                                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Diabetes Type</label>
+                                  <select
+                                    name="profile.diabetesProfile.type"
+                                    value={formData.profile.diabetesProfile.type}
+                                    onChange={handleChange}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4"
+                                  >
+                                    <option value="Type 1">Type 1</option>
+                                    <option value="Type 2">Type 2</option>
+                                    <option value="Prediabetes">Prediabetes</option>
+                                    <option value="Gestational">Gestational</option>
+                                  </select>
+                                </div>
+                                <div>
+                                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Current HbA1c (%)</label>
+                                  <input
+                                    type="number"
+                                    step="0.1"
+                                    name="profile.diabetesProfile.hba1c"
+                                    value={formData.profile.diabetesProfile.hba1c}
+                                    onChange={handleChange}
+                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full py-4 bg-black text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xl active:scale-95"
+                          >
+                            {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                            Update Profile Info
+                          </button>
+                        </form>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Fitness Goal Card */}
+                  <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden transition-all duration-300">
+                    <div
+                      onClick={() => setExpandedSection(expandedSection === 'goals' ? null : 'goals')}
+                      className="p-6 flex items-center justify-between cursor-pointer hover:bg-slate-50"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-2xl bg-[#FFF7ED] text-[#F97316] flex items-center justify-center">
+                          <Target className="w-6 h-6" />
+                        </div>
+                        <div>
+                          <h4 className="font-bold text-slate-900">Set Fitness Goals</h4>
+                          <p className="text-sm text-slate-500">Update weight loss or gain targets</p>
+                        </div>
+                      </div>
+                      <ChevronRight className={`w-6 h-6 text-slate-300 transition-transform duration-300 ${expandedSection === 'goals' ? 'rotate-90' : ''}`} />
+                    </div>
+
+                    {expandedSection === 'goals' && (
+                      <div className="px-6 pb-8 pt-2 animate-fade-in">
+                        <form onSubmit={handleGoalSubmit} className="space-y-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="md:col-span-2">
+                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Goal Objective</label>
+                              <select
+                                name="goalType"
+                                value={goalFormData.goalType}
+                                onChange={handleGoalChange}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800"
                               >
-                                <option value="non-vegetarian">Non-Vegetarian</option>
-                                <option value="vegetarian">Vegetarian</option>
-                                <option value="vegan">Vegan</option>
-                                <option value="eggetarian">Eggetarian</option>
+                                <option value="weight_loss">Weight Loss</option>
+                                <option value="weight_gain">Weight Gain</option>
+                                <option value="muscle_gain">Muscle Gain</option>
+                                <option value="maintain">Maintenance</option>
+                                <option value="general_health">General Health Improvement</option>
                               </select>
+                            </div>
+                            <div>
+                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Target Weight (kg)</label>
+                              <input
+                                type="number"
+                                name="targetWeight"
+                                value={goalFormData.targetWeight}
+                                onChange={handleGoalChange}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4"
+                                placeholder="Target"
+                              />
                             </div>
                             <div>
                               <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Activity Level</label>
                               <select
-                                name="profile.activityLevel"
-                                value={formData.profile.activityLevel}
-                                onChange={handleChange}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
+                                name="activityLevel"
+                                value={goalFormData.activityLevel}
+                                onChange={handleGoalChange}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4"
                               >
-                                <option value="sedentary">Sedentary (Little/no exercise)</option>
+                                <option value="sedentary">Sedentary (Little or no exercise)</option>
                                 <option value="lightly_active">Lightly Active (1-3 days/week)</option>
                                 <option value="moderately_active">Moderately Active (3-5 days/week)</option>
                                 <option value="very_active">Very Active (6-7 days/week)</option>
@@ -707,285 +779,109 @@ export default function Profile() {
                               </select>
                             </div>
                             <div>
-                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Allergies (Comma separated)</label>
-                              <input
-                                type="text"
-                                name="profile.allergies"
-                                value={formData.profile.allergies}
-                                onChange={handleChange}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
-                                placeholder="e.g. Peanuts, Dust"
-                              />
-                            </div>
-                          </div>
-
-                          {/* Lifestyle Habits */}
-                          <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t border-slate-100">
-                            <div>
-                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Sleep (Hours)</label>
+                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Daily Step Goal</label>
                               <input
                                 type="number"
-                                name="profile.lifestyle.sleepHours"
-                                value={formData.profile.lifestyle.sleepHours}
-                                onChange={handleChange}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800"
+                                name="stepGoal"
+                                value={goalFormData.stepGoal}
+                                onChange={handleGoalChange}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4"
+                                placeholder="e.g. 10000"
                               />
                             </div>
                             <div>
-                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Water (Glasses)</label>
+                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Daily Sleep Goal (Hrs)</label>
                               <input
                                 type="number"
-                                name="profile.lifestyle.waterIntake"
-                                value={formData.profile.lifestyle.waterIntake}
-                                onChange={handleChange}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800"
+                                name="sleepGoal"
+                                value={goalFormData.sleepGoal}
+                                onChange={handleGoalChange}
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4"
+                                placeholder="e.g. 8"
                               />
                             </div>
-                            <div>
-                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Stress Level</label>
-                              <select
-                                name="profile.lifestyle.stressLevel"
-                                value={formData.profile.lifestyle.stressLevel}
-                                onChange={handleChange}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800"
-                              >
-                                <option value="low">Low</option>
-                                <option value="moderate">Moderate</option>
-                                <option value="high">High</option>
-                              </select>
-                            </div>
-                            <div className="flex items-center gap-4 mt-2">
-                              <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  name="profile.lifestyle.smoker"
-                                  checked={formData.profile.lifestyle.smoker}
-                                  onChange={handleChange}
-                                  className="w-4 h-4 text-blue-600 rounded"
-                                />
-                                <span className="text-xs font-bold text-slate-400 uppercase">Smoker</span>
-                              </label>
-                              <label className="flex items-center gap-2 cursor-pointer">
-                                <input
-                                  type="checkbox"
-                                  name="profile.lifestyle.alcohol"
-                                  checked={formData.profile.lifestyle.alcohol}
-                                  onChange={handleChange}
-                                  className="w-4 h-4 text-blue-600 rounded"
-                                />
-                                <span className="text-xs font-bold text-slate-400 uppercase">Alcohol</span>
-                              </label>
-                            </div>
                           </div>
 
-                          {/* Medical History */}
-                          <div className="md:col-span-2 pt-4 border-t border-slate-100">
-                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Medical Conditions (Comma separated)</label>
-                            <input
-                              type="text"
-                              value={formData.profile.medicalHistory.conditions.join(', ')}
-                              onChange={(e) => {
-                                const conditions = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                                setFormData(prev => ({
-                                  ...prev,
-                                  profile: {
-                                    ...prev.profile,
-                                    medicalHistory: { ...prev.profile.medicalHistory, conditions }
-                                  }
-                                }));
-                              }}
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800"
-                              placeholder="e.g. Diabetes, Hypertension"
-                            />
-                          </div>
-
-                          {/* Diabetes Profile */}
-                          {formData.profile.diabetesProfile && (
-                            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
+                          {healthGoal && (
+                            <div className="p-4 bg-orange-50 rounded-2xl border border-orange-100 grid grid-cols-3 gap-2">
                               <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Diabetes Type</label>
-                                <select
-                                  name="profile.diabetesProfile.type"
-                                  value={formData.profile.diabetesProfile.type}
-                                  onChange={handleChange}
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4"
-                                >
-                                  <option value="Type 1">Type 1</option>
-                                  <option value="Type 2">Type 2</option>
-                                  <option value="Prediabetes">Prediabetes</option>
-                                  <option value="Gestational">Gestational</option>
-                                </select>
+                                <p className="text-[10px] font-bold text-orange-400 uppercase">Calories</p>
+                                <p className="font-bold text-orange-700">{healthGoal.dailyCalorieTarget}</p>
                               </div>
                               <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Current HbA1c (%)</label>
-                                <input
-                                  type="number"
-                                  step="0.1"
-                                  name="profile.diabetesProfile.hba1c"
-                                  value={formData.profile.diabetesProfile.hba1c}
-                                  onChange={handleChange}
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4"
-                                />
+                                <p className="text-[10px] font-bold text-orange-400 uppercase">Protein</p>
+                                <p className="font-bold text-orange-700">{healthGoal.macroTargets.protein}g</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-bold text-orange-400 uppercase">Carbs</p>
+                                <p className="font-bold text-orange-700">{healthGoal.macroTargets.carbs}g</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-bold text-orange-400 uppercase">Fats</p>
+                                <p className="font-bold text-orange-700">{healthGoal.macroTargets.fats}g</p>
                               </div>
                             </div>
                           )}
-                        </div>
-                        <button
-                          type="submit"
-                          disabled={loading}
-                          className="w-full py-4 bg-black text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xl active:scale-95"
-                        >
-                          {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                          Update Profile Info
-                        </button>
-                      </form>
-                    </div>
-                  )}
-                </div>
 
-                {/* Fitness Goal Card - Editable in place */}
-                <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden transition-all duration-300">
-                  <div
-                    onClick={() => setExpandedSection(expandedSection === 'goals' ? null : 'goals')}
-                    className="p-6 flex items-center justify-between cursor-pointer hover:bg-slate-50"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-[#FFF7ED] text-[#F97316] flex items-center justify-center">
-                        <Target className="w-6 h-6" />
+                          <button
+                            type="submit"
+                            disabled={goalLoading}
+                            className="w-full py-3 bg-[#F97316] text-white rounded-xl text-sm font-bold hover:bg-orange-600 transition-colors flex items-center justify-center gap-2"
+                          >
+                            {goalLoading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
+                            Recalculate & Save Goal
+                          </button>
+                                                </form>
                       </div>
-                      <div>
-                        <h4 className="font-bold text-slate-900">Set Fitness Goals</h4>
-                        <p className="text-sm text-slate-500">Update weight loss or gain targets</p>
-                      </div>
-                    </div>
-                    <ChevronRight className={`w-6 h-6 text-slate-300 transition-transform duration-300 ${expandedSection === 'goals' ? 'rotate-90' : ''}`} />
+                    )}
                   </div>
-
-                  {expandedSection === 'goals' && (
-                    <div className="px-6 pb-8 pt-2 animate-fade-in">
-                      <form onSubmit={handleGoalSubmit} className="space-y-6">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className="md:col-span-2">
-                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Goal Objective</label>
-                            <select
-                              name="goalType"
-                              value={goalFormData.goalType}
-                              onChange={handleGoalChange}
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800"
-                            >
-                              <option value="weight_loss">Weight Loss</option>
-                              <option value="weight_gain">Weight Gain</option>
-                              <option value="muscle_gain">Muscle Gain</option>
-                              <option value="maintain">Maintenance</option>
-                              <option value="general_health">General Health Improvement</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Target Weight (kg)</label>
-                            <input
-                              type="number"
-                              name="targetWeight"
-                              value={goalFormData.targetWeight}
-                              onChange={handleGoalChange}
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4"
-                              placeholder="Target"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Activity Level</label>
-                            <select
-                              name="activityLevel"
-                              value={goalFormData.activityLevel}
-                              onChange={handleGoalChange}
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4"
-                            >
-                              <option value="sedentary">Sedentary (Little or no exercise)</option>
-                              <option value="lightly_active">Lightly Active (1-3 days/week)</option>
-                              <option value="moderately_active">Moderately Active (3-5 days/week)</option>
-                              <option value="very_active">Very Active (6-7 days/week)</option>
-                              <option value="extremely_active">Extremely Active (Athlete)</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Daily Step Goal</label>
-                            <input
-                              type="number"
-                              name="stepGoal"
-                              value={goalFormData.stepGoal}
-                              onChange={handleGoalChange}
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4"
-                              placeholder="e.g. 10000"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Daily Sleep Goal (Hrs)</label>
-                            <input
-                              type="number"
-                              name="sleepGoal"
-                              value={goalFormData.sleepGoal}
-                              onChange={handleGoalChange}
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4"
-                              placeholder="e.g. 8"
-                            />
-                          </div>
-                        </div>
-
-                        {healthGoal && (
-                          <div className="p-4 bg-orange-50 rounded-2xl border border-orange-100 grid grid-cols-3 gap-2">
-                            <div>
-                              <p className="text-[10px] font-bold text-orange-400 uppercase">Calories</p>
-                              <p className="font-bold text-orange-700">{healthGoal.dailyCalorieTarget}</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-bold text-orange-400 uppercase">Protein</p>
-                              <p className="font-bold text-orange-700">{healthGoal.macroTargets.protein}g</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-bold text-orange-400 uppercase">Carbs</p>
-                              <p className="font-bold text-orange-700">{healthGoal.macroTargets.carbs}g</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-bold text-orange-400 uppercase">Fats</p>
-                              <p className="font-bold text-orange-700">{healthGoal.macroTargets.fats}g</p>
-                            </div>
-                          </div>
-                        )}
-
-                        <button
-                          type="submit"
-                          disabled={goalLoading}
-                          className="w-full py-3 bg-[#F97316] text-white rounded-xl text-sm font-bold hover:bg-orange-600 transition-colors flex items-center justify-center gap-2"
-                        >
-                          {goalLoading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                          Recalculate & Save Goal
-                        </button>
-                      </form>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
 
-            {/* Quick Actions & Settings */}
-            <div className="space-y-10">
-              <div className="space-y-6">
-                <h3 className="text-xl font-bold text-slate-900">Account Control</h3>
-                <div className="space-y-3">
-                  <button
+            {/* Right Column: Mini Info / Stats (1/3 width) */}
+            <div className="space-y-8">
+              {/* Account Control at the bottom of the grid or strictly after */}
+              <div className="bg-white rounded-[2rem] p-8 border border-slate-100 shadow-sm">
+                 <h3 className="text-xl font-bold text-slate-900 mb-6">Account Control</h3>
+                 <button
                     onClick={logout}
-                    className="w-full flex items-center justify-between p-6 bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-md hover:scale-[1.01] transition-all group"
+                    className="w-full flex items-center justify-between p-4 bg-red-50 text-red-600 rounded-2xl hover:bg-red-100 transition-all group"
                   >
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center group-hover:bg-red-500 group-hover:text-white transition-all">
-                        <LogOut className="w-7 h-7" />
-                      </div>
-                      <div className="text-left">
-                        <h4 className="font-black text-slate-900 uppercase tracking-tight">Sign Out</h4>
-                        <p className="text-sm font-bold text-slate-400 uppercase tracking-widest text-[10px]">Securely exit your account</p>
-                      </div>
+                    <div className="flex items-center gap-3">
+                      <LogOut className="w-5 h-5" />
+                      <span className="font-bold text-sm">Sign Out</span>
                     </div>
-                    <ChevronRight className="w-6 h-6 text-slate-300 group-hover:text-slate-900 transition-colors" />
+                    <ChevronRight className="w-4 h-4" />
                   </button>
+              </div>
+            </div>
+          </div>
+
+          {/* AI Health Insights Section */}
+          <div className="space-y-6 mt-12">
+            <div className="flex items-center gap-2">
+              <div className="p-1.5 bg-purple-100 text-purple-600 rounded-lg">
+                <Sparkles className="w-5 h-5 transition-transform group-hover:rotate-12" />
+              </div>
+              <h3 className="text-xl md:text-2xl font-bold text-slate-900">AI Health Insights</h3>
+            </div>
+            <div className="bg-[#F8FAFF] rounded-[2rem] p-6 md:p-8 border border-[#EBF2FF] relative overflow-hidden group hover:shadow-md transition-all">
+              <div className="absolute top-0 right-0 w-32 h-32 bg-purple-200/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+              <div className="relative flex gap-5 md:gap-6">
+                <div className="w-14 h-14 md:w-16 md:h-16 rounded-3xl bg-white shadow-sm flex items-center justify-center flex-shrink-0 text-purple-600">
+                  <Activity className="w-8 h-8 md:w-10 md:h-10" />
+                </div>
+                <div className="space-y-2">
+                  <h4 className="text-lg md:text-xl font-bold text-slate-900">
+                    {extraData.latestAnalysis?.summary ? "Personalized Analysis" : "General Health Summary"}
+                  </h4>
+                  <p className="text-slate-600 leading-relaxed max-w-2xl text-sm md:text-base">
+                    {extraData.latestAnalysis?.summary || 
+                     extraData.latestAnalysis?.recommendations?.lifestyle?.[0] ||
+                     user?.healthAnalysis?.summary || 
+                     "Based on your profile, we recommend maintaining a consistent sleep schedule and monitoring your activity levels."}
+                  </p>
                 </div>
               </div>
             </div>

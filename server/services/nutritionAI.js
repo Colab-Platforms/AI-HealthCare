@@ -79,11 +79,20 @@ class NutritionAI {
       "totalNutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0 },
       "healthScore": 0, (0-100 scale)
       "analysis": "Short 2-sentence summary of health impact",
-      "micronutrients": ["Vitamins/Minerals"],
-      "enhancementTips": ["Tip 1", "Tip 2"],
-      "healthBenefitsSummary": "Key positive impact if any",
+      "micronutrients": [
+        { "name": "Vitamin C", "amount": "12", "unit": "mg", "dailyRecommendation": "90mg", "percentage": 13 }
+      ],
+      "enhancementTips": [
+        { "name": "Cooking Method", "benefit": "Boil instead of fry to reduce fats by 40%" }
+      ],
+      "healthBenefitsSummary": "Key positive health impact summary",
+      "benefits": [
+        { "name": "Immunity", "benefit": "High Vitamin C content boosts immune function" }
+      ],
       "warnings": ["Warning 1/Disadvantage for junk food"],
-      "alternatives": ["Alternative 1", "Alternative 2"]
+      "alternatives": [
+        { "name": "Alternative Name", "description": "Why it is better", "nutrition": { "calories": 0, "protein": 0 } }
+      ]
     }`;
   }
 

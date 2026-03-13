@@ -21,6 +21,12 @@ const nutritionSummarySchema = new mongoose.Schema({
   totalFiber: { type: Number, default: 0 },
   totalSugar: { type: Number, default: 0 },
   totalSodium: { type: Number, default: 0 },
+  totalVitaminA: { type: Number, default: 0 },
+  totalVitaminC: { type: Number, default: 0 },
+  totalVitaminD: { type: Number, default: 0 },
+  totalVitaminB12: { type: Number, default: 0 },
+  totalIron: { type: Number, default: 0 },
+  totalCalcium: { type: Number, default: 0 },
   averageHealthScore: { type: Number, default: 0 },
 
   // Meal breakdown

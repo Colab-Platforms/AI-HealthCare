@@ -58,19 +58,23 @@ exports.analyzeFood = async (req, res) => {
       if (existingCheck) {
         console.log('📦 Found cached analysis for:', foodDescription);
         analysis = {
+          success: true,
           data: {
             foodItem: {
               name: existingCheck.foodName,
-              nutrition: existingCheck.nutrition,
-              healthScore: existingCheck.healthScore,
-              healthScore10: existingCheck.healthScore10,
-              micronutrients: existingCheck.micronutrients,
-              enhancementTips: existingCheck.enhancementTips,
-              warnings: existingCheck.warnings,
-              benefits: existingCheck.benefits,
-              healthBenefitsSummary: existingCheck.healthBenefitsSummary,
-              alternatives: existingCheck.alternatives
-            }
+              quantity: existingCheck.quantity,
+              nutrition: existingCheck.nutrition
+            },
+            healthScore: existingCheck.healthScore,
+            healthScore10: existingCheck.healthScore10,
+            isHealthy: existingCheck.isHealthy,
+            analysis: existingCheck.analysis,
+            micronutrients: existingCheck.micronutrients,
+            enhancementTips: existingCheck.enhancementTips,
+            warnings: existingCheck.warnings,
+            benefits: existingCheck.benefits,
+            healthBenefitsSummary: existingCheck.healthBenefitsSummary,
+            alternatives: existingCheck.alternatives
           }
         };
       } else {
@@ -878,13 +882,13 @@ async function updateDailySummary(userId, date) {
 
     // Calculate totals
     const totals = {
-      totalCalories: 0,
-      totalProtein: 0,
-      totalCarbs: 0,
-      totalFats: 0,
-      totalFiber: 0,
-      totalSugar: 0,
       totalSodium: 0,
+      totalVitaminA: 0,
+      totalVitaminC: 0,
+      totalVitaminD: 0,
+      totalVitaminB12: 0,
+      totalIron: 0,
+      totalCalcium: 0,
       averageHealthScore: 0
     };
 
@@ -929,6 +933,15 @@ async function updateDailySummary(userId, date) {
       totals.totalSugar += Number(logNutrition.sugar) || 0;
       totals.totalSodium += Number(logNutrition.sodium) || 0;
 
+      if (logNutrition.vitamins) {
+        totals.totalVitaminA += Number(logNutrition.vitamins.vitaminA) || 0;
+        totals.totalVitaminC += Number(logNutrition.vitamins.vitaminC) || 0;
+        totals.totalVitaminD += Number(logNutrition.vitamins.vitaminD) || 0;
+        totals.totalVitaminB12 += Number(logNutrition.vitamins.vitaminB12) || 0;
+        totals.totalIron += Number(logNutrition.vitamins.iron) || 0;
+        totals.totalCalcium += Number(logNutrition.vitamins.calcium) || 0;
+      }
+
       // Weight the health score by calories of the item
       const healthScore = log.healthScore10 !== undefined ? log.healthScore10 * 10 : (log.healthScore || 50);
       weightedHealthScoreSum += healthScore * (calories || 100);
@@ -965,6 +978,12 @@ async function updateDailySummary(userId, date) {
     summary.totalFiber = totals.totalFiber;
     summary.totalSugar = totals.totalSugar;
     summary.totalSodium = totals.totalSodium;
+    summary.totalVitaminA = totals.totalVitaminA;
+    summary.totalVitaminC = totals.totalVitaminC;
+    summary.totalVitaminD = totals.totalVitaminD;
+    summary.totalVitaminB12 = totals.totalVitaminB12;
+    summary.totalIron = totals.totalIron;
+    summary.totalCalcium = totals.totalCalcium;
     summary.averageHealthScore = totals.averageHealthScore;
     summary.mealsLogged = mealsLogged;
     // Keep waterIntake as is, unless we want to reset it (unlikely)

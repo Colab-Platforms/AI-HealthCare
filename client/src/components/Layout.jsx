@@ -236,8 +236,8 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
                 {user?.profilePicture ? (
                   <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" />
                 ) : (
-                  <div className="w-full h-full bg-slate-900 flex items-center justify-center">
-                    <img src="https://avatar.iran.liara.run/public/boy" alt="User" className="w-full h-full object-cover opacity-80" />
+                  <div className="w-full h-full bg-black flex items-center justify-center text-xs font-black text-white uppercase">
+                    {user?.name?.[0] || 'U'}
                   </div>
                 )}
               </button>

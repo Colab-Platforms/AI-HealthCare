@@ -91,10 +91,13 @@ exports.syncDailyMetrics = async (req, res) => {
     }
     const targetDateString = targetDate.toISOString().split('T')[0];
 
-    // Check if today's metrics exist
-    const existingIndex = wearable.dailyMetrics.findIndex(
-      m => new Date(m.date).toISOString().split('T')[0] === targetDateString
-    );
+    // Check if entry for this date exists
+    const existingIndex = wearable.dailyMetrics.findIndex(m => {
+      const d = new Date(m.date);
+      return d.getUTCFullYear() === targetDate.getUTCFullYear() &&
+             d.getUTCMonth() === targetDate.getUTCMonth() &&
+             d.getUTCDate() === targetDate.getUTCDate();
+    });
 
     if (existingIndex >= 0) {
       // Merge metrics
@@ -175,9 +178,12 @@ exports.addSleepData = async (req, res) => {
     }
     const targetDateString = targetDate.toISOString().split('T')[0];
 
-    const existingIndex = wearable.sleepData.findIndex(
-      s => new Date(s.date).toISOString().split('T')[0] === targetDateString
-    );
+    const existingIndex = wearable.sleepData.findIndex(s => {
+      const d = new Date(s.date);
+      return d.getUTCFullYear() === targetDate.getUTCFullYear() &&
+             d.getUTCMonth() === targetDate.getUTCMonth() &&
+             d.getUTCDate() === targetDate.getUTCDate();
+    });
 
     if (existingIndex >= 0) {
       wearable.sleepData[existingIndex] = {
