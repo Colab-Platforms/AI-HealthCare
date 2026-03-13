@@ -24,7 +24,7 @@ async function testApi(model) {
     }
 }
 async function run() {
-    await testApi('claude-3-5-sonnet-20240620');
-    await testApi('claude-3-sonnet-20240229');
+    await testApi('claude-sonnet-4-20250514');
+    await testApi('claude-3-5-sonnet-20241022');
 }
 run();

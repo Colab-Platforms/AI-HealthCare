@@ -181,7 +181,9 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
 
     // Generate AI-powered diet plan
     const isRegenerate = req.body?.isRegenerate || false;
-    const promptEx = isRegenerate ? 'regenerate' : '';
+    const promptEx = isRegenerate
+      ? 'IMPORTANT: This is a REGENERATION request. You MUST provide COMPLETELY NEW and DIFFERENT meal options from the examples given above and from any previously generated plans. Use creative, unique Indian dishes that are different from common suggestions like Poha, Idli, Dosa, Biryani, Khichdi. Think of regional specialties, lesser-known but nutritious Indian foods, and creative healthy variations. Every single meal option must be fresh and unique.'
+      : '';
 
     const aiDietPlan = await dietRecommendationAI.generatePersonalizedDietPlan(userData, `
       1. Provide EXACTLY 4 DISTINCT meal options for EVERY category (breakfast, midMorningSnack, lunch, eveningSnack, dinner).

@@ -7,7 +7,7 @@ const { robustJsonParse } = require('../utils/aiParser');
  */
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const CLAUDE_MODEL = 'claude-sonnet-4-6';
+const CLAUDE_MODEL = 'claude-sonnet-4-20250514';
 
 class DietRecommendationAI {
   constructor() {
@@ -154,6 +154,8 @@ RETURN JSON ONLY:
   "avoidSuggestions": ["Suggestion 1", "Suggestion 2"]
 }`;
 
+    const systemMsg = "You are an expert Indian nutritionist and clinical dietitian. Provide personalized meal plans in JSON format.";
+
     const payload = {
       max_tokens: 4000,
       system: systemMsg,
@@ -188,6 +190,8 @@ RETURN JSON:
   ],
   "generalGuidance": [], "consultationNote": "Warning"
 }`;
+
+    const systemMsg = "You are a clinical dietitian specialized in supplements and nutritional deficiencies.";
 
     const payload = {
       max_tokens: 2000,
