@@ -1,6 +1,7 @@
 const FoodLog = require('../models/FoodLog');
 const HealthGoal = require('../models/HealthGoal');
 const NutritionSummary = require('../models/NutritionSummary');
+const User = require('../models/User');
 const nutritionAI = require('../services/nutritionAI');
 const { uploadImage } = require('../services/cloudinary');
 const QuickFoodCheck = require('../models/QuickFoodCheck');
@@ -409,6 +410,19 @@ exports.setHealthGoal = async (req, res) => {
     }
 
     await healthGoal.save({ maxTimeMS: 30000 });
+    
+    // SYNC: Update user's nutritionGoal in User model to keep dashboard in sync
+    await User.findByIdAndUpdate(req.user._id, {
+      nutritionGoal: {
+        goal: healthGoal.goalType,
+        targetWeight: healthGoal.targetWeight,
+        calorieGoal: healthGoal.dailyCalorieTarget,
+        proteinGoal: healthGoal.macroTargets.protein,
+        carbsGoal: healthGoal.macroTargets.carbs,
+        fatGoal: healthGoal.macroTargets.fats,
+        lastUpdated: new Date()
+      }
+    });
 
     // Invalidate server-side dashboard cache
     cache.delete(`dashboard:${req.user._id}`);
@@ -491,6 +505,19 @@ exports.updateHealthGoal = async (req, res) => {
         { new: true, upsert: true }
       )
     );
+
+    // SYNC: Update user's nutritionGoal in User model to keep dashboard in sync
+    await User.findByIdAndUpdate(req.user._id, {
+      nutritionGoal: {
+        goal: healthGoal.goalType,
+        targetWeight: healthGoal.targetWeight,
+        calorieGoal: healthGoal.dailyCalorieTarget,
+        proteinGoal: healthGoal.macroTargets.protein,
+        carbsGoal: healthGoal.macroTargets.carbs,
+        fatGoal: healthGoal.macroTargets.fats,
+        lastUpdated: new Date()
+      }
+    });
 
     // Invalidate server-side dashboard cache
     cache.delete(`dashboard:${req.user._id}`);
@@ -598,6 +625,19 @@ exports.logWeight = async (req, res) => {
       // Recalculate targets based on new weight
       await healthGoal.save({ maxTimeMS: 30000 });
       console.log('Health goal weight updated');
+
+      // SYNC: Update user's nutritionGoal in User model to keep dashboard in sync
+      await User.findByIdAndUpdate(req.user._id, {
+        nutritionGoal: {
+          goal: healthGoal.goalType,
+          targetWeight: healthGoal.targetWeight,
+          calorieGoal: healthGoal.dailyCalorieTarget,
+          proteinGoal: healthGoal.macroTargets.protein,
+          carbsGoal: healthGoal.macroTargets.carbs,
+          fatGoal: healthGoal.macroTargets.fats,
+          lastUpdated: new Date()
+        }
+      });
     }
 
     // Invalidate server-side dashboard cache so next fetch returns fresh data

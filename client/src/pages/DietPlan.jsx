@@ -159,6 +159,13 @@ export default function DietPlan() {
   };
 
   const generatePlan = async (isRegenerate = false, usePreferences = true) => {
+    // Check if user has set a fitness goal first
+    if (!user?.nutritionGoal?.calorieGoal) {
+      toast.error('Please set your fitness goal first to generate a personalized diet plan.');
+      navigate('/profile?tab=goals');
+      return;
+    }
+
     setGenerating(true);
     try {
       const { data } = await dietRecommendationService.generateDietPlan({ isRegenerate, usePreferences });

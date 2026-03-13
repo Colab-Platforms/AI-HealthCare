@@ -606,6 +606,61 @@ export default function DashboardEnhanced() {
     };
   }, []);
 
+  // --- SYNC: DYNAMIC DEFICIENCY CALCULATION ---
+  const dynamicDeficiencies = useMemo(() => {
+    // Priority 1: Use medical report deficiencies if they exist
+    let list = dashboardData?.latestAnalysis?.deficiencies || [];
+
+    // Priority 2: If no report findings, calculate real-time nutritional gaps from daily intake
+    if (list.length === 0 && nutritionData) {
+      const driTargets = {
+        fiber: 30,
+        iron: 18,
+        vitaminC: 90,
+        vitaminA: 900,
+        vitaminD: 20,
+        calcium: 1000,
+        vitaminB12: 2.4
+      };
+
+      const nutrientMeta = {
+        fiber: { name: 'Fiber', unit: 'g', food: 'Whole grains, Legumes', supplement: 'Psyllium Husk' },
+        iron: { name: 'Iron', unit: 'mg', food: 'Spinach, Beetroot, Red Meat', supplement: 'Iron Supplements' },
+        vitaminC: { name: 'Vitamin C', unit: 'mg', food: 'Oranges, Lemon, Amla', supplement: 'C-Vitamin' },
+        vitaminA: { name: 'Vitamin A', unit: 'mcg', food: 'Carrots, Sweet Potato', supplement: 'Beta Carotene' },
+        vitaminD: { name: 'Vitamin D', unit: 'mcg', food: 'Fatty Fish, Eggs, Sun', supplement: 'Vitamin D3' },
+        calcium: { name: 'Calcium', unit: 'mg', food: 'Milk, Tofu, Almonds', supplement: 'Calcium + D3' },
+        vitaminB12: { name: 'Vitamin B12', unit: 'mcg', food: 'Dairy, Eggs, Fortified foods', supplement: 'B12 Complex' }
+      };
+
+      const dailyGaps = [];
+      Object.entries(driTargets).forEach(([key, target]) => {
+        const dataKey = 'total' + key.charAt(0).toUpperCase() + key.slice(1);
+        const val = nutritionData[dataKey] || 0;
+        const percent = Math.min(Math.round((val / target) * 100), 100);
+
+        // If nutrient intake is low relative to target, mark as a gap
+        if (percent < 80) {
+          dailyGaps.push({
+            name: nutrientMeta[key].name,
+            status: percent < 30 ? 'High Risk' : percent < 60 ? 'Deficient' : 'Low',
+            currentValue: val.toFixed(1),
+            normalRange: target,
+            unit: nutrientMeta[key].unit,
+            percent: percent,
+            food: nutrientMeta[key].food,
+            supplement: nutrientMeta[key].supplement,
+            type: 'daily_gap'
+          });
+        }
+      });
+
+      // Sort by risk (lowest percentage first) and take top 3
+      list = dailyGaps.sort((a, b) => a.percent - b.percent).slice(0, 3);
+    }
+    return list;
+  }, [dashboardData, nutritionData]);
+
   const cardCount = 3;
   const activeIndex = scrollProgress / (100 / (cardCount - 1 || 1));
 
@@ -870,14 +925,29 @@ export default function DashboardEnhanced() {
           {(!dietPlan || !dietPlan.mealPlan) ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-slate-50 rounded-3xl mb-6">
               <Target className="w-12 h-12 text-slate-300 mb-4" />
-              <p className="text-sm font-bold text-slate-800 mb-2">Set your fitness goal</p>
-              <p className="text-xs text-slate-400 mb-4">Set your fitness goal to see your personalized diet plan</p>
-              <button
-                onClick={() => navigate('/diet-plan')}
-                className="px-8 py-3 bg-black text-white rounded-full text-xs font-black uppercase tracking-widest shadow-xl shadow-black/20 hover:scale-105 transition-all"
-              >
-                Create Diet Plan
-              </button>
+              {!user?.nutritionGoal?.calorieGoal ? (
+                <>
+                  <p className="text-sm font-bold text-slate-800 mb-2">Set your fitness goal</p>
+                  <p className="text-xs text-slate-400 mb-4">Set your fitness goal to see your personalized diet plan</p>
+                  <button
+                    onClick={() => navigate('/profile?tab=goals')}
+                    className="px-8 py-3 bg-black text-white rounded-full text-xs font-black uppercase tracking-widest shadow-xl shadow-black/20 hover:scale-105 transition-all"
+                  >
+                    Set Fitness Goal
+                  </button>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm font-bold text-slate-800 mb-2">Create your diet plan</p>
+                  <p className="text-xs text-slate-400 mb-4">Your goal is set! Now generate your personalized diet plan</p>
+                  <button
+                    onClick={() => navigate('/diet-plan')}
+                    className="px-8 py-3 bg-black text-white rounded-full text-xs font-black uppercase tracking-widest shadow-xl shadow-black/20 hover:scale-105 transition-all"
+                  >
+                    Create Diet Plan
+                  </button>
+                </>
+              )}
             </div>
           ) : (
             <div className="flex-1 space-y-3 mb-6 overflow-y-auto pr-1">
@@ -1180,9 +1250,9 @@ export default function DashboardEnhanced() {
             <button className="text-[11px] font-bold text-[#666666] hover:text-[#1a1a1a] uppercase tracking-wide">Detailed &rarr;</button>
           </div>
           <div className="space-y-6 flex-1 overflow-y-auto pr-2 pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
-            {dashboardData?.latestAnalysis?.deficiencies?.length > 0 ? (
-              dashboardData.latestAnalysis.deficiencies.map((item, i) => {
-                const isRisk = item.status === 'Risk';
+            {dynamicDeficiencies?.length > 0 ? (
+              dynamicDeficiencies.map((item, i) => {
+                const isRisk = item.status?.toLowerCase().includes('risk') || item.status?.toLowerCase().includes('deficient');
                 const statusColor = isRisk ? 'text-white bg-black' : 'text-black bg-slate-100';
                 const barColor = isRisk ? 'bg-black' : 'bg-slate-400';
 
@@ -1212,11 +1282,11 @@ export default function DashboardEnhanced() {
                     <div className="flex flex-col gap-1.5 mt-1 p-3 bg-[#F5F5F7]/50 rounded-[16px] border border-white">
                       <div className="flex items-start gap-2 text-xs text-[#666666]">
                         <Leaf className="w-3.5 h-3.5 text-[#1a1a1a] flex-shrink-0 mt-0.5" />
-                        <span><span className="font-medium text-[#1a1a1a]">Eat more:</span> {item.food || 'Leafy greens'}</span>
+                        <span><span className="font-medium text-[#1a1a1a]">Eat more:</span> {item.food}</span>
                       </div>
                       <div className="flex items-start gap-2 text-xs text-[#666666]">
                         <Pill className="w-3.5 h-3.5 text-[#1a1a1a] flex-shrink-0 mt-0.5" />
-                        <span><span className="font-medium text-[#1a1a1a]">Supplement:</span> {item.supplement || 'Check report'}</span>
+                        <span><span className="font-medium text-[#1a1a1a]">Supplement:</span> {item.supplement}</span>
                       </div>
                     </div>
                   </div>
@@ -1224,9 +1294,9 @@ export default function DashboardEnhanced() {
               })
             ) : (
               <div className="flex flex-col items-center justify-center p-10 bg-slate-50 rounded-[2rem] border border-dashed border-slate-200 text-center">
-                <FlaskConical className="w-10 h-10 text-slate-300 mb-4" />
+                <CheckCircle2 className="w-10 h-10 text-emerald-500 mb-4" />
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-loose">
-                  Upload your report to get <br /> nutritional analysis
+                  Great job! You've met <br /> all nutritional targets
                 </p>
               </div>
             )}

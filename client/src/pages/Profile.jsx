@@ -272,6 +272,10 @@ export default function Profile() {
 
       setHealthGoal(response.data.healthGoal);
       toast.success('Fitness goal set successfully! Your daily targets have been calculated.');
+      
+      // Update global user context to sync nutritionGoals immediately
+      const { data: userData } = await api.get('auth/profile');
+      updateUser(userData);
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to set fitness goal');
     } finally {

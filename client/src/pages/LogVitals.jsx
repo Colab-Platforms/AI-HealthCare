@@ -130,6 +130,10 @@ export default function LogVitals() {
             // Invalidate cache and reload
             invalidateCache(['dashboard']);
             await fetchDashboard(true);
+
+            // SYNC: Update global user context to sync nutritionGoals immediately
+            const { data: userData } = await api.get('auth/profile');
+            updateUser(userData);
         } catch (err) {
             toast.error(err.message || 'Failed to update goal');
         } finally {
@@ -168,6 +172,12 @@ export default function LogVitals() {
                 fetchWearable(true),
                 fetchNutrition(date, true)
             ]);
+
+            // SYNC: Update global user context to sync nutritionGoals immediately if weight was changed
+            if (activeTab === 'weight') {
+                const { data: userData } = await api.get('auth/profile');
+                updateUser(userData);
+            }
 
             setValue('');
             setSleepHours('');
