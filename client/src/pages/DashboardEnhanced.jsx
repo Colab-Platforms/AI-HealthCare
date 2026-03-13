@@ -243,7 +243,7 @@ const DailyMetricsCard = () => {
   const { dashboardData, nutritionData, wearableData } = useData();
 
   // Real data with fallback to 0 or --
-  const weight = user?.profile?.weight || '--';
+  const weight = dashboardData?.user?.profile?.weight || dashboardData?.history?.slice(-1)[0]?.weight || user?.profile?.weight || '--';
   const steps = wearableData?.todayMetrics?.steps || dashboardData?.stepsToday || '0';
   const water = nutritionData?.totalWater || nutritionData?.waterIntake || '0';
   const navigate = useNavigate();

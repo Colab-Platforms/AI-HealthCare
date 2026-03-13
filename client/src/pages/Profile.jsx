@@ -35,6 +35,8 @@ export default function Profile() {
     goalType: 'maintenance',
     currentWeight: user?.profile?.weight || '',
     targetWeight: '',
+    stepGoal: 10000,
+    sleepGoal: 8,
     height: user?.profile?.height || '',
     age: user?.profile?.age || '',
     gender: user?.profile?.gender || 'male',
@@ -80,6 +82,8 @@ export default function Profile() {
           age: data.healthGoal.age,
           gender: data.healthGoal.gender,
           activityLevel: data.healthGoal.activityLevel,
+          stepGoal: data.healthGoal.stepGoal || 10000,
+          sleepGoal: data.healthGoal.sleepGoal || 8,
           dietaryPreference: data.healthGoal.dietaryPreference
         }));
       }
@@ -227,6 +231,8 @@ export default function Profile() {
         ...goalFormData,
         currentWeight: Number(goalFormData.currentWeight),
         targetWeight: Number(goalFormData.targetWeight),
+        stepGoal: Number(goalFormData.stepGoal),
+        sleepGoal: Number(goalFormData.sleepGoal),
         height: Number(goalFormData.height),
         age: Number(goalFormData.age)
       };
@@ -899,6 +905,28 @@ export default function Profile() {
                               <option value="very_active">Very Active (6-7 days/week)</option>
                               <option value="extremely_active">Extremely Active (Athlete)</option>
                             </select>
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Daily Step Goal</label>
+                            <input
+                              type="number"
+                              name="stepGoal"
+                              value={goalFormData.stepGoal}
+                              onChange={handleGoalChange}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4"
+                              placeholder="e.g. 10000"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Daily Sleep Goal (Hrs)</label>
+                            <input
+                              type="number"
+                              name="sleepGoal"
+                              value={goalFormData.sleepGoal}
+                              onChange={handleGoalChange}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4"
+                              placeholder="e.g. 8"
+                            />
                           </div>
                         </div>
 

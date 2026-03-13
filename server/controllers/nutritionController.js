@@ -5,6 +5,7 @@ const nutritionAI = require('../services/nutritionAI');
 const { uploadImage } = require('../services/cloudinary');
 const QuickFoodCheck = require('../models/QuickFoodCheck');
 const fs = require('fs');
+const cache = require('../utils/cache');
 
 // Helper function to add timeout to all queries for Vercel compatibility
 const withTimeout = (query, timeoutMs = 30000) => {
@@ -405,6 +406,9 @@ exports.setHealthGoal = async (req, res) => {
 
     await healthGoal.save({ maxTimeMS: 30000 });
 
+    // Invalidate server-side dashboard cache
+    cache.delete(`dashboard:${req.user._id}`);
+
     res.json({
       success: true,
       healthGoal,
@@ -484,6 +488,9 @@ exports.updateHealthGoal = async (req, res) => {
       )
     );
 
+    // Invalidate server-side dashboard cache
+    cache.delete(`dashboard:${req.user._id}`);
+
     res.json({
       success: true,
       healthGoal,
@@ -502,9 +509,9 @@ exports.updateHealthGoal = async (req, res) => {
 // Log weight
 exports.logWeight = async (req, res) => {
   try {
-    const { weight, notes } = req.body;
+    const { weight, notes, date } = req.body;
 
-    console.log('Logging weight:', { userId: req.user._id, weight, notes });
+    console.log('Logging weight:', { userId: req.user._id, weight, notes, date });
 
     if (!weight) {
       return res.status(400).json({
@@ -515,15 +522,39 @@ exports.logWeight = async (req, res) => {
 
     // Save to HealthMetric for glucose log page
     const HealthMetric = require('../models/HealthMetric');
-    const metric = new HealthMetric({
-      userId: req.user._id,
+    // IMPORTANT: Parse date strings like "2026-03-13" as UTC directly to avoid timezone shift
+    let recordedDate;
+    if (date && typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      const [y, m, d] = date.split('-').map(Number);
+      recordedDate = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+    } else {
+      recordedDate = date ? new Date(date) : new Date();
+    }
+    
+    // Check if entry exists for this date, if so update it to avoid duplicates
+    let metric = await HealthMetric.findOne({ 
+      userId: req.user._id, 
       type: 'weight',
-      value: Number(weight),
-      unit: 'kg',
-      readingContext: 'general',
-      recordedAt: new Date(),
-      notes
+      recordedAt: {
+        $gte: new Date(new Date(recordedDate).setUTCHours(0,0,0,0)),
+        $lt: new Date(new Date(recordedDate).setUTCHours(23,59,59,999))
+      }
     });
+
+    if (metric) {
+      metric.value = Number(weight);
+      metric.notes = notes;
+    } else {
+      metric = new HealthMetric({
+        userId: req.user._id,
+        type: 'weight',
+        value: Number(weight),
+        unit: 'kg',
+        readingContext: 'general',
+        recordedAt: recordedDate,
+        notes
+      });
+    }
 
     console.log('Saving weight metric to database...');
     await metric.save({ maxTimeMS: 30000 });
@@ -564,6 +595,9 @@ exports.logWeight = async (req, res) => {
       await healthGoal.save({ maxTimeMS: 30000 });
       console.log('Health goal weight updated');
     }
+
+    // Invalidate server-side dashboard cache so next fetch returns fresh data
+    cache.delete(`dashboard:${req.user._id}`);
 
     res.json({
       success: true,

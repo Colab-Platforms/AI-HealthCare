@@ -2,6 +2,7 @@ const HealthReport = require('../models/HealthReport');
 const FoodLog = require('../models/FoodLog');
 const User = require('../models/User');
 const Doctor = require('../models/Doctor');
+const HealthGoal = require('../models/HealthGoal');
 const { analyzeHealthReport, compareReports, chatWithReport, generateMetricInfo } = require('../services/aiService');
 const pdfParse = require('pdf-parse');
 const fs = require('fs');
@@ -601,7 +602,9 @@ exports.getDashboardData = async (req, res) => {
     }).sort({ date: 1 });
 
     const WearableData = require('../models/WearableData');
-    const wearable = await withTimeout(WearableData.findOne({ user: req.user._id }));
+    const HealthMetric = require('../models/HealthMetric');
+    const wearables = await withTimeout(WearableData.find({ user: req.user._id }));
+    const weightMetrics = await withTimeout(HealthMetric.find({ userId: req.user._id, type: 'weight', recordedAt: { $gte: ninetyDaysAgo, $lte: targetDate } }).sort({ recordedAt: 1 }));
 
     // Map history to a consistent format for the last 90 days
     const history = [];
@@ -612,15 +615,25 @@ exports.getDashboardData = async (req, res) => {
 
       const nutrition = historySummary.find(h => h.date.toISOString().split('T')[0] === dStr);
 
-      // Extract steps and sleep from wearable data
+      // Extract steps and sleep from all wearable data
       let steps = 0;
       let sleep = 0;
-      if (wearable) {
-        const daily = wearable.dailyMetrics?.find(m => m.date.toISOString().split('T')[0] === dStr);
-        if (daily) steps = daily.steps || 0;
+      for (const w of wearables) {
+        const daily = w.dailyMetrics?.find(m => m.date.toISOString().split('T')[0] === dStr);
+        if (daily) steps += daily.steps || 0;
 
-        const sleepDay = wearable.sleepData?.find(s => s.date && s.date.toISOString().split('T')[0] === dStr);
-        if (sleepDay) sleep = (sleepDay.totalSleepMinutes || 0) / 60;
+        const sleepDay = w.sleepData?.find(s => s.date && s.date.toISOString().split('T')[0] === dStr);
+        if (sleepDay) sleep += (sleepDay.totalSleepMinutes || 0) / 60;
+      }
+
+      // Extract current day's weight if logged, otherwise fallback to last known or default profile weight
+      const currentDayWeightLogs = weightMetrics.filter(m => new Date(m.recordedAt).toISOString().split('T')[0] === dStr);
+      let dayWeight = req.user.profile?.weight || 70;
+      if (currentDayWeightLogs.length > 0) {
+        dayWeight = currentDayWeightLogs[currentDayWeightLogs.length - 1].value;
+      } else if (i > 0) {
+        // Carry over previous day's weight if none recorded for logic consistency over gaps
+        dayWeight = history[i - 1].weight || dayWeight;
       }
 
       history.push({
@@ -628,9 +641,23 @@ exports.getDashboardData = async (req, res) => {
         calories: nutrition?.totalCalories || 0,
         steps,
         sleep,
-        weight: req.user.profile?.weight || 70
+        weight: dayWeight
       });
     }
+
+    // Get today's values for quick access
+    const todayHistory = history.find(h => h.date === todayStr);
+    
+    // Get goals
+    const calorieGoal = req.user.nutritionGoal?.calorieGoal || 2100;
+    const proteinGoal = req.user.nutritionGoal?.proteinGoal || 150;
+    const carbsGoal = req.user.nutritionGoal?.carbsGoal || 200;
+    const fatGoal = req.user.nutritionGoal?.fatGoal || 65;
+
+    // Get step and sleep goals from HealthGoal model if available
+    const healthGoal = await HealthGoal.findOne({ userId: req.user._id, isActive: true });
+    const stepGoal = healthGoal?.stepGoal || 10000;
+    const sleepGoal = healthGoal?.sleepGoal || 8;
 
     const dashboardData = {
       user: { ...req.user.toObject(), password: undefined },
@@ -642,16 +669,27 @@ exports.getDashboardData = async (req, res) => {
       recentReports: reports.slice(0, 5),
       reportTypeCounts,
       history, // 🆕 Add trend history
+      stepsToday: todayHistory?.steps || 0,
+      sleepToday: todayHistory?.sleep || 0,
+      goals: {
+        steps: stepGoal,
+        sleep: sleepGoal,
+        weight: req.user.nutritionGoal?.targetWeight || req.user.profile?.weight || 70,
+        calories: calorieGoal,
+        protein: proteinGoal,
+        carbs: carbsGoal,
+        fats: fatGoal
+      },
       streakDays: req.user.streakDays || 0, // Add streak days
       nutritionData: {
         totalCalories: nutritionDataSummary?.totalCalories || 0,
-        calorieGoal: req.user.nutritionGoal?.calorieGoal || 2100,
+        calorieGoal,
         protein: nutritionDataSummary?.totalProtein || 0,
-        proteinGoal: req.user.nutritionGoal?.proteinGoal || 150,
+        proteinGoal,
         carbs: nutritionDataSummary?.totalCarbs || 0,
-        carbsGoal: req.user.nutritionGoal?.carbsGoal || 200,
+        carbsGoal,
         fats: nutritionDataSummary?.totalFats || 0,
-        fatsGoal: req.user.nutritionGoal?.fatGoal || 65,
+        fatsGoal: fatGoal,
         waterIntake: nutritionDataSummary?.waterIntake || 0,
         todayLogs: todayLogs || []
       }

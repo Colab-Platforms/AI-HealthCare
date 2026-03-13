@@ -57,8 +57,9 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
         try {
           // Fetch latest report for health score
           const reportsRes = await api.get('health/reports');
-          const latestReport = reportsRes.data.reports?.[0];
-          const healthScore = latestReport?.healthScore || 0;
+          const reports = Array.isArray(reportsRes.data) ? reportsRes.data : (reportsRes.data.reports || []);
+          const latestReport = reports[0];
+          const healthScore = latestReport?.aiAnalysis?.healthScore || latestReport?.healthScore || 0;
 
           // Fetch today's nutrition summary
           const today = new Date().toISOString().split('T')[0];

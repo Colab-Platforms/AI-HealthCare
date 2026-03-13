@@ -46,6 +46,14 @@ const healthGoalSchema = new mongoose.Schema({
     enum: ['sedentary', 'lightly_active', 'moderately_active', 'very_active', 'extremely_active'],
     default: 'sedentary'
   },
+  stepGoal: {
+    type: Number,
+    default: 10000
+  },
+  sleepGoal: {
+    type: Number, // in hours
+    default: 8
+  },
   targetDate: Date,
 
   // Calculated values

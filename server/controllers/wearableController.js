@@ -1,4 +1,5 @@
 const WearableData = require('../models/WearableData');
+const cache = require('../utils/cache');
 
 // Connect a new wearable device
 exports.connectDevice = async (req, res) => {
@@ -77,22 +78,41 @@ exports.syncDailyMetrics = async (req, res) => {
       }
     }
 
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Use date from metrics or fallback to today
+    // IMPORTANT: Parse date strings like "2026-03-13" as UTC directly to avoid timezone shift
+    let targetDate;
+    if (metrics.date && typeof metrics.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(metrics.date)) {
+      // Parse YYYY-MM-DD as UTC midnight directly
+      const [y, m, d] = metrics.date.split('-').map(Number);
+      targetDate = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+    } else {
+      targetDate = metrics.date ? new Date(metrics.date) : new Date();
+      targetDate.setUTCHours(0, 0, 0, 0);
+    }
+    const targetDateString = targetDate.toISOString().split('T')[0];
 
     // Check if today's metrics exist
     const existingIndex = wearable.dailyMetrics.findIndex(
-      m => new Date(m.date).toDateString() === today.toDateString()
+      m => new Date(m.date).toISOString().split('T')[0] === targetDateString
     );
 
     if (existingIndex >= 0) {
-      wearable.dailyMetrics[existingIndex] = { ...wearable.dailyMetrics[existingIndex], ...metrics, date: today };
+      // Merge metrics
+      wearable.dailyMetrics[existingIndex] = {
+        ...wearable.dailyMetrics[existingIndex].toObject(),
+        ...metrics,
+        date: targetDate
+      };
+      wearable.markModified('dailyMetrics');
     } else {
-      wearable.dailyMetrics.push({ ...metrics, date: today });
+      wearable.dailyMetrics.push({ ...metrics, date: targetDate });
     }
 
     wearable.lastSyncedAt = new Date();
     await wearable.save();
+
+    // Invalidate server-side dashboard cache so next fetch returns fresh data
+    cache.delete(`dashboard:${req.user._id}`);
 
     res.json(wearable);
   } catch (error) {
@@ -144,20 +164,36 @@ exports.addSleepData = async (req, res) => {
       }
     }
 
-    const targetDate = sleepData.date ? new Date(sleepData.date) : new Date();
-    targetDate.setHours(0, 0, 0, 0);
+    // IMPORTANT: Parse date strings like "2026-03-13" as UTC directly to avoid timezone shift
+    let targetDate;
+    if (sleepData.date && typeof sleepData.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(sleepData.date)) {
+      const [y, m, d] = sleepData.date.split('-').map(Number);
+      targetDate = new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+    } else {
+      targetDate = sleepData.date ? new Date(sleepData.date) : new Date();
+      targetDate.setUTCHours(0, 0, 0, 0);
+    }
+    const targetDateString = targetDate.toISOString().split('T')[0];
 
     const existingIndex = wearable.sleepData.findIndex(
-      s => new Date(s.date).toDateString() === targetDate.toDateString()
+      s => new Date(s.date).toISOString().split('T')[0] === targetDateString
     );
 
     if (existingIndex >= 0) {
-      wearable.sleepData[existingIndex] = { ...sleepData, date: targetDate };
+      wearable.sleepData[existingIndex] = {
+        ...wearable.sleepData[existingIndex].toObject(),
+        ...sleepData,
+        date: targetDate
+      };
+      wearable.markModified('sleepData');
     } else {
       wearable.sleepData.push({ ...sleepData, date: targetDate });
     }
 
     await wearable.save();
+
+    // Invalidate server-side dashboard cache so next fetch returns fresh data
+    cache.delete(`dashboard:${req.user._id}`);
 
     res.json(wearable);
   } catch (error) {
@@ -189,12 +225,13 @@ exports.getWearableDashboard = async (req, res) => {
     };
 
     // Get today's metrics
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    const targetDate = new Date();
+    targetDate.setUTCHours(0, 0, 0, 0);
+    const targetDateString = targetDate.toISOString().split('T')[0];
 
     for (const wearable of wearables) {
       const todayData = wearable.dailyMetrics.find(
-        m => new Date(m.date).toDateString() === today.toDateString()
+        m => new Date(m.date).toISOString().split('T')[0] === targetDateString
       );
 
       if (todayData) {

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Scale, Footprints, Moon, ArrowLeft, Calendar, Save, Plus, Flame, Clock } from 'lucide-react';
-import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, Cell } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, CartesianGrid } from 'recharts';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import api from '../services/api';
@@ -36,17 +36,73 @@ export default function LogVitals() {
         }
     }, [metric]);
 
+    useEffect(() => {
+        // Fetch dashboard data if it's not already loaded, fixing the "lost data on refresh" bug
+        const loadData = async () => {
+            if (!dashboardData) {
+                await fetchDashboard();
+            }
+        };
+        loadData();
+    }, []);
+
     const history = useMemo(() => {
         if (!dashboardData?.history) return [];
-        return dashboardData.history.map(item => ({
-            ...item,
-            day: new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' })
-        }));
+        return dashboardData.history.slice(-7).map(item => {
+            const [year, month, day] = item.date.split('-');
+            const localDate = new Date(year, month - 1, day);
+            return {
+                ...item,
+                day: localDate.toLocaleDateString('en-US', { weekday: 'short' })
+            };
+        });
     }, [dashboardData]);
 
-    const currentWeight = user?.profile?.weight || 72.5;
-    const currentSteps = dashboardData?.stepsToday || 0;
-    const currentSleep = dashboardData?.history?.slice(-1)[0]?.sleep || 0;
+    const currentWeight = dashboardData?.history?.slice(-1)[0]?.weight || user?.profile?.weight || 72.5;
+    const currentSteps = dashboardData?.stepsToday || dashboardData?.history?.slice(-1)[0]?.steps || 0;
+    const currentSleep = dashboardData?.sleepToday || dashboardData?.history?.slice(-1)[0]?.sleep || 0;
+    const currentSleepHrs = Math.floor(currentSleep);
+    const currentSleepMins = Math.round((currentSleep - currentSleepHrs) * 60);
+
+    const stepGoal = dashboardData?.goals?.steps || 10000;
+    const sleepGoal = dashboardData?.goals?.sleep || 8;
+    const weightGoal = dashboardData?.goals?.weight || user?.nutritionGoal?.weightGoal || 70;
+
+    const [goalInput, setGoalInput] = useState('');
+    const [loadingGoal, setLoadingGoal] = useState(false);
+
+    useEffect(() => {
+        setGoalInput('');
+    }, [activeTab]);
+
+    const handleSaveGoal = async () => {
+        if (!goalInput) {
+            toast.error('Please enter a goal value');
+            return;
+        }
+        setLoadingGoal(true);
+        try {
+            const numValue = Number(goalInput);
+            if (activeTab === 'weight') {
+                await api.put('nutrition/goals', { weightGoal: numValue });
+            } else if (activeTab === 'steps') {
+                await api.put('nutrition/goals', { stepGoal: numValue });
+            } else if (activeTab === 'sleep') {
+                await api.put('nutrition/goals', { sleepGoal: numValue });
+            }
+            
+            toast.success('Goal updated successfully');
+            setGoalInput('');
+            
+            // Invalidate cache and reload
+            invalidateCache(['dashboard']);
+            await fetchDashboard(true);
+        } catch (err) {
+            toast.error(err.message || 'Failed to update goal');
+        } finally {
+            setLoadingGoal(false);
+        }
+    };
 
     const handleSave = async () => {
         setLoading(true);
@@ -127,7 +183,7 @@ export default function LogVitals() {
                     className="bg-white/80 backdrop-blur-xl rounded-[32px] p-6 md:p-8 border border-white/50 shadow-[0_4px_24px_rgba(0,0,0,0.02)]"
                 >
                     {/* Tabs */}
-                    <div className="flex bg-[#F5F5F7] p-1.5 rounded-full border border-white shadow-sm overflow-x-auto w-full mb-8">
+                    <div className="flex bg-[#F5F5F7] p-1 rounded-full border border-white shadow-sm w-full mb-8">
                         {tabs.map((tab) => {
                             const isActive = activeTab === tab.id;
                             const Icon = tab.icon;
@@ -135,10 +191,10 @@ export default function LogVitals() {
                                 <button
                                     key={tab.id}
                                     onClick={() => setActiveTab(tab.id)}
-                                    className={`flex-1 flex items-center justify-center gap-2 px-6 py-3 rounded-full text-sm font-medium transition-all whitespace-nowrap relative ${isActive ? 'text-[#1a1a1a] shadow-sm bg-white' : 'text-[#666666] hover:text-[#1a1a1a]'
+                                    className={`flex-1 flex items-center justify-center gap-1.5 md:gap-2 px-2 md:px-6 py-2.5 md:py-3 rounded-full text-xs md:text-sm font-medium transition-all whitespace-nowrap relative ${isActive ? 'text-[#1a1a1a] shadow-sm bg-white' : 'text-[#666666] hover:text-[#1a1a1a]'
                                         }`}
                                 >
-                                    <Icon className={`w-4 h-4 ${isActive ? 'text-[#1a1a1a]' : 'text-[#888888]'}`} />
+                                    <Icon className={`w-3.5 h-3.5 md:w-4 md:h-4 ${isActive ? 'text-[#1a1a1a]' : 'text-[#888888]'}`} />
                                     <span className="capitalize">{tab.label}</span>
                                 </button>
                             );
@@ -185,11 +241,11 @@ export default function LogVitals() {
                                             <div className="grid grid-cols-3 w-full gap-4 pt-8 border-t border-slate-100/60 mt-4">
                                                 <div className="text-center">
                                                     <div className="text-xs font-bold text-[#888888] mb-1.5 uppercase tracking-wider">Goal</div>
-                                                    <div className="text-2xl font-medium text-[#1a1a1a]">{user?.nutritionGoal?.weightGoal || 70} <span className="text-sm text-[#888888] font-normal">kg</span></div>
+                                                    <div className="text-2xl font-medium text-[#1a1a1a]">{weightGoal} <span className="text-sm text-[#888888] font-normal">kg</span></div>
                                                 </div>
                                                 <div className="text-center border-l border-r border-slate-100/60">
                                                     <div className="text-xs font-bold text-[#888888] mb-1.5 uppercase tracking-wider">Progress</div>
-                                                    <div className="text-2xl font-medium text-[#1a1a1a]">{(currentWeight - (user?.nutritionGoal?.weightGoal || 70)).toFixed(1)} <span className="text-sm text-[#888888] font-normal">kg</span></div>
+                                                    <div className="text-2xl font-medium text-[#1a1a1a]">{(currentWeight - weightGoal).toFixed(1)} <span className="text-sm text-[#888888] font-normal">kg</span></div>
                                                 </div>
                                                 <div className="text-center">
                                                     <div className="text-xs font-bold text-[#888888] mb-1.5 uppercase tracking-wider">BMI</div>
@@ -201,51 +257,6 @@ export default function LogVitals() {
                                         {/* Right Column - Weekly Chart & Log Form */}
                                         <div className="flex flex-col gap-6">
 
-                                            <div className="p-6 md:p-8 bg-white/60 backdrop-blur-md rounded-[32px] border border-white shadow-sm flex-1 flex flex-col">
-                                                <div className="flex justify-between items-center mb-8">
-                                                    <h3 className="text-xl font-medium text-[#1a1a1a]">Trend</h3>
-                                                    <span className="px-4 py-1.5 bg-[#F5F5F7] text-[#666666] text-[10px] font-bold uppercase tracking-widest rounded-full border border-slate-100">Last 7 Days</span>
-                                                </div>
-
-                                                <div className="flex-1 min-h-[200px] w-full">
-                                                    <ResponsiveContainer width="100%" height="100%">
-                                                        <LineChart data={history} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                                                            <XAxis
-                                                                dataKey="day"
-                                                                axisLine={false}
-                                                                tickLine={false}
-                                                                tick={{ fill: '#888888', fontSize: 12, fontWeight: 500 }}
-                                                                dy={10}
-                                                            />
-                                                            <YAxis
-                                                                domain={['dataMin - 1', 'dataMax + 1']}
-                                                                axisLine={false}
-                                                                tickLine={false}
-                                                                tick={{ fill: '#888888', fontSize: 12 }}
-                                                            />
-                                                            <Tooltip
-                                                                cursor={{ stroke: '#F5F5F7', strokeWidth: 2 }}
-                                                                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
-                                                            />
-                                                            <ReferenceLine y={user?.nutritionGoal?.weightGoal || 70} stroke="#C8BFF0" strokeDasharray="6 6" />
-                                                            <Line
-                                                                type="monotone"
-                                                                dataKey="weight"
-                                                                stroke="#4A2B8C"
-                                                                strokeWidth={3}
-                                                                dot={{ r: 4, fill: '#4A2B8C', strokeWidth: 2, stroke: '#fff' }}
-                                                                activeDot={{ r: 6, fill: '#4A2B8C', strokeWidth: 2, stroke: '#fff' }}
-                                                            />
-                                                        </LineChart>
-                                                    </ResponsiveContainer>
-                                                </div>
-
-                                                <div className="flex flex-wrap justify-center gap-6 mt-6 pt-6 border-t border-slate-100/60">
-                                                    <div className="flex items-center gap-2"><div className="w-4 h-0 border-t-2 border-solid border-[#4A2B8C]"></div><span className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Weight</span></div>
-                                                    <div className="flex items-center gap-2"><div className="w-4 h-0 border-t-2 border-dashed border-[#C8BFF0]"></div><span className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Target</span></div>
-                                                </div>
-                                            </div>
-
                                             <div className="p-6 md:p-8 bg-[#F5F5F7]/50 rounded-[32px] border border-white border-dashed">
                                                 <div className="flex items-center gap-3 mb-4">
                                                     <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm">
@@ -253,8 +264,8 @@ export default function LogVitals() {
                                                     </div>
                                                     <h4 className="font-medium text-[#1a1a1a]">Log Weight</h4>
                                                 </div>
-                                                <div className="flex items-end gap-4">
-                                                    <div className="flex-1 space-y-2">
+                                                <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-4">
+                                                    <div className="flex-1 w-full space-y-2">
                                                         <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider ml-2">Weight (kg)</label>
                                                         <input
                                                             type="number"
@@ -265,7 +276,7 @@ export default function LogVitals() {
                                                             className="w-full bg-white border border-slate-200 rounded-xl md:rounded-full px-5 py-3 shadow-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#C8BFF0] transition-all font-medium"
                                                         />
                                                     </div>
-                                                    <div className="flex-1 space-y-2">
+                                                    <div className="flex-1 w-full space-y-2">
                                                         <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider ml-2">Date</label>
                                                         <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl md:rounded-full px-4 py-3 shadow-sm">
                                                             <Calendar className="w-4 h-4 text-slate-400" />
@@ -273,8 +284,101 @@ export default function LogVitals() {
                                                         </div>
                                                     </div>
                                                 </div>
+                                                <button
+                                                    onClick={handleSave}
+                                                    disabled={loading}
+                                                    className="w-full mt-6 py-4 bg-[#4A2B8C]/70 backdrop-blur-md border border-[#4A2B8C]/20 text-white rounded-full font-medium transition-all shadow-xl hover:bg-[#4A2B8C]/90 flex items-center justify-center gap-2 group disabled:opacity-50"
+                                                >
+                                                    {loading ? (
+                                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                    ) : (
+                                                        <>
+                                                            <Save className="w-5 h-5 group-hover:scale-110 transition-transform" /> Save Weight
+                                                        </>
+                                                    )}
+                                                </button>
                                             </div>
 
+                                            <div className="p-6 md:p-8 bg-[#F5F5F7]/50 rounded-[32px] border border-white border-dashed">
+                                                <div className="flex items-center gap-3 mb-4">
+                                                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm">
+                                                        <Flame className="w-4 h-4 text-[#1a1a1a]" />
+                                                    </div>
+                                                    <h4 className="font-medium text-[#1a1a1a]">Set Target Goal</h4>
+                                                </div>
+                                                <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-4">
+                                                    <div className="flex-1 w-full space-y-2">
+                                                        <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider ml-2">Target Weight (kg)</label>
+                                                        <input
+                                                            type="number"
+                                                            value={goalInput}
+                                                            onChange={(e) => setGoalInput(e.target.value)}
+                                                            placeholder={`Current: ${weightGoal}`}
+                                                            className="w-full bg-white border border-slate-200 rounded-xl md:rounded-full px-5 py-3 shadow-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#C8BFF0] transition-all font-medium"
+                                                        />
+                                                    </div>
+                                                    <button 
+                                                        onClick={handleSaveGoal}
+                                                        disabled={loadingGoal || !goalInput}
+                                                        className="w-full sm:w-auto mt-4 sm:mt-0 px-8 py-3 bg-[#1a1a1a] text-white rounded-xl md:rounded-full font-bold shadow-lg hover:-translate-y-0.5 transition-all text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                                                    >
+                                                        {loadingGoal ? <span className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></span> : 'Set Target'}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    </div>
+
+                                    <div className="p-6 md:p-8 bg-white/60 backdrop-blur-md rounded-[32px] border border-white shadow-sm flex-1 flex flex-col mt-8">
+                                        <div className="flex justify-between items-center mb-8">
+                                            <h3 className="text-xl font-medium text-[#1a1a1a]">Trend</h3>
+                                            <span className="px-4 py-1.5 bg-[#F5F5F7] text-[#666666] text-[10px] font-bold uppercase tracking-widest rounded-full border border-slate-100">Last 7 Days</span>
+                                        </div>
+
+                                        <div className="flex-1 min-h-[300px] w-full">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <LineChart data={history} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                                                    <XAxis
+                                                        dataKey="day"
+                                                        axisLine={false}
+                                                        tickLine={false}
+                                                        tick={{ fill: '#888888', fontSize: 12, fontWeight: 500 }}
+                                                        dy={10}
+                                                        label={{ value: 'Day', position: 'insideBottom', offset: -10, fill: '#888888', fontSize: 10, fontWeight: 'bold', textAnchor: 'middle', style: { textTransform: 'uppercase', letterSpacing: '0.1em' } }}
+                                                        height={50}
+                                                    />
+                                                    <YAxis
+                                                        domain={[(dataMin) => Math.min(dataMin, weightGoal) - 3, (dataMax) => Math.max(dataMax, weightGoal) + 3]}
+                                                        axisLine={false}
+                                                        tickLine={false}
+                                                        tick={{ fill: '#888888', fontSize: 12 }}
+                                                        tickFormatter={(val) => `${val}kg`}
+                                                        label={{ value: 'Weight (kg)', angle: -90, position: 'insideLeft', fill: '#888888', fontSize: 10, fontWeight: 'bold', dx: -5, style: { textTransform: 'uppercase', letterSpacing: '0.1em' } }}
+                                                        width={55}
+                                                    />
+                                                    <Tooltip
+                                                        cursor={{ stroke: '#F5F5F7', strokeWidth: 2 }}
+                                                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+                                                        formatter={(value) => [value + ' kg', 'Weight']}
+                                                    />
+                                                    <ReferenceLine y={weightGoal} stroke="#FF6B6B" strokeDasharray="6 6" strokeWidth={2} label={{ value: `Target: ${weightGoal}kg`, position: 'right', fill: '#FF6B6B', fontSize: 10, fontWeight: 'bold' }} />
+                                                    <Line
+                                                        type="monotone"
+                                                        dataKey="weight"
+                                                        stroke="#4A2B8C"
+                                                        strokeWidth={3}
+                                                        dot={{ r: 5, fill: '#4A2B8C', strokeWidth: 2, stroke: '#fff' }}
+                                                        activeDot={{ r: 7, fill: '#4A2B8C', strokeWidth: 2, stroke: '#fff' }}
+                                                    />
+                                                </LineChart>
+                                            </ResponsiveContainer>
+                                        </div>
+
+                                        <div className="flex flex-wrap justify-center gap-6 mt-6 pt-6 border-t border-slate-100/60">
+                                            <div className="flex items-center gap-2"><div className="w-4 h-0 border-t-2 border-solid border-[#4A2B8C]"></div><span className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Weight</span></div>
+                                            <div className="flex items-center gap-2"><div className="w-4 h-0 border-t-2 border-dashed border-[#FF6B6B]"></div><span className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Target ({weightGoal}kg)</span></div>
                                         </div>
                                     </div>
                                 </motion.div>
@@ -319,7 +423,7 @@ export default function LogVitals() {
                                                         strokeWidth="24"
                                                         strokeLinecap="round"
                                                         strokeDasharray={120 * Math.PI}
-                                                        strokeDashoffset={120 * Math.PI * (1 - Math.min(currentSteps / 10000, 1))}
+                                                        strokeDashoffset={120 * Math.PI * (1 - Math.min(currentSteps / stepGoal, 1))}
                                                         className="transition-all duration-1000 ease-out"
                                                     />
                                                 </svg>
@@ -329,7 +433,10 @@ export default function LogVitals() {
                                                         <Footprints className="w-6 h-6 text-[#1a1a1a]" />
                                                     </div>
                                                     <div className="text-5xl font-bold text-[#1a1a1a] tracking-tight">{currentSteps.toLocaleString()}</div>
-                                                    <div className="text-[11px] font-bold text-[#888888] uppercase tracking-widest mt-2">OF 10,000 STEPS</div>
+                                                    <div className="text-[11px] font-bold text-[#888888] uppercase tracking-widest mt-2 text-center flex flex-col">
+                                                        <span>OF {stepGoal.toLocaleString()} STEPS</span>
+                                                        <span className="text-[9px] mt-0.5 opacity-60">Daily Goal</span>
+                                                    </div>
                                                 </div>
                                             </div>
 
@@ -344,55 +451,12 @@ export default function LogVitals() {
                                                 </div>
                                                 <div className="text-center">
                                                     <div className="text-xs font-bold text-[#888888] mb-1.5 uppercase tracking-wider">Goal</div>
-                                                    <div className="text-2xl font-medium text-[#1a1a1a]">10k</div>
+                                                    <div className="text-2xl font-medium text-[#1a1a1a]">{stepGoal >= 1000 ? `${(stepGoal / 1000).toFixed(1)}k` : stepGoal}</div>
                                                 </div>
                                             </div>
                                         </div>
 
                                         <div className="flex flex-col gap-6">
-
-                                            <div className="p-6 md:p-8 bg-white/60 backdrop-blur-md rounded-[32px] border border-white shadow-sm flex-1 flex flex-col">
-                                                <div className="flex justify-between items-center mb-8">
-                                                    <h3 className="text-xl font-medium text-[#1a1a1a]">Weekly Progress</h3>
-                                                    <span className="px-4 py-1.5 bg-[#F5F5F7] text-[#666666] text-[10px] font-bold uppercase tracking-widest rounded-full border border-slate-100">Last 7 Days</span>
-                                                </div>
-
-                                                <div className="flex-1 min-h-[200px] w-full">
-                                                    <ResponsiveContainer width="100%" height="100%">
-                                                        <BarChart data={history} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                                                            <XAxis
-                                                                dataKey="day"
-                                                                axisLine={false}
-                                                                tickLine={false}
-                                                                tick={{ fill: '#888888', fontSize: 12, fontWeight: 500 }}
-                                                                dy={10}
-                                                            />
-                                                            <YAxis
-                                                                axisLine={false}
-                                                                tickLine={false}
-                                                                tick={{ fill: '#888888', fontSize: 12 }}
-                                                                tickFormatter={(val) => val === 0 ? '0' : `${val / 1000}k`}
-                                                            />
-                                                            <Tooltip
-                                                                cursor={{ fill: '#F5F5F7' }}
-                                                                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
-                                                            />
-                                                            <ReferenceLine y={10000} stroke="#C8BFF0" strokeDasharray="6 6" />
-                                                            <Bar dataKey="steps" radius={[6, 6, 6, 6]} barSize={32}>
-                                                                {history.map((entry, index) => (
-                                                                    <Cell key={`cell-${index}`} fill={entry.steps >= 10000 ? '#D4F1A5' : '#E2F0FD'} />
-                                                                ))}
-                                                            </Bar>
-                                                        </BarChart>
-                                                    </ResponsiveContainer>
-                                                </div>
-
-                                                <div className="flex flex-wrap justify-center gap-6 mt-6 pt-6 border-t border-slate-100/60">
-                                                    <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-[#D4F1A5]"></div><span className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Goal Met</span></div>
-                                                    <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-[#E2F0FD]"></div><span className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">In Progress</span></div>
-                                                    <div className="flex items-center gap-2"><div className="w-4 h-0 border-t-2 border-dashed border-[#C8BFF0]"></div><span className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Goal</span></div>
-                                                </div>
-                                            </div>
 
                                             <div className="p-6 md:p-8 bg-[#F5F5F7]/50 rounded-[32px] border border-white border-dashed">
                                                 <div className="flex items-center gap-3 mb-4">
@@ -401,8 +465,8 @@ export default function LogVitals() {
                                                     </div>
                                                     <h4 className="font-medium text-[#1a1a1a]">Manual Entry</h4>
                                                 </div>
-                                                <div className="flex items-end gap-4">
-                                                    <div className="flex-1 space-y-2">
+                                                <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-4">
+                                                    <div className="flex-1 w-full space-y-2">
                                                         <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider ml-2">Steps to add</label>
                                                         <input
                                                             type="number"
@@ -412,7 +476,7 @@ export default function LogVitals() {
                                                             className="w-full bg-white border border-slate-200 rounded-xl md:rounded-full px-5 py-3 shadow-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#D4F1A5] transition-all font-medium"
                                                         />
                                                     </div>
-                                                    <div className="flex-1 space-y-2">
+                                                    <div className="flex-1 w-full space-y-2">
                                                         <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider ml-2">Date</label>
                                                         <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl md:rounded-full px-4 py-3 shadow-sm">
                                                             <Calendar className="w-4 h-4 text-slate-400" />
@@ -420,8 +484,99 @@ export default function LogVitals() {
                                                         </div>
                                                     </div>
                                                 </div>
+                                                <button
+                                                    onClick={handleSave}
+                                                    disabled={loading}
+                                                    className="w-full mt-6 py-4 bg-[#4A8C2B]/80 backdrop-blur-md border border-[#4A8C2B]/20 text-white rounded-full font-medium transition-all shadow-xl hover:bg-[#4A8C2B] flex items-center justify-center gap-2 group disabled:opacity-50"
+                                                >
+                                                    {loading ? (
+                                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                    ) : (
+                                                        <>
+                                                            <Save className="w-5 h-5 group-hover:scale-110 transition-transform" /> Save Steps
+                                                        </>
+                                                    )}
+                                                </button>
                                             </div>
 
+                                            <div className="p-6 md:p-8 bg-[#F5F5F7]/50 rounded-[32px] border border-white border-dashed">
+                                                <div className="flex items-center gap-3 mb-4">
+                                                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm">
+                                                        <Flame className="w-4 h-4 text-[#1a1a1a]" />
+                                                    </div>
+                                                    <h4 className="font-medium text-[#1a1a1a]">Set Step Goal</h4>
+                                                </div>
+                                                <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-4">
+                                                    <div className="flex-1 w-full space-y-2">
+                                                        <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider ml-2">Target Steps</label>
+                                                        <input
+                                                            type="number"
+                                                            value={goalInput}
+                                                            onChange={(e) => setGoalInput(e.target.value)}
+                                                            placeholder={`Current: ${stepGoal}`}
+                                                            className="w-full bg-white border border-slate-200 rounded-xl md:rounded-full px-5 py-3 shadow-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#D4F1A5] transition-all font-medium"
+                                                        />
+                                                    </div>
+                                                    <button 
+                                                        onClick={handleSaveGoal}
+                                                        disabled={loadingGoal || !goalInput}
+                                                        className="w-full sm:w-auto mt-4 sm:mt-0 px-8 py-3 bg-[#1a1a1a] text-white rounded-xl md:rounded-full font-bold shadow-lg hover:-translate-y-0.5 transition-all text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                                                    >
+                                                        {loadingGoal ? <span className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></span> : 'Set Target'}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    </div>
+
+                                    <div className="p-6 md:p-8 bg-white/60 backdrop-blur-md rounded-[32px] border border-white shadow-sm flex-1 flex flex-col mt-8">
+                                        <div className="flex justify-between items-center mb-8">
+                                            <h3 className="text-xl font-medium text-[#1a1a1a]">Weekly Progress</h3>
+                                            <span className="px-4 py-1.5 bg-[#F5F5F7] text-[#666666] text-[10px] font-bold uppercase tracking-widest rounded-full border border-slate-100">Last 7 Days</span>
+                                        </div>
+
+                                        <div className="flex-1 min-h-[300px] w-full">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={history} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                                                    <XAxis
+                                                        dataKey="day"
+                                                        axisLine={false}
+                                                        tickLine={false}
+                                                        tick={{ fill: '#888888', fontSize: 12, fontWeight: 500 }}
+                                                        dy={10}
+                                                        label={{ value: 'Day', position: 'insideBottom', offset: -10, fill: '#888888', fontSize: 10, fontWeight: 'bold', textAnchor: 'middle', style: { textTransform: 'uppercase', letterSpacing: '0.1em' } }}
+                                                        height={50}
+                                                    />
+                                                    <YAxis
+                                                        axisLine={false}
+                                                        tickLine={false}
+                                                        tick={{ fill: '#888888', fontSize: 12 }}
+                                                        tickFormatter={(val) => val === 0 ? '0' : val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}
+                                                        label={{ value: 'Steps', angle: -90, position: 'insideLeft', fill: '#888888', fontSize: 10, fontWeight: 'bold', dx: -5, style: { textTransform: 'uppercase', letterSpacing: '0.1em' } }}
+                                                        width={55}
+                                                        domain={[0, (dataMax) => Math.max(dataMax, stepGoal) * 1.15]}
+                                                    />
+                                                    <Tooltip
+                                                        cursor={{ fill: 'rgba(0,0,0,0.03)' }}
+                                                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+                                                        formatter={(value) => [value.toLocaleString() + ' steps', 'Steps']}
+                                                    />
+                                                    <ReferenceLine y={stepGoal} stroke="#FF6B6B" strokeDasharray="6 6" strokeWidth={2} label={{ value: `Goal: ${stepGoal >= 1000 ? (stepGoal/1000).toFixed(0)+'k' : stepGoal}`, position: 'right', fill: '#FF6B6B', fontSize: 10, fontWeight: 'bold' }} />
+                                                    <Bar
+                                                        dataKey="steps"
+                                                        fill="#D4F1A5"
+                                                        radius={[8, 8, 0, 0]}
+                                                        maxBarSize={40}
+                                                    />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
+
+                                        <div className="flex flex-wrap justify-center gap-6 mt-6 pt-6 border-t border-slate-100/60">
+                                            <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#D4F1A5]"></div><span className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Steps</span></div>
+                                            <div className="flex items-center gap-2"><div className="w-4 h-0 border-t-2 border-dashed border-[#FF6B6B]"></div><span className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Goal ({stepGoal >= 1000 ? (stepGoal/1000).toFixed(0)+'k' : stepGoal})</span></div>
                                         </div>
                                     </div>
                                 </motion.div>
@@ -446,7 +601,7 @@ export default function LogVitals() {
 
                                             <div className="text-center mb-8 mt-2">
                                                 <h2 className="text-2xl md:text-3xl font-light text-[#1a1a1a]">
-                                                    You slept <span className="font-semibold text-[#1a1a1a]">{Math.floor(currentSleep)}h {Math.round((currentSleep % 1) * 60)}m</span>
+                                                    You slept <span className="font-semibold text-[#1a1a1a]">{currentSleepHrs}h {currentSleepMins}m</span>
                                                 </h2>
                                             </div>
 
@@ -466,7 +621,7 @@ export default function LogVitals() {
                                                         strokeWidth="24"
                                                         strokeLinecap="round"
                                                         strokeDasharray={120 * Math.PI}
-                                                        strokeDashoffset={120 * Math.PI * (1 - Math.min(currentSleep / 8, 1))}
+                                                        strokeDashoffset={120 * Math.PI * (1 - Math.min(currentSleep / sleepGoal, 1))}
                                                         className="transition-all duration-1000 ease-out"
                                                     />
                                                 </svg>
@@ -483,7 +638,7 @@ export default function LogVitals() {
                                             <div className="grid grid-cols-3 w-full gap-4 pt-8 border-t border-slate-100/60 mt-4">
                                                 <div className="text-center">
                                                     <div className="text-xs font-bold text-[#888888] mb-1.5 uppercase tracking-wider">Deep</div>
-                                                    <div className="text-2xl font-medium text-[#1a1a1a]">2h <span className="text-sm text-[#888888] font-normal">10m</span></div>
+                                                    <div className="text-2xl font-medium text-[#1a1a1a]">{Math.floor(currentSleep * 0.3)}h <span className="text-sm text-[#888888] font-normal">{Math.round((currentSleep * 0.3 % 1) * 60)}m</span></div>
                                                 </div>
                                                 <div className="text-center border-l border-r border-slate-100/60">
                                                     <div className="text-xs font-bold text-[#888888] mb-1.5 uppercase tracking-wider">Quality</div>
@@ -491,56 +646,12 @@ export default function LogVitals() {
                                                 </div>
                                                 <div className="text-center">
                                                     <div className="text-xs font-bold text-[#888888] mb-1.5 uppercase tracking-wider">Goal</div>
-                                                    <div className="text-2xl font-medium text-[#1a1a1a]">8h</div>
+                                                    <div className="text-2xl font-medium text-[#1a1a1a]">{sleepGoal}h</div>
                                                 </div>
                                             </div>
                                         </div>
 
                                         <div className="flex flex-col gap-6">
-
-                                            <div className="p-6 md:p-8 bg-white/60 backdrop-blur-md rounded-[32px] border border-white shadow-sm flex-1 flex flex-col">
-                                                <div className="flex justify-between items-center mb-8">
-                                                    <h3 className="text-xl font-medium text-[#1a1a1a]">Weekly Sleep</h3>
-                                                    <span className="px-4 py-1.5 bg-[#F5F5F7] text-[#666666] text-[10px] font-bold uppercase tracking-widest rounded-full border border-slate-100">Last 7 Days</span>
-                                                </div>
-
-                                                <div className="flex-1 min-h-[200px] w-full">
-                                                    <ResponsiveContainer width="100%" height="100%">
-                                                        <BarChart data={history} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                                                            <XAxis
-                                                                dataKey="day"
-                                                                axisLine={false}
-                                                                tickLine={false}
-                                                                tick={{ fill: '#888888', fontSize: 12, fontWeight: 500 }}
-                                                                dy={10}
-                                                            />
-                                                            <YAxis
-                                                                axisLine={false}
-                                                                tickLine={false}
-                                                                tick={{ fill: '#888888', fontSize: 12 }}
-                                                                domain={[0, 10]}
-                                                                tickFormatter={(val) => `${val}h`}
-                                                            />
-                                                            <Tooltip
-                                                                cursor={{ fill: '#F5F5F7' }}
-                                                                contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
-                                                            />
-                                                            <ReferenceLine y={8} stroke="#E2F0FD" strokeDasharray="6 6" />
-                                                            <Bar dataKey="sleep" radius={[6, 6, 6, 6]} barSize={32}>
-                                                                {history.map((entry, index) => (
-                                                                    <Cell key={`cell-${index}`} fill={(entry.sleep || 0) >= 8 ? '#C8BFF0' : '#E2F0FD'} />
-                                                                ))}
-                                                            </Bar>
-                                                        </BarChart>
-                                                    </ResponsiveContainer>
-                                                </div>
-
-                                                <div className="flex flex-wrap justify-center gap-6 mt-6 pt-6 border-t border-slate-100/60">
-                                                    <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-[#C8BFF0]"></div><span className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Goal Met</span></div>
-                                                    <div className="flex items-center gap-2"><div className="w-2.5 h-2.5 rounded-full bg-[#E2F0FD]"></div><span className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Below Goal</span></div>
-                                                    <div className="flex items-center gap-2"><div className="w-4 h-0 border-t-2 border-dashed border-[#E2F0FD]"></div><span className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Goal (8h)</span></div>
-                                                </div>
-                                            </div>
 
                                             <div className="p-6 md:p-8 bg-[#F5F5F7]/50 rounded-[32px] border border-white border-dashed">
                                                 <div className="flex items-center gap-3 mb-4">
@@ -549,7 +660,7 @@ export default function LogVitals() {
                                                     </div>
                                                     <h4 className="font-medium text-[#1a1a1a]">Log Sleep</h4>
                                                 </div>
-                                                <div className="flex flex-col sm:flex-row items-end gap-4">
+                                                <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-4">
                                                     <div className="flex flex-1 gap-2 w-full sm:w-auto">
                                                         <div className="flex-1 space-y-2">
                                                             <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider ml-2">Hours</label>
@@ -582,29 +693,106 @@ export default function LogVitals() {
                                                         </div>
                                                     </div>
                                                 </div>
+                                                <button
+                                                    onClick={handleSave}
+                                                    disabled={loading}
+                                                    className="w-full mt-6 py-4 bg-[#75AADB]/80 backdrop-blur-md border border-[#75AADB]/20 text-white rounded-full font-medium transition-all shadow-xl hover:bg-[#75AADB] flex items-center justify-center gap-2 group disabled:opacity-50"
+                                                >
+                                                    {loading ? (
+                                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                    ) : (
+                                                        <>
+                                                            <Save className="w-5 h-5 group-hover:scale-110 transition-transform" /> Save Sleep
+                                                        </>
+                                                    )}
+                                                </button>
                                             </div>
 
+                                            <div className="p-6 md:p-8 bg-[#F5F5F7]/50 rounded-[32px] border border-white border-dashed">
+                                                <div className="flex items-center gap-3 mb-4">
+                                                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm">
+                                                        <Flame className="w-4 h-4 text-[#1a1a1a]" />
+                                                    </div>
+                                                    <h4 className="font-medium text-[#1a1a1a]">Set Sleep Goal</h4>
+                                                </div>
+                                                <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-4">
+                                                    <div className="flex-1 w-full space-y-2">
+                                                        <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider ml-2">Target Sleep (Hours)</label>
+                                                        <input
+                                                            type="number"
+                                                            value={goalInput}
+                                                            onChange={(e) => setGoalInput(e.target.value)}
+                                                            placeholder={`Current: ${sleepGoal}`}
+                                                            className="w-full bg-white border border-slate-200 rounded-xl md:rounded-full px-5 py-3 shadow-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#E2F0FD] transition-all font-medium"
+                                                        />
+                                                    </div>
+                                                    <button 
+                                                        onClick={handleSaveGoal}
+                                                        disabled={loadingGoal || !goalInput}
+                                                        className="w-full sm:w-auto mt-4 sm:mt-0 px-8 py-3 bg-[#1a1a1a] text-white rounded-xl md:rounded-full font-bold shadow-lg hover:-translate-y-0.5 transition-all text-sm disabled:opacity-50 flex items-center justify-center gap-2"
+                                                    >
+                                                        {loadingGoal ? <span className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></span> : 'Set Target'}
+                                                    </button>
+                                                </div>
+                                            </div>
+
+                                        </div>
+                                    </div>
+
+                                    <div className="p-6 md:p-8 bg-white/60 backdrop-blur-md rounded-[32px] border border-white shadow-sm flex-1 flex flex-col mt-8">
+                                        <div className="flex justify-between items-center mb-8">
+                                            <h3 className="text-xl font-medium text-[#1a1a1a]">Weekly Sleep</h3>
+                                            <span className="px-4 py-1.5 bg-[#F5F5F7] text-[#666666] text-[10px] font-bold uppercase tracking-widest rounded-full border border-slate-100">Last 7 Days</span>
+                                        </div>
+
+                                        <div className="flex-1 min-h-[300px] w-full">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={history} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                                                    <XAxis
+                                                        dataKey="day"
+                                                        axisLine={false}
+                                                        tickLine={false}
+                                                        tick={{ fill: '#888888', fontSize: 12, fontWeight: 500 }}
+                                                        dy={10}
+                                                        label={{ value: 'Day', position: 'insideBottom', offset: -10, fill: '#888888', fontSize: 10, fontWeight: 'bold', textAnchor: 'middle', style: { textTransform: 'uppercase', letterSpacing: '0.1em' } }}
+                                                        height={50}
+                                                    />
+                                                    <YAxis
+                                                        axisLine={false}
+                                                        tickLine={false}
+                                                        tick={{ fill: '#888888', fontSize: 12 }}
+                                                        domain={[0, (dataMax) => Math.max(dataMax, sleepGoal) + 2]}
+                                                        tickFormatter={(val) => `${val}h`}
+                                                        label={{ value: 'Sleep (Hours)', angle: -90, position: 'insideLeft', fill: '#888888', fontSize: 10, fontWeight: 'bold', dx: -5, style: { textTransform: 'uppercase', letterSpacing: '0.1em' } }}
+                                                        width={55}
+                                                    />
+                                                    <Tooltip
+                                                        cursor={{ fill: 'rgba(0,0,0,0.03)' }}
+                                                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+                                                        formatter={(value) => [value.toFixed(1) + ' hours', 'Sleep']}
+                                                    />
+                                                    <ReferenceLine y={sleepGoal} stroke="#FF6B6B" strokeDasharray="6 6" strokeWidth={2} label={{ value: `Goal: ${sleepGoal}h`, position: 'right', fill: '#FF6B6B', fontSize: 10, fontWeight: 'bold' }} />
+                                                    <Bar
+                                                        dataKey="sleep"
+                                                        fill="#E2F0FD"
+                                                        radius={[8, 8, 0, 0]}
+                                                        maxBarSize={40}
+                                                    />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
+
+                                        <div className="flex flex-wrap justify-center gap-6 mt-6 pt-6 border-t border-slate-100/60">
+                                            <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#E2F0FD]"></div><span className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Sleep</span></div>
+                                            <div className="flex items-center gap-2"><div className="w-4 h-0 border-t-2 border-dashed border-[#FF6B6B]"></div><span className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Goal ({sleepGoal}h)</span></div>
                                         </div>
                                     </div>
                                 </motion.div>
                             )}
                         </AnimatePresence>
 
-                        <div className="mt-10 max-w-[1000px] mx-auto">
-                            <button
-                                onClick={handleSave}
-                                disabled={loading}
-                                className="w-full py-4 bg-[#4A2B8C]/70 backdrop-blur-md border-2 border-white/30 text-white rounded-full font-medium transition-all shadow-xl hover:bg-[#4A2B8C]/90 flex items-center justify-center gap-2 group disabled:opacity-50"
-                            >
-                                {loading ? (
-                                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                    <>
-                                        <Save className="w-5 h-5 group-hover:scale-110 transition-transform" /> Save {activeTab}
-                                    </>
-                                )}
-                            </button>
-                        </div>
+
                     </div>
                 </motion.div>
 
