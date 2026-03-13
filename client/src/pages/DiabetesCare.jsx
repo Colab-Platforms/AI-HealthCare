@@ -182,7 +182,7 @@ export default function DiabetesCare() {
   };
 
   return (
-    <div className="p-4 md:p-8 max-w-[1400px] mx-auto space-y-8 font-sans">
+    <div className="p-4 md:p-8 max-w-[1400px] mx-auto space-y-8 relative font-sans bg-transparent">
 
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">

@@ -271,9 +271,9 @@ export default function DietPlan() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] pb-32 px-4 md:px-6 lg:px-12 pt-8">
+    <div className="min-h-screen bg-transparent pb-32 px-4 md:px-6 lg:px-12 pt-8">
       {/* Background elements */}
-      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-indigo-50/30 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-purple-100/20 rounded-full blur-[120px] pointer-events-none" />
 
       {/* Header */}
       <div className="relative z-10 flex flex-col gap-4 mb-8 md:mb-16 pt-4">

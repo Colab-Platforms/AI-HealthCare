@@ -18,9 +18,7 @@ const patientNavItems = [
   { path: '/diabetes', icon: Droplet, label: 'Diabetes' },
   { path: '/upload', icon: Brain, label: 'AI Analyzer' },
   { path: '/nutrition', icon: Utensils, label: 'Nutrition' },
-  { path: '/diet-plan', icon: FileText, label: 'Diet Plan' },
-  { path: '/progress', icon: BarChart3, label: 'Progress' },
-  { path: '/exercises', icon: Dumbbell, label: 'Exercises' }
+  { path: '/diet-plan', icon: FileText, label: 'Diet Plan' }
 ];
 
 const doctorNavItems = [
@@ -103,7 +101,7 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
   }
 
   // Clean white background for all pages
-  const bgColor = 'bg-white';
+  const bgColor = 'bg-gradient-to-br from-purple-50 via-white to-purple-100';
 
   const isDashboardPage = location.pathname === '/dashboard' || location.pathname === '/doctor/dashboard' || location.pathname === '/admin';
 

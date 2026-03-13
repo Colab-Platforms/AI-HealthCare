@@ -624,10 +624,10 @@ export default function DashboardEnhanced() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] pb-32 px-4 md:px-6 lg:px-16 pt-8 relative overflow-hidden">
-      {/* Decorative background glow */}
-      <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-slate-100/30 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
-      <div className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-slate-100/20 rounded-full blur-[100px] translate-x-1/2 pointer-events-none" />
+    <div className="min-h-screen bg-transparent pb-32 px-4 md:px-6 lg:px-16 pt-8 relative overflow-hidden">
+      {/* Decorative background glow matching Dashboard - Neutralized */}
+      <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-purple-100/20 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+      <div className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-purple-100/10 rounded-full blur-[100px] translate-x-1/2 pointer-events-none" />
 
       {/* Header */}
       <motion.div

@@ -242,7 +242,7 @@ export default function UploadReport() {
   const viewingReport = allReports.find(r => r._id === viewingReportId);
 
   return (
-    <div className="p-4 md:p-8 max-w-[1400px] mx-auto space-y-8 relative font-sans">
+    <div className="p-4 md:p-8 max-w-[1400px] mx-auto space-y-8 relative font-sans bg-transparent">
       <div className="text-left mb-4 md:mb-8 max-w-3xl">
         <h1 className="text-3xl md:text-5xl font-light tracking-tight text-[#1a1a1a] mb-2 md:mb-4">AI Lab Analyzer</h1>
         <p className="text-[#666666] text-sm md:text-lg leading-relaxed">Upload your medical reports and let our AI translate complex jargon into actionable health insights.</p>

@@ -174,7 +174,7 @@ export default function AIChat() {
   };
 
   return (
-    <div className="fixed inset-0 h-[100dvh] bg-white flex flex-col md:flex-row overflow-hidden md:pb-0 safe-layout">
+    <div className="fixed inset-0 h-[100dvh] bg-gradient-to-br from-purple-50 via-white to-purple-100 flex flex-col md:flex-row overflow-hidden md:pb-0 safe-layout">
       {/* Sidebar - Desktop */}
       <div className={`fixed md:relative inset-y-0 left-0 w-80 bg-slate-50 border-r border-slate-100 flex flex-col z-[60] transition-transform duration-500 ease-in-out md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white">
@@ -216,7 +216,7 @@ export default function AIChat() {
       {sidebarOpen && <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 md:hidden" onClick={() => setSidebarOpen(false)} />}
 
       {/* Main Chat Interface */}
-      <div className="flex-1 flex flex-col h-full relative bg-white">
+      <div className="flex-1 flex flex-col h-full relative bg-transparent">
         {/* Header */}
         <header className="h-[72px] bg-white/80 backdrop-blur-md border-b border-slate-100 flex items-center justify-between px-6 sticky top-0 z-40">
           <div className="flex items-center gap-4">
