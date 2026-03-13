@@ -921,7 +921,7 @@ export default function DashboardEnhanced() {
           </div>
 
           <div className="space-y-3 flex-1 overflow-y-auto max-h-[300px] pr-2 scrollbar-thin scrollbar-thumb-black scrollbar-track-transparent">
-            {dashboardData?.latestAnalysis?.metrics ? (
+            {dashboardData?.totalReports > 0 && dashboardData?.latestAnalysis?.metrics && Object.keys(dashboardData.latestAnalysis.metrics).length > 0 ? (
               Object.entries(dashboardData.latestAnalysis.metrics).map(([key, val]) => (
                 <LabMetricsItem
                   key={key}

@@ -238,9 +238,9 @@ export default function DietPlan() {
     }
   };
 
-  if (loading) {
+  if (loading || generating) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFDFD]">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFDFD] px-4">
         <div className="relative w-24 h-24 mb-6">
           <div className="absolute inset-0 rounded-full border-4 border-slate-100" />
           <motion.div
@@ -248,9 +248,16 @@ export default function DietPlan() {
             transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
             className="absolute inset-0 rounded-full border-4 border-black border-t-transparent"
           />
-          <ChefHat className="absolute inset-0 m-auto w-8 h-8 text-black" />
+          <ChefHat className="absolute inset-0 m-auto w-8 h-8 text-black animate-pulse" />
         </div>
-        <p className="text-slate-400 font-black uppercase tracking-[0.2em] text-[10px]">Curating your diet protocol...</p>
+        <p className="text-[#A795C7] font-black uppercase tracking-[0.2em] text-xs text-center mb-3">
+          {generating ? 'Hang tight, diet plan is generating...' : 'Curating your diet protocol...'}
+        </p>
+        {generating && (
+          <p className="text-red-400 font-bold text-[10px] uppercase tracking-widest text-center max-w-xs leading-relaxed border border-red-100 bg-red-50 p-3 rounded-2xl">
+            Please do not click the back button or refresh the page
+          </p>
+        )}
       </div>
     );
   }

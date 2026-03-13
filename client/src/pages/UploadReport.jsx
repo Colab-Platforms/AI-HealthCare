@@ -335,20 +335,23 @@ export default function UploadReport() {
                 animate={{ opacity: 1, y: 0 }}
                 className={`${glassCard} p-10`}
               >
-                <div className="space-y-6 md:space-y-10 py-2 md:py-6">
+                <div className="space-y-6 md:space-y-10 py-2 md:py-6 relative z-10 bg-white">
                   <div className="flex flex-col items-center text-center space-y-3 md:space-y-4">
-                    <div className="relative">
+                    <div className="relative mb-4">
                       <div className="w-16 h-16 md:w-24 md:h-24 rounded-full border-2 md:border-4 border-slate-100 border-t-[#A795C7] animate-spin"></div>
                       <div className="absolute inset-0 flex items-center justify-center">
                         <FileText className="w-8 h-8 text-[#A795C7] animate-pulse" />
                       </div>
                     </div>
-                    <div>
-                      <h3 className="text-2xl font-bold text-[#1a1a1a]">Analyzing Report</h3>
-                      <p className="text-[#666666] font-medium">Extracting health markers and findings...</p>
+                    <div className="flex flex-col items-center">
+                      <h3 className="text-2xl font-bold text-[#1a1a1a] mb-2">Analyzing Report</h3>
+                      <p className="text-[#A795C7] font-black uppercase tracking-widest text-sm mb-4">Hang tight, extracting insights...</p>
+                      <p className="text-red-400 font-bold text-[10px] uppercase tracking-widest text-center max-w-sm mx-auto leading-relaxed border border-red-100 bg-red-50 p-3 rounded-2xl">
+                        Please do not click the back button or refresh the page
+                      </p>
                     </div>
                   </div>
-                  <div className="space-y-3">
+                  <div className="space-y-3 mt-8">
                     <div className="h-4 bg-slate-100 rounded-full overflow-hidden">
                       <div className="h-full bg-gradient-to-r from-[#A795C7] to-[#9583BC] transition-all duration-500" style={{ width: `${uploadProgress}%` }} />
                     </div>

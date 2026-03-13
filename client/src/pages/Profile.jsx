@@ -229,6 +229,25 @@ export default function Profile() {
 
   const handleGoalSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validate mandatory fields for health goal calculations
+    if (!goalFormData.currentWeight || goalFormData.currentWeight < 30) {
+      toast.error('Current weight must be at least 30kg');
+      return;
+    }
+    if (!goalFormData.height || goalFormData.height < 100) {
+      toast.error('Height must be at least 100cm');
+      return;
+    }
+    if (!goalFormData.age || goalFormData.age < 1) {
+      toast.error('Age must be at least 1 year');
+      return;
+    }
+    if (!goalFormData.targetWeight || goalFormData.targetWeight < 30) {
+      toast.error('Target weight must be at least 30kg');
+      return;
+    }
+
     setGoalLoading(true);
     try {
       const token = localStorage.getItem('token');
@@ -752,6 +771,39 @@ export default function Profile() {
                                 <option value="general_health">General Health Improvement</option>
                               </select>
                             </div>
+                            <div>
+                               <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Age</label>
+                               <input
+                                 type="number"
+                                 name="age"
+                                 value={goalFormData.age}
+                                 onChange={handleGoalChange}
+                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 shadow-inner"
+                                 placeholder="Age"
+                               />
+                             </div>
+                             <div>
+                               <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Height (cm)</label>
+                               <input
+                                 type="number"
+                                 name="height"
+                                 value={goalFormData.height}
+                                 onChange={handleGoalChange}
+                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 shadow-inner"
+                                 placeholder="Height in cm"
+                               />
+                             </div>
+                             <div>
+                               <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Current Weight (kg)</label>
+                               <input
+                                 type="number"
+                                 name="currentWeight"
+                                 value={goalFormData.currentWeight}
+                                 onChange={handleGoalChange}
+                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 shadow-inner"
+                                 placeholder="Current Weight"
+                               />
+                             </div>
                             <div>
                               <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Target Weight (kg)</label>
                               <input
