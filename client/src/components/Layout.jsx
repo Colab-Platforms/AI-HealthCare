@@ -15,7 +15,7 @@ import { useRef } from 'react';
 
 const patientNavItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/diabetes', icon: Droplet, label: 'Diabetes' },
+  { path: '/diabetes', icon: Droplet, label: 'Diabetes', isDiabeticOnly: true },
   { path: '/upload', icon: Brain, label: 'AI Analyzer' },
   { path: '/nutrition', icon: Utensils, label: 'Nutrition' },
   { path: '/diet-plan', icon: FileText, label: 'Diet Plan' }
@@ -126,7 +126,7 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
           <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
             {navItems.map(({ path, icon: Icon, label, comingSoon, badge, isDiabeticOnly }) => {
               // Conditionally hide diabetes if not diabetic
-              const isDiabetic = user?.profile?.medicalHistory?.conditions?.includes('Diabetes') || user?.profile?.diabetesProfile?.type;
+              const isDiabetic = user?.profile?.medicalHistory?.conditions?.some(c => c.toLowerCase().includes('diabetes')) || user?.profile?.diabetesProfile?.type;
               if (isDiabeticOnly && !isDiabetic) return null;
 
               if (comingSoon) {

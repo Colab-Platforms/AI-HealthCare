@@ -1565,6 +1565,7 @@ export default function DashboardEnhanced() {
                 toast.success('Meal added to your logs!');
                 setShowMealModal(false);
                 fetchDashboard(true);
+                fetchNutrition(new Date().toISOString().split('T')[0], true);
                 // Refresh logged meals
                 nutritionService.getTodayLogs().then(res => setLoggedMeals(res.data?.foodLogs || res.data?.logs || []));
               } catch (err) {

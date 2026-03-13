@@ -902,8 +902,14 @@ exports.getRecommendations = async (req, res) => {
 async function updateDailySummary(userId, date) {
   try {
     // Normalize date to UTC midnight for consistency
-    const d = new Date(date);
-    const targetDate = new Date(d.toISOString().split('T')[0]);
+    let targetDate;
+    if (date instanceof Date) {
+      targetDate = new Date(date.toISOString().split('T')[0]);
+    } else if (typeof date === 'string' && /^\d{4}-\d{2}-\d{2}/.test(date)) {
+      targetDate = new Date(date.split('T')[0]);
+    } else {
+      targetDate = new Date(new Date(date).toISOString().split('T')[0]);
+    }
     targetDate.setUTCHours(0, 0, 0, 0);
 
     const nextDay = new Date(targetDate);
@@ -922,6 +928,12 @@ async function updateDailySummary(userId, date) {
 
     // Calculate totals
     const totals = {
+      totalCalories: 0,
+      totalProtein: 0,
+      totalCarbs: 0,
+      totalFats: 0,
+      totalFiber: 0,
+      totalSugar: 0,
       totalSodium: 0,
       totalVitaminA: 0,
       totalVitaminC: 0,
