@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const {
-    register, registerDoctor, login, getProfile, updateProfile,
+    register, requestRegistrationOtp, registerDoctor, login, getProfile, updateProfile,
     getSubscription, createAdmin, uploadProfilePicture,
     verifyEmail, resendVerificationCode
 } = require('../controllers/authController');
@@ -9,6 +9,7 @@ const { protect, authorize } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 
 router.post('/register', register);
+router.post('/register-otp', requestRegistrationOtp);
 router.post('/register/doctor', registerDoctor);
 router.post('/login', login);
 router.post('/verify-email', verifyEmail);

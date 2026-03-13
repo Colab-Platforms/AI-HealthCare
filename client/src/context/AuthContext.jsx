@@ -58,7 +58,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (name, email, phone, password, profile = {}, nutritionGoal = null) => {
+  const register = async (name, email, phone, password, profile = {}, nutritionGoal = null, otp = null) => {
     // Clear any existing data before registering new user
     localStorage.clear();
     sessionStorage.clear();
@@ -79,7 +79,8 @@ export const AuthProvider = ({ children }) => {
       phone,
       password,
       profile,
-      nutritionGoal
+      nutritionGoal,
+      otp
     });
 
     // Set new token and user data

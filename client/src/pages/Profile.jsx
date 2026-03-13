@@ -78,11 +78,11 @@ export default function Profile() {
         setGoalFormData(prev => ({
           ...prev,
           goalType: data.healthGoal.goalType,
-          currentWeight: data.healthGoal.currentWeight,
+          currentWeight: user?.profile?.weight || data.healthGoal.currentWeight,
           targetWeight: data.healthGoal.targetWeight,
-          height: data.healthGoal.height,
-          age: data.healthGoal.age,
-          gender: data.healthGoal.gender,
+          height: user?.profile?.height || data.healthGoal.height,
+          age: user?.profile?.age || data.healthGoal.age,
+          gender: user?.profile?.gender || data.healthGoal.gender,
           activityLevel: data.healthGoal.activityLevel,
           stepGoal: data.healthGoal.stepGoal || 10000,
           sleepGoal: data.healthGoal.sleepGoal || 8,
@@ -96,7 +96,7 @@ export default function Profile() {
 
   const fetchExtraData = async () => {
     try {
-      const [aptRes, reportsRes, summaryRes, wearableRes] = await Promise.all([
+      const [aptRes, reportsRes, summaryRes, wearableRes, dashRes] = await Promise.all([
         api.get('doctor/appointments'),
         api.get('health/reports'),
         api.get('metrics/summary/latest?types=heart_rate,blood_pressure'),
@@ -456,21 +456,21 @@ export default function Profile() {
           <div className="flex items-center justify-between w-full max-w-2xl mx-auto">
             <div className="flex-1 text-center space-y-1">
               <p className="text-xl md:text-2xl font-bold text-slate-900">
-                {user?.healthMetrics?.healthScore || '8.5'}
+                {extraData.latestAnalysis?.healthScore || 'N/A'}
               </p>
               <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-wider">Health Score</p>
             </div>
             <div className="h-10 w-px bg-slate-100" />
             <div className="flex-1 text-center space-y-1">
               <p className="text-xl md:text-2xl font-bold text-slate-900">
-                {extraData.appointmentsCount || '12'}
+                {extraData.appointmentsCount || '0'}
               </p>
               <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-wider">Checkups</p>
             </div>
             <div className="h-10 w-px bg-slate-100" />
             <div className="flex-1 text-center space-y-1">
               <p className="text-xl md:text-2xl font-bold text-slate-900">
-                {extraData.reportsCount || '3'}
+                {extraData.reportsCount || '0'}
               </p>
               <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-wider">Reports</p>
             </div>
@@ -695,7 +695,7 @@ export default function Profile() {
                             </div>
 
                             {/* Diabetes Profile */}
-                            {formData.profile.diabetesProfile && (
+                            {(formData.profile.diabetesProfile?.type || formData.profile.medicalHistory.conditions.some(c => c.toLowerCase().includes('diabetes'))) && (
                               <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
                                 <div>
                                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Diabetes Type</label>

@@ -36,18 +36,14 @@ export default function Register() {
   useEffect(() => {
     if (user) {
       if (!user.profile?.age) {
-        // User logged in but profile not complete
-        if (isVerified) {
-          setStep(2);
-        } else {
-          setStep(1.5);
-        }
+        // User logged in but profile not complete - redirect to setup
+        setStep(2);
       } else if (user.profile?.age) {
         // User fully registered and profile complete
         navigate('/dashboard');
       }
     }
-  }, [user, navigate, isVerified]);
+  }, [user, navigate]);
 
   const handleNext = async (e) => {
     e.preventDefault();
@@ -71,11 +67,15 @@ export default function Register() {
 
     setLoading(true);
     try {
-      await register(formData.name, formData.email, formData.phone, formData.password, {}, null);
-      toast.success('Registration success! Please verify your email.', { icon: '📧' });
+      // ✅ JUST REQUEST OTP - Don't create user yet as per requirement
+      await api.post('auth/register-otp', {
+        name: formData.name,
+        email: formData.email
+      });
+      toast.success('Verification code sent to your email!', { icon: '📧' });
       setStep(1.5);
     } catch (error) {
-      const msg = error.response?.data?.message || 'Registration failed';
+      const msg = error.response?.data?.message || 'Failed to send verification code';
       toast.error(msg);
     } finally {
       setLoading(false);
@@ -91,11 +91,17 @@ export default function Register() {
 
     setLoading(true);
     try {
-      await api.post('auth/verify-email', {
-        email: formData.email,
-        code: code
-      });
-      toast.success('Email verified! Let\'s setup your profile.');
+      // ✅ FINALIZE REGISTRATION ONLY AFTER OTP VERIFICATION
+      await register(
+        formData.name,
+        formData.email,
+        formData.phone,
+        formData.password,
+        {},
+        null,
+        code
+      );
+      toast.success('Account verified! Let\'s setup your profile.');
       setIsVerified(true);
       setStep(2);
     } catch (error) {
@@ -108,7 +114,10 @@ export default function Register() {
 
   const handleResendCode = async () => {
     try {
-      await api.post('auth/resend-verify-code', { email: formData.email });
+      await api.post('auth/register-otp', {
+        email: formData.email,
+        name: formData.name
+      });
       toast.success('Verification code resent to your email');
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to resend code');
@@ -295,8 +304,12 @@ export default function Register() {
                 </div>
               </div>
 
-              <button type="submit" className="w-full py-4 mt-6 text-white font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 bg-black hover:bg-slate-900 shadow-xl">
-                Register & Verify <ArrowRight className="w-5 h-5" />
+              <button
+                type="submit"
+                disabled={loading}
+                className="w-full py-4 mt-6 text-white font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 bg-black hover:bg-slate-900 shadow-xl disabled:opacity-70"
+              >
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Register & Verify <ArrowRight className="w-5 h-5" /></>}
               </button>
 
               <div className="mt-6 text-center text-sm font-bold text-slate-500">

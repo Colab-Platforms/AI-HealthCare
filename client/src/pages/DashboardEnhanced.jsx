@@ -555,9 +555,8 @@ export default function DashboardEnhanced() {
           nutritionService.getTodayLogs().then(res => setLoggedMeals(res.data?.foodLogs || res.data?.logs || []))
         ]);
 
-        const diabeticStatus = user?.profile?.medicalHistory?.conditions?.includes('Diabetes') ||
-          user?.profile?.diabetesProfile?.type ||
-          user?.profile?.medicalStatus?.isDiabetic;
+        const diabeticStatus = user?.profile?.medicalHistory?.conditions?.some(c => c.toLowerCase().includes('diabetes')) ||
+          user?.profile?.diabetesProfile?.type;
         setIsDiabetic(!!diabeticStatus);
       } catch (err) {
         console.error("Dashboard mount load error:", err);
@@ -1294,10 +1293,21 @@ export default function DashboardEnhanced() {
               })
             ) : (
               <div className="flex flex-col items-center justify-center p-10 bg-slate-50 rounded-[2rem] border border-dashed border-slate-200 text-center">
-                <CheckCircle2 className="w-10 h-10 text-emerald-500 mb-4" />
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-loose">
-                  Great job! You've met <br /> all nutritional targets
-                </p>
+                {loggedMeals.length > 0 || dashboardData?.latestAnalysis?.deficiencies?.length > 0 ? (
+                  <>
+                    <CheckCircle2 className="w-10 h-10 text-emerald-500 mb-4" />
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-loose">
+                      Great job! You've met <br /> all nutritional targets
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <Activity className="w-10 h-10 text-slate-300 mb-4" />
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-loose">
+                      Log your meals to see <br /> nutritional insights
+                    </p>
+                  </>
+                )}
               </div>
             )}
           </div>

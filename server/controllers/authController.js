@@ -5,14 +5,45 @@ const Doctor = require('../models/Doctor');
 const HealthGoal = require('../models/HealthGoal');
 const { calculateNutritionGoals } = require('../services/nutritionGoalCalculator');
 const cloudinary = require('../services/cloudinary');
+const Otp = require('../models/Otp');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
 };
 
+exports.requestRegistrationOtp = async (req, res) => {
+  try {
+    const { email, name } = req.body;
+    if (!email) return res.status(400).json({ message: 'Email is required' });
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) return res.status(400).json({ message: 'User already exists' });
+
+    // Generate 6-digit code
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Save/Update OTP in DB
+    await Otp.findOneAndUpdate(
+      { email },
+      { code, createdAt: Date.now() },
+      { upsert: true, new: true }
+    );
+
+    // Send email
+    const emailService = require('../services/emailService');
+    await emailService.sendVerificationCode(email, name || 'User', code);
+
+    res.json({ success: true, message: 'Verification code sent' });
+  } catch (error) {
+    console.error('OTP request error:', error);
+    res.status(500).json({ message: 'Failed to send verification code' });
+  }
+};
+
 exports.register = async (req, res) => {
   try {
-    const { name, email, phone, password, role, profile, nutritionGoal } = req.body;
+    const { name, email, phone, password, role, profile, nutritionGoal, otp } = req.body;
 
     // Validate required fields
     if (!name || !email || !password || !phone) {
@@ -57,6 +88,14 @@ exports.register = async (req, res) => {
       return res.status(400).json({ message: 'User already exists with this email or phone' });
     }
 
+    // ✅ VALIDATE OTP before registration
+    if (!otp) return res.status(400).json({ message: 'Verification code is required' });
+    const otpRecord = await Otp.findOne({ email, code: otp });
+    if (!otpRecord) return res.status(400).json({ message: 'Invalid or expired verification code' });
+
+    // Delete OTP after validation
+    await Otp.deleteOne({ _id: otpRecord._id });
+
     // Determine role - only patient allowed via normal registration
     const userRole = role === 'doctor' ? 'doctor' : 'patient';
 
@@ -93,9 +132,7 @@ exports.register = async (req, res) => {
         phone,
         password,
         role: userRole,
-        isEmailVerified: false,
-        emailVerificationCode: verificationCode,
-        emailVerificationExpire: verificationExpire,
+        isEmailVerified: true,
         profile: profile || {},
         nutritionGoal: calculatedGoals ? {
           goal: nutritionGoal.goal,
@@ -111,8 +148,8 @@ exports.register = async (req, res) => {
         }
       });
 
-      // 🆕 Create initial HealthGoal record to sync with Fitness Dashboard
-      if (user && profile && nutritionGoal) {
+      // 🆕 CREATE INITIAL HEALTHGOAL IF PROFILE PROVIDED
+      if (user && profile && nutritionGoal && profile.age) {
         try {
           await HealthGoal.create({
             userId: user._id,
