@@ -247,6 +247,7 @@ function Nutrition() {
 
   const handleAnalyzeAndLog = async () => {
     if (!foodInput && !image) return;
+    if (isListening) stopVoiceCapture();
     setIsAnalyzing(true);
     try {
       const formData = new FormData();
@@ -805,18 +806,11 @@ function Nutrition() {
                           }
                         }}
                         className={`relative w-24 h-24 md:w-28 md:h-28 rounded-full flex items-center justify-center transition-all shadow-xl ${isListening
-                          ? 'bg-red-500 text-white scale-110 shadow-red-200'
+                          ? 'bg-red-500 text-white scale-110 shadow-red-200 shadow-[0_0_20px_rgba(239,68,68,0.4)]'
                           : 'bg-slate-900 text-white hover:bg-black hover:scale-105 shadow-slate-900/20'
                           }`}
                       >
-                        {isListening ? (
-                          <div className="flex flex-col items-center">
-                            <span className="w-8 h-8 rounded-sm bg-white animate-pulse" />
-                            <span className="text-[10px] font-black uppercase mt-2">Stop</span>
-                          </div>
-                        ) : (
-                          <Mic className={`w-10 h-10 md:w-12 md:h-12 ${isListening ? 'animate-pulse' : ''}`} />
-                        )}
+                        <Mic className={`w-10 h-10 md:w-12 md:h-12 ${isListening ? 'animate-pulse' : ''}`} />
                       </button>
                     </div>
 
@@ -836,7 +830,7 @@ function Nutrition() {
                               <p className="text-sm font-semibold text-slate-800 leading-relaxed text-center w-full">{foodInput}</p>
                             )}
                             
-                            {!isListening && !isEditingSpeech && (
+                             {!isEditingSpeech && (
                               <button 
                                 onClick={() => setIsEditingSpeech(true)}
                                 className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-sm text-slate-400 hover:text-slate-900 transition-all opacity-0 group-hover:opacity-100"
@@ -871,7 +865,7 @@ function Nutrition() {
                       )}
 
                       {/* Action Button Section - Improved Visibility */}
-                      {!isListening && foodInput && (
+                      {foodInput && (
                         <div className="pt-6 flex flex-col items-center gap-4 w-full animate-in fade-in slide-in-from-top-4">
                           <button
                             onClick={handleAnalyzeAndLog}
@@ -885,7 +879,7 @@ function Nutrition() {
                           <div className="flex items-center gap-8">
                             <button
                               onClick={() => { setFoodInput(''); startVoiceCapture(); }}
-                              className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] hover:text-black transition-all flex items-center gap-2"
+                              className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] hover:text-black transition-all flex items-center gap-1.5"
                             >
                               <History className="w-3 h-3" /> Restart Voice
                             </button>
@@ -893,7 +887,7 @@ function Nutrition() {
                             {!isEditingSpeech && (
                               <button
                                 onClick={() => setIsEditingSpeech(true)}
-                                className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] hover:text-black transition-all flex items-center gap-2"
+                                className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] hover:text-black transition-all flex items-center gap-1.5"
                               >
                                 <Edit3 className="w-3 h-3" /> Edit Text
                               </button>
