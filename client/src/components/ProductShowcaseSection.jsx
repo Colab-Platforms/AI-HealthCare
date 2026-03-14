@@ -54,7 +54,7 @@ const ProductShowcaseSection = () => {
                   <img
                     src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/calorie_trcaker.jpg?v=1773466485"
                     alt="Healthy Food"
-                    className="w-full sm:w-40 md:w-48 h-48 sm:h-64 object-cover rounded-2xl"
+                    className="w-full sm:w-52 md:w-64 h-auto max-h-72 object-contain rounded-2xl"
                   />
                 </div>
               </div>

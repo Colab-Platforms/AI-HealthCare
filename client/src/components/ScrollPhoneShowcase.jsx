@@ -78,7 +78,7 @@ const ScrollPhoneShowcase = () => {
     {
       title: "Glucose Monitoring",
       description: "Real-time tracking of blood sugar levels with smart alerts and trend analysis.",
-      phoneScreen: "https://images.unsplash.com/photo-1542601906990-b4d3fb778b09?w=800&q=80",
+      phoneScreen: "https://images.unsplash.com/photo-1551076805-e1869033e561?q=80&w=800",
       color: "from-indigo-600/40 to-purple-800/40",
       cards: [
         { icon: Droplets, title: "Reading", value: "108 mg/dL", color: "red", ...getOffsets(-280, -150) },
