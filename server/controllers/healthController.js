@@ -44,28 +44,40 @@ exports.uploadReport = async (req, res) => {
         return res.status(400).json({ message: 'Could not extract text from report. Please provide details manually.' });
       }
 
-      // 2. Parallel AI analysis and Cloudinary upload (heavy)
-      console.log('🔄 Starting parallel AI analysis and Cloudinary upload...');
+      // 2. AI analysis and Cloudinary upload
+      console.log('🔄 Starting AI analysis and Cloudinary upload...');
 
-      const uploadPromise = cloudinary.uploadImage(dataBuffer, 'health_reports');
-
-      let aiPromise;
-      if (req.file.mimetype === 'application/pdf') {
-        aiPromise = analyzeHealthReport(extractedText, req.user);
+      // On Vercel, run sequentially to avoid ECONNRESET due to bandwidth/memory limits
+      if (process.env.VERCEL) {
+        console.log('⚡ Vercel detected: Running tasks sequentially for stability');
+        cloudinaryUrl = await cloudinary.uploadImage(dataBuffer, 'health_reports');
+        
+        if (req.file.mimetype === 'application/pdf') {
+          aiAnalysis = await analyzeHealthReport(extractedText, req.user);
+        } else {
+          aiAnalysis = await analyzeHealthReport(null, req.user, {
+            buffer: dataBuffer,
+            mimetype: req.file.mimetype
+          });
+        }
       } else {
-        aiPromise = analyzeHealthReport(null, req.user, {
-          buffer: dataBuffer,
-          mimetype: req.file.mimetype
-        });
+        // Local: Run in parallel for speed
+        const uploadPromise = cloudinary.uploadImage(dataBuffer, 'health_reports');
+        let aiPromise;
+        if (req.file.mimetype === 'application/pdf') {
+          aiPromise = analyzeHealthReport(extractedText, req.user);
+        } else {
+          aiPromise = analyzeHealthReport(null, req.user, {
+            buffer: dataBuffer,
+            mimetype: req.file.mimetype
+          });
+        }
+        const [uploadedUrl, analysisResult] = await Promise.all([uploadPromise, aiPromise]);
+        cloudinaryUrl = uploadedUrl;
+        aiAnalysis = analysisResult;
       }
 
-      // Wait for both to complete
-      const [uploadedUrl, analysisResult] = await Promise.all([uploadPromise, aiPromise]);
-
-      cloudinaryUrl = uploadedUrl;
-      aiAnalysis = analysisResult;
-
-      console.log('✅ Parallel tasks complete | Score:', aiAnalysis.healthScore);
+      console.log('✅ Tasks complete | Score:', aiAnalysis.healthScore);
     } catch (error) {
       console.error('Processing error:', error.message);
       return res.status(500).json({ message: `Analysis failed: ${error.message}` });
@@ -86,193 +98,17 @@ exports.uploadReport = async (req, res) => {
       aiAnalysis
     });
 
-    // ✅ CRITICAL FIX: Validate and fix healthScore
-    if (aiAnalysis.healthScore) {
-      // If it's a string, convert to number
-      if (typeof aiAnalysis.healthScore === 'string') {
-        const scoreMap = {
-          'excellent': 95, 'very good': 90, 'good': 85,
-          'fair': 75, 'poor': 60, 'very poor': 50
-        };
-        const lowerScore = aiAnalysis.healthScore.toLowerCase();
-        aiAnalysis.healthScore = scoreMap[lowerScore] || 75;
-        console.log('⚠️ Converted string healthScore to number:', aiAnalysis.healthScore);
-      }
-      // Ensure it's a valid number between 0-100
-      aiAnalysis.healthScore = Math.max(0, Math.min(100, Number(aiAnalysis.healthScore) || 75));
-    } else {
-      aiAnalysis.healthScore = 75;
-      console.log('⚠️ No healthScore, using default: 75');
-    }
-    console.log('✅ Final healthScore:', aiAnalysis.healthScore, '(type:', typeof aiAnalysis.healthScore, ')');
 
-    // ✅ CRITICAL FIX: Validate deficiencies array
-    if (!Array.isArray(aiAnalysis.deficiencies)) {
-      console.warn('⚠️ deficiencies is not an array, fixing...');
-      if (typeof aiAnalysis.deficiencies === 'string') {
-        // Convert string to array with single object
-        aiAnalysis.deficiencies = [{
-          name: aiAnalysis.deficiencies,
-          severity: 'moderate',
-          currentValue: 'N/A',
-          normalRange: 'N/A',
-          symptoms: []
-        }];
-      } else if (aiAnalysis.deficiencies && typeof aiAnalysis.deficiencies === 'object') {
-        // If it's an object, wrap it in array
-        aiAnalysis.deficiencies = [aiAnalysis.deficiencies];
-      } else {
-        aiAnalysis.deficiencies = [];
-      }
-    }
-
-    // ✅ CRITICAL FIX: Validate supplements array
-    console.log('🔍 Checking supplements:', typeof aiAnalysis.supplements, '=', aiAnalysis.supplements);
-    if (!Array.isArray(aiAnalysis.supplements)) {
-      console.warn('⚠️ supplements is not an array, fixing...');
-      if (typeof aiAnalysis.supplements === 'string') {
-        // Convert string to array with single object
-        console.log('Converting string supplements to array');
-        aiAnalysis.supplements = [{
-          category: 'General Health',
-          reason: aiAnalysis.supplements,
-          naturalSources: 'Consult healthcare professional',
-          note: 'Please consult with your doctor'
-        }];
-      } else if (aiAnalysis.supplements && typeof aiAnalysis.supplements === 'object') {
-        // If it's an object, wrap it in array
-        console.log('Wrapping object supplements in array');
-        aiAnalysis.supplements = [aiAnalysis.supplements];
-      } else {
-        console.log('Setting supplements to empty array');
-        aiAnalysis.supplements = [];
-      }
-    }
-    console.log('✅ Supplements after validation:', Array.isArray(aiAnalysis.supplements), 'length:', aiAnalysis.supplements?.length);
-
-    // ✅ Validate keyFindings array
-    if (!Array.isArray(aiAnalysis.keyFindings)) {
-      console.warn('⚠️ keyFindings is not an array, fixing...');
-      if (typeof aiAnalysis.keyFindings === 'string') {
-        aiAnalysis.keyFindings = [aiAnalysis.keyFindings];
-      } else {
-        aiAnalysis.keyFindings = [];
-      }
-    }
-
-    // ✅ Validate riskFactors array
-    if (aiAnalysis.riskFactors && !Array.isArray(aiAnalysis.riskFactors)) {
-      console.warn('⚠️ riskFactors is not an array, fixing...');
-      if (typeof aiAnalysis.riskFactors === 'string') {
-        aiAnalysis.riskFactors = [aiAnalysis.riskFactors];
-      } else {
-        aiAnalysis.riskFactors = [];
-      }
-    }
-
-    // ✅ Validate dietPlan arrays
-    if (aiAnalysis.dietPlan) {
-      ['breakfast', 'lunch', 'dinner', 'snacks'].forEach(meal => {
-        if (aiAnalysis.dietPlan[meal] && !Array.isArray(aiAnalysis.dietPlan[meal])) {
-          console.warn(`⚠️ dietPlan.${meal} is not an array, fixing...`);
-          aiAnalysis.dietPlan[meal] = [];
-        }
-      });
-      ['foodsToIncrease', 'foodsToLimit', 'tips'].forEach(field => {
-        if (aiAnalysis.dietPlan[field] && !Array.isArray(aiAnalysis.dietPlan[field])) {
-          console.warn(`⚠️ dietPlan.${field} is not an array, fixing...`);
-          if (typeof aiAnalysis.dietPlan[field] === 'string') {
-            aiAnalysis.dietPlan[field] = [aiAnalysis.dietPlan[field]];
-          } else {
-            aiAnalysis.dietPlan[field] = [];
-          }
-        }
-      });
-    }
-
-    // ✅ Validate recommendations arrays
-    if (aiAnalysis.recommendations) {
-      ['immediate', 'shortTerm', 'longTerm', 'lifestyle', 'tests'].forEach(field => {
-        if (aiAnalysis.recommendations[field] && !Array.isArray(aiAnalysis.recommendations[field])) {
-          console.warn(`⚠️ recommendations.${field} is not an array, fixing...`);
-          if (typeof aiAnalysis.recommendations[field] === 'string') {
-            aiAnalysis.recommendations[field] = [aiAnalysis.recommendations[field]];
-          } else {
-            aiAnalysis.recommendations[field] = [];
-          }
-        }
-      });
-    }
-
-    // ✅ Validate doctorConsultation.specializations array
-    if (aiAnalysis.doctorConsultation && aiAnalysis.doctorConsultation.specializations &&
-      !Array.isArray(aiAnalysis.doctorConsultation.specializations)) {
-      console.warn('⚠️ doctorConsultation.specializations is not an array, fixing...');
-      if (typeof aiAnalysis.doctorConsultation.specializations === 'string') {
-        aiAnalysis.doctorConsultation.specializations = [aiAnalysis.doctorConsultation.specializations];
-      } else {
-        aiAnalysis.doctorConsultation.specializations = [];
-      }
-    }
-
-    console.log('✅ Validated all arrays - deficiencies:', aiAnalysis.deficiencies?.length, 'supplements:', aiAnalysis.supplements?.length);
-
-    // ✅ CRITICAL: Check if arrays contain strings instead of objects
-    if (Array.isArray(aiAnalysis.deficiencies) && aiAnalysis.deficiencies.length > 0) {
-      if (typeof aiAnalysis.deficiencies[0] === 'string') {
-        console.warn('⚠️ deficiencies array contains strings, converting to objects...');
-        aiAnalysis.deficiencies = aiAnalysis.deficiencies.map(def => ({
-          name: typeof def === 'string' ? def : (def.name || def.deficiency || 'Unknown Deficiency'),
-          severity: (typeof def === 'object' && def.severity) ? def.severity : 'moderate',
-          currentValue: (typeof def === 'object' && def.currentValue) ? def.currentValue : 'N/A',
-          normalRange: (typeof def === 'object' && def.normalRange) ? def.normalRange : 'N/A',
-          symptoms: (typeof def === 'object' && def.symptoms) ? def.symptoms : []
-        }));
-        console.log('✅ Converted deficiencies to objects:', aiAnalysis.deficiencies.length);
-      }
-    }
-
-    if (Array.isArray(aiAnalysis.supplements) && aiAnalysis.supplements.length > 0) {
-      if (typeof aiAnalysis.supplements[0] === 'string') {
-        console.warn('⚠️ supplements array contains strings, converting to objects...');
-        aiAnalysis.supplements = aiAnalysis.supplements.map(supp => ({
-          category: 'General Health',
-          reason: supp,
-          naturalSources: 'Consult healthcare professional',
-          note: 'Consult doctor for dosage'
-        }));
-        console.log('✅ Converted supplements to objects:', aiAnalysis.supplements.length);
-      }
-    }
-
-    console.log('✅ FINAL CHECK - deficiencies:', aiAnalysis.deficiencies?.length, 'supplements:', aiAnalysis.supplements?.length);
-
-    report.aiAnalysis = aiAnalysis;
-
-    // Extract and save report date from AI analysis
+    // Extract and save metadata from AI analysis
     if (aiAnalysis.reportDate) {
-      try {
-        report.reportDate = new Date(aiAnalysis.reportDate);
-      } catch (dateError) {
-        console.log('Could not parse report date:', aiAnalysis.reportDate);
-        report.reportDate = new Date(); // Fallback to current date
-      }
-    } else {
-      report.reportDate = new Date(); // Fallback to current date
-    }
+      try { report.reportDate = new Date(aiAnalysis.reportDate); }
+      catch (e) { report.reportDate = new Date(); }
+    } else { report.reportDate = new Date(); }
 
-    // Extract and save patient information from AI analysis
-    if (aiAnalysis.patientName) {
-      report.patientName = aiAnalysis.patientName.trim();
-    }
-    if (aiAnalysis.patientAge) {
-      report.patientAge = Number(aiAnalysis.patientAge);
-    }
-    if (aiAnalysis.patientGender) {
-      report.patientGender = aiAnalysis.patientGender.trim();
-    }
+    if (aiAnalysis.patientName) report.patientName = aiAnalysis.patientName.trim();
+    if (aiAnalysis.patientAge) report.patientAge = Number(aiAnalysis.patientAge);
+    if (aiAnalysis.patientGender) report.patientGender = aiAnalysis.patientGender.trim();
 
-    report.aiAnalysis = aiAnalysis;
     report.status = 'completed';
     await report.save();
 
@@ -915,10 +751,11 @@ User Profile: ${req.user.name}`;
     let aiResponse;
 
     console.log('Calling Anthropic Direct API...');
+    const CLAUDE_MODEL = 'claude-sonnet-4-6';
     const response = await axios.post(
       'https://api.anthropic.com/v1/messages',
       {
-        model: 'claude-sonnet-4-6',
+        model: CLAUDE_MODEL,
         system: systemPrompt,
         messages: userMessages,
         temperature: 0.7,
@@ -928,7 +765,8 @@ User Profile: ${req.user.name}`;
         headers: {
           'x-api-key': anthropicKey,
           'anthropic-version': '2023-06-01',
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Connection': 'close'
         },
         timeout: 45000
       }

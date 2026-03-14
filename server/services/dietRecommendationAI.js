@@ -7,7 +7,7 @@ const { robustJsonParse } = require('../utils/aiParser');
  */
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const CLAUDE_MODEL = 'claude-sonnet-4-20250514';
+const CLAUDE_MODEL = 'claude-sonnet-4-6';
 
 class DietRecommendationAI {
   constructor() {
@@ -29,7 +29,8 @@ class DietRecommendationAI {
     const headers = {
       'x-api-key': this.apiKey,
       'anthropic-version': '2023-06-01',
-      'Content-Type': 'application/json'
+      'Content-Type': 'application/json',
+      'Connection': 'close'
     };
 
     try {

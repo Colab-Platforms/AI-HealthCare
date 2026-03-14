@@ -39,7 +39,8 @@ const makeAnthropicRequest = async (messages, maxTokens = 4096) => {
         headers: {
           'x-api-key': apiKey,
           'anthropic-version': '2023-06-01',
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          'Connection': 'close'
         },
         timeout: requestTimeout
       }
