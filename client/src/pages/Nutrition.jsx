@@ -53,6 +53,8 @@ function Nutrition() {
   const [foodQuantity, setFoodQuantity] = useState('');
   const [prepMethod, setPrepMethod] = useState('');
   const [isListening, setIsListening] = useState(false);
+  const recognitionRef = React.useRef(null);
+  const [isEditingSpeech, setIsEditingSpeech] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -83,6 +85,18 @@ function Nutrition() {
       }, 500);
     }
   }, [location.state, selectedDate]);
+
+  useEffect(() => {
+    if (!isModalOpen) {
+      stopVoiceCapture();
+    }
+  }, [isModalOpen]);
+
+  useEffect(() => {
+    return () => {
+      stopVoiceCapture();
+    };
+  }, []);
 
   const fetchData = async () => {
     setLoading(true);
@@ -297,7 +311,8 @@ function Nutrition() {
       return;
     }
     const recognition = new SpeechRecognition();
-    recognition.lang = 'en-US';
+    recognitionRef.current = recognition;
+    recognition.lang = 'en-IN'; // Changed to en-IN for Indian users as well
     recognition.continuous = true;
     recognition.interimResults = true;
 
@@ -332,6 +347,13 @@ function Nutrition() {
       recognition.start();
     } catch (e) {
       console.error(e);
+      setIsListening(false);
+    }
+  };
+
+  const stopVoiceCapture = () => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
       setIsListening(false);
     }
   };
@@ -397,7 +419,12 @@ function Nutrition() {
               </button>
 
               <button
-                onClick={startVoiceCapture}
+                onClick={() => {
+                  setInputMethod('Predict');
+                  setIsModalOpen(true);
+                  setFoodInput('');
+                  setTimeout(startVoiceCapture, 100);
+                }}
                 className="flex-shrink-0 flex items-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 px-5 py-3 rounded-full text-sm font-semibold shadow-sm transition-colors text-slate-800"
               >
                 <Mic className={`w-4 h-4 ${isListening ? 'text-red-500 animate-pulse' : ''}`} /> Voice
@@ -772,27 +799,63 @@ function Nutrition() {
                       <button
                         onClick={() => {
                           if (isListening) {
-                            window.location.reload(); // Hard stop not supported, typically one disables or stops track. Since we don't have recognition ref, we use user pausing or clicking stop.
-                            // Actually better to just tell user to click stop, but we don't have speech recognition instance stored. 
-                            // It's cleaner to just instruct them.
+                            stopVoiceCapture();
                           } else {
                             startVoiceCapture();
                           }
                         }}
                         className={`relative w-24 h-24 md:w-28 md:h-28 rounded-full flex items-center justify-center transition-all shadow-xl ${isListening
-                          ? 'bg-black text-white scale-110'
+                          ? 'bg-red-500 text-white scale-110 shadow-red-200'
                           : 'bg-slate-900 text-white hover:bg-black hover:scale-105 shadow-slate-900/20'
                           }`}
                       >
-                        <Mic className={`w-10 h-10 md:w-12 md:h-12 ${isListening ? 'animate-pulse' : ''}`} />
+                        {isListening ? (
+                          <div className="flex flex-col items-center">
+                            <span className="w-8 h-8 rounded-sm bg-white animate-pulse" />
+                            <span className="text-[10px] font-black uppercase mt-2">Stop</span>
+                          </div>
+                        ) : (
+                          <Mic className={`w-10 h-10 md:w-12 md:h-12 ${isListening ? 'animate-pulse' : ''}`} />
+                        )}
                       </button>
                     </div>
 
                     <div className="w-full text-center space-y-4 px-2">
                       {foodInput ? (
-                        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-left min-h-[100px] flex items-center justify-center relative">
-                          <p className="text-sm font-semibold text-slate-800 leading-relaxed text-center w-full">{foodInput}</p>
-                          {isListening && <div className="w-2 h-2 bg-red-500 rounded-full absolute bottom-4 right-4 animate-pulse" />}
+                        <div className="w-full space-y-4">
+                          <div className="bg-slate-50 p-6 rounded-3xl border-2 border-slate-100 text-left min-h-[120px] relative group hover:border-slate-200 transition-all">
+                            {isEditingSpeech ? (
+                              <textarea
+                                value={foodInput}
+                                onChange={(e) => setFoodInput(e.target.value)}
+                                className="w-full bg-transparent border-none focus:ring-0 text-sm font-semibold text-slate-800 leading-relaxed resize-none h-24"
+                                autoFocus
+                                onBlur={() => setIsEditingSpeech(false)}
+                              />
+                            ) : (
+                              <p className="text-sm font-semibold text-slate-800 leading-relaxed text-center w-full">{foodInput}</p>
+                            )}
+                            
+                            {!isListening && !isEditingSpeech && (
+                              <button 
+                                onClick={() => setIsEditingSpeech(true)}
+                                className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-sm text-slate-400 hover:text-slate-900 transition-all opacity-0 group-hover:opacity-100"
+                              >
+                                <Edit3 className="w-4 h-4" />
+                              </button>
+                            )}
+                            
+                            {isListening && <div className="w-2 h-2 bg-red-500 rounded-full absolute bottom-4 right-4 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" />}
+                          </div>
+                          
+                          {isEditingSpeech && (
+                            <button 
+                              onClick={() => setIsEditingSpeech(false)}
+                              className="w-full py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest"
+                            >
+                              Save Edit
+                            </button>
+                          )}
                         </div>
                       ) : (
                         <div className="text-center space-y-3 px-4">
@@ -807,25 +870,37 @@ function Nutrition() {
                         </div>
                       )}
 
-                      {/* Action Button */}
-                      <div className="pt-4 flex flex-col items-center gap-3">
-                        {foodInput && !isListening && (
+                      {/* Action Button Section - Improved Visibility */}
+                      {!isListening && foodInput && (
+                        <div className="pt-6 flex flex-col items-center gap-4 w-full animate-in fade-in slide-in-from-top-4">
                           <button
                             onClick={handleAnalyzeAndLog}
-                            className="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-black transition-all shadow-xl active:scale-95"
+                            disabled={isAnalyzing}
+                            className="w-full py-5 bg-black text-white rounded-[2rem] text-xs font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-slate-900 transition-all shadow-2xl active:scale-[0.98]"
                           >
-                            <Zap className="w-5 h-5" /> Analyze Meal
+                            {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5 text-yellow-400 fill-yellow-400" />}
+                            {isAnalyzing ? 'Analyzing...' : 'Analyze My Meal'}
                           </button>
-                        )}
-                        {foodInput && !isListening && (
-                          <button
-                            onClick={() => { setFoodInput(''); startVoiceCapture(); }}
-                            className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-800 transition-all"
-                          >
-                            Restart Voice
-                          </button>
-                        )}
-                      </div>
+                          
+                          <div className="flex items-center gap-8">
+                            <button
+                              onClick={() => { setFoodInput(''); startVoiceCapture(); }}
+                              className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] hover:text-black transition-all flex items-center gap-2"
+                            >
+                              <History className="w-3 h-3" /> Restart Voice
+                            </button>
+                            
+                            {!isEditingSpeech && (
+                              <button
+                                onClick={() => setIsEditingSpeech(true)}
+                                className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] hover:text-black transition-all flex items-center gap-2"
+                              >
+                                <Edit3 className="w-3 h-3" /> Edit Text
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 ) : inputMethod === 'Type' ? (
