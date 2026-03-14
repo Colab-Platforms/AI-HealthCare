@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Scale, Footprints, Moon, ArrowLeft, Calendar, Save, Plus, Flame, Clock } from 'lucide-react';
+import { Scale, Footprints, Moon, ArrowLeft, Calendar, Save, Plus, Flame, Clock, Sparkles, Loader2, CheckCircle, AlertTriangle, TrendingUp } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, CartesianGrid } from 'recharts';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
@@ -195,6 +195,147 @@ export default function LogVitals() {
         { id: 'steps', label: 'Steps', icon: Footprints, color: 'bg-[#D4F1A5]' },
         { id: 'sleep', label: 'Sleep', icon: Moon, color: 'bg-[#E2F0FD]' }
     ];
+
+    // AI Insights Logic
+    const [insights, setInsights] = useState(null);
+    const [insightsLoading, setInsightsLoading] = useState(false);
+    const [insightsTab, setInsightsTab] = useState(null);
+
+    const fetchInsights = async (metricType, force = false) => {
+        if (insightsLoading) return;
+        setInsightsLoading(true);
+        if (force) setInsights(null); 
+        setInsightsTab(metricType);
+        try {
+            const url = `health/vitals-insights/${metricType}${force ? '?refresh=true' : ''}`;
+            const { data } = await api.get(url);
+            setInsights(data.insights);
+        } catch (err) {
+            toast.error('Failed to get AI insights');
+            console.error(err);
+        } finally {
+            setInsightsLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchInsights(activeTab);
+    }, [activeTab]);
+
+    const InsightsCard = ({ metricType, color }) => {
+        const getStatusColor = (status) => {
+            if (!status) return 'bg-slate-50 text-slate-700 border-slate-200';
+            const lower = status.toLowerCase();
+            if (lower.includes('track') || lower.includes('great') || lower.includes('excellent')) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+            if (lower.includes('attention') || lower.includes('concern')) return 'bg-amber-50 text-amber-700 border-amber-200';
+            return 'bg-blue-50 text-blue-700 border-blue-200';
+        };
+
+        return (
+            <div className="p-6 md:p-8 bg-white/60 backdrop-blur-md rounded-[32px] border border-white shadow-sm mt-8">
+                <div className="flex justify-between items-center mb-6">
+                    <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-full ${color} flex items-center justify-center shadow-sm`}>
+                            <Sparkles className="w-5 h-5 text-[#1a1a1a]" />
+                        </div>
+                        <div>
+                            <h3 className="text-lg font-semibold text-[#1a1a1a]">AI Coach</h3>
+                            <p className="text-[10px] font-bold text-[#888] uppercase tracking-widest">Personalized Insights</p>
+                        </div>
+                    </div>
+                    {insights && (
+                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase border shadow-sm ${getStatusColor(insights.status)}`}>
+                            {insights.status}
+                        </span>
+                    )}
+                </div>
+
+                <div className="min-h-[100px] flex flex-col justify-center">
+                    {insightsLoading && !insights ? (
+                        <div className="text-center py-12">
+                            <div className="w-8 h-8 border-2 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto" />
+                            <p className="text-xs text-slate-500 mt-4 font-medium animate-pulse">Analyzing your health patterns...</p>
+                        </div>
+                    ) : insights ? (
+                        <motion.div 
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            className="space-y-6"
+                        >
+                            {insights.lastUpdated && (
+                                <p className="text-[10px] text-slate-400 font-medium italic -mt-2">
+                                    Last analyzed: {new Date(insights.lastUpdated).toLocaleString()}
+                                </p>
+                            )}
+                            
+                            <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+                                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
+                                    <Activity className="w-3 h-3" />
+                                    Current Assessment
+                                </h4>
+                                <p className="text-sm text-slate-600 leading-relaxed font-medium">
+                                    {insights.analysis}
+                                </p>
+                            </div>
+
+                            <div className="space-y-3">
+                                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                                    <TrendingUp className="w-3 h-3" />
+                                    Recommendations
+                                </h4>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                                    {insights.recommendations?.map((rec, i) => (
+                                        <div key={i} className="flex items-start gap-2.5 p-3.5 bg-white rounded-xl border border-slate-100 shadow-sm">
+                                            <div className="w-5 h-5 rounded-full bg-emerald-50 flex items-center justify-center shrink-0 mt-0.5">
+                                                <div className="w-1 h-1 rounded-full bg-emerald-500" />
+                                            </div>
+                                            <p className="text-xs text-slate-600 font-semibold leading-relaxed">{rec}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="p-4 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 rounded-2xl border border-white/50">
+                                <p className="text-sm font-bold text-indigo-700 italic text-center">
+                                    "{insights.encouragement}"
+                                </p>
+                            </div>
+
+                            <button
+                                onClick={() => fetchInsights(metricType, true)}
+                                disabled={insightsLoading}
+                                className="w-full py-4 bg-[#1a1a1a] text-white rounded-[22px] text-sm font-bold flex items-center justify-center gap-2 hover:bg-black transition-all shadow-md active:scale-[0.98] disabled:opacity-50"
+                            >
+                                {insightsLoading ? (
+                                    <>
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Refreshing...
+                                    </>
+                                ) : (
+                                    <>
+                                        <RotateCcw className="w-4 h-4" />
+                                        Refresh AI Analysis
+                                    </>
+                                )}
+                            </button>
+                        </motion.div>
+                    ) : (
+                        <div className="text-center py-8">
+                            <p className="text-sm text-slate-500 mb-6 font-medium">Get a personalized deep dive into your {metricType} patterns.</p>
+                            <button
+                                onClick={() => fetchInsights(metricType)}
+                                disabled={insightsLoading}
+                                className="px-10 py-4 bg-[#1a1a1a] text-white rounded-[22px] text-sm font-bold flex items-center justify-center gap-2 hover:bg-black transition-all shadow-lg active:scale-[0.98] mx-auto disabled:opacity-50"
+                            >
+                                <Sparkles className="w-4 h-4 text-purple-300" />
+                                Generate Advice
+                            </button>
+                        </div>
+                    )}
+                </div>
+            </div>
+        );
+    };
 
     return (
         <div className="min-h-full bg-transparent p-4 md:p-8 font-sans relative">
@@ -413,6 +554,9 @@ export default function LogVitals() {
                                             <div className="flex items-center gap-2"><div className="w-4 h-0 border-t-2 border-dashed border-[#FF6B6B]"></div><span className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Target ({weightGoal}kg)</span></div>
                                         </div>
                                     </div>
+
+                                    {/* AI Insights Card for Weight */}
+                                    <InsightsCard metricType="weight" color="bg-[#C8BFF0]" />
                                 </motion.div>
                             )}
 
@@ -615,6 +759,9 @@ export default function LogVitals() {
                                             <div className="flex items-center gap-2"><div className="w-4 h-0 border-t-2 border-dashed border-[#FF6B6B]"></div><span className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Goal ({stepGoal >= 1000 ? (stepGoal/1000).toFixed(0)+'k' : stepGoal})</span></div>
                                         </div>
                                     </div>
+
+                                    {/* AI Insights Card for Steps */}
+                                    <InsightsCard metricType="steps" color="bg-[#D4F1A5]" />
                                 </motion.div>
                             )}
 
@@ -828,6 +975,9 @@ export default function LogVitals() {
                                             <div className="flex items-center gap-2"><div className="w-4 h-0 border-t-2 border-dashed border-[#FF6B6B]"></div><span className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Goal ({sleepGoal}h)</span></div>
                                         </div>
                                     </div>
+
+                                    {/* AI Insights Card for Sleep */}
+                                    <InsightsCard metricType="sleep" color="bg-[#E2F0FD]" />
                                 </motion.div>
                             )}
                         </AnimatePresence>

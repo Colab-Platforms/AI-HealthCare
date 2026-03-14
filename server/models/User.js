@@ -25,6 +25,7 @@ const userSchema = new mongoose.Schema({
     bloodGroup: String,
     allergies: [String],
     chronicConditions: [String],
+    isDiabetic: { type: String, enum: ['yes', 'no'], default: 'no' },
     avatar: String,
     // New comprehensive health fields
     activityLevel: {
@@ -123,7 +124,30 @@ const userSchema = new mongoose.Schema({
     default: {}
   },
   challengeStartDate: Date,
-  streakDays: { type: Number, default: 0 }
+  streakDays: { type: Number, default: 0 },
+  vitalsInsights: {
+    weight: {
+      status: String,
+      analysis: String,
+      recommendations: [String],
+      encouragement: String,
+      lastUpdated: Date
+    },
+    steps: {
+      status: String,
+      analysis: String,
+      recommendations: [String],
+      encouragement: String,
+      lastUpdated: Date
+    },
+    sleep: {
+      status: String,
+      analysis: String,
+      recommendations: [String],
+      encouragement: String,
+      lastUpdated: Date
+    }
+  }
 }, { timestamps: true, strict: false });
 
 userSchema.pre('save', async function (next) {

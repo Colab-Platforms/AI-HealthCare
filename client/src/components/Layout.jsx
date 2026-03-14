@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Calendar, FileText, Settings, LogOut,
   Bell, Search, Activity, Watch, Clock, Apple, MessageSquare, Utensils, ArrowLeft,
-  Droplet, Brain, TrendingUp, Sun, Moon, MessageCircle, BarChart3, Dumbbell
+  Droplet, Brain, TrendingUp, Sun, Moon, MessageCircle, BarChart3, Dumbbell, Users
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import TextSelectionPopup from './TextSelectionPopup';
@@ -29,6 +29,9 @@ const doctorNavItems = [
 
 const adminNavItems = [
   { path: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
+  { path: '/admin/users', icon: Users, label: 'Users' },
+  { path: '/admin/reports', icon: FileText, label: 'All Reports' },
+  { path: '/admin/analytics', icon: BarChart3, label: 'Analytics' },
   { path: '/profile', icon: Settings, label: 'Settings' }
 ];
 

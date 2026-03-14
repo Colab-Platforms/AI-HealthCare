@@ -3,7 +3,7 @@ const FoodLog = require('../models/FoodLog');
 const User = require('../models/User');
 const Doctor = require('../models/Doctor');
 const HealthGoal = require('../models/HealthGoal');
-const { analyzeHealthReport, compareReports, chatWithReport, generateMetricInfo } = require('../services/aiService');
+const { analyzeHealthReport, compareReports, chatWithReport, generateMetricInfo, generateVitalsInsights } = require('../services/aiService');
 const pdfParse = require('pdf-parse');
 const fs = require('fs');
 const NutritionSummary = require('../models/NutritionSummary');
@@ -1155,5 +1155,88 @@ exports.getDailyProgress = async (req, res) => {
   } catch (error) {
     console.error('Get daily progress error:', error);
     res.status(500).json({ message: 'Failed to get daily progress' });
+  }
+};
+
+// AI Vitals Insights
+exports.getVitalsInsights = async (req, res) => {
+  try {
+    const { metricType } = req.params;
+    const { refresh } = req.query;
+
+    if (!['weight', 'steps', 'sleep'].includes(metricType)) {
+      return res.status(400).json({ message: 'Invalid metric type. Must be weight, steps, or sleep.' });
+    }
+
+    // Check if we already have an insight and we're not refreshing
+    if (refresh !== 'true' && req.user.vitalsInsights && req.user.vitalsInsights[metricType]) {
+      return res.json({ 
+        success: true, 
+        insights: req.user.vitalsInsights[metricType],
+        isCached: true
+      });
+    }
+
+    // Get last 7 days of history from dashboard data
+    const targetDate = new Date();
+    const sevenDaysAgo = new Date(targetDate);
+    sevenDaysAgo.setUTCDate(sevenDaysAgo.getUTCDate() - 7);
+
+    const WearableData = require('../models/WearableData');
+    const HealthMetric = require('../models/HealthMetric');
+
+    const wearables = await WearableData.find({ user: req.user._id }).maxTimeMS(15000);
+    const weightMetrics = await HealthMetric.find({
+      userId: req.user._id,
+      type: 'weight',
+      recordedAt: { $gte: sevenDaysAgo, $lte: targetDate }
+    }).sort({ recordedAt: 1 }).maxTimeMS(15000);
+
+    const history = [];
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(sevenDaysAgo);
+      d.setUTCDate(d.getUTCDate() + i);
+      const dStr = d.toISOString().split('T')[0];
+
+      let steps = 0, sleep = 0;
+      for (const w of wearables) {
+        const daily = w.dailyMetrics?.find(m => {
+          if (!m.date) return false;
+          try { return (m.date instanceof Date ? m.date : new Date(m.date)).toISOString().split('T')[0] === dStr; } catch { return false; }
+        });
+        if (daily) steps += daily.steps || 0;
+        const sleepDay = w.sleepData?.find(s => {
+          if (!s.date) return false;
+          try { return (s.date instanceof Date ? s.date : new Date(s.date)).toISOString().split('T')[0] === dStr; } catch { return false; }
+        });
+        if (sleepDay) sleep += (sleepDay.totalSleepMinutes || 0) / 60;
+      }
+
+      const currentDayWeightLogs = weightMetrics.filter(m => new Date(m.recordedAt).toISOString().split('T')[0] === dStr);
+      let dayWeight = req.user.profile?.weight || 70;
+      if (currentDayWeightLogs.length > 0) dayWeight = currentDayWeightLogs[currentDayWeightLogs.length - 1].value;
+      else if (i > 0 && history[i - 1]) dayWeight = history[i - 1].weight || dayWeight;
+
+      history.push({ date: dStr, weight: dayWeight, steps, sleep });
+    }
+
+    const insights = await generateVitalsInsights(metricType, history, req.user);
+    
+    // Save the new insights to the user
+    if (!req.user.vitalsInsights) req.user.vitalsInsights = {};
+    req.user.vitalsInsights[metricType] = {
+      ...insights,
+      lastUpdated: new Date()
+    };
+    
+    // Use findByIdAndUpdate to ensure it's saved correctly
+    await User.findByIdAndUpdate(req.user._id, {
+      $set: { [`vitalsInsights.${metricType}`]: req.user.vitalsInsights[metricType] }
+    });
+
+    res.json({ success: true, insights: req.user.vitalsInsights[metricType], history });
+  } catch (error) {
+    console.error('Error getting vitals insights:', error);
+    res.status(500).json({ message: 'Failed to generate insights. Please try again.' });
   }
 };

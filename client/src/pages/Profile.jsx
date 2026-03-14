@@ -55,6 +55,7 @@ export default function Profile() {
       bloodGroup: user?.profile?.bloodGroup || '',
       phone: user?.phone || user?.profile?.phone || '',
       activityLevel: user?.profile?.activityLevel || 'sedentary',
+      isDiabetic: user?.profile?.isDiabetic || 'no',
       allergies: user?.profile?.allergies ? user.profile.allergies.join(', ') : '',
       medicalHistory: {
         conditions: user?.profile?.medicalHistory?.conditions || []
@@ -66,7 +67,7 @@ export default function Profile() {
         stressLevel: user?.profile?.lifestyle?.stressLevel || 'moderate',
         waterIntake: user?.profile?.lifestyle?.waterIntake || '8'
       },
-      diabetesProfile: user?.profile?.diabetesProfile || null
+      diabetesProfile: user?.profile?.diabetesProfile || { type: 'Type 2', hba1c: '' }
     }
   });
 
@@ -632,6 +633,18 @@ export default function Profile() {
                                   placeholder="e.g. +1 234 567 890"
                                 />
                               </div>
+                              <div>
+                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Are you Diabetic?</label>
+                                <select
+                                  name="profile.isDiabetic"
+                                  value={formData.profile.isDiabetic}
+                                  onChange={handleChange}
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
+                                >
+                                  <option value="no">No</option>
+                                  <option value="yes">Yes</option>
+                                </select>
+                              </div>
                             </div>
 
                             {/* Lifestyle Section */}
@@ -695,7 +708,7 @@ export default function Profile() {
                             </div>
 
                             {/* Diabetes Profile */}
-                            {(formData.profile.diabetesProfile?.type || formData.profile.medicalHistory.conditions.some(c => c.toLowerCase().includes('diabetes'))) && (
+                             {(formData.profile.isDiabetic === 'yes' || formData.profile.diabetesProfile?.type || formData.profile.medicalHistory.conditions.some(c => c.toLowerCase().includes('diabetes'))) && (
                               <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
                                 <div>
                                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Diabetes Type</label>

@@ -65,6 +65,26 @@ exports.updateUserStatus = async (req, res) => {
   }
 };
 
+exports.updateUserRole = async (req, res) => {
+  try {
+    const { role } = req.body;
+    if (!['patient', 'client', 'doctor', 'admin'].includes(role)) {
+      return res.status(400).json({ message: 'Invalid role' });
+    }
+
+    const user = await User.findByIdAndUpdate(
+      req.params.id,
+      { role },
+      { new: true }
+    ).select('-password');
+    
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 
 // Report Oversight
 exports.getAllReports = async (req, res) => {
@@ -100,10 +120,41 @@ exports.getReportStats = async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(10);
 
+    // Growth Data (last 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const reportGrowth = await HealthReport.aggregate([
+      { $match: { createdAt: { $gte: sevenDaysAgo } } },
+      { $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          count: { $sum: 1 }
+      }},
+      { $sort: { _id: 1 } }
+    ]);
+    
+    const userGrowth = await User.aggregate([
+      { $match: { createdAt: { $gte: sevenDaysAgo }, role: 'patient' } },
+      { $group: {
+          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
+          count: { $sum: 1 }
+      }},
+      { $sort: { _id: 1 } }
+    ]);
+
+    // Classification Distribution
+    const distribution = await HealthReport.aggregate([
+      { $group: { _id: { $ifNull: ["$reportType", "General"] }, value: { $sum: 1 } } },
+      { $project: { name: "$_id", value: 1, _id: 0 } }
+    ]);
+
     res.json({
       stats: {
         totalReports, completedReports, failedReports,
-        totalUsers, activeUsers
+        totalUsers, activeUsers,
+        reportGrowth,
+        userGrowth,
+        distribution
       },
       recentReports
     });

@@ -15,7 +15,8 @@ const {
   getChallengeData,
   getReportComparison,
   syncDailyProgress,
-  getDailyProgress
+  getDailyProgress,
+  getVitalsInsights
 } = require('../controllers/healthController');
 const { protect } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -37,5 +38,8 @@ router.get('/challenge', protect, getChallengeData);
 // Daily Progress Synchronization Routes
 router.post('/daily-progress', protect, syncDailyProgress);
 router.get('/daily-progress/:date', protect, getDailyProgress);
+
+// AI Vitals Insights
+router.get('/vitals-insights/:metricType', protect, getVitalsInsights);
 
 module.exports = router;

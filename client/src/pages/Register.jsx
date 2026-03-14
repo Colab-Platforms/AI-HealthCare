@@ -142,6 +142,7 @@ export default function Register() {
         weight: parseFloat(formData.weight),
         bloodGroup: formData.bloodGroup || undefined,
         activityLevel: formData.activityLevel,
+        isDiabetic: formData.isDiabetic,
         allergies: formData.allergies ? formData.allergies.split(',').map(a => a.trim()).filter(a => a) : [],
         medicalHistory: {
           conditions: formData.isDiabetic === 'yes' ? ['Diabetes'] : []
