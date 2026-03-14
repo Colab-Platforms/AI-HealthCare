@@ -471,10 +471,24 @@ exports.getDashboardData = async (req, res) => {
       let steps = 0;
       let sleep = 0;
       for (const w of wearables) {
-        const daily = w.dailyMetrics?.find(m => m.date.toISOString().split('T')[0] === dStr);
+        const daily = w.dailyMetrics?.find(m => {
+          if (!m.date) return false;
+          try {
+            return (m.date instanceof Date ? m.date : new Date(m.date)).toISOString().split('T')[0] === dStr;
+          } catch (e) {
+            return false;
+          }
+        });
         if (daily) steps += daily.steps || 0;
 
-        const sleepDay = w.sleepData?.find(s => s.date && s.date.toISOString().split('T')[0] === dStr);
+        const sleepDay = w.sleepData?.find(s => {
+          if (!s.date) return false;
+          try {
+            return (s.date instanceof Date ? s.date : new Date(s.date)).toISOString().split('T')[0] === dStr;
+          } catch (e) {
+            return false;
+          }
+        });
         if (sleepDay) sleep += (sleepDay.totalSleepMinutes || 0) / 60;
       }
 
@@ -561,6 +575,7 @@ const generateProfileInsights = (user) => {
   };
 };
 
+    console.log(`Generated history with ${history.length} items`);
     const dashboardData = {
       user: { ...req.user.toObject(), password: undefined },
       healthScores,

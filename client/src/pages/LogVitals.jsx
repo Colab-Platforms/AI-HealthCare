@@ -363,44 +363,49 @@ export default function LogVitals() {
                                             <span className="px-4 py-1.5 bg-[#F5F5F7] text-[#666666] text-[10px] font-bold uppercase tracking-widest rounded-full border border-slate-100">Last 7 Days</span>
                                         </div>
 
-                                        <div className="flex-1 min-h-[300px] w-full">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <LineChart data={history} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                                                    <XAxis
-                                                        dataKey="day"
-                                                        axisLine={false}
-                                                        tickLine={false}
-                                                        tick={{ fill: '#888888', fontSize: 12, fontWeight: 500 }}
-                                                        dy={10}
-                                                        label={{ value: 'Day', position: 'insideBottom', offset: -10, fill: '#888888', fontSize: 10, fontWeight: 'bold', textAnchor: 'middle', style: { textTransform: 'uppercase', letterSpacing: '0.1em' } }}
-                                                        height={50}
-                                                    />
-                                                    <YAxis
-                                                        domain={[(dataMin) => Math.min(dataMin, weightGoal) - 3, (dataMax) => Math.max(dataMax, weightGoal) + 3]}
-                                                        axisLine={false}
-                                                        tickLine={false}
-                                                        tick={{ fill: '#888888', fontSize: 12 }}
-                                                        tickFormatter={(val) => `${val}kg`}
-                                                        label={{ value: 'Weight (kg)', angle: -90, position: 'insideLeft', fill: '#888888', fontSize: 10, fontWeight: 'bold', dx: -5, style: { textTransform: 'uppercase', letterSpacing: '0.1em' } }}
-                                                        width={55}
-                                                    />
-                                                    <Tooltip
-                                                        cursor={{ stroke: '#F5F5F7', strokeWidth: 2 }}
-                                                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
-                                                        formatter={(value) => [value + ' kg', 'Weight']}
-                                                    />
-                                                    <ReferenceLine y={weightGoal} stroke="#FF6B6B" strokeDasharray="6 6" strokeWidth={2} label={{ value: `Target: ${weightGoal}kg`, position: 'right', fill: '#FF6B6B', fontSize: 10, fontWeight: 'bold' }} />
-                                                    <Line
-                                                        type="monotone"
-                                                        dataKey="weight"
-                                                        stroke="#4A2B8C"
-                                                        strokeWidth={3}
-                                                        dot={{ r: 5, fill: '#4A2B8C', strokeWidth: 2, stroke: '#fff' }}
-                                                        activeDot={{ r: 7, fill: '#4A2B8C', strokeWidth: 2, stroke: '#fff' }}
-                                                    />
-                                                </LineChart>
-                                            </ResponsiveContainer>
+                                        <div className="w-full min-h-[250px] relative">
+                                            {history && history.length > 0 ? (
+                                                <ResponsiveContainer width="100%" height={250}>
+                                                    <LineChart data={history} margin={{ top: 10, right: 45, left: -20, bottom: 0 }}>
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                                                        <XAxis
+                                                            dataKey="day"
+                                                            axisLine={false}
+                                                            tickLine={false}
+                                                            tick={{ fill: '#888888', fontSize: 11, fontWeight: 500 }}
+                                                            dy={10}
+                                                            height={40}
+                                                        />
+                                                        <YAxis
+                                                            axisLine={false}
+                                                            tickLine={false}
+                                                            tick={{ fill: '#888888', fontSize: 11 }}
+                                                            domain={[
+                                                                (dataMin) => Math.min(isFinite(dataMin) ? dataMin : (weightGoal || 70), weightGoal || 70) - 3, 
+                                                                (dataMax) => Math.max(isFinite(dataMax) ? dataMax : (weightGoal || 70), weightGoal || 70) + 3
+                                                            ]}
+                                                            tickFormatter={(val) => `${val}`}
+                                                            width={40}
+                                                        />
+                                                        <Tooltip
+                                                            cursor={{ stroke: '#F5F5F7', strokeWidth: 2 }}
+                                                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+                                                            formatter={(value) => [value + ' kg', 'Weight']}
+                                                        />
+                                                        <ReferenceLine y={weightGoal} stroke="#FF6B6B" strokeDasharray="6 6" strokeWidth={2} label={{ value: `Goal`, position: 'right', fill: '#FF6B6B', fontSize: 10, fontWeight: 'bold', dx: 5 }} />
+                                                        <Line
+                                                            type="monotone"
+                                                            dataKey="weight"
+                                                            stroke="#4A2B8C"
+                                                            strokeWidth={3}
+                                                            dot={{ r: 4, fill: '#4A2B8C', strokeWidth: 2, stroke: '#fff' }}
+                                                            activeDot={{ r: 6, fill: '#4A2B8C', strokeWidth: 2, stroke: '#fff' }}
+                                                        />
+                                                    </LineChart>
+                                                </ResponsiveContainer>
+                                            ) : (
+                                                <div className="h-[250px] flex items-center justify-center text-slate-400 text-sm font-medium italic">No historical data available</div>
+                                            )}
                                         </div>
 
                                         <div className="flex flex-wrap justify-center gap-6 mt-6 pt-6 border-t border-slate-100/60">
@@ -563,53 +568,50 @@ export default function LogVitals() {
                                             <span className="px-4 py-1.5 bg-[#F5F5F7] text-[#666666] text-[10px] font-bold uppercase tracking-widest rounded-full border border-slate-100">Last 7 Days</span>
                                         </div>
 
-                                        <div className="flex-1 min-h-[300px] w-full">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <BarChart data={history} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                                                    <XAxis
-                                                        dataKey="day"
-                                                        axisLine={false}
-                                                        tickLine={false}
-                                                        tick={{ fill: '#888888', fontSize: 12, fontWeight: 500 }}
-                                                        dy={10}
-                                                        label={{ value: 'Day', position: 'insideBottom', offset: -10, fill: '#888888', fontSize: 10, fontWeight: 'bold', textAnchor: 'middle', style: { textTransform: 'uppercase', letterSpacing: '0.1em' } }}
-                                                        height={50}
-                                                    />
-                                                    <YAxis
-                                                        axisLine={false}
-                                                        tickLine={false}
-                                                        tick={{ fill: '#888888', fontSize: 12 }}
-                                                        tickFormatter={(val) => val === 0 ? '0' : val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}
-                                                        label={{ value: 'Steps', angle: -90, position: 'insideLeft', fill: '#888888', fontSize: 10, fontWeight: 'bold', dx: -5, style: { textTransform: 'uppercase', letterSpacing: '0.1em' } }}
-                                                        width={55}
-                                                        domain={[0, (dataMax) => Math.max(dataMax, stepGoal) * 1.15]}
-                                                    />
-                                                    <Tooltip
-                                                        cursor={{ fill: 'rgba(0,0,0,0.03)' }}
-                                                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
-                                                        formatter={(value) => [value.toLocaleString() + ' steps', 'Steps']}
-                                                    />
-                                                    <ReferenceLine y={stepGoal} stroke="#FF6B6B" strokeDasharray="6 6" strokeWidth={2} label={{ value: `Goal: ${stepGoal >= 1000 ? (stepGoal/1000).toFixed(0)+'k' : stepGoal}`, position: 'right', fill: '#FF6B6B', fontSize: 10, fontWeight: 'bold' }} />
-                                                    <Bar
-                                                        dataKey="steps"
-                                                        radius={[8, 8, 0, 0]}
-                                                        maxBarSize={40}
-                                                    >
-                                                        {history.map((entry, index) => (
-                                                            <Cell 
-                                                                key={`cell-${index}`} 
-                                                                fill={entry.isSelected ? '#B8E570' : '#D4F1A5'} 
-                                                                fillOpacity={entry.isSelected ? 1 : 0.7}
-                                                            />
-                                                        ))}
-                                                    </Bar>
-                                                </BarChart>
-                                            </ResponsiveContainer>
+                                        <div className="w-full min-h-[250px] relative">
+                                            {history && history.length > 0 ? (
+                                                <ResponsiveContainer width="100%" height={250}>
+                                                    <LineChart data={history} margin={{ top: 10, right: 45, left: -10, bottom: 0 }}>
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                                                        <XAxis
+                                                            dataKey="day"
+                                                            axisLine={false}
+                                                            tickLine={false}
+                                                            tick={{ fill: '#888888', fontSize: 11, fontWeight: 500 }}
+                                                            dy={10}
+                                                            height={40}
+                                                        />
+                                                        <YAxis
+                                                            axisLine={false}
+                                                            tickLine={false}
+                                                            tick={{ fill: '#888888', fontSize: 11 }}
+                                                            tickFormatter={(val) => val === 0 ? '0' : val >= 1000 ? `${(val / 1000).toFixed(0)}k` : val}
+                                                            width={45}
+                                                            domain={[0, (dataMax) => Math.max(isFinite(dataMax) ? dataMax : stepGoal, stepGoal) * 1.15]}
+                                                        />
+                                                        <Tooltip
+                                                            cursor={{ stroke: '#F5F5F7', strokeWidth: 2 }}
+                                                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+                                                            formatter={(value) => [value.toLocaleString() + ' steps', 'Steps']}
+                                                        />
+                                                        <ReferenceLine y={stepGoal} stroke="#FF6B6B" strokeDasharray="6 6" strokeWidth={2} label={{ value: `Goal`, position: 'right', fill: '#FF6B6B', fontSize: 10, fontWeight: 'bold', dx: 5 }} />
+                                                        <Line
+                                                            type="monotone"
+                                                            dataKey="steps"
+                                                            stroke="#4A8C2B"
+                                                            strokeWidth={3}
+                                                            dot={{ r: 4, fill: '#D4F1A5', strokeWidth: 2, stroke: '#4A8C2B' }}
+                                                            activeDot={{ r: 6, fill: '#D4F1A5', strokeWidth: 2, stroke: '#4A8C2B' }}
+                                                        />
+                                                    </LineChart>
+                                                </ResponsiveContainer>
+                                            ) : (
+                                                <div className="h-[250px] flex items-center justify-center text-slate-400 text-sm font-medium italic">No historical data available</div>
+                                            )}
                                         </div>
 
                                         <div className="flex flex-wrap justify-center gap-6 mt-6 pt-6 border-t border-slate-100/60">
-                                            <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#D4F1A5]"></div><span className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Steps</span></div>
+                                            <div className="flex items-center gap-2"><div className="w-4 h-0 border-t-2 border-solid border-[#4A8C2B]"></div><span className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Steps</span></div>
                                             <div className="flex items-center gap-2"><div className="w-4 h-0 border-t-2 border-dashed border-[#FF6B6B]"></div><span className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Goal ({stepGoal >= 1000 ? (stepGoal/1000).toFixed(0)+'k' : stepGoal})</span></div>
                                         </div>
                                     </div>
@@ -779,53 +781,50 @@ export default function LogVitals() {
                                             <span className="px-4 py-1.5 bg-[#F5F5F7] text-[#666666] text-[10px] font-bold uppercase tracking-widest rounded-full border border-slate-100">Last 7 Days</span>
                                         </div>
 
-                                        <div className="flex-1 min-h-[300px] w-full">
-                                            <ResponsiveContainer width="100%" height="100%">
-                                                <BarChart data={history} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                                                    <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-                                                    <XAxis
-                                                        dataKey="day"
-                                                        axisLine={false}
-                                                        tickLine={false}
-                                                        tick={{ fill: '#888888', fontSize: 12, fontWeight: 500 }}
-                                                        dy={10}
-                                                        label={{ value: 'Day', position: 'insideBottom', offset: -10, fill: '#888888', fontSize: 10, fontWeight: 'bold', textAnchor: 'middle', style: { textTransform: 'uppercase', letterSpacing: '0.1em' } }}
-                                                        height={50}
-                                                    />
-                                                    <YAxis
-                                                        axisLine={false}
-                                                        tickLine={false}
-                                                        tick={{ fill: '#888888', fontSize: 12 }}
-                                                        domain={[0, (dataMax) => Math.max(dataMax, sleepGoal) + 2]}
-                                                        tickFormatter={(val) => `${val}h`}
-                                                        label={{ value: 'Sleep (Hours)', angle: -90, position: 'insideLeft', fill: '#888888', fontSize: 10, fontWeight: 'bold', dx: -5, style: { textTransform: 'uppercase', letterSpacing: '0.1em' } }}
-                                                        width={55}
-                                                    />
-                                                    <Tooltip
-                                                        cursor={{ fill: 'rgba(0,0,0,0.03)' }}
-                                                        contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
-                                                        formatter={(value) => [value.toFixed(1) + ' hours', 'Sleep']}
-                                                    />
-                                                    <ReferenceLine y={sleepGoal} stroke="#FF6B6B" strokeDasharray="6 6" strokeWidth={2} label={{ value: `Goal: ${sleepGoal}h`, position: 'right', fill: '#FF6B6B', fontSize: 10, fontWeight: 'bold' }} />
-                                                    <Bar
-                                                        dataKey="sleep"
-                                                        radius={[8, 8, 0, 0]}
-                                                        maxBarSize={40}
-                                                    >
-                                                        {history.map((entry, index) => (
-                                                            <Cell 
-                                                                key={`cell-${index}`} 
-                                                                fill={entry.isSelected ? '#A5D1FF' : '#E2F0FD'} 
-                                                                fillOpacity={entry.isSelected ? 1 : 0.7}
-                                                            />
-                                                        ))}
-                                                    </Bar>
-                                                </BarChart>
-                                            </ResponsiveContainer>
+                                        <div className="w-full min-h-[250px] relative">
+                                            {history && history.length > 0 ? (
+                                                <ResponsiveContainer width="100%" height={250}>
+                                                    <LineChart data={history} margin={{ top: 10, right: 45, left: -20, bottom: 0 }}>
+                                                        <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+                                                        <XAxis
+                                                            dataKey="day"
+                                                            axisLine={false}
+                                                            tickLine={false}
+                                                            tick={{ fill: '#888888', fontSize: 11, fontWeight: 500 }}
+                                                            dy={10}
+                                                            height={40}
+                                                        />
+                                                        <YAxis
+                                                            axisLine={false}
+                                                            tickLine={false}
+                                                            tick={{ fill: '#888888', fontSize: 11 }}
+                                                            domain={[0, (dataMax) => Math.max(isFinite(dataMax) ? dataMax : sleepGoal, sleepGoal) + 2]}
+                                                            tickFormatter={(val) => `${val}h`}
+                                                            width={45}
+                                                        />
+                                                        <Tooltip
+                                                            cursor={{ stroke: '#F5F5F7', strokeWidth: 2 }}
+                                                            contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+                                                            formatter={(value) => [value.toFixed(1) + ' hours', 'Sleep']}
+                                                        />
+                                                        <ReferenceLine y={sleepGoal} stroke="#FF6B6B" strokeDasharray="6 6" strokeWidth={2} label={{ value: `Goal`, position: 'right', fill: '#FF6B6B', fontSize: 10, fontWeight: 'bold', dx: 5 }} />
+                                                        <Line
+                                                            type="monotone"
+                                                            dataKey="sleep"
+                                                            stroke="#75AADB"
+                                                            strokeWidth={3}
+                                                            dot={{ r: 4, fill: '#E2F0FD', strokeWidth: 2, stroke: '#75AADB' }}
+                                                            activeDot={{ r: 6, fill: '#E2F0FD', strokeWidth: 2, stroke: '#75AADB' }}
+                                                        />
+                                                    </LineChart>
+                                                </ResponsiveContainer>
+                                            ) : (
+                                                <div className="h-[250px] flex items-center justify-center text-slate-400 text-sm font-medium italic">No historical data available</div>
+                                            )}
                                         </div>
 
                                         <div className="flex flex-wrap justify-center gap-6 mt-6 pt-6 border-t border-slate-100/60">
-                                            <div className="flex items-center gap-2"><div className="w-4 h-4 rounded bg-[#E2F0FD]"></div><span className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Sleep</span></div>
+                                            <div className="flex items-center gap-2"><div className="w-4 h-0 border-t-2 border-solid border-[#75AADB]"></div><span className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Sleep</span></div>
                                             <div className="flex items-center gap-2"><div className="w-4 h-0 border-t-2 border-dashed border-[#FF6B6B]"></div><span className="text-[10px] font-bold text-[#888888] uppercase tracking-wider">Goal ({sleepGoal}h)</span></div>
                                         </div>
                                     </div>

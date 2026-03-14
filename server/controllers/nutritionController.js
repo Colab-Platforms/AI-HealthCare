@@ -2,6 +2,7 @@ const FoodLog = require('../models/FoodLog');
 const HealthGoal = require('../models/HealthGoal');
 const NutritionSummary = require('../models/NutritionSummary');
 const User = require('../models/User');
+const HealthMetric = require('../models/HealthMetric');
 const nutritionAI = require('../services/nutritionAI');
 const { uploadImage } = require('../services/cloudinary');
 const QuickFoodCheck = require('../models/QuickFoodCheck');
@@ -551,8 +552,6 @@ exports.logWeight = async (req, res) => {
       });
     }
 
-    // Save to HealthMetric for glucose log page
-    const HealthMetric = require('../models/HealthMetric');
     // IMPORTANT: Parse date strings like "2026-03-13" as UTC directly to avoid timezone shift
     let recordedDate;
     if (date && typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)) {
@@ -592,7 +591,6 @@ exports.logWeight = async (req, res) => {
     console.log('Weight metric saved successfully');
 
     // Also update user profile weight and BMI
-    const User = require('../models/User');
     const user = await withTimeout(User.findById(req.user._id));
     if (user) {
       user.profile = user.profile || {};
@@ -650,7 +648,12 @@ exports.logWeight = async (req, res) => {
       healthGoal
     });
   } catch (error) {
-    console.error('Log weight error:', error.message, error.stack);
+    console.error('Log weight error detailed:', {
+      message: error.message,
+      stack: error.stack,
+      body: req.body,
+      userId: req.user?._id
+    });
     res.status(500).json({
       success: false,
       message: 'Failed to log weight',
