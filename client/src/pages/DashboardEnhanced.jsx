@@ -593,6 +593,43 @@ export default function DashboardEnhanced() {
   const calorieDelta = (nutritionData?.totalCalories || 0) - (nutritionData?.calorieGoal || 2000);
   const isOverLimit = calorieDelta > 0;
 
+  const overallPerformanceInsight = useMemo(() => {
+    if (!dashboardData) return "Analyzing your health data...";
+
+    const calorieGoal = dashboardData.goals?.calories || 2100;
+    const currentCals = nutritionData?.totalCalories || 0;
+    const caloriesLeft = calorieGoal - currentCals;
+    const stepsGoal = dashboardData.goals?.steps || 10000;
+    const currentSteps = Number(dashboardData.stepsToday || 0);
+    const healthScore = dashboardData.latestAnalysis?.healthScore || 75;
+
+    let message = `Overall health score: ${healthScore}/100. `;
+
+    if (caloriesLeft < 0) {
+      message += `You've exceeded your daily calorie goal by ${Math.abs(caloriesLeft)} kcal. `;
+    } else if (currentCals > 0) {
+      message += `You have ${caloriesLeft} kcal remaining for today. `;
+    } else {
+      message += `Start logging your meals to track your calorie goal. `;
+    }
+
+    if (currentSteps > 0) {
+      if (currentSteps < stepsGoal) {
+        message += `Walk ${stepsGoal - currentSteps} more steps to reach your activity goal. `;
+      } else {
+        message += `Great job! You've successfully reached your target of ${stepsGoal} steps. `;
+      }
+    } else {
+      message += `Log your steps to monitor your activity level. `;
+    }
+
+    if (dashboardData.latestAnalysis?.summary && dashboardData.latestAnalysis.summary.length > 20) {
+      message += `Analysis: ${dashboardData.latestAnalysis.summary}`;
+    }
+
+    return message;
+  }, [dashboardData, nutritionData]);
+
   const handleScroll = () => {
     if (scrollContainerRef.current && !isDragging.current) {
       const { scrollLeft, scrollWidth, clientWidth } = scrollContainerRef.current;
@@ -1463,14 +1500,13 @@ export default function DashboardEnhanced() {
               <p className="text-[#666666] text-sm">Monitor your progress over time</p>
             </div>
           </div>
-
-          <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
-            <div className="bg-[#F5F5F7] p-1.5 rounded-full flex gap-1 border border-white shadow-sm overflow-x-auto">
+          <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
+            <div className="bg-[#F5F5F7] p-1.5 rounded-2xl md:rounded-full grid grid-cols-3 sm:flex gap-1 border border-white shadow-sm w-full md:w-auto">
               {['1W', '1M', '3M'].map(range => (
                 <button
                   key={range}
                   onClick={() => setTrendTimeRange(range)}
-                  className={`px-4 py-2 rounded-full text-xs font-bold transition-all whitespace-nowrap ${trendTimeRange === range
+                  className={`px-4 py-2 rounded-xl md:rounded-full text-xs font-bold transition-all whitespace-nowrap text-center ${trendTimeRange === range
                     ? 'bg-[#1a1a1a] text-white shadow-sm'
                     : 'text-[#666666] hover:text-[#1a1a1a]'
                     }`}
@@ -1479,12 +1515,12 @@ export default function DashboardEnhanced() {
                 </button>
               ))}
             </div>
-            <div className="bg-[#F5F5F7] p-1.5 rounded-full flex gap-1 border border-white shadow-sm overflow-x-auto">
+            <div className="bg-[#F5F5F7] p-1.5 rounded-2xl md:rounded-full grid grid-cols-4 sm:flex gap-1 border border-white shadow-sm w-full md:w-auto">
               {['Calories', 'Sleep', 'Steps', 'Weight'].map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTrendTab(tab)}
-                  className={`px-6 py-2 rounded-full text-sm font-medium transition-all whitespace-nowrap ${activeTrendTab === tab
+                  className={`px-1 sm:px-6 py-2 rounded-xl md:rounded-full text-[10px] sm:text-sm font-medium transition-all whitespace-nowrap text-center ${activeTrendTab === tab
                     ? 'bg-white text-[#1a1a1a] shadow-sm'
                     : 'text-[#666666] hover:text-[#1a1a1a]'
                     }`}
@@ -1568,9 +1604,7 @@ export default function DashboardEnhanced() {
         <div className="relative z-10 flex-1">
           <h3 className="font-medium text-xl mb-2">AI Health Insight</h3>
           <p className="text-[#a0a0a0] font-medium leading-relaxed max-w-4xl text-base">
-            {dashboardData?.latestAnalysis?.summary || 
-             dashboardData?.latestAnalysis?.recommendations?.lifestyle?.[0] ||
-             `${user?.name?.split(' ')[0] || 'User'}, explore your personalized health insights by logging more data or uploading a medical report.`}
+            {overallPerformanceInsight}
           </p>
         </div>
         <button onClick={() => navigate('/ai-chat')} className="relative z-10 mt-4 md:mt-0 px-8 py-3 bg-white hover:bg-slate-100 text-[#1a1a1a] text-sm font-medium rounded-full transition-all shadow-md whitespace-nowrap">
