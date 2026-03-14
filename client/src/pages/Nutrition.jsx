@@ -54,7 +54,6 @@ function Nutrition() {
   const [prepMethod, setPrepMethod] = useState('');
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = React.useRef(null);
-  const [isEditingSpeech, setIsEditingSpeech] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -788,15 +787,15 @@ function Nutrition() {
                   </motion.div>
 
                 ) : inputMethod === 'Predict' ? (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center space-y-8 py-4">
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center space-y-6 py-4">
+                    {/* Mic Button */}
                     <div className="relative">
                       {isListening && (
                         <>
-                          <div className="absolute inset-0 rounded-full bg-slate-400 opacity-20 animate-ping" />
-                          <div className="absolute -inset-4 rounded-full bg-slate-400 opacity-10 animate-ping" style={{ animationDelay: '0.2s' }} />
+                          <div className="absolute inset-0 rounded-full bg-red-400 opacity-20 animate-ping" />
+                          <div className="absolute -inset-4 rounded-full bg-red-400 opacity-10 animate-ping" style={{ animationDelay: '0.2s' }} />
                         </>
                       )}
-
                       <button
                         onClick={() => {
                           if (isListening) {
@@ -806,96 +805,55 @@ function Nutrition() {
                           }
                         }}
                         className={`relative w-24 h-24 md:w-28 md:h-28 rounded-full flex items-center justify-center transition-all shadow-xl ${isListening
-                          ? 'bg-red-500 text-white scale-110 shadow-red-200 shadow-[0_0_20px_rgba(239,68,68,0.4)]'
-                          : 'bg-slate-900 text-white hover:bg-black hover:scale-105 shadow-slate-900/20'
+                          ? 'bg-red-500 text-white scale-110'
+                          : 'bg-slate-900 text-white hover:bg-black hover:scale-105'
                           }`}
                       >
                         <Mic className={`w-10 h-10 md:w-12 md:h-12 ${isListening ? 'animate-pulse' : ''}`} />
                       </button>
                     </div>
 
-                    <div className="w-full text-center space-y-4 px-2">
-                      {foodInput ? (
-                        <div className="w-full space-y-4">
-                          <div className="bg-slate-50 p-6 rounded-3xl border-2 border-slate-100 text-left min-h-[120px] relative group hover:border-slate-200 transition-all">
-                            {isEditingSpeech ? (
-                              <textarea
-                                value={foodInput}
-                                onChange={(e) => setFoodInput(e.target.value)}
-                                className="w-full bg-transparent border-none focus:ring-0 text-sm font-semibold text-slate-800 leading-relaxed resize-none h-24"
-                                autoFocus
-                                onBlur={() => setIsEditingSpeech(false)}
-                              />
-                            ) : (
-                              <p className="text-sm font-semibold text-slate-800 leading-relaxed text-center w-full">{foodInput}</p>
-                            )}
-                            
-                             {!isEditingSpeech && (
-                              <button 
-                                onClick={() => setIsEditingSpeech(true)}
-                                className="absolute top-2 right-2 p-2 bg-white rounded-full shadow-sm text-slate-400 hover:text-slate-900 transition-all opacity-0 group-hover:opacity-100"
-                              >
-                                <Edit3 className="w-4 h-4" />
-                              </button>
-                            )}
-                            
-                            {isListening && <div className="w-2 h-2 bg-red-500 rounded-full absolute bottom-4 right-4 animate-pulse shadow-[0_0_8px_rgba(239,68,68,0.5)]" />}
-                          </div>
-                          
-                          {isEditingSpeech && (
-                            <button 
-                              onClick={() => setIsEditingSpeech(false)}
-                              className="w-full py-2 bg-slate-900 text-white rounded-xl text-[10px] font-black uppercase tracking-widest"
-                            >
-                              Save Edit
-                            </button>
-                          )}
-                        </div>
-                      ) : (
-                        <div className="text-center space-y-3 px-4">
-                          <h4 className="text-lg font-black text-slate-900 uppercase tracking-tight">
-                            {isListening ? 'Listening...' : 'Tap to speak'}
-                          </h4>
-                          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest max-w-[250px] mx-auto leading-relaxed">
-                            {isListening
-                              ? 'Say what you ate, e.g. "I had two slices of whole wheat bread with peanut butter"'
-                              : 'Describe your meal naturally and let AI do the rest'}
-                          </p>
-                        </div>
-                      )}
+                    {/* Status Text */}
+                    {!foodInput && (
+                      <div className="text-center space-y-2 px-4">
+                        <h4 className="text-lg font-black text-slate-900 uppercase tracking-tight">
+                          {isListening ? 'Listening...' : 'Tap to speak'}
+                        </h4>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest max-w-[250px] mx-auto leading-relaxed">
+                          {isListening
+                            ? 'Say what you ate, e.g. "I had two chapati with dal"'
+                            : 'Describe your meal naturally and let AI do the rest'}
+                        </p>
+                      </div>
+                    )}
 
-                      {/* Action Button Section - Improved Visibility */}
-                      {foodInput && (
-                        <div className="pt-6 flex flex-col items-center gap-4 w-full animate-in fade-in slide-in-from-top-4">
-                          <button
-                            onClick={handleAnalyzeAndLog}
-                            disabled={isAnalyzing}
-                            className="w-full py-5 bg-black text-white rounded-[2rem] text-xs font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-slate-900 transition-all shadow-2xl active:scale-[0.98]"
-                          >
-                            {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5 text-yellow-400 fill-yellow-400" />}
-                            {isAnalyzing ? 'Analyzing...' : 'Analyze My Meal'}
-                          </button>
-                          
-                          <div className="flex items-center gap-8">
-                            <button
-                              onClick={() => { setFoodInput(''); startVoiceCapture(); }}
-                              className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] hover:text-black transition-all flex items-center gap-1.5"
-                            >
-                              <History className="w-3 h-3" /> Restart Voice
-                            </button>
-                            
-                            {!isEditingSpeech && (
-                              <button
-                                onClick={() => setIsEditingSpeech(true)}
-                                className="text-[10px] font-black text-slate-400 uppercase tracking-[0.1em] hover:text-black transition-all flex items-center gap-1.5"
-                              >
-                                <Edit3 className="w-3 h-3" /> Edit Text
-                              </button>
-                            )}
-                          </div>
+                    {/* Real-time Speech Text */}
+                    {foodInput && (
+                      <div className="w-full space-y-5">
+                        <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 min-h-[80px] flex items-center justify-center relative">
+                          <p className="text-sm font-semibold text-slate-800 leading-relaxed text-center w-full">{foodInput}</p>
+                          {isListening && <div className="w-2 h-2 bg-red-500 rounded-full absolute bottom-3 right-3 animate-pulse" />}
                         </div>
-                      )}
-                    </div>
+
+                        {/* Analyze Button */}
+                        <button
+                          onClick={handleAnalyzeAndLog}
+                          disabled={isAnalyzing}
+                          className="w-full py-5 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-black transition-all shadow-xl active:scale-[0.98] disabled:opacity-50"
+                        >
+                          {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
+                          {isAnalyzing ? 'Analyzing...' : 'Analyze My Meal'}
+                        </button>
+
+                        {/* Restart Voice - small link */}
+                        <button
+                          onClick={() => { stopVoiceCapture(); setFoodInput(''); setTimeout(startVoiceCapture, 200); }}
+                          className="w-full text-center text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-all py-2"
+                        >
+                          ↻ Restart Voice
+                        </button>
+                      </div>
+                    )}
                   </motion.div>
                 ) : inputMethod === 'Type' ? (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
