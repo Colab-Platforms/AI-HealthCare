@@ -42,7 +42,7 @@ class DietRecommendationAI {
         temperature: payload.temperature
       };
 
-      const response = await axios.post(apiUrl, requestPayload, { headers, timeout: 60000 });
+      const response = await axios.post(apiUrl, requestPayload, { headers, timeout: 120000 });
 
       if (response.data && response.data.content && response.data.content[0]) {
         return response.data.content[0].text;
@@ -51,6 +51,9 @@ class DietRecommendationAI {
       }
     } catch (error) {
       console.error(`Diet AI Request Error:`, error.response?.data || error.message);
+      if (error.response?.data) {
+        console.error('Anthropic Error Details:', JSON.stringify(error.response.data, null, 2));
+      }
       throw error;
     }
   }
@@ -91,7 +94,7 @@ FITNESS GOAL & TARGETS:
 - Target Calories: ${nutritionGoals?.dailyCalories || 2000} kcal
 - Target Protein: ${nutritionGoals?.protein || 120}g
 - Target Carbs: ${nutritionGoals?.carbs || 250}g
-- Target Fat: ${nutritionGoals?.fat || 60}g
+- Target Fats: ${nutritionGoals?.fats || 60}g
 
 LAB REPORT DATA & DEFICIENCIES:
 ${labReports?.length > 0 ? labReports.map(r => `- ${r.parameter}: ${r.value} ${r.unit} (${r.status})`).join('\n') : 'No lab data available, base recommendations on Fitness Goal and BMI.'}
@@ -112,40 +115,25 @@ CRITICAL INSTRUCTIONS:
 12. If the user wants to REGENERATE, you MUST provide COMPLETELY DIFFERENT meal options from the standard examples. Give them a fresh variety of new Indian foods.
 13. ${promptExtension || ''}
 
-RETURN JSON ONLY:
+RETURN JSON ONLY. Ensure the JSON is valid and complete:
 {
   "dailyCalorieTarget": number,
   "macroTargets": { "protein": number, "carbs": number, "fats": number },
   "mealPlan": {
     "breakfast": [
-      { "name": "Masala Dosa with Sambar", "description": "Crispy dosa with spiced potato filling and sambar", "calories": 350, "protein": 12, "carbs": 45, "fats": 12, "benefits": "High in carbs for energy, good protein from lentils" },
-      { "name": "Idli with Chutney", "description": "Steamed rice cakes with coconut chutney and sambar", "calories": 280, "protein": 10, "carbs": 38, "fats": 8, "benefits": "Light, easy to digest, good for weight management" },
-      { "name": "Poha with Peanuts", "description": "Flattened rice with vegetables, peanuts and spices", "calories": 320, "protein": 14, "carbs": 40, "fats": 10, "benefits": "Rich in protein from peanuts, quick energy" },
-      { "name": "Oats Upma", "description": "Savory oats with vegetables, peas and spices", "calories": 300, "protein": 11, "carbs": 42, "fats": 9, "benefits": "High fiber, sustained energy, good for digestion" }
+      { "name": "Meal Name", "description": "desc", "calories": 300, "protein": 15, "carbs": 40, "fats": 10, "benefits": "benefits" }
     ],
     "midMorningSnack": [
-      { "name": "Greek Yogurt with Berries", "description": "Protein-rich yogurt with fresh berries and honey", "calories": 150, "protein": 15, "carbs": 18, "fats": 2, "benefits": "High protein, probiotics for gut health" },
-      { "name": "Almonds and Apple", "description": "Handful of almonds (25g) with fresh apple", "calories": 180, "protein": 6, "carbs": 20, "fats": 10, "benefits": "Healthy fats, fiber, sustained energy" },
-      { "name": "Protein Smoothie", "description": "Banana, protein powder, milk and honey blend", "calories": 200, "protein": 20, "carbs": 22, "fats": 3, "benefits": "High protein, quick recovery, muscle building" },
-      { "name": "Boiled Eggs with Toast", "description": "2 boiled eggs with whole wheat toast and butter", "calories": 220, "protein": 16, "carbs": 18, "fats": 10, "benefits": "Complete protein, choline for brain health" }
+      { "name": "Meal Name", "description": "desc", "calories": 150, "protein": 5, "carbs": 20, "fats": 5, "benefits": "benefits" }
     ],
     "lunch": [
-      { "name": "Chicken Biryani", "description": "Fragrant basmati rice with tender chicken and spices", "calories": 550, "protein": 35, "carbs": 60, "fats": 15, "benefits": "Complete meal, high protein, satisfying" },
-      { "name": "Dal Makhani with Roti", "description": "Creamy lentil curry with 2 whole wheat rotis", "calories": 480, "protein": 18, "carbs": 65, "fats": 12, "benefits": "Plant-based protein, fiber-rich, vegetarian" },
-      { "name": "Paneer Tikka Masala", "description": "Cottage cheese in tomato-based gravy with rice", "calories": 520, "protein": 28, "carbs": 58, "fats": 16, "benefits": "High calcium, protein-rich, satisfying" },
-      { "name": "Fish Curry with Rice", "description": "Spiced fish in coconut gravy with basmati rice", "calories": 500, "protein": 32, "carbs": 55, "fats": 14, "benefits": "Omega-3 rich, high protein, heart-healthy" }
+      { "name": "Meal Name", "description": "desc", "calories": 500, "protein": 30, "carbs": 60, "fats": 15, "benefits": "benefits" }
     ],
     "eveningSnack": [
-      { "name": "Roasted Chickpeas", "description": "Spiced roasted chickpeas (100g)", "calories": 140, "protein": 8, "carbs": 16, "fats": 4, "benefits": "High fiber, plant-based protein, crunchy" },
-      { "name": "Mixed Nuts", "description": "Almonds, cashews, walnuts mix (30g)", "calories": 180, "protein": 6, "carbs": 8, "fats": 16, "benefits": "Healthy fats, antioxidants, energy boost" },
-      { "name": "Cucumber and Hummus", "description": "Fresh cucumber slices with hummus dip", "calories": 120, "protein": 5, "carbs": 12, "fats": 5, "benefits": "Low calorie, hydrating, light" },
-      { "name": "Sprout Salad", "description": "Fresh sprouts with lemon dressing and spices", "calories": 100, "protein": 7, "carbs": 10, "fats": 3, "benefits": "Nutrient-dense, enzymes for digestion" }
+      { "name": "Meal Name", "description": "desc", "calories": 150, "protein": 5, "carbs": 20, "fats": 5, "benefits": "benefits" }
     ],
     "dinner": [
-      { "name": "Vegetable Khichdi", "description": "One-pot rice and lentil dish with vegetables", "calories": 380, "protein": 14, "carbs": 52, "fats": 10, "benefits": "Light, easy to digest, complete meal" },
-      { "name": "Grilled Chicken with Salad", "description": "Protein-rich grilled chicken with fresh vegetable salad", "calories": 420, "protein": 38, "carbs": 28, "fats": 12, "benefits": "High protein, low carb, muscle building" },
-      { "name": "Moong Dal Soup", "description": "Light lentil soup with vegetables and spices", "calories": 280, "protein": 12, "carbs": 38, "fats": 6, "benefits": "Light, nutritious, easy to digest" },
-      { "name": "Tofu Stir-fry", "description": "Tofu with mixed vegetables and light sauce", "calories": 350, "protein": 20, "carbs": 35, "fats": 14, "benefits": "Plant-based protein, low calorie, vegetarian" }
+      { "name": "Meal Name", "description": "desc", "calories": 400, "protein": 25, "carbs": 50, "fats": 10, "benefits": "benefits" }
     ]
   },
   "keyFoods": [{ "name": "Food", "reason": "Why", "frequency": "Daily" }],
@@ -158,17 +146,28 @@ RETURN JSON ONLY:
     const systemMsg = "You are an expert Indian nutritionist and clinical dietitian. Provide personalized meal plans in JSON format.";
 
     const payload = {
-      max_tokens: 4000,
+      max_tokens: 8192,
       system: systemMsg,
       messages: [{ role: 'user', content: prompt }],
       temperature: 0.7
     };
 
+    console.log('[DietAI] FULL PROMPT PREVIEW:', prompt.substring(0, 500) + '...');
+
     try {
       const aiResponse = await this.makeAIRequest(payload);
+      console.log('AI Response for Diet Plan received (first 200 chars):', aiResponse.substring(0, 200));
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-      if (jsonMatch) return robustJsonParse(jsonMatch[0]);
-      throw new Error('Failed to parse diet plan JSON');
+      if (jsonMatch) {
+        try {
+          return robustJsonParse(jsonMatch[0]);
+        } catch (parseError) {
+          console.error('JSON Parse Error in Diet AI:', parseError.message);
+          console.error('Raw content around failure:', jsonMatch[0].substring(0, 1000));
+          throw parseError;
+        }
+      }
+      throw new Error('Failed to parse diet plan JSON - No braces found');
     } catch (error) {
       console.error('AI Diet Plan Error:', error.message);
       throw error;

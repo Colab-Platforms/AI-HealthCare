@@ -48,7 +48,7 @@ const personalizedDietPlanSchema = new mongoose.Schema({
     macroTargets: {
       protein: Number,
       carbs: Number,
-      fat: Number
+      fats: Number
     }
   },
 
@@ -66,6 +66,8 @@ const personalizedDietPlanSchema = new mongoose.Schema({
       description: String,
       calories: Number,
       protein: Number,
+      carbs: Number,
+      fats: Number,
       benefits: String
     }],
     midMorningSnack: [{
@@ -73,6 +75,8 @@ const personalizedDietPlanSchema = new mongoose.Schema({
       description: String,
       calories: Number,
       protein: Number,
+      carbs: Number,
+      fats: Number,
       benefits: String
     }],
     lunch: [{
@@ -80,6 +84,8 @@ const personalizedDietPlanSchema = new mongoose.Schema({
       description: String,
       calories: Number,
       protein: Number,
+      carbs: Number,
+      fats: Number,
       benefits: String
     }],
     eveningSnack: [{
@@ -87,6 +93,8 @@ const personalizedDietPlanSchema = new mongoose.Schema({
       description: String,
       calories: Number,
       protein: Number,
+      carbs: Number,
+      fats: Number,
       benefits: String
     }],
     dinner: [{
@@ -94,6 +102,8 @@ const personalizedDietPlanSchema = new mongoose.Schema({
       description: String,
       calories: Number,
       protein: Number,
+      carbs: Number,
+      fats: Number,
       benefits: String
     }]
   },
@@ -133,7 +143,8 @@ const personalizedDietPlanSchema = new mongoose.Schema({
     default: true
   }
 }, {
-  timestamps: true
+  timestamps: true,
+  strict: false
 });
 
 // Index for efficient queries

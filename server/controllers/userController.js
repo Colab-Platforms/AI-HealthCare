@@ -28,6 +28,10 @@ exports.getFoodPreferences = async (req, res) => {
 exports.saveFoodPreferences = async (req, res) => {
   try {
     const { preferredFoods, foodsToAvoid, dietaryRestrictions, mealPreferences } = req.body;
+    console.log('[UserPrefs] Saving for user:', req.user.id, { 
+      prefCount: preferredFoods?.length, 
+      mealPrefKeys: Object.keys(mealPreferences || {}) 
+    });
 
     const user = await User.findById(req.user.id);
 
@@ -47,8 +51,10 @@ exports.saveFoodPreferences = async (req, res) => {
       },
       lastUpdated: new Date()
     };
-
+    
+    user.markModified('foodPreferences');
     await user.save();
+    console.log('[UserPrefs] Successfully saved for user:', req.user.id);
 
     res.json({
       success: true,

@@ -174,7 +174,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
         dailyCalories: nutritionGoals.calorieGoal,
         protein: nutritionGoals.proteinGoal,
         carbs: nutritionGoals.carbsGoal,
-        fat: nutritionGoals.fatGoal
+        fats: nutritionGoals.fatGoal
       },
       foodPreferences: user.foodPreferences || {} // Pass food preferences to AI
     };
@@ -182,88 +182,95 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
     // Generate AI-powered diet plan
     const isRegenerate = req.body?.isRegenerate || false;
     const promptEx = isRegenerate
-      ? 'IMPORTANT: This is a REGENERATION request. You MUST provide COMPLETELY NEW and DIFFERENT meal options from the examples given above and from any previously generated plans. Use creative, unique Indian dishes that are different from common suggestions like Poha, Idli, Dosa, Biryani, Khichdi. Think of regional specialties, lesser-known but nutritious Indian foods, and creative healthy variations. Every single meal option must be fresh and unique.'
+      ? 'IMPORTANT: This is a REGENERATION request. You MUST provide COMPLETELY NEW and DIFFERENT meal options. Every single meal option must be fresh and unique.'
       : '';
 
-    const aiDietPlan = await dietRecommendationAI.generatePersonalizedDietPlan(userData, `
-      1. Provide EXACTLY 4 DISTINCT meal options for EVERY category (breakfast, midMorningSnack, lunch, eveningSnack, dinner).
-      2. Ensure each option is a complete meal with descriptive Indian food names.
-      3. Provide nutritional information (calories, protein, carbs, fats) for each individual option.
-      4. Ensure the combined nutrition of these options (if user picks one from each category) roughly fulfills the daily targets: ${nutritionGoals.calorieGoal} kcal, ${nutritionGoals.proteinGoal}g protein, ${nutritionGoals.carbsGoal}g carbs, ${nutritionGoals.fatGoal}g fat.
-      5. Use ONLY Indian foods and favor affordability.
-      6. CRITICAL: If the user has provided specific food preferences, you MUST ONLY generate meals based on those preferences and variations of them. DO NOT generate random foods if they have provided preferences here:
-           Breakfast Preferences: ${userData.foodPreferences.mealPreferences?.breakfast?.join(', ') || 'N/A'},
-           Lunch Preferences: ${userData.foodPreferences.mealPreferences?.lunch?.join(', ') || 'N/A'},
-           Dinner Preferences: ${userData.foodPreferences.mealPreferences?.dinner?.join(', ') || 'N/A'},
-           General Preferred Foods: ${userData.foodPreferences.preferredFoods?.join(', ') || 'N/A'}.
-      7. STRICTLY avoid any 'Foods to Avoid': ${userData.foodPreferences.foodsToAvoid?.join(', ') || 'N/A'}. 
-           Also strictly follow 'Dietary Restrictions': ${userData.foodPreferences.dietaryRestrictions?.join(', ') || 'N/A'}.
-      8. If the user lists specific foods they eat daily, try to build the healthiest version of those into the plan.
-      9. If no lab data is provided, prioritize the Fitness Goal (${bmiGoal}) and BMI-based needs.
-      10. Provide specific portion sizes in grams/pieces/cups.
-      11. Each meal option MUST have: name, description, calories, protein, carbs, fats, and benefits.
-      12. Ensure variety - no two options should be similar (e.g., don't have two rice-based meals).
-      13. Provide a specific 'avoidSuggestions' section in your response listing 3-5 specific smart suggestions of what the user should avoid based on their lab reports or biometric profile.
-      14. ${promptEx}
-    `);
-    console.log(`Diet plan generated for user ${userId}. Based on reports: ${hasReports}, isRegeneration: ${isRegenerate}`);
+    console.log(`[DietGeneration] Starting for user ${userId}. isRegenerate: ${isRegenerate}`);
+    console.log(`[DietGeneration] User Preferences:`, JSON.stringify(userData.foodPreferences, null, 2));
 
-    // Deactivate old diet plans
-    await PersonalizedDietPlan.updateMany(
-      { user: userId, isActive: true },
-      { isActive: false }
-    );
+    let aiDietPlan;
+    try {
+      aiDietPlan = await dietRecommendationAI.generatePersonalizedDietPlan(userData, promptEx);
+    } catch (aiError) {
+      console.error('[DietGeneration] AI Service Error:', aiError.message);
+      return res.status(500).json({ 
+        success: false, 
+        message: 'AI failed to generate plan', 
+        error: aiError.message,
+        stack: process.env.NODE_ENV === 'development' ? aiError.stack : undefined
+      });
+    }
 
-    // Save new diet plan with nutrition goals
-    const dietPlan = new PersonalizedDietPlan({
-      ...aiDietPlan, // AI response fields (meal plan, avoidSuggestions, etc.)
-      userId: userId,
-      inputData: {
-        age: userData.age,
-        gender: userData.gender,
-        weight: userData.weight,
-        height: userData.height,
-        currentBMI: userData.currentBMI,
-        bmiGoal: userData.bmiGoal,
-        targetWeight: userData.targetWeight,
-        dietaryPreference: userData.dietaryPreference,
-        activityLevel: userData.activityLevel,
-        fitnessGoals: userData.fitnessGoals,
-        medicalConditions: userData.medicalConditions,
-        allergies: userData.allergies,
-        hasReports: hasReports
-      },
-      labReportInsights,
-      nutritionGoals: {
-        dailyCalorieTarget: nutritionGoals.calorieGoal,
-        macroTargets: {
-          protein: nutritionGoals.proteinGoal,
-          carbs: nutritionGoals.carbsGoal,
-          fat: nutritionGoals.fatGoal
-        }
-      },
-      generatedAt: new Date(),
-      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // Valid for 30 days
-      isActive: true
-    });
+    console.log('[DietGeneration] AI plan received successfully');
 
-    await dietPlan.save();
+    try {
+      // Deactivate old diet plans
+      const deactResult = await PersonalizedDietPlan.updateMany(
+        { userId: userId, isActive: true },
+        { isActive: false }
+      );
+      console.log(`[DietGeneration] Deactivated ${deactResult.modifiedCount} old plans`);
 
-    res.json({
-      success: true,
-      message: hasReports
-        ? 'Personalized diet plan generated based on your goal and health reports'
-        : 'Personalized diet plan generated based on your nutrition goal',
-      dietPlan,
-      basedOn: hasReports ? 'goal_and_reports' : 'goal_only'
-    });
+      // Save new diet plan
+      const dietPlan = new PersonalizedDietPlan({
+        ...aiDietPlan,
+        userId: userId,
+        inputData: {
+          age: userData.age,
+          gender: userData.gender,
+          weight: userData.weight,
+          height: userData.height,
+          currentBMI: userData.currentBMI,
+          bmiGoal: userData.bmiGoal,
+          targetWeight: userData.targetWeight,
+          dietaryPreference: userData.dietaryPreference,
+          activityLevel: userData.activityLevel,
+          fitnessGoals: userData.fitnessGoals,
+          medicalConditions: userData.medicalConditions,
+          allergies: userData.allergies,
+          hasReports: hasReports
+        },
+        labReportInsights,
+        nutritionGoals: {
+          dailyCalorieTarget: nutritionGoals.calorieGoal,
+          macroTargets: {
+            protein: nutritionGoals.proteinGoal,
+            carbs: nutritionGoals.carbsGoal,
+            fats: nutritionGoals.fatGoal
+          }
+        },
+        generatedAt: new Date(),
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+        isActive: true
+      });
+
+      await dietPlan.save();
+      console.log('[DietGeneration] New plan saved to DB');
+
+      res.json({
+        success: true,
+        message: hasReports ? 'Plan generated with health reports' : 'Plan generated with goals',
+        dietPlan
+      });
+    } catch (dbError) {
+      console.error('[DietGeneration] Database Error:', dbError.message);
+      res.status(500).json({ 
+        success: false, 
+        message: 'Failed to save generated plan to database', 
+        error: dbError.message 
+      });
+    }
 
   } catch (error) {
-    console.error('Generate diet plan error:', error);
+    console.error('❌ Generate diet plan error:', error);
+    if (error.name === 'ValidationError') {
+      console.error('Validation Errors:', Object.keys(error.errors).map(key => `${key}: ${error.errors[key].message}`));
+    }
     res.status(500).json({
       success: false,
       message: 'Failed to generate diet plan',
-      error: error.message
+      error: error.message,
+      details: error.errors ? Object.keys(error.errors).map(key => `${key}: ${error.errors[key].message}`) : null
     });
   }
 };

@@ -15,11 +15,18 @@ const MEAL_TABS = [
   { id: 'lunch', label: 'Lunch', emoji: '🥗', icon: Utensils, suggestions: ['Rice', 'Roti', 'Dal', 'Chicken', 'Paneer', 'Salad', 'Fish', 'Rajma', 'Curry', 'Biryani'] },
   { id: 'snacks', label: 'Snacks', emoji: '🍎', icon: Sun, suggestions: ['Nuts', 'Fruits', 'Yogurt', 'Sprouts', 'Makhana', 'Peanuts', 'Chana', 'Granola', 'Seeds'] },
   { id: 'dinner', label: 'Dinner', emoji: '🌙', icon: Moon, suggestions: ['Soup', 'Grilled Fish', 'Khichdi', 'Tofu', 'Vegetables', 'Chapati', 'Moong Dal', 'Stir Fry'] },
+  { id: 'general', label: 'General', emoji: '⭐', icon: Sparkles, subTabs: [
+    { id: 'preferredFoods', label: 'Preferred', icon: Heart, suggestions: ['Green Tea', 'Honey', 'Lemon', 'Spices', 'Herbs', 'Dry Fruits'] },
+    { id: 'foodsToAvoid', label: 'To Avoid', icon: AlertCircle, suggestions: ['Sugar', 'White Bread', 'Fried Food', 'Soda', 'Processed Meat'] },
+    { id: 'dietaryRestrictions', label: 'Restrictions', icon: ShieldCheck, suggestions: ['Gluten-free', 'Dairy-free', 'Nut-free', 'Low Sodium', 'Low Carb'] }
+  ]}
 ];
 
-export default function FoodPreferences({ onClose }) {
+export default function FoodPreferences({ onClose, onGenerate, mode = 'save' }) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('breakfast');
+  const [activeGeneralTab, setActiveGeneralTab] = useState('preferredFoods');
+  const [hasChanges, setHasChanges] = useState(false);
   const [preferences, setPreferences] = useState({
     preferredFoods: [],
     foodsToAvoid: [],
@@ -35,7 +42,10 @@ export default function FoodPreferences({ onClose }) {
     breakfast: '',
     lunch: '',
     snacks: '',
-    dinner: ''
+    dinner: '',
+    preferredFoods: '',
+    foodsToAvoid: '',
+    dietaryRestrictions: ''
   });
 
   useEffect(() => {
@@ -59,6 +69,7 @@ export default function FoodPreferences({ onClose }) {
             dinner: []
           }
         });
+        setHasChanges(false);
       }
     } catch (error) {
       console.error('Failed to fetch preferences:', error);
@@ -69,9 +80,17 @@ export default function FoodPreferences({ onClose }) {
 
   const savePreferences = async () => {
     try {
+      // Automatically add current input value if not empty before saving
+      const currentInput = inputValues[currentCategory];
+      if (currentInput && currentInput.trim()) {
+        addItem(currentCategory);
+      }
+
+      console.log('Saving preferences:', preferences);
       const response = await api.post('users/food-preferences', preferences);
       if (response.data.success) {
         toast.success('Preferences saved!');
+        setHasChanges(false);
         return true;
       }
     } catch (error) {
@@ -80,45 +99,79 @@ export default function FoodPreferences({ onClose }) {
     }
   };
 
-  const addItem = (mealType) => {
-    const value = inputValues[mealType]?.trim();
+  const addItem = (type) => {
+    const value = inputValues[type]?.trim();
     if (!value) return;
 
-    const current = preferences.mealPreferences?.[mealType] || [];
-    if (current.includes(value)) {
-      toast.error('Already added');
-      return;
+    if (activeTab === 'general') {
+      const current = preferences[type] || [];
+      if (current.includes(value)) {
+        toast.error('Already added');
+        return;
+      }
+      setPreferences(prev => ({
+        ...prev,
+        [type]: [...(prev[type] || []), value]
+      }));
+      setHasChanges(true);
+    } else {
+      const current = preferences.mealPreferences?.[type] || [];
+      if (current.includes(value)) {
+        toast.error('Already added');
+        return;
+      }
+      setPreferences(prev => ({
+        ...prev,
+        mealPreferences: {
+          ...prev.mealPreferences,
+          [type]: [...(prev.mealPreferences?.[type] || []), value]
+        }
+      }));
+      setHasChanges(true);
     }
-    setPreferences(prev => ({
-      ...prev,
-      mealPreferences: {
-        ...prev.mealPreferences,
-        [mealType]: [...(prev.mealPreferences?.[mealType] || []), value]
-      }
-    }));
-    setInputValues(prev => ({ ...prev, [mealType]: '' }));
+    setInputValues(prev => ({ ...prev, [type]: '' }));
   };
 
-  const addSuggestion = (mealType, food) => {
-    const current = preferences.mealPreferences?.[mealType] || [];
-    if (current.includes(food)) return;
-    setPreferences(prev => ({
-      ...prev,
-      mealPreferences: {
-        ...prev.mealPreferences,
-        [mealType]: [...(prev.mealPreferences?.[mealType] || []), food]
-      }
-    }));
+  const addSuggestion = (type, food) => {
+    if (activeTab === 'general') {
+      const current = preferences[type] || [];
+      if (current.includes(food)) return;
+      setPreferences(prev => ({
+        ...prev,
+        [type]: [...(prev[type] || []), food]
+      }));
+      setHasChanges(true);
+    } else {
+      const current = preferences.mealPreferences?.[type] || [];
+      if (current.includes(food)) return;
+      setPreferences(prev => ({
+        ...prev,
+        mealPreferences: {
+          ...prev.mealPreferences,
+          [type]: [...(prev.mealPreferences?.[type] || []), food]
+        }
+      }));
+      setHasChanges(true);
+    }
   };
 
-  const removeItem = (mealType, index) => {
-    setPreferences(prev => ({
-      ...prev,
-      mealPreferences: {
-        ...prev.mealPreferences,
-        [mealType]: (prev.mealPreferences?.[mealType] || []).filter((_, i) => i !== index)
-      }
-    }));
+  const removeItem = (type, index) => {
+    if (activeTab === 'general') {
+      setPreferences(prev => ({
+        ...prev,
+        [type]: (prev[type] || []).filter((_, i) => i !== index)
+      }));
+      setHasChanges(true);
+    } else {
+      setPreferences(prev => ({
+        ...prev,
+        mealPreferences: {
+          ...prev.mealPreferences,
+          [type]: (prev.mealPreferences?.[type] || []).filter((_, i) => i !== index)
+        }
+      }));
+      setHasChanges(true);
+    }
   };
 
   if (loading) {
@@ -137,9 +190,15 @@ export default function FoodPreferences({ onClose }) {
     );
   }
 
-  const totalItems = Object.values(preferences.mealPreferences || {}).reduce((sum, arr) => sum + arr.length, 0);
+  const totalItems = Object.values(preferences.mealPreferences || {}).reduce((sum, arr) => sum + arr.length, 0) + 
+                    (preferences.preferredFoods?.length || 0) + 
+                    (preferences.foodsToAvoid?.length || 0) + 
+                    (preferences.dietaryRestrictions?.length || 0);
   const activeTabData = MEAL_TABS.find(t => t.id === activeTab);
-  const activeFoods = preferences.mealPreferences?.[activeTab] || [];
+  
+  const currentCategory = activeTab === 'general' ? activeGeneralTab : activeTab;
+  const activeFoods = activeTab === 'general' ? (preferences[activeGeneralTab] || []) : (preferences.mealPreferences?.[activeTab] || []);
+  const activeSuggestions = activeTab === 'general' ? (activeTabData.subTabs.find(st => st.id === activeGeneralTab)?.suggestions || []) : (activeTabData?.suggestions || []);
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-xl z-[110] overflow-y-auto p-4 flex items-start md:items-center justify-center" onClick={onClose}>
@@ -153,10 +212,26 @@ export default function FoodPreferences({ onClose }) {
         <div className="flex items-center justify-between p-5 pb-3 border-b border-slate-50">
           <div>
             <h2 className="text-xl font-bold text-slate-800">Food Preferences</h2>
-            <p className="text-slate-400 text-xs mt-0.5">Tell us what you like for each meal</p>
+            <p className="text-slate-400 text-xs mt-0.5">
+              {hasChanges ? (
+                <span className="text-amber-500 font-medium flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" /> Unsaved changes
+                </span>
+              ) : (
+                "Tell us what you like for each meal"
+              )}
+            </p>
           </div>
           <button
-            onClick={onClose}
+            onClick={() => {
+              if (hasChanges) {
+                if (window.confirm('You have unsaved changes. Do you want to discard them?')) {
+                  onClose();
+                }
+              } else {
+                onClose();
+              }
+            }}
             className="w-9 h-9 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-black hover:bg-slate-100 transition-all"
           >
             <X className="w-4 h-4" />
@@ -173,9 +248,13 @@ export default function FoodPreferences({ onClose }) {
             >
               <span className="text-lg">{tab.emoji}</span>
               <span className="text-[10px] font-black uppercase tracking-wider">{tab.label}</span>
-              {(preferences.mealPreferences?.[tab.id] || []).length > 0 && (
+              {(tab.id === 'general' ? 
+                ((preferences.preferredFoods?.length || 0) + (preferences.foodsToAvoid?.length || 0) + (preferences.dietaryRestrictions?.length || 0)) : 
+                (preferences.mealPreferences?.[tab.id] || []).length) > 0 && (
                 <span className="absolute top-1.5 right-1/4 w-4 h-4 rounded-full bg-black text-white text-[9px] font-black flex items-center justify-center">
-                  {(preferences.mealPreferences?.[tab.id] || []).length}
+                  {tab.id === 'general' ? 
+                    ((preferences.preferredFoods?.length || 0) + (preferences.foodsToAvoid?.length || 0) + (preferences.dietaryRestrictions?.length || 0)) : 
+                    (preferences.mealPreferences?.[tab.id] || []).length}
                 </span>
               )}
               {activeTab === tab.id && (
@@ -196,18 +275,33 @@ export default function FoodPreferences({ onClose }) {
               transition={{ duration: 0.15 }}
               className="space-y-4"
             >
+              {/* General Sub-tabs if active */}
+              {activeTab === 'general' && (
+                <div className="flex gap-1 p-1 bg-slate-50 rounded-xl mb-4">
+                  {activeTabData.subTabs.map(st => (
+                    <button
+                      key={st.id}
+                      onClick={() => setActiveGeneralTab(st.id)}
+                      className={`flex-1 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-lg transition-all ${activeGeneralTab === st.id ? 'bg-white text-black shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+                    >
+                      {st.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+
               {/* Input */}
               <div className="flex gap-2">
                 <input
                   type="text"
-                  value={inputValues[activeTab] || ''}
-                  onChange={(e) => setInputValues(prev => ({ ...prev, [activeTab]: e.target.value }))}
-                  onKeyPress={(e) => e.key === 'Enter' && addItem(activeTab)}
-                  placeholder={`Add ${activeTabData?.label?.toLowerCase()} food...`}
+                  value={inputValues[currentCategory] || ''}
+                  onChange={(e) => setInputValues(prev => ({ ...prev, [currentCategory]: e.target.value }))}
+                  onKeyPress={(e) => e.key === 'Enter' && addItem(currentCategory)}
+                  placeholder={`Add ${activeTab === 'general' ? activeTabData.subTabs.find(st => st.id === activeGeneralTab).label.toLowerCase() : activeTabData?.label?.toLowerCase()}...`}
                   className="flex-1 bg-slate-50 border border-slate-100 focus:border-slate-300 focus:bg-white px-4 py-2.5 rounded-xl outline-none transition-all text-sm font-medium placeholder:text-slate-300"
                 />
                 <button
-                  onClick={() => addItem(activeTab)}
+                  onClick={() => addItem(currentCategory)}
                   className="px-4 bg-black text-white rounded-xl font-bold text-xs hover:bg-slate-800 transition-all active:scale-95"
                 >
                   Add
@@ -218,10 +312,10 @@ export default function FoodPreferences({ onClose }) {
               <div>
                 <p className="text-[10px] font-black uppercase tracking-widest text-slate-300 mb-2">Quick Add</p>
                 <div className="flex flex-wrap gap-1.5">
-                  {(activeTabData?.suggestions || []).filter(s => !activeFoods.includes(s)).map(suggestion => (
+                  {activeSuggestions.filter(s => !activeFoods.includes(s)).map(suggestion => (
                     <button
                       key={suggestion}
-                      onClick={() => addSuggestion(activeTab, suggestion)}
+                      onClick={() => addSuggestion(currentCategory, suggestion)}
                       className="px-2.5 py-1 bg-slate-50 border border-slate-100 rounded-lg text-[11px] font-medium text-slate-500 hover:bg-slate-100 hover:text-slate-700 transition-all"
                     >
                       + {suggestion}
@@ -246,13 +340,13 @@ export default function FoodPreferences({ onClose }) {
                         className="bg-black text-white rounded-full px-3 py-1.5 flex items-center gap-2 text-xs font-bold"
                       >
                         {food}
-                        <X className="w-3 h-3 cursor-pointer opacity-60 hover:opacity-100" onClick={() => removeItem(activeTab, i)} />
+                        <X className="w-3 h-3 cursor-pointer opacity-60 hover:opacity-100" onClick={() => removeItem(currentCategory, i)} />
                       </motion.div>
                     ))}
                   </AnimatePresence>
                   {activeFoods.length === 0 && (
                     <div className="w-full py-6 flex flex-col items-center justify-center border-2 border-dashed border-slate-100 rounded-2xl">
-                      <p className="text-[10px] font-bold text-slate-300">No {activeTabData?.label?.toLowerCase()} preferences yet</p>
+                      <p className="text-[10px] font-bold text-slate-300">No preferences here yet</p>
                       <p className="text-[10px] text-slate-300 mt-0.5">Tap quick suggestions or type above</p>
                     </div>
                   )}
@@ -267,11 +361,16 @@ export default function FoodPreferences({ onClose }) {
           <button
             onClick={async () => {
               const saved = await savePreferences();
-              if (saved) onClose();
+              if (saved) {
+                if (onGenerate) {
+                  onGenerate();
+                }
+                onClose();
+              }
             }}
             className="flex-1 py-3.5 bg-black text-white rounded-2xl font-black uppercase text-[10px] tracking-widest hover:bg-slate-800 transition-all active:scale-95 flex items-center justify-center gap-2"
           >
-            Save Preferences
+            {mode === 'regenerate' ? 'Save & Generate New Plan' : 'Save Preferences'}
             {totalItems > 0 && <span className="bg-white/20 px-2 py-0.5 rounded-full text-[9px]">{totalItems} items</span>}
           </button>
         </div>

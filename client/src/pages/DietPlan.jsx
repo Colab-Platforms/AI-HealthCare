@@ -116,6 +116,8 @@ export default function DietPlan() {
   const [showHistory, setShowHistory] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
+  const [showRegenOptions, setShowRegenOptions] = useState(false);
+  const [prefMode, setPrefMode] = useState('save');
   const [loggedMeals, setLoggedMeals] = useState({});
 
   const rowRefs = useRef({});
@@ -300,13 +302,16 @@ export default function DietPlan() {
             <Clock className="w-3.5 h-3.5 text-slate-500" /> History
           </button>
           <button
-            onClick={() => setShowPreferences(true)}
+            onClick={() => {
+              setPrefMode('save');
+              setShowPreferences(true);
+            }}
             className="flex items-center gap-1.5 px-3 py-1.5 md:px-6 md:py-2 bg-white/60 backdrop-blur-md rounded-full text-xs md:text-sm font-medium text-[#1a1a1a] hover:bg-white transition-all border border-white/60 shadow-sm shrink-0"
           >
             <Filter className="w-3.5 h-3.5 text-slate-500" /> Preferences
           </button>
           <button
-            onClick={() => generatePlan(true)}
+            onClick={() => setShowRegenOptions(true)}
             disabled={generating}
             className="flex items-center gap-1.5 px-3 py-1.5 md:px-6 md:py-2 bg-black text-white rounded-full text-xs md:text-sm font-medium hover:bg-black transition-all shadow-lg hover:shadow-black/5 active:scale-95 disabled:opacity-50 shrink-0"
           >
@@ -462,8 +467,63 @@ export default function DietPlan() {
 
       {/* Modals */}
       {showPreferences && (
-        <FoodPreferences onClose={() => setShowPreferences(false)} />
+        <FoodPreferences 
+          onClose={() => setShowPreferences(false)} 
+          mode={prefMode}
+          onGenerate={prefMode === 'regenerate' ? () => generatePlan(true) : null}
+        />
       )}
+
+      {/* Regeneration Options Modal */}
+      <AnimatePresence>
+        {showRegenOptions && (
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[120] flex items-center justify-center p-4" onClick={() => setShowRegenOptions(false)}>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl shadow-2xl p-6 max-w-sm w-full border border-slate-100"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-slate-800">Regenerate Plan</h3>
+                <button onClick={() => setShowRegenOptions(false)} className="text-slate-400 hover:text-black">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  onClick={() => {
+                    setShowRegenOptions(false);
+                    generatePlan(true); // Default regeneration (usually more variety)
+                  }}
+                  className="w-full flex flex-col items-start p-4 rounded-2xl border border-slate-100 hover:bg-slate-50 transition-all text-left"
+                >
+                  <span className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <Sparkles className="w-4 h-4 text-purple-500" /> Different Food
+                  </span>
+                  <span className="text-xs text-slate-500 mt-1">Generate completely new variety of healthy Indian meals</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setShowRegenOptions(false);
+                    setPrefMode('regenerate');
+                    setShowPreferences(true);
+                  }}
+                  className="w-full flex flex-col items-start p-4 rounded-2xl border border-slate-100 hover:bg-slate-50 transition-all text-left"
+                >
+                  <span className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                    <Utensils className="w-4 h-4 text-emerald-500" /> Based on Preferred Food
+                  </span>
+                  <span className="text-xs text-slate-500 mt-1">Update your favorites first, then generate a tailored plan</span>
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* History Modal */}
       <AnimatePresence>
