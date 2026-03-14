@@ -2,8 +2,8 @@ const axios = require('axios');
 const { robustJsonParse } = require('../utils/aiParser');
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-// Using Haiku on Vercel for 120s timeout safety, Sonnet locally
-const CLAUDE_MODEL = process.env.VERCEL ? 'claude-3-5-haiku-20241022' : 'claude-sonnet-4-6';
+// Using the exact model ID requested by the user
+const CLAUDE_MODEL = 'claude-sonnet-4-6';
 
 class NutritionAI {
   constructor() {

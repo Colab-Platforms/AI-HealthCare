@@ -208,13 +208,6 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
     console.log('[DietGeneration] AI plan received successfully');
 
     try {
-      // Deactivate old diet plans
-      const deactResult = await PersonalizedDietPlan.updateMany(
-        { userId: userId, isActive: true },
-        { isActive: false }
-      );
-      console.log(`[DietGeneration] Deactivated ${deactResult.modifiedCount} old plans`);
-
       const dietPlanData = {
         ...aiDietPlan,
         userId: userId,
@@ -262,6 +255,13 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
 
       await dietPlan.save();
       console.log('[DietGeneration] New plan saved to DB successfully: ', dietPlan._id);
+
+      // ONLY DEACTIVATE OLD PLANS AFTER NEW ONE IS SAVED SUCCESSFULLY
+      const deactResult = await PersonalizedDietPlan.updateMany(
+        { userId: userId, isActive: true, _id: { $ne: dietPlan._id } },
+        { isActive: false }
+      );
+      console.log(`[DietGeneration] Deactivated ${deactResult.modifiedCount} older plans`);
 
       res.json({
         success: true,

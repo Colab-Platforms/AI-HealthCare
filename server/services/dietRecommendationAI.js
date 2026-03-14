@@ -17,8 +17,7 @@ class DietRecommendationAI {
   getApiParams() {
     this.apiKey = process.env.ANTHROPIC_API_KEY;
     const apiUrl = ANTHROPIC_API_URL;
-    // Use Haiku on Vercel to stay within 120s limit, Sonnet locally
-    const model = process.env.VERCEL ? 'claude-3-5-haiku-20241022' : 'claude-sonnet-4-6';
+    const model = 'claude-sonnet-4-6';
     return { apiUrl, model };
   }
 
