@@ -539,59 +539,6 @@ export default function DashboardEnhanced() {
       date: today
     }));
   }, [completedTasks]);
-  const [trendTimeRange, setTrendTimeRange] = useState('1W');
-  const scrollContainerRef = useRef(null);
-  const scrollTrackRef = useRef(null);
-  const isDragging = useRef(false);
-
-  useEffect(() => {
-    const loadData = async () => {
-      try {
-        await Promise.all([
-          fetchDashboard(),
-          fetchNutrition(new Date().toISOString().split('T')[0]),
-          fetchWearable(),
-          fetchDietPlan().then(plan => setDietPlan(plan)),
-          nutritionService.getTodayLogs().then(res => {
-            const logs = res.data?.foodLogs || res.data?.logs || [];
-            const logMap = {};
-            logs.forEach(l => {
-              l.foodItems.forEach(fi => {
-                logMap[`${l.mealType}-${fi.name}`] = true;
-              });
-            });
-            setLoggedMeals(logMap);
-          })
-        ]);
-
-        const diabeticStatus = user?.profile?.medicalHistory?.conditions?.some(c => c.toLowerCase().includes('diabetes')) ||
-          user?.profile?.diabetesProfile?.type;
-        setIsDiabetic(!!diabeticStatus);
-      } catch (err) {
-        console.error("Dashboard mount load error:", err);
-      }
-    };
-    loadData();
-  }, [user]);
-
-  const isMealLogged = (mealType, meal) => {
-    if (!loggedMeals || !meal) return false;
-    const name = meal?.name || meal?.foodItems?.[0]?.name;
-    // Map specialized snack types to 'snack' for log check if needed, 
-    // but the log in DB usually matches the mealType passed during logging.
-    return !!loggedMeals[`${mealType}-${name}`];
-  };
-
-  // Calculate current meal based on time for initial state
-  useEffect(() => {
-    const hour = new Date().getHours();
-    if (hour < 11) setActiveMealTab('breakfast');
-    else if (hour < 16) setActiveMealTab('lunch');
-    else setActiveMealTab('dinner');
-  }, []);
-
-  const calorieDelta = (nutritionData?.totalCalories || 0) - (nutritionData?.calorieGoal || 2000);
-  const isOverLimit = calorieDelta > 0;
 
   const overallPerformanceInsight = useMemo(() => {
     if (!dashboardData) return [];
@@ -673,6 +620,72 @@ export default function DashboardEnhanced() {
 
     return insights;
   }, [dashboardData, nutritionData]);
+
+  const [trendTimeRange, setTrendTimeRange] = useState('1W');
+  const [insightIndex, setInsightIndex] = useState(0);
+
+  useEffect(() => {
+    if (overallPerformanceInsight.length <= 1) return;
+    const interval = setInterval(() => {
+      setInsightIndex(prev => (prev + 1) % overallPerformanceInsight.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [overallPerformanceInsight.length]);
+
+  const scrollContainerRef = useRef(null);
+  const scrollTrackRef = useRef(null);
+  const isDragging = useRef(false);
+
+  useEffect(() => {
+    const loadData = async () => {
+      try {
+        await Promise.all([
+          fetchDashboard(),
+          fetchNutrition(new Date().toISOString().split('T')[0]),
+          fetchWearable(),
+          fetchDietPlan().then(plan => setDietPlan(plan)),
+          nutritionService.getTodayLogs().then(res => {
+            const logs = res.data?.foodLogs || res.data?.logs || [];
+            const logMap = {};
+            logs.forEach(l => {
+              l.foodItems.forEach(fi => {
+                logMap[`${l.mealType}-${fi.name}`] = true;
+              });
+            });
+            setLoggedMeals(logMap);
+          })
+        ]);
+
+        const diabeticStatus = user?.profile?.medicalHistory?.conditions?.some(c => c.toLowerCase().includes('diabetes')) ||
+          user?.profile?.diabetesProfile?.type;
+        setIsDiabetic(!!diabeticStatus);
+      } catch (err) {
+        console.error("Dashboard mount load error:", err);
+      }
+    };
+    loadData();
+  }, [user]);
+
+  const isMealLogged = (mealType, meal) => {
+    if (!loggedMeals || !meal) return false;
+    const name = meal?.name || meal?.foodItems?.[0]?.name;
+    // Map specialized snack types to 'snack' for log check if needed, 
+    // but the log in DB usually matches the mealType passed during logging.
+    return !!loggedMeals[`${mealType}-${name}`];
+  };
+
+  // Calculate current meal based on time for initial state
+  useEffect(() => {
+    const hour = new Date().getHours();
+    if (hour < 11) setActiveMealTab('breakfast');
+    else if (hour < 16) setActiveMealTab('lunch');
+    else setActiveMealTab('dinner');
+  }, []);
+
+  const calorieDelta = (nutritionData?.totalCalories || 0) - (nutritionData?.calorieGoal || 2000);
+  const isOverLimit = calorieDelta > 0;
+
+
 
   const handleScroll = () => {
     if (scrollContainerRef.current && !isDragging.current) {
@@ -1149,47 +1162,7 @@ export default function DashboardEnhanced() {
         ))}
       </div>
 
-      {/* Today's Focus Banner */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="hidden md:flex bg-white/80 backdrop-blur-xl rounded-[32px] p-6 lg:p-8 flex-col md:flex-row items-start md:items-center justify-between relative overflow-hidden group gap-6 border border-white/50 shadow-[0_4px_24px_rgba(0,0,0,0.02)] mb-10"
-      >
-        <div className="absolute right-0 top-0 w-64 h-64 bg-slate-100/30 rounded-full blur-3xl" />
-        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6 w-full relative z-10">
-          <div className="w-16 h-16 rounded-full bg-[#F5F5F7] flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform duration-300">
-            <AlertCircle className="w-8 h-8 text-black" />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-3 mb-2">
-              <h3 className="text-xl font-medium text-[#1a1a1a]">{isOverLimit ? 'Calorie Alert' : 'Nutritional Progress'}</h3>
-              <span className={`text-[11px] px-3 py-1 rounded-full uppercase tracking-widest font-bold shadow-sm ${isOverLimit ? 'bg-black text-white' : 'bg-slate-50 text-slate-800'}`}>
-                {isOverLimit ? `+${Math.round(calorieDelta)} kcal over` : 'On Target'}
-              </span>
-            </div>
-            <p className="text-[#666666] text-base leading-relaxed">
-              {isOverLimit
-                ? "You've exceeded today's calorie target. Balance it out with one of these quick exercises:"
-                : "Great work! You're staying within your calorie target. Keep up this healthy momentum."}
-            </p>
 
-            {isOverLimit && (
-              <div className="flex flex-wrap gap-3 mt-5">
-                <button className="flex items-center gap-2 px-4 py-2 bg-[#F5F5F7] hover:bg-white text-[#1a1a1a] rounded-full transition-all text-sm font-medium border border-slate-200 shadow-sm">
-                  <Flame className="w-4 h-4 text-slate-500" /> 30 Min Walk (-150 kcal)
-                </button>
-                <button className="flex items-center gap-2 px-4 py-2 bg-[#F5F5F7] hover:bg-white text-[#1a1a1a] rounded-full transition-all text-sm font-medium border border-slate-200 shadow-sm">
-                  <Activity className="w-4 h-4 text-slate-500" /> 20 Min HIIT (-200 kcal)
-                </button>
-                <button className="flex items-center gap-2 px-4 py-2 bg-[#F5F5F7] hover:bg-white text-[#1a1a1a] rounded-full transition-all text-sm font-medium border border-slate-200 shadow-sm">
-                  <Zap className="w-4 h-4 text-slate-500" /> 45 Min Yoga (-180 kcal)
-                </button>
-              </div>
-            )}
-          </div>
-        </div>
-      </motion.div>
 
       {/* Diabetes Monitor Block */}
       {
@@ -1242,10 +1215,70 @@ export default function DashboardEnhanced() {
         transition={{ delay: 0.5 }}
         className="mb-12"
       >
+      {/* AI Health Insight Carousel */}
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.45 }}
+        className="mb-12 w-full"
+      >
         <div className="flex items-center justify-between mb-6 px-2">
-          <h2 className="text-2xl font-medium text-[#1a1a1a]">Your Logged Meals</h2>
-          <button onClick={() => navigate('/nutrition')} className="text-sm font-medium text-[#666666] hover:text-[#1a1a1a]">View Menu</button>
+          <h2 className="text-2xl font-medium text-[#1a1a1a]">AI Health Insights</h2>
         </div>
+
+        <div className="bg-[#1a1a1a] text-white rounded-[24px] md:rounded-[32px] p-6 md:p-8 relative overflow-hidden shadow-2xl">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2" />
+          
+          <div className="relative z-10 flex items-center gap-6">
+            <div className="flex-1 min-w-0 overflow-hidden">
+               <div className="relative min-h-[40px] md:min-h-[48px] flex items-center">
+                 <AnimatePresence mode="wait">
+                   <motion.div
+                     key={insightIndex}
+                     initial={{ opacity: 0, y: 10 }}
+                     animate={{ opacity: 1, y: 0 }}
+                     exit={{ opacity: 0, y: -10 }}
+                     transition={{ duration: 0.5, ease: "easeInOut" }}
+                     className="flex items-start gap-4 py-1 w-full"
+                   >
+                     {overallPerformanceInsight[insightIndex] && (
+                       <>
+                         <div className="flex-shrink-0 mt-1">
+                           <div className={`${overallPerformanceInsight[insightIndex].color} opacity-80`}>
+                             {(() => {
+                               const Icon = overallPerformanceInsight[insightIndex].icon;
+                               return <Icon className="w-4 h-4 md:w-5 md:h-5" />;
+                             })()}
+                           </div>
+                         </div>
+                         <div className="flex-1 min-w-0">
+                           <p className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-[#666666] leading-none mb-1.5 grayscale opacity-70">
+                             {overallPerformanceInsight[insightIndex].label}
+                           </p>
+                           <p className="text-sm md:text-base font-medium text-gray-200 leading-snug">
+                             {overallPerformanceInsight[insightIndex].text}
+                           </p>
+                         </div>
+                       </>
+                     )}
+                   </motion.div>
+                 </AnimatePresence>
+               </div>
+            </div>
+
+            <div className="hidden sm:flex items-center gap-1.5">
+              {overallPerformanceInsight.map((_, i) => (
+                <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${i === insightIndex ? 'bg-white w-4' : 'bg-white/20'}`} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+
+      <div className="flex items-center justify-between mb-6 px-2">
+        <h2 className="text-2xl font-medium text-[#1a1a1a]">Your Logged Meals</h2>
+        <button onClick={() => navigate('/nutrition')} className="text-sm font-medium text-[#666666] hover:text-[#1a1a1a]">View Menu</button>
+      </div>
         <div className="flex overflow-x-auto md:grid md:grid-cols-3 gap-4 md:gap-8 pb-4 md:pb-0 scrollbar-hide snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0">
           {loggedMeals.length > 0 ? (
             <>
@@ -1632,56 +1665,6 @@ export default function DashboardEnhanced() {
             </AreaChart>
           </ResponsiveContainer>
         </div>
-      </motion.div>
-
-      {/* AI Insight Footer */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.9 }}
-        className="bg-[#1a1a1a] text-white rounded-[32px] p-6 lg:p-8 mb-8 shadow-xl shadow-black/5 flex flex-col md:flex-row items-start md:items-center gap-6 relative overflow-hidden group"
-      >
-        <div className="absolute right-0 top-0 w-64 h-64 bg-white/5 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2" />
-        <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 relative z-10 group-hover:scale-110 transition-transform duration-300 border border-white/10">
-          <Zap className="w-6 h-6 text-white" />
-        </div>
-        <div className="relative z-10 flex-1">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="p-2 bg-purple-500/20 rounded-xl">
-              <Sparkles className="w-5 h-5 text-purple-400" />
-            </div>
-            <h3 className="font-black text-xl uppercase tracking-tight">AI Health Assistant</h3>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {overallPerformanceInsight.length > 0 ? (
-              overallPerformanceInsight.map((insight, idx) => (
-                <motion.div 
-                  key={insight.id + idx}
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.9 + (idx * 0.1) }}
-                  className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all group/item"
-                >
-                  <div className={`mt-1 flex-shrink-0 group-hover/item:scale-110 transition-transform`}>
-                    <insight.icon className={`w-4 h-4 ${insight.color}`} />
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-[#666666] mb-1">{insight.label}</p>
-                    <p className="text-sm font-medium text-gray-300 leading-snug">{insight.text}</p>
-                  </div>
-                </motion.div>
-              ))
-            ) : (
-              <p className="text-[#a0a0a0] font-medium leading-relaxed max-w-4xl text-base">
-                Preparing your daily insights... Log your activities more frequently for better accuracy.
-              </p>
-            )}
-          </div>
-        </div>
-        <button onClick={() => navigate('/ai-chat')} className="relative z-10 mt-4 md:mt-0 px-8 py-3 bg-white hover:bg-slate-100 text-[#1a1a1a] text-sm font-medium rounded-full transition-all shadow-md whitespace-nowrap">
-          Ask AI Assistant
-        </button>
       </motion.div>
       <AnimatePresence>
         {showMealModal && (
