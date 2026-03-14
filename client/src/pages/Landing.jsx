@@ -495,27 +495,18 @@ function Testimonials() {
   const testimonials = [
     {
       stars: 5,
-      quote: "FitCure identified my vitamin D deficiency that traditional methods missed. The personalized nutrition plan has completely transformed my energy levels and overall health. I feel like I have a personal health advisor in my pocket.",
-      author: "Sarah Johnson",
-      role: "Marketing Manager",
-      location: "San Francisco",
-      image: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=100&h=100&fit=crop&crop=face",
+      quote: "The personalized diet suggestions are well structured. It’s great to see technology helping people make better food choices based on their health data.",
+      author: "Saurabh Sonawane",
     },
     {
       stars: 5,
-      quote: "As a busy professional, I never had time to properly analyze my health reports. FitCure does it instantly and gives me actionable insights and personalized recommendations that saved me months of searching.",
-      author: "Michael Chen",
-      role: "Software Engineer",
-      location: "Seattle",
-      image: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face",
+      quote: "I never paid attention to nutrition before. This app made it easy to understand calories, macros, and even micronutrients.",
+      author: "Kavya Nair",
     },
     {
       stars: 5,
-      quote: "The AI analysis caught early signs of metabolic issues that could have become serious. The preventive care recommendations and supplement guidance have been life-changing. This is the future of healthcare.",
-      author: "Emily Rodriguez",
-      role: "Fitness Instructor",
-      location: "Austin",
-      image: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face",
+      quote: "A very smart platform for people who want to stay healthy and avoid future medical problems.",
+      author: "Arjun Gupta",
     },
   ];
 
@@ -559,16 +550,8 @@ function Testimonials() {
 
             {/* Author */}
             <div className="flex items-center gap-4">
-              <img
-                src={testimonials[current].image}
-                alt={testimonials[current].author}
-                className="w-14 h-14 rounded-full object-cover border-2 border-[#E5DFD3]"
-              />
               <div>
-                <p className="font-semibold text-[#2C2416]">{testimonials[current].author}</p>
-                <p className="text-sm text-[#5C4F3D]">
-                  {testimonials[current].role} · {testimonials[current].location}
-                </p>
+                <p className="font-semibold text-[#2C2416] text-lg">{testimonials[current].author}</p>
               </div>
             </div>
           </div>
