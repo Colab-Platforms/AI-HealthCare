@@ -285,41 +285,37 @@ export default function DietPlan() {
       {/* Background elements */}
       <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-purple-100/20 rounded-full blur-[120px] pointer-events-none" />
 
-      {/* Header */}
-      <div className="relative z-10 flex flex-col gap-3 mb-6 md:mb-16 pt-2 md:pt-4">
-        <h1 className="text-3xl md:text-5xl font-light tracking-tight text-[#1a1a1a]">My Meal Plan</h1>
-
-        <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
-          <div className="flex items-center gap-1.5 bg-white/60 backdrop-blur-md px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-white/60 shadow-sm shrink-0">
-            <Calendar className="w-3 h-3 md:w-3.5 md:h-3.5 text-slate-400" />
-            <span className="text-xs md:text-sm font-medium text-slate-600 whitespace-nowrap">
-              {new Date().toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}
-            </span>
-          </div>
-          <button
-            onClick={() => setShowHistory(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 md:px-6 md:py-2 bg-white/60 backdrop-blur-md rounded-full text-xs md:text-sm font-medium text-[#1a1a1a] hover:bg-white transition-all border border-white/60 shadow-sm shrink-0"
-          >
-            <Clock className="w-3.5 h-3.5 text-slate-500" /> History
-          </button>
-          <button
-            onClick={() => {
-              setPrefMode('save');
-              setShowPreferences(true);
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 md:px-6 md:py-2 bg-white/60 backdrop-blur-md rounded-full text-xs md:text-sm font-medium text-[#1a1a1a] hover:bg-white transition-all border border-white/60 shadow-sm shrink-0"
-          >
-            <Filter className="w-3.5 h-3.5 text-slate-500" /> Preferences
-          </button>
-          <button
-            onClick={() => setShowRegenOptions(true)}
-            disabled={generating}
-            className="flex items-center gap-1.5 px-3 py-1.5 md:px-6 md:py-2 bg-black text-white rounded-full text-xs md:text-sm font-medium hover:bg-black transition-all shadow-lg hover:shadow-black/5 active:scale-95 disabled:opacity-50 shrink-0"
-          >
-            <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-            {generating ? 'Regenerating...' : 'Regenerate'}
-          </button>
+      {/* Header - Simplified for Global Sticky Header */}
+      <div className="relative z-10 flex items-center gap-2 overflow-x-auto scrollbar-hide mb-8 mt-4">
+        <div className="flex items-center gap-1.5 bg-white/60 backdrop-blur-md px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-white/60 shadow-sm shrink-0">
+          <Calendar className="w-3 h-3 md:w-3.5 md:h-3.5 text-slate-400" />
+          <span className="text-xs md:text-sm font-medium text-slate-600 whitespace-nowrap">
+            {new Date().toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}
+          </span>
         </div>
+        <button
+          onClick={() => setShowHistory(true)}
+          className="flex items-center gap-1.5 px-3 py-1.5 md:px-6 md:py-2 bg-white/60 backdrop-blur-md rounded-full text-xs md:text-sm font-medium text-[#1a1a1a] hover:bg-white transition-all border border-white/60 shadow-sm shrink-0"
+        >
+          <Clock className="w-3.5 h-3.5 text-slate-500" /> History
+        </button>
+        <button
+          onClick={() => {
+            setPrefMode('save');
+            setShowPreferences(true);
+          }}
+          className="flex items-center gap-1.5 px-3 py-1.5 md:px-6 md:py-2 bg-white/60 backdrop-blur-md rounded-full text-xs md:text-sm font-medium text-[#1a1a1a] hover:bg-white transition-all border border-white/60 shadow-sm shrink-0"
+        >
+          <Filter className="w-3.5 h-3.5 text-slate-500" /> Preferences
+        </button>
+        <button
+          onClick={() => setShowRegenOptions(true)}
+          disabled={generating}
+          className="flex items-center gap-1.5 px-3 py-1.5 md:px-6 md:py-2 bg-black text-white rounded-full text-xs md:text-sm font-medium hover:bg-black transition-all shadow-lg hover:shadow-black/5 active:scale-95 disabled:opacity-50 shrink-0"
+        >
+          <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+          {generating ? 'Regenerating...' : 'Regenerate'}
+        </button>
       </div>
 
       {!activePlan ? (

@@ -100,8 +100,8 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
     portalName = user?.doctorProfile?.specialization || 'Doctor Portal';
   }
 
-  // Clean white background for all pages
-  const bgColor = 'bg-gradient-to-br from-purple-50 via-white to-purple-100';
+  // Clean white background for all pages - Now with more visible purple tone
+  const bgColor = 'bg-[#FAFAFF]';
 
   const isDashboardPage = location.pathname === '/dashboard' || location.pathname === '/doctor/dashboard' || location.pathname === '/admin';
 
@@ -210,10 +210,15 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
       )}
 
       {/* Main Content - Add left margin for fixed sidebar on desktop */}
-      <div className="flex-1 flex flex-col min-h-screen lg:ml-64">
-        {/* Desktop Header - Now visible on mobile too */}
-        <header className="sticky top-0 z-30 bg-white/40 backdrop-blur-md">
-          <div className="flex items-center justify-between lg:justify-end px-6 md:px-12 py-4 md:py-6 gap-6">
+      <div className="flex-1 flex flex-col min-h-screen lg:ml-64 relative overflow-hidden bg-white/50">
+        {/* Background Blobs - Visible on all pages using Layout */}
+        <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-purple-300/25 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+        <div className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-purple-300/15 rounded-full blur-[100px] translate-x-1/2 pointer-events-none" />
+        <div className="absolute bottom-0 left-1/4 w-[300px] h-[300px] bg-purple-200/20 rounded-full blur-[80px] pointer-events-none" />
+
+        {/* Global Sticky Header - Identity & Profile */}
+        <header className="sticky top-0 z-40 bg-white/70 backdrop-blur-xl border-b border-white/20 shadow-sm">
+          <div className="flex items-center justify-between lg:justify-end px-6 md:px-12 py-3 md:py-4 gap-6">
             {/* Logo for mobile */}
             <div className="flex lg:hidden items-center gap-3">
               <Link to={homeLink} className="flex items-center gap-2">
@@ -225,7 +230,6 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
             </div>
 
             <div className="flex items-center gap-4">
-
               {/* Profile Image - Large and Round as per image */}
               <button
                 onClick={() => navigate('/profile')}
@@ -242,24 +246,6 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
             </div>
           </div>
         </header>
-
-        {/* Mobile Back Button Header - Only for non-dashboard and non-food-scan pages */}
-        {!isDashboardPage && location.pathname !== '/step-tracker' && location.pathname !== '/ai-chat' && (
-          <header className="sticky top-0 z-30 backdrop-blur-xl bg-white/95 border-b border-slate-100 md:hidden">
-            <div className="flex items-center px-4 py-3 gap-3">
-              <button
-                onClick={() => navigate(-1)}
-                className="p-2 hover:bg-gray-100 rounded-xl transition-all"
-                title="Go Back"
-              >
-                <ArrowLeft className="w-5 h-5 text-gray-700" />
-              </button>
-              <h1 className="text-base font-bold text-black">
-                {navItems.find(item => item.path === location.pathname)?.label || 'Back'}
-              </h1>
-            </div>
-          </header>
-        )}
 
         {/* Page Content */}
         <main className="flex-1 main-content-mobile overflow-x-hidden w-full" style={

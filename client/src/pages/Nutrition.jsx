@@ -392,21 +392,14 @@ function Nutrition() {
 
   return (
     <div className="min-h-screen bg-transparent pb-32 px-4 md:px-6 lg:px-16 pt-8 relative overflow-hidden font-sans text-slate-800">
-      {/* Decorative background glow matching Dashboard - Neutralized */}
-      <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-purple-100/20 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
-      <div className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-purple-100/10 rounded-full blur-[100px] translate-x-1/2 pointer-events-none" />
+
 
       <div className="relative z-10 w-full">
 
-        {/* Header */}
-        <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4 md:mb-8">
-          <div>
-            <h1 className="text-xl md:text-3xl font-black text-slate-900 leading-tight">Nutrition Tracker</h1>
-            <p className="text-[9px] md:text-sm text-slate-500 mt-1 font-bold uppercase tracking-widest leading-tight">Mindful eating for wellness.</p>
-          </div>
-
+        {/* Header - Optimized for Global Sticky Header */}
+        <div className="flex flex-col gap-4 mb-4 md:mb-8 mt-4">
           <div className="flex flex-col gap-4 w-full md:w-auto">
-            <div className="flex items-center justify-between md:justify-center bg-white border border-slate-200 rounded-full px-4 py-2 shadow-sm w-full">
+            <div className="flex items-center justify-between md:justify-start bg-white/60 border border-white/40 backdrop-blur-md rounded-full px-4 py-2 shadow-sm w-full md:w-fit">
               <button onClick={() => changeDate(-1)} className="p-1 text-slate-400 hover:text-slate-600"><ChevronLeft className="w-4 h-4" /></button>
               <span className="text-sm font-semibold px-3 uppercase tracking-tight">
                 {new Date(selectedDate).toDateString() === new Date().toDateString() ? 'Today, ' : ''}
@@ -443,7 +436,7 @@ function Nutrition() {
               </button>
             </div>
           </div>
-        </header>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] xl:grid-cols-[1.5fr_1fr] gap-8">
 

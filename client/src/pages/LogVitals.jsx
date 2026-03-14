@@ -200,23 +200,7 @@ export default function LogVitals() {
         <div className="min-h-full bg-transparent p-4 md:p-8 font-sans relative">
             <div className="max-w-[1000px] mx-auto relative z-10 space-y-8">
 
-                {/* Header */}
-                <motion.div
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="flex items-center gap-4"
-                >
-                    <button
-                        onClick={() => navigate(-1)}
-                        className="w-12 h-12 rounded-full bg-white/60 backdrop-blur-md flex items-center justify-center border border-white shadow-sm hover:bg-white transition-all"
-                    >
-                        <ArrowLeft className="w-5 h-5 text-[#1a1a1a]" />
-                    </button>
-                    <div>
-                        <h1 className="text-3xl md:text-4xl font-light tracking-tight text-[#1a1a1a]">Log Vitals</h1>
-                        <p className="text-[#666666] mt-1 text-sm md:text-base">Track your daily progress</p>
-                    </div>
-                </motion.div>
+                <div className="pt-4" />
 
                 {/* Content Card */}
                 <motion.div

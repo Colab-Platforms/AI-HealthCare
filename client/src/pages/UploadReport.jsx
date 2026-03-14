@@ -246,8 +246,8 @@ export default function UploadReport() {
 
   return (
     <div className="p-4 md:p-8 max-w-[1400px] mx-auto space-y-8 relative font-sans bg-transparent">
-      <div className="text-left mb-4 md:mb-8 max-w-3xl">
-        <h1 className="text-3xl md:text-5xl font-light tracking-tight text-[#1a1a1a] mb-2 md:mb-4">AI Lab Analyzer</h1>
+      <div className="pt-4" />
+      <div className="mt-4 max-w-3xl">
         <p className="text-[#666666] text-sm md:text-lg leading-relaxed">Upload your medical reports and let our AI translate complex jargon into actionable health insights.</p>
       </div>
 

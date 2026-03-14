@@ -149,26 +149,7 @@ export default function Challenge30Days() {
     <div className="min-h-screen bg-[#FDFDFD] pb-32 px-4 md:px-8 lg:px-16 pt-8 font-sans">
       <div className="max-w-[1200px] mx-auto">
         
-        {/* Compact Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div className="flex items-center gap-4">
-            <button 
-              onClick={() => navigate(-1)}
-              className="w-10 h-10 rounded-full bg-white border border-slate-100 flex items-center justify-center hover:bg-slate-50 transition-all shadow-sm"
-            >
-              <ArrowLeft className="w-5 h-5 text-[#1a1a1a]" />
-            </button>
-            <div>
-              <h1 className="text-2xl md:text-3xl font-medium tracking-tight text-[#1a1a1a]">30 Day <span className="text-[#A795C7]">Elite</span></h1>
-              <p className="text-[#888888] text-xs font-bold uppercase tracking-widest">{getCompletedDays()}/30 DAYS SAVED</p>
-            </div>
-          </div>
-          
-          <div className="bg-white px-4 py-2 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3">
-            <Flame className="w-5 h-5 text-orange-500 fill-orange-500" />
-            <span className="text-lg font-black text-[#1a1a1a]">{streak}</span>
-          </div>
-        </div>
+        <div className="pt-4" />
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
