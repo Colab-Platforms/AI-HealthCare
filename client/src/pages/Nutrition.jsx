@@ -54,6 +54,7 @@ function Nutrition() {
   const [prepMethod, setPrepMethod] = useState('');
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = React.useRef(null);
+  const [expandedMeal, setExpandedMeal] = useState(null);
 
   useEffect(() => {
     fetchData();
@@ -150,14 +151,25 @@ function Nutrition() {
       });
 
       // Insights & Suggestions
+      let insight = "Analyzing your eating patterns...";
+      const bCals = grouped.Breakfast.reduce((sum, l) => sum + (l.foodItems?.[0]?.nutrition?.calories || 0), 0);
+      const lCals = grouped.Lunch.reduce((sum, l) => sum + (l.foodItems?.[0]?.nutrition?.calories || 0), 0);
+      const dCals = grouped.Dinner.reduce((sum, l) => sum + (l.foodItems?.[0]?.nutrition?.calories || 0), 0);
+      
+      const cTarget = goals.dailyCalorieTarget || 1800;
+      const bT = Math.round(cTarget * 0.3);
+      const lT = Math.round(cTarget * 0.35);
+      const dT = Math.round(cTarget * 0.25);
+
+      if (bCals > bT) insight = "Your breakfast was heavy ({bCals} kcal). Stay light on lunch to balance.";
+      else if (lCals > lT) insight = "Lunch was calorie-dense. A high-protein dinner would be ideal.";
+      else if (dCals > dT) insight = "Dinner exceeded target. Consider an active start tomorrow.";
+      else if (summary.totalCalories > 0) insight = "Excellent! You're managing your meal portions very well.";
+
+      setAiInsights(insight.replace('{bCals}', bCals));
+
       if (dietRes.data.dietPlan) {
-        setMealSuggestions(dietRes.data.dietPlan.mealPlan?.lunch || []); // Example: showing lunch suggestions
-        const proteinShort = Math.max(0, (goals.macroTargets?.protein || 70) - (summary.totalProtein || 0));
-        if (proteinShort > 0) {
-          setAiInsights(`You are ${proteinShort}g short on protein today. Try adding some paneer or chicken.`);
-        } else {
-          setAiInsights("Great job! You've met your protein goal for today.");
-        }
+        setMealSuggestions(dietRes.data.dietPlan.mealPlan?.lunch || []); 
       }
 
     } catch (error) {
@@ -482,47 +494,121 @@ function Nutrition() {
               <h3 className="font-black text-slate-900 uppercase tracking-tight mb-5 text-lg">Meal Timeline</h3>
               <div className="space-y-4">
                 {[
-                  { name: 'Breakfast', icon: Sun, target: 500 },
-                  { name: 'Lunch', icon: Utensils, target: 800 },
-                  { name: 'Evening Snack', icon: Cookie, target: 200 },
-                  { name: 'Dinner', icon: Moon, target: 300 }
+                  { name: 'Breakfast', icon: Sun, ratio: 0.30 },
+                  { name: 'Lunch', icon: Utensils, ratio: 0.35 },
+                  { name: 'Evening Snack', icon: Cookie, ratio: 0.10 },
+                  { name: 'Dinner', icon: Moon, ratio: 0.25 }
                 ].map((meal) => {
                   const logs = mealLogs[meal.name] || [];
                   const cals = logs.reduce((sum, l) => sum + (l.foodItems?.[0]?.nutrition?.calories || 0), 0);
+                  const mealTarget = Math.round(dailySummary.calorieTarget * meal.ratio);
+                  const isOver = cals > mealTarget;
+                  const isExpanded = expandedMeal === meal.name;
+
                   return (
-                    <div key={meal.name} className="p-4 bg-white border border-slate-100 rounded-[2.5rem] shadow-sm hover:border-slate-200 transition-all group">
+                    <motion.div
+                      key={meal.name}
+                      layout
+                      onClick={() => setExpandedMeal(isExpanded ? null : meal.name)}
+                      className={`p-5 bg-white border ${isOver ? 'border-red-200' : 'border-slate-100'} rounded-[2.5rem] shadow-sm hover:border-slate-300 transition-all cursor-pointer overflow-hidden ${isExpanded ? 'ring-2 ring-slate-900 ring-offset-2' : ''}`}
+                    >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-5">
-                          <div className="w-14 h-14 rounded-[1.5rem] bg-slate-50 flex items-center justify-center border border-slate-100 group-hover:bg-slate-100 transition-colors">
-                            <meal.icon className="w-6 h-6 text-slate-900" />
+                          <div className={`w-14 h-14 rounded-[1.5rem] ${isOver ? 'bg-red-50 text-red-600' : 'bg-slate-50 text-slate-900'} flex items-center justify-center border border-slate-100 transition-colors`}>
+                            <meal.icon className="w-6 h-6" />
                           </div>
                           <div>
                             <span className="font-black text-sm text-slate-900 uppercase tracking-tight">{meal.name}</span>
-                            {logs.length > 0 && (
+                            {!isExpanded && logs.length > 0 && (
                               <div className="flex flex-wrap gap-2 mt-1">
-                                {logs.map(log => (
-                                  <span key={log._id} className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full flex items-center gap-1 group/item">
+                                {logs.slice(0, 2).map(log => (
+                                  <span key={log._id} className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full">
                                     {log.foodItems?.[0]?.name}
-                                    <button onClick={() => deleteLog(log._id)} className="text-slate-300 hover:text-red-500 opacity-0 group-hover/item:opacity-100 transition-all">
-                                      <Trash2 className="w-2.5 h-2.5" />
-                                    </button>
                                   </span>
                                 ))}
+                                {logs.length > 2 && <span className="text-[10px] font-bold text-slate-300">+{logs.length - 2} more</span>}
                               </div>
                             )}
                           </div>
                         </div>
                         <div className="flex items-center gap-6">
-                          <span className="text-xs font-black text-slate-400 uppercase tracking-wider">{cals} of {meal.target} kcal</span>
+                          <div className="text-right">
+                            <span className={`text-xs font-black ${isOver ? 'text-red-500' : 'text-slate-400'} uppercase tracking-wider block`}>{cals} of {mealTarget} kcal</span>
+                            {isOver && <span className="text-[9px] font-bold text-red-400 uppercase tracking-tight">Limit exceeded</span>}
+                          </div>
                           <button
-                            onClick={() => openModal(meal.name)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              openModal(meal.name);
+                            }}
                             className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center hover:bg-slate-900 hover:text-white transition-all border border-slate-100 shadow-sm"
                           >
                             <Plus className="w-4 h-4" />
                           </button>
                         </div>
                       </div>
-                    </div>
+
+                      <AnimatePresence>
+                        {isExpanded && (
+                          <motion.div
+                            initial={{ height: 0, opacity: 0 }}
+                            animate={{ height: 'auto', opacity: 1 }}
+                            exit={{ height: 0, opacity: 0 }}
+                            className="mt-6 pt-6 border-t border-slate-50 space-y-4"
+                          >
+                            {/* Detailed Logs */}
+                            <div className="space-y-3">
+                              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Logged Items</p>
+                              {logs.length > 0 ? logs.map(log => (
+                                <div key={log._id} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100 group/item">
+                                  <div>
+                                    <p className="text-xs font-black text-slate-900 uppercase tracking-tight">{log.foodItems?.[0]?.name}</p>
+                                    <p className="text-[10px] text-slate-400 font-bold uppercase">{log.foodItems?.[0]?.nutrition?.calories} kcal • {log.foodItems?.[0]?.quantity}</p>
+                                  </div>
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      deleteLog(log._id);
+                                    }}
+                                    className="w-8 h-8 rounded-full bg-white text-slate-300 hover:text-red-500 flex items-center justify-center border border-slate-100 opacity-0 group-hover/item:opacity-100 transition-all"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              )) : (
+                                <p className="text-xs font-bold text-slate-300 italic text-center py-2">Nothing logged yet</p>
+                              )}
+                            </div>
+
+                            {/* Meal Insights */}
+                            {isOver && (
+                              <div className="bg-red-50 rounded-2xl p-4 border border-red-100 flex gap-3 items-start">
+                                <AlertCircle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                                <div>
+                                  <p className="text-[10px] font-black text-red-600 uppercase tracking-widest mb-1">AI Insight</p>
+                                  <p className="text-xs font-bold text-red-800 leading-relaxed">
+                                    You've exceeded your {meal.name.toLowerCase()} target by {cals - mealTarget} kcal. 
+                                    Consider a lighter {meal.name === 'Dinner' ? 'snack tonight' : 'next meal'} to balance your daily intake.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+
+                            {!isOver && cals > 0 && (
+                              <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-100 flex gap-3 items-start">
+                                <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                                <div>
+                                  <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest mb-1">AI Insight</p>
+                                  <p className="text-xs font-bold text-emerald-800 leading-relaxed">
+                                    Great control! You are well within your {meal.name.toLowerCase()} limit.
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+                          </motion.div>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
                   );
                 })}
               </div>
