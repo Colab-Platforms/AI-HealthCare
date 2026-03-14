@@ -20,7 +20,7 @@ const MinimalHeader = () => {
   }, []);
 
   return (
-    <header className="fixed top-5 z-50 left-1/2 -translate-x-1/2 w-[calc(100%-200px)] max-w-5xl max-md:w-[calc(100%-40px)]">
+    <header className="fixed top-5 z-50 left-4 right-4 md:left-1/2 md:right-auto md:-translate-x-1/2 md:w-full md:max-w-5xl">
       <div className="bg-white/80 backdrop-blur-md rounded-[28px] border border-white/40 shadow-2xl shadow-black/10">
         <div className="px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">

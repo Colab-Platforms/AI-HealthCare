@@ -18,7 +18,7 @@ const ScrollPhoneShowcase = () => {
   // Responsive offsets based on screen size to ensure cards clear the phone
   const getOffsets = (baseX, baseY) => {
     let multiplier = 1.1; // Desktop
-    if (isMobile) multiplier = 0.55;
+    if (isMobile) multiplier = 0.45; // Tuned for standard mobile screens to stay within bounds
     else if (isTablet) multiplier = 0.85;
 
     return { x: baseX * multiplier, y: baseY * multiplier };
@@ -94,7 +94,7 @@ const ScrollPhoneShowcase = () => {
   // Use a listener to update active section
   scrollYProgress.on("change", (latest) => {
     const sectionIndex = Math.min(
-      Math.floor(latest * features.length),
+      Math.floor(latest * (features.length + 1)),
       features.length - 1
     );
     if (sectionIndex !== activeSection) {
@@ -103,9 +103,9 @@ const ScrollPhoneShowcase = () => {
   });
 
   return (
-    <div id="showcase" ref={containerRef} className="relative bg-transparent" style={{ height: `${features.length * 100}vh` }}>
+    <div id="showcase" ref={containerRef} className="relative bg-transparent" style={{ height: `${(features.length + 1) * 100}vh` }}>
       {/* Sticky container for phone and cards */}
-      <div className="sticky top-0 h-screen flex flex-col items-center justify-start sm:justify-center overflow-hidden pt-24 sm:pt-32">
+      <div className="sticky top-0 h-screen flex flex-col items-center justify-center overflow-hidden pt-12 sm:pt-20 lg:pt-32">
 
         {/* Header Text - Increased top safety zone */}
         <div className="w-full text-center px-6 z-[60] mb-6 sm:mb-16">
@@ -185,12 +185,12 @@ const ScrollPhoneShowcase = () => {
           <motion.div
             className="relative z-20 perspective-1000"
             style={{
-              scale: useTransform(smoothProgress, [0, 0.1], [isMobile ? 0.75 : 0.85, 1]),
-              y: isMobile ? 30 : 0
+              scale: useTransform(smoothProgress, [0, 0.1], [isMobile ? 0.7 : 0.8, isMobile ? 0.9 : 1]),
+              y: isMobile ? 40 : 0
             }}
           >
-            {/* Phone Frame - Resized for mobile stability */}
-            <div className="relative w-[180px] sm:w-[260px] md:w-[300px] lg:w-[320px] h-[360px] sm:h-[520px] md:h-[600px] lg:h-[640px] bg-slate-900 rounded-[2rem] sm:rounded-[3rem] p-2 sm:p-3 shadow-[0_0_100px_rgba(0,0,0,0.6)] border-4 border-slate-800/80">
+            {/* Phone Frame - Resized and constrained to prevent cutting */}
+            <div className="relative w-[180px] sm:w-[240px] md:w-[280px] lg:w-[310px] h-[370px] sm:h-[480px] md:h-[580px] lg:h-[620px] max-h-[75vh] bg-slate-900 rounded-[2rem] sm:rounded-[3rem] p-2 sm:p-3 shadow-[0_0_100px_rgba(0,0,0,0.6)] border-4 border-slate-800/80">
               {/* Screen Content */}
               <div className="relative w-full h-full bg-slate-900 rounded-[1.8rem] sm:rounded-[2.5rem] overflow-hidden">
                 <AnimatePresence mode="wait">

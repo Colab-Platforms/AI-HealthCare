@@ -26,61 +26,61 @@ const ProductShowcaseSection = () => {
           {/* Right Side - Two Stacked Cards */}
           <div className="flex flex-col gap-8">
             {/* Top Card - Features */}
-            <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#0a3d5c]/80 to-[#0d5a8a]/80 backdrop-blur-sm p-8 border border-cyan-400/30">
-              <div className="flex items-center justify-between">
-                <div className="flex-1">
-                  <h3 className="text-2xl font-serif text-white mb-2">
+            <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#0a3d5c]/80 to-[#0d5a8a]/80 backdrop-blur-sm p-6 sm:p-8 border border-cyan-400/30">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+                <div className="flex-1 text-center sm:text-left">
+                  <h3 className="text-xl sm:text-2xl font-serif text-white mb-2">
                     Track Everything
                   </h3>
-                  <h4 className="text-xl font-serif text-cyan-300 mb-4">
+                  <h4 className="text-lg sm:text-xl font-serif text-cyan-300 mb-4">
                     Achieve Anything
                   </h4>
-                  <ul className="space-y-2 text-sm text-cyan-100">
+                  <ul className="space-y-2 text-sm text-cyan-100 inline-block sm:block text-left">
                     <li className="flex items-center gap-2">
-                      <span className="w-1 h-1 rounded-full bg-cyan-400"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
                       Calorie & Macro Tracking
                     </li>
                     <li className="flex items-center gap-2">
-                      <span className="w-1 h-1 rounded-full bg-cyan-400"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
                       Meal Planning & Recipes
                     </li>
                     <li className="flex items-center gap-2">
-                      <span className="w-1 h-1 rounded-full bg-cyan-400"></span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
                       Progress Analytics
                     </li>
                   </ul>
                 </div>
-                <div className="flex-shrink-0">
+                <div className="flex-shrink-0 w-full sm:w-auto">
                   <img
-                    src="https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=300&h=400&fit=crop"
+                    src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/calorie_trcaker.jpg?v=1773466485"
                     alt="Healthy Food"
-                    className="w-48 h-64 object-cover rounded-2xl"
+                    className="w-full sm:w-40 md:w-48 h-48 sm:h-64 object-cover rounded-2xl"
                   />
                 </div>
               </div>
             </div>
 
             {/* Bottom Card - Mobile App */}
-            <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#0a3d5c]/80 to-[#0d5a8a]/80 backdrop-blur-sm p-8 border border-cyan-400/30">
-              <div className="flex items-center gap-6">
+            <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#0a3d5c]/80 to-[#0d5a8a]/80 backdrop-blur-sm p-6 sm:p-8 border border-cyan-400/30">
+              <div className="flex flex-col sm:flex-row items-center gap-6">
                 <div className="flex-shrink-0">
-                  <div className="w-16 h-16 rounded-full bg-cyan-500/20 flex items-center justify-center border border-cyan-400/50">
-                    <Smartphone className="w-8 h-8 text-cyan-300" />
+                  <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-cyan-500/20 flex items-center justify-center border border-cyan-400/50">
+                    <Activity className="w-7 h-7 sm:w-8 sm:h-8 text-cyan-300" />
                   </div>
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-serif text-white mb-2">
+                <div className="flex-1 text-center sm:text-left">
+                  <h3 className="text-lg sm:text-xl font-serif text-white mb-2">
                     Report Analyzer
                   </h3>
                   <p className="text-sm text-cyan-100">
-                    Track on-the-go
+                    AI-powered medical report analysis. Get instant health insights from your lab results and medical documents.
                   </p>
                 </div>
-                <div className="flex-shrink-0">
+                <div className="flex-shrink-0 w-full sm:w-auto">
                   <img
-                    src="https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=200&h=200&fit=crop"
-                    alt="Mobile App"
-                    className="w-32 h-32 object-cover rounded-xl"
+                    src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/40326.jpg?v=1773466050"
+                    alt="Report Analysis"
+                    className="w-full sm:w-32 h-32 sm:h-32 object-cover rounded-xl"
                   />
                 </div>
               </div>
