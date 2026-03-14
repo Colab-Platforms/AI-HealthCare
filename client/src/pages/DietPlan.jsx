@@ -283,8 +283,8 @@ export default function DietPlan() {
       <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-purple-100/20 rounded-full blur-[120px] pointer-events-none" />
 
       {/* Header */}
-      <div className="relative z-10 flex flex-col gap-4 mb-8 md:mb-16 pt-4">
-        <h1 className="text-4xl md:text-5xl font-light tracking-tight text-[#1a1a1a]">My Meal Plan</h1>
+      <div className="relative z-10 flex flex-col gap-3 mb-6 md:mb-16 pt-2 md:pt-4">
+        <h1 className="text-3xl md:text-5xl font-light tracking-tight text-[#1a1a1a]">My Meal Plan</h1>
 
         <div className="flex items-center gap-2 overflow-x-auto scrollbar-hide">
           <div className="flex items-center gap-1.5 bg-white/60 backdrop-blur-md px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-white/60 shadow-sm shrink-0">
@@ -334,25 +334,25 @@ export default function DietPlan() {
           </button>
         </div>
       ) : (
-        <div className="space-y-24">
+        <div className="space-y-12 md:space-y-24">
 
           {/* Quick Metrics Bar - Protocol Overview */}
           <section>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-4 gap-2 md:gap-4">
               {[
                 { label: 'Calories', val: Math.round(dailyGoals.calories), unit: 'kcal', color: 'bg-indigo-500', icon: Flame },
                 { label: 'Protein', val: Math.round(dailyGoals.protein), unit: 'g', color: 'bg-emerald-500', icon: Zap },
                 { label: 'Carbs', val: Math.round(dailyGoals.carbs), unit: 'g', color: 'bg-blue-500', icon: Target },
                 { label: 'Fats', val: Math.round(dailyGoals.fats), unit: 'g', color: 'bg-orange-500', icon: Heart }
               ].map((m, i) => (
-                <div key={m.label} className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col items-center">
-                  <div className={`w-10 h-10 ${m.color} bg-opacity-10 rounded-2xl flex items-center justify-center mb-4`}>
-                    <m.icon className={`w-5 h-5 ${m.color.replace('bg-', 'text-')}`} />
+                <div key={m.label} className="bg-white p-2.5 md:p-6 rounded-2xl md:rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col items-center justify-center">
+                  <div className={`w-7 h-7 md:w-10 md:h-10 ${m.color} bg-opacity-10 rounded-xl md:rounded-2xl flex items-center justify-center mb-2 md:mb-4`}>
+                    <m.icon className={`w-3.5 h-3.5 md:w-5 md:h-5 ${m.color.replace('bg-', 'text-')}`} />
                   </div>
-                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">{m.label}</span>
-                  <div className="flex items-baseline gap-1">
-                    <span className="text-2xl font-light text-slate-800">{m.val}</span>
-                    <span className="text-xs font-bold text-slate-400">{m.unit}</span>
+                  <span className="text-[7px] md:text-[10px] font-black uppercase tracking-[0.1em] md:tracking-[0.2em] text-slate-400 mb-0.5 md:mb-1">{m.label}</span>
+                  <div className="flex items-baseline gap-0.5 md:gap-1">
+                    <span className="text-sm md:text-2xl font-light text-slate-800">{m.val}</span>
+                    <span className="text-[8px] md:text-xs font-bold text-slate-400">{m.unit}</span>
                   </div>
                 </div>
               ))}

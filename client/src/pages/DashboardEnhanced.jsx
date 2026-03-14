@@ -23,20 +23,20 @@ import { ImageWithFallback } from '../components/ImageWithFallback';
 const DashedGauge = ({ value, max = 2400, mode = 'Macro' }) => {
   const percentage = max > 0 ? Math.min((value / max) * 100, 100) : 0;
   const totalDashes = 18;
-  const activeDashes = Math.round((percentage / 100) * totalDashes);
+  const activeDashes = Math.floor((percentage / 100) * totalDashes);
 
   return (
     <div className="relative flex flex-col items-center justify-center pt-1 pb-1">
       <svg width="200" height="100" viewBox="0 0 240 120" className="overflow-visible">
         {Array.from({ length: totalDashes }).map((_, i) => {
-          const angle = 180 - (i * (180 / (totalDashes - 1)));
-          const isActive = i <= activeDashes;
+          const angle = (i * (180 / (totalDashes - 1)));
+          const isActive = i < activeDashes;
           return (
             <line
               key={i}
               x1="20" y1="120"
               x2="52" y2="120"
-              stroke={isActive ? '#A855F7' : '#F5F5F7'}
+              stroke={isActive ? '#A795C7' : '#F5F5F7'}
               strokeWidth="10"
               strokeLinecap="round"
               className="transition-colors duration-700"
