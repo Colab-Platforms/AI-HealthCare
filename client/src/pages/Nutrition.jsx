@@ -456,7 +456,7 @@ function Nutrition() {
                   <div className="text-[7px] md:text-[10px] text-slate-400 uppercase tracking-widest font-black leading-none">GOAL</div>
                 </div>
               </div>
-              <p className="text-sm text-slate-500 font-bold mb-8 uppercase tracking-tight">{remainingCals} kcal remaining</p>
+              <p className="text-sm text-slate-500 font-bold mb-8 uppercase tracking-tight">{remainingCals.toFixed(2)} kcal remaining</p>
 
               {/* Progress Bar */}
               <div className="h-4 bg-slate-50 rounded-full w-full overflow-hidden mb-10 border border-slate-100">
@@ -476,7 +476,7 @@ function Nutrition() {
                     <div className="h-1.5 bg-slate-50 rounded-full overflow-hidden mb-1.5 border border-slate-100">
                       <div className={`h-full ${macro.color} rounded-full transition-all duration-1000`} style={{ width: `${Math.min(100, (macro.current / macro.target) * 100)}%` }} />
                     </div>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase">{Math.max(0, macro.target - macro.current)}g remaining</p>
+                    <p className="text-[10px] text-slate-400 font-bold uppercase">{Math.max(0, macro.target - macro.current).toFixed(2)}g remaining</p>
                   </div>
                 ))}
               </div>
@@ -512,16 +512,7 @@ function Nutrition() {
                           </div>
                           <div>
                             <span className="font-black text-sm text-slate-900 uppercase tracking-tight">{meal.name}</span>
-                            {!isExpanded && logs.length > 0 && (
-                              <div className="flex flex-wrap gap-2 mt-1">
-                                {logs.slice(0, 2).map(log => (
-                                  <span key={log._id} className="text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-0.5 rounded-full">
-                                    {log.foodItems?.[0]?.name}
-                                  </span>
-                                ))}
-                                {logs.length > 2 && <span className="text-[10px] font-bold text-slate-300">+{logs.length - 2} more</span>}
-                              </div>
-                            )}
+                            {/* Food names removed from collapsed state as per user request */}
                           </div>
                         </div>
                         <div className="flex items-center gap-6">
