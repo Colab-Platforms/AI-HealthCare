@@ -594,7 +594,7 @@ export default function DashboardEnhanced() {
   const isOverLimit = calorieDelta > 0;
 
   const overallPerformanceInsight = useMemo(() => {
-    if (!dashboardData) return "Analyzing your health data...";
+    if (!dashboardData) return [];
 
     const calorieGoal = dashboardData.goals?.calories || 2100;
     const currentCals = nutritionData?.totalCalories || 0;
@@ -603,31 +603,75 @@ export default function DashboardEnhanced() {
     const currentSteps = Number(dashboardData.stepsToday || 0);
     const healthScore = dashboardData.latestAnalysis?.healthScore || 75;
 
-    let message = `Overall health score: ${healthScore}/100. `;
+    const insights = [];
 
+    // Health Score Pointer
+    insights.push({
+      id: 'score',
+      type: 'primary',
+      icon: Heart,
+      color: 'text-rose-400',
+      label: 'Health Score',
+      text: `Your overall vitality score is ${healthScore}/100 based on recent logs.`
+    });
+
+    // Calorie Pointer
     if (caloriesLeft < 0) {
-      message += `You've exceeded your daily calorie goal by ${Math.abs(caloriesLeft)} kcal. `;
+      insights.push({
+        id: 'calories',
+        type: 'warning',
+        icon: AlertCircle,
+        color: 'text-amber-400',
+        label: 'Nutrition Intake',
+        text: `Calorie limit exceeded by ${Math.abs(caloriesLeft)} kcal. Focus on fiber-rich greens for next meal.`
+      });
     } else if (currentCals > 0) {
-      message += `You have ${caloriesLeft} kcal remaining for today. `;
-    } else {
-      message += `Start logging your meals to track your calorie goal. `;
+      insights.push({
+        id: 'calories',
+        type: 'success',
+        icon: Utensils,
+        color: 'text-emerald-400',
+        label: 'Daily Energy',
+        text: `Balanced intake so far. You have ${caloriesLeft} kcal remaining for your daily goal.`
+      });
     }
 
+    // Steps Pointer
     if (currentSteps > 0) {
       if (currentSteps < stepsGoal) {
-        message += `Walk ${stepsGoal - currentSteps} more steps to reach your activity goal. `;
+        insights.push({
+          id: 'steps',
+          type: 'info',
+          icon: Activity,
+          color: 'text-blue-400',
+          label: 'Activity Goal',
+          text: `You're doing great! Just ${stepsGoal - currentSteps} more steps to reach your daily target.`
+        });
       } else {
-        message += `Great job! You've successfully reached your target of ${stepsGoal} steps. `;
+        insights.push({
+          id: 'steps',
+          type: 'success',
+          icon: CheckCircle2,
+          color: 'text-emerald-400',
+          label: 'Activity Goal',
+          text: `Goal reached! You've achieved your target of ${stepsGoal} steps today.`
+        });
       }
-    } else {
-      message += `Log your steps to monitor your activity level. `;
     }
 
-    if (dashboardData.latestAnalysis?.summary && dashboardData.latestAnalysis.summary.length > 20) {
-      message += `Analysis: ${dashboardData.latestAnalysis.summary}`;
+    // Recommendation/Summary Pointer
+    if (dashboardData.latestAnalysis?.summary && dashboardData.latestAnalysis.summary.length > 10) {
+      insights.push({
+        id: 'summary',
+        type: 'ai',
+        icon: Sparkles,
+        color: 'text-purple-400',
+        label: 'AI Recommendation',
+        text: dashboardData.latestAnalysis.summary.split('.')[0] + '.'
+      });
     }
 
-    return message;
+    return insights;
   }, [dashboardData, nutritionData]);
 
   const handleScroll = () => {
@@ -1602,10 +1646,38 @@ export default function DashboardEnhanced() {
           <Zap className="w-6 h-6 text-white" />
         </div>
         <div className="relative z-10 flex-1">
-          <h3 className="font-medium text-xl mb-2">AI Health Insight</h3>
-          <p className="text-[#a0a0a0] font-medium leading-relaxed max-w-4xl text-base">
-            {overallPerformanceInsight}
-          </p>
+          <div className="flex items-center gap-3 mb-6">
+            <div className="p-2 bg-purple-500/20 rounded-xl">
+              <Sparkles className="w-5 h-5 text-purple-400" />
+            </div>
+            <h3 className="font-black text-xl uppercase tracking-tight">AI Health Assistant</h3>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {overallPerformanceInsight.length > 0 ? (
+              overallPerformanceInsight.map((insight, idx) => (
+                <motion.div 
+                  key={insight.id + idx}
+                  initial={{ opacity: 0, x: -10 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.9 + (idx * 0.1) }}
+                  className="flex items-start gap-4 p-4 rounded-2xl bg-white/5 border border-white/5 hover:bg-white/10 transition-all group/item"
+                >
+                  <div className={`mt-1 flex-shrink-0 group-hover/item:scale-110 transition-transform`}>
+                    <insight.icon className={`w-4 h-4 ${insight.color}`} />
+                  </div>
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-[#666666] mb-1">{insight.label}</p>
+                    <p className="text-sm font-medium text-gray-300 leading-snug">{insight.text}</p>
+                  </div>
+                </motion.div>
+              ))
+            ) : (
+              <p className="text-[#a0a0a0] font-medium leading-relaxed max-w-4xl text-base">
+                Preparing your daily insights... Log your activities more frequently for better accuracy.
+              </p>
+            )}
+          </div>
         </div>
         <button onClick={() => navigate('/ai-chat')} className="relative z-10 mt-4 md:mt-0 px-8 py-3 bg-white hover:bg-slate-100 text-[#1a1a1a] text-sm font-medium rounded-full transition-all shadow-md whitespace-nowrap">
           Ask AI Assistant
