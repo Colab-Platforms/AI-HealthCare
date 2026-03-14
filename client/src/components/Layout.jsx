@@ -210,14 +210,14 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
       )}
 
       {/* Main Content - Add left margin for fixed sidebar on desktop */}
-      <div className="flex-1 flex flex-col min-h-screen lg:ml-64 relative overflow-hidden bg-white/50">
+      <div className="flex-1 flex flex-col min-h-screen lg:ml-64 relative bg-white/50">
         {/* Background Blobs - Visible on all pages using Layout */}
         <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-purple-300/25 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
         <div className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-purple-300/15 rounded-full blur-[100px] translate-x-1/2 pointer-events-none" />
         <div className="absolute bottom-0 left-1/4 w-[300px] h-[300px] bg-purple-200/20 rounded-full blur-[80px] pointer-events-none" />
 
         {/* Global Sticky Header - Identity & Profile */}
-        <header className="sticky top-0 z-40 bg-white/70 backdrop-blur-xl border-b border-white/20 shadow-sm">
+        <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100 shadow-sm transition-all duration-300">
           <div className="flex items-center justify-between lg:justify-end px-6 md:px-12 py-3 md:py-4 gap-6">
             {/* Logo for mobile */}
             <div className="flex lg:hidden items-center gap-3">

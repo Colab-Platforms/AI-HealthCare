@@ -511,6 +511,7 @@ export default function DashboardEnhanced() {
 
   const [dietPlan, setDietPlan] = useState(null);
   const [loggedMeals, setLoggedMeals] = useState([]);
+  const [loggedMealsMap, setLoggedMealsMap] = useState({});
   const [isDiabetic, setIsDiabetic] = useState(false);
   const [selectedMealForModal, setSelectedMealForModal] = useState(null);
   const [showMealModal, setShowMealModal] = useState(false);
@@ -648,11 +649,14 @@ export default function DashboardEnhanced() {
             const logs = res.data?.foodLogs || res.data?.logs || [];
             const logMap = {};
             logs.forEach(l => {
-              l.foodItems.forEach(fi => {
-                logMap[`${l.mealType}-${fi.name}`] = true;
-              });
+              if (l.foodItems) {
+                l.foodItems.forEach(fi => {
+                  logMap[`${l.mealType}-${fi.name}`] = true;
+                });
+              }
             });
-            setLoggedMeals(logMap);
+            setLoggedMeals(logs);
+            setLoggedMealsMap(logMap);
           })
         ]);
 
@@ -667,11 +671,9 @@ export default function DashboardEnhanced() {
   }, [user]);
 
   const isMealLogged = (mealType, meal) => {
-    if (!loggedMeals || !meal) return false;
+    if (!loggedMealsMap || !meal) return false;
     const name = meal?.name || meal?.foodItems?.[0]?.name;
-    // Map specialized snack types to 'snack' for log check if needed, 
-    // but the log in DB usually matches the mealType passed during logging.
-    return !!loggedMeals[`${mealType}-${name}`];
+    return !!loggedMealsMap[`${mealType}-${name}`];
   };
 
   // Calculate current meal based on time for initial state
@@ -821,13 +823,13 @@ export default function DashboardEnhanced() {
       </motion.div>
 
       {/* 3 Column Grid - Scrollable on mobile with Stack Effect */}
-      <div 
+      <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
         className="flex overflow-x-auto lg:grid lg:grid-cols-3 gap-6 md:gap-8 pb-10 md:pb-12 lg:pb-0 scrollbar-hide snap-x snap-mandatory h-full items-stretch lg:items-start -mx-4 px-8 md:mx-0 md:px-0 mt-8 mb-6"
       >
         {/* Card 1: Nutrient Info (Reordered to be first) */}
-        <motion.div 
+        <motion.div
           style={{
             scale: typeof window !== 'undefined' && window.innerWidth < 1024 ? 1 - (Math.abs(0 - activeIndex) * 0.05) : 1,
             filter: typeof window !== 'undefined' && window.innerWidth < 1024 ? `blur(${Math.abs(0 - activeIndex) * 3}px)` : 'none',
@@ -837,7 +839,7 @@ export default function DashboardEnhanced() {
           className="min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-[520px] lg:h-full relative overflow-hidden group"
         >
           <div className="absolute top-0 right-0 w-32 h-32 bg-purple-50/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-          
+
           <div className="flex items-center justify-between mb-0.5 relative z-10">
             <h2 className="text-xl font-black text-black">Nutrient Info</h2>
             <button
@@ -903,102 +905,102 @@ export default function DashboardEnhanced() {
           </div>
 
           <div className="flex-1 space-y-4 pt-2 relative z-10">            {nutrientMode === 'Macro' ? (
-              <div className="space-y-4">
-                <NutrientProgressRow
-                  label="Protein"
-                  value={(() => {
-                    const goal = user?.nutritionGoal?.proteinGoal || nutritionData?.proteinGoal || 150;
-                    const val = nutritionData?.totalProtein || dashboardData?.nutritionData?.totalProtein || 0;
-                    return goal > 0 ? (val / goal) * 100 : 0;
-                  })()}
-                  targetLabel={`${user?.nutritionGoal?.proteinGoal || nutritionData?.proteinGoal || 150}g target`}
-                  icon={Flame} color="bg-black" iconBg="bg-slate-50" iconColor="text-black"
-                />
-                <NutrientProgressRow
-                  label="Fats"
-                  value={(() => {
-                    const goal = user?.nutritionGoal?.fatGoal || nutritionData?.fatGoal || 65;
-                    const val = nutritionData?.totalFats || dashboardData?.nutritionData?.totalFats || 0;
-                    return goal > 0 ? (val / goal) * 100 : 0;
-                  })()}
-                  targetLabel={`${user?.nutritionGoal?.fatGoal || nutritionData?.fatGoal || 65}g max`}
-                  icon={Smile} color="bg-slate-600" iconBg="bg-slate-50" iconColor="text-slate-600"
-                />
-                <NutrientProgressRow
-                  label="Carbs"
-                  value={(() => {
-                    const goal = user?.nutritionGoal?.carbsGoal || nutritionData?.carbsGoal || 200;
-                    const val = nutritionData?.totalCarbs || dashboardData?.nutritionData?.totalCarbs || 0;
-                    return goal > 0 ? (val / goal) * 100 : 0;
-                  })()}
-                  targetLabel={`${user?.nutritionGoal?.carbsGoal || nutritionData?.carbsGoal || 200}g target`}
-                  icon={Heart} color="bg-slate-400" iconBg="bg-slate-50" iconColor="text-slate-400"
-                />
-              </div>
+            <div className="space-y-4">
+              <NutrientProgressRow
+                label="Protein"
+                value={(() => {
+                  const goal = user?.nutritionGoal?.proteinGoal || nutritionData?.proteinGoal || 150;
+                  const val = nutritionData?.totalProtein || dashboardData?.nutritionData?.totalProtein || 0;
+                  return goal > 0 ? (val / goal) * 100 : 0;
+                })()}
+                targetLabel={`${user?.nutritionGoal?.proteinGoal || nutritionData?.proteinGoal || 150}g target`}
+                icon={Flame} color="bg-black" iconBg="bg-slate-50" iconColor="text-black"
+              />
+              <NutrientProgressRow
+                label="Fats"
+                value={(() => {
+                  const goal = user?.nutritionGoal?.fatGoal || nutritionData?.fatGoal || 65;
+                  const val = nutritionData?.totalFats || dashboardData?.nutritionData?.totalFats || 0;
+                  return goal > 0 ? (val / goal) * 100 : 0;
+                })()}
+                targetLabel={`${user?.nutritionGoal?.fatGoal || nutritionData?.fatGoal || 65}g max`}
+                icon={Smile} color="bg-slate-600" iconBg="bg-slate-50" iconColor="text-slate-600"
+              />
+              <NutrientProgressRow
+                label="Carbs"
+                value={(() => {
+                  const goal = user?.nutritionGoal?.carbsGoal || nutritionData?.carbsGoal || 200;
+                  const val = nutritionData?.totalCarbs || dashboardData?.nutritionData?.totalCarbs || 0;
+                  return goal > 0 ? (val / goal) * 100 : 0;
+                })()}
+                targetLabel={`${user?.nutritionGoal?.carbsGoal || nutritionData?.carbsGoal || 200}g target`}
+                icon={Heart} color="bg-slate-400" iconBg="bg-slate-50" iconColor="text-slate-400"
+              />
+            </div>
 
-            ) : (
-              <div className="space-y-4 overflow-y-auto max-h-[300px] pr-2 scrollbar-hide py-1">
-                <NutrientProgressRow
-                  label="Fiber"
-                  value={((nutritionData?.totalFiber || 0) / 30) * 100}
-                  targetLabel="30g recommended"
-                  icon={Sparkles} color="bg-emerald-500" iconBg="bg-emerald-50" iconColor="text-emerald-500"
-                />
-                <NutrientProgressRow
-                  label="Iron"
-                  value={((nutritionData?.totalIron || 0) / 18) * 100}
-                  targetLabel="18mg target"
-                  icon={Zap} color="bg-orange-500" iconBg="bg-orange-50" iconColor="text-orange-500"
-                />
-                <NutrientProgressRow
-                  label="Vitamin C"
-                  value={((nutritionData?.totalVitaminC || 0) / 90) * 100}
-                  targetLabel="90mg target"
-                  icon={Sun} color="bg-yellow-500" iconBg="bg-yellow-50" iconColor="text-yellow-500"
-                />
-                <NutrientProgressRow
-                  label="Vitamin A"
-                  value={((nutritionData?.totalVitaminA || 0) / 900) * 100}
-                  targetLabel="900mcg target"
-                  icon={Eye} color="bg-purple-500" iconBg="bg-purple-50" iconColor="text-purple-500"
-                />
-                <NutrientProgressRow
-                  label="Calcium"
-                  value={((nutritionData?.totalCalcium || 0) / 1000) * 100}
-                  targetLabel="1000mg target"
-                  icon={Target} color="bg-blue-500" iconBg="bg-blue-50" iconColor="text-blue-500"
-                />
-                <NutrientProgressRow
-                  label="Vitamin D"
-                  value={((nutritionData?.totalVitaminD || 0) / 20) * 100}
-                  targetLabel="20mcg target"
-                  icon={Sun} color="bg-amber-500" iconBg="bg-amber-50" iconColor="text-amber-500"
-                />
-                <NutrientProgressRow
-                  label="B12"
-                  value={((nutritionData?.totalVitaminB12 || 0) / 2.4) * 100}
-                  targetLabel="2.4mcg target"
-                  icon={FlaskConical} color="bg-red-500" iconBg="bg-red-50" iconColor="text-red-500"
-                />
-                <NutrientProgressRow
-                  label="Sodium"
-                  value={((nutritionData?.totalSodium || 0) / 2300) * 100}
-                  targetLabel="2300mg max"
-                  icon={AlertCircle} color="bg-slate-400" iconBg="bg-slate-50" iconColor="text-slate-400"
-                />
-                <NutrientProgressRow
-                  label="Sugar"
-                  value={((nutritionData?.totalSugar || 0) / 50) * 100}
-                  targetLabel="50g max"
-                  icon={Droplet} color="bg-slate-600" iconBg="bg-slate-50" iconColor="text-slate-600"
-                />
-              </div>
-            )}
+          ) : (
+            <div className="space-y-4 overflow-y-auto max-h-[300px] pr-2 scrollbar-hide py-1">
+              <NutrientProgressRow
+                label="Fiber"
+                value={((nutritionData?.totalFiber || 0) / 30) * 100}
+                targetLabel="30g recommended"
+                icon={Sparkles} color="bg-emerald-500" iconBg="bg-emerald-50" iconColor="text-emerald-500"
+              />
+              <NutrientProgressRow
+                label="Iron"
+                value={((nutritionData?.totalIron || 0) / 18) * 100}
+                targetLabel="18mg target"
+                icon={Zap} color="bg-orange-500" iconBg="bg-orange-50" iconColor="text-orange-500"
+              />
+              <NutrientProgressRow
+                label="Vitamin C"
+                value={((nutritionData?.totalVitaminC || 0) / 90) * 100}
+                targetLabel="90mg target"
+                icon={Sun} color="bg-yellow-500" iconBg="bg-yellow-50" iconColor="text-yellow-500"
+              />
+              <NutrientProgressRow
+                label="Vitamin A"
+                value={((nutritionData?.totalVitaminA || 0) / 900) * 100}
+                targetLabel="900mcg target"
+                icon={Eye} color="bg-purple-500" iconBg="bg-purple-50" iconColor="text-purple-500"
+              />
+              <NutrientProgressRow
+                label="Calcium"
+                value={((nutritionData?.totalCalcium || 0) / 1000) * 100}
+                targetLabel="1000mg target"
+                icon={Target} color="bg-blue-500" iconBg="bg-blue-50" iconColor="text-blue-500"
+              />
+              <NutrientProgressRow
+                label="Vitamin D"
+                value={((nutritionData?.totalVitaminD || 0) / 20) * 100}
+                targetLabel="20mcg target"
+                icon={Sun} color="bg-amber-500" iconBg="bg-amber-50" iconColor="text-amber-500"
+              />
+              <NutrientProgressRow
+                label="B12"
+                value={((nutritionData?.totalVitaminB12 || 0) / 2.4) * 100}
+                targetLabel="2.4mcg target"
+                icon={FlaskConical} color="bg-red-500" iconBg="bg-red-50" iconColor="text-red-500"
+              />
+              <NutrientProgressRow
+                label="Sodium"
+                value={((nutritionData?.totalSodium || 0) / 2300) * 100}
+                targetLabel="2300mg max"
+                icon={AlertCircle} color="bg-slate-400" iconBg="bg-slate-50" iconColor="text-slate-400"
+              />
+              <NutrientProgressRow
+                label="Sugar"
+                value={((nutritionData?.totalSugar || 0) / 50) * 100}
+                targetLabel="50g max"
+                icon={Droplet} color="bg-slate-600" iconBg="bg-slate-50" iconColor="text-slate-600"
+              />
+            </div>
+          )}
           </div>
         </motion.div>
 
         {/* Card 2: Today's Diet Plan */}
-        <motion.div 
+        <motion.div
           style={{
             scale: typeof window !== 'undefined' && window.innerWidth < 1024 ? 1 - (Math.abs(1 - activeIndex) * 0.05) : 1,
             filter: typeof window !== 'undefined' && window.innerWidth < 1024 ? `blur(${Math.abs(1 - activeIndex) * 3}px)` : 'none',
@@ -1096,7 +1098,7 @@ export default function DashboardEnhanced() {
         </motion.div>
 
         {/* Card 3: AI Lab Insights */}
-        <motion.div 
+        <motion.div
           style={{
             scale: typeof window !== 'undefined' && window.innerWidth < 1024 ? 1 - (Math.abs(2 - activeIndex) * 0.05) : 1,
             filter: typeof window !== 'undefined' && window.innerWidth < 1024 ? `blur(${Math.abs(2 - activeIndex) * 3}px)` : 'none',
@@ -1127,7 +1129,7 @@ export default function DashboardEnhanced() {
               <div className="flex flex-col items-center justify-center p-8 bg-slate-50/50 rounded-3xl text-center border border-dashed border-slate-200">
                 <UploadCloud className="w-10 h-10 text-slate-300 mb-4" />
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 leading-loose">No Health Reports Found</p>
-                <button 
+                <button
                   onClick={() => navigate('/upload')}
                   className="px-6 py-2.5 bg-black text-white text-[10px] font-black uppercase tracking-widest rounded-full hover:scale-105 transition-all shadow-lg"
                 >
@@ -1213,70 +1215,70 @@ export default function DashboardEnhanced() {
         transition={{ delay: 0.5 }}
         className="mb-12"
       >
-      {/* AI Health Insight Carousel */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.45 }}
-        className="mb-12 w-full"
-      >
-        <div className="flex items-center justify-between mb-6 px-2">
-          <h2 className="text-2xl font-medium text-[#1a1a1a]">AI Health Insights</h2>
-        </div>
+        {/* AI Health Insight Carousel */}
+        <motion.div
+          initial={{ opacity: 0, y: 15 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.45 }}
+          className="mb-12 w-full"
+        >
+          <div className="flex items-center justify-between mb-6 px-2">
+            <h2 className="text-2xl font-medium text-[#1a1a1a]">AI Health Insights</h2>
+          </div>
 
-        <div className="bg-[#1a1a1a] text-white rounded-[24px] md:rounded-[32px] p-6 md:p-8 relative overflow-hidden shadow-2xl">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2" />
-          
-          <div className="relative z-10 flex items-center gap-6">
-            <div className="flex-1 min-w-0 overflow-hidden">
-               <div className="relative min-h-[40px] md:min-h-[48px] flex items-center">
-                 <AnimatePresence mode="wait">
-                   <motion.div
-                     key={insightIndex}
-                     initial={{ opacity: 0, y: 10 }}
-                     animate={{ opacity: 1, y: 0 }}
-                     exit={{ opacity: 0, y: -10 }}
-                     transition={{ duration: 0.5, ease: "easeInOut" }}
-                     className="flex items-start gap-4 py-1 w-full"
-                   >
-                     {overallPerformanceInsight[insightIndex] && (
-                       <>
-                         <div className="flex-shrink-0 mt-1">
-                           <div className={`${overallPerformanceInsight[insightIndex].color} opacity-80`}>
-                             {(() => {
-                               const Icon = overallPerformanceInsight[insightIndex].icon;
-                               return <Icon className="w-4 h-4 md:w-5 md:h-5" />;
-                             })()}
-                           </div>
-                         </div>
-                         <div className="flex-1 min-w-0">
-                           <p className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-[#666666] leading-none mb-1.5 grayscale opacity-70">
-                             {overallPerformanceInsight[insightIndex].label}
-                           </p>
-                           <p className="text-sm md:text-base font-medium text-gray-200 leading-snug">
-                             {overallPerformanceInsight[insightIndex].text}
-                           </p>
-                         </div>
-                       </>
-                     )}
-                   </motion.div>
-                 </AnimatePresence>
-               </div>
-            </div>
+          <div className="bg-[#1a1a1a] text-white rounded-[24px] md:rounded-[32px] p-6 md:p-8 relative overflow-hidden shadow-2xl">
+            <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2" />
 
-            <div className="hidden sm:flex items-center gap-1.5">
-              {overallPerformanceInsight.map((_, i) => (
-                <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${i === insightIndex ? 'bg-white w-4' : 'bg-white/20'}`} />
-              ))}
+            <div className="relative z-10 flex items-center gap-6">
+              <div className="flex-1 min-w-0 overflow-hidden">
+                <div className="relative min-h-[40px] md:min-h-[48px] flex items-center">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={insightIndex}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.5, ease: "easeInOut" }}
+                      className="flex items-start gap-4 py-1 w-full"
+                    >
+                      {overallPerformanceInsight[insightIndex] && (
+                        <>
+                          <div className="flex-shrink-0 mt-1">
+                            <div className={`${overallPerformanceInsight[insightIndex].color} opacity-80`}>
+                              {(() => {
+                                const Icon = overallPerformanceInsight[insightIndex].icon;
+                                return <Icon className="w-4 h-4 md:w-5 md:h-5" />;
+                              })()}
+                            </div>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-[#666666] leading-none mb-1.5 grayscale opacity-70">
+                              {overallPerformanceInsight[insightIndex].label}
+                            </p>
+                            <p className="text-sm md:text-base font-medium text-gray-200 leading-snug">
+                              {overallPerformanceInsight[insightIndex].text}
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+              </div>
+
+              <div className="hidden sm:flex items-center gap-1.5">
+                {overallPerformanceInsight.map((_, i) => (
+                  <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${i === insightIndex ? 'bg-white w-4' : 'bg-white/20'}`} />
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      </motion.div>
+        </motion.div>
 
-      <div className="flex items-center justify-between mb-6 px-2">
-        <h2 className="text-2xl font-medium text-[#1a1a1a]">Your Logged Meals</h2>
-        <button onClick={() => navigate('/nutrition')} className="text-sm font-medium text-[#666666] hover:text-[#1a1a1a]">View Menu</button>
-      </div>
+        <div className="flex items-center justify-between mb-6 px-2">
+          <h2 className="text-2xl font-medium text-[#1a1a1a]">Your Logged Meals</h2>
+          <button onClick={() => navigate('/nutrition')} className="text-sm font-medium text-[#666666] hover:text-[#1a1a1a]">View Menu</button>
+        </div>
         <div className="flex overflow-x-auto md:grid md:grid-cols-3 gap-4 md:gap-8 pb-4 md:pb-0 scrollbar-hide snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0">
           {loggedMeals.length > 0 ? (
             <>
@@ -1349,7 +1351,7 @@ export default function DashboardEnhanced() {
           className="flex flex-col h-full"
         >
           <DailyMetricsCard />
-          
+
           {/* 30 Day Challenge Mini Card */}
           <motion.div
             whileHover={{ scale: 1.02 }}
