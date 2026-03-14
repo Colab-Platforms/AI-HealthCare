@@ -552,7 +552,16 @@ export default function DashboardEnhanced() {
           fetchNutrition(new Date().toISOString().split('T')[0]),
           fetchWearable(),
           fetchDietPlan().then(plan => setDietPlan(plan)),
-          nutritionService.getTodayLogs().then(res => setLoggedMeals(res.data?.foodLogs || res.data?.logs || []))
+          nutritionService.getTodayLogs().then(res => {
+            const logs = res.data?.foodLogs || res.data?.logs || [];
+            const logMap = {};
+            logs.forEach(l => {
+              l.foodItems.forEach(fi => {
+                logMap[`${l.mealType}-${fi.name}`] = true;
+              });
+            });
+            setLoggedMeals(logMap);
+          })
         ]);
 
         const diabeticStatus = user?.profile?.medicalHistory?.conditions?.some(c => c.toLowerCase().includes('diabetes')) ||
@@ -564,6 +573,14 @@ export default function DashboardEnhanced() {
     };
     loadData();
   }, [user]);
+
+  const isMealLogged = (mealType, meal) => {
+    if (!loggedMeals || !meal) return false;
+    const name = meal?.name || meal?.foodItems?.[0]?.name;
+    // Map specialized snack types to 'snack' for log check if needed, 
+    // but the log in DB usually matches the mealType passed during logging.
+    return !!loggedMeals[`${mealType}-${name}`];
+  };
 
   // Calculate current meal based on time for initial state
   useEffect(() => {
@@ -909,14 +926,21 @@ export default function DashboardEnhanced() {
           </div>
 
           <div className="flex p-1 bg-[#F8F9FB] rounded-2xl mb-6 overflow-x-auto scrollbar-hide">
-            {['breakfast', 'lunch', 'snacks', 'dinner'].map((tab) => (
+            {[
+              { id: 'breakfast', label: 'Breakfast' },
+              { id: 'midMorningSnack', label: 'Mid-Morning' },
+              { id: 'lunch', label: 'Lunch' },
+              { id: 'eveningSnack', label: 'Evening' },
+              { id: 'dinner', label: 'Dinner' },
+              { id: 'snacks', label: 'Snacks' }
+            ].map((tab) => (
               <button
-                key={tab}
-                onClick={() => setActiveMealTab(tab)}
-                className={`flex-1 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-tight transition-all px-4 min-w-max ${activeMealTab === tab ? 'bg-[#1A1A1A] text-white shadow-md' : 'text-[#888888] hover:text-[#1A1A1A]'
+                key={tab.id}
+                onClick={() => setActiveMealTab(tab.id)}
+                className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all px-4 min-w-max ${activeMealTab === tab.id ? 'bg-[#1A1A1A] text-white shadow-md' : 'text-[#888888] hover:text-[#1A1A1A]'
                   }`}
               >
-                {tab === 'snacks' ? 'Snacks' : tab.charAt(0).toUpperCase() + tab.slice(1)}
+                {tab.label}
               </button>
             ))}
           </div>
@@ -950,16 +974,23 @@ export default function DashboardEnhanced() {
             </div>
           ) : (
             <div className="flex-1 space-y-3 mb-6 overflow-y-auto pr-1">
-              {(activeMealTab === 'snacks'
-                ? [...(dietPlan?.mealPlan?.midMorningSnack || []), ...(dietPlan?.mealPlan?.eveningSnack || []), ...(dietPlan?.mealPlan?.snacks || [])]
-                : (dietPlan?.mealPlan?.[activeMealTab] || [])
-              ).map((item, idx) => (
-                <div key={idx} className="p-4 bg-slate-50 rounded-2xl flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-[#1A1A1A]" />
-                  <span className="text-sm font-semibold text-black">{item?.name || item?.foodItems?.[0]?.name}</span>
-                </div>
-              ))}
-              {(!(activeMealTab === 'snacks' ? dietPlan?.mealPlan?.snacks : dietPlan?.mealPlan?.[activeMealTab])?.length) && (
+              {(dietPlan?.mealPlan?.[activeMealTab] || []).map((item, idx) => {
+                const isLogged = isMealLogged(activeMealTab, item);
+                return (
+                  <div key={idx} className={`p-4 rounded-2xl flex items-center justify-between gap-3 transition-all ${isLogged ? 'bg-emerald-50/50 border border-emerald-100/50' : 'bg-slate-50'}`}>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-2 h-2 rounded-full ${isLogged ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-[#1A1A1A]'}`} />
+                      <span className={`text-sm font-semibold ${isLogged ? 'text-emerald-900' : 'text-black'}`}>{item?.name || item?.foodItems?.[0]?.name}</span>
+                    </div>
+                    {isLogged && (
+                      <div className="flex items-center gap-1 bg-emerald-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tight">
+                        <Check className="w-2.5 h-2.5" /> LOGGED
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {(!(dietPlan?.mealPlan?.[activeMealTab])?.length) && (
                 <div className="p-4 bg-slate-50/50 rounded-2xl text-center">
                   <p className="text-xs text-slate-400">No meals planned for this time</p>
                 </div>

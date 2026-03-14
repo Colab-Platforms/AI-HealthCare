@@ -131,12 +131,6 @@ exports.uploadReport = async (req, res) => {
       try {
         const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
 
-        // Deactivate old diet plans
-        await PersonalizedDietPlan.updateMany(
-          { userId: req.user._id, isActive: true },
-          { isActive: false }
-        );
-
         // Map report diet plan to personalized diet plan structure
         const mapMealItems = (items) => {
           if (!Array.isArray(items)) return [];
@@ -144,32 +138,54 @@ exports.uploadReport = async (req, res) => {
             name: typeof item === 'string' ? item : (item.meal || 'Healthy Meal'),
             description: item.tip || '',
             benefits: Array.isArray(item.nutrients) ? item.nutrients.join(', ') : '',
-            calories: item.calories || 0,
-            protein: item.protein || 0
+            calories: Number(item.calories) || 0,
+            protein: Number(item.protein) || 0,
+            carbs: Number(item.carbs) || 0,
+            fats: Number(item.fats) || 0
           }));
         };
+
+        const dailyCalTarget = aiAnalysis.dietPlan.dailyCalorieTarget || 2000;
 
         const newDietPlan = new PersonalizedDietPlan({
           userId: req.user._id,
           isActive: true,
-          dailyCalorieTarget: aiAnalysis.dietPlan.dailyCalorieTarget || 2000,
+          dailyCalorieTarget: dailyCalTarget,
+          nutritionGoals: {
+            dailyCalorieTarget: dailyCalTarget,
+            macroTargets: {
+              protein: req.user.nutritionGoal?.proteinGoal || 150,
+              carbs: req.user.nutritionGoal?.carbsGoal || 200,
+              fats: req.user.nutritionGoal?.fatGoal || 65
+            }
+          },
           mealPlan: {
             breakfast: mapMealItems(aiAnalysis.dietPlan.breakfast),
+            midMorningSnack: mapMealItems(aiAnalysis.dietPlan.midMorningSnack || []),
             lunch: mapMealItems(aiAnalysis.dietPlan.lunch),
-            dinner: mapMealItems(aiAnalysis.dietPlan.dinner),
-            snacks: mapMealItems(aiAnalysis.dietPlan.snacks),
-            midMorningSnack: mapMealItems(aiAnalysis.dietPlan.midMorningSnack || [])
+            eveningSnack: mapMealItems(aiAnalysis.dietPlan.eveningSnack || aiAnalysis.dietPlan.snacks || []),
+            dinner: mapMealItems(aiAnalysis.dietPlan.dinner)
           },
           avoidSuggestions: aiAnalysis.dietPlan.foodsToLimit || [],
           lifestyleRecommendations: aiAnalysis.recommendations?.lifestyle || [],
           inputData: {
             hasReports: true,
-            bmiGoal: req.user.nutritionGoal?.goal || 'maintain'
-          }
+            bmiGoal: req.user.nutritionGoal?.goal || 'maintain',
+            reportId: report._id
+          },
+          generatedAt: new Date(),
+          validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
         });
 
         await newDietPlan.save();
-        console.log('✅ Personalized diet plan updated from latest report');
+        console.log('✅ Personalized diet plan saved successfully:', newDietPlan._id);
+
+        // ONLY DEACTIVATE OLD PLANS AFTER NEW ONE IS SAVED SUCCESSFULLY
+        await PersonalizedDietPlan.updateMany(
+          { userId: req.user._id, isActive: true, _id: { $ne: newDietPlan._id } },
+          { isActive: false }
+        );
+        console.log('✅ Older diet plans deactivated');
       } catch (dpError) {
         console.error('⚠️ Failed to update personalized diet plan:', dpError.message);
       }

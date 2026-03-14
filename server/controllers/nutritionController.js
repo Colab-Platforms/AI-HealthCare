@@ -1019,10 +1019,48 @@ async function updateDailySummary(userId, date) {
     let summary = await NutritionSummary.findOne({ userId, date: targetDate });
 
     if (!summary) {
-      summary = new NutritionSummary({ userId, date: targetDate });
+      console.log(`Summary not found for ${userId} on ${targetDate.toISOString()}, creating new one.`);
+      const newSummary = new NutritionSummary({
+        userId,
+        date: targetDate,
+        totalCalories: totals.totalCalories,
+        totalProtein: totals.totalProtein,
+        totalCarbs: totals.totalCarbs,
+        totalFats: totals.totalFats,
+        totalFiber: totals.totalFiber,
+        totalSugar: totals.totalSugar,
+        totalSodium: totals.totalSodium,
+        averageHealthScore: totals.averageHealthScore,
+        mealsLogged
+      });
+
+      // Try to get goals from active diet plan first
+      const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
+      const activePlan = await PersonalizedDietPlan.findOne({
+        userId,
+        isActive: true,
+        validUntil: { $gt: new Date() }
+      }).sort({ generatedAt: -1 });
+
+      if (activePlan && (activePlan.nutritionGoals || activePlan.dailyCalorieTarget)) {
+        newSummary.calorieGoal = activePlan.nutritionGoals?.dailyCalorieTarget || activePlan.dailyCalorieTarget || 2000;
+        newSummary.proteinGoal = activePlan.nutritionGoals?.macroTargets?.protein || activePlan.macroTargets?.protein || 150;
+        newSummary.carbsGoal = activePlan.nutritionGoals?.macroTargets?.carbs || activePlan.macroTargets?.carbs || 200;
+        newSummary.fatsGoal = activePlan.nutritionGoals?.macroTargets?.fats || activePlan.macroTargets?.fats || 65;
+        console.log('✅ Daily goals synced from active PersonalizedDietPlan');
+      } else if (healthGoal) {
+        newSummary.calorieGoal = healthGoal.dailyCalorieTarget;
+        newSummary.proteinGoal = healthGoal.macroTargets.protein;
+        newSummary.carbsGoal = healthGoal.macroTargets.carbs;
+        newSummary.fatsGoal = healthGoal.macroTargets.fats;
+        console.log('✅ Daily goals synced from HealthGoal model');
+      }
+
+      await newSummary.save();
+      return newSummary;
     }
 
-    // Update summary with calculated totals
+    // Update existing summary
     summary.totalCalories = totals.totalCalories;
     summary.totalProtein = totals.totalProtein;
     summary.totalCarbs = totals.totalCarbs;
@@ -1040,7 +1078,20 @@ async function updateDailySummary(userId, date) {
     summary.mealsLogged = mealsLogged;
     // Keep waterIntake as is, unless we want to reset it (unlikely)
 
-    if (healthGoal) {
+    // Refresh goals if needed (in case they changed)
+    const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
+    const activePlan = await PersonalizedDietPlan.findOne({
+      userId,
+      isActive: true,
+      validUntil: { $gt: new Date() }
+    }).sort({ generatedAt: -1 });
+
+    if (activePlan && (activePlan.nutritionGoals || activePlan.dailyCalorieTarget)) {
+      summary.calorieGoal = activePlan.nutritionGoals?.dailyCalorieTarget || activePlan.dailyCalorieTarget || 2000;
+      summary.proteinGoal = activePlan.nutritionGoals?.macroTargets?.protein || activePlan.macroTargets?.protein || 150;
+      summary.carbsGoal = activePlan.nutritionGoals?.macroTargets?.carbs || activePlan.macroTargets?.carbs || 200;
+      summary.fatsGoal = activePlan.nutritionGoals?.macroTargets?.fats || activePlan.macroTargets?.fats || 65;
+    } else if (healthGoal) {
       summary.calorieGoal = healthGoal.dailyCalorieTarget;
       summary.proteinGoal = healthGoal.macroTargets.protein;
       summary.carbsGoal = healthGoal.macroTargets.carbs;

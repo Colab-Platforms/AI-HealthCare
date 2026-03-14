@@ -11,6 +11,7 @@ import {
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
+import { useData } from '../context/DataContext';
 import toast from 'react-hot-toast';
 
 const reportTypes = [
@@ -35,6 +36,7 @@ export default function UploadReport() {
   const [selectedMetric, setSelectedMetric] = useState('All');
   const [aiComparison, setAiComparison] = useState(null);
   const [loadingReports, setLoadingReports] = useState(true);
+  const { invalidateCache } = useData();
   const navigate = useNavigate();
 
   const glassCard = "bg-white rounded-[24px] shadow-sm relative overflow-hidden";
@@ -214,6 +216,7 @@ export default function UploadReport() {
       clearInterval(progressInterval);
       setUploadProgress(100);
       toast.success('Report analyzed successfully!');
+      invalidateCache(['diet_plan', 'dashboard']);
       setTimeout(() => navigate(`/reports/${data.report._id}`), 500);
     } catch (error) {
       clearInterval(progressInterval);

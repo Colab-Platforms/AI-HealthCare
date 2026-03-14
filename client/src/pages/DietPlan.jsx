@@ -173,6 +173,7 @@ export default function DietPlan() {
       const { data } = await dietRecommendationService.generateDietPlan({ isRegenerate, usePreferences });
       if (data.success) {
         toast.success(isRegenerate ? 'Plan updated!' : 'New plan ready!');
+        invalidateCache(['diet_plan', 'dashboard']);
         loadInitialData();
       }
     } catch (err) {
