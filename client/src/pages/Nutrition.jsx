@@ -60,6 +60,23 @@ function Nutrition() {
       setIsModalOpen(true);
       if (location.state?.mealType) setMealTab(location.state.mealType);
     }
+    if (location.state?.prefillData) {
+      const p = location.state.prefillData;
+      setMealTab(p.mealType ? p.mealType.charAt(0).toUpperCase() + p.mealType.slice(1) : 'Breakfast');
+      setAnalysisResult({
+        _id: 'new_log_again',
+        foodItem: p.foodItems?.[0] || { name: p.name },
+        totalNutrition: p.totalNutrition || p.nutrition,
+        nutrition: p.foodItems?.[0]?.nutrition || p.nutrition,
+        healthScore: p.healthScore || 50,
+        micronutrients: p.micronutrients || [],
+        healthBenefitsSummary: p.healthBenefitsSummary || p.analysis || '',
+        enhancementTips: p.enhancementTips || [],
+        warnings: p.warnings || [],
+        alternatives: p.alternatives || []
+      });
+      window.history.replaceState({}, document.title);
+    }
     if (location.state?.scrollToWater) {
       setTimeout(() => {
         document.getElementById('water-section')?.scrollIntoView({ behavior: 'smooth' });
@@ -1084,16 +1101,29 @@ function Nutrition() {
                 </div>
 
                 {/* Log Button */}
-                {(!analysisResult._id?.toString().startsWith('log') && !recentMeals.find(m => m._id === analysisResult._id)) && (
+                {(!analysisResult._id?.toString().startsWith('log') && analysisResult._id !== 'new_log_again' && !recentMeals.find(m => m._id === analysisResult._id)) || analysisResult._id === 'new_log_again' ? (
                   <div className="pt-6 pb-20 md:pb-6">
+                    <div className="mb-6 space-y-3">
+                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Log this to</h4>
+                      <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+                        {['Breakfast', 'Lunch', 'Snack', 'Dinner'].map(tab => (
+                          <button
+                            key={tab} onClick={() => setMealTab(tab)}
+                            className={`flex-1 py-3 text-[10px] font-black rounded-xl transition-all uppercase tracking-widest ${mealTab === tab ? 'bg-black text-white shadow-xl' : 'text-slate-400 hover:text-black'}`}
+                          >
+                            {tab}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                     <button
                       onClick={() => handleConfirmLog(analysisResult)}
                       className="w-full py-6 bg-slate-900 hover:bg-black text-white rounded-[2.5rem] text-[13px] font-black uppercase tracking-[0.2em] shadow-2xl transition-all active:scale-[0.98] flex items-center justify-center gap-4 group"
                     >
-                      <CheckCircle2 className="w-6 h-6 group-hover:scale-110 transition-transform" /> Log This Meal
+                      <CheckCircle2 className="w-6 h-6 group-hover:scale-110 transition-transform" /> Log to {mealTab}
                     </button>
                   </div>
-                )}
+                ) : null}
               </div>
             </motion.div>
           </div>

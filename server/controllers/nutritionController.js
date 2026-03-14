@@ -1161,9 +1161,14 @@ exports.quickFoodCheck = async (req, res) => {
       console.log('📝 Using text analysis for:', foodDescription);
 
       // CACHE CHECK: Look for previous analysis of the same food globally
-      const existingCheck = await QuickFoodCheck.findOne({
-        foodName: { $regex: new RegExp(`^${foodDescription.trim()}$`, 'i') }
-      }).sort({ timestamp: -1 });
+      // ONLY use global cache if NO specific quantity or context is provided, 
+      // as quantity significantly changes the nutrition data.
+      let existingCheck = null;
+      if (!additionalContext) {
+        existingCheck = await QuickFoodCheck.findOne({
+          foodName: { $regex: new RegExp(`^${foodDescription.trim()}$`, 'i') }
+        }).sort({ timestamp: -1 });
+      }
 
       if (existingCheck) {
         console.log('♻️ [QuickCheck] Reusing cached analysis for:', foodDescription);
@@ -1175,7 +1180,7 @@ exports.quickFoodCheck = async (req, res) => {
         });
       }
 
-      analysis = await nutritionAI.quickFoodCheck(foodDescription);
+      analysis = await nutritionAI.quickFoodCheck(foodDescription, additionalContext);
     }
 
     if (!analysis.success || !analysis.data) {

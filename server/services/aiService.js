@@ -72,7 +72,7 @@ JSON STRUCTURE (follow EXACTLY):
   "patientName": "Name from report",
   "reportDate": "YYYY-MM-DD",
   "healthScore": 75,
-  "summary": "Short 1-2 sentence overview of health status.",
+  "summary": "Detailed overview of health status. Provide this as a newline-separated list of 3-5 bullet points (start each line with •).",
   "summaryPoints": [
     "Crucial finding 1 with simple explanation",
     "Crucial finding 2 with simple explanation",

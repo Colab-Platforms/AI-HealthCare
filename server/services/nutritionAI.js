@@ -138,10 +138,13 @@ class NutritionAI {
     }
   }
 
-  async quickFoodCheck(foodDescription) {
-    const prompt = this._getUnifiedPrompt(foodDescription);
+  async quickFoodCheck(foodDescription, additionalContext = '') {
+    const combined = additionalContext 
+      ? `Food: ${foodDescription}. Context: ${additionalContext}`
+      : foodDescription;
+    const prompt = this._getUnifiedPrompt(combined);
     const payload = {
-      system: 'You are a professional nutritionist AI. Respond ONLY with valid JSON.',
+      system: 'You are a professional nutritionist AI. Respond ONLY with valid JSON. Pay VERY CLOSE ATTENTION to any quantities or serving sizes mentioned in the context and calculate nutrition based ONLY on those specific amounts.',
       messages: [{ role: 'user', content: prompt }]
     };
     return this._parseResponse(await this.makeAIRequest(payload));

@@ -290,7 +290,16 @@ export default function ReportAnalysisMobile() {
                         </div>
 
                         {aiAnalysis.summary && (
-                            <p className="text-[#666666] leading-relaxed text-sm mb-6">{t(aiAnalysis.summary)}</p>
+                            <div className="space-y-4 mb-6">
+                            {t(aiAnalysis.summary).split('\n').filter(line => line.trim()).map((line, i) => (
+                                <div key={i} className="flex items-start gap-3">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-[#A795C7] mt-1.5 flex-shrink-0" />
+                                    <p className="text-[#666666] leading-relaxed text-sm">
+                                        {line.replace(/^[•\-\*]\s*/, '').trim()}
+                                    </p>
+                                </div>
+                            ))}
+                        </div>
                         )}
 
                         {aiAnalysis.summaryPoints && aiAnalysis.summaryPoints.length > 0 && (

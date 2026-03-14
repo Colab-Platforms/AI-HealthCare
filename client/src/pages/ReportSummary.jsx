@@ -232,7 +232,16 @@ export default function ReportSummary() {
           <h2 className="text-2xl font-bold text-slate-800 mb-4 flex items-center gap-2">
             <Activity className="w-6 h-6 text-black" /> {isHindi ? 'रिपोर्ट सारांश' : 'Report Summary'}
           </h2>
-          <p className="text-slate-700 leading-relaxed text-lg whitespace-pre-wrap">{t(aiAnalysis.summary)}</p>
+          <div className="space-y-3">
+            {t(aiAnalysis.summary).split('\n').filter(line => line.trim()).map((line, i) => (
+              <div key={i} className="flex items-start gap-3">
+                <div className="w-1.5 h-1.5 rounded-full bg-black mt-2.5 flex-shrink-0" />
+                <p className="text-slate-700 leading-relaxed text-lg">
+                  {line.replace(/^[•\-\*]\s*/, '').trim()}
+                </p>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
