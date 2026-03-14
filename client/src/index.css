@@ -410,9 +410,10 @@ textarea:focus {
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 40;
+  z-index: 50;
   display: none;
   padding: 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 @media (max-width: 768px) {
@@ -427,11 +428,9 @@ textarea:focus {
   align-items: center;
   justify-content: space-around;
   background: #ffffff;
-  height: 85px;
-  padding-bottom: env(safe-area-inset-bottom);
-  border-radius: 40px 40px 0 0;
+  height: 70px;
+  border-radius: 28px 28px 0 0;
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.05);
-  /* Softer shadow */
   overflow: visible;
   padding: 0 10px;
 }
@@ -480,14 +479,13 @@ textarea:focus {
 
 .nav-center-fab {
   position: absolute;
-  top: -45px;
+  top: -30px;
   left: 50%;
   transform: translateX(-50%);
-  width: 64px;
-  height: 64px;
+  width: 56px;
+  height: 56px;
   border-radius: 50%;
   background: #64748b;
-  /* Theme accent */
   display: flex;
   align-items: center;
   justify-content: center;
@@ -509,8 +507,8 @@ textarea:focus {
 }
 
 .nav-center-fab svg {
-  width: 32px;
-  height: 32px;
+  width: 28px;
+  height: 28px;
 }
 
 /* Mobile Responsive Fixes */

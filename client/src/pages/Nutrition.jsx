@@ -155,7 +155,7 @@ function Nutrition() {
       const bCals = grouped.Breakfast.reduce((sum, l) => sum + (l.foodItems?.[0]?.nutrition?.calories || 0), 0);
       const lCals = grouped.Lunch.reduce((sum, l) => sum + (l.foodItems?.[0]?.nutrition?.calories || 0), 0);
       const dCals = grouped.Dinner.reduce((sum, l) => sum + (l.foodItems?.[0]?.nutrition?.calories || 0), 0);
-      
+
       const cTarget = goals.dailyCalorieTarget || 1800;
       const bT = Math.round(cTarget * 0.3);
       const lT = Math.round(cTarget * 0.35);
@@ -169,7 +169,7 @@ function Nutrition() {
       setAiInsights(insight.replace('{bCals}', bCals));
 
       if (dietRes.data.dietPlan) {
-        setMealSuggestions(dietRes.data.dietPlan.mealPlan?.lunch || []); 
+        setMealSuggestions(dietRes.data.dietPlan.mealPlan?.lunch || []);
       }
 
     } catch (error) {
@@ -580,7 +580,7 @@ function Nutrition() {
                                 <div>
                                   <p className="text-[10px] font-black text-red-600 uppercase tracking-widest mb-1">AI Insight</p>
                                   <p className="text-xs font-bold text-red-800 leading-relaxed">
-                                    You've exceeded your {meal.name.toLowerCase()} target by {cals - mealTarget} kcal. 
+                                    You've exceeded your {meal.name.toLowerCase()} target by {cals - mealTarget} kcal.
                                     Consider a lighter {meal.name === 'Dinner' ? 'snack tonight' : 'next meal'} to balance your daily intake.
                                   </p>
                                 </div>

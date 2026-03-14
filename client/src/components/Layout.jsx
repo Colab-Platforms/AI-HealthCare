@@ -210,7 +210,7 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
       )}
 
       {/* Main Content - Add left margin for fixed sidebar on desktop */}
-      <div className="flex-1 flex flex-col min-h-screen lg:ml-64 relative bg-white/50">
+      <div className="flex-1 flex flex-col min-h-screen lg:ml-64 relative overflow-x-hidden bg-white/50">
         {/* Background Blobs - Visible on all pages using Layout */}
         <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-purple-300/25 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
         <div className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-purple-300/15 rounded-full blur-[100px] translate-x-1/2 pointer-events-none" />
@@ -255,15 +255,15 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
         }>
           {children}
         </main>
-
-        {/* Mobile Bottom Navigation - Only show for patients on mobile */}
-        {!isAdmin() && !isDoctor() && !isAdminLayout && !isDoctorLayout && (
-          <>
-            <MobileBottomNav />
-            <PWAInstallPrompt />
-          </>
-        )}
       </div>
+
+      {/* Mobile Bottom Navigation - Outside main content wrapper for proper fixed positioning */}
+      {!isAdmin() && !isDoctor() && !isAdminLayout && !isDoctorLayout && (
+        <>
+          <MobileBottomNav />
+          <PWAInstallPrompt />
+        </>
+      )}
 
       {/* Text Selection Popup - Disabled on AI Chat page */}
       {location.pathname !== '/ai-chat' && <TextSelectionPopup />}
