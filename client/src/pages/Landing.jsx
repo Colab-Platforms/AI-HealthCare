@@ -789,7 +789,6 @@ export default function Landing() {
       {/* <WhySection /> */}
       {/* <ConnoisseurStackInteractor /> */}
       <Component />
-      <div className="h-32 lg:hidden"></div>
       {/* <HealthCardsSection /> */}
       <RadialOrbitalTimeline timelineData={timelineData} />
       <ScrollPhoneShowcase />

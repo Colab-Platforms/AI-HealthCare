@@ -154,7 +154,7 @@ export default function RadialOrbitalTimeline({
 
   return (
     <div
-      className="w-full mt-32 md:mt-0 py-32 md:py-32 bg-gradient-to-b from-transparent via-transparent to-transparent overflow-visible"
+      className="w-full mt-0 md:mt-0 py-8 md:py-32 bg-gradient-to-b from-transparent via-transparent to-transparent overflow-visible"
       ref={containerRef}
       onClick={handleContainerClick}
     >
@@ -453,7 +453,12 @@ export default function RadialOrbitalTimeline({
         </div>
 
         {/* Mobile Layout - Only Spinner */}
-        <div className="lg:hidden h-auto py-12 flex flex-col items-center justify-center">
+        <div className="lg:hidden h-auto py-6 flex flex-col items-center justify-center">
+          <div className="text-center mb-6 px-4">
+            <h3 className="text-xl sm:text-2xl font-serif font-bold text-white leading-tight">
+              Transform Your Health With Advanced AI Intelligence and Insights
+            </h3>
+          </div>
           <div className="relative w-full h-[520px] flex items-center justify-center rounded-2xl overflow-visible" style={{ background: 'linear-gradient(135deg, rgba(10, 61, 92, 0.4) 0%, rgba(13, 90, 138, 0.4) 100%)' }}>
             <div className="absolute inset-0 rounded-2xl border border-cyan-500/30"></div>
             <div
