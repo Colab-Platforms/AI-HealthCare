@@ -17,7 +17,8 @@ class DietRecommendationAI {
   getApiParams() {
     this.apiKey = process.env.ANTHROPIC_API_KEY;
     const apiUrl = ANTHROPIC_API_URL;
-    const model = CLAUDE_MODEL;
+    // Use Haiku on Vercel to stay within 120s limit, Sonnet locally
+    const model = process.env.VERCEL ? 'claude-3-5-haiku-20241022' : 'claude-sonnet-4-6';
     return { apiUrl, model };
   }
 
@@ -101,19 +102,17 @@ ${labReports?.length > 0 ? labReports.map(r => `- ${r.parameter}: ${r.value} ${r
 ${deficiencies?.length > 0 ? deficiencies.map(d => `- ${d.nutrient || d.name} (${d.severity})`).join('\n') : ''}
 
 CRITICAL INSTRUCTIONS:
-1. Provide EXACTLY 4 DISTINCT meal options for EVERY category (breakfast, midMorningSnack, lunch, eveningSnack, dinner).
-2. Each option should be a complete alternative with a DESCRIPTIVE MEAL NAME (e.g., "Masala Dosa", "Idli with Sambar", "Poha with Peanuts", "Oats Upma"). DO NOT use generic names like "Option 1", "Option 2", etc.
-3. Ensure the combined nutrition of these options FULFILLS the user's daily macro targets (if user picks one option from each category).
-4. Use ONLY Indian foods and traditional Indian recipes.
-5. TRULY PRIORITIZE the user's specific food preferences for each meal. If they list breakfast favorites, use them for breakfast options.
-6. STRICTLY avoid any 'Foods to Avoid' and adhere to 'Dietary Restrictions'. Try to incorporate 'Preferred Foods'.
-7. If no lab data is provided, prioritize the Fitness Goal (${bmiGoal}) and BMI-based needs.
-8. Provide specific portion sizes in grams/pieces/cups.
-9. DO NOT provide more than 4 options per meal.
-10. Each meal option MUST include: name, description, calories, protein, and benefits.
-11. Ensure variety - no two options should be similar (e.g., don't have two rice-based meals).
-12. If the user wants to REGENERATE, you MUST provide COMPLETELY DIFFERENT meal options from the standard examples. Give them a fresh variety of new Indian foods.
-13. ${promptExtension || ''}
+1. Provide EXACTLY 3 DISTINCT meal options for EVERY category (breakfast, midMorningSnack, lunch, eveningSnack, dinner).
+2. BE ULTRA-CONCISE. Use short meal names and 1-sentence descriptions. This is critical for performance.
+3. Ensure the combined nutrition of these options FULFILLS the user's daily macro targets.
+4. Use ONLY Indian foods.
+5. TRULY PRIORITIZE the user's specific food preferences for each meal.
+6. STRICTLY avoid any 'Foods to Avoid' and adhere to 'Dietary Restrictions'.
+7. Provide specific portion sizes in grams/pieces.
+8. Each meal option MUST include: name, description, calories, protein, carbs, fats, and benefits.
+9. Ensure variety - no two options should be similar.
+10. If the user wants to REGENERATE, provide COMPLETELY DIFFERENT meal options.
+11. ${promptExtension || ''}
 
 RETURN JSON ONLY. Ensure the JSON is valid and complete:
 {
@@ -146,10 +145,10 @@ RETURN JSON ONLY. Ensure the JSON is valid and complete:
     const systemMsg = "You are an expert Indian nutritionist and clinical dietitian. Provide personalized meal plans in JSON format.";
 
     const payload = {
-      max_tokens: 8192,
+      max_tokens: 4000,
       system: systemMsg,
       messages: [{ role: 'user', content: prompt }],
-      temperature: 0.7
+      temperature: 0.3
     };
 
     console.log('[DietAI] FULL PROMPT PREVIEW:', prompt.substring(0, 500) + '...');

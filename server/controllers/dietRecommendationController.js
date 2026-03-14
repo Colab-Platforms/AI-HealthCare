@@ -33,7 +33,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
 
     if (hasReports) {
       healthReports.forEach(report => {
-        if (report.aiAnalysis?.deficiencies) {
+        if (report.aiAnalysis?.deficiencies && Array.isArray(report.aiAnalysis.deficiencies)) {
           report.aiAnalysis.deficiencies.forEach(def => {
             deficiencies.push({
               nutrient: def.name || def,
@@ -45,27 +45,27 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
 
         if (report.aiAnalysis?.metrics) {
           Object.entries(report.aiAnalysis.metrics).forEach(([key, metric]) => {
-            labReportInsights.push({
-              parameter: key,
-              value: metric.value || '',
-              unit: metric.unit || '',
-              status: metric.status || 'noted',
-              reportId: report._id
-            });
-
-            // Track abnormal conditions
-            if (metric.status !== 'normal') {
-              reportConditions.push({
+            if (metric && typeof metric === 'object') {
+              labReportInsights.push({
                 parameter: key,
-                status: metric.status,
-                value: metric.value
+                value: metric.value || '',
+                unit: metric.unit || '',
+                status: metric.status || 'noted',
+                reportId: report._id
               });
+
+              if (metric.status !== 'normal') {
+                reportConditions.push({
+                  parameter: key,
+                  status: metric.status,
+                  value: metric.value
+                });
+              }
             }
           });
         }
 
-        // Extract key findings as conditions
-        if (report.aiAnalysis?.keyFindings) {
+        if (report.aiAnalysis?.keyFindings && Array.isArray(report.aiAnalysis.keyFindings)) {
           report.aiAnalysis.keyFindings.forEach(finding => {
             reportConditions.push({ finding });
           });
@@ -190,7 +190,11 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
 
     let aiDietPlan;
     try {
+      console.log(`[DietGeneration] Calling AI Service...`);
       aiDietPlan = await dietRecommendationAI.generatePersonalizedDietPlan(userData, promptEx);
+      if (!aiDietPlan || typeof aiDietPlan !== 'object') {
+        throw new Error('AI returned invalid non-object data');
+      }
     } catch (aiError) {
       console.error('[DietGeneration] AI Service Error:', aiError.message);
       return res.status(500).json({ 
@@ -211,8 +215,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       );
       console.log(`[DietGeneration] Deactivated ${deactResult.modifiedCount} old plans`);
 
-      // Save new diet plan
-      const dietPlan = new PersonalizedDietPlan({
+      const dietPlanData = {
         ...aiDietPlan,
         userId: userId,
         inputData: {
@@ -242,10 +245,23 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
         generatedAt: new Date(),
         validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
         isActive: true
-      });
+      };
+
+      // Ensure root macroTargets and dailyCalorieTarget are populated if AI didn't return them correctly
+      if (!dietPlanData.dailyCalorieTarget) dietPlanData.dailyCalorieTarget = nutritionGoals.calorieGoal;
+      if (!dietPlanData.macroTargets) {
+        dietPlanData.macroTargets = {
+          protein: nutritionGoals.proteinGoal,
+          carbs: nutritionGoals.carbsGoal,
+          fats: nutritionGoals.fatGoal
+        };
+      }
+
+      console.log('[DietGeneration] Formatting final document and saving...');
+      const dietPlan = new PersonalizedDietPlan(dietPlanData);
 
       await dietPlan.save();
-      console.log('[DietGeneration] New plan saved to DB');
+      console.log('[DietGeneration] New plan saved to DB successfully: ', dietPlan._id);
 
       res.json({
         success: true,
