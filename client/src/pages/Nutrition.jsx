@@ -12,6 +12,7 @@ import { BarChart, Bar, Cell, ResponsiveContainer, XAxis, Tooltip } from 'rechar
 import api, { nutritionService, dietRecommendationService } from '../services/api';
 import toast from 'react-hot-toast';
 import { useData } from '../context/DataContext';
+import NutritionSkeleton from '../components/skeletons/NutritionSkeleton';
 
 function Nutrition() {
   const { invalidateCache } = useData();
@@ -414,6 +415,9 @@ function Nutrition() {
 
   const remainingCals = Math.max(0, dailySummary.calorieTarget - dailySummary.caloriesConsumed);
   const progressPercent = Math.min(100, (dailySummary.caloriesConsumed / dailySummary.calorieTarget) * 100);
+  if (loading) {
+    return <NutritionSkeleton />;
+  }
 
   return (
     <div className="min-h-screen bg-transparent pb-32 px-4 md:px-6 lg:px-16 pt-8 relative overflow-hidden font-sans text-slate-800">

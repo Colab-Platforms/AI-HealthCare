@@ -7,10 +7,11 @@ import {
   Search, Sun, Clock, Heart, Apple, Info, Target, Calendar,
   ArrowUpRight, Upload, Coffee, Dumbbell, MessageCircle, BarChart3,
   Circle, Smile, FlaskConical, Leaf, Pill, CheckCircle2, Zap, Eye,
-  UtensilsCrossed, UploadCloud
+  UtensilsCrossed, UploadCloud, ShieldCheck, AlertTriangle
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Link, useNavigate } from 'react-router-dom';
+import DashboardSkeleton from '../components/skeletons/DashboardSkeleton';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
   Tooltip, CartesianGrid, PieChart, Pie, Cell, LineChart, Line
@@ -506,7 +507,7 @@ const MealDetailModal = ({ meal, onClose, onAdd }) => {
 
 export default function DashboardEnhanced() {
   const { user } = useAuth();
-  const { dashboardData, nutritionData, wearableData, fetchDashboard, fetchNutrition, fetchDietPlan, fetchWearable } = useData();
+  const { dashboardData, nutritionData, wearableData, fetchDashboard, fetchNutrition, fetchDietPlan, fetchWearable, loading } = useData();
   const navigate = useNavigate();
 
   const [dietPlan, setDietPlan] = useState(null);
@@ -789,6 +790,10 @@ export default function DashboardEnhanced() {
     if (hour < 17) return 'Good afternoon';
     return 'Good evening';
   };
+
+  if (loading.dashboard || !dashboardData) {
+    return <DashboardSkeleton />;
+  }
 
   return (
     <div className="min-h-screen bg-transparent pb-32 px-4 md:px-6 lg:px-16 pt-8 relative overflow-hidden">
@@ -1342,6 +1347,26 @@ export default function DashboardEnhanced() {
 
       {/* Bottom Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-8">
+
+        {/* Compact Food Safety Monitor */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          whileInView={{ opacity: 1, scale: 1 }}
+          viewport={{ once: true }}
+          onClick={() => navigate('/food-safety')}
+          className="bg-white rounded-[2.5rem] p-6 border border-slate-100 shadow-sm hover:shadow-xl hover:border-slate-900/10 cursor-pointer group transition-all"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-slate-900 rounded-2xl flex items-center justify-center shrink-0">
+               <ShieldCheck className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Safety Monitor</p>
+              <h3 className="text-sm font-black text-slate-900 uppercase truncate">Check Adulteration</h3>
+            </div>
+            <ArrowUpRight className="w-5 h-5 text-slate-300 group-hover:text-slate-900 transition-colors" />
+          </div>
+        </motion.div>
 
         {/* Daily Vitals (Weight, Steps, Sleep) */}
         <motion.div
