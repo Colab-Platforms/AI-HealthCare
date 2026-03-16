@@ -55,6 +55,25 @@ function Nutrition() {
   const [isListening, setIsListening] = useState(false);
   const recognitionRef = React.useRef(null);
   const [expandedMeal, setExpandedMeal] = useState(null);
+  const [analyzingMessage, setAnalyzingMessage] = useState('Analyzing food...');
+
+  useEffect(() => {
+    if (isAnalyzing) {
+      const messages = [
+        'Running nutritional analysis...',
+        'Scanning ingredients and macros...',
+        'Calculating caloric density...'
+      ];
+      let i = 0;
+      const interval = setInterval(() => {
+        i = (i + 1) % messages.length;
+        setAnalyzingMessage(messages[i]);
+      }, 2000); // Rotate every 2 seconds
+      return () => clearInterval(interval);
+    } else {
+      setAnalyzingMessage('Analyzing food...');
+    }
+  }, [isAnalyzing]);
 
   useEffect(() => {
     fetchData();
@@ -1040,7 +1059,7 @@ function Nutrition() {
                       className="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-black transition-all shadow-xl active:scale-95 disabled:opacity-50"
                     >
                       {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5 text-white" />}
-                      {isAnalyzing ? 'Analyzing Food...' : 'Analyze & Log Meal'}
+                      {isAnalyzing ? analyzingMessage : 'Analyze & Log Meal'}
                     </button>
                   </motion.div>
                 ) : inputMethod === 'Scan' ? (
@@ -1107,7 +1126,7 @@ function Nutrition() {
                       className="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-black transition-all shadow-xl active:scale-95 disabled:opacity-50"
                     >
                       {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5 text-white" />}
-                      {isAnalyzing ? 'Analyzing Image...' : 'Analyze Photo'}
+                      {isAnalyzing ? analyzingMessage : 'Analyze Photo'}
                     </button>
 
                     <p className="text-[10px] text-slate-400 text-center font-bold px-8 leading-relaxed uppercase tracking-tight">
