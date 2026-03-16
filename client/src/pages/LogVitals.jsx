@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Scale, Footprints, Moon, ArrowLeft, Calendar, Save, Plus, Flame, Clock, Sparkles, Loader2, CheckCircle, AlertTriangle, TrendingUp } from 'lucide-react';
+import { Scale, Footprints, Moon, ArrowLeft, Calendar, Save, Plus, Flame, Clock, Sparkles, Loader2, CheckCircle, AlertTriangle, TrendingUp, Activity, RotateCcw } from 'lucide-react';
 import { LineChart, Line, BarChart, Bar, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, ReferenceLine, CartesianGrid } from 'recharts';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
@@ -11,7 +11,7 @@ import toast from 'react-hot-toast';
 export default function LogVitals() {
     const { metric } = useParams();
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user, updateUser } = useAuth();
     const {
         dashboardData,
         fetchDashboard,
