@@ -226,109 +226,108 @@ export default function LogVitals() {
         const getStatusColor = (status) => {
             if (!status) return 'bg-slate-50 text-slate-700 border-slate-200';
             const lower = status.toLowerCase();
-            if (lower.includes('track') || lower.includes('great') || lower.includes('excellent')) return 'bg-emerald-50 text-emerald-700 border-emerald-200';
-            if (lower.includes('attention') || lower.includes('concern')) return 'bg-amber-50 text-amber-700 border-amber-200';
-            return 'bg-blue-50 text-blue-700 border-blue-200';
+            if (lower.includes('track') || lower.includes('great') || lower.includes('excellent') || lower.includes('on')) return 'bg-emerald-50 text-emerald-700 border-emerald-100';
+            if (lower.includes('attention') || lower.includes('concern') || lower.includes('needs')) return 'bg-amber-50 text-amber-700 border-amber-100';
+            return 'bg-indigo-50 text-indigo-700 border-indigo-100';
         };
 
         return (
-            <div className="p-6 md:p-8 bg-white/60 backdrop-blur-md rounded-[32px] border border-white shadow-sm mt-8">
-                <div className="flex justify-between items-center mb-6">
-                    <div className="flex items-center gap-3">
-                        <div className={`w-10 h-10 rounded-full ${color} flex items-center justify-center shadow-sm`}>
-                            <Sparkles className="w-5 h-5 text-[#1a1a1a]" />
+            <div className="p-6 md:p-8 bg-white/40 backdrop-blur-xl rounded-[32px] border border-white/60 shadow-[0_8px_32px_rgba(0,0,0,0.04)] mt-8 overflow-hidden relative">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-purple-100/20 to-indigo-100/20 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+                
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8 relative z-10">
+                    <div className="flex items-center gap-3.5">
+                        <div className={`w-12 h-12 rounded-2xl ${color} flex items-center justify-center shadow-inner`}>
+                            <Sparkles className="w-6 h-6 text-[#1a1a1a]" />
                         </div>
                         <div>
-                            <h3 className="text-lg font-semibold text-[#1a1a1a]">AI Coach</h3>
-                            <p className="text-[10px] font-bold text-[#888] uppercase tracking-widest">Personalized Insights</p>
+                            <div className="flex items-center gap-2">
+                                <h3 className="text-xl font-bold text-[#1a1a1a]">AI Coach</h3>
+                                {insights && (
+                                    <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider border shadow-sm ${getStatusColor(insights.status)}`}>
+                                        {insights.status}
+                                    </span>
+                                )}
+                            </div>
+                            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Vitals Analysis</p>
                         </div>
                     </div>
+                    
                     {insights && (
-                        <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase border shadow-sm ${getStatusColor(insights.status)}`}>
-                            {insights.status}
-                        </span>
+                        <button
+                            onClick={() => fetchInsights(metricType, true)}
+                            disabled={insightsLoading}
+                            className="p-2.5 bg-white/80 hover:bg-white text-slate-600 rounded-xl border border-slate-100 shadow-sm transition-all active:scale-95 disabled:opacity-50"
+                            title="Refresh Analysis"
+                        >
+                            <RotateCcw className={`w-4 h-4 ${insightsLoading ? 'animate-spin' : ''}`} />
+                        </button>
                     )}
                 </div>
 
-                <div className="min-h-[100px] flex flex-col justify-center">
+                <div className="min-h-[120px] relative z-10">
                     {insightsLoading && !insights ? (
                         <div className="text-center py-12">
-                            <div className="w-8 h-8 border-2 border-purple-200 border-t-purple-600 rounded-full animate-spin mx-auto" />
-                            <p className="text-xs text-slate-500 mt-4 font-medium animate-pulse">Analyzing your health patterns...</p>
+                            <div className="relative w-12 h-12 mx-auto mb-6">
+                                <div className="absolute inset-0 border-3 border-indigo-100 rounded-full"></div>
+                                <div className="absolute inset-0 border-3 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                            </div>
+                            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest animate-pulse">Deep Analysis in progress...</p>
                         </div>
                     ) : insights ? (
                         <motion.div 
-                            initial={{ opacity: 0, y: 10 }}
+                            initial={{ opacity: 0, y: 15 }}
                             animate={{ opacity: 1, y: 0 }}
-                            className="space-y-6"
+                            className="space-y-8"
                         >
-                            {insights.lastUpdated && (
-                                <p className="text-[10px] text-slate-400 font-medium italic -mt-2">
-                                    Last analyzed: {new Date(insights.lastUpdated).toLocaleString()}
-                                </p>
-                            )}
-                            
-                            <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
-                                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2 flex items-center gap-2">
-                                    <Activity className="w-3 h-3" />
-                                    Current Assessment
-                                </h4>
-                                <p className="text-sm text-slate-600 leading-relaxed font-medium">
-                                    {insights.analysis}
+                            <div className="relative">
+                                <div className="absolute -left-4 top-0 bottom-0 w-1 bg-indigo-500 rounded-full opacity-30"></div>
+                                <p className="text-base md:text-lg text-slate-700 leading-snug font-medium italic">
+                                    "{insights.analysis}"
                                 </p>
                             </div>
 
-                            <div className="space-y-3">
-                                <h4 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                                    <TrendingUp className="w-3 h-3" />
-                                    Recommendations
-                                </h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                            <div className="space-y-4">
+                                <div className="flex items-center gap-2">
+                                    <div className="h-px flex-1 bg-slate-100"></div>
+                                    <h4 className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Next Steps</h4>
+                                    <div className="h-px flex-1 bg-slate-100"></div>
+                                </div>
+                                
+                                <div className="flex flex-wrap gap-2.5">
                                     {insights.recommendations?.map((rec, i) => (
-                                        <div key={i} className="flex items-start gap-2.5 p-3.5 bg-white rounded-xl border border-slate-100 shadow-sm">
-                                            <div className="w-5 h-5 rounded-full bg-emerald-50 flex items-center justify-center shrink-0 mt-0.5">
-                                                <div className="w-1 h-1 rounded-full bg-emerald-500" />
-                                            </div>
-                                            <p className="text-xs text-slate-600 font-semibold leading-relaxed">{rec}</p>
+                                        <div key={i} className="flex items-center gap-2 px-4 py-2.5 bg-white/60 hover:bg-white border border-slate-100/80 rounded-2xl shadow-sm transition-all hover:shadow-md cursor-default group">
+                                            <div className="w-2 h-2 rounded-full bg-emerald-400 group-hover:scale-125 transition-transform" />
+                                            <p className="text-xs text-slate-600 font-bold">{rec}</p>
                                         </div>
                                     ))}
                                 </div>
                             </div>
 
-                            <div className="p-4 bg-gradient-to-br from-indigo-50/50 to-purple-50/50 rounded-2xl border border-white/50">
-                                <p className="text-sm font-bold text-indigo-700 italic text-center">
-                                    "{insights.encouragement}"
+                            <div className="pt-4 flex items-center justify-between border-t border-slate-50">
+                                <p className="text-[10px] font-bold text-indigo-600 tracking-wide bg-indigo-50/50 px-3 py-1 rounded-lg">
+                                    {insights.encouragement}
                                 </p>
-                            </div>
-
-                            <button
-                                onClick={() => fetchInsights(metricType, true)}
-                                disabled={insightsLoading}
-                                className="w-full py-4 bg-[#1a1a1a] text-white rounded-[22px] text-sm font-bold flex items-center justify-center gap-2 hover:bg-black transition-all shadow-md active:scale-[0.98] disabled:opacity-50"
-                            >
-                                {insightsLoading ? (
-                                    <>
-                                        <Loader2 className="w-4 h-4 animate-spin" />
-                                        Refreshing...
-                                    </>
-                                ) : (
-                                    <>
-                                        <RotateCcw className="w-4 h-4" />
-                                        Refresh AI Analysis
-                                    </>
+                                {insights.lastUpdated && (
+                                    <p className="text-[9px] text-slate-300 font-medium">
+                                        Updated {new Date(insights.lastUpdated).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                    </p>
                                 )}
-                            </button>
+                            </div>
                         </motion.div>
                     ) : (
-                        <div className="text-center py-8">
-                            <p className="text-sm text-slate-500 mb-6 font-medium">Get a personalized deep dive into your {metricType} patterns.</p>
+                        <div className="text-center py-10 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
+                            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-sm">
+                                <Sparkles className="w-6 h-6 text-indigo-400" />
+                            </div>
+                            <p className="text-sm text-slate-500 mb-6 font-semibold px-6">Ready to decode your {metricType} patterns?</p>
                             <button
                                 onClick={() => fetchInsights(metricType)}
                                 disabled={insightsLoading}
-                                className="px-10 py-4 bg-[#1a1a1a] text-white rounded-[22px] text-sm font-bold flex items-center justify-center gap-2 hover:bg-black transition-all shadow-lg active:scale-[0.98] mx-auto disabled:opacity-50"
+                                className="px-8 py-3.5 bg-[#1a1a1a] text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-black transition-all shadow-xl active:scale-[0.98] disabled:opacity-50 flex items-center gap-2 mx-auto"
                             >
                                 <Sparkles className="w-4 h-4 text-purple-300" />
-                                Generate Advice
+                                Generate Insights
                             </button>
                         </div>
                     )}

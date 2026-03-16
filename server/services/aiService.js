@@ -339,3 +339,39 @@ exports.generateMetricInfo = async (metricName, metricValue, normalRange, unit) 
     return { whatIsIt: 'Information unavailable.' };
   }
 };
+
+exports.generateVitalsInsights = async (metricType, history, user) => {
+  try {
+    const prompt = `Analyze the user's ${metricType} history for the last 7 days and provide professional health advice.
+    
+    Metric Type: ${metricType}
+    History Data: ${JSON.stringify(history)}
+    User Profile: ${JSON.stringify(user.profile || {})}
+    User Goal: ${JSON.stringify(user.nutritionGoal || {})}
+    
+    Your goal is to tell the user how they are doing and what they should do for betterment. Be ultra-concise.
+    
+    Return a JSON object:
+    {
+      "status": "A very short status (e.g., 'Excellent', 'Stable', 'Needs Work')",
+      "analysis": "A one-sentence impact analysis of the trend (e.g. 'Consistent step count shows improved stamina.')",
+      "recommendations": ["3-4 very short actionable points (max 5 words each)"],
+      "encouragement": "A short motivating one-liner"
+    }
+    
+    CRITICAL: Return ONLY valid JSON. Keep it extremely brief. no fluff. JSON only.`;
+
+    const content = await makeAnthropicRequest([
+      { role: 'system', content: 'You are a professional health and fitness AI coach. Return JSON only.' },
+      { role: 'user', content: prompt }
+    ], 1000);
+
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('AI response missing JSON');
+
+    return robustJsonParse(jsonMatch[0]);
+  } catch (error) {
+    console.error('Error generating vitals insights:', error);
+    throw error;
+  }
+};
