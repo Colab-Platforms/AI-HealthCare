@@ -133,12 +133,12 @@ function Nutrition() {
         else grouped.Snack.push(log);
       });
       setMealLogs(grouped);
-      setRecentMeals(logs.slice(0, 5));
+      setRecentMeals(logs.slice(0, 15));
 
       // Weekly Trends
       const weekly = weeklyRes.data.weeklyStats?.dailySummaries || [];
       const chartData = weekly.map(day => ({
-        day: new Date(day.date).toLocaleDateString('en-US', { weekday: 'short' }),
+        day: new Date(day.date).toLocaleDateString('en-IN', { weekday: 'short', timeZone: 'Asia/Kolkata' }),
         value: day.totalCalories,
         active: new Date(day.date).toISOString().split('T')[0] === date
       }));
@@ -218,7 +218,7 @@ function Nutrition() {
           const canvas = document.createElement('canvas');
           let width = img.width;
           let height = img.height;
-          const maxSize = 1200;
+          const maxSize = 800; // Reduced for faster food scan upload
           if (width > maxSize || height > maxSize) {
             if (width > height) {
               height = (height / width) * maxSize;
@@ -266,8 +266,14 @@ function Nutrition() {
       if (image) formData.append('image', image);
 
       let context = '';
-      if (foodQuantity) context += `Quantity: ${foodQuantity}. `;
-      if (prepMethod) context += `Preparation: ${prepMethod}.`;
+      if (foodQuantity) {
+        context += `Quantity: ${foodQuantity}. `;
+        formData.append('quantity', foodQuantity);
+      }
+      if (prepMethod) {
+        context += `Preparation: ${prepMethod}.`;
+        formData.append('prepMethod', prepMethod);
+      }
       if (context) formData.append('additionalContext', context);
 
       const response = await api.post('nutrition/quick-check', formData, {
@@ -402,8 +408,7 @@ function Nutrition() {
             <div className="flex items-center justify-between md:justify-start bg-white/60 border border-white/40 backdrop-blur-md rounded-full px-4 py-2 shadow-sm w-full md:w-fit">
               <button onClick={() => changeDate(-1)} className="p-1 text-slate-400 hover:text-slate-600"><ChevronLeft className="w-4 h-4" /></button>
               <span className="text-sm font-semibold px-3 uppercase tracking-tight">
-                {new Date(selectedDate).toDateString() === new Date().toDateString() ? 'Today, ' : ''}
-                {new Date(selectedDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
+                {new Date(selectedDate).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: '2-digit', timeZone: 'Asia/Kolkata' })}
               </span>
               <button onClick={() => changeDate(1)} className="p-1 text-slate-400 hover:text-slate-600"><ChevronRight className="w-4 h-4" /></button>
             </div>
@@ -489,7 +494,7 @@ function Nutrition() {
                 {[
                   { name: 'Breakfast', icon: Sun, ratio: 0.30 },
                   { name: 'Lunch', icon: Utensils, ratio: 0.35 },
-                  { name: 'Evening Snack', icon: Cookie, ratio: 0.10 },
+                  { name: 'Snack', icon: Cookie, ratio: 0.10 },
                   { name: 'Dinner', icon: Moon, ratio: 0.25 }
                 ].map((meal) => {
                   const logs = mealLogs[meal.name] || [];
@@ -605,23 +610,44 @@ function Nutrition() {
                   <h4 className="font-black text-xs text-slate-900 uppercase tracking-widest">Recent Meals</h4>
                   <button className="text-[10px] font-black text-slate-400 hover:text-slate-900 uppercase tracking-widest transition-colors">View All</button>
                 </div>
-                <div className="space-y-3">
-                  {recentMeals.length > 0 ? recentMeals.map(m => (
-                    <div
+                <div className="flex gap-4 overflow-x-auto pb-6 scrollbar-hide -mx-2 px-2 snap-x">
+                  {recentMeals.length > 0 ? recentMeals.map((m, i) => (
+                    <motion.div
                       key={m._id}
-                      onClick={() => setAnalysisResult(m)}
-                      className="flex justify-between items-center p-4 border border-slate-50 rounded-2xl hover:bg-slate-50 transition-all cursor-pointer group"
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      whileHover={{ y: -5 }}
+                      onClick={() => setAnalysisResult({ ...m, _id: 'new_log_again' })}
+                      className="flex-shrink-0 w-[240px] bg-slate-50 border border-slate-100 rounded-[2.5rem] p-6 cursor-pointer hover:bg-white hover:shadow-2xl transition-all group flex flex-col justify-between snap-center"
                     >
-                      <div className="min-w-0">
-                        <p className="text-xs font-black text-slate-900 uppercase truncate">{m.foodItems?.[0]?.name}</p>
-                        <p className="text-[10px] text-slate-400 font-bold mt-1 uppercase">
-                          {m.foodItems?.[0]?.nutrition?.calories} kcal • {m.foodItems?.[0]?.nutrition?.protein}g p • {m.mealType}
+                      <div>
+                        <div className="flex justify-between items-start mb-4">
+                          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:bg-slate-900 transition-colors">
+                            <Utensils className="w-6 h-6 text-slate-900 group-hover:text-white transition-colors" />
+                          </div>
+                          <div className="bg-white/50 px-3 py-1 rounded-full border border-slate-100 backdrop-blur-sm">
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{m.mealType}</span>
+                          </div>
+                        </div>
+                        <h5 className="text-[11px] font-black text-slate-900 uppercase tracking-tight mb-1 truncate">
+                          {m.foodItems?.[0]?.name}
+                        </h5>
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                          {m.foodItems?.[0]?.nutrition?.calories || 0} Kcal • {m.foodItems?.[0]?.nutrition?.protein || 0}g Protein
                         </p>
                       </div>
-                      <Plus className="w-4 h-4 text-slate-300 group-hover:text-slate-900 transition-colors" />
-                    </div>
+                      <div className="mt-6 pt-4 border-t border-slate-100/50 flex justify-between items-center">
+                        <span className="text-[9px] font-black text-slate-300 uppercase tracking-widest">Added {new Date(m.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true, timeZone: 'Asia/Kolkata' })} • {new Date(m.timestamp).toLocaleDateString('en-IN', { day: '2-digit', month: '2-digit', year: '2-digit', timeZone: 'Asia/Kolkata' })}</span>
+                        <div className="w-8 h-8 bg-slate-100 rounded-full flex items-center justify-center group-hover:bg-slate-900 group-hover:text-white transition-all">
+                          <Plus className="w-4 h-4" />
+                        </div>
+                      </div>
+                    </motion.div>
                   )) : (
-                    <p className="text-[10px] text-slate-400 font-bold italic text-center py-4">No recent meals found</p>
+                    <div className="w-full text-center py-10 bg-slate-50 rounded-[2rem] border border-dashed border-slate-200">
+                      <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">No recent logs found</p>
+                    </div>
                   )}
                 </div>
               </div>
@@ -851,8 +877,8 @@ function Nutrition() {
                       <Wand2 className="w-8 h-8 text-slate-900 absolute inset-0 m-auto animate-pulse" />
                     </div>
                     <div className="text-center">
-                      <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Analyzing Food</h3>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Hang tight, extracting insights...</p>
+                      <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Ultra-Fast Analysis</h3>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Turbo mode active • Insights in seconds</p>
                     </div>
                   </motion.div>
 
@@ -905,6 +931,35 @@ function Nutrition() {
                           {isListening && <div className="w-2 h-2 bg-red-500 rounded-full absolute bottom-3 right-3 animate-pulse" />}
                         </div>
 
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Optional: Quantity</p>
+                            <input
+                              type="text"
+                              value={foodQuantity}
+                              onChange={(e) => setFoodQuantity(e.target.value)}
+                              placeholder="e.g., 2 bowls"
+                              className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-xs font-bold"
+                            />
+                          </div>
+                          <div className="space-y-2">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Prep Method</p>
+                            <select
+                              value={prepMethod}
+                              onChange={(e) => setPrepMethod(e.target.value)}
+                              className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-xs font-bold text-slate-900 outline-none focus:bg-white focus:border-slate-300 transition-all appearance-none cursor-pointer"
+                            >
+                              <option value="">Select Method</option>
+                              <option value="homemade">Homemade</option>
+                              <option value="fried">Deep Fried</option>
+                              <option value="package">Packaged</option>
+                              <option value="street">Street Food</option>
+                              <option value="boiled">Boiled/Steamed</option>
+                              <option value="roasted">Roasted/Grilled</option>
+                            </select>
+                          </div>
+                        </div>
+
                         {/* Analyze Button */}
                         <button
                           onClick={handleAnalyzeAndLog}
@@ -943,7 +998,7 @@ function Nutrition() {
 
                     <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Quantity</p>
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Optional: Quantity</p>
                         <input
                           type="text"
                           value={foodQuantity}
@@ -1013,8 +1068,37 @@ function Nutrition() {
                       <input id="food-img-upload" type="file" accept="image/*" className="hidden" onChange={handleImageSelect} />
                     </div>
 
+                    <div className="grid grid-cols-2 gap-4 w-full">
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Optional: Quantity</p>
+                        <input
+                          type="text"
+                          value={foodQuantity}
+                          onChange={(e) => setFoodQuantity(e.target.value)}
+                          placeholder="e.g., 2 bowls, 3 eggs"
+                          className="w-full bg-slate-50 border border-slate-100 rounded-xl py-4 px-5 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-sm font-bold placeholder:text-slate-400"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Prep Method</p>
+                        <select
+                          value={prepMethod}
+                          onChange={(e) => setPrepMethod(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-100 rounded-xl py-4 px-5 text-sm font-bold text-slate-900 outline-none focus:bg-white focus:border-slate-300 transition-all appearance-none cursor-pointer"
+                        >
+                          <option value="">Select Method</option>
+                          <option value="homemade">Homemade</option>
+                          <option value="fried">Deep Fried</option>
+                          <option value="package">Packaged</option>
+                          <option value="street">Street Food</option>
+                          <option value="boiled">Boiled/Steamed</option>
+                          <option value="roasted">Roasted/Grilled</option>
+                        </select>
+                      </div>
+                    </div>
+
                     <p className="text-[10px] font-black text-slate-400 text-center leading-relaxed">
-                      AI will analyze the portion size and nutritional content<br />directly from the photo.
+                      AI will analyze the photo. Providing quantity<br />helps make calculations more accurate.
                     </p>
 
                     <button

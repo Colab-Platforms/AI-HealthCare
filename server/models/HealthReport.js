@@ -66,7 +66,7 @@ const healthReportSchema = new mongoose.Schema({
     },
     doctorConsultation: {
       recommended: Boolean,
-      urgency: { type: String, enum: ['low', 'medium', 'high', 'urgent'] },
+      urgency: { type: String, enum: ['low', 'medium', 'moderate', 'high', 'urgent'] },
       specializations: [String],
       reason: String
     },
@@ -156,6 +156,21 @@ healthReportSchema.pre('save', function (next) {
         this.aiAnalysis.riskFactors = [this.aiAnalysis.riskFactors];
       } else {
         this.aiAnalysis.riskFactors = [];
+      }
+    }
+
+    // Fix doctorConsultation urgency
+    if (this.aiAnalysis.doctorConsultation && this.aiAnalysis.doctorConsultation.urgency) {
+      const urgency = this.aiAnalysis.doctorConsultation.urgency.toLowerCase();
+      const validUrgencies = ['low', 'medium', 'moderate', 'high', 'urgent'];
+      
+      if (!validUrgencies.includes(urgency)) {
+        console.log('🔧 [PRE-SAVE] Fixing doctorConsultation.urgency:', urgency);
+        if (urgency.includes('low')) this.aiAnalysis.doctorConsultation.urgency = 'low';
+        else if (urgency.includes('med') || urgency.includes('mod')) this.aiAnalysis.doctorConsultation.urgency = 'medium';
+        else if (urgency.includes('high')) this.aiAnalysis.doctorConsultation.urgency = 'high';
+        else if (urgency.includes('urg')) this.aiAnalysis.doctorConsultation.urgency = 'urgent';
+        else this.aiAnalysis.doctorConsultation.urgency = 'low'; // Default
       }
     }
 

@@ -36,18 +36,19 @@ exports.analyzeFood = async (req, res) => {
     let analysis = null;
 
     if (imageBase64) {
-      // Analyze from image
-      console.log('Analyzing from image...');
-      analysis = await nutritionAI.analyzeFromImage(imageBase64, additionalContext);
+      // Analyze from image and upload to Cloudinary in PARALLEL to save time
+      console.log('Analyzing from image and uploading to Cloudinary in parallel...');
+      
+      const [analysisResult, uploadedUrl] = await Promise.all([
+        nutritionAI.analyzeFromImage(imageBase64, additionalContext),
+        uploadImage(`data:image/jpeg;base64,${imageBase64}`, 'logged_meals').catch(e => {
+          console.error('Cloudinary upload in analyzeFood failed:', e.message);
+          return null;
+        })
+      ]);
 
-      // Upload to Cloudinary for consistent storage
-      try {
-        console.log('Uploading image to Cloudinary...');
-        imageUrl = await uploadImage(`data:image/jpeg;base64,${imageBase64}`, 'logged_meals');
-        console.log('Image uploaded successfully:', imageUrl);
-      } catch (e) {
-        console.error('Cloudinary upload in analyzeFood failed:', e.message);
-      }
+      analysis = analysisResult;
+      imageUrl = uploadedUrl;
     } else {
       // Analyze from text
       console.log('Analyzing from text...');
@@ -222,7 +223,14 @@ exports.logMeal = async (req, res) => {
       warnings: Array.isArray(warnings) ? warnings : [],
       alternatives: sanitizeAlternatives(alternatives),
       source,
-      timestamp: timestamp || req.body.date || new Date()
+      timestamp: (() => {
+        const inputDate = timestamp || req.body.date;
+        if (inputDate && typeof inputDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(inputDate)) {
+          const [y, m, d] = inputDate.split('-').map(Number);
+          return new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+        }
+        return inputDate ? new Date(inputDate) : new Date();
+      })()
     });
 
     await foodLog.save();
@@ -253,10 +261,11 @@ exports.getFoodLogs = async (req, res) => {
     const query = { userId: req.user._id };
 
     if (date) {
-      const d = new Date(date);
-      d.setHours(0, 0, 0, 0);
+      // Parse YYYY-MM-DD as UTC to avoid timezone shift in different environments
+      const [y, m, d_num] = date.split('-').map(Number);
+      const d = new Date(Date.UTC(y, m - 1, d_num, 0, 0, 0, 0));
       const nextDay = new Date(d);
-      nextDay.setDate(d.getDate() + 1);
+      nextDay.setUTCDate(d.getUTCDate() + 1);
       query.timestamp = { $gte: d, $lt: nextDay };
     } else if (startDate || endDate) {
       query.timestamp = {};
@@ -1123,7 +1132,7 @@ async function createDailySummary(userId, date) {
 // Quick food check without logging - with complete details persistence
 exports.quickFoodCheck = async (req, res) => {
   try {
-    let { foodDescription, imageBase64, additionalContext } = req.body;
+    let { foodDescription, imageBase64, additionalContext, quantity, prepMethod } = req.body;
 
     let cloudinaryUrl = null;
 
@@ -1165,51 +1174,50 @@ exports.quickFoodCheck = async (req, res) => {
       });
     }
 
-    // ─── STEP 2: Upload to Cloudinary (non-blocking) ───
+    // ─── STEP 2 & 3: Upload to Cloudinary & AI Analysis in PARALLEL ───
     if (imageBase64) {
-      const mimeType = req.file?.mimetype || 'image/jpeg';
-      const dataUri = `data:${mimeType};base64,${imageBase64}`;
-      console.log('☁️ [QuickCheck] Cloudinary upload start...');
-
-      // We'll await it but wrap in try-catch to not let it fail the AI flow
       try {
-        cloudinaryUrl = await uploadImage(dataUri, 'food_scans');
+        console.log('🔄 [QuickCheck] Starting parallel Upload & AI Analysis...');
+        const mimeType = req.file?.mimetype || 'image/jpeg';
+        const dataUri = `data:${mimeType};base64,${imageBase64}`;
+
+        // Combine description and additional context for more accurate AI analysis
+        const combinedContext = [foodDescription, additionalContext]
+          .filter(c => c && c !== 'Food from image')
+          .join('. ') || 'Food from image';
+
+        const [uploadResult, analysisResult] = await Promise.all([
+          // Task 1: Upload to Cloudinary (wrapped in try/catch to not block AI)
+          uploadImage(dataUri, 'food_scans').catch(err => {
+            console.error('☁️ [QuickCheck] Cloudinary upload background error:', err.message);
+            return null;
+          }),
+          // Task 2: AI Analysis
+          nutritionAI.analyzeFromImage(imageBase64, combinedContext)
+        ]);
+
+        cloudinaryUrl = uploadResult;
+        analysis = analysisResult;
+
+        console.log('🧠 [QuickCheck] Image analysis successful:', analysis.data?.foodItem?.name || 'Unknown food');
         console.log('☁️ [QuickCheck] Cloudinary finished:', cloudinaryUrl ? 'Success' : 'Failed');
-      } catch (cloudinaryError) {
-        console.error('☁️ [QuickCheck] Cloudinary upload crash:', cloudinaryError.message);
-      }
-    }
 
-    let analysis;
-
-    // ─── STEP 3: AI Analysis — image or text ───
-    if (imageBase64) {
-      try {
-        console.log('🧠 Attempting AI image analysis via Anthropic...');
-        console.log('📏 Base64 Length:', imageBase64?.length || 0);
-
-        // Use image analysis — send base64 directly to Anthropic Claude Vision
-        const imageAnalysis = await nutritionAI.analyzeFromImage(imageBase64, additionalContext || foodDescription || 'Food from image');
-
-        console.log('🧠 Image analysis successful:', imageAnalysis.data?.foodItem?.name || 'Unknown food');
-
-        // Check if AI couldn't detect food
-        if (imageAnalysis.data?.error === 'UNABLE_TO_DETECT_FOOD') {
+        // Check if AI couldn't detect food but returned 200 (special AI-rejection case)
+        if (analysis.data?.error === 'UNABLE_TO_DETECT_FOOD') {
           return res.status(400).json({
             success: false,
-            message: imageAnalysis.data.message || 'Could not detect food in image',
+            message: analysis.data.message || 'Could not detect food in image',
             error: 'UNABLE_TO_DETECT_FOOD'
           });
         }
-
-        analysis = imageAnalysis;
-
       } catch (imageError) {
-        console.error('❌ Image analysis failed:', imageError.message);
-        console.error('❌ Full error:', imageError.response?.data || imageError.message);
-        console.log('⚠️ Falling back to text analysis...');
-        // Fallback to text analysis if image fails
-        analysis = await nutritionAI.quickFoodCheck(additionalContext || foodDescription || 'Food from image');
+        console.error('❌ [QuickCheck] Parallel processing failed:', imageError.message);
+        console.log('⚠️ [QuickCheck] Falling back to text-only analysis...');
+        // Fallback to text analysis if image fails completely
+        const fallbackContext = [foodDescription, additionalContext]
+          .filter(c => c && c !== 'Food from image')
+          .join('. ') || 'Food from image';
+        analysis = await nutritionAI.quickFoodCheck(fallbackContext);
       }
     } else {
       console.log('📝 Using text analysis for:', foodDescription);
@@ -1288,7 +1296,7 @@ exports.quickFoodCheck = async (req, res) => {
     const foodCheck = new QuickFoodCheck({
       userId: req.user._id,
       foodName: analysis.data.foodItem?.name || foodDescription || 'Analyzed Food',
-      quantity: analysis.data.foodItem?.quantity || 'Not specified',
+      quantity: quantity || analysis.data.foodItem?.quantity || additionalContext?.match(/Quantity:\s*([^.]+)/)?.[1]?.trim() || 'Not specified',
       calories: analysis.data.foodItem?.nutrition?.calories || 0,
       protein: analysis.data.foodItem?.nutrition?.protein || 0,
       carbs: analysis.data.foodItem?.nutrition?.carbs || 0,

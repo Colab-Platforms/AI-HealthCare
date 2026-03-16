@@ -2,8 +2,8 @@ const axios = require('axios');
 const { robustJsonParse } = require('../utils/aiParser');
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-// Using the exact model ID requested by the user
-const CLAUDE_MODEL = 'claude-sonnet-4-6';
+// Next-gen high-speed model for results in 10-15 seconds
+const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
 
 class NutritionAI {
   constructor() {
@@ -33,7 +33,7 @@ class NutritionAI {
     try {
       const requestPayload = {
         model,
-        max_tokens: payload.max_tokens || 4000,
+        max_tokens: payload.max_tokens || 2000,
         system: payload.system || '',
         messages: payload.messages || [],
         temperature: 0
@@ -68,6 +68,8 @@ class NutritionAI {
     1. If the food is considered "junk food" or "unhealthy" (high in processed sugar, trans fats, or sodium), explicitly list its disadvantages and common health risks in the "warnings" array.
     2. In "enhancementTips", include specific steps on how to make this meal healthier (e.g., ingredients to swap, cooking methods to change).
     3. Always provide 3-5 healthier alternatives in the "alternatives" array.
+    4. CRITICAL: Priority is given to the "Quantity" mentioned in the context. You MUST calculate all nutrition values (calories, protein, etc.) based EXACTLY on that quantity. If context says "3 eggs", return nutrition for 3 eggs, NOT 1.
+    5. CRITICAL: Keep all "description", "benefit", and "analysis" strings extremely short (max 15 words each).
     
     JSON STRUCTURE:
     {
@@ -119,14 +121,15 @@ class NutritionAI {
 
     const prompt = this._getUnifiedPrompt(additionalContext);
     const payload = {
-      system: 'You are a professional nutritionist AI specialized in Indian and global cuisine. Analyze the food in the image and return ONLY a JSON response. No text before or after the JSON.',
+      system: 'You are a professional nutritionist AI specialized in Indian and global cuisine. Analyze the food in the image. IMPORTANT: Always prioritize the quantity mentioned in the user text/context for all nutritional calculations. Return ONLY a JSON response.',
       messages: [{
         role: 'user',
         content: [
           { type: 'text', text: prompt },
           { type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } }
         ]
-      }]
+      }],
+      max_tokens: 2000
     };
 
     try {
@@ -144,8 +147,9 @@ class NutritionAI {
       : foodDescription;
     const prompt = this._getUnifiedPrompt(combined);
     const payload = {
-      system: 'You are a professional nutritionist AI. Respond ONLY with valid JSON. Pay VERY CLOSE ATTENTION to any quantities or serving sizes mentioned in the context and calculate nutrition based ONLY on those specific amounts.',
-      messages: [{ role: 'user', content: prompt }]
+      system: 'You are a professional nutritionist AI. Respond ONLY with valid JSON. Be extremely concise. CRITICAL: You must calculate nutrition based on the EXACT quantity provided in the context (e.g., if user says "3 eggs", calculate for 3, NOT 1).',
+      messages: [{ role: 'user', content: prompt }],
+      max_tokens: 1500
     };
     return this._parseResponse(await this.makeAIRequest(payload));
   }

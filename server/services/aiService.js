@@ -138,28 +138,50 @@ JSON STRUCTURE (follow EXACTLY):
   },
   "doctorConsultation": {
     "recommended": true,
-    "urgency": "low",
+    "urgency": "low / medium / high / urgent",
     "specializations": ["Specialist"],
     "reason": "Brief reason"
+  },
+  "mriData": {
+    "bodyRegion": "e.g. Spine, Brain, Knee",
+    "studyDate": "Nov 26, 2025",
+    "modality": "MRI",
+    "accession": "WM2352-109",
+    "description": "e.g. MRI Spine Lumbar",
+    "institution": "City Hospital PACS",
+    "series": [
+      {"name": "Localizer", "count": 383, "region": "Whole Body"},
+      {"name": "Spine Sagittal T2", "count": 95, "region": "Spine", "active": true},
+      {"name": "Spine STIR", "count": 28, "region": "Spine"}
+    ],
+    "radiologistReport": {
+      "findings": "Detailed medical findings from the MRI slices",
+      "impressions": ["Key takeaway 1", "Key takeaway 2"],
+      "patientFriendlySummary": "Explain the MRI findings in very simple, plain English for a non-medical person (3-4 sentences).",
+      "status": "Final",
+      "radiologist": "Dr. Smith"
+    }
   }
 }
 
 CRITICAL RULES:
 1. Return ONLY valid JSON. No markdown, no extra text.
-2. Keep string values SHORT and CONCISE, EXCEPT for the "summary" field which should be detailed and thorough.
-3. Include ALL metrics found in the report with correct status (normal/high/low/borderline).
-4. Provide EXACTLY 4 meal options for EACH meal category (breakfast, lunch, dinner, snacks).
-5. Use Indian food options when appropriate.
-6. Use numbers for numeric values, not strings.
-7. Always provide at least 3-5 summaryPoints as individual pointers for the user.
-8. Do NOT use true/false as unquoted literals in string fields.`;
+2. Keep string values SHORT and CONCISE, EXCEPT for the "summary", "radiologistReport.findings", and "patientFriendlySummary" fields.
+3. Include ALL metrics found in the report with correct status (normal/high/low/borderline) for standard lab reports.
+4. For MRI reports, SKIP metrics and dietPlan to focus entirely on anatomical findings.
+5. Provide EXACTLY 4 meal options for EACH meal category for standard reports.
+6. Use Indian food options when appropriate.
+7. Use numbers for numeric values, not strings.
+8. Always provide at least 3-5 summaryPoints as individual pointers for the user.
+9. If reportType is MRI, populate the "mriData" field comprehensively and skip dietary advice.
+10. Do NOT use true/false as unquoted literals in string fields.`;
 
-exports.analyzeHealthReport = async (reportText, user = {}, imageData = null) => {
+exports.analyzeHealthReport = async (reportText, user = {}, imageData = null, reportType = 'general') => {
   try {
-    console.log('🔄 Analyzing report...');
+    console.log(`🔄 Analyzing ${reportType} report...`);
 
     // Build user profile context for AI
-    let userContext = "User Profile: ";
+    let userContext = `Report Type: ${reportType}\nUser Profile: `;
     if (user.name) userContext += `Name: ${user.name}, `;
     if (user.profile) {
       if (user.profile.age) userContext += `Age: ${user.profile.age}, `;

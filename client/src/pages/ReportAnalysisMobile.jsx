@@ -6,7 +6,7 @@ import {
     ArrowLeft, Share2, Download, FileText, Activity,
     CheckCircle, AlertCircle, AlertTriangle, Apple,
     Zap, Sun, Clock, XCircle, Dumbbell, Calendar, Building2, User2, UtensilsCrossed,
-    Mail, Languages, Filter
+    Mail, Languages, Filter, Layers, Sparkles
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import html2canvas from 'html2canvas';
@@ -196,6 +196,12 @@ export default function ReportAnalysisMobile() {
         }
     };
 
+    const reportType = (report.reportType || '').toUpperCase().trim();
+    const isMRI = reportType === 'MRI' || 
+                 reportType.includes('MRI') || 
+                 !!aiAnalysis?.mriData || 
+                 aiAnalysis?.summary?.toLowerCase().includes('mri');
+
     return (
         <div id="report-mobile-content" className="min-h-screen pb-20 font-sans bg-white">
             <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-8">
@@ -302,6 +308,18 @@ export default function ReportAnalysisMobile() {
                         </div>
                         )}
 
+                        {isMRI && aiAnalysis?.radiologistReport?.patientFriendlySummary && (
+                            <div className="p-5 bg-indigo-50 border border-indigo-100 rounded-3xl mb-6">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <Sparkles className="w-4 h-4 text-indigo-500" />
+                                    <span className="text-[10px] font-black text-indigo-500 uppercase tracking-widest">Plain English Analysis</span>
+                                </div>
+                                <p className="text-sm text-indigo-900 font-semibold leading-relaxed italic">
+                                    "{t(aiAnalysis.radiologistReport.patientFriendlySummary)}"
+                                </p>
+                            </div>
+                        )}
+
                         {aiAnalysis.summaryPoints && aiAnalysis.summaryPoints.length > 0 && (
                             <div className="space-y-3 mb-6">
                                 {aiAnalysis.summaryPoints.map((point, idx) => (
@@ -327,8 +345,58 @@ export default function ReportAnalysisMobile() {
                     </div>
                 )}
 
+                {/* MRI Findings Section */}
+                {isMRI && (
+                    <div className={`${glassCard} p-6 md:p-8 space-y-8`}>
+                        <div>
+                            <div className="flex items-center gap-3 mb-6">
+                                <div className="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center">
+                                    <Layers className="w-5 h-5 text-indigo-500" />
+                                </div>
+                                <h3 className="text-lg font-bold text-[#1a1a1a]">Detailed MRI Findings</h3>
+                            </div>
+                            
+                            <div className="space-y-2">
+                                {(aiAnalysis?.radiologistReport?.impressions || aiAnalysis?.keyFindings || []).map((imp, idx) => (
+                                    <div key={idx} className="flex gap-4 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                                        <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-indigo-500 shadow-sm shrink-0">
+                                            <CheckCircle className="w-4 h-4" />
+                                        </div>
+                                        <p className="text-sm text-slate-700 font-bold leading-snug">{t(imp)}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {aiAnalysis?.radiologistReport?.findings && (
+                            <div className="pt-6 border-t border-slate-100">
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Clinical Observations</h4>
+                                <div className="p-5 bg-slate-900 rounded-3xl">
+                                    <p className="text-[13px] text-slate-300 leading-relaxed font-mono italic">
+                                        {t(aiAnalysis.radiologistReport.findings)}
+                                    </p>
+                                </div>
+                            </div>
+                        )}
+                        
+                        {aiAnalysis?.mriData?.series && (
+                            <div className="pt-6 border-t border-slate-100">
+                                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Study Sequences</h4>
+                                <div className="flex flex-wrap gap-2">
+                                    {aiAnalysis.mriData.series.map((s, idx) => (
+                                        <div key={idx} className="px-3 py-1.5 bg-slate-100 rounded-full text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                                            {s.name} • {s.count} Slices
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {/* Health Metrics */}
-                <div>
+                {!isMRI && (
+                    <div>
                     <div className="flex items-center justify-between mb-6 px-2">
                         <h3 className="text-lg font-bold text-[#1a1a1a]">{isHindi ? 'स्वास्थ्य मेट्रिक्स' : 'Health Metrics'}</h3>
                         <div className="flex gap-1.5 overflow-x-auto pb-1">
@@ -417,10 +485,11 @@ export default function ReportAnalysisMobile() {
                                 );
                             })}
                     </div>
-                </div>
+                    </div>
+                )}
 
                 {/* Deficiencies */}
-                {aiAnalysis?.deficiencies?.length > 0 && (
+                {!isMRI && aiAnalysis?.deficiencies?.length > 0 && (
                     <div className={`${glassCard} p-6 md:p-8`}>
                         <div className="flex items-center gap-3 mb-6">
                             <div className="w-10 h-10 bg-[#FFF0F0] rounded-full flex items-center justify-center">
@@ -471,7 +540,7 @@ export default function ReportAnalysisMobile() {
                 )}
 
                 {/* Diet Plan */}
-                {aiAnalysis?.dietPlan && (
+                {!isMRI && aiAnalysis?.dietPlan && (
                     <div className={`${glassCard} p-6 md:p-8`}>
                         <div className="flex items-center gap-3 mb-4">
                             <div className="w-10 h-10 bg-[#F0FDF4] rounded-full flex items-center justify-center">

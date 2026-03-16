@@ -51,7 +51,7 @@ exports.uploadReport = async (req, res) => {
       if (process.env.VERCEL) {
         console.log('⚡ Vercel detected: Running tasks sequentially for stability');
         cloudinaryUrl = await cloudinary.uploadImage(dataBuffer, 'health_reports');
-        
+
         if (req.file.mimetype === 'application/pdf') {
           aiAnalysis = await analyzeHealthReport(extractedText, req.user);
         } else {
@@ -513,7 +513,7 @@ exports.getDashboardData = async (req, res) => {
 
     // Get today's values for quick access
     const todayHistory = history.find(h => h.date === todayStr);
-    
+
     // Get goals
     const calorieGoal = req.user.nutritionGoal?.calorieGoal || 2100;
     const proteinGoal = req.user.nutritionGoal?.proteinGoal || 150;
@@ -525,55 +525,55 @@ exports.getDashboardData = async (req, res) => {
     const stepGoal = healthGoal?.stepGoal || 10000;
     const sleepGoal = healthGoal?.sleepGoal || 8;
 
-// Helper to generate insights based on profile if no reports exist
-const generateProfileInsights = (user) => {
-  if (!user || !user.profile) return null;
+    // Helper to generate insights based on profile if no reports exist
+    const generateProfileInsights = (user) => {
+      if (!user || !user.profile) return null;
 
-  const { age, weight, height, activityLevel, gender } = user.profile;
-  const bmi = (weight && height) ? (weight / ((height / 100) ** 2)).toFixed(1) : null;
-  
-  let lifestyleAdvice = "";
-  let dietaryGoal = "Maintain balanced nutrition";
-  
-  if (activityLevel === 'sedentary') {
-    lifestyleAdvice = "Consider adding a 15-minute daily walk to boost your metabolism.";
-  } else if (bmi && bmi > 25) {
-    lifestyleAdvice = "Focus on a balanced diet and regular exercise for healthy weight management.";
-    dietaryGoal = "Higher protein, controlled portions";
-  } else if (bmi && bmi < 18.5) {
-    lifestyleAdvice = "Focus on nutrient-dense foods to support healthy weight gain.";
-    dietaryGoal = "Higher calorie, protein-rich foods";
-  } else {
-    lifestyleAdvice = "Maintain your current activity level and stay hydrated for optimal performance.";
-  }
+      const { age, weight, height, activityLevel, gender } = user.profile;
+      const bmi = (weight && height) ? (weight / ((height / 100) ** 2)).toFixed(1) : null;
 
-  // Generate basic metrics based only on known data
-  const basicMetrics = {};
-  if (bmi) {
-    basicMetrics["BMI"] = { 
-      value: bmi, 
-      status: bmi > 25 ? "Overweight" : bmi < 18.5 ? "Underweight" : "Healthy", 
-      normalRange: "18.5 - 24.9" 
+      let lifestyleAdvice = "";
+      let dietaryGoal = "Maintain balanced nutrition";
+
+      if (activityLevel === 'sedentary') {
+        lifestyleAdvice = "Consider adding a 15-minute daily walk to boost your metabolism.";
+      } else if (bmi && bmi > 25) {
+        lifestyleAdvice = "Focus on a balanced diet and regular exercise for healthy weight management.";
+        dietaryGoal = "Higher protein, controlled portions";
+      } else if (bmi && bmi < 18.5) {
+        lifestyleAdvice = "Focus on nutrient-dense foods to support healthy weight gain.";
+        dietaryGoal = "Higher calorie, protein-rich foods";
+      } else {
+        lifestyleAdvice = "Maintain your current activity level and stay hydrated for optimal performance.";
+      }
+
+      // Generate basic metrics based only on known data
+      const basicMetrics = {};
+      if (bmi) {
+        basicMetrics["BMI"] = {
+          value: bmi,
+          status: bmi > 25 ? "Overweight" : bmi < 18.5 ? "Underweight" : "Healthy",
+          normalRange: "18.5 - 24.9"
+        };
+      }
+
+      // Create a realistic, personalized summary based only on what we know
+      let summaryParts = [`Welcome to your health dashboard.`];
+      if (bmi) summaryParts.push(`Your calculated BMI is ${bmi}.`);
+      summaryParts.push(lifestyleAdvice);
+      summaryParts.push(`Upload your first medical report for a complete AI health analysis and personalized deficiency tracking.`);
+
+      return {
+        healthScore: 75,
+        summary: summaryParts.join(' '),
+        metrics: basicMetrics,
+        deficiencies: [], // Empty to trigger the "Upload your report" UI
+        recommendations: {
+          lifestyle: [lifestyleAdvice, "Aim for 7-9 hours of consistent sleep.", "Monitor your daily step count."],
+          nutritional: ["Drink 2-3L of water daily.", "Increase fiber intake with whole grains.", `Focus on: ${dietaryGoal}`]
+        }
+      };
     };
-  }
-
-  // Create a realistic, personalized summary based only on what we know
-  let summaryParts = [`Welcome to your health dashboard.`];
-  if (bmi) summaryParts.push(`Your calculated BMI is ${bmi}.`);
-  summaryParts.push(lifestyleAdvice);
-  summaryParts.push(`Upload your first medical report for a complete AI health analysis and personalized deficiency tracking.`);
-
-  return {
-    healthScore: 75,
-    summary: summaryParts.join(' '),
-    metrics: basicMetrics,
-    deficiencies: [], // Empty to trigger the "Upload your report" UI
-    recommendations: {
-      lifestyle: [lifestyleAdvice, "Aim for 7-9 hours of consistent sleep.", "Monitor your daily step count."],
-      nutritional: ["Drink 2-3L of water daily.", "Increase fiber intake with whole grains.", `Focus on: ${dietaryGoal}`]
-    }
-  };
-};
 
     console.log(`Generated history with ${history.length} items`);
     const dashboardData = {
@@ -860,7 +860,7 @@ exports.saveChallengeData = async (req, res) => {
     const user = await User.findById(req.user._id);
     user.challengeData = challengeData;
     user.streakDays = streak;
-    
+
     // Set start date if this is the first time saving challenge data
     if (!user.challengeStartDate) {
       user.challengeStartDate = new Date();
@@ -1170,8 +1170,8 @@ exports.getVitalsInsights = async (req, res) => {
 
     // Check if we already have an insight and we're not refreshing
     if (refresh !== 'true' && req.user.vitalsInsights && req.user.vitalsInsights[metricType]) {
-      return res.json({ 
-        success: true, 
+      return res.json({
+        success: true,
         insights: req.user.vitalsInsights[metricType],
         isCached: true
       });
@@ -1221,14 +1221,14 @@ exports.getVitalsInsights = async (req, res) => {
     }
 
     const insights = await generateVitalsInsights(metricType, history, req.user);
-    
+
     // Save the new insights to the user
     if (!req.user.vitalsInsights) req.user.vitalsInsights = {};
     req.user.vitalsInsights[metricType] = {
       ...insights,
       lastUpdated: new Date()
     };
-    
+
     // Use findByIdAndUpdate to ensure it's saved correctly
     await User.findByIdAndUpdate(req.user._id, {
       $set: { [`vitalsInsights.${metricType}`]: req.user.vitalsInsights[metricType] }
