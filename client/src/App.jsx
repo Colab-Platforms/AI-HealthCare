@@ -30,8 +30,10 @@ import LogVitals from './pages/LogVitals';
 import AdminUsers from './pages/AdminUsers';
 import AdminReports from './pages/AdminReports';
 import AdminAnalytics from './pages/AdminAnalytics';
+import AdminFoodCache from './pages/AdminFoodCache';
 
 import StepTracker from './pages/StepTracker';
+import FoodSafety from './pages/FoodSafety';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -72,22 +74,23 @@ export default function App() {
           <Route path="/forgot-password" element={user ? <Navigate to="/dashboard" /> : <ForgotPassword />} />
 
           {/* Patient Routes */}
-          <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><DashboardEnhanced /></Layout></ProtectedRoute>} />
-          <Route path="/upload" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><UploadReport /></Layout></ProtectedRoute>} />
-          <Route path="/reports" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><AllReports /></Layout></ProtectedRoute>} />
-          <Route path="/reports/:id" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><ReportAnalysisMobile /></Layout></ProtectedRoute>} />
-          <Route path="/reports/:id/summary" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><ReportSummary /></Layout></ProtectedRoute>} />
-          <Route path="/challenge" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Challenge30Days /></Layout></ProtectedRoute>} />
-          <Route path="/diabetes" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><DiabetesCare /></Layout></ProtectedRoute>} />
-          <Route path="/nutrition" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Nutrition /></Layout></ProtectedRoute>} />
-          <Route path="/glucose-log" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><GlucoseLog /></Layout></ProtectedRoute>} />
-          <Route path="/vital-signs" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><VitalSigns /></Layout></ProtectedRoute>} />
-          <Route path="/supplements" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Supplements /></Layout></ProtectedRoute>} />
-          <Route path="/subscription" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><Subscription /></Layout></ProtectedRoute>} />
-          <Route path="/diet-plan" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><DietPlan /></Layout></ProtectedRoute>} />
-          <Route path="/log-vitals/:metric" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><LogVitals /></Layout></ProtectedRoute>} />
-          <Route path="/step-tracker" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><StepTracker /></Layout></ProtectedRoute>} />
-          <Route path="/ai-chat" element={<ProtectedRoute allowedRoles={['patient', 'client']}><Layout><AIChat /></Layout></ProtectedRoute>} />
+          <Route path="/dashboard" element={<ProtectedRoute allowedRoles={['patient', 'client', 'admin', 'doctor']}><Layout><DashboardEnhanced /></Layout></ProtectedRoute>} />
+          <Route path="/upload" element={<ProtectedRoute allowedRoles={['patient', 'client', 'admin', 'doctor']}><Layout><UploadReport /></Layout></ProtectedRoute>} />
+          <Route path="/reports" element={<ProtectedRoute allowedRoles={['patient', 'client', 'admin', 'doctor']}><Layout><AllReports /></Layout></ProtectedRoute>} />
+          <Route path="/reports/:id" element={<ProtectedRoute allowedRoles={['patient', 'client', 'admin', 'doctor']}><Layout><ReportAnalysisMobile /></Layout></ProtectedRoute>} />
+          <Route path="/reports/:id/summary" element={<ProtectedRoute allowedRoles={['patient', 'client', 'admin', 'doctor']}><Layout><ReportSummary /></Layout></ProtectedRoute>} />
+          <Route path="/challenge" element={<ProtectedRoute allowedRoles={['patient', 'client', 'admin', 'doctor']}><Layout><Challenge30Days /></Layout></ProtectedRoute>} />
+          <Route path="/diabetes" element={<ProtectedRoute allowedRoles={['patient', 'client', 'admin', 'doctor']}><Layout><DiabetesCare /></Layout></ProtectedRoute>} />
+          <Route path="/nutrition" element={<ProtectedRoute allowedRoles={['patient', 'client', 'admin', 'doctor']}><Layout><Nutrition /></Layout></ProtectedRoute>} />
+          <Route path="/glucose-log" element={<ProtectedRoute allowedRoles={['patient', 'client', 'admin', 'doctor']}><Layout><GlucoseLog /></Layout></ProtectedRoute>} />
+          <Route path="/vital-signs" element={<ProtectedRoute allowedRoles={['patient', 'client', 'admin', 'doctor']}><Layout><VitalSigns /></Layout></ProtectedRoute>} />
+          <Route path="/supplements" element={<ProtectedRoute allowedRoles={['patient', 'client', 'admin', 'doctor']}><Layout><Supplements /></Layout></ProtectedRoute>} />
+          <Route path="/subscription" element={<ProtectedRoute allowedRoles={['patient', 'client', 'admin', 'doctor']}><Layout><Subscription /></Layout></ProtectedRoute>} />
+          <Route path="/diet-plan" element={<ProtectedRoute allowedRoles={['patient', 'client', 'admin', 'doctor']}><Layout><DietPlan /></Layout></ProtectedRoute>} />
+          <Route path="/log-vitals/:metric" element={<ProtectedRoute allowedRoles={['patient', 'client', 'admin', 'doctor']}><Layout><LogVitals /></Layout></ProtectedRoute>} />
+          <Route path="/step-tracker" element={<ProtectedRoute allowedRoles={['patient', 'client', 'admin', 'doctor']}><Layout><StepTracker /></Layout></ProtectedRoute>} />
+          <Route path="/ai-chat" element={<ProtectedRoute allowedRoles={['patient', 'client', 'admin', 'doctor']}><Layout><AIChat /></Layout></ProtectedRoute>} />
+          <Route path="/food-safety" element={<ProtectedRoute allowedRoles={['patient', 'client', 'admin', 'doctor']}><Layout><FoodSafety /></Layout></ProtectedRoute>} />
 
           {/* Shared Routes */}
           <Route path="/profile" element={<ProtectedRoute><Layout><Profile /></Layout></ProtectedRoute>} />
@@ -97,6 +100,7 @@ export default function App() {
           <Route path="/admin/users" element={<AdminRoute><Layout isAdmin><AdminUsers /></Layout></AdminRoute>} />
           <Route path="/admin/reports" element={<AdminRoute><Layout isAdmin><AdminReports /></Layout></AdminRoute>} />
           <Route path="/admin/analytics" element={<AdminRoute><Layout isAdmin><AdminAnalytics /></Layout></AdminRoute>} />
+          <Route path="/admin/food-cache" element={<AdminRoute><Layout isAdmin><AdminFoodCache /></Layout></AdminRoute>} />
 
           <Route path="/demo" element={<DemoPreview />} />
         </Routes>

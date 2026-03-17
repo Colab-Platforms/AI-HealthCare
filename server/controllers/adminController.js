@@ -505,3 +505,12 @@ exports.deleteCachedFood = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+exports.clearAllCachedFoods = async (req, res) => {
+  try {
+    const result = await QuickFoodCheck.deleteMany({});
+    res.json({ message: 'Global food database cleared successfully', count: result.deletedCount });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};

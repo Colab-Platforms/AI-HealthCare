@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Calendar, FileText, Settings, LogOut,
   Bell, Search, Activity, Watch, Clock, Apple, MessageSquare, Utensils, ArrowLeft,
-  Droplet, Brain, TrendingUp, Sun, Moon, MessageCircle, BarChart3, Dumbbell, Users
+  Droplet, Brain, TrendingUp, Sun, Moon, MessageCircle, BarChart3, Dumbbell, Users, ShieldCheck
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import TextSelectionPopup from './TextSelectionPopup';
@@ -18,7 +18,8 @@ const patientNavItems = [
   { path: '/diabetes', icon: Droplet, label: 'Diabetes', isDiabeticOnly: true },
   { path: '/upload', icon: Brain, label: 'AI Analyzer' },
   { path: '/nutrition', icon: Utensils, label: 'Nutrition' },
-  { path: '/diet-plan', icon: FileText, label: 'Diet Plan' }
+  { path: '/diet-plan', icon: FileText, label: 'Diet Plan' },
+  { path: '/food-safety', icon: ShieldCheck, label: 'Food Safety' }
 ];
 
 const doctorNavItems = [
@@ -27,12 +28,12 @@ const doctorNavItems = [
   { path: '/profile', icon: Settings, label: 'Profile' }
 ];
 
-const adminNavItems = [
-  { path: '/admin', icon: LayoutDashboard, label: 'Dashboard' },
-  { path: '/admin/users', icon: Users, label: 'Users' },
-  { path: '/admin/reports', icon: FileText, label: 'All Reports' },
-  { path: '/admin/analytics', icon: BarChart3, label: 'Analytics' },
-  { path: '/profile', icon: Settings, label: 'Settings' }
+const adminExtraNavItems = [
+  { path: '/admin', icon: LayoutDashboard, label: 'Admin Panel' },
+  { path: '/admin/users', icon: Users, label: 'Manage Users' },
+  { path: '/admin/food-cache', icon: Utensils, label: 'Food DB' },
+  { path: '/admin/reports', icon: FileText, label: 'Review Reports' },
+  { path: '/admin/analytics', icon: BarChart3, label: 'Global Stats' }
 ];
 
 export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isDoctorLayout }) {
@@ -94,7 +95,7 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
   let portalName = 'Patient Portal';
 
   if (isAdmin() || isAdminLayout) {
-    navItems = adminNavItems;
+    navItems = [...patientNavItems, ...adminExtraNavItems];
     homeLink = '/admin';
     portalName = 'Admin Panel';
   } else if (isDoctor() || isDoctorLayout) {

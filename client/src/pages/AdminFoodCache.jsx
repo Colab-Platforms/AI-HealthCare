@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Search, Plus, Edit2, Trash2, Utensils, Zap, Shield, 
-  AlertCircle, ChevronLeft, ChevronRight, X, Save,
-  CheckCircle2, Info, Flame, Droplet, Wheat, Activity,
-  AlertTriangle, Heart, List, HelpCircle
+import {
+  Search, Plus, Filter, Edit, Trash2, ChevronLeft,
+  ChevronRight, RefreshCw, Star, Info, Upload, FileDown,
+  AlertTriangle, X, Save, CheckCircle2, Flame, Droplet, Wheat, Activity, Heart, List, HelpCircle
 } from 'lucide-react';
 import { adminService } from '../services/api';
 import toast from 'react-hot-toast';
-import { FileDown, Upload } from 'lucide-react';
 
 export default function AdminFoodCache() {
   const [foods, setFoods] = useState([]);
@@ -175,6 +173,25 @@ export default function AdminFoodCache() {
     }
   };
 
+  const handleClearAll = async () => {
+    if (!window.confirm('⚠️ WARNING: This will permanently delete EVERY food model in the Global Database. This action cannot be undone. Are you absolutely sure?')) return;
+    
+    // Final verification for such a destructive action
+    const confirmText = window.prompt('Type "DELETE ALL" to confirm:');
+    if (confirmText !== 'DELETE ALL') {
+      toast.error('Clear action cancelled');
+      return;
+    }
+
+    try {
+      const response = await adminService.clearFoodCache();
+      toast.success(response.data.message || 'Database cleared');
+      fetchFoods();
+    } catch (err) {
+      toast.error('Failed to clear database');
+    }
+  };
+
   const handleBulkSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -235,6 +252,12 @@ export default function AdminFoodCache() {
           <p className="text-slate-500 text-sm">{total} verified food models in database</p>
         </div>
         <div className="flex gap-3">
+          <button 
+            onClick={handleClearAll}
+            className="bg-red-50 hover:bg-red-100 text-red-600 px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition-all border border-red-100"
+          >
+            <Trash2 className="w-4 h-4" /> Clear All
+          </button>
           <button 
             onClick={() => setShowBulkModal(true)}
             className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-5 py-2.5 rounded-xl font-bold text-sm flex items-center gap-2 transition-all"
@@ -317,7 +340,7 @@ export default function AdminFoodCache() {
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
                           <button onClick={() => handleOpenModal(food)} className="p-2 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all">
-                            <Edit2 className="w-4 h-4" />
+                            <Edit className="w-4 h-4" />
                           </button>
                           <button onClick={() => handleDelete(food._id)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all">
                             <Trash2 className="w-4 h-4" />

@@ -244,7 +244,8 @@ export const adminService = {
   createFoodCache: (data) => api.post('admin/food-cache', data),
   bulkCreateFoodCache: (data) => api.post('admin/food-cache/bulk', data),
   updateFoodCache: (id, data) => api.put(`admin/food-cache/${id}`, data),
-  deleteFoodCache: (id) => api.delete(`admin/food-cache/${id}`)
+  deleteFoodCache: (id) => api.delete(`admin/food-cache/${id}`),
+  clearFoodCache: () => api.delete('admin/food-cache/clear-all')
 };
 
 export const subscriptionService = {

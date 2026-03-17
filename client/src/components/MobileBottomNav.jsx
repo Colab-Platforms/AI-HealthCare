@@ -5,7 +5,7 @@ import {
   LayoutDashboard, MessageSquare, Utensils, FileText, MoreVertical, 
   Settings, LogOut, Heart, Watch, X, Calendar, ScanLine, 
   Activity, Bell, Plus, Scale, Droplets, Moon, Footprints, 
-  Apple, Sparkles, Trophy 
+  Apple, Sparkles, Trophy, ShieldCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -69,6 +69,7 @@ export default function MobileBottomNav() {
     { label: 'Sleep', icon: Moon, path: '/log-vitals/sleep', color: 'text-blue-500', borderColor: 'border-blue-100', iconBg: 'bg-blue-50' },
     { label: 'Weight', icon: Scale, path: '/log-vitals/weight', color: 'text-emerald-500', borderColor: 'border-emerald-100', iconBg: 'bg-emerald-50' },
     { label: 'Water', icon: Droplets, path: '/nutrition', color: 'text-cyan-500', borderColor: 'border-cyan-100', iconBg: 'bg-cyan-50', state: { scrollToWater: true } },
+    { label: 'Safety Check', icon: ShieldCheck, path: '/food-safety', color: 'text-slate-900', borderColor: 'border-slate-200', iconBg: 'bg-slate-50' },
   ];
 
   const moreMenuItems = [
