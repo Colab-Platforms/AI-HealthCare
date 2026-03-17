@@ -14,6 +14,365 @@ const withTimeout = (query, timeoutMs = 30000) => {
   return query.maxTimeMS(timeoutMs);
 };
 
+// --- HARDCODED NUTRITIONAL STANDARDS FOR 100% ACCURACY ---
+const STANDARDS = {
+  egg: { calories: 70, protein: 6, fats: 5, carbs: 0.5, unit: 'egg' },
+  chicken: { calories: 165, protein: 31, fats: 3.6, carbs: 0, unit: '100g' },
+  paneer: { calories: 265, protein: 18, fats: 20, carbs: 1.2, unit: '100g' },
+  apple: { calories: 95, protein: 0.5, fats: 0.3, carbs: 25, unit: 'apple' },
+  chapati: { calories: 104, protein: 3, fats: 0.4, carbs: 22, unit: 'chapati' },
+  rice: { calories: 130, protein: 2.7, fats: 0.3, carbs: 28, unit: '100g' },
+  biryani: { calories: 180, protein: 9, fats: 8, carbs: 22, unit: '100g' }
+};
+
+const applyStandards = (foodName, description, data) => {
+  const name = String(foodName || '').toLowerCase();
+  const desc = String(description || '').toLowerCase();
+  const combined = `${name} ${desc}`;
+  
+  // Supported units for matching
+  const weightUnits = ['g', 'gram', 'ml', 'milliliter'];
+
+  // 1. Identify if this is a composite food (Biryani, Burger, etc.)
+  // We prioritize composite standards over component standards.
+  const compositeKeywords = ['biryani', 'pizza', 'sandwich', 'burger', 'roll', 'wrap', 'curry', 'masala', 'fried rice', 'pulao'];
+  const isComposite = compositeKeywords.some(comp => combined.includes(comp));
+
+  // 2. Extract Quantity from either the analyzed name or original query
+  const { qty, unit: detectedUnit } = extractQuantity(combined);
+  
+  for (const [key, std] of Object.entries(STANDARDS)) {
+    // Check if the staple name exists
+    if (combined.includes(key)) {
+      
+      // STAPLE PROTECTION: 
+      // If we are matching 'chicken' but it's a 'chicken biryani', skip if key is just 'chicken'.
+      if (isComposite && key !== 'biryani' && combined.includes('biryani')) continue;
+      if (isComposite && key !== 'rice' && combined.includes('rice') && key === 'rice') { /* rice is okay for rice dishes */ }
+      else if (isComposite && !key.includes(combined.split(' ').find(w => compositeKeywords.includes(w)) || '')) {
+         // Generic component matching protection
+         if (key === 'chicken' || key === 'paneer' || key === 'egg') {
+           if (!name.startsWith(key) && name.length > key.length + 3) continue;
+         }
+      }
+
+      let factor = qty;
+      const usesGrams = weightUnits.some(u => combined.includes(u));
+
+      // FIXED FACTOR MATH
+      if (std.unit === '100g') {
+        if (usesGrams) {
+          factor = qty / 100;
+        } else {
+          // If no grams specified (e.g. "Chicken Biryani"), assume a standard serving (e.g. 250g)
+          // or just 1.0 if we want to stick to base.
+          factor = 1.0; 
+        }
+      } else {
+        // For unit-based (eggs, chapatis), factor is just the quantity
+        factor = qty;
+      }
+      
+      console.log(`🎯 [Rigid Standard] Applied: "${key}" | Qty: ${qty} | Factor: ${factor.toFixed(2)}`);
+      
+      const standardized = {
+        ...data,
+        calories: parseFloat((std.calories * factor).toFixed(1)),
+        protein: parseFloat((std.protein * factor).toFixed(1)),
+        fats: parseFloat((std.fats * factor).toFixed(1)),
+        carbs: parseFloat((std.carbs * factor).toFixed(1)),
+        _isStandardized: true
+      };
+
+      // Ensure all UI paths get the same data
+      const macroKeys = ['calories', 'protein', 'fats', 'carbs'];
+      if (standardized.foodItem?.nutrition) {
+         macroKeys.forEach(k => standardized.foodItem.nutrition[k] = standardized[k]);
+      }
+      if (standardized.nutrition) {
+         macroKeys.forEach(k => standardized.nutrition[k] = standardized[k]);
+      }
+       if (standardized.totalNutrition) {
+         macroKeys.forEach(k => standardized.totalNutrition[k] = standardized[k]);
+      }
+
+      return standardized;
+    }
+  }
+  return data;
+};
+// Helper to safely convert to Number (handles strings with units like "50 kcal" or "20g")
+const getNum = (val) => {
+  if (val === null || val === undefined) return 0;
+  if (typeof val === 'number') return val;
+  const cleaned = String(val).match(/([0-9.]+)/);
+  if (cleaned) {
+    const num = parseFloat(cleaned[1]);
+    return isNaN(num) ? 0 : num;
+  }
+  return 0;
+};
+
+// --- DATA SANITIZERS (ENSURE CONSISTENT STRUCTURE FOR CACHE & UI) ---
+const sanitizeMicronutrients = (data) => {
+  if (!Array.isArray(data)) return [];
+  return data.map(item => {
+    let obj = item;
+    if (typeof item === 'string') {
+      try { obj = JSON.parse(item); } catch (e) { obj = { name: item }; }
+    }
+    return {
+      name: obj.name || 'Unknown',
+      value: obj.value || obj.amount || 'Unknown',
+      percentage: Number(obj.percentage) || 0
+    };
+  });
+};
+
+const sanitizeTips = (data) => {
+  if (!Array.isArray(data)) return [];
+  return data.map(item => {
+    let obj = item;
+    if (typeof item === 'string') {
+      try { obj = JSON.parse(item); } catch (e) { obj = { name: 'Tip', benefit: item }; }
+    }
+    return {
+      name: obj.name || 'Tip',
+      benefit: obj.benefit || obj.description || (typeof obj === 'string' ? obj : '')
+    };
+  });
+};
+
+const sanitizeBenefits = (data) => {
+  if (!Array.isArray(data)) return [];
+  return data.map(item => {
+    let obj = item;
+    if (typeof item === 'string') {
+      try { obj = JSON.parse(item); } catch (e) { obj = { name: 'Health', benefit: item }; }
+    }
+    return {
+      name: obj.name || 'Health',
+      benefit: obj.benefit || obj.description || (typeof obj === 'string' ? obj : '')
+    };
+  });
+};
+
+const sanitizeAlternatives = (data) => {
+  if (!Array.isArray(data)) return [];
+  return data.map(item => {
+    let obj = item;
+    if (typeof item === 'string') {
+      try { obj = JSON.parse(item); } catch (e) { obj = { name: item }; }
+    }
+    return {
+      name: obj.name || 'Alternative',
+      description: obj.description || obj.benefits || '',
+      benefits: obj.benefits || ''
+    };
+  });
+};
+
+// --- DATA NORMALIZATION (FIX MISSING FIELDS FOR CACHE HITS) ---
+const normalizeAnalysisResult = (item) => {
+  if (!item) return null;
+  const pojo = typeof item.toObject === 'function' ? item.toObject() : item;
+
+  // Macro 0 Fix: Look everywhere for nutrition data (Defensive Fallback)
+  // We prioritize any NON-ZERO value found in the hierarchy
+  const findValue = (...paths) => {
+    for (const val of paths) {
+      const num = getNum(val);
+      if (num > 0) return num;
+    }
+    // Fallback to whatever first number we find if all are zero
+    for (const val of paths) {
+      const num = getNum(val);
+      if (!isNaN(num)) return num;
+    }
+    return 0;
+  };
+
+  const macroData = {
+    calories: findValue(pojo.calories, pojo.nutrition?.calories, pojo.totalNutrition?.calories, pojo.foodItem?.nutrition?.calories, pojo.nutritionalInfo?.calories),
+    protein: findValue(pojo.protein, pojo.nutrition?.protein, pojo.totalNutrition?.protein, pojo.foodItem?.nutrition?.protein, pojo.nutritionalInfo?.protein),
+    carbs: findValue(pojo.carbs, pojo.nutrition?.carbs, pojo.totalNutrition?.carbs, pojo.foodItem?.nutrition?.carbs, pojo.nutritionalInfo?.carbs),
+    fats: findValue(pojo.fats, pojo.nutrition?.fats, pojo.totalNutrition?.fats, pojo.foodItem?.nutrition?.fats, pojo.nutritionalInfo?.fats),
+    fiber: findValue(pojo.fiber, pojo.nutrition?.fiber, pojo.totalNutrition?.fiber, pojo.foodItem?.nutrition?.fiber, pojo.nutritionalInfo?.fiber),
+    sugar: findValue(pojo.sugar, pojo.nutrition?.sugar, pojo.totalNutrition?.sugar, pojo.foodItem?.nutrition?.sugar, pojo.nutritionalInfo?.sugar),
+    sodium: findValue(pojo.sodium, pojo.nutrition?.sodium, pojo.totalNutrition?.sodium, pojo.foodItem?.nutrition?.sodium, pojo.nutritionalInfo?.sodium)
+  };
+
+  const base = {
+    ...pojo,
+    ...macroData, // CRITICAL: Ensure top-level fields are populated for the UI
+    foodItem: {
+      name: pojo.foodName || pojo.foodItem?.name || 'Analyzed Food',
+      quantity: pojo.quantity || pojo.foodItem?.quantity || '1 serving',
+      nutrition: macroData
+    },
+    // Ensure all possible UI access paths work
+    nutrition: macroData,
+    totalNutrition: macroData,
+    analysis: pojo.analysis || pojo.healthBenefitsSummary || 'Food analysis completed.',
+    healthScore: getNum(pojo.healthScore || (pojo.healthScore10 * 10) || 50),
+    healthScore10: getNum(pojo.healthScore10 || (pojo.healthScore / 10) || 5),
+    micronutrients: sanitizeMicronutrients(pojo.micronutrients || pojo.foodItem?.micronutrients),
+    enhancementTips: sanitizeTips(pojo.enhancementTips || pojo.foodItem?.enhancementTips),
+    benefits: sanitizeBenefits(pojo.benefits || pojo.foodItem?.benefits || pojo.healthBenefits),
+    warnings: Array.isArray(pojo.warnings) ? pojo.warnings : [], // Fixed: Missing mapping for Considerations
+    alternatives: sanitizeAlternatives(pojo.alternatives),
+    _isFromCache: true
+  };
+
+  // APPLY RIGID STANDARDS (Override AI and Cached variance)
+  return applyStandards(base.foodItem.name, base.foodItem.quantity, base);
+};
+
+// --- SMART PROPORTIONAL SCALING (NEW) ---
+const scaleNutrition = (pojo, factor) => {
+  if (factor === 1) return pojo;
+  
+  // Create a deep copy
+  const scaled = JSON.parse(JSON.stringify(pojo));
+  const keys = ['calories', 'protein', 'carbs', 'fats', 'fiber', 'sugar', 'sodium'];
+  
+  const applyScale = (obj) => {
+    if (!obj) return;
+    keys.forEach(k => {
+      if (typeof obj[k] === 'number') obj[k] = parseFloat((obj[k] * factor).toFixed(2));
+    });
+  };
+
+  applyScale(scaled);
+  applyScale(scaled.nutrition);
+  applyScale(scaled.totalNutrition);
+  if (scaled.foodItem) applyScale(scaled.foodItem.nutrition);
+
+  // Scale micronutrients
+  if (Array.isArray(scaled.micronutrients)) {
+    scaled.micronutrients.forEach(m => {
+      if (m.value) {
+        const valMatch = String(m.value).match(/^([0-9.]+)\s*(.*)$/);
+        if (valMatch) {
+          const val = parseFloat(valMatch[1]);
+          const unit = valMatch[2];
+          m.value = `${parseFloat((val * factor).toFixed(2))}${unit ? ' ' + unit : ''}`;
+        }
+      }
+    if (typeof m.percentage === 'number') m.percentage = parseFloat((m.percentage * factor).toFixed(1));
+    });
+  }
+
+  return scaled;
+};// Helper to extract numeric quantity, unit, and the base food name
+// Helper to extract numeric quantity, unit, and the base food name anywhere in string
+const extractQuantity = (str) => {
+  if (!str) return { qty: 1, food: '', unit: '' };
+  const s = String(str).toLowerCase().trim();
+  
+  const units = ['g', 'gram', 'kg', 'ml', 'litre', 'l', 'oz', 'lbs', 'cup', 'bowl', 'plate', 'serving', 'piece', 'pcs', 'unit', 'glass', 'egg', 'chapati', 'roti'];
+  const unitRegex = new RegExp(`(\\d+(?:\\.\\d+)?)\\s*(${units.join('|')})s?\\b`, 'i');
+
+  const unitMatch = s.match(unitRegex);
+  if (unitMatch) {
+    const qty = parseFloat(unitMatch[1]);
+    const unit = unitMatch[2].toLowerCase().replace(/s$/, '');
+    let food = s.replace(unitMatch[0], '').trim();
+    
+    // If food becomes empty (e.g. search was just "2 eggs"), use the unit as the food name
+    if (!food) food = unit;
+    
+    return { qty, unit, food };
+  }
+
+  const numMatch = s.match(/(\d+(?:\.\d+)?)/);
+  if (numMatch) {
+    const qty = parseFloat(numMatch[1]);
+    let food = s.replace(numMatch[1], '').trim();
+    if (!food) food = 'serving'; // Fallback
+    return { qty, unit: '', food };
+  }
+  
+  return { qty: 1, food: s, unit: '' };
+};
+
+const findAndScaleCachedFood = async (description) => {
+  if (!description) return null;
+  const query = description.trim().toLowerCase();
+
+  const { qty: searchQty, food: searchFood, unit: searchUnit } = extractQuantity(query);
+  console.log(`🔍 [Cache Search] "${searchFood}" | Quantity: ${searchQty}${searchUnit}`);
+
+  // 1. Exact Match Check (Stricter about quantity)
+  const exactMatch = await QuickFoodCheck.findOne({
+    $or: [
+      { searchDescription: query }, 
+      { foodName: { $regex: new RegExp(`^${description.trim()}$`, 'i') } }
+    ]
+  }).sort({ timestamp: -1 });
+
+  if (exactMatch) {
+    let result = normalizeAnalysisResult(exactMatch);
+    const { qty: matchQty, unit: matchUnit } = extractQuantity(exactMatch.searchDescription || exactMatch.foodName || exactMatch.quantity || '');
+    
+    // If quantities match and units match, return it
+    if (Math.abs(matchQty - searchQty) < 0.01 && matchUnit === searchUnit && (result.calories > 0 || query.includes('water'))) {
+      console.log('✅ [Cache Hit] Exact match found with correct quantity.');
+      return result;
+    }
+
+    // NEW: If string matches but quantity differs, scale EXACT MATCH result immediately
+    const factor = searchQty / (matchQty || 1);
+    console.log(`⚖️ [Smart Scale] Exact string match but quantity mismatch (${matchQty} vs ${searchQty}). Auto-scaling by ${factor.toFixed(2)}x`);
+    result = scaleNutrition(result, factor);
+    result.quantity = description;
+    
+    // Re-apply standards to ensure accuracy after scaling
+    const finalResult = applyStandards(description, description, result);
+    finalResult._isScaled = true;
+    return finalResult;
+  }
+
+  // 2. Proportional Scaling Match (e.g., "200g chicken" -> scale from "100g")
+  const cleanSuffix = searchFood.replace(/^g\s+/, '').replace(/s$/, '').replace(/ies$/, 'y').replace(/^(plate|bowl|cup|serving)\s+of\s+/, '');
+  console.log(`⚖️ [Smart Scale] Attempting to find base items for: "${cleanSuffix}"`);
+  
+  const baseItems = await QuickFoodCheck.find({
+    $or: [
+      { foodName: { $regex: new RegExp(`^${cleanSuffix}$`, 'i') } },
+      { searchDescription: { $regex: new RegExp(`${cleanSuffix}`, 'i') } }
+    ]
+  }).sort({ timestamp: -1 }).limit(15);
+
+  for (const item of baseItems) {
+    const { qty: itemQty, unit: itemUnit } = extractQuantity(item.searchDescription || item.foodName || item.quantity);
+    
+    if (itemQty > 0) {
+      let factor = searchQty / itemQty;
+      
+      // Unit Normalization
+      if ((searchUnit === 'g' || searchUnit === 'ml') && (!itemUnit || itemUnit === 'serving' || itemUnit === 'unit')) {
+        factor = searchQty / 100; // Assume base unit is 100g for staples
+      } else if (searchUnit !== itemUnit && searchUnit && itemUnit) {
+        continue; // Mismatch - skip
+      }
+
+      let result = normalizeAnalysisResult(item);
+      if (result.calories < 10 && !query.includes('water')) continue;
+
+      console.log(`⚖️ [Smart Scale] Match: "${item.foodName}" (${itemQty}${itemUnit}). Factor: ${factor.toFixed(2)}x`);
+      let scaled = scaleNutrition(result, factor);
+      scaled.quantity = description;
+      
+      // Final Force-override with Standards
+      scaled = applyStandards(description, description, scaled);
+      scaled._isScaled = true;
+      return scaled;
+    }
+  }
+  return null;
+};
+
 // Analyze food from image or text
 exports.analyzeFood = async (req, res) => {
   try {
@@ -53,50 +412,62 @@ exports.analyzeFood = async (req, res) => {
       // Analyze from text
       console.log('Analyzing from text...');
 
-      // --- CACHING LOGIC: Check if we already have this food analyzed in the DB (GLOBAL CACHE) ---
-      const existingCheck = await QuickFoodCheck.findOne({
-        foodName: { $regex: new RegExp(`^${foodDescription.trim()}$`, 'i') }
-      }).sort({ timestamp: -1 });
+      // ─── BUILD QUANTITY-AWARE SEARCH KEY ───
+      const { additionalContext: ctx } = req.body;
+      let qtyFromCtx = '';
+      if (ctx) {
+        const qtyMatch = ctx.match(/Quantity:\s*([^.]+)/i);
+        if (qtyMatch) qtyFromCtx = qtyMatch[1].trim();
+      }
+      const searchKey = qtyFromCtx && !foodDescription.match(/^\d/)
+        ? `${qtyFromCtx} ${foodDescription}`
+        : foodDescription;
+      console.log('🔑 [Cache Key]:', searchKey);
 
-      if (existingCheck) {
-        console.log('📦 Found cached analysis for:', foodDescription);
-        analysis = {
-          success: true,
-          data: {
-            foodItem: {
-              name: existingCheck.foodName,
-              quantity: existingCheck.quantity,
-              nutrition: existingCheck.nutrition
-            },
-            healthScore: existingCheck.healthScore,
-            healthScore10: existingCheck.healthScore10,
-            isHealthy: existingCheck.isHealthy,
-            analysis: existingCheck.analysis,
-            micronutrients: existingCheck.micronutrients,
-            enhancementTips: existingCheck.enhancementTips,
-            warnings: existingCheck.warnings,
-            benefits: existingCheck.benefits,
-            healthBenefitsSummary: existingCheck.healthBenefitsSummary,
-            alternatives: existingCheck.alternatives
-          }
-        };
+      // ─── GLOBAL INTELLIGENCE CACHE (NOW WITH SMART SCALING) ───
+      const cachedResult = await findAndScaleCachedFood(searchKey);
+
+      if (cachedResult) {
+        console.log('📦 Global Intelligence Cache Hit (Exact or Scaled):', foodDescription);
+        analysis = { success: true, data: cachedResult };
       } else {
         analysis = await nutritionAI.quickFoodCheck(foodDescription);
+        // ... (rest of the save logic remains same)
 
         // Save to cache for future use
         if (analysis?.data?.foodItem) {
+          const aiData = analysis.data;
+          
+          // Force extract nutrition using a robust helper for save path too
+          const nutrition = {
+            calories: getNum(aiData.foodItem?.nutrition?.calories || aiData.totalNutrition?.calories || aiData.calories),
+            protein: getNum(aiData.foodItem?.nutrition?.protein || aiData.totalNutrition?.protein || aiData.protein),
+            carbs: getNum(aiData.foodItem?.nutrition?.carbs || aiData.totalNutrition?.carbs || aiData.carbs),
+            fats: getNum(aiData.foodItem?.nutrition?.fats || aiData.totalNutrition?.fats || aiData.fats),
+            fiber: getNum(aiData.foodItem?.nutrition?.fiber || aiData.totalNutrition?.fiber || aiData.fiber),
+            sugar: getNum(aiData.foodItem?.nutrition?.sugar || aiData.totalNutrition?.sugar || aiData.sugar),
+            sodium: getNum(aiData.foodItem?.nutrition?.sodium || aiData.totalNutrition?.sodium || aiData.sodium)
+          };
+          
           const cacheEntry = new QuickFoodCheck({
             userId: req.user._id,
-            foodName: foodDescription.trim(),
-            nutrition: analysis.data.foodItem.nutrition,
-            healthScore: analysis.data.foodItem.healthScore,
-            healthScore10: analysis.data.foodItem.healthScore10,
-            micronutrients: analysis.data.foodItem.micronutrients,
-            enhancementTips: analysis.data.foodItem.enhancementTips,
-            warnings: analysis.data.foodItem.warnings,
-            benefits: analysis.data.foodItem.benefits,
-            healthBenefitsSummary: analysis.data.foodItem.healthBenefitsSummary,
-            alternatives: analysis.data.foodItem.alternatives,
+            foodName: (aiData.foodItem.name || foodDescription).trim(),
+            searchDescription: foodDescription.trim().toLowerCase(), // Store original query
+            quantity: aiData.foodItem.quantity || '1 serving',
+            calories: nutrition.calories,
+            protein: nutrition.protein,
+            carbs: nutrition.carbs,
+            fats: nutrition.fats,
+            nutrition: nutrition,
+            healthScore: getNum(aiData.healthScore || aiData.foodItem.healthScore),
+            healthScore10: getNum(aiData.healthScore10 || aiData.foodItem.healthScore10),
+            analysis: aiData.analysis || aiData.healthBenefitsSummary || '',
+            micronutrients: sanitizeMicronutrients(aiData.foodItem.micronutrients || aiData.micronutrients),
+            enhancementTips: sanitizeTips(aiData.foodItem.enhancementTips || aiData.enhancementTips),
+            warnings: Array.isArray(aiData.warnings) ? aiData.warnings : [],
+            benefits: sanitizeBenefits(aiData.foodItem.benefits || aiData.benefits || aiData.healthBenefits),
+            healthBenefitsSummary: aiData.healthBenefitsSummary || aiData.analysis,
+            alternatives: sanitizeAlternatives(aiData.alternatives),
             scanType: 'text'
           });
           await cacheEntry.save();
@@ -149,41 +520,10 @@ exports.logMeal = async (req, res) => {
       });
     }
 
-    // Ensure arrays are sanitized properly
-    const sanitizeMicronutrients = (data) => {
-      if (!Array.isArray(data)) return [];
-      return data.map(item => {
-        if (typeof item === 'string') return { name: item, value: 'Unknown', percentage: 0 };
-        return {
-          name: item.name || 'Unknown',
-          value: item.value || 'Unknown',
-          percentage: Number(item.percentage) || 0
-        };
-      });
-    };
-
-    const sanitizeTips = (data) => {
-      if (!Array.isArray(data)) return [];
-      return data.map(item => {
-        if (typeof item === 'string') return { name: 'Tip', benefit: item };
-        return {
-          name: item.name || 'Tip',
-          benefit: item.benefit || item.description || ''
-        };
-      });
-    };
-
-    const sanitizeAlternatives = (data) => {
-      if (!Array.isArray(data)) return [];
-      return data.map(item => {
-        if (typeof item === 'string') return { name: item, description: item };
-        return {
-          name: item.name || 'Alternative',
-          description: item.description || item.benefits || '',
-          benefits: item.benefits || ''
-        };
-      });
-    };
+    // Sanitize metadata
+    const sanitizedMicronutrients = sanitizeMicronutrients(micronutrients);
+    const sanitizedTips = sanitizeTips(enhancementTips);
+    const sanitizedAlternatives = sanitizeAlternatives(alternatives);
 
     // Calculate total nutrition explicitly before saving to ensure summary is correct
     const totalNutrition = {
@@ -217,11 +557,11 @@ exports.logMeal = async (req, res) => {
       notes,
       healthScore,
       healthScore10,
-      micronutrients: sanitizeMicronutrients(micronutrients),
-      enhancementTips: sanitizeTips(enhancementTips),
+      micronutrients: sanitizedMicronutrients,
+      enhancementTips: sanitizedTips,
       healthBenefitsSummary,
       warnings: Array.isArray(warnings) ? warnings : [],
-      alternatives: sanitizeAlternatives(alternatives),
+      alternatives: sanitizedAlternatives,
       source,
       timestamp: (() => {
         const inputDate = timestamp || req.body.date;
@@ -1140,6 +1480,18 @@ exports.quickFoodCheck = async (req, res) => {
     console.log('📑 [QuickCheck] Headers:', req.headers['content-type']);
     console.log('📦 [QuickCheck] Body keys:', Object.keys(req.body));
 
+    // BUILD QUANTITY-AWARE SEARCH KEY (defined early so save logic can use it)
+    const hasLeadingNumber = /^\d/.test(foodDescription || '');
+    let searchKey = foodDescription || '';
+    if (quantity && !hasLeadingNumber) {
+      searchKey = `${quantity} ${foodDescription}`;
+    } else if (additionalContext) {
+      const qtyMatch = additionalContext.match(/Quantity:\s*([^.]+)/i);
+      if (qtyMatch && !hasLeadingNumber) {
+        searchKey = `${qtyMatch[1].trim()} ${foodDescription}`;
+      }
+    }
+
     // ─── STEP 1: Extract base64 from uploaded file ───
     if (req.file) {
       console.log('📷 [QuickCheck] File received:', req.file.originalname, 'Type:', req.file.mimetype, 'Size:', req.file.size);
@@ -1221,24 +1573,20 @@ exports.quickFoodCheck = async (req, res) => {
       }
     } else {
       console.log('📝 Using text analysis for:', foodDescription);
+      console.log('🔑 [Cache Key]:', searchKey, '| Original:', foodDescription, '| Quantity:', quantity);
 
-      // CACHE CHECK: Look for previous analysis of the same food globally
-      // ONLY use global cache if NO specific quantity or context is provided, 
-      // as quantity significantly changes the nutrition data.
-      let existingCheck = null;
-      if (!additionalContext) {
-        existingCheck = await QuickFoodCheck.findOne({
-          foodName: { $regex: new RegExp(`^${foodDescription.trim()}$`, 'i') }
-        }).sort({ timestamp: -1 });
-      }
+      // ─── GLOBAL INTELLIGENCE CACHE (NOW WITH SMART SCALING) ───
+      const cachedResult = await findAndScaleCachedFood(searchKey);
 
-      if (existingCheck) {
-        console.log('♻️ [QuickCheck] Reusing cached analysis for:', foodDescription);
+      if (cachedResult && !imageBase64) {
+        console.log('♻️ [Cache Hit] Global Intelligence reused (Exact or Scaled) for:', foodDescription);
+        
         return res.json({
           success: true,
-          data: existingCheck,
+          data: cachedResult,
           isCached: true,
-          message: 'Retrieved from history'
+          source: 'global_cache',
+          message: 'Retrieved from Global Intelligence Cache'
         });
       }
 
@@ -1251,37 +1599,8 @@ exports.quickFoodCheck = async (req, res) => {
 
     console.log('💾 [QuickCheck] Saving to DB...');
 
-    // Ensure alternatives is always an array of objects
-    const alternativesArray = Array.isArray(analysis.data.alternatives)
-      ? analysis.data.alternatives.map(alt => {
-        if (typeof alt === 'string') return { name: alt };
-        return alt;
-      })
-      : [];
-
-    // Ensure arrays are sanitized properly
-    const sanitizeMicronutrients = (data) => {
-      if (!Array.isArray(data)) return [];
-      return data.map(item => {
-        if (typeof item === 'string') return { name: item, value: 'Unknown', percentage: 0 };
-        return {
-          name: item.name || 'Unknown',
-          value: item.value || 'Unknown',
-          percentage: Number(item.percentage) || 0
-        };
-      });
-    };
-
-    const sanitizeTips = (data) => {
-      if (!Array.isArray(data)) return [];
-      return data.map(item => {
-        if (typeof item === 'string') return { name: item, benefit: item };
-        return {
-          name: item.name || 'Tip',
-          benefit: item.benefit || item.description || ''
-        };
-      });
-    };
+    // Consolidate alternatives logic
+    const alternativesArray = sanitizeAlternatives(analysis.data.alternatives);
 
     // ─── STEP 4: Construct final image URL ───
     let finalImageUrl = cloudinaryUrl;
@@ -1292,25 +1611,38 @@ exports.quickFoodCheck = async (req, res) => {
       }
     }
 
-    // ─── STEP 5: Save to MongoDB ───
+    // ─── STEP 5: Save to MongoDB (Optimized with structured data) ───
+    const aiData = analysis.data;
+    const nutrition = {
+      calories: getNum(aiData.foodItem?.nutrition?.calories || aiData.totalNutrition?.calories || aiData.calories),
+      protein: getNum(aiData.foodItem?.nutrition?.protein || aiData.totalNutrition?.protein || aiData.protein),
+      carbs: getNum(aiData.foodItem?.nutrition?.carbs || aiData.totalNutrition?.carbs || aiData.carbs),
+      fats: getNum(aiData.foodItem?.nutrition?.fats || aiData.totalNutrition?.fats || aiData.fats),
+      fiber: getNum(aiData.foodItem?.nutrition?.fiber || aiData.totalNutrition?.fiber || aiData.fiber),
+      sugar: getNum(aiData.foodItem?.nutrition?.sugar || aiData.totalNutrition?.sugar || aiData.sugar),
+      sodium: getNum(aiData.foodItem?.nutrition?.sodium || aiData.totalNutrition?.sodium || aiData.sodium)
+    };
+    
     const foodCheck = new QuickFoodCheck({
       userId: req.user._id,
-      foodName: analysis.data.foodItem?.name || foodDescription || 'Analyzed Food',
-      quantity: quantity || analysis.data.foodItem?.quantity || additionalContext?.match(/Quantity:\s*([^.]+)/)?.[1]?.trim() || 'Not specified',
-      calories: analysis.data.foodItem?.nutrition?.calories || 0,
-      protein: analysis.data.foodItem?.nutrition?.protein || 0,
-      carbs: analysis.data.foodItem?.nutrition?.carbs || 0,
-      fats: analysis.data.foodItem?.nutrition?.fats || 0,
-      nutrition: analysis.data.foodItem?.nutrition || {},
-      healthScore: analysis.data.healthScore || 50,
-      healthScore10: analysis.data.healthScore10 || (analysis.data.healthScore ? analysis.data.healthScore / 10 : 5),
-      isHealthy: analysis.data.isHealthy || false,
-      analysis: analysis.data.analysis || '',
-      micronutrients: sanitizeMicronutrients(analysis.data.micronutrients),
-      enhancementTips: sanitizeTips(analysis.data.enhancementTips),
-      warnings: Array.isArray(analysis.data.warnings) ? analysis.data.warnings.map(w => typeof w === 'string' ? w : JSON.stringify(w)) : [],
-      benefits: Array.isArray(analysis.data.benefits) ? analysis.data.benefits.map(b => typeof b === 'string' ? b : JSON.stringify(b)) : [],
-      healthBenefitsSummary: analysis.data.healthBenefitsSummary || '',
+      foodName: aiData.foodItem?.name || foodDescription || 'Analyzed Food',
+      // CRITICAL FIX: Store the FULL quantity-aware search key, not just the food name
+      searchDescription: searchKey.trim().toLowerCase(),
+      quantity: searchKey.trim().toLowerCase(),
+      calories: nutrition.calories,
+      protein: nutrition.protein,
+      carbs: nutrition.carbs,
+      fats: nutrition.fats,
+      nutrition: nutrition,
+      healthScore: getNum(aiData.healthScore),
+      healthScore10: getNum(aiData.healthScore10 || (getNum(aiData.healthScore) / 10)),
+      isHealthy: aiData.isHealthy || false,
+      analysis: aiData.analysis || aiData.healthBenefitsSummary || '',
+      micronutrients: sanitizeMicronutrients(aiData.micronutrients),
+      enhancementTips: sanitizeTips(aiData.enhancementTips),
+      warnings: Array.isArray(aiData.warnings) ? aiData.warnings.map(w => typeof w === 'string' ? w : (w.message || w.text || JSON.stringify(w))) : [],
+      benefits: sanitizeBenefits(aiData.benefits || aiData.healthBenefits),
+      healthBenefitsSummary: aiData.healthBenefitsSummary || aiData.analysis || '',
       alternatives: alternativesArray,
       imageUrl: finalImageUrl,
       scanType: imageBase64 ? 'image' : 'text',
@@ -1320,16 +1652,11 @@ exports.quickFoodCheck = async (req, res) => {
     await foodCheck.save();
 
     console.log('✅ Food check saved. Cloudinary URL:', cloudinaryUrl || 'N/A');
-    console.log('✅ Detected food:', analysis.data.foodItem?.name, '| Calories:', analysis.data.foodItem?.nutrition?.calories);
-
     res.json({
       success: true,
-      data: {
-        ...analysis.data,
-        imageUrl: finalImageUrl
-      },
-      savedId: foodCheck._id,
-      message: 'Food analyzed and saved successfully'
+      data: normalizeAnalysisResult(foodCheck),
+      isCached: false,
+      message: 'Analysis complete and cached'
     });
   } catch (error) {
     console.error('❌ [QuickCheck] Fatal error:', error);
@@ -1409,21 +1736,22 @@ exports.saveQuickCheck = async (req, res) => {
     const foodCheck = new QuickFoodCheck({
       userId: req.user._id,
       foodName: foodName || 'Unknown Food',
+      searchDescription: (foodName || '').trim().toLowerCase(), // New field for cache hits
       quantity: quantity || 'Standard Serving',
       nutrition: nutrition || {},
-      calories: nutrition?.calories || 0,
-      protein: nutrition?.protein || 0,
-      carbs: nutrition?.carbs || 0,
-      fats: nutrition?.fats || 0,
-      healthScore: healthScore || 50,
-      healthScore10: healthScore10 || (healthScore ? healthScore / 10 : 5),
+      calories: getNum(nutrition?.calories),
+      protein: getNum(nutrition?.protein),
+      carbs: getNum(nutrition?.carbs),
+      fats: getNum(nutrition?.fats),
+      healthScore: getNum(healthScore),
+      healthScore10: getNum(healthScore10 || (getNum(healthScore) / 10)),
       isHealthy: isHealthy || false,
-      analysis: analysis || '',
+      analysis: analysis || healthBenefitsSummary || '',
       micronutrients: micronutrients || [],
       enhancementTips: enhancementTips || [],
       warnings: warnings || [],
       benefits: benefits || [],
-      healthBenefitsSummary: healthBenefitsSummary || '',
+      healthBenefitsSummary: healthBenefitsSummary || analysis || '',
       alternatives: alternatives || [],
       imageUrl: imageUrl || '',
       scanType: scanType || 'barcode'

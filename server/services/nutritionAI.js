@@ -68,8 +68,14 @@ class NutritionAI {
     1. If the food is considered "junk food" or "unhealthy" (high in processed sugar, trans fats, or sodium), explicitly list its disadvantages and common health risks in the "warnings" array.
     2. In "enhancementTips", include specific steps on how to make this meal healthier (e.g., ingredients to swap, cooking methods to change).
     3. Always provide 3-5 healthier alternatives in the "alternatives" array.
-    4. CRITICAL: Priority is given to the "Quantity" mentioned in the context. You MUST calculate all nutrition values (calories, protein, etc.) based EXACTLY on that quantity. If context says "3 eggs", return nutrition for 3 eggs, NOT 1.
-    5. CRITICAL: Keep all "description", "benefit", and "analysis" strings extremely short (max 15 words each).
+    4. CRITICAL: Priority is given to the "Quantity" mentioned in the context. You MUST calculate all nutrition values (calories, protein, etc.) based EXACTLY on that quantity.
+    5. CRITICAL: NO FUZZY ESTIMATES. Values like 6.3 or 13.2 are UNACCEPTABLE for standard units. If 1 egg is 6g protein, 2 eggs MUST be EXACTLY 12g. 3 eggs MUST be EXACTLY 18g. Perform explicit multiplication (Quantity x BaseValue) for every single macro.
+    6. CRITICAL: Use rigid standard macro values for common foods:
+       - 1 Large Egg = 6g Protein, 5g Fat, 0g Carbs, 70 kcal.
+       - 100g Chicken breast = 31g Protein, 3g Fat, 0g Carbs, 165 kcal.
+       - 100g Paneer = 18g Protein, 20g Fat, 2g Carbs, 260 kcal.
+       - 1 Chapati = 3g Protein, 1g Fat, 15g Carbs, 70-80 kcal.
+    7. CRITICAL: Keep all "description", "benefit", and "analysis" strings extremely short (max 15 words each).
     
     JSON STRUCTURE:
     {

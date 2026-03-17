@@ -280,6 +280,7 @@ function Nutrition() {
     if (!foodInput && !image) return;
     if (isListening) stopVoiceCapture();
     setIsAnalyzing(true);
+    setAnalyzingMessage('Please wait, analyzing your food…');
     try {
       const formData = new FormData();
       formData.append('foodDescription', foodInput || 'Food from image');
@@ -302,9 +303,20 @@ function Nutrition() {
       });
 
       const result = response.data.data;
-      setAnalysisResult(result);
+      const isCached = response.data.isCached || response.data.source === 'global_cache';
+      
+      setAnalysisResult({
+        ...result,
+        _isFromCache: isCached,
+        _cacheSource: response.data.source
+      });
+
       // Instead of auto-logging, we show the result modal first
-      toast.success('Food analyzed!');
+      if (isCached) {
+        toast.success('Instant Analysis: Retrieved from Global Intel Cache');
+      } else {
+        toast.success('AI Analysis complete!');
+      }
     } catch (error) {
       console.error(error);
       toast.error('Analysis failed');
@@ -312,6 +324,24 @@ function Nutrition() {
       setIsAnalyzing(false);
     }
   };
+
+  // Rotating analyzing messages
+  useEffect(() => {
+    if (!isAnalyzing) return;
+    const messages = [
+      'Please wait, analyzing your food…',
+      'Your food is being analyzed…',
+      'Analyzing nutrition data…',
+      'Crunching the numbers…',
+      'Almost there, hang tight…'
+    ];
+    let i = 0;
+    const interval = setInterval(() => {
+      i = (i + 1) % messages.length;
+      setAnalyzingMessage(messages[i]);
+    }, 2500);
+    return () => clearInterval(interval);
+  }, [isAnalyzing]);
 
   const handleConfirmLog = async (data) => {
     try {
@@ -899,9 +929,26 @@ function Nutrition() {
                       />
                       <Wand2 className="w-8 h-8 text-slate-900 absolute inset-0 m-auto animate-pulse" />
                     </div>
-                    <div className="text-center">
-                      <h3 className="text-xl font-black text-slate-900 uppercase tracking-tight">Ultra-Fast Analysis</h3>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-2">Turbo mode active • Insights in seconds</p>
+                    <div className="text-center space-y-3">
+                      <motion.p
+                        key={analyzingMessage}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: -10 }}
+                        className="text-lg font-black text-slate-900 tracking-tight"
+                      >
+                        {analyzingMessage}
+                      </motion.p>
+                      <div className="flex items-center justify-center gap-1.5 mt-2">
+                        {[0, 1, 2].map(i => (
+                          <motion.div
+                            key={i}
+                            className="w-2 h-2 bg-slate-400 rounded-full"
+                            animate={{ scale: [1, 1.5, 1], opacity: [0.4, 1, 0.4] }}
+                            transition={{ repeat: Infinity, duration: 1.2, delay: i * 0.3 }}
+                          />
+                        ))}
+                      </div>
                     </div>
                   </motion.div>
 
@@ -990,7 +1037,7 @@ function Nutrition() {
                           className="w-full py-5 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-black transition-all shadow-xl active:scale-[0.98] disabled:opacity-50"
                         >
                           {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
-                          {isAnalyzing ? 'Analyzing...' : 'Analyze My Meal'}
+                          {isAnalyzing ? analyzingMessage : 'Analyze My Meal'}
                         </button>
 
                         {/* Restart Voice - small link */}
@@ -1184,6 +1231,12 @@ function Nutrition() {
                       <Zap className="w-3 h-3 text-white" />
                       Score: {analysisResult.healthScore || analysisResult.healthScore10 * 10 || 0}/100
                     </span>
+                    {analysisResult._isFromCache && (
+                      <span className="text-[10px] font-black bg-emerald-500 text-white px-4 py-2 rounded-xl tracking-[0.1em] uppercase flex items-center gap-2 animate-pulse">
+                        <CheckCircle2 className="w-3 h-3 text-white" />
+                        Intelligence Cache
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1238,12 +1291,21 @@ function Nutrition() {
                       <Sparkles className="w-4 h-4" /> Health Benefits
                     </h4>
                     <div className="space-y-3">
-                      {(analysisResult.healthBenefits || analysisResult.benefits || []).slice(0, 2).map((benefit, i) => (
-                        <div key={i} className="flex gap-3 text-[11px] font-bold text-slate-900 bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                          <CheckCircle2 className="w-4 h-4 text-slate-900 shrink-0" />
-                          <span>{typeof benefit === 'string' ? benefit : benefit.name}</span>
+                      {(() => {
+                        const benefitsArray = Array.isArray(analysisResult.benefits) ? analysisResult.benefits : 
+                                             Array.isArray(analysisResult.healthBenefits) ? analysisResult.healthBenefits : [];
+                        return benefitsArray.slice(0, 3).map((benefit, i) => (
+                          <div key={i} className="flex flex-col gap-1.5 text-[11px] font-bold text-slate-900 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle2 className="w-3.5 h-3.5 text-slate-900 shrink-0" />
+                            <span className="uppercase tracking-tight">{typeof benefit === 'string' ? 'Benefit' : benefit.name || 'Benefit'}</span>
+                          </div>
+                          <p className="text-[10px] text-slate-500 font-medium leading-relaxed ml-5">
+                            {typeof benefit === 'string' ? benefit : benefit.benefit || benefit.description || ''}
+                          </p>
                         </div>
-                      ))}
+                        ));
+                      })()}
                     </div>
                   </div>
                 </div>
@@ -1254,10 +1316,15 @@ function Nutrition() {
                     <Zap className="w-4 h-4" /> Healthy Optimizations
                   </h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {(analysisResult.enhancementTips || []).slice(0, 2).map((tip, i) => (
-                      <div key={i} className="flex gap-4 p-5 bg-black text-white rounded-[2rem] shadow-xl items-center border border-white/10 transition-transform hover:scale-[1.02]">
-                        <Plus className="w-5 h-5 text-white shrink-0" />
-                        <p className="text-xs font-black leading-snug uppercase tracking-tight">{typeof tip === 'string' ? tip : tip.name || tip.benefit}</p>
+                    {(analysisResult.enhancementTips || []).slice(0, 3).map((tip, i) => (
+                      <div key={i} className="flex flex-col gap-2 p-5 bg-black text-white rounded-[2rem] shadow-xl border border-white/10 transition-transform hover:scale-[1.02]">
+                        <div className="flex items-center gap-3">
+                          <Plus className="w-4 h-4 text-white shrink-0" />
+                          <p className="text-[10px] font-black uppercase tracking-tight">{typeof tip === 'string' ? 'Optimization' : tip.name || 'Optimization'}</p>
+                        </div>
+                        <p className="text-[10px] font-medium text-slate-400 leading-snug ml-7">
+                          {typeof tip === 'string' ? tip : tip.benefit || tip.description || ''}
+                        </p>
                       </div>
                     ))}
                     {(!analysisResult.enhancementTips || analysisResult.enhancementTips.length === 0) && (
