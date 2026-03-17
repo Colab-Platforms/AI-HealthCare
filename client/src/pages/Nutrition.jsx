@@ -313,7 +313,7 @@ function Nutrition() {
 
       // Instead of auto-logging, we show the result modal first
       if (isCached) {
-        toast.success('Instant Analysis: Retrieved from Global Intel Cache');
+        toast.success('Instant Analysis: Retrieved from Food DB Cache');
       } else {
         toast.success('AI Analysis complete!');
       }
@@ -398,11 +398,19 @@ function Nutrition() {
     };
 
     recognition.onresult = (event) => {
-      let currentTranscript = '';
-      for (let i = 0; i < event.results.length; ++i) {
-        currentTranscript += event.results[i][0].transcript;
+      let finalTranscript = '';
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        }
       }
-      setFoodInput(currentTranscript);
+      if (finalTranscript) {
+        setFoodInput(prev => {
+          const combined = (prev + ' ' + finalTranscript).trim();
+          // Simple de-duplication if names are repeated immediately
+          return combined.split(' ').filter((w, i, a) => w !== a[i-1]).join(' ');
+        });
+      }
     };
 
     recognition.onerror = (event) => {

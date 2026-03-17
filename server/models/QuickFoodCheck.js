@@ -9,7 +9,12 @@ const quickFoodCheckSchema = new mongoose.Schema({
   },
   foodName: {
     type: String,
-    required: true
+    required: true,
+    index: true 
+  },
+  searchDescription: {
+    type: String,
+    index: true // New field to store exactly what user searched for
   },
   quantity: String,
   calories: Number,
@@ -47,7 +52,10 @@ const quickFoodCheckSchema = new mongoose.Schema({
     benefit: String
   }],
   warnings: [String],
-  benefits: [String],
+  benefits: [{
+    name: String,
+    benefit: String
+  }],
   healthBenefitsSummary: String,
   alternatives: [{
     name: String,
@@ -77,6 +85,9 @@ const quickFoodCheckSchema = new mongoose.Schema({
 }, {
   timestamps: true
 });
+
+// Index for global cache lookups by exact search description
+quickFoodCheckSchema.index({ searchDescription: 1 });
 
 // Index for querying user's quick checks by date
 quickFoodCheckSchema.index({ userId: 1, timestamp: -1 });

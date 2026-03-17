@@ -4,15 +4,23 @@ const Doctor = require('../models/Doctor');
 const DietPlanTemplate = require('../models/DietPlanTemplate');
 const DeficiencyRule = require('../models/DeficiencyRule');
 const SupplementMapping = require('../models/SupplementMapping');
+const QuickFoodCheck = require('../models/QuickFoodCheck');
 
 // User Management
 exports.getAllUsers = async (req, res) => {
   try {
-    const { role, status, page = 1, limit = 20 } = req.query;
+    const { role, status, search, page = 1, limit = 20 } = req.query;
     const filter = {};
     if (role) filter.role = role;
     if (status === 'active') filter.isActive = true;
     if (status === 'inactive') filter.isActive = false;
+    
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ];
+    }
 
     const users = await User.find(filter)
       .select('-password')
@@ -399,6 +407,100 @@ exports.toggleDoctorVisibility = async (req, res) => {
     doctor.isAvailable = !doctor.isAvailable;
     await doctor.save();
     res.json(doctor);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Food Cache Management
+exports.getAllCachedFoods = async (req, res) => {
+  try {
+    const { search, page = 1, limit = 20 } = req.query;
+    const filter = {};
+    if (search) {
+      filter.$or = [
+        { foodName: { $regex: search, $options: 'i' } },
+        { searchDescription: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const foods = await QuickFoodCheck.find(filter)
+      .sort({ createdAt: -1 })
+      .skip((page - 1) * limit)
+      .limit(parseInt(limit));
+
+    const total = await QuickFoodCheck.countDocuments(filter);
+    res.json({ foods, total, page: parseInt(page), pages: Math.ceil(total / limit) });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.createCachedFood = async (req, res) => {
+  try {
+    const data = req.body;
+    if (data.healthScore && !data.healthScore10) data.healthScore10 = data.healthScore / 10;
+    if (!data.scanType) data.scanType = 'text';
+
+    const food = await QuickFoodCheck.create({
+      ...data,
+      userId: req.user._id, // Mark as created/modified by admin
+      timestamp: new Date()
+    });
+    res.status(201).json(food);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.bulkCreateCachedFood = async (req, res) => {
+  try {
+    const foods = req.body.foods;
+    if (!Array.isArray(foods)) {
+      return res.status(400).json({ message: 'Payload must contain a "foods" array' });
+    }
+
+    const processedFoods = foods.map(data => {
+      let healthScore10 = data.healthScore10;
+      if (data.healthScore && !healthScore10) healthScore10 = data.healthScore / 10;
+      
+      return {
+        ...data,
+        healthScore10,
+        scanType: data.scanType || 'text',
+        userId: req.user._id,
+        timestamp: new Date()
+      };
+    });
+
+    const result = await QuickFoodCheck.insertMany(processedFoods);
+    res.status(201).json({ message: `${result.length} food items added to global intelligence`, count: result.length });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.updateCachedFood = async (req, res) => {
+  try {
+    const data = req.body;
+    if (data.healthScore && !data.healthScore10) data.healthScore10 = data.healthScore / 10;
+
+    const food = await QuickFoodCheck.findByIdAndUpdate(
+      req.params.id,
+      { ...data, userId: req.user._id }, // Updated by admin
+      { new: true }
+    );
+    if (!food) return res.status(404).json({ message: 'Food item not found' });
+    res.json(food);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.deleteCachedFood = async (req, res) => {
+  try {
+    await QuickFoodCheck.findByIdAndDelete(req.params.id);
+    res.json({ message: 'Food item removed from cache' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -169,7 +169,8 @@ try {
     { path: '/api/notifications', module: './routes/notificationRoutes' },
     { path: '/api', module: './routes/chatRoutes' },
     { path: '/api/chat', module: './routes/chatHistoryRoutes' },
-    { path: '/api/translate', module: './routes/translateRoutes' }
+    { path: '/api/translate', module: './routes/translateRoutes' },
+    { path: '/api/food-safety', module: './routes/foodSafetyRoutes' }
   ];
 
   routes.forEach(route => {
@@ -211,6 +212,17 @@ connectDB().catch(err => {
 if (!process.env.VERCEL) {
   require('./services/reminderService');
   try { require('./services/notificationService'); } catch (e) { console.error('Notification service error:', e); }
+  
+  // Set up Daily Food Safety Sync Cron (Runs at midnight daily)
+  const cron = require('node-cron');
+  const { syncFoodSafetyDatabase } = require('./services/foodSafetyService');
+  cron.schedule('0 0 * * *', async () => {
+    console.log('⏰ Running scheduled Food Safety Sync...');
+    await syncFoodSafetyDatabase();
+  });
+  
+  // Optional: Run on startup to ensure fresh data
+  // syncFoodSafetyDatabase();
 }
 
 // Export app for Vercel or start local server

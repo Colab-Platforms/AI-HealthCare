@@ -7,7 +7,8 @@ const {
   getDeficiencyRules, createDeficiencyRule, updateDeficiencyRule, deleteDeficiencyRule,
   getSupplementMappings, createSupplementMapping, updateSupplementMapping, deleteSupplementMapping,
   getDietPlanTemplates, createDietPlanTemplate, updateDietPlanTemplate, approveDietPlanTemplate, deleteDietPlanTemplate,
-  getAllDoctors, approveDoctor, rejectDoctor, createDoctor, updateDoctor, deleteDoctor, toggleDoctorVisibility
+  getAllDoctors, approveDoctor, rejectDoctor, createDoctor, updateDoctor, deleteDoctor, toggleDoctorVisibility,
+  getAllCachedFoods, createCachedFood, updateCachedFood, deleteCachedFood, bulkCreateCachedFood
 } = require('../controllers/adminController');
 const { getDoctorScheduleOverview } = require('../controllers/doctorController');
 
@@ -54,5 +55,12 @@ router.patch('/doctors/:id/reject', rejectDoctor);
 router.patch('/doctors/:id/visibility', toggleDoctorVisibility);
 router.get('/doctors/:id/schedule-overview', getDoctorScheduleOverview);
 router.delete('/doctors/:id', deleteDoctor);
+
+// Food Cache Management
+router.get('/food-cache', getAllCachedFoods);
+router.post('/food-cache/bulk', bulkCreateCachedFood);
+router.post('/food-cache', createCachedFood);
+router.put('/food-cache/:id', updateCachedFood);
+router.delete('/food-cache/:id', deleteCachedFood);
 
 module.exports = router;

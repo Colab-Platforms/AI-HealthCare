@@ -115,59 +115,91 @@ const getNum = (val) => {
 
 // --- DATA SANITIZERS (ENSURE CONSISTENT STRUCTURE FOR CACHE & UI) ---
 const sanitizeMicronutrients = (data) => {
-  if (!Array.isArray(data)) return [];
-  return data.map(item => {
-    let obj = item;
-    if (typeof item === 'string') {
-      try { obj = JSON.parse(item); } catch (e) { obj = { name: item }; }
-    }
+  if (!data) return [];
+  const items = Array.isArray(data) ? data : [data];
+  const flat = [];
+  items.forEach(item => {
+    if (typeof item === 'string' && (item.trim().startsWith('[') || item.trim().startsWith('{'))) {
+      try {
+        const parsed = JSON.parse(item);
+        if (Array.isArray(parsed)) flat.push(...parsed);
+        else flat.push(parsed);
+      } catch (e) { flat.push(item); }
+    } else flat.push(item);
+  });
+  return flat.map(item => {
+    if (typeof item === 'string') return { name: item, value: 'Included', percentage: 0 };
     return {
-      name: obj.name || 'Unknown',
-      value: obj.value || obj.amount || 'Unknown',
-      percentage: Number(obj.percentage) || 0
+      name: item.name || item.nutrient || 'Unknown',
+      value: String(item.value || item.amount || 'Unknown'),
+      percentage: Number(item.percentage) || 0
     };
   });
 };
 
 const sanitizeTips = (data) => {
-  if (!Array.isArray(data)) return [];
-  return data.map(item => {
-    let obj = item;
-    if (typeof item === 'string') {
-      try { obj = JSON.parse(item); } catch (e) { obj = { name: 'Tip', benefit: item }; }
-    }
+  if (!data) return [];
+  const items = Array.isArray(data) ? data : [data];
+  const flat = [];
+  items.forEach(item => {
+    if (typeof item === 'string' && (item.trim().startsWith('[') || item.trim().startsWith('{'))) {
+      try {
+        const parsed = JSON.parse(item);
+        if (Array.isArray(parsed)) flat.push(...parsed);
+        else flat.push(parsed);
+      } catch (e) { flat.push(item); }
+    } else flat.push(item);
+  });
+  return flat.map(item => {
+    if (typeof item === 'string') return { name: 'Tip', benefit: item };
     return {
-      name: obj.name || 'Tip',
-      benefit: obj.benefit || obj.description || (typeof obj === 'string' ? obj : '')
+      name: item.name || 'Tip',
+      benefit: String(item.benefit || item.description || item.tip || '')
     };
   });
 };
 
 const sanitizeBenefits = (data) => {
-  if (!Array.isArray(data)) return [];
-  return data.map(item => {
-    let obj = item;
-    if (typeof item === 'string') {
-      try { obj = JSON.parse(item); } catch (e) { obj = { name: 'Health', benefit: item }; }
-    }
+  if (!data) return [];
+  const items = Array.isArray(data) ? data : [data];
+  const flat = [];
+  items.forEach(item => {
+    if (typeof item === 'string' && (item.trim().startsWith('[') || item.trim().startsWith('{'))) {
+      try {
+        const parsed = JSON.parse(item);
+        if (Array.isArray(parsed)) flat.push(...parsed);
+        else flat.push(parsed);
+      } catch (e) { flat.push(item); }
+    } else flat.push(item);
+  });
+  return flat.map(item => {
+    if (typeof item === 'string') return { name: 'Health', benefit: item };
     return {
-      name: obj.name || 'Health',
-      benefit: obj.benefit || obj.description || (typeof obj === 'string' ? obj : '')
+      name: item.name || 'Health',
+      benefit: String(item.benefit || item.description || '')
     };
   });
 };
 
 const sanitizeAlternatives = (data) => {
-  if (!Array.isArray(data)) return [];
-  return data.map(item => {
-    let obj = item;
-    if (typeof item === 'string') {
-      try { obj = JSON.parse(item); } catch (e) { obj = { name: item }; }
-    }
+  if (!data) return [];
+  const items = Array.isArray(data) ? data : [data];
+  const flat = [];
+  items.forEach(item => {
+    if (typeof item === 'string' && (item.trim().startsWith('[') || item.trim().startsWith('{'))) {
+      try {
+        const parsed = JSON.parse(item);
+        if (Array.isArray(parsed)) flat.push(...parsed);
+        else flat.push(parsed);
+      } catch (e) { flat.push(item); }
+    } else flat.push(item);
+  });
+  return flat.map(item => {
+    if (typeof item === 'string') return { name: item, description: '', benefits: '' };
     return {
-      name: obj.name || 'Alternative',
-      description: obj.description || obj.benefits || '',
-      benefits: obj.benefits || ''
+      name: item.name || 'Alternative',
+      description: String(item.description || item.benefits || ''),
+      benefits: String(item.benefits || item.benefit || '')
     };
   });
 };
@@ -416,29 +448,29 @@ exports.analyzeFood = async (req, res) => {
       const { additionalContext: ctx } = req.body;
       let qtyFromCtx = '';
       if (ctx) {
-        const qtyMatch = ctx.match(/Quantity:\s*([^.]+)/i);
+        const qtyMatch = String(ctx).match(/Quantity:\s*([^.]+)/i);
         if (qtyMatch) qtyFromCtx = qtyMatch[1].trim();
       }
-      const searchKey = qtyFromCtx && !foodDescription.match(/^\d/)
+      
+      const hasLeadingNumber = /^\d/.test(foodDescription || '');
+      const searchKey = qtyFromCtx && !hasLeadingNumber
         ? `${qtyFromCtx} ${foodDescription}`
         : foodDescription;
+        
       console.log('🔑 [Cache Key]:', searchKey);
-
+      
       // ─── GLOBAL INTELLIGENCE CACHE (NOW WITH SMART SCALING) ───
       const cachedResult = await findAndScaleCachedFood(searchKey);
 
       if (cachedResult) {
         console.log('📦 Global Intelligence Cache Hit (Exact or Scaled):', foodDescription);
-        analysis = { success: true, data: cachedResult };
+        analysis = { success: true, data: cachedResult, source: 'global_history' };
       } else {
-        analysis = await nutritionAI.quickFoodCheck(foodDescription);
-        // ... (rest of the save logic remains same)
-
+        analysis = await nutritionAI.quickFoodCheck(foodDescription, additionalContext);
+        
         // Save to cache for future use
-        if (analysis?.data?.foodItem) {
+        if (analysis?.success && analysis?.data?.foodItem) {
           const aiData = analysis.data;
-          
-          // Force extract nutrition using a robust helper for save path too
           const nutrition = {
             calories: getNum(aiData.foodItem?.nutrition?.calories || aiData.totalNutrition?.calories || aiData.calories),
             protein: getNum(aiData.foodItem?.nutrition?.protein || aiData.totalNutrition?.protein || aiData.protein),
@@ -452,25 +484,26 @@ exports.analyzeFood = async (req, res) => {
           const cacheEntry = new QuickFoodCheck({
             userId: req.user._id,
             foodName: (aiData.foodItem.name || foodDescription).trim(),
-            searchDescription: foodDescription.trim().toLowerCase(), // Store original query
-            quantity: aiData.foodItem.quantity || '1 serving',
+            searchDescription: searchKey.trim().toLowerCase(),
+            quantity: searchKey.trim().toLowerCase(),
             calories: nutrition.calories,
             protein: nutrition.protein,
             carbs: nutrition.carbs,
             fats: nutrition.fats,
             nutrition: nutrition,
-            healthScore: getNum(aiData.healthScore || aiData.foodItem.healthScore),
-            healthScore10: getNum(aiData.healthScore10 || aiData.foodItem.healthScore10),
+            healthScore: getNum(aiData.healthScore),
+            healthScore10: getNum(aiData.healthScore10 || (getNum(aiData.healthScore) / 10)),
             analysis: aiData.analysis || aiData.healthBenefitsSummary || '',
-            micronutrients: sanitizeMicronutrients(aiData.foodItem.micronutrients || aiData.micronutrients),
-            enhancementTips: sanitizeTips(aiData.foodItem.enhancementTips || aiData.enhancementTips),
-            warnings: Array.isArray(aiData.warnings) ? aiData.warnings : [],
-            benefits: sanitizeBenefits(aiData.foodItem.benefits || aiData.benefits || aiData.healthBenefits),
-            healthBenefitsSummary: aiData.healthBenefitsSummary || aiData.analysis,
+            micronutrients: sanitizeMicronutrients(aiData.micronutrients),
+            enhancementTips: sanitizeTips(aiData.enhancementTips),
+            warnings: Array.isArray(aiData.warnings) ? aiData.warnings.map(w => typeof w === 'string' ? w : (w.message || w.text || JSON.stringify(w))) : [],
+            benefits: sanitizeBenefits(aiData.benefits || aiData.healthBenefits),
+            healthBenefitsSummary: aiData.healthBenefitsSummary || aiData.analysis || '',
             alternatives: sanitizeAlternatives(aiData.alternatives),
-            scanType: 'text'
+            scanType: 'text',
+            timestamp: new Date()
           });
-          await cacheEntry.save();
+          await cacheEntry.save().catch(e => console.error('Cache save error in analyzeFood:', e.message));
         }
       }
     }
@@ -1649,7 +1682,17 @@ exports.quickFoodCheck = async (req, res) => {
       timestamp: new Date()
     });
 
-    await foodCheck.save();
+    try {
+      await foodCheck.save();
+    } catch (saveError) {
+      console.warn('⚠️ [QuickCheck] Initial save failed, retrying with deep-clean...', saveError.message);
+      // Force string conversion for all array elements to prevent "Cast to [string] failed" or object-in-string errors
+      foodCheck.benefits = foodCheck.benefits.map(b => ({ name: String(b.name || 'Health'), benefit: String(b.benefit || '') }));
+      foodCheck.micronutrients = foodCheck.micronutrients.map(m => ({ ...m, name: String(m.name), value: String(m.value) }));
+      foodCheck.enhancementTips = foodCheck.enhancementTips.map(t => ({ name: String(t.name || 'Tip'), benefit: String(t.benefit || '') }));
+      foodCheck.warnings = foodCheck.warnings.map(w => String(typeof w === 'object' ? JSON.stringify(w) : w));
+      await foodCheck.save();
+    }
 
     console.log('✅ Food check saved. Cloudinary URL:', cloudinaryUrl || 'N/A');
     res.json({

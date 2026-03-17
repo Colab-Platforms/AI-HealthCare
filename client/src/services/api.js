@@ -237,7 +237,14 @@ export const adminService = {
   rejectDoctor: (id, reason) => api.patch(`admin/doctors/${id}/reject`, { reason }),
   deleteDoctor: (id) => api.delete(`admin/doctors/${id}`),
   toggleDoctorVisibility: (id) => api.patch(`admin/doctors/${id}/visibility`),
-  getDoctorScheduleOverview: (id) => api.get(`admin/doctors/${id}/schedule-overview`)
+  getDoctorScheduleOverview: (id) => api.get(`admin/doctors/${id}/schedule-overview`),
+
+  // Food Cache (Global Intelligence)
+  getFoodCache: (params) => api.get('admin/food-cache', { params }),
+  createFoodCache: (data) => api.post('admin/food-cache', data),
+  bulkCreateFoodCache: (data) => api.post('admin/food-cache/bulk', data),
+  updateFoodCache: (id, data) => api.put(`admin/food-cache/${id}`, data),
+  deleteFoodCache: (id) => api.delete(`admin/food-cache/${id}`)
 };
 
 export const subscriptionService = {
