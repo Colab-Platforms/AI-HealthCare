@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search, Plus, Filter, Edit, Trash2, ChevronLeft,
   ChevronRight, RefreshCw, Star, Info, Upload, FileDown,
-  AlertTriangle, X, Save, CheckCircle2, Flame, Droplet, Wheat, Activity, Heart, List, HelpCircle
+  AlertTriangle, X, Save, CheckCircle2, Flame, Droplet, Wheat, Activity, Heart, List, HelpCircle, Zap
 } from 'lucide-react';
 import { adminService } from '../services/api';
 import toast from 'react-hot-toast';
