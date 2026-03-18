@@ -96,8 +96,8 @@ exports.register = async (req, res) => {
     // Delete OTP after validation
     await Otp.deleteOne({ _id: otpRecord._id });
 
-    // Determine role - only patient allowed via normal registration
-    const userRole = role === 'doctor' ? 'doctor' : 'patient';
+    // Determine role - default to user
+    const userRole = role === 'doctor' ? 'doctor' : 'user';
 
     // Calculate nutrition goals if profile data is provided
     let calculatedGoals = null;

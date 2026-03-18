@@ -20,7 +20,7 @@ export default function Login() {
       try {
         const user = await login(email, password);
         toast.success('Welcome back!');
-        navigate(user.role === 'admin' ? '/admin' : user.role === 'doctor' ? '/doctor/dashboard' : '/dashboard');
+        navigate(user.role === 'admin' || user.role === 'superadmin' ? '/admin' : user.role === 'doctor' ? '/doctor/dashboard' : '/dashboard');
       } catch (error) {
         const status = error.response?.status;
         const errorMsg = error.response?.data?.message || error.message || 'Login failed';

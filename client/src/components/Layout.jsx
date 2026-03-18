@@ -32,8 +32,7 @@ const adminExtraNavItems = [
   { path: '/admin', icon: LayoutDashboard, label: 'Admin Panel' },
   { path: '/admin/users', icon: Users, label: 'Manage Users' },
   { path: '/admin/food-cache', icon: Utensils, label: 'Food DB' },
-  { path: '/admin/reports', icon: FileText, label: 'Review Reports' },
-  { path: '/admin/analytics', icon: BarChart3, label: 'Global Stats' }
+  { path: '/admin/reports', icon: FileText, label: 'Review Reports' }
 ];
 
 export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isDoctorLayout }) {
@@ -90,6 +89,20 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
     navigate('/');
   };
 
+  const handleRestoreAdmin = () => {
+    const adminToken = localStorage.getItem('originalAdminToken');
+    const adminUser = localStorage.getItem('originalAdminUser');
+    if (adminToken && adminUser) {
+      localStorage.setItem('token', adminToken);
+      localStorage.setItem('user', adminUser);
+      localStorage.removeItem('originalAdminToken');
+      localStorage.removeItem('originalAdminUser');
+      window.location.href = '/admin/users';
+    }
+  };
+
+  const isImpersonating = !!localStorage.getItem('originalAdminToken');
+
   let navItems = patientNavItems;
   let homeLink = '/dashboard';
   let portalName = 'Patient Portal';
@@ -110,9 +123,28 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
   const isDashboardPage = location.pathname === '/dashboard' || location.pathname === '/doctor/dashboard' || location.pathname === '/admin';
 
   return (
-    <div className={`min-h-screen flex ${bgColor}`}>
-      {/* Sidebar - Slide from RIGHT on mobile, fixed on desktop */}
-      <aside className={`fixed inset-y-0 right-0 lg:left-0 lg:right-auto z-50 w-64 shadow-2xl lg:shadow-none transform transition-transform duration-300 hidden lg:flex lg:flex-col bg-white border-r border-slate-100 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
+    <div className={`min-h-screen flex flex-col ${bgColor}`}>
+      {/* Admin Session Banner */}
+      {isImpersonating && (
+        <div className="bg-slate-900 text-white py-2 px-6 flex items-center justify-between sticky top-0 z-[60] shadow-xl border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <p className="text-[10px] font-black uppercase tracking-widest">
+              Impersonation Mode: <span className="text-amber-400">{user?.name}</span>
+            </p>
+          </div>
+          <button 
+            onClick={handleRestoreAdmin}
+            className="flex items-center gap-2 px-3 py-1 bg-white/10 hover:bg-white/20 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border border-white/5 border-b-2 border-b-white/10 active:border-b-0 active:translate-y-px"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" /> Stop View & Return
+          </button>
+        </div>
+      )}
+
+      <div className="flex-1 flex w-full h-full relative">
+      {/* Sidebar - Slide from RIGHT on mobile, sticky on desktop */}
+      <aside className={`fixed inset-y-0 right-0 lg:sticky lg:left-0 z-50 w-64 h-screen shrink-0 transform transition-transform duration-300 hidden lg:flex lg:flex-col bg-white border-r border-slate-100 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
         <div className="flex flex-col h-full">
           {/* Logo - Fixed at top */}
           <div className="p-8 shrink-0 border-b border-slate-50">
@@ -213,8 +245,8 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
       )}
 
-      {/* Main Content - Add left margin for fixed sidebar on desktop */}
-      <div className="flex-1 flex flex-col min-h-screen lg:ml-64 relative overflow-x-hidden bg-white/50">
+      {/* Main Content - No left margin needed with sticky sidebar flow */}
+      <div className="flex-1 flex flex-col min-h-screen relative overflow-x-hidden bg-white/50">
         {/* Background Blobs - Visible on all pages using Layout */}
         <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-purple-300/25 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
         <div className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-purple-300/15 rounded-full blur-[100px] translate-x-1/2 pointer-events-none" />
@@ -271,6 +303,7 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
 
       {/* Text Selection Popup - Disabled on AI Chat page */}
       {location.pathname !== '/ai-chat' && <TextSelectionPopup />}
+      </div>
     </div>
   );
 }

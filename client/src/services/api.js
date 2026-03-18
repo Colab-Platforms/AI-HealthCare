@@ -206,6 +206,7 @@ export const adminService = {
   getUsers: (params) => api.get('admin/users', { params }),
   getUserDetails: (id) => api.get(`admin/users/${id}`),
   updateUserStatus: (id, isActive) => api.patch(`admin/users/${id}/status`, { isActive }),
+  impersonateUser: (id) => api.post(`admin/users/${id}/impersonate`),
 
   // Reports
   getReports: (params) => api.get('admin/reports', { params }),

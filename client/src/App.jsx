@@ -29,7 +29,6 @@ import GlucoseLog from './pages/GlucoseLog';
 import LogVitals from './pages/LogVitals';
 import AdminUsers from './pages/AdminUsers';
 import AdminReports from './pages/AdminReports';
-import AdminAnalytics from './pages/AdminAnalytics';
 import AdminFoodCache from './pages/AdminFoodCache';
 
 import StepTracker from './pages/StepTracker';
@@ -41,7 +40,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
   if (!user) return <Navigate to="/login" />;
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     // Redirect to appropriate dashboard based on role
-    if (user.role === 'admin') return <Navigate to="/admin" />;
+    if (user.role === 'admin' || user.role === 'superadmin') return <Navigate to="/admin" />;
     return <Navigate to="/dashboard" />;
   }
   return children;
@@ -99,7 +98,7 @@ export default function App() {
           <Route path="/admin" element={<AdminRoute><Layout isAdmin><AdminDashboard /></Layout></AdminRoute>} />
           <Route path="/admin/users" element={<AdminRoute><Layout isAdmin><AdminUsers /></Layout></AdminRoute>} />
           <Route path="/admin/reports" element={<AdminRoute><Layout isAdmin><AdminReports /></Layout></AdminRoute>} />
-          <Route path="/admin/analytics" element={<AdminRoute><Layout isAdmin><AdminAnalytics /></Layout></AdminRoute>} />
+
           <Route path="/admin/food-cache" element={<AdminRoute><Layout isAdmin><AdminFoodCache /></Layout></AdminRoute>} />
 
           <Route path="/demo" element={<DemoPreview />} />

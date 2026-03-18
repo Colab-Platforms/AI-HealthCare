@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
 const {
-  getAllUsers, getUserDetails, updateUserStatus, updateUserRole,
+  getAllUsers, getUserDetails, updateUserStatus, updateUserRole, impersonateUser,
   getAllReports, getReportStats,
   getDeficiencyRules, createDeficiencyRule, updateDeficiencyRule, deleteDeficiencyRule,
   getSupplementMappings, createSupplementMapping, updateSupplementMapping, deleteSupplementMapping,
@@ -23,6 +23,7 @@ router.get('/users', getAllUsers);
 router.get('/users/:id', getUserDetails);
 router.patch('/users/:id/status', updateUserStatus);
 router.patch('/users/:id/role', updateUserRole);
+router.post('/users/:id/impersonate', impersonateUser);
 
 // Report Oversight
 router.get('/reports', getAllReports);

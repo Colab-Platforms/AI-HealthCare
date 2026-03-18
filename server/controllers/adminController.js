@@ -1,3 +1,4 @@
+const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const HealthReport = require('../models/HealthReport');
 const Doctor = require('../models/Doctor');
@@ -11,7 +12,13 @@ exports.getAllUsers = async (req, res) => {
   try {
     const { role, status, search, page = 1, limit = 20 } = req.query;
     const filter = {};
-    if (role) filter.role = role;
+    if (role) {
+      if (role === 'user') {
+        filter.role = { $in: ['user', 'patient'] };
+      } else {
+        filter.role = role;
+      }
+    }
     if (status === 'active') filter.isActive = true;
     if (status === 'inactive') filter.isActive = false;
     
@@ -76,7 +83,7 @@ exports.updateUserStatus = async (req, res) => {
 exports.updateUserRole = async (req, res) => {
   try {
     const { role } = req.body;
-    if (!['patient', 'client', 'doctor', 'admin'].includes(role)) {
+    if (!['user', 'admin', 'superadmin', 'patient', 'client', 'doctor'].includes(role)) {
       return res.status(400).json({ message: 'Invalid role' });
     }
 
@@ -88,6 +95,31 @@ exports.updateUserRole = async (req, res) => {
     
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.impersonateUser = async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select('-password');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+
+    res.json({
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      profile: user.profile,
+      nutritionGoal: user.nutritionGoal,
+      foodPreferences: user.foodPreferences,
+      subscription: user.subscription,
+      healthMetrics: user.healthMetrics,
+      token
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -120,8 +152,8 @@ exports.getReportStats = async (req, res) => {
     const totalReports = await HealthReport.countDocuments();
     const completedReports = await HealthReport.countDocuments({ status: 'completed' });
     const failedReports = await HealthReport.countDocuments({ status: 'failed' });
-    const totalUsers = await User.countDocuments({ role: 'patient' });
-    const activeUsers = await User.countDocuments({ role: 'patient', isActive: true });
+    const totalUsers = await User.countDocuments({ role: { $in: ['patient', 'user'] } });
+    const activeUsers = await User.countDocuments({ role: { $in: ['patient', 'user'] }, isActive: true });
 
     const recentReports = await HealthReport.find()
       .populate('user', 'name')
@@ -142,7 +174,7 @@ exports.getReportStats = async (req, res) => {
     ]);
     
     const userGrowth = await User.aggregate([
-      { $match: { createdAt: { $gte: sevenDaysAgo }, role: 'patient' } },
+      { $match: { createdAt: { $gte: sevenDaysAgo }, role: { $in: ['patient', 'user'] } } },
       { $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
           count: { $sum: 1 }
