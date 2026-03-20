@@ -15,7 +15,7 @@ import { useData } from '../context/DataContext';
 import NutritionSkeleton from '../components/skeletons/NutritionSkeleton';
 
 function Nutrition() {
-  const { invalidateCache } = useData();
+  const { invalidateCache, dashboardData } = useData();
   const location = useLocation();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mealTab, setMealTab] = useState('Breakfast');
@@ -43,8 +43,119 @@ function Nutrition() {
   const [recentMeals, setRecentMeals] = useState([]);
   const [frequentFoods, setFrequentFoods] = useState([]);
   const [aiInsights, setAiInsights] = useState("Analyzing your eating patterns...");
-  const [mealSuggestions, setMealSuggestions] = useState([]);
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedRecipeSuggestion, setSelectedRecipeSuggestion] = useState(null);
+
+  // Personalized Suggestions Engine
+  const currentSuggestion = React.useMemo(() => {
+    // Base suggestions templates
+    // Base suggestions templates
+    const suggestionsMap = {
+      'Recommended': {
+        name: 'Grilled Salmon + Asparagus',
+        calories: 320, protein: 34, carbs: 8, fats: 18,
+        tags: ['OMEGA-3', 'HEART HEALTH'],
+        reason: 'This balanced meal is optimized for your caloric target and general heart health.',
+        image: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=800&q=80',
+        ingredients: ['Fresh Salmon Fillet (150g)', 'Asparagus Spears (6-8)', 'Lemon Slices', 'Olive Oil', 'Garlic', 'Sea Salt'],
+        instructions: [
+          'Preheat oven or grill to 200°C (400°F).',
+          'Toss asparagus in olive oil and minced garlic.',
+          'Season salmon and asparagus with sea salt and lemon juice.',
+          'Grill for 12-15 minutes until salmon flakes easily.'
+        ]
+      },
+      'High Protein': {
+        name: 'Quinoa & Chicken Power Bowl',
+        calories: 450, protein: 42, carbs: 35, fats: 12,
+        tags: ['MUSCLE GROWTH', 'LEAN PROTEIN'],
+        reason: 'Specifically suggested to help reach your protein target of 70g and support muscle repair.',
+        image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80',
+        ingredients: ['Grilled Chicken Breast (120g)', 'Cooked Quinoa (1 cup)', 'Avocado Slices', 'Cherry Tomatoes', 'Greek Yogurt Dressing'],
+        instructions: [
+          'Prepare quinoa according to package instructions.',
+          'Slice grilled chicken into bite-sized strips.',
+          'Assemble bowl with quinoa as base, topped with chicken and veg.',
+          'Drizzle yogurt dressing and garnish with seeds.'
+        ]
+      },
+      'Balanced': {
+        name: 'Mediterranean Chickpea Salad',
+        calories: 380, protein: 15, carbs: 45, fats: 14,
+        tags: ['FIBER RICH', 'ENERGY BOOST'],
+        reason: 'Balanced nutrients to keep you satiated while fueling your afternoon energy needs.',
+        image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&q=80',
+        ingredients: ['Canned Chickpeas (rinsed)', 'Cucumber', 'Bell Peppers', 'Feta Cheese', 'Red Onion', 'Balsamic Vinaigrette'],
+        instructions: [
+          'Dice all vegetables into small, uniform pieces.',
+          'Combine chickpeas and veggies in a large bowl.',
+          'Crumble feta cheese over the top.',
+          'Toss with vinaigrette just before serving.'
+        ]
+      },
+      'Low Carb': {
+        name: 'Zucchini Noodles with Pesto',
+        calories: 220, protein: 8, carbs: 12, fats: 16,
+        tags: ['WEIGHT LOSS', 'KETO FRIENDLY'],
+        reason: 'A low-glycemic choice that helps maintain stable blood sugar levels throughout the day.',
+        image: 'https://images.unsplash.com/photo-1584270413639-d5ee397272cd?w=800&q=80',
+        ingredients: ['Zucchini (spiralized)', 'Pine Nuts', 'Basil Pesto', 'Parmesan Cheese', 'Olive Oil'],
+        instructions: [
+          'Spiralize zucchini into "zoodle" shapes.',
+          'Sauté zucchini in olive oil for 2-3 minutes (don\'t overcook).',
+          'Remove from heat and toss with fresh basil pesto.',
+          'Top with parmesan and toasted pine nuts.'
+        ]
+      }
+    };
+
+    // 1. Dynamic "Recommended" based on Lab Report Deficiencies
+    const deficiencies = dashboardData?.latestAnalysis?.deficiencies || [];
+    if (deficiencies.length > 0) {
+      const topDef = deficiencies[0].name.toLowerCase();
+      if (topDef.includes('iron') || topDef.includes('hemoglobin')) {
+        suggestionsMap['Recommended'] = {
+          name: 'Sautéed Spinach & Paneer',
+          calories: 240, protein: 18, carbs: 10, fats: 14,
+          tags: ['IRON RICH', 'BLOOD HEALTH'],
+          reason: `Iron optimization: Based on your lab reports, this meal will help improve your ${deficiencies[0].name} levels.`,
+          image: 'https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=800&q=80',
+          ingredients: ['Fresh Spinach (200g)', 'Paneer Cubes (100g)', 'Cumin Seeds', 'Garlic', 'Tumeric'],
+          instructions: [
+            'Lightly fry paneer cubes until golden.',
+            'Sauté garlic and cumin seeds in oil.',
+            'Add spinach and turmeric, cook until wilted.',
+            'Mix in paneer and serve hot.'
+          ]
+        };
+      } else if (topDef.includes('fiber') || topDef.includes('gut')) {
+        suggestionsMap['Recommended'] = {
+          name: 'Lentil Soup with Brown Rice',
+          calories: 350, protein: 16, carbs: 55, fats: 4,
+          tags: ['HIGH FIBER', 'GUT HEALTH'],
+          reason: `Fiber boost: Found to be low in your recent analysis, this meal will help normalize your digestive markers.`,
+          image: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=800&q=80',
+          ingredients: ['Red Lentils', 'Brown Rice', 'Carrots', 'Ginger', 'Turmeric'],
+          instructions: [
+            'Boil lentils with ginger and turmeric until soft.',
+            'Cook brown rice separately.',
+            'Blend some lentils for thickness.',
+            'Serve soup over rice with fresh coriander.'
+          ]
+        };
+      } else if (topDef.includes('protein')) {
+        suggestionsMap['Recommended'] = {
+          ...suggestionsMap['High Protein'],
+          reason: 'Protein synthesis: Suggested to support your muscle recovery after identified activity peaks.'
+        };
+      }
+    }
+
+    // 2. Adjust based on Dietary Preference (if known)
+    // Add logic here if user.profile.dietaryPreference is available
+
+    return suggestionsMap[recType] || suggestionsMap['Recommended'];
+  }, [recType, dashboardData]);
 
   // Modal Specific States
   const [foodInput, setFoodInput] = useState('');
@@ -775,43 +886,57 @@ function Nutrition() {
                 ))}
               </div>
 
-              {mealSuggestions.length > 0 ? (
+              {currentSuggestion ? (
                 <div className="border border-slate-50 rounded-[2rem] overflow-hidden group hover:shadow-xl transition-all duration-500">
                   <div className="h-44 relative bg-slate-100">
                     <ImageWithFallback
-                      src={mealSuggestions[0].image}
-                      query={mealSuggestions[0].name}
-                      alt={mealSuggestions[0].name}
+                      src={currentSuggestion.image}
+                      query={currentSuggestion.name}
+                      alt={currentSuggestion.name}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg text-[9px] font-black text-slate-900 shadow-lg tracking-widest uppercase">
-                      Based on your goals
+                      {recType === 'Recommended' ? 'Highly Personalized' : 'Targeted Prediction'}
                     </div>
                   </div>
                   <div className="p-6">
-                    <h5 className="font-black text-lg text-slate-900 mb-4 tracking-tight uppercase leading-none">{mealSuggestions[0].name}</h5>
+                    <h5 className="font-black text-lg text-slate-900 mb-4 tracking-tight uppercase leading-none">{currentSuggestion.name}</h5>
                     <div className="flex justify-between items-center mb-6">
                       <div className="flex gap-4">
                         <div className="flex flex-col">
                           <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">PRO</span>
-                          <span className="text-xs font-black text-slate-900">{mealSuggestions[0].protein || '14'}g</span>
+                          <span className="text-xs font-black text-slate-900">{currentSuggestion.protein}g</span>
                         </div>
                         <div className="flex flex-col border-l border-slate-100 pl-4">
                           <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">CAL</span>
-                          <span className="text-xs font-black text-slate-900">{mealSuggestions[0].calories || '380'}</span>
+                          <span className="text-xs font-black text-slate-900">{currentSuggestion.calories}</span>
                         </div>
                       </div>
                       <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
                         <Clock className="w-3 h-3" /> 20 MIN
                       </span>
                     </div>
-                    <div className="flex gap-2 mb-6">
-                      {['HIGH PROTEIN', 'MUSCLE SUPPORT'].map(t => (
+                    <div className="flex gap-2 mb-5">
+                      {(currentSuggestion.tags || []).map(t => (
                         <span key={t} className="bg-slate-50 text-slate-400 text-[8px] font-black px-3 py-1.5 rounded-lg tracking-widest uppercase">{t}</span>
                       ))}
                     </div>
-                    <button className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-lg active:scale-95">
+
+                    <div className="mb-6 p-4 bg-slate-50 border border-slate-100/50 rounded-2xl">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Sparkles className="w-3.5 h-3.5 text-slate-900" />
+                        <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Why suggest this?</span>
+                      </div>
+                      <p className="text-[11px] font-bold text-slate-500 leading-relaxed italic">
+                        "{currentSuggestion.reason}"
+                      </p>
+                    </div>
+
+                    <button 
+                      onClick={() => setSelectedRecipeSuggestion(currentSuggestion)}
+                      className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-lg active:scale-95"
+                    >
                       View Recipe
                     </button>
                   </div>
@@ -1425,7 +1550,126 @@ function Nutrition() {
           </div>
         )}
       </AnimatePresence>
-    </div >
+
+      {/* Recipe Detail Modal */}
+      <AnimatePresence>
+        {selectedRecipeSuggestion && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setSelectedRecipeSuggestion(null)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-lg bg-white rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh] border border-slate-100"
+            >
+              {/* Image & Close Button */}
+              <div className="h-56 relative shrink-0">
+                <img
+                  src={selectedRecipeSuggestion.image}
+                  alt={selectedRecipeSuggestion.name}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <button
+                  onClick={() => setSelectedRecipeSuggestion(null)}
+                  className="absolute top-6 right-6 w-10 h-10 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/20 hover:bg-white/40 transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+                <div className="absolute bottom-6 left-8">
+                  <h3 className="text-2xl font-black text-white uppercase tracking-tighter leading-tight drop-shadow-md">
+                    {selectedRecipeSuggestion.name}
+                  </h3>
+                </div>
+              </div>
+
+              {/* Scrollable Content */}
+              <div className="p-8 overflow-y-auto scrollbar-hide flex-1">
+                {/* Stats */}
+                <div className="flex justify-between p-5 bg-slate-50 rounded-[2rem] border border-slate-100 mb-8">
+                  <div className="text-center flex-1 border-r border-slate-200">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cals</p>
+                    <p className="text-lg font-black text-slate-900">{selectedRecipeSuggestion.calories}</p>
+                  </div>
+                  <div className="text-center flex-1 border-r border-slate-200">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Pro</p>
+                    <p className="text-lg font-black text-slate-900">{selectedRecipeSuggestion.protein}g</p>
+                  </div>
+                  <div className="text-center flex-1">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Time</p>
+                    <p className="text-lg font-black text-slate-900">20m</p>
+                  </div>
+                </div>
+
+                <div className="space-y-8">
+                  {/* Ingredients */}
+                  <section>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-8 h-8 rounded-full bg-slate-900 flex items-center justify-center text-white">
+                        <Utensils className="w-4 h-4" />
+                      </div>
+                      <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Ingredients</h4>
+                    </div>
+                    <ul className="grid grid-cols-1 gap-3">
+                      {selectedRecipeSuggestion.ingredients.map((ing, i) => (
+                        <li key={i} className="flex items-center gap-3 py-2 border-b border-slate-50 last:border-0">
+                          <div className="w-1.5 h-1.5 rounded-full bg-slate-300" />
+                          <span className="text-sm font-medium text-slate-600">{ing}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+
+                  {/* Instructions */}
+                  <section>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-900 border border-slate-200">
+                        <Clock className="w-4 h-4" />
+                      </div>
+                      <h4 className="text-[11px] font-black uppercase tracking-[0.2em] text-slate-900">Instructions</h4>
+                    </div>
+                    <div className="space-y-5">
+                      {selectedRecipeSuggestion.instructions.map((step, i) => (
+                        <div key={i} className="flex gap-4 group">
+                          <span className="text-sm font-black text-slate-200 group-hover:text-slate-900 transition-colors">0{i + 1}</span>
+                          <p className="text-sm font-medium text-slate-600 leading-relaxed">{step}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                </div>
+              </div>
+
+              {/* Action */}
+              <div className="p-8 pt-0 mt-auto">
+                <button
+                  onClick={() => handleConfirmLog({
+                    foodItem: {
+                      name: selectedRecipeSuggestion.name,
+                      quantity: '1 serving',
+                      nutrition: {
+                        calories: selectedRecipeSuggestion.calories,
+                        protein: selectedRecipeSuggestion.protein,
+                        carbs: selectedRecipeSuggestion.carbs,
+                        fats: selectedRecipeSuggestion.fats
+                      }
+                    },
+                    analysis: selectedRecipeSuggestion.reason
+                  })}
+                  className="w-full py-4 bg-slate-900 hover:bg-black text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl transition-all"
+                >
+                  Log this meal
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
