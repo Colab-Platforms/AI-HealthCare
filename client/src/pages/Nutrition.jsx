@@ -310,7 +310,7 @@ function Nutrition() {
       const result = response.data.data;
       const isCached = response.data.isCached || response.data.source === 'global_cache';
       
-      handleConfirmLog({
+      await handleConfirmLog({
         ...result,
         _isFromCache: isCached,
         _cacheSource: response.data.source
