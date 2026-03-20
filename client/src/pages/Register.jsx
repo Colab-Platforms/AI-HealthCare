@@ -351,7 +351,7 @@ export default function Register() {
                         document.getElementById(`otp-${i - 1}`).focus();
                       }
                     }}
-                    className="w-10 h-12 bg-slate-50 border border-slate-200 rounded-lg text-center font-black text-lg focus:ring-2 focus:ring-slate-900/10 focus:border-black focus:outline-none text-black"
+                    className="w-11 h-14 bg-white border-2 border-slate-300 rounded-xl text-center font-black text-xl focus:ring-4 focus:ring-black/10 focus:border-black focus:outline-none text-black shadow-sm transition-all"
                   />
                 ))}
               </div>

@@ -12,9 +12,11 @@ import { BarChart, Bar, Cell, ResponsiveContainer, XAxis, Tooltip } from 'rechar
 import api, { nutritionService, dietRecommendationService } from '../services/api';
 import toast from 'react-hot-toast';
 import { useData } from '../context/DataContext';
+import { useAuth } from '../context/AuthContext';
 import NutritionSkeleton from '../components/skeletons/NutritionSkeleton';
 
 function Nutrition() {
+  const { user } = useAuth();
   const { invalidateCache, dashboardData } = useData();
   const location = useLocation();
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -49,63 +51,69 @@ function Nutrition() {
   // Personalized Suggestions Engine
   const currentSuggestion = React.useMemo(() => {
     // Base suggestions templates
+    const isVeg = user?.profile?.dietaryPreference === 'vegetarian' || user?.profile?.dietaryPreference === 'vegan' || user?.profile?.dietaryPreference === 'eggetarian';
+
     // Base suggestions templates
     const suggestionsMap = {
-      'Recommended': {
-        name: 'Grilled Salmon + Asparagus',
-        calories: 320, protein: 34, carbs: 8, fats: 18,
-        tags: ['OMEGA-3', 'HEART HEALTH'],
-        reason: 'This balanced meal is optimized for your caloric target and general heart health.',
-        image: 'https://images.unsplash.com/photo-1467003909585-2f8a72700288?w=800&q=80',
-        ingredients: ['Fresh Salmon Fillet (150g)', 'Asparagus Spears (6-8)', 'Lemon Slices', 'Olive Oil', 'Garlic', 'Sea Salt'],
-        instructions: [
-          'Preheat oven or grill to 200°C (400°F).',
-          'Toss asparagus in olive oil and minced garlic.',
-          'Season salmon and asparagus with sea salt and lemon juice.',
-          'Grill for 12-15 minutes until salmon flakes easily.'
-        ]
+      'Recommended': isVeg ? {
+        name: 'Dal Tadka + Steamed Rice',
+        calories: 320, protein: 12, carbs: 48, fats: 8,
+        tags: ['HOME STYLE', 'HIGH FIBER'],
+        reason: 'A wholesome balanced meal with complete plant proteins for your daily energy.',
+        image: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=800&q=80',
+        ingredients: ['Yellow Moong Dal', 'Basmati Rice', 'Ghee', 'Cumin Seeds', 'Turmeric', 'Green Chilies'],
+        instructions: ['Pressure cook dal with turmeric.', 'Perform "Tadka" with ghee, cumin and chilies.', 'Steam rice until fluffy and serve together.']
+      } : {
+        name: 'Fish Curry + Brown Rice',
+        calories: 350, protein: 28, carbs: 42, fats: 10,
+        tags: ['OMEGA-3', 'LEAN PROTEIN'],
+        reason: 'Traditional Indian style fish curry to support your heart health and protein goals.',
+        image: 'https://images.unsplash.com/photo-1589187151032-573a91317445?w=800&q=80',
+        ingredients: ['Fresh Fish Fillet', 'Onion-Tomato Masala', 'Ginger-Garlic Paste', 'Brown Rice', 'Curry Leaves'],
+        instructions: ['Sauté onion and tomato paste with spices.', 'Add fish pieces and simmer in curry base.', 'Serve with warm cooked brown rice.']
       },
-      'High Protein': {
-        name: 'Quinoa & Chicken Power Bowl',
-        calories: 450, protein: 42, carbs: 35, fats: 12,
-        tags: ['MUSCLE GROWTH', 'LEAN PROTEIN'],
-        reason: 'Specifically suggested to help reach your protein target of 70g and support muscle repair.',
-        image: 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=800&q=80',
-        ingredients: ['Grilled Chicken Breast (120g)', 'Cooked Quinoa (1 cup)', 'Avocado Slices', 'Cherry Tomatoes', 'Greek Yogurt Dressing'],
-        instructions: [
-          'Prepare quinoa according to package instructions.',
-          'Slice grilled chicken into bite-sized strips.',
-          'Assemble bowl with quinoa as base, topped with chicken and veg.',
-          'Drizzle yogurt dressing and garnish with seeds.'
-        ]
+      'High Protein': isVeg ? {
+        name: 'Paneer Bhurji + 2 Roti',
+        calories: 420, protein: 22, carbs: 38, fats: 18,
+        tags: ['MUSCLE REPAIR', 'PROTEIN RICH'],
+        reason: 'Specifically suggested to help reach your protein target of 70g using fresh paneer.',
+        image: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?w=800&q=80',
+        ingredients: ['Crumbled Paneer (150g)', 'Whole Wheat Roti', 'Chopped Onions', 'Bell Peppers', 'Garam Masala'],
+        instructions: ['Heat oil and sauté onions and peppers.', 'Add crumbled paneer and spice mix.', 'Serve with freshly made soft wheat rotis.']
+      } : {
+        name: 'Chicken Tikka (Dry) + Salad',
+        calories: 380, protein: 44, carbs: 10, fats: 14,
+        tags: ['LEAN MUSCLE', 'POST WORKOUT'],
+        reason: 'High protein, low carb meal to support muscle recovery without extra calories.',
+        image: 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=800&q=80',
+        ingredients: ['Chicken Breast Cubes', 'Hung Curd', 'Lemon Juice', 'Tandoori Masala', 'Fresh Salad Leaves'],
+        instructions: ['Marinate chicken in curd and spices for 30 mins.', 'Air fry or grill until charred and juicy.', 'Serve with a fresh squeeze of lemon and salad.']
       },
       'Balanced': {
-        name: 'Mediterranean Chickpea Salad',
-        calories: 380, protein: 15, carbs: 45, fats: 14,
-        tags: ['FIBER RICH', 'ENERGY BOOST'],
-        reason: 'Balanced nutrients to keep you satiated while fueling your afternoon energy needs.',
-        image: 'https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=800&q=80',
-        ingredients: ['Canned Chickpeas (rinsed)', 'Cucumber', 'Bell Peppers', 'Feta Cheese', 'Red Onion', 'Balsamic Vinaigrette'],
-        instructions: [
-          'Dice all vegetables into small, uniform pieces.',
-          'Combine chickpeas and veggies in a large bowl.',
-          'Crumble feta cheese over the top.',
-          'Toss with vinaigrette just before serving.'
-        ]
+        name: 'Mixed Veg Khichdi + Curd',
+        calories: 310, protein: 14, carbs: 45, fats: 6,
+        tags: ['EASY DIGESTION', 'GUT FRIENDLY'],
+        reason: 'A light, gut-healing meal that balances all necessary macronutrients.',
+        image: 'https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=800&q=80',
+        ingredients: ['Rice & Lentils Mix', 'Carrots', 'Peas', 'Fresh Curd (Dahi)', 'Roasted Cumin'],
+        instructions: ['Cook rice, lentils and chopped veg in a pressure cooker.', 'Finish with a tiny dollop of ghee.', 'Serve with a bowl of refreshing cold curd.']
       },
-      'Low Carb': {
-        name: 'Zucchini Noodles with Pesto',
-        calories: 220, protein: 8, carbs: 12, fats: 16,
-        tags: ['WEIGHT LOSS', 'KETO FRIENDLY'],
-        reason: 'A low-glycemic choice that helps maintain stable blood sugar levels throughout the day.',
-        image: 'https://images.unsplash.com/photo-1584270413639-d5ee397272cd?w=800&q=80',
-        ingredients: ['Zucchini (spiralized)', 'Pine Nuts', 'Basil Pesto', 'Parmesan Cheese', 'Olive Oil'],
-        instructions: [
-          'Spiralize zucchini into "zoodle" shapes.',
-          'Sauté zucchini in olive oil for 2-3 minutes (don\'t overcook).',
-          'Remove from heat and toss with fresh basil pesto.',
-          'Top with parmesan and toasted pine nuts.'
-        ]
+      'Low Carb': isVeg ? {
+        name: 'Egg Bhurji (3 Eggs) - No Bread',
+        calories: 240, protein: 18, carbs: 6, fats: 15,
+        tags: ['WEIGHT LOSS', 'KETO STYLE'],
+        reason: 'Simple Indian egg scramble to keep you full without traditional heavy carbs.',
+        image: 'https://images.unsplash.com/photo-1543339308-43e59d6b73a6?w=800&q=80',
+        ingredients: ['3 Whole Eggs', 'Onions', 'Tomatoes', 'Green Chilies', 'Coriander'],
+        instructions: ['Whisk eggs with a pinch of salt.', 'Sauté onions and chilies until soft.', 'Add eggs and scramble until moist and fully cooked.']
+      } : {
+        name: 'Masala Omelette + Sprouts',
+        calories: 260, protein: 20, carbs: 12, fats: 14,
+        tags: ['LOW CALORIE', 'ENERGY SNAP'],
+        reason: 'A low-glycemic choice that helps maintain stable blood sugar levels.',
+        image: 'https://images.unsplash.com/photo-1510693395975-2292190049bd?w=800&q=80',
+        ingredients: ['2 Eggs', 'Green Sprouted Moong', 'Spinach', 'Onions', 'Black Pepper'],
+        instructions: ['Prepare a spicy masala omelette with veggies.', 'Steamed sprouts served on the side as a fiber source.']
       }
     };
 
@@ -115,38 +123,28 @@ function Nutrition() {
       const topDef = deficiencies[0].name.toLowerCase();
       if (topDef.includes('iron') || topDef.includes('hemoglobin')) {
         suggestionsMap['Recommended'] = {
-          name: 'Sautéed Spinach & Paneer',
+          name: 'Spinach & Dal Tadka',
           calories: 240, protein: 18, carbs: 10, fats: 14,
           tags: ['IRON RICH', 'BLOOD HEALTH'],
           reason: `Iron optimization: Based on your lab reports, this meal will help improve your ${deficiencies[0].name} levels.`,
           image: 'https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=800&q=80',
-          ingredients: ['Fresh Spinach (200g)', 'Paneer Cubes (100g)', 'Cumin Seeds', 'Garlic', 'Tumeric'],
-          instructions: [
-            'Lightly fry paneer cubes until golden.',
-            'Sauté garlic and cumin seeds in oil.',
-            'Add spinach and turmeric, cook until wilted.',
-            'Mix in paneer and serve hot.'
-          ]
+          ingredients: ['Palak (Spinach)', 'Yellow Lentils', 'Garlic', 'Ghee'],
+          instructions: ['Boil lentils.', 'Sauté spinach and spices.', 'Combine and temper with garlic ghee.']
         };
       } else if (topDef.includes('fiber') || topDef.includes('gut')) {
         suggestionsMap['Recommended'] = {
-          name: 'Lentil Soup with Brown Rice',
-          calories: 350, protein: 16, carbs: 55, fats: 4,
+          name: 'Bajra Khichdi + Chaas',
+          calories: 330, protein: 12, carbs: 55, fats: 4,
           tags: ['HIGH FIBER', 'GUT HEALTH'],
-          reason: `Fiber boost: Found to be low in your recent analysis, this meal will help normalize your digestive markers.`,
+          reason: `Fiber boost: Found to be low in your recent analysis, this meal will help fix your digestion.`,
           image: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=800&q=80',
-          ingredients: ['Red Lentils', 'Brown Rice', 'Carrots', 'Ginger', 'Turmeric'],
-          instructions: [
-            'Boil lentils with ginger and turmeric until soft.',
-            'Cook brown rice separately.',
-            'Blend some lentils for thickness.',
-            'Serve soup over rice with fresh coriander.'
-          ]
+          ingredients: ['Bajra (Pearl Millet)', 'Moong Dal', 'Buttermilk (Chaas)', 'Ginger'],
+          instructions: ['Soak and pressure cook bajra and dal mix.', 'Whisk buttermilk with roasted cumin powder.', 'Serve warm for best results.']
         };
       } else if (topDef.includes('protein')) {
         suggestionsMap['Recommended'] = {
           ...suggestionsMap['High Protein'],
-          reason: 'Protein synthesis: Suggested to support your muscle recovery after identified activity peaks.'
+          reason: 'Protein synthesis: Suggested to support your muscle recovery after your recent activity.'
         };
       }
     }
@@ -302,11 +300,8 @@ function Nutrition() {
       else if (dCals > dT) insight = "Dinner exceeded target. Consider an active start tomorrow.";
       else if (summary.totalCalories > 0) insight = "Excellent! You're managing your meal portions very well.";
 
-      setAiInsights(insight.replace('{bCals}', bCals));
 
-      if (dietRes.data.dietPlan) {
-        setMealSuggestions(dietRes.data.dietPlan.mealPlan?.lunch || []);
-      }
+      setAiInsights(insight.replace('{bCals}', bCals));
 
     } catch (error) {
       console.error('Failed to fetch nutrition data:', error);
