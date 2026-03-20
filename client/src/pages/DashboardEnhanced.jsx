@@ -7,7 +7,7 @@ import {
   Search, Sun, Clock, Heart, Apple, Info, Target, Calendar,
   ArrowUpRight, Upload, Coffee, Dumbbell, MessageCircle, BarChart3,
   Circle, Smile, FlaskConical, Leaf, Pill, CheckCircle2, Zap, Eye,
-  UtensilsCrossed, UploadCloud, ShieldCheck, AlertTriangle
+  UtensilsCrossed, UploadCloud, ShieldCheck, AlertTriangle, Check
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Link, useNavigate } from 'react-router-dom';
