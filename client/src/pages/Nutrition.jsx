@@ -32,8 +32,9 @@ function Nutrition() {
   });
   const [mealLogs, setMealLogs] = useState({
     Breakfast: [],
+    'Mid-Morning': [],
     Lunch: [],
-    Snack: [],
+    Evening: [],
     Dinner: []
   });
   const [weeklyTrends, setWeeklyTrends] = useState([]);
@@ -146,11 +147,15 @@ function Nutrition() {
 
       // Logs - Group by mealType
       const logs = logsRes.data.foodLogs || logsRes.data.logs || [];
-      const grouped = { Breakfast: [], Lunch: [], Snack: [], Dinner: [] };
+      const grouped = { Breakfast: [], 'Mid-Morning': [], Lunch: [], Evening: [], Dinner: [] };
       logs.forEach(log => {
-        const type = log.mealType.charAt(0).toUpperCase() + log.mealType.slice(1);
-        if (grouped[type]) grouped[type].push(log);
-        else grouped.Snack.push(log);
+        const type = log.mealType;
+        if (type.toLowerCase().includes('breakfast')) grouped.Breakfast.push(log);
+        else if (type.toLowerCase().includes('mid') || type.toLowerCase().includes('morning')) grouped['Mid-Morning'].push(log);
+        else if (type.toLowerCase().includes('lunch')) grouped.Lunch.push(log);
+        else if (type.toLowerCase().includes('evening') || type.toLowerCase().includes('afternoon')) grouped.Evening.push(log);
+        else if (type.toLowerCase().includes('dinner')) grouped.Dinner.push(log);
+        else grouped.Evening.push(log); // Fallback to evening for generic snacks
       });
       setMealLogs(grouped);
       setRecentMeals(logs.slice(0, 15));
@@ -553,9 +558,10 @@ function Nutrition() {
               <h3 className="font-black text-slate-900 uppercase tracking-tight mb-5 text-lg">Meal Timeline</h3>
               <div className="space-y-4">
                 {[
-                  { name: 'Breakfast', icon: Sun, ratio: 0.30 },
-                  { name: 'Lunch', icon: Utensils, ratio: 0.35 },
-                  { name: 'Snack', icon: Cookie, ratio: 0.10 },
+                  { name: 'Breakfast', icon: Sun, ratio: 0.25 },
+                  { name: 'Mid-Morning', icon: Sparkles, ratio: 0.10 },
+                  { name: 'Lunch', icon: Utensils, ratio: 0.30 },
+                  { name: 'Evening', icon: Cookie, ratio: 0.10 },
                   { name: 'Dinner', icon: Moon, ratio: 0.25 }
                 ].map((meal) => {
                   const logs = mealLogs[meal.name] || [];
@@ -578,7 +584,6 @@ function Nutrition() {
                           </div>
                           <div>
                             <span className="font-black text-sm text-slate-900 uppercase tracking-tight">{meal.name}</span>
-                            {/* Food names removed from collapsed state as per user request */}
                           </div>
                         </div>
                         <div className="flex items-center gap-6">
@@ -897,7 +902,7 @@ function Nutrition() {
                 </div>
 
                 <div className="flex gap-2 mb-8 overflow-x-auto pb-1 scrollbar-hide">
-                  {['Breakfast', 'Lunch', 'Snack', 'Dinner'].map(tab => (
+                  {['Breakfast', 'Mid-Morning', 'Lunch', 'Evening', 'Dinner'].map(tab => (
                     <button
                       key={tab} onClick={() => setMealTab(tab)}
                       className={`text-[10px] font-black px-5 py-2 rounded-full transition-all uppercase tracking-widest whitespace-nowrap ${mealTab === tab ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-900 hover:bg-slate-50'}`}

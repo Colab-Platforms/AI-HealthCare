@@ -27,14 +27,13 @@ const Moon = ({ className }) => (
   </svg>
 );
 
-const MEAL_ORDER = ['breakfast', 'midMorningSnack', 'lunch', 'eveningSnack', 'dinner', 'snacks'];
+const MEAL_ORDER = ['breakfast', 'midMorningSnack', 'lunch', 'eveningSnack', 'dinner'];
 const SECTION_INFO = {
   breakfast: { label: 'Breakfast', time: '08:00 AM', emoji: '🍳', icon: Coffee },
-  midMorningSnack: { label: 'Morning Snack', time: '11:00 AM', emoji: '🍎', icon: Sun },
+  midMorningSnack: { label: 'Mid-Morning', time: '11:00 AM', emoji: '🍎', icon: Sun },
   lunch: { label: 'Lunch', time: '01:30 PM', emoji: '🥗', icon: Utensils },
-  eveningSnack: { label: 'Evening Snack', time: '05:00 PM', emoji: '☕', icon: Sunset },
-  dinner: { label: 'Dinner', time: '08:30 PM', emoji: '🌙', icon: Moon },
-  snacks: { label: 'Healthy Snacks', time: 'Flexible', emoji: '🍿', icon: Coffee },
+  eveningSnack: { label: 'Evening', time: '05:00 PM', emoji: '☕', icon: Sunset },
+  dinner: { label: 'Dinner', time: '08:30 PM', emoji: '🌙', icon: Moon }
 };
 
 function getMealName(m) {
@@ -148,7 +147,6 @@ export default function DietPlan() {
         if (type === 'snack') {
           loggedMap[`midMorningSnack-${name}`] = true;
           loggedMap[`eveningSnack-${name}`] = true;
-          loggedMap[`snacks-${name}`] = true;
         }
       });
       setLoggedMeals(loggedMap);

@@ -102,28 +102,19 @@ JSON STRUCTURE (follow EXACTLY):
   "dietPlan": {
     "overview": "Brief dietary strategy based on results",
     "breakfast": [
-      {"meal": "Meal Option 1", "nutrients": ["Nutrient"], "tip": "Tip"},
-      {"meal": "Meal Option 2", "nutrients": ["Nutrient"], "tip": "Tip"},
-      {"meal": "Meal Option 3", "nutrients": ["Nutrient"], "tip": "Tip"},
-      {"meal": "Meal Option 4", "nutrients": ["Nutrient"], "tip": "Tip"}
+      {"meal": "Meal Option 1", "nutrients": ["Nutrient"], "tip": "Tip"}
+    ],
+    "midMorningSnack": [
+      {"meal": "Meal Option 1", "nutrients": ["Nutrient"], "tip": "Tip"}
     ],
     "lunch": [
-      {"meal": "Meal 1", "nutrients": ["Nutrient"], "tip": "Tip"},
-      {"meal": "Meal 2", "nutrients": ["Nutrient"], "tip": "Tip"},
-      {"meal": "Meal 3", "nutrients": ["Nutrient"], "tip": "Tip"},
-      {"meal": "Meal 4", "nutrients": ["Nutrient"], "tip": "Tip"}
+      {"meal": "Meal Option 1", "nutrients": ["Nutrient"], "tip": "Tip"}
+    ],
+    "eveningSnack": [
+      {"meal": "Meal Option 1", "nutrients": ["Nutrient"], "tip": "Tip"}
     ],
     "dinner": [
-      {"meal": "Meal 1", "nutrients": ["Nutrient"], "tip": "Tip"},
-      {"meal": "Meal 2", "nutrients": ["Nutrient"], "tip": "Tip"},
-      {"meal": "Meal 3", "nutrients": ["Nutrient"], "tip": "Tip"},
-      {"meal": "Meal 4", "nutrients": ["Nutrient"], "tip": "Tip"}
-    ],
-    "snacks": [
-      {"meal": "Snack 1", "nutrients": ["Nutrient"], "tip": "Tip"},
-      {"meal": "Snack 2", "nutrients": ["Nutrient"], "tip": "Tip"},
-      {"meal": "Snack 3", "nutrients": ["Nutrient"], "tip": "Tip"},
-      {"meal": "Snack 4", "nutrients": ["Nutrient"], "tip": "Tip"}
+      {"meal": "Meal Option 1", "nutrients": ["Nutrient"], "tip": "Tip"}
     ],
     "foodsToIncrease": ["food1", "food2", "food3"],
     "foodsToLimit": ["food1", "food2"],
@@ -169,7 +160,7 @@ CRITICAL RULES:
 2. Keep string values SHORT and CONCISE, EXCEPT for the "summary", "radiologistReport.findings", and "patientFriendlySummary" fields.
 3. Include ALL metrics found in the report with correct status (normal/high/low/borderline) for standard lab reports.
 4. For MRI reports, SKIP metrics and dietPlan to focus entirely on anatomical findings.
-5. Provide EXACTLY 4 meal options for EACH meal category for standard reports.
+5. Provide EXACTLY 4 meal options for EACH of these 5 categories: "breakfast", "midMorningSnack", "lunch", "eveningSnack", and "dinner".
 6. Use Indian food options when appropriate.
 7. Use numbers for numeric values, not strings.
 8. Always provide at least 3-5 summaryPoints as individual pointers for the user.
