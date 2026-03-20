@@ -474,8 +474,8 @@ function Nutrition() {
       <div className="relative z-10 w-full">
 
         {/* Header - Optimized for Global Sticky Header */}
-        <div className="flex flex-col gap-4 mb-4 md:mb-8 mt-4">
-          <div className="flex flex-col gap-4 w-full md:w-auto">
+        <div className="flex flex-col md:flex-row md:items-center gap-4 mb-4 md:mb-8 mt-4">
+          <div className="flex flex-col md:flex-row md:items-center gap-4 w-full md:w-auto">
             <div className="flex items-center justify-between md:justify-start bg-white/60 border border-white/40 backdrop-blur-md rounded-full px-4 py-2 shadow-sm w-full md:w-fit">
               <button onClick={() => changeDate(-1)} className="p-1 text-slate-400 hover:text-slate-600"><ChevronLeft className="w-4 h-4" /></button>
               <span className="text-sm font-semibold px-3 uppercase tracking-tight">
