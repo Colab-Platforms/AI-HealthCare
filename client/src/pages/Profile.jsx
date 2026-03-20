@@ -36,8 +36,6 @@ export default function Profile() {
     goalType: 'maintenance',
     currentWeight: user?.profile?.weight || '',
     targetWeight: '',
-    stepGoal: 10000,
-    sleepGoal: 8,
     height: user?.profile?.height || '',
     age: user?.profile?.age || '',
     gender: user?.profile?.gender || 'male',
@@ -85,8 +83,6 @@ export default function Profile() {
           age: user?.profile?.age || data.healthGoal.age,
           gender: user?.profile?.gender || data.healthGoal.gender,
           activityLevel: data.healthGoal.activityLevel,
-          stepGoal: data.healthGoal.stepGoal || 10000,
-          sleepGoal: data.healthGoal.sleepGoal || 8,
           dietaryPreference: data.healthGoal.dietaryPreference
         }));
       }
@@ -178,6 +174,8 @@ export default function Profile() {
         phone: formData.profile.phone,
         profile: {
           ...formData.profile,
+          gender: formData.profile.gender || undefined,
+          dietaryPreference: formData.profile.dietaryPreference || undefined,
           age: formData.profile.age ? Number(formData.profile.age) : undefined,
           height: formData.profile.height ? Number(formData.profile.height) : undefined,
           weight: formData.profile.weight ? Number(formData.profile.weight) : undefined,
@@ -256,8 +254,6 @@ export default function Profile() {
         ...goalFormData,
         currentWeight: Number(goalFormData.currentWeight),
         targetWeight: Number(goalFormData.targetWeight),
-        stepGoal: Number(goalFormData.stepGoal),
-        sleepGoal: Number(goalFormData.sleepGoal),
         height: Number(goalFormData.height),
         age: Number(goalFormData.age)
       };
@@ -553,6 +549,7 @@ export default function Profile() {
                                 onChange={handleChange}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
                               >
+                                <option value="">Select Gender</option>
                                 <option value="male">Male</option>
                                 <option value="female">Female</option>
                                 <option value="other">Other</option>
@@ -601,6 +598,7 @@ export default function Profile() {
                                   onChange={handleChange}
                                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800"
                                 >
+                                  <option value="">Select Dietary Preference</option>
                                   <option value="non-vegetarian">Non-Vegetarian</option>
                                   <option value="vegetarian">Vegetarian</option>
                                   <option value="vegan">Vegan</option>
@@ -615,17 +613,17 @@ export default function Profile() {
                                   onChange={handleChange}
                                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
                                 >
+                                  <option value="">Select Activity Level</option>
                                   <option value="sedentary">Sedentary (Little/no exercise)</option>
-                                  <option value="lightly_active">Lightly Active (1-3 days/week)</option>
-                                  <option value="moderately_active">Moderately Active (3-5 days/week)</option>
-                                  <option value="very_active">Very Active (6-7 days/week)</option>
+                                  <option value="lightly_active">Lightly Active (1-3 days)</option>
+                                  <option value="moderately_active">Moderately Active (3-5 days)</option>
+                                  <option value="very_active">Very Active (6-7 days)</option>
                                   <option value="extremely_active">Extremely Active (Athlete)</option>
                                 </select>
                               </div>
                               <div>
                                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Phone Number</label>
                                 <input
-                                  type="text"
                                   name="profile.phone"
                                   value={formData.profile.phone}
                                   onChange={handleChange}
@@ -750,7 +748,6 @@ export default function Profile() {
                       </div>
                     )}
                   </div>
-
                   {/* Fitness Goal Card */}
                   <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden transition-all duration-300">
                     <div
@@ -832,7 +829,7 @@ export default function Profile() {
                                 placeholder="Target"
                               />
                             </div>
-                            <div>
+                            <div className="md:col-span-2">
                               <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Activity Level</label>
                               <select
                                 name="activityLevel"
@@ -846,28 +843,6 @@ export default function Profile() {
                                 <option value="very_active">Very Active (6-7 days/week)</option>
                                 <option value="extremely_active">Extremely Active (Athlete)</option>
                               </select>
-                            </div>
-                            <div>
-                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Daily Step Goal</label>
-                              <input
-                                type="number"
-                                name="stepGoal"
-                                value={goalFormData.stepGoal}
-                                onChange={handleGoalChange}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4"
-                                placeholder="e.g. 10000"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Daily Sleep Goal (Hrs)</label>
-                              <input
-                                type="number"
-                                name="sleepGoal"
-                                value={goalFormData.sleepGoal}
-                                onChange={handleGoalChange}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4"
-                                placeholder="e.g. 8"
-                              />
                             </div>
                           </div>
 
@@ -900,7 +875,7 @@ export default function Profile() {
                             {goalLoading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                             Recalculate & Save Goal
                           </button>
-                                                </form>
+                        </form>
                       </div>
                     )}
                   </div>

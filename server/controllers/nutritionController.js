@@ -804,7 +804,10 @@ exports.setHealthGoal = async (req, res) => {
         carbsGoal: healthGoal.macroTargets.carbs,
         fatGoal: healthGoal.macroTargets.fats,
         lastUpdated: new Date()
-      }
+      },
+      'profile.age': Number(healthGoal.age),
+      'profile.height': Number(healthGoal.height),
+      'profile.weight': Number(healthGoal.currentWeight)
     });
 
     // Invalidate server-side dashboard cache
@@ -899,7 +902,10 @@ exports.updateHealthGoal = async (req, res) => {
         carbsGoal: healthGoal.macroTargets.carbs,
         fatGoal: healthGoal.macroTargets.fats,
         lastUpdated: new Date()
-      }
+      },
+      'profile.age': Number(healthGoal.age),
+      'profile.height': Number(healthGoal.height),
+      'profile.weight': Number(healthGoal.currentWeight)
     });
 
     // Invalidate server-side dashboard cache

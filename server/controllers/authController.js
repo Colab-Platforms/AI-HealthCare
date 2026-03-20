@@ -389,11 +389,19 @@ exports.updateProfile = async (req, res) => {
       user.name = req.body.name || user.name;
       user.phone = req.body.phone || user.phone;
 
-      // Properly merge profile object
+      // Properly merge profile object and sanitize strict enums
       if (req.body.profile) {
+        const sanitizedProfile = { ...req.body.profile };
+        
+        // Remove empty strings for fields with fixed enums to prevent validation errors
+        if (sanitizedProfile.gender === "") delete sanitizedProfile.gender;
+        if (sanitizedProfile.dietaryPreference === "") delete sanitizedProfile.dietaryPreference;
+        if (sanitizedProfile.activityLevel === "") delete sanitizedProfile.activityLevel;
+        if (sanitizedProfile.isDiabetic === "") delete sanitizedProfile.isDiabetic;
+
         user.profile = {
           ...user.profile.toObject(),
-          ...req.body.profile
+          ...sanitizedProfile
         };
       }
 
@@ -432,8 +440,8 @@ exports.updateProfile = async (req, res) => {
         user.markModified('nutritionGoal');
       }
 
-      // Detecting changes in height or weight
-      if (newHeight !== oldHeight || newWeight !== oldWeight) {
+      // Detecting changes in height, weight, age, or gender
+      if (newHeight !== oldHeight || newWeight !== oldWeight || req.body.profile?.age || req.body.profile?.gender) {
         if (newHeight && newWeight) {
           // Recalculate BMI
           newBmi = Number((newWeight / Math.pow(newHeight / 100, 2)).toFixed(1));

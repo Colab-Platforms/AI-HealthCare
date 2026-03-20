@@ -524,10 +524,9 @@ exports.getDashboardData = async (req, res) => {
     const carbsGoal = req.user.nutritionGoal?.carbsGoal || 200;
     const fatGoal = req.user.nutritionGoal?.fatGoal || 65;
 
-    // Get step and sleep goals from HealthGoal model if available
-    const healthGoal = await HealthGoal.findOne({ userId: req.user._id, isActive: true });
-    const stepGoal = healthGoal?.stepGoal || 10000;
-    const sleepGoal = healthGoal?.sleepGoal || 8;
+    // Get step and sleep goals - set reasonable defaults as they are no longer in HealthGoal model
+    const stepGoal = 10000;
+    const sleepGoal = 8;
 
     // Helper to generate insights based on profile if no reports exist
     const generateProfileInsights = (user) => {

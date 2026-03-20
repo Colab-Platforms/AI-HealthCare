@@ -97,8 +97,8 @@ export default function LogVitals() {
     const currentSleepHrs = Math.floor(currentSleep);
     const currentSleepMins = Math.round((currentSleep - currentSleepHrs) * 60);
 
-    const stepGoal = dashboardData?.goals?.steps || 10000;
-    const sleepGoal = dashboardData?.goals?.sleep || 8;
+    const stepGoal = 10000;
+    const sleepGoal = 8;
     const weightGoal = dashboardData?.goals?.weight || user?.nutritionGoal?.weightGoal || 70;
 
     const [goalInput, setGoalInput] = useState('');
@@ -113,16 +113,16 @@ export default function LogVitals() {
             toast.error('Please enter a goal value');
             return;
         }
+        
+        if (activeTab !== 'weight') {
+            toast.error('Only weight goals can be set manually');
+            return;
+        }
+
         setLoadingGoal(true);
         try {
             const numValue = Number(goalInput);
-            if (activeTab === 'weight') {
-                await api.put('nutrition/goals', { weightGoal: numValue });
-            } else if (activeTab === 'steps') {
-                await api.put('nutrition/goals', { stepGoal: numValue });
-            } else if (activeTab === 'sleep') {
-                await api.put('nutrition/goals', { sleepGoal: numValue });
-            }
+            await api.put('nutrition/goals', { weightGoal: numValue });
             
             toast.success('Goal updated successfully');
             setGoalInput('');
@@ -674,33 +674,6 @@ export default function LogVitals() {
                                                 </button>
                                             </div>
 
-                                            <div className="p-6 md:p-8 bg-[#F5F5F7]/50 rounded-[32px] border border-white border-dashed">
-                                                <div className="flex items-center gap-3 mb-4">
-                                                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm">
-                                                        <Flame className="w-4 h-4 text-[#1a1a1a]" />
-                                                    </div>
-                                                    <h4 className="font-medium text-[#1a1a1a]">Set Step Goal</h4>
-                                                </div>
-                                                <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-4">
-                                                    <div className="flex-1 w-full space-y-2">
-                                                        <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider ml-2">Target Steps</label>
-                                                        <input
-                                                            type="number"
-                                                            value={goalInput}
-                                                            onChange={(e) => setGoalInput(e.target.value)}
-                                                            placeholder={`Current: ${stepGoal}`}
-                                                            className="w-full bg-white border border-slate-200 rounded-xl md:rounded-full px-5 py-3 shadow-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#D4F1A5] transition-all font-medium"
-                                                        />
-                                                    </div>
-                                                    <button 
-                                                        onClick={handleSaveGoal}
-                                                        disabled={loadingGoal || !goalInput}
-                                                        className="w-full sm:w-auto mt-4 sm:mt-0 px-8 py-3 bg-[#1a1a1a] text-white rounded-xl md:rounded-full font-bold shadow-lg hover:-translate-y-0.5 transition-all text-sm disabled:opacity-50 flex items-center justify-center gap-2"
-                                                    >
-                                                        {loadingGoal ? <span className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></span> : 'Set Target'}
-                                                    </button>
-                                                </div>
-                                            </div>
 
                                         </div>
                                     </div>
@@ -890,33 +863,6 @@ export default function LogVitals() {
                                                 </button>
                                             </div>
 
-                                            <div className="p-6 md:p-8 bg-[#F5F5F7]/50 rounded-[32px] border border-white border-dashed">
-                                                <div className="flex items-center gap-3 mb-4">
-                                                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm">
-                                                        <Flame className="w-4 h-4 text-[#1a1a1a]" />
-                                                    </div>
-                                                    <h4 className="font-medium text-[#1a1a1a]">Set Sleep Goal</h4>
-                                                </div>
-                                                <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-4">
-                                                    <div className="flex-1 w-full space-y-2">
-                                                        <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider ml-2">Target Sleep (Hours)</label>
-                                                        <input
-                                                            type="number"
-                                                            value={goalInput}
-                                                            onChange={(e) => setGoalInput(e.target.value)}
-                                                            placeholder={`Current: ${sleepGoal}`}
-                                                            className="w-full bg-white border border-slate-200 rounded-xl md:rounded-full px-5 py-3 shadow-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#E2F0FD] transition-all font-medium"
-                                                        />
-                                                    </div>
-                                                    <button 
-                                                        onClick={handleSaveGoal}
-                                                        disabled={loadingGoal || !goalInput}
-                                                        className="w-full sm:w-auto mt-4 sm:mt-0 px-8 py-3 bg-[#1a1a1a] text-white rounded-xl md:rounded-full font-bold shadow-lg hover:-translate-y-0.5 transition-all text-sm disabled:opacity-50 flex items-center justify-center gap-2"
-                                                    >
-                                                        {loadingGoal ? <span className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin"></span> : 'Set Target'}
-                                                    </button>
-                                                </div>
-                                            </div>
 
                                         </div>
                                     </div>
