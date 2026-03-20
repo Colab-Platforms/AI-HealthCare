@@ -1099,7 +1099,10 @@ export default function DashboardEnhanced() {
             </div>
           )}
 
-          <button className="w-full bg-[#1A1A1A] text-white py-4 rounded-2xl text-[13px] font-black uppercase tracking-tight hover:bg-black transition-all flex items-center justify-center gap-2 shadow-sm">
+          <button 
+            onClick={() => navigate('/diet-plan')}
+            className="w-full bg-[#1A1A1A] text-white py-4 rounded-2xl text-[13px] font-black uppercase tracking-tight hover:bg-black transition-all flex items-center justify-center gap-2 shadow-sm"
+          >
             View Full Plan <ArrowUpRight className="w-4 h-4 ml-1" />
           </button>
         </motion.div>
