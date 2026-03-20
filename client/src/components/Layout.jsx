@@ -222,7 +222,6 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
                 </div>
               )}
               <div className="flex-1 min-w-0">
-                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Elite Menu</p>
                 <p className="text-xs font-black truncate text-black uppercase tracking-wider">
                   {isDoctor() ? `DR. ${user?.name}` : user?.name}
                 </p>

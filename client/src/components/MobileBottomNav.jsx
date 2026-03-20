@@ -101,7 +101,6 @@ export default function MobileBottomNav() {
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-black text-white text-lg tracking-tighter uppercase leading-none">FitCure</h3>
-                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Elite Menu</p>
               </div>
               <button onClick={() => setShowMoreMenu(false)} className="text-white hover:bg-white/10 rounded-xl p-2 transition-colors">
                 <X className="w-6 h-6" />

@@ -1032,8 +1032,7 @@ export default function DashboardEnhanced() {
               { id: 'midMorningSnack', label: 'Mid-Morning' },
               { id: 'lunch', label: 'Lunch' },
               { id: 'eveningSnack', label: 'Evening' },
-              { id: 'dinner', label: 'Dinner' },
-              { id: 'snacks', label: 'Snacks' }
+              { id: 'dinner', label: 'Dinner' }
             ].map((tab) => (
               <button
                 key={tab.id}
