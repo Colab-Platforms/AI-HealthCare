@@ -25,9 +25,8 @@ const makeAnthropicRequest = async (messages, maxTokens = 4096, modelOverride = 
       return true;
     });
 
-    // Use shorter timeout on Vercel to stay within serverless limits (maxDuration is 120s)
-    // Hobby plan is capped at 10s by Vercel despite maxDuration setting
-    const requestTimeout = (process.env.VERCEL || process.env.VERCEL_ID) ? 55000 : 120000;
+    // Match timeout to vercel.json maxDuration (120s) minus a small buffer
+    const requestTimeout = (process.env.VERCEL || process.env.VERCEL_ID) ? 110000 : 120000;
 
     const response = await axios.post(
       ANTHROPIC_API_URL,
@@ -230,16 +229,9 @@ exports.analyzeHealthReport = async (reportText, user = {}, imageData = null, re
       { role: 'user', content: userContent }
     ];
 
-    // Use fewer tokens on Vercel to stay within timeout limits
-    // Vercel: 8000 tokens (4000 was causing truncation for dense reports)
-    // local/non-vercel: 12k to avoid truncation for dense reports
-    const isVercel = !!(process.env.VERCEL || process.env.VERCEL_ID);
-    const maxTokens = isVercel ? 8000 : 12000;
-
-    // On Vercel, prepend a conciseness instruction to reduce output size
-    if (isVercel) {
-      messages[0].content += '\n\nIMPORTANT: Be EXTREMELY concise. Limit metrics to the 10 most important ones. Keep all string values under 80 characters. Limit each array to max 3-4 items. This is critical to avoid response truncation.';
-    }
+    // Use 10000 tokens on Vercel to get full analysis (vercel.json maxDuration=120s gives plenty of time)
+    // local/non-vercel: 12k for extra room
+    const maxTokens = (process.env.VERCEL || process.env.VERCEL_ID) ? 10000 : 12000;
 
     const content = await makeAnthropicRequest(messages, maxTokens, CLAUDE_MODEL);
 

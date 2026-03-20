@@ -226,20 +226,29 @@ export default function Profile() {
     }
   };
 
+  // Derive age, height, weight from profile for fitness goal
+  const profileAge = Number(formData.profile.age) || user?.profile?.age || 0;
+  const profileHeight = Number(formData.profile.height) || user?.profile?.height || 0;
+  const profileWeight = Number(formData.profile.weight) || user?.profile?.weight || 0;
+  const profileGender = formData.profile.gender || user?.profile?.gender || 'male';
+
   const handleGoalSubmit = async (e) => {
     e.preventDefault();
     
-    // Validate mandatory fields for health goal calculations
-    if (!goalFormData.currentWeight || goalFormData.currentWeight < 30) {
-      toast.error('Current weight must be at least 30kg');
+    // Validate profile data exists
+    if (!profileWeight || profileWeight < 30) {
+      toast.error('Please set your weight (min 30kg) in General Profile first');
+      setExpandedSection('profile');
       return;
     }
-    if (!goalFormData.height || goalFormData.height < 100) {
-      toast.error('Height must be at least 100cm');
+    if (!profileHeight || profileHeight < 100) {
+      toast.error('Please set your height (min 100cm) in General Profile first');
+      setExpandedSection('profile');
       return;
     }
-    if (!goalFormData.age || goalFormData.age < 1) {
-      toast.error('Age must be at least 1 year');
+    if (!profileAge || profileAge < 1) {
+      toast.error('Please set your age in General Profile first');
+      setExpandedSection('profile');
       return;
     }
     if (!goalFormData.targetWeight || goalFormData.targetWeight < 30) {
@@ -252,10 +261,11 @@ export default function Profile() {
       const token = localStorage.getItem('token');
       const payload = {
         ...goalFormData,
-        currentWeight: Number(goalFormData.currentWeight),
+        currentWeight: profileWeight,
         targetWeight: Number(goalFormData.targetWeight),
-        height: Number(goalFormData.height),
-        age: Number(goalFormData.age)
+        height: profileHeight,
+        age: profileAge,
+        gender: profileGender
       };
 
       // Use PUT if goal exists, POST if new
@@ -785,39 +795,29 @@ export default function Profile() {
                                 <option value="general_health">General Health Improvement</option>
                               </select>
                             </div>
-                            <div>
-                               <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Age</label>
-                               <input
-                                 type="number"
-                                 name="age"
-                                 value={goalFormData.age}
-                                 onChange={handleGoalChange}
-                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 shadow-inner"
-                                 placeholder="Age"
-                               />
-                             </div>
-                             <div>
-                               <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Height (cm)</label>
-                               <input
-                                 type="number"
-                                 name="height"
-                                 value={goalFormData.height}
-                                 onChange={handleGoalChange}
-                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 shadow-inner"
-                                 placeholder="Height in cm"
-                               />
-                             </div>
-                             <div>
-                               <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Current Weight (kg)</label>
-                               <input
-                                 type="number"
-                                 name="currentWeight"
-                                 value={goalFormData.currentWeight}
-                                 onChange={handleGoalChange}
-                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 shadow-inner"
-                                 placeholder="Current Weight"
-                               />
-                             </div>
+                            {/* Age, Height, Current Weight — read-only from General Profile */}
+                            <div className="md:col-span-2 p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
+                              <p className="text-[10px] font-black text-blue-400 uppercase tracking-wider mb-3">From Your Profile</p>
+                              <div className="grid grid-cols-3 gap-4">
+                                <div>
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Age</p>
+                                  <p className="text-lg font-bold text-slate-800">{profileAge || <span className="text-red-400 text-sm">Not set</span>}</p>
+                                </div>
+                                <div>
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Height</p>
+                                  <p className="text-lg font-bold text-slate-800">{profileHeight ? `${profileHeight} cm` : <span className="text-red-400 text-sm">Not set</span>}</p>
+                                </div>
+                                <div>
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Weight</p>
+                                  <p className="text-lg font-bold text-slate-800">{profileWeight ? `${profileWeight} kg` : <span className="text-red-400 text-sm">Not set</span>}</p>
+                                </div>
+                              </div>
+                              {(!profileAge || !profileHeight || !profileWeight) && (
+                                <button type="button" onClick={() => setExpandedSection('profile')} className="mt-3 text-xs font-bold text-blue-600 hover:text-blue-800 underline">
+                                  → Update in General Profile
+                                </button>
+                              )}
+                            </div>
                             <div>
                               <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Target Weight (kg)</label>
                               <input
