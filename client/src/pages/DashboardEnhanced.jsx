@@ -14,7 +14,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import DashboardSkeleton from '../components/skeletons/DashboardSkeleton';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
-  Tooltip, CartesianGrid, PieChart, Pie, Cell, LineChart, Line
+  Tooltip, CartesianGrid, PieChart, Pie, Cell, LineChart, Line,
+  ReferenceLine, Label
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getFoodImage } from '../services/imageService';
@@ -1651,8 +1652,8 @@ export default function DashboardEnhanced() {
         </div>
 
         <div className="h-[300px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={(dashboardData?.history || []).filter(h => {
+          {(() => {
+            const chartData = (dashboardData?.history || []).filter(h => {
               if (!h.date) return false;
               const date = new Date(h.date);
               date.setHours(0, 0, 0, 0);
@@ -1668,43 +1669,69 @@ export default function DashboardEnhanced() {
             }).map(h => ({
               date: new Date(h.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
               value: activeTrendTab === 'Calories' ? h.calories : activeTrendTab === 'Steps' ? h.steps : activeTrendTab === 'Sleep' ? h.sleep : h.weight
-            }))}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-              <XAxis
-                dataKey="date"
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: '#888888', fontSize: 12 }}
-                dy={10}
-              />
-              <YAxis
-                axisLine={false}
-                tickLine={false}
-                tick={{ fill: '#888888', fontSize: 12 }}
-                dx={-10}
-              />
-              <Tooltip
-                contentStyle={{ borderRadius: '16px', border: '1px solid #f1f5f9', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
-                formatter={(value) => [`${value}`, activeTrendTab]}
-                labelStyle={{ color: '#888888', marginBottom: '4px' }}
-              />
-              <defs>
-                <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#000000" stopOpacity={0.1} />
-                  <stop offset="95%" stopColor="#000000" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <Area
-                type="monotone"
-                dataKey="value"
-                stroke="#000000"
-                strokeWidth={4}
-                fillOpacity={1}
-                fill="url(#colorValue)"
-                activeDot={{ r: 6, fill: '#1a1a1a', strokeWidth: 2, stroke: '#fff' }}
-              />
-            </AreaChart>
-          </ResponsiveContainer>
+            }));
+
+            const target = activeTrendTab === 'Calories' ? (user?.nutritionGoal?.calorieGoal || 2000)
+              : activeTrendTab === 'Steps' ? (dashboardData?.goals?.steps || 10000)
+              : activeTrendTab === 'Sleep' ? (user?.profile?.lifestyle?.sleepHours || 8)
+              : (user?.nutritionGoal?.targetWeight || user?.profile?.weight || 70);
+
+            return (
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                  <XAxis
+                    dataKey="date"
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#888888', fontSize: 12 }}
+                    dy={10}
+                  />
+                  <YAxis
+                    axisLine={false}
+                    tickLine={false}
+                    tick={{ fill: '#888888', fontSize: 12 }}
+                    dx={-10}
+                    domain={[0, (dataMax) => Math.max(dataMax, target * 1.1)]}
+                  />
+                  <Tooltip
+                    contentStyle={{ borderRadius: '16px', border: '1px solid #f1f5f9', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
+                    formatter={(value) => [`${value}`, activeTrendTab]}
+                    labelStyle={{ color: '#888888', marginBottom: '4px' }}
+                  />
+                  <defs>
+                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#000000" stopOpacity={0.1} />
+                      <stop offset="95%" stopColor="#000000" stopOpacity={0} />
+                    </linearGradient>
+                  </defs>
+                  <Area
+                    type="monotone"
+                    dataKey="value"
+                    stroke="#000000"
+                    strokeWidth={4}
+                    fillOpacity={1}
+                    fill="url(#colorValue)"
+                    activeDot={{ r: 6, fill: '#1a1a1a', strokeWidth: 2, stroke: '#fff' }}
+                  />
+                  <ReferenceLine
+                    y={target}
+                    stroke="#000000"
+                    strokeDasharray="5 5"
+                    strokeWidth={1.5}
+                    label={{
+                      value: `Target: ${target}`,
+                      position: 'insideBottomRight',
+                      fill: '#000000',
+                      fontSize: 10,
+                      fontWeight: 'bold',
+                      offset: 10
+                    }}
+                  />
+                </AreaChart>
+              </ResponsiveContainer>
+            );
+          })()}
         </div>
       </motion.div>
       <AnimatePresence>
