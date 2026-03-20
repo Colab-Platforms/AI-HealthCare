@@ -310,7 +310,7 @@ function Nutrition() {
       const result = response.data.data;
       const isCached = response.data.isCached || response.data.source === 'global_cache';
       
-      await handleConfirmLog({
+      setAnalysisResult({
         ...result,
         _isFromCache: isCached,
         _cacheSource: response.data.source
@@ -376,7 +376,7 @@ function Nutrition() {
       invalidateCache(['dashboard', `nutrition_${selectedDate}`]);
       fetchData();
       setIsModalOpen(false);
-      // Removed setAnalysisResult(null) to keep modal open for timeline viewing
+      setAnalysisResult(null);
     } catch (error) {
       toast.error('Failed to log meal');
     }
