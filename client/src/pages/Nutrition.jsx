@@ -310,7 +310,7 @@ function Nutrition() {
       const result = response.data.data;
       const isCached = response.data.isCached || response.data.source === 'global_cache';
       
-      setAnalysisResult({
+      handleConfirmLog({
         ...result,
         _isFromCache: isCached,
         _cacheSource: response.data.source
@@ -376,7 +376,7 @@ function Nutrition() {
       invalidateCache(['dashboard', `nutrition_${selectedDate}`]);
       fetchData();
       setIsModalOpen(false);
-      setAnalysisResult(null);
+      // Removed setAnalysisResult(null) to keep modal open for timeline viewing
     } catch (error) {
       toast.error('Failed to log meal');
     }
@@ -620,7 +620,11 @@ function Nutrition() {
                             <div className="space-y-3">
                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Logged Items</p>
                               {logs.length > 0 ? logs.map(log => (
-                                <div key={log._id} className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100 group/item">
+                                <div 
+                                  key={log._id} 
+                                  onClick={() => setAnalysisResult(log)}
+                                  className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100 group/item cursor-pointer hover:bg-white hover:border-slate-200 transition-all"
+                                >
                                   <div>
                                     <p className="text-xs font-black text-slate-900 uppercase tracking-tight">{log.foodItems?.[0]?.name}</p>
                                     <p className="text-[10px] text-slate-400 font-bold uppercase">{log.foodItems?.[0]?.nutrition?.calories} kcal • {log.foodItems?.[0]?.quantity}</p>
@@ -1238,6 +1242,9 @@ function Nutrition() {
                       <X className="w-5 h-5 md:w-6 md:h-6 text-white" />
                     </button>
                   </div>
+                  <h4 className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em] mb-2 px-1">
+                    Analysis Log View
+                  </h4>
                   <h2 className="text-2xl md:text-4xl font-black tracking-tighter uppercase leading-none mb-4 max-w-[90%]">
                     {analysisResult.foodItem?.name || analysisResult.foodName || analysisResult.foodItems?.[0]?.name}
                   </h2>
