@@ -43,13 +43,25 @@ self.addEventListener('fetch', (event) => {
   // This prevents service worker from interfering with POST requests
   if (url.pathname.startsWith('/api/')) {
     // Just pass through to network, don't cache
-    event.respondWith(fetch(event.request));
+    event.respondWith(
+      fetch(event.request).catch(err => {
+        console.error('API Fetch failed:', err);
+        return new Response(JSON.stringify({ error: 'Network error', message: err.message }), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' }
+        });
+      })
+    );
     return;
   }
   
   // Skip caching for chrome-extension and other non-http schemes
   if (!event.request.url.startsWith('http')) {
-    event.respondWith(fetch(event.request));
+    event.respondWith(
+      fetch(event.request).catch(err => {
+        return new Response('Invalid scheme', { status: 400 });
+      })
+    );
     return;
   }
   
@@ -73,9 +85,18 @@ self.addEventListener('fetch', (event) => {
         
         return response;
       })
-      .catch(() => {
+      .catch(async () => {
         // If network fails, try cache
-        return caches.match(event.request);
+        const matchedResponse = await caches.match(event.request);
+        if (matchedResponse) return matchedResponse;
+        
+        // If not in cache and network failed, we must return a valid Response or 
+        // the Service Worker will throw: "Failed to convert value to 'Response'"
+        return new Response('Network error occurred', {
+          status: 408,
+          statusText: 'Network Error',
+          headers: new Headers({ 'Content-Type': 'text/plain' })
+        });
       })
   );
 });
