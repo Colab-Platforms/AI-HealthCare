@@ -1,0 +1,15 @@
+{
+    "verbose": true,
+    "ignore": [
+        "uploads/*",
+        "server/uploads/*",
+        "brain/*",
+        "*.test.js",
+        "node_modules",
+        "client/*"
+    ],
+    "watch": [
+        "."
+    ],
+    "ext": "js,json"
+}

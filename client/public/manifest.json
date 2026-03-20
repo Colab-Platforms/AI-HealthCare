@@ -1,0 +1,121 @@
+{
+  "name": "FitCure - AI Health Assistant",
+  "short_name": "FitCure",
+  "description": "Your personal AI-powered health assistant for managing reports, nutrition, and wellness",
+  "start_url": "/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "minimal-ui",
+    "window-controls-overlay"
+  ],
+  "background_color": "#ffffff",
+  "theme_color": "#2FC8B9",
+  "prefer_related_applications": false,
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Screenshot_2026-03-05_115843.png?v=1772692147",
+      "sizes": "72x72",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Screenshot_2026-03-05_115843.png?v=1772692147",
+      "sizes": "96x96",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Screenshot_2026-03-05_115843.png?v=1772692147",
+      "sizes": "128x128",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Screenshot_2026-03-05_115843.png?v=1772692147",
+      "sizes": "144x144",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Screenshot_2026-03-05_115843.png?v=1772692147",
+      "sizes": "152x152",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Screenshot_2026-03-05_115843.png?v=1772692147",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Screenshot_2026-03-05_115843.png?v=1772692147",
+      "sizes": "384x384",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Screenshot_2026-03-05_115843.png?v=1772692147",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": [
+    "health",
+    "medical",
+    "lifestyle"
+  ],
+  "screenshots": [
+    {
+      "src": "/screenshot1.png",
+      "sizes": "540x720",
+      "type": "image/png"
+    },
+    {
+      "src": "/screenshot2.png",
+      "sizes": "540x720",
+      "type": "image/png"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Dashboard",
+      "short_name": "Dashboard",
+      "description": "View your health dashboard",
+      "url": "/dashboard",
+      "icons": [
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Screenshot_2026-03-05_115843.png?v=1772692147",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "AI Chat",
+      "short_name": "AI Chat",
+      "description": "Chat with AI health assistant",
+      "url": "/ai-chat",
+      "icons": [
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Screenshot_2026-03-05_115843.png?v=1772692147",
+          "sizes": "96x96"
+        }
+      ]
+    },
+    {
+      "name": "Upload Report",
+      "short_name": "Upload",
+      "description": "Upload health report",
+      "url": "/upload",
+      "icons": [
+        {
+          "src": "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Screenshot_2026-03-05_115843.png?v=1772692147",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ]
+}

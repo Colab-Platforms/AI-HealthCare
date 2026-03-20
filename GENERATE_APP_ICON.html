@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Generate FitCure App Icons</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        h1 {
+            color: #2FC8B9;
+            margin-bottom: 10px;
+        }
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+        }
+        canvas {
+            border: 2px solid #e0e0e0;
+            border-radius: 15px;
+            margin: 20px 0;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        button {
+            background: linear-gradient(135deg, #2FC8B9 0%, #1db7a6 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: bold;
+            margin: 10px 5px;
+            transition: transform 0.2s;
+        }
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(47, 200, 185, 0.4);
+        }
+        .size-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .size-btn {
+            background: #f0f0f0;
+            color: #333;
+            padding: 10px 20px;
+            font-size: 14px;
+        }
+        .size-btn:hover {
+            background: #e0e0e0;
+        }
+        .instructions {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #2FC8B9;
+        }
+        .instructions h3 {
+            margin-top: 0;
+            color: #2FC8B9;
+        }
+        .instructions ol {
+            margin: 10px 0;
+            padding-left: 20px;
+        }
+        .instructions li {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏥 FitCure App Icon Generator</h1>
+        <p class="subtitle">Generate PWA icons for your home screen</p>
+
+        <div class="instructions">
+            <h3>📋 Instructions:</h3>
+            <ol>
+                <li>Click "Generate Icon" to create the base icon</li>
+                <li>Click on any size button below to generate that specific size</li>
+                <li>Right-click on the canvas and "Save Image As..."</li>
+                <li>Save with the exact filename shown (e.g., icon-192x192.png)</li>
+                <li>Place all icons in the <code>client/public/</code> folder</li>
+                <li>Repeat for all sizes: 72, 96, 128, 144, 152, 192, 384, 512</li>
+            </ol>
+        </div>
+
+        <canvas id="iconCanvas"></canvas>
+        
+        <div>
+            <button onclick="generateIcon(512)">Generate Icon (512x512)</button>
+        </div>
+
+        <div class="size-buttons">
+            <button class="size-btn" onclick="generateIcon(72)">72x72</button>
+            <button class="size-btn" onclick="generateIcon(96)">96x96</button>
+            <button class="size-btn" onclick="generateIcon(128)">128x128</button>
+            <button class="size-btn" onclick="generateIcon(144)">144x144</button>
+            <button class="size-btn" onclick="generateIcon(152)">152x152</button>
+            <button class="size-btn" onclick="generateIcon(192)">192x192</button>
+            <button class="size-btn" onclick="generateIcon(384)">384x384</button>
+            <button class="size-btn" onclick="generateIcon(512)">512x512</button>
+        </div>
+
+        <p style="color: #666; font-size: 14px; margin-top: 20px;">
+            💡 Tip: After generating each size, right-click the canvas and save as <strong>icon-[size]x[size].png</strong>
+        </p>
+    </div>
+
+    <script>
+        function generateIcon(size) {
+            const canvas = document.getElementById('iconCanvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+
+            // Create gradient background
+            const gradient = ctx.createLinearGradient(0, 0, size, size);
+            gradient.addColorStop(0, '#2FC8B9');
+            gradient.addColorStop(1, '#1db7a6');
+            
+            // Draw rounded rectangle background
+            const radius = size * 0.15;
+            ctx.fillStyle = gradient;
+            roundRect(ctx, 0, 0, size, size, radius);
+            ctx.fill();
+
+            // Draw white circle in center
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.beginPath();
+            ctx.arc(size / 2, size / 2, size * 0.35, 0, Math.PI * 2);
+            ctx.fill();
+
+            // Draw heart/health icon
+            ctx.fillStyle = 'white';
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = size * 0.04;
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+
+            // Draw heartbeat line
+            const centerX = size / 2;
+            const centerY = size / 2;
+            const scale = size / 512;
+
+            ctx.beginPath();
+            ctx.moveTo(centerX - 120 * scale, centerY);
+            ctx.lineTo(centerX - 80 * scale, centerY);
+            ctx.lineTo(centerX - 60 * scale, centerY - 60 * scale);
+            ctx.lineTo(centerX - 40 * scale, centerY + 60 * scale);
+            ctx.lineTo(centerX - 20 * scale, centerY);
+            ctx.lineTo(centerX + 20 * scale, centerY);
+            ctx.lineTo(centerX + 40 * scale, centerY - 40 * scale);
+            ctx.lineTo(centerX + 60 * scale, centerY);
+            ctx.lineTo(centerX + 120 * scale, centerY);
+            ctx.stroke();
+
+            // Draw plus sign
+            const plusSize = size * 0.15;
+            const plusX = centerX;
+            const plusY = centerY - size * 0.25;
+            
+            ctx.fillStyle = 'white';
+            // Vertical line
+            ctx.fillRect(plusX - plusSize * 0.15, plusY - plusSize * 0.5, plusSize * 0.3, plusSize);
+            // Horizontal line
+            ctx.fillRect(plusX - plusSize * 0.5, plusY - plusSize * 0.15, plusSize, plusSize * 0.3);
+
+            alert(`Icon generated at ${size}x${size}!\n\nRight-click the canvas and save as:\nicon-${size}x${size}.png`);
+        }
+
+        function roundRect(ctx, x, y, width, height, radius) {
+            ctx.beginPath();
+            ctx.moveTo(x + radius, y);
+            ctx.lineTo(x + width - radius, y);
+            ctx.quadraticCurveTo(x + width, y, x + width, y + radius);
+            ctx.lineTo(x + width, y + height - radius);
+            ctx.quadraticCurveTo(x + width, y + height, x + width - radius, y + height);
+            ctx.lineTo(x + radius, y + height);
+            ctx.quadraticCurveTo(x, y + height, x, y + height - radius);
+            ctx.lineTo(x, y + radius);
+            ctx.quadraticCurveTo(x, y, x + radius, y);
+            ctx.closePath();
+        }
+
+        // Generate initial icon
+        window.onload = () => generateIcon(512);
+    </script>
+</body>
+</html>

@@ -1,0 +1,1066 @@
+import { useState, useEffect } from 'react';
+import api from '../services/api';
+import toast from 'react-hot-toast';
+import {
+  Loader2, Trash2, AlertCircle, CheckCircle, Camera, X, ChefHat,
+  Flame, Zap, Heart, Info, History, Brain, Sparkles, Activity, Plus, ShieldCheck,
+  ChevronRight, Lightbulb, Target, Droplets
+} from 'lucide-react';
+
+export default function QuickFoodCheck() {
+  const [foodInput, setFoodInput] = useState('');
+  const [image, setImage] = useState(null);
+  const [imagePreview, setImagePreview] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [result, setResult] = useState(null);
+  const [showQuantitySuggestion, setShowQuantitySuggestion] = useState(false);
+  const [quantitySuggestion, setQuantitySuggestion] = useState('');
+  const [showPrepMethod, setShowPrepMethod] = useState(false);
+  const [prepMethod, setPrepMethod] = useState(null);
+  const [history, setHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
+  const [showImageDetailsForm, setShowImageDetailsForm] = useState(false);
+  const [showCameraModal, setShowCameraModal] = useState(false);
+  const [imageDetails, setImageDetails] = useState({
+    quantity: '',
+    prepMethod: '',
+    additionalInfo: ''
+  });
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const fetchHistory = async () => {
+    try {
+      const response = await api.get(
+        `nutrition/quick-checks/history/date?date=${today}`
+      );
+      setHistory(response.data.stats?.checks || []);
+    } catch (error) {
+      console.error('Failed to fetch history:', error);
+    }
+  };
+
+  const getQuantitySuggestion = (text) => {
+    const lowerText = text.toLowerCase();
+
+    // Check if quantity already mentioned
+    const hasQuantity = /\d+/.test(lowerText) ||
+      ['bowl', 'plate', 'cup', 'glass', 'slice', 'piece', 'gram', 'kg', 'ml', 'litre'].some(q => lowerText.includes(q));
+
+    if (hasQuantity) return { show: false, text: '' };
+
+    // Liquids
+    const liquids = ['juice', 'milk', 'water', 'tea', 'coffee', 'smoothie', 'shake', 'lassi', 'soup', 'dal', 'curry'];
+    if (liquids.some(l => lowerText.includes(l))) {
+      return { show: true, text: '💡 Add quantity: e.g., 250ml, 1 glass, 2 cups' };
+    }
+
+    // Sliced items
+    const sliced = ['pizza', 'bread', 'toast', 'cake', 'sandwich', 'paratha', 'naan'];
+    if (sliced.some(s => lowerText.includes(s))) {
+      return { show: true, text: '💡 Add quantity: e.g., 2 slices, 1 piece' };
+    }
+
+    // Weight-based
+    const weighted = ['rice', 'roti', 'chicken', 'fish', 'meat', 'paneer', 'vegetables', 'pasta', 'biryani'];
+    if (weighted.some(w => lowerText.includes(w))) {
+      return { show: true, text: '💡 Add quantity: e.g., 100g, 1 bowl, 1 plate' };
+    }
+
+    // Countable
+    const countable = ['egg', 'banana', 'apple', 'samosa', 'pakora', 'biscuit', 'idli', 'dosa'];
+    if (countable.some(c => lowerText.includes(c))) {
+      return { show: true, text: '💡 Add quantity: e.g., 2 pieces, 1 banana' };
+    }
+
+    return { show: true, text: '💡 Add quantity for accurate results: e.g., 100g, 1 bowl, 2 pieces, 250ml' };
+  };
+
+  const getPrepMethodSuggestion = (text) => {
+    const lowerText = text.toLowerCase();
+
+    // Check if prep method already mentioned
+    const hasPrepMethod = ['grilled', 'fried', 'baked', 'boiled', 'steamed', 'roasted', 'raw', 'cooked', 'homemade', 'restaurant', 'packaged', 'frozen'].some(m => lowerText.includes(m));
+
+    if (hasPrepMethod) return { show: false };
+
+    // Foods that benefit from prep method info
+    const needsPrepInfo = ['chicken', 'fish', 'meat', 'egg', 'potato', 'vegetables', 'rice', 'noodles', 'samosa', 'pakora', 'fries', 'chips'];
+    if (needsPrepInfo.some(f => lowerText.includes(f))) {
+      return { show: true };
+    }
+
+    return { show: false };
+  };
+
+  const handleFoodInputChange = (e) => {
+    const value = e.target.value;
+    setFoodInput(value);
+
+    if (value.length >= 3) {
+      const suggestion = getQuantitySuggestion(value);
+      setShowQuantitySuggestion(suggestion.show);
+      setQuantitySuggestion(suggestion.text);
+
+      // Check if we should ask about prep method
+      const prepSuggestion = getPrepMethodSuggestion(value);
+      setShowPrepMethod(prepSuggestion.show);
+    } else {
+      setShowQuantitySuggestion(false);
+      setShowPrepMethod(false);
+    }
+  };
+
+  // Compress image to reduce memory usage on mobile
+  const compressImage = async (file) => {
+    console.log('compressImage called with:', file.name, `${(file.size / 1024).toFixed(0)}KB`);
+
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        console.log('FileReader loaded, creating image...');
+        const img = new Image();
+        img.onload = () => {
+          console.log('Image loaded:', img.width, 'x', img.height);
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+
+          // Resize if image is too large (max 1200px on longest side)
+          const maxSize = 1200;
+          if (width > maxSize || height > maxSize) {
+            if (width > height) {
+              height = (height / width) * maxSize;
+              width = maxSize;
+            } else {
+              width = (width / height) * maxSize;
+              height = maxSize;
+            }
+            console.log('Resizing to:', width, 'x', height);
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          console.log('Image drawn on canvas, converting to blob...');
+
+          // Convert to blob with compression (0.8 quality for JPEG)
+          canvas.toBlob(
+            (blob) => {
+              if (blob) {
+                console.log('Blob created:', `${(blob.size / 1024).toFixed(0)}KB`);
+                // Create a new File object from the blob
+                const compressedFile = new File([blob], file.name, {
+                  type: 'image/jpeg',
+                  lastModified: Date.now()
+                });
+                resolve(compressedFile);
+              } else {
+                console.error('Canvas to Blob conversion failed');
+                reject(new Error('Canvas to Blob conversion failed'));
+              }
+            },
+            'image/jpeg',
+            0.8
+          );
+        };
+        img.onerror = (error) => {
+          console.error('Image load error:', error);
+          reject(error);
+        };
+        img.src = e.target.result;
+      };
+      reader.onerror = (error) => {
+        console.error('FileReader error:', error);
+        reject(error);
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleImageSelect = async (e) => {
+    e.preventDefault(); // Prevent form submission/page refresh
+    e.stopPropagation(); // Stop event bubbling
+
+    const file = e.target.files[0];
+    console.log('Image selected:', file ? file.name : 'No file');
+
+    if (!file) {
+      console.log('No file selected');
+      return;
+    }
+
+    // Validate file size (max 5MB before compression)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('Image too large. Please use a smaller image (max 5MB)');
+      return;
+    }
+
+    try {
+      console.log('Starting image compression...');
+      // Show loading toast
+      const loadingToast = toast.loading('Processing image...');
+
+      // Compress image
+      const compressedFile = await compressImage(file);
+      console.log('Compression complete:', {
+        original: `${(file.size / 1024).toFixed(0)}KB`,
+        compressed: `${(compressedFile.size / 1024).toFixed(0)}KB`
+      });
+
+      setImage(compressedFile);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        console.log('Image preview ready');
+        setImagePreview(reader.result);
+        setShowImageDetailsForm(true); // Show form when image is selected
+        toast.dismiss(loadingToast);
+        toast.success(`Image ready (${(compressedFile.size / 1024).toFixed(0)}KB)`);
+      };
+      reader.onerror = (error) => {
+        console.error('FileReader error:', error);
+        toast.dismiss(loadingToast);
+        toast.error('Failed to read image file');
+      };
+      reader.readAsDataURL(compressedFile);
+    } catch (error) {
+      console.error('Image compression error:', error);
+      toast.error('Failed to process image. Please try another image.');
+    }
+
+    // Reset the input value so the same file can be selected again
+    e.target.value = '';
+  };
+
+  const handleQuickCheck = async () => {
+    if (!foodInput.trim() && !image) {
+      toast.error('Please enter a food item or upload an image');
+      return;
+    }
+
+    // If image is uploaded, quantity and prep method are optional but recommended
+    // Don't block the user if they want to proceed without them
+
+    setLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+
+      // Build context from image details and food input
+      let contextText = '';
+      const parts = [];
+
+      // Add food input text if provided
+      if (foodInput && foodInput.trim()) {
+        parts.push(foodInput.trim());
+      }
+
+      // Add image details if provided
+      if (image) {
+        if (imageDetails.quantity) parts.push(`Quantity: ${imageDetails.quantity}`);
+        if (imageDetails.prepMethod) parts.push(`Preparation: ${imageDetails.prepMethod}`);
+        if (imageDetails.additionalInfo) parts.push(imageDetails.additionalInfo);
+      }
+
+      contextText = parts.join(', ');
+
+      // Use FormData for image upload to avoid memory issues
+      const formData = new FormData();
+      formData.append('foodDescription', foodInput || 'Food from image');
+      formData.append('additionalContext', contextText);
+
+      if (image) {
+        // Image is already compressed from handleImageSelect
+        formData.append('image', image);
+        console.log('Sending image:', {
+          size: `${(image.size / 1024).toFixed(2)} KB`,
+          name: image.name
+        });
+      }
+
+      console.log('Sending request:', {
+        hasImage: !!image,
+        hasText: !!foodInput,
+        context: contextText
+      });
+
+      const response = await api.post(
+        'nutrition/quick-check',
+        formData,
+        {
+          headers: {
+            'Content-Type': 'multipart/form-data'
+          },
+          timeout: 60000 // 60 seconds for image analysis
+        }
+      );
+
+      setResult(response.data.data);
+      setFoodInput('');
+      setImage(null);
+      setImagePreview(null);
+      setShowQuantitySuggestion(false);
+      setShowImageDetailsForm(false);
+      setImageDetails({ quantity: '', prepMethod: '', additionalInfo: '' });
+      toast.success('Food analyzed and saved!');
+      fetchHistory();
+    } catch (error) {
+      console.error('Quick check error:', error);
+      console.error('Error response:', error.response?.data);
+
+      // Check if AI couldn't detect food in image
+      if (error.response?.status === 400 && error.response?.data?.error === 'UNABLE_TO_DETECT_FOOD') {
+        // Clear image and show helpful message
+        setImage(null);
+        setImagePreview(null);
+        setShowImageDetailsForm(false);
+
+        // Keep quantity and prep method if user provided them
+        // (don't reset imageDetails completely)
+
+        toast.error('Could not detect food in image. Please type the food name above for accurate results.', {
+          duration: 5000
+        });
+
+        // Focus the food input field
+        setTimeout(() => {
+          const foodInputElement = document.querySelector('input[placeholder*="What did you eat"]');
+          if (foodInputElement) {
+            foodInputElement.focus();
+          }
+        }, 100);
+      } else if (error.code === 'ECONNABORTED') {
+        toast.error('Request timeout. The image analysis took too long. Please try again or use text description.');
+      } else if (error.response?.status === 413) {
+        toast.error('Image too large. Please use a smaller image.');
+      } else {
+        toast.error(error.response?.data?.message || 'Failed to analyze food. Please try again.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleHistoryItemClick = (check) => {
+    setResult({
+      foodItem: {
+        name: check.foodName,
+        quantity: check.quantity || '',
+        nutrition: {
+          calories: check.calories || 0,
+          protein: check.protein || 0,
+          carbs: check.carbs || 0,
+          fats: check.fats || 0,
+          fiber: check.nutrition?.fiber || 0,
+          sugar: check.nutrition?.sugar || 0,
+          sodium: check.nutrition?.sodium || 0
+        }
+      },
+      isHealthy: check.isHealthy,
+      healthScore: check.healthScore,
+      healthScore10: check.healthScore10,
+      analysis: check.analysis || 'Previously analyzed food item',
+      micronutrients: check.micronutrients || [],
+      enhancementTips: check.enhancementTips || [],
+      healthBenefitsSummary: check.healthBenefitsSummary || check.analysis || '',
+      warnings: check.warnings || [],
+      alternatives: check.alternatives || []
+    });
+    setShowHistory(false);
+  };
+
+  const deleteFromHistory = async (id) => {
+    if (!confirm('Delete this food check?')) return;
+
+    try {
+      await api.delete(`nutrition/quick-checks/${id}`);
+      toast.success('Deleted');
+      fetchHistory();
+    } catch (error) {
+      toast.error('Failed to delete');
+    }
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Main Quick Check Card */}
+      <div className="bg-white rounded-3xl p-6 shadow-lg border border-slate-100">
+        {/* Header */}
+        <div className="flex items-center gap-3 mb-6">
+          <div className="w-12 h-12 bg-black rounded-2xl flex items-center justify-center">
+            <Lightbulb className="w-6 h-6 text-white" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Quick Check</h2>
+            <p className="text-sm text-gray-600">Analyze any food instantly</p>
+          </div>
+        </div>
+
+        {/* Food Input Section */}
+        <div className="space-y-4">
+          {/* Main Input with Camera Icon */}
+          <div className="relative">
+            <input
+              type="text"
+              value={foodInput}
+              onChange={handleFoodInputChange}
+              placeholder="What did you eat? e.g., Pizza, Chicken... or upload image"
+              className="w-full px-5 py-4 pr-14 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-black focus:ring-2 focus:ring-slate-900/10 text-gray-900 placeholder-gray-400 font-bold transition-all"
+            />
+            {/* Camera Icon - Opens Modal */}
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+              <button
+                onClick={() => setShowCameraModal(true)}
+                className="p-2 text-black hover:bg-slate-100 rounded-lg transition relative group"
+              >
+                <Camera className="w-5 h-5" />
+                {/* Tooltip */}
+                <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
+                  Upload or capture food
+                </div>
+              </button>
+              {foodInput && (
+                <button
+                  onClick={() => {
+                    setFoodInput('');
+                    setShowQuantitySuggestion(false);
+                    setShowPrepMethod(false);
+                  }}
+                  className="p-2 hover:bg-gray-100 rounded-lg transition"
+                >
+                  <X className="w-5 h-5 text-gray-400" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Image Preview */}
+          {imagePreview && (
+            <div className="relative bg-white border-2 border-slate-100 rounded-2xl p-4 animate-in fade-in slide-in-from-top-2">
+              <div className="flex items-start gap-4">
+                <img
+                  src={imagePreview}
+                  alt="Food preview"
+                  className="w-24 h-24 object-cover rounded-xl border border-slate-200"
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-black text-slate-800 mb-1 uppercase tracking-tight">📸 Image Ready</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest leading-none">AI will analyze the food in this image</p>
+                  <p className="text-[10px] text-black font-black mt-2 uppercase tracking-tight">
+                    👇 Add details below for better accuracy
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setImage(null);
+                    setImagePreview(null);
+                    setShowImageDetailsForm(false);
+                    setImageDetails({ quantity: '', prepMethod: '', additionalInfo: '' });
+                  }}
+                  className="p-2 hover:bg-red-50 rounded-lg transition text-red-500"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Image Details Form */}
+          {showImageDetailsForm && imagePreview && (
+            <div className="bg-white border-2 border-slate-100 rounded-2xl p-5 animate-in fade-in slide-in-from-top-2">
+              <p className="text-xs font-black text-black mb-4 flex items-center gap-2 uppercase tracking-widest">
+                <ChefHat className="w-4 h-4" />
+                Details for better accuracy
+              </p>
+
+              {/* Quantity Input */}
+              <div className="mb-4">
+                <label className="block text-xs font-semibold text-gray-700 mb-2">
+                  Quantity (e.g., "2 pieces", "1 bowl", "100g")
+                </label>
+                <input
+                  type="text"
+                  value={imageDetails.quantity}
+                  onChange={(e) => setImageDetails({ ...imageDetails, quantity: e.target.value })}
+                  placeholder="How much did you eat?"
+                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-black focus:ring-2 focus:ring-slate-100 text-gray-900 placeholder-gray-500"
+                />
+              </div>
+
+              {/* Preparation Method */}
+              <div className="mb-4">
+                <label className="block text-xs font-semibold text-gray-700 mb-2">
+                  How was it prepared?
+                </label>
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { label: 'Fried', icon: '🍳' },
+                    { label: 'Baked', icon: '🥐' },
+                    { label: 'Grilled', icon: '🔥' },
+                    { label: 'Homemade', icon: '🏠' },
+                    { label: 'Restaurant', icon: '🍽️' },
+                    { label: 'Packaged', icon: '📦' }
+                  ].map((method) => (
+                    <button
+                      key={method.label}
+                      type="button"
+                      onClick={() => setImageDetails({ ...imageDetails, prepMethod: method.label })}
+                      className={`px-3 py-2 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all ${imageDetails.prepMethod === method.label
+                        ? 'bg-black text-white shadow-md'
+                        : 'bg-slate-50 text-slate-400 hover:bg-slate-100'
+                        }`}
+                    >
+                      {method.icon} {method.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Additional Info */}
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 mb-2">
+                  Additional details (optional)
+                </label>
+                <input
+                  type="text"
+                  value={imageDetails.additionalInfo}
+                  onChange={(e) => setImageDetails({ ...imageDetails, additionalInfo: e.target.value })}
+                  placeholder="e.g., with cheese, extra spicy, etc."
+                  className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-200 rounded-xl focus:outline-none focus:border-black focus:ring-2 focus:ring-slate-100 text-gray-900 placeholder-gray-500"
+                />
+              </div>
+
+              {/* Info Note */}
+              <div className="mt-4 flex items-start gap-2 bg-slate-50 rounded-xl p-3 border border-slate-100">
+                <Info className="w-4 h-4 text-slate-400 flex-shrink-0 mt-0.5" />
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight">
+                  These details help AI provide more accurate nutritional information
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Quantity Suggestion */}
+          {showQuantitySuggestion && (
+            <div className="bg-white border-2 border-slate-100 rounded-2xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
+              <Zap className="w-5 h-5 text-black flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-slate-900 mb-1">Add Quantity</p>
+                <p className="text-sm text-slate-600">{quantitySuggestion}</p>
+              </div>
+            </div>
+          )}
+
+          {/* Prep Method Suggestion */}
+          {showPrepMethod && (
+            <div className="bg-white border-2 border-slate-100 rounded-2xl p-4 animate-in fade-in slide-in-from-top-2">
+              <p className="text-sm font-semibold text-slate-900 mb-3 flex items-center gap-2">
+                <ChefHat className="w-4 h-4" />
+                How was it prepared?
+              </p>
+              <div className="grid grid-cols-2 gap-2">
+                {[
+                  { label: 'Homemade', icon: '🏠' },
+                  { label: 'Restaurant', icon: '🍽️' },
+                  { label: 'Packaged', icon: '📦' },
+                  { label: 'Grilled', icon: '🔥' },
+                  { label: 'Fried', icon: '🍳' },
+                  { label: 'Baked', icon: '🥐' }
+                ].map((method) => (
+                  <button
+                    key={method.label}
+                    onClick={() => {
+                      setPrepMethod(method.label);
+                      setShowPrepMethod(false);
+                    }}
+                    className={`px-3 py-2 rounded-xl text-sm font-medium transition-all ${prepMethod === method.label
+                      ? 'bg-black text-white'
+                      : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+                      }`}
+                  >
+                    {method.icon} {method.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Image Upload & Check Button */}
+          <div className="grid grid-cols-1 gap-3">
+            {/* Check Button - Improved */}
+            <button
+              onClick={handleQuickCheck}
+              disabled={loading || (!foodInput.trim() && !image)}
+              className="px-4 py-4 bg-black text-white rounded-2xl font-black uppercase tracking-widest hover:bg-slate-900 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 shadow-xl active:scale-95"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <span>Analyzing...</span>
+                </>
+              ) : (
+                <>
+                  <Zap className="w-5 h-5" />
+                  <span>Analyze Food</span>
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Result Display - Premium Medical UI */}
+      {result && (
+        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-xl relative overflow-hidden group">
+            {/* Animated Background Gradient - Neutral */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-slate-50 rounded-full -translate-y-1/2 translate-x-1/2 blur-3xl group-hover:scale-110 transition-transform duration-700" />
+
+            <div className="relative z-10">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-8">
+                <div className="space-y-2">
+                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-black text-white rounded-full text-[10px] font-black uppercase tracking-widest shadow-lg mb-2">
+                    <Sparkles className="w-3 h-3 text-white" />
+                    AI Health Analysis Result
+                  </div>
+                  <h3 className="text-3xl font-black text-slate-800 tracking-tighter leading-tight">
+                    {result.foodItem?.name}
+                  </h3>
+                  <div className="flex items-center gap-4">
+                    <p className="text-slate-500 font-bold flex items-center gap-1.5 uppercase text-[11px] tracking-widest">
+                      <Target className="w-4 h-4 text-black" />
+                      {result.foodItem?.quantity || '1 Serving'}
+                    </p>
+                    {prepMethod && (
+                      <p className="text-slate-500 font-bold flex items-center gap-1.5 uppercase text-[11px] tracking-widest">
+                        <ChefHat className="w-4 h-4 text-slate-400" />
+                        {prepMethod}
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                {/* Health Score Circle */}
+                <div className="relative flex-shrink-0 flex items-center justify-center">
+                  <svg className="w-24 h-24 transform -rotate-90">
+                    <circle
+                      cx="48"
+                      cy="48"
+                      r="42"
+                      stroke="#f1f5f9"
+                      strokeWidth="8"
+                      fill="none"
+                    />
+                    <circle
+                      cx="48"
+                      cy="48"
+                      r="42"
+                      stroke={result.isHealthy ? "#000" : "#666"}
+                      strokeWidth="8"
+                      fill="none"
+                      strokeDasharray={263.89}
+                      strokeDashoffset={263.89 - (result.healthScore / 100) * 263.89}
+                      strokeLinecap="round"
+                      className="transition-all duration-1000 ease-out"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-2xl font-black text-slate-800 leading-none">
+                      {Math.round(result.healthScore)}
+                    </span>
+                    <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest mt-0.5">SCORE</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Status Indicator */}
+              <div className={`flex items-center gap-3 p-4 rounded-2xl border ${result.isHealthy
+                ? 'bg-slate-50 border-slate-200 text-black'
+                : 'bg-slate-50/50 border-slate-100 text-slate-800'
+                }`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-sm ${result.isHealthy ? 'bg-black text-white' : 'bg-slate-400 text-white'
+                  }`}>
+                  {result.isHealthy ? <CheckCircle className="w-6 h-6" /> : <AlertCircle className="w-6 h-6" />}
+                </div>
+                <div className="flex-1">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-60">Health Status</p>
+                  <p className="font-bold text-sm tracking-tight">
+                    {result.isHealthy ? 'Recommended for your diet' : 'Recommended in moderate portions'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Nutrition Grid - Premium Style */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Calories', value: result.foodItem?.nutritionRanges?.calories || result.foodItem?.nutrition?.calories || 0, unit: 'kcal', icon: Flame, color: 'text-black', bg: 'bg-white', border: 'border-slate-900' },
+              { label: 'Protein', value: result.foodItem?.nutritionRanges?.protein || result.foodItem?.nutrition?.protein || 0, unit: 'g', icon: Heart, color: 'text-black', bg: 'bg-white', border: 'border-slate-100' },
+              { label: 'Carbs', value: result.foodItem?.nutritionRanges?.carbs || result.foodItem?.nutrition?.carbs || 0, unit: 'g', icon: Zap, color: 'text-black', bg: 'bg-white', border: 'border-slate-100' },
+              { label: 'Fats', value: result.foodItem?.nutritionRanges?.fats || result.foodItem?.nutrition?.fats || 0, unit: 'g', icon: Lightbulb, color: 'text-black', bg: 'bg-white', border: 'border-slate-100' }
+            ].map((macro) => (
+              <div key={macro.label} className={`bg-white rounded-[2rem] p-5 border ${macro.border} shadow-sm group hover:scale-[1.02] transition-transform duration-300`}>
+                <div className={`w-10 h-10 rounded-xl ${macro.bg} flex items-center justify-center mb-3 group-hover:rotate-6 transition-transform`}>
+                  <macro.icon className={`w-5 h-5 ${macro.color}`} />
+                </div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{macro.label}</p>
+                <div className="flex items-baseline gap-1 mt-1">
+                  <p className="text-xl font-black text-slate-800 tracking-tight">{macro.value}</p>
+                  <p className="text-[10px] font-bold text-slate-400 uppercase">{macro.unit}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Health Analysis Card */}
+          <div className="bg-black rounded-[2rem] p-6 shadow-xl relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16" />
+            <div className="relative z-10">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-md flex items-center justify-center text-white">
+                  <Brain className="w-5 h-5" />
+                </div>
+                <h4 className="text-xs font-black text-white tracking-widest uppercase">AI Health Insights</h4>
+              </div>
+              <p className="text-sm text-slate-300 font-medium leading-relaxed italic border-l-2 border-white/20 pl-4 py-1">
+                {result.healthBenefitsSummary || result.analysis}
+              </p>
+            </div>
+          </div>
+
+          {/* New: Health Benefits Highlights */}
+          {(result.benefits || result.healthBenefits) && (result.benefits || result.healthBenefits).length > 0 && (
+            <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
+                  <ShieldCheck className="w-4 h-4" />
+                </div>
+                <h4 className="text-xs font-black text-slate-700 tracking-tight uppercase">Health Benefits</h4>
+              </div>
+              <div className="space-y-3">
+                {(result.benefits || result.healthBenefits).map((benefit, i) => (
+                  <div key={i} className="flex gap-3 items-start text-[11px] text-slate-900 bg-emerald-50/30 p-4 rounded-2xl border border-emerald-100/50">
+                    <CheckCircle className="w-4 h-4 text-emerald-500 shrink-0 mt-0.5" />
+                    {typeof benefit === 'string' ? (
+                      <span className="font-bold">{benefit}</span>
+                    ) : (
+                      <div className="flex flex-col gap-0.5">
+                        <span className="font-black tracking-tight text-emerald-900">{benefit.name}</span>
+                        <span className="font-medium text-emerald-700">{benefit.benefit || benefit.description}</span>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Micronutrients Section */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-8 h-8 rounded-xl bg-slate-50 flex items-center justify-center text-black">
+                <Activity className="w-4 h-4" />
+              </div>
+              <h4 className="text-xs font-black text-slate-700 tracking-tight uppercase">Key Micronutrients</h4>
+            </div>
+
+            <div 
+              className={`grid grid-cols-1 gap-3 overflow-y-auto pr-1 ${result.micronutrients?.length > 3 ? 'max-h-[220px]' : ''}`}
+              style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+            >
+              <style>{`.hide-scrollbar::-webkit-scrollbar { display: none; }`}</style>
+              <div className="grid grid-cols-2 gap-3 hide-scrollbar">
+                {(result.micronutrients || []).map((micro, i) => (
+                  <div key={i} className="bg-white rounded-xl p-3 border border-slate-100 shadow-sm hover:border-slate-300 transition-colors">
+                    <div className="flex justify-between items-start mb-1.5">
+                      <div className="min-w-0">
+                        <p className="text-[10px] font-black text-slate-700 truncate">{typeof micro === 'object' ? micro.name : micro}</p>
+                        {typeof micro === 'object' && micro.dailyRecommendation && (
+                          <p className="text-[8px] font-bold text-slate-400 uppercase">Rec: {micro.dailyRecommendation}</p>
+                        )}
+                      </div>
+                      <span className="text-[10px] font-black text-black shrink-0 ml-1">
+                        {typeof micro === 'object' && micro.amount ? `${micro.amount}${micro.unit || ''}` : ''} 
+                        {typeof micro === 'object' && micro.percentage ? ` (${micro.percentage}%)` : ' Rich'}
+                      </span>
+                    </div>
+                    <div className="h-1 bg-slate-50 rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-black rounded-full"
+                        style={{ width: `${(typeof micro === 'object' && micro.percentage) ? Math.min(100, micro.percentage) : 25}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {(!result.micronutrients || result.micronutrients.length === 0) && (
+                <p className="text-[10px] font-bold text-slate-400 italic text-center py-4">Micronutrient analysis pending...</p>
+              )}
+            </div>
+          </div>
+
+          {/* Enhancement Section */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-8 h-8 rounded-xl bg-black flex items-center justify-center text-white">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <h4 className="text-xs font-black text-black tracking-tight uppercase">Healthy Optimizations</h4>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {(result.enhancementTips || []).map((tip, i) => (
+                <div key={i} className="bg-slate-900 text-white rounded-2xl p-4 flex items-center gap-3 border border-slate-800 shadow-lg transition-transform hover:scale-[1.02]">
+                  <div className="w-6 h-6 rounded-full bg-white/10 flex items-center justify-center text-white shrink-0">
+                    <Plus className="w-3 h-3 font-bold" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] font-black uppercase tracking-tight leading-tight">{typeof tip === 'object' ? tip.name : tip}</p>
+                    <p className="text-[8px] font-bold text-slate-400 truncate uppercase mt-1">{typeof tip === 'object' && tip.benefit ? tip.benefit : 'Improves health profile'}</p>
+                  </div>
+                </div>
+              ))}
+              {(!result.enhancementTips || result.enhancementTips.length === 0) && (
+                <p className="text-[10px] font-bold text-slate-400 italic text-center col-span-2">Analyzing optimization paths...</p>
+              )}
+            </div>
+          </div>
+
+          {/* Warnings */}
+          {result.warnings && result.warnings.length > 0 && (
+            <div className="bg-slate-50 rounded-2xl p-5 border-2 border-slate-200">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-6 h-6 text-black flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-black mb-2">⚠️ Watch Out</p>
+                  <ul className="space-y-1">
+                    {result.warnings.map((w, i) => (
+                      <li key={i} className="text-sm text-red-700">• {w}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Healthy Alternatives */}
+          {result.alternatives && result.alternatives.length > 0 && (
+            <div className="bg-green-50 rounded-2xl p-5 border-2 border-green-200">
+              <div className="flex items-center gap-2 mb-4">
+                <Lightbulb className="w-6 h-6 text-green-600" />
+                <h4 className="font-bold text-green-900">✨ Better Options</h4>
+              </div>
+              <div className="space-y-3">
+                {result.alternatives.slice(0, 3).map((alt, i) => (
+                  <div key={i} className="bg-white rounded-xl p-4 border border-green-200">
+                    <div className="flex items-start justify-between mb-2">
+                      <p className="font-bold text-green-900">{alt.name}</p>
+                      <span className="text-xs font-bold bg-green-100 text-green-700 px-2 py-1 rounded-lg">
+                        {alt.nutrition?.calories} cal
+                      </span>
+                    </div>
+                    <p className="text-sm text-green-700 mb-2">{alt.description}</p>
+                    <div className="flex gap-2 text-xs text-green-600 font-medium">
+                      <span>P: {alt.nutrition?.protein}g</span>
+                      <span>C: {alt.nutrition?.carbs}g</span>
+                      <span>F: {alt.nutrition?.fats}g</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Final Action - New Analysis */}
+          <div className="pt-4 border-t border-slate-100">
+            <button
+              onClick={() => {
+                setResult(null);
+                setPrepMethod(null);
+                setFoodInput('');
+                setImage(null);
+                setImagePreview(null);
+              }}
+              className="w-full py-5 bg-slate-900 text-white rounded-[2rem] font-black text-xs uppercase tracking-[0.2em] shadow-xl hover:shadow-2xl hover:bg-slate-800 transition-all active:scale-[0.98] flex items-center justify-center gap-2 group"
+            >
+              <Plus className="w-4 h-4 group-hover:rotate-90 transition-transform duration-300" />
+              Analyze Another Food
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* History Section */}
+      <div className="bg-white rounded-3xl p-6 shadow-lg border-2 border-gray-200">
+        <button
+          onClick={() => setShowHistory(!showHistory)}
+          className="w-full flex items-center justify-between mb-4"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-[#F5F5F7] rounded-xl flex items-center justify-center">
+              <History className="w-5 h-5 text-black" />
+            </div>
+            <div className="text-left">
+              <h3 className="font-bold text-gray-900">Today's Checks</h3>
+              <p className="text-xs text-gray-600">{history.length} items</p>
+            </div>
+          </div>
+          <span className={`text-2xl text-gray-400 transition-transform ${showHistory ? 'rotate-180' : ''}`}>
+            ▼
+          </span>
+        </button>
+
+        {showHistory && (
+          <div className="space-y-2 border-t-2 border-gray-200 pt-4">
+            {history.length === 0 ? (
+              <p className="text-center text-gray-500 py-4">No checks yet today</p>
+            ) : (
+              history.map((check) => (
+                <button
+                  key={check._id}
+                  onClick={() => handleHistoryItemClick(check)}
+                  className="w-full flex items-center justify-between p-3 bg-slate-50 border border-slate-100 rounded-xl hover:bg-slate-100 transition-all text-left"
+                >
+                  <div className="flex-1">
+                    <p className="font-semibold text-gray-900">{check.foodName}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <span className={`text-xs font-bold px-2 py-1 rounded-lg ${check.isHealthy ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                        }`}>
+                        {check.healthScore}/100
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {check.calories} cal
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        {new Date(check.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteFromHistory(check._id);
+                    }}
+                    className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition ml-2"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </button>
+              ))
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Camera/Gallery Modal */}
+      {showCameraModal && (
+        <div
+          data-modal="true"
+          className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[999] p-4"
+          onClick={(e) => {
+            // Close modal when clicking backdrop
+            if (e.target === e.currentTarget) {
+              e.preventDefault();
+              e.stopPropagation();
+              setShowCameraModal(false);
+            }
+          }}
+          onTouchStart={(e) => {
+            // Prevent any touch events from bubbling
+            if (e.target === e.currentTarget) {
+              e.stopPropagation();
+            }
+          }}
+        >
+          <div
+            className="bg-white rounded-3xl p-6 max-w-sm w-full animate-in fade-in slide-in-from-bottom-4"
+            onClick={(e) => {
+              e.stopPropagation();
+            }}
+          >
+            <h3 className="text-xl font-bold text-gray-900 mb-4">Choose Image Source</h3>
+            <div className="space-y-3">
+              {/* Camera Option */}
+              <label
+                htmlFor="camera-input"
+                className="cursor-pointer block"
+              >
+                <input
+                  id="camera-input"
+                  type="file"
+                  accept="image/*"
+                  capture="environment"
+                  onChange={async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowCameraModal(false); // Close modal first
+                    await handleImageSelect(e); // Then process image
+                  }}
+                  className="hidden"
+                  style={{ display: 'none' }}
+                />
+                <div className="flex items-center gap-4 p-4 bg-[#F5F5F7] border border-slate-100 rounded-2xl hover:border-black transition-all">
+                  <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center">
+                    <Camera className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-900">Take Photo</p>
+                    <p className="text-sm text-gray-600">Use camera to capture food</p>
+                  </div>
+                </div>
+              </label>
+
+              {/* Gallery Option */}
+              <label
+                htmlFor="gallery-input"
+                className="cursor-pointer block"
+              >
+                <input
+                  id="gallery-input"
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowCameraModal(false); // Close modal first
+                    await handleImageSelect(e); // Then process image
+                  }}
+                  className="hidden"
+                  style={{ display: 'none' }}
+                />
+                <div className="flex items-center gap-4 p-4 bg-[#F5F5F7] border border-slate-100 rounded-2xl hover:border-black transition-all">
+                  <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center">
+                    <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-bold text-gray-900">Choose from Gallery</p>
+                    <p className="text-sm text-gray-600">Select existing photo</p>
+                  </div>
+                </div>
+              </label>
+            </div>
+
+            {/* Cancel Button */}
+            <button
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                setShowCameraModal(false);
+              }}
+              className="w-full mt-4 py-3 bg-gray-200 text-gray-900 rounded-2xl font-bold hover:bg-gray-300 transition-all"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}

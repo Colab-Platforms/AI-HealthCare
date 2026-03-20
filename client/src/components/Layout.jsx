@@ -1,0 +1,308 @@
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
+import {
+  LayoutDashboard, Calendar, FileText, Settings, LogOut,
+  Bell, Search, Activity, Watch, Clock, Apple, MessageSquare, Utensils, ArrowLeft,
+  Droplet, Brain, TrendingUp, Sun, Moon, MessageCircle, BarChart3, Dumbbell, Users, ShieldCheck
+} from 'lucide-react';
+import { useState, useEffect } from 'react';
+import TextSelectionPopup from './TextSelectionPopup';
+import MobileBottomNav from './MobileBottomNav';
+import PWAInstallPrompt from './PWAInstallPrompt';
+import api from '../services/api';
+import NotificationPanel from './NotificationPanel';
+import { useRef } from 'react';
+
+const patientNavItems = [
+  { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { path: '/diabetes', icon: Droplet, label: 'Diabetes', isDiabeticOnly: true },
+  { path: '/upload', icon: Brain, label: 'AI Analyzer' },
+  { path: '/nutrition', icon: Utensils, label: 'Nutrition' },
+  { path: '/diet-plan', icon: FileText, label: 'Diet Plan' }
+];
+
+const doctorNavItems = [
+  { path: '/doctor/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { path: '/doctor/availability', icon: Clock, label: 'Manage Slots' },
+  { path: '/profile', icon: Settings, label: 'Profile' }
+];
+
+const adminExtraNavItems = [
+  { path: '/admin', icon: LayoutDashboard, label: 'Admin Panel' },
+  { path: '/admin/users', icon: Users, label: 'Manage Users' },
+  { path: '/admin/food-cache', icon: Utensils, label: 'Food DB' },
+  { path: '/admin/reports', icon: FileText, label: 'Review Reports' }
+];
+
+export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isDoctorLayout }) {
+  const { user, logout, isAdmin, isDoctor, refreshUser } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [healthData, setHealthData] = useState({ healthScore: 0, caloriesConsumed: 0, calorieTarget: 2000 });
+  const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const notificationTriggerRef = useRef(null);
+
+  // Refresh user data on mount to get latest profile picture and data
+  useEffect(() => {
+    if (user && refreshUser) {
+      refreshUser();
+    }
+  }, []);
+
+  // Fetch real-time health data for dashboard
+  useEffect(() => {
+    const fetchHealthData = async () => {
+      if (location.pathname === '/dashboard' && !isAdmin() && !isDoctor()) {
+        try {
+          // Fetch latest report for health score
+          const reportsRes = await api.get('health/reports');
+          const reports = Array.isArray(reportsRes.data) ? reportsRes.data : (reportsRes.data.reports || []);
+          const latestReport = reports[0];
+          const healthScore = latestReport?.aiAnalysis?.healthScore || latestReport?.healthScore || 0;
+
+          // Fetch today's nutrition summary
+          const today = new Date().toISOString().split('T')[0];
+          const nutritionRes = await api.get(`nutrition/summary/daily?date=${today}`);
+          const caloriesConsumed = nutritionRes.data.summary?.totalCalories || 0;
+
+          // Fetch health goal for calorie target
+          const goalRes = await api.get('nutrition/goals').catch(() => ({ data: { healthGoal: null } }));
+          const calorieTarget = goalRes.data.healthGoal?.dailyCalorieTarget || 2000;
+
+          setHealthData({ healthScore, caloriesConsumed, calorieTarget });
+        } catch (error) {
+          console.error('Failed to fetch health data:', error);
+        }
+      }
+    };
+
+    fetchHealthData();
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchHealthData, 30000);
+    return () => clearInterval(interval);
+  }, [location.pathname, isAdmin, isDoctor]);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
+
+  const handleRestoreAdmin = () => {
+    const adminToken = localStorage.getItem('originalAdminToken');
+    const adminUser = localStorage.getItem('originalAdminUser');
+    if (adminToken && adminUser) {
+      localStorage.setItem('token', adminToken);
+      localStorage.setItem('user', adminUser);
+      localStorage.removeItem('originalAdminToken');
+      localStorage.removeItem('originalAdminUser');
+      window.location.href = '/admin/users';
+    }
+  };
+
+  const isImpersonating = !!localStorage.getItem('originalAdminToken');
+
+  let navItems = patientNavItems;
+  let homeLink = '/dashboard';
+  let portalName = 'Patient Portal';
+
+  if (isAdmin() || isAdminLayout) {
+    navItems = [...patientNavItems, ...adminExtraNavItems];
+    homeLink = '/admin';
+    portalName = 'Admin Panel';
+  } else if (isDoctor() || isDoctorLayout) {
+    navItems = doctorNavItems;
+    homeLink = '/doctor/dashboard';
+    portalName = user?.doctorProfile?.specialization || 'Doctor Portal';
+  }
+
+  // Clean white background for all pages - Now with more visible purple tone
+  const bgColor = 'bg-[#FAFAFF]';
+
+  const isDashboardPage = location.pathname === '/dashboard' || location.pathname === '/doctor/dashboard' || location.pathname === '/admin';
+
+  return (
+    <div className={`min-h-screen flex flex-col ${bgColor}`}>
+      {/* Admin Session Banner */}
+      {isImpersonating && (
+        <div className="bg-slate-900 text-white py-2 px-6 flex items-center justify-between sticky top-0 z-[60] shadow-xl border-b border-white/10">
+          <div className="flex items-center gap-3">
+            <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <p className="text-[10px] font-black uppercase tracking-widest">
+              Impersonation Mode: <span className="text-amber-400">{user?.name}</span>
+            </p>
+          </div>
+          <button 
+            onClick={handleRestoreAdmin}
+            className="flex items-center gap-2 px-3 py-1 bg-white/10 hover:bg-white/20 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all border border-white/5 border-b-2 border-b-white/10 active:border-b-0 active:translate-y-px"
+          >
+            <ShieldCheck className="w-3.5 h-3.5" /> Stop View & Return
+          </button>
+        </div>
+      )}
+
+      <div className="flex-1 flex w-full h-full relative">
+      {/* Sidebar - Slide from RIGHT on mobile, sticky on desktop */}
+      <aside className={`fixed inset-y-0 right-0 lg:sticky lg:left-0 z-50 w-64 h-screen shrink-0 transform transition-transform duration-300 hidden lg:flex lg:flex-col bg-white border-r border-slate-100 ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
+        <div className="flex flex-col h-full">
+          {/* Logo - Fixed at top */}
+          <div className="p-8 shrink-0 border-b border-slate-50">
+            <Link to={homeLink} className="flex items-center gap-4">
+              <div className="w-8 h-8 rounded-full flex items-center justify-center border-2 border-slate-900 bg-white">
+                <div className="w-4 h-4 rounded-full border-2 border-slate-900"></div>
+              </div>
+              <div className="min-w-0">
+                <p className="font-black text-black text-xl tracking-tighter">FitCure</p>
+              </div>
+            </Link>
+          </div>
+
+          {/* Navigation - Scrollable middle section */}
+          <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
+            {navItems.map(({ path, icon: Icon, label, comingSoon, badge, isDiabeticOnly }) => {
+              // Conditionally hide diabetes if not diabetic
+              const isDiabetic = user?.profile?.medicalHistory?.conditions?.some(c => c.toLowerCase().includes('diabetes')) || user?.profile?.diabetesProfile?.type;
+              if (isDiabeticOnly && !isDiabetic) return null;
+
+              if (comingSoon) {
+                return (
+                  <div key={path} className="flex items-center justify-between px-5 py-3.5 rounded-2xl transition-all cursor-not-allowed text-slate-400">
+                    <div className="flex items-center gap-4">
+                      <Icon className="w-5 h-5 opacity-40" />
+                      <span className="text-sm font-bold tracking-tight">{label}</span>
+                    </div>
+                    {badge && (
+                      <span className="bg-slate-100 text-slate-500 text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">
+                        {badge}
+                      </span>
+                    )}
+                  </div>
+                );
+              }
+
+              const isActive = location.pathname === path;
+
+              return (
+                <Link
+                  key={path}
+                  to={path}
+                  onClick={() => setSidebarOpen(false)}
+                  className={`flex items-center justify-between px-5 py-3.5 rounded-2xl font-bold transition-all group ${isActive
+                    ? 'bg-slate-900 text-white shadow-lg'
+                    : 'text-slate-400 hover:text-black hover:bg-slate-50'
+                    }`}
+                >
+                  <div className="flex items-center gap-4">
+                    <Icon className={`w-5 h-5 transition-colors ${isActive ? 'text-white' : 'text-slate-400 group-hover:text-black'}`} />
+                    <span className="text-sm tracking-tight">{label}</span>
+                  </div>
+                  {badge && !isActive && (
+                    <span className="bg-slate-100 text-slate-500 text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">
+                      {badge}
+                    </span>
+                  )}
+                </Link>
+              );
+            })}
+          </nav>
+
+          {/* User Footer - Fixed at bottom */}
+          <div className="p-6 shrink-0 border-t border-slate-50">
+            <div className="flex items-center gap-4 p-4 rounded-[1.25rem] bg-slate-50 hover:bg-slate-100 transition-all border border-slate-100">
+              {user?.profilePicture ? (
+                <img
+                  src={user.profilePicture}
+                  alt={user.name}
+                  className="w-10 h-10 rounded-xl object-cover shrink-0 shadow-lg"
+                />
+              ) : (
+                <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-black shadow-lg">
+                  <span className="font-black text-white">{user?.name?.[0]?.toUpperCase()}</span>
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-1">Elite Menu</p>
+                <p className="text-xs font-black truncate text-black uppercase tracking-wider">
+                  {isDoctor() ? `DR. ${user?.name}` : user?.name}
+                </p>
+                <p className="text-[10px] truncate text-slate-500 font-bold lowercase">{user?.email}</p>
+              </div>
+              <button
+                onClick={handleLogout}
+                className="p-2 rounded-xl transition-all shrink-0 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10"
+                title="Logout"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      {/* Mobile Overlay */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden" onClick={() => setSidebarOpen(false)} />
+      )}
+
+      {/* Main Content - No left margin needed with sticky sidebar flow */}
+      <div className="flex-1 flex flex-col min-h-screen relative overflow-x-hidden bg-white/50">
+        {/* Background Blobs - Visible on all pages using Layout */}
+        <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-purple-300/25 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+        <div className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-purple-300/15 rounded-full blur-[100px] translate-x-1/2 pointer-events-none" />
+        <div className="absolute bottom-0 left-1/4 w-[300px] h-[300px] bg-purple-200/20 rounded-full blur-[80px] pointer-events-none" />
+
+        {/* Global Sticky Header - Identity & Profile */}
+        <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100 shadow-sm transition-all duration-300">
+          <div className="flex items-center justify-between lg:justify-end px-6 md:px-12 py-3 md:py-4 gap-6">
+            {/* Logo for mobile */}
+            <div className="flex lg:hidden items-center gap-3">
+              <Link to={homeLink} className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full flex items-center justify-center border-2 border-slate-900 bg-white">
+                  <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-900"></div>
+                </div>
+                <p className="font-black text-black text-lg tracking-tighter">FitCure</p>
+              </Link>
+            </div>
+
+            <div className="flex items-center gap-4">
+              {/* Profile Image - Large and Round as per image */}
+              <button
+                onClick={() => navigate('/profile')}
+                className="w-10 h-10 rounded-full overflow-hidden border border-slate-100 shadow-sm hover:ring-4 hover:ring-slate-100 transition-all pointer-events-auto"
+              >
+                {user?.profilePicture ? (
+                  <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" />
+                ) : (
+                  <div className="w-full h-full bg-black flex items-center justify-center text-xs font-black text-white uppercase">
+                    {user?.name?.[0] || 'U'}
+                  </div>
+                )}
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Page Content */}
+        <main className="flex-1 main-content-mobile overflow-x-hidden w-full" style={
+          location.pathname === '/nutrition' || location.pathname === '/ai-chat'
+            ? { padding: 0, backgroundColor: 'transparent' }
+            : { padding: 0 }
+        }>
+          {children}
+        </main>
+      </div>
+
+      {/* Mobile Bottom Navigation - Outside main content wrapper for proper fixed positioning */}
+      {!isAdmin() && !isDoctor() && !isAdminLayout && !isDoctorLayout && (
+        <>
+          <MobileBottomNav />
+          <PWAInstallPrompt />
+        </>
+      )}
+
+      {/* Text Selection Popup - Disabled on AI Chat page */}
+      {location.pathname !== '/ai-chat' && <TextSelectionPopup />}
+      </div>
+    </div>
+  );
+}
