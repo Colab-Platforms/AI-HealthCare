@@ -47,7 +47,7 @@ function getMealCalories(m) {
 
 // --- UI Components ---
 
-const MealCard = ({ meal, mealType, onLog, isLogged, idx }) => {
+const MealCard = ({ meal, mealType, onLog, isLogged, idx, isLoading }) => {
   const name = getMealName(meal);
   const calories = getMealCalories(meal);
 
@@ -92,13 +92,19 @@ const MealCard = ({ meal, mealType, onLog, isLogged, idx }) => {
 
       <button
         onClick={() => onLog(meal, mealType)}
-        disabled={isLogged}
+        disabled={isLogged || isLoading}
         className={`w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg ${isLogged
           ? 'bg-emerald-500 text-white shadow-emerald-200'
           : 'bg-black text-white hover:bg-slate-800 shadow-black/5'
-          }`}
+          } ${isLoading ? 'opacity-70 cursor-wait' : ''}`}
       >
-        {isLogged ? <><Check className="w-4 h-4" /> Eaten</> : 'Log this meal'}
+        {isLoading ? (
+          <RefreshCw className="w-4 h-4 animate-spin" />
+        ) : isLogged ? (
+          <><Check className="w-4 h-4" /> Eaten</>
+        ) : (
+          'Log this meal'
+        )}
       </button>
     </motion.div>
   );
@@ -118,8 +124,10 @@ export default function DietPlan() {
   const [showRegenOptions, setShowRegenOptions] = useState(false);
   const [prefMode, setPrefMode] = useState('save');
   const [loggedMeals, setLoggedMeals] = useState({});
+  const [loggingMealId, setLoggingMealId] = useState(null);
 
   const rowRefs = useRef({});
+  const insightsRef = useRef(null);
 
   useEffect(() => {
     loadInitialData();
@@ -143,11 +151,6 @@ export default function DietPlan() {
         const type = log.mealType;
         const name = log.name || log.foodItems?.[0]?.name;
         loggedMap[`${type}-${name}`] = true;
-        // Add mapping for snack variations
-        if (type === 'snack') {
-          loggedMap[`midMorningSnack-${name}`] = true;
-          loggedMap[`eveningSnack-${name}`] = true;
-        }
       });
       setLoggedMeals(loggedMap);
 
@@ -199,11 +202,13 @@ export default function DietPlan() {
 
   const handleLogMeal = async (meal, type) => {
     const mealName = getMealName(meal);
-    if (loggedMeals[`${type}-${mealName}`]) return;
+    const mealId = `${type}-${mealName}`;
+    if (loggedMeals[mealId]) return;
 
     try {
+      setLoggingMealId(mealId);
       // Show analyzing toast
-      const analyzeToastId = toast.loading('Analyzing nutrition profile...');
+      const analyzeToastId = toast.loading('Analyzing nutrition profile...', { duration: 4000 });
 
       // 1. Analyze the food to get rich data (AI or Cache)
       const { data: analysisRes } = await api.post('nutrition/analyze-food', {
@@ -215,7 +220,7 @@ export default function DietPlan() {
 
       // 2. Log with rich data
       await nutritionService.logMeal({
-        mealType: type === 'midMorningSnack' || type === 'eveningSnack' ? 'snack' : type,
+        mealType: type,
         foodItems: [{
           name: mealName,
           quantity: data.foodItem?.quantity || '1 serving',
@@ -238,11 +243,13 @@ export default function DietPlan() {
 
       toast.dismiss(analyzeToastId);
       toast.success('Meal logged! Keep it up 🚀');
-      setLoggedMeals(prev => ({ ...prev, [`${type}-${mealName}`]: true }));
+      setLoggedMeals(prev => ({ ...prev, [mealId]: true }));
       invalidateCache(['dashboard', `nutrition_${new Date().toISOString().split('T')[0]}`]);
     } catch (err) {
       console.error("Log meal error:", err);
       toast.error('Failed to log meal');
+    } finally {
+      setLoggingMealId(null);
     }
   };
 
@@ -307,6 +314,12 @@ export default function DietPlan() {
           <Filter className="w-3.5 h-3.5 text-slate-500" /> Preferences
         </button>
         <button
+          onClick={() => insightsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+          className="flex items-center gap-1.5 px-3 py-1.5 md:px-6 md:py-2 bg-white/60 backdrop-blur-md rounded-full text-xs md:text-sm font-medium text-[#1a1a1a] hover:bg-white transition-all border border-white/60 shadow-sm shrink-0"
+        >
+          <Lightbulb className="w-3.5 h-3.5 text-amber-500" /> View AI Insights
+        </button>
+        <button
           onClick={() => setShowRegenOptions(true)}
           disabled={generating}
           className="flex items-center gap-1.5 px-3 py-1.5 md:px-6 md:py-2 bg-black text-white rounded-full text-xs md:text-sm font-medium hover:bg-black transition-all shadow-lg hover:shadow-black/5 active:scale-95 disabled:opacity-50 shrink-0"
@@ -361,27 +374,45 @@ export default function DietPlan() {
               ))}
             </div>
 
-            {/* Intelligence Context Badge */}
-            <div className="mt-8 flex flex-wrap items-center gap-3">
-              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">Curation Context:</span>
-              <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-full">
-                <div className={`w-1.5 h-1.5 rounded-full ${activePlan?.inputData?.hasReports ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                <span className="text-[10px] font-bold text-emerald-700">Health Reports</span>
-              </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-100 rounded-full">
-                <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                <span className="text-[10px] font-bold text-blue-700">Fitness Goals</span>
-              </div>
-              <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-full">
-                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                <span className="text-[10px] font-bold text-indigo-700">BMI Analysis</span>
-              </div>
-              {activePlan?.labReportInsights?.length > 0 && (
-                <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-100 rounded-full">
-                  <Sparkles className="w-3 h-3 text-amber-500" />
-                  <span className="text-[10px] font-bold text-amber-700">{activePlan.labReportInsights.length} Lab Markers Considered</span>
+            {/* Intelligence Context Message */}
+            <div className="mt-8 p-6 bg-white/40 backdrop-blur-md rounded-[2rem] border border-white/60 shadow-sm">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="w-4 h-4 text-emerald-500" />
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Precision Curation</span>
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-800 tracking-tight">
+                    This plan is specially designed for you
+                  </h3>
+                  <p className="text-slate-500 text-sm font-medium mt-1">
+                    Considering your <span className="text-emerald-600 font-bold">Health Reports</span> + 
+                    <span className="text-blue-600 font-bold"> Fitness Goals</span> + 
+                    <span className="text-indigo-600 font-bold"> BMI</span> for optimal results.
+                  </p>
                 </div>
-              )}
+
+                <div className="flex flex-wrap items-center gap-2">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-full">
+                    <div className={`w-1.5 h-1.5 rounded-full ${activePlan?.inputData?.hasReports ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                    <span className="text-[10px] font-bold text-emerald-700">Health Reports</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-100 rounded-full">
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                    <span className="text-[10px] font-bold text-blue-700">Fitness Goals</span>
+                  </div>
+                  <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-full">
+                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                    <span className="text-[10px] font-bold text-indigo-700">BMI Analysis</span>
+                  </div>
+                  {activePlan?.labReportInsights?.length > 0 && (
+                    <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-100 rounded-full">
+                      <Sparkles className="w-3 h-3 text-amber-500" />
+                      <span className="text-[10px] font-bold text-amber-700">{activePlan.labReportInsights.length} Lab Markers Considered</span>
+                    </div>
+                  )}
+                </div>
+              </div>
             </div>
           </section>
 
@@ -431,6 +462,7 @@ export default function DietPlan() {
                       idx={i}
                       isLogged={!!loggedMeals[`${sectionId}-${getMealName(meal)}`]}
                       onLog={handleLogMeal}
+                      isLoading={loggingMealId === `${sectionId}-${getMealName(meal)}`}
                     />
                   ))}
                 </div>
@@ -439,7 +471,7 @@ export default function DietPlan() {
           })}
 
           {/* AI Insights Bar */}
-          <section className="bg-black rounded-[3rem] p-10 lg:p-16 text-white overflow-hidden relative">
+          <section ref={insightsRef} className="bg-black rounded-[3rem] p-10 lg:p-16 text-white overflow-hidden relative">
             <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-indigo-500/10 rounded-full blur-[100px]" />
             <div className="relative z-10 flex flex-col lg:flex-row items-center gap-12">
               <div className="flex-1">
