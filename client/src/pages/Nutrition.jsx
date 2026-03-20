@@ -350,8 +350,13 @@ function Nutrition() {
 
   const handleConfirmLog = async (data) => {
     try {
+      const mappedMealType = 
+        mealTab.toLowerCase() === 'mid-morning' ? 'midMorningSnack' : 
+        mealTab.toLowerCase() === 'evening' ? 'eveningSnack' : 
+        mealTab.toLowerCase();
+
       const logData = {
-        mealType: mealTab.toLowerCase(),
+        mealType: mappedMealType,
         foodItems: [{
           name: data.foodItem?.name || data.foodName,
           quantity: data.foodItem?.quantity || data.quantity || '1 serving',
@@ -1390,7 +1395,7 @@ function Nutrition() {
                     <div className="mb-6 space-y-3">
                       <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Log this to</h4>
                       <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
-                        {['Breakfast', 'Lunch', 'Snack', 'Dinner'].map(tab => (
+                        {['Breakfast', 'Mid-Morning', 'Lunch', 'Evening', 'Dinner'].map(tab => (
                           <button
                             key={tab} onClick={() => setMealTab(tab)}
                             className={`flex-1 py-3 text-[10px] font-black rounded-xl transition-all uppercase tracking-widest ${mealTab === tab ? 'bg-black text-white shadow-xl' : 'text-slate-400 hover:text-black'}`}
