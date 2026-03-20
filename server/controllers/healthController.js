@@ -457,6 +457,10 @@ exports.getDashboardData = async (req, res) => {
     const HealthMetric = require('../models/HealthMetric');
     const wearables = await withTimeout(WearableData.find({ user: req.user._id }));
     const weightMetrics = await withTimeout(HealthMetric.find({ userId: req.user._id, type: 'weight', recordedAt: { $gte: ninetyDaysAgo, $lte: targetDate } }).sort({ recordedAt: 1 }));
+    
+    // Fetch latest individual metrics for quick dashboard access
+    const latestGlucoseLog = await HealthMetric.findOne({ userId: req.user._id, type: 'blood_sugar' }).sort({ recordedAt: -1 });
+    const latestHbA1cLog = await HealthMetric.findOne({ userId: req.user._id, type: 'hba1c' }).sort({ recordedAt: -1 });
 
     // Map history to a consistent format for the last 90 days
     const history = [];
@@ -598,6 +602,10 @@ exports.getDashboardData = async (req, res) => {
         fats: fatGoal
       },
       streakDays: req.user.streakDays || 0, // Add streak days
+      vitals: {
+        glucose: latestGlucoseLog ? { value: latestGlucoseLog.value, unit: latestGlucoseLog.unit, date: latestGlucoseLog.recordedAt, context: latestGlucoseLog.readingContext } : null,
+        hba1c: latestHbA1cLog ? { value: latestHbA1cLog.value, unit: latestHbA1cLog.unit, date: latestHbA1cLog.recordedAt } : null
+      },
       nutritionData: {
         totalCalories: nutritionDataSummary?.totalCalories || 0,
         calorieGoal,

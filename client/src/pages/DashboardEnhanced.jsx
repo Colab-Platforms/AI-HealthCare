@@ -609,14 +609,15 @@ export default function DashboardEnhanced() {
     }
 
     // Recommendation/Summary Pointer
-    if (dashboardData.latestAnalysis?.summary && dashboardData.latestAnalysis.summary.length > 10) {
+    const aiSummary = dashboardData.latestAnalysis?.summary;
+    if (aiSummary && typeof aiSummary === 'string' && aiSummary.length > 10) {
       insights.push({
         id: 'summary',
         type: 'ai',
         icon: Sparkles,
         color: 'text-purple-400',
         label: 'AI Recommendation',
-        text: dashboardData.latestAnalysis.summary.split('.')[0] + '.'
+        text: aiSummary.includes('.') ? aiSummary.split('.')[0] + '.' : aiSummary
       });
     }
 
@@ -795,6 +796,7 @@ export default function DashboardEnhanced() {
     return <DashboardSkeleton />;
   }
 
+  console.log('Rendering Dashboard', { hasData: !!dashboardData, isDiabetic });
   return (
     <div className="min-h-screen bg-transparent pb-32 px-4 md:px-6 lg:px-16 pt-8 relative overflow-hidden">
 
@@ -1193,21 +1195,55 @@ export default function DashboardEnhanced() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                {[
-                  { label: 'Glucose', val: dashboardData?.latestAnalysis?.metrics?.Glucose?.value || '110', unit: 'mg/dL', status: dashboardData?.latestAnalysis?.metrics?.Glucose?.status || 'Normal', color: 'text-slate-700', bg: 'bg-[#F5F5F7]' },
-                  { label: 'HbA1c', val: dashboardData?.latestAnalysis?.metrics?.HbA1c?.value || '5.8', unit: '%', status: dashboardData?.latestAnalysis?.metrics?.HbA1c?.status || 'Good', color: 'text-slate-700', bg: 'bg-[#F5F5F7]' }
-                ].map((stat, i) => (
-                  <div key={stat.label} className="bg-white/90 border border-white shadow-sm rounded-[24px] p-6 flex flex-col items-center justify-center relative group hover:bg-white transition-all hover:shadow-md">
-                    <span className="text-[#888888] text-[11px] font-bold uppercase tracking-widest mb-2">{stat.label}</span>
-                    <div className="flex items-baseline gap-1 mb-3">
-                      <span className="text-4xl font-light text-[#1a1a1a] tracking-tight">{stat.val}</span>
-                      <span className="text-sm font-medium text-[#a0a0a0]">{stat.unit}</span>
+                {(!dashboardData?.latestAnalysis && !dashboardData?.vitals?.glucose && !dashboardData?.vitals?.hba1c) ? (
+                  <div className="md:col-span-2 bg-slate-50/50 border border-slate-100 rounded-[24px] p-8 text-center flex flex-col items-center justify-center">
+                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
+                      <Sparkles className="w-6 h-6 text-slate-400" />
                     </div>
-                    <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider bg-slate-100 text-slate-800`}>
-                      {stat.status}
-                    </span>
+                    <p className="text-[#1a1a1a] font-medium mb-1">Your monitoring is starting</p>
+                    <p className="text-[#888888] text-sm max-w-sm">
+                      Upload your first lab report or log a few glucose readings to see your smart monitoring insights here.
+                    </p>
+                    <button 
+                      onClick={() => navigate('/diabetes')}
+                      className="mt-4 text-xs font-black uppercase tracking-widest text-black border-b border-black hover:text-slate-600 hover:border-slate-600 transition-all"
+                    >
+                      Log First Reading
+                    </button>
                   </div>
-                ))}
+                ) : (
+                  <>
+                    {[
+                      { 
+                        label: 'Glucose', 
+                        val: dashboardData?.vitals?.glucose?.value || dashboardData?.latestAnalysis?.metrics?.Glucose?.value || '--', 
+                        unit: 'mg/dL', 
+                        status: dashboardData?.latestAnalysis?.metrics?.Glucose?.status || (dashboardData?.vitals?.glucose ? 'Recent Log' : 'Normal'), 
+                        color: 'text-slate-700', 
+                        bg: 'bg-[#F5F5F7]' 
+                      },
+                      { 
+                        label: 'HbA1c', 
+                        val: dashboardData?.vitals?.hba1c?.value || dashboardData?.latestAnalysis?.metrics?.HbA1c?.value || '--', 
+                        unit: '%', 
+                        status: dashboardData?.latestAnalysis?.metrics?.HbA1c?.status || (dashboardData?.vitals?.hba1c ? 'Recent Log' : 'Good'), 
+                        color: 'text-slate-700', 
+                        bg: 'bg-[#F5F5F7]' 
+                      }
+                    ].map((stat, i) => (
+                      <div key={stat.label} className="bg-white/90 border border-white shadow-sm rounded-[24px] p-6 flex flex-col items-center justify-center relative group hover:bg-white transition-all hover:shadow-md">
+                        <span className="text-[#888888] text-[11px] font-bold uppercase tracking-widest mb-2">{stat.label}</span>
+                        <div className="flex items-baseline gap-1 mb-3">
+                          <span className="text-4xl font-light text-[#1a1a1a] tracking-tight">{stat.val}</span>
+                          {stat.val !== '--' && <span className="text-sm font-medium text-[#a0a0a0]">{stat.unit}</span>}
+                        </div>
+                        <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${stat.val === '--' ? 'bg-slate-50 text-slate-400' : 'bg-slate-100 text-slate-800'}`}>
+                          {stat.status}
+                        </span>
+                      </div>
+                    ))}
+                  </>
+                )}
               </div>
             </div>
           </motion.div>

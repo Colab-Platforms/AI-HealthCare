@@ -121,6 +121,7 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
 
   const isDashboardPage = location.pathname === '/dashboard' || location.pathname === '/doctor/dashboard' || location.pathname === '/admin';
 
+  console.log('Rendering Layout', { pathname: location.pathname, user: !!user });
   return (
     <div className={`min-h-screen flex flex-col ${bgColor}`}>
       {/* Admin Session Banner */}
