@@ -314,12 +314,6 @@ export default function DietPlan() {
           <Filter className="w-3.5 h-3.5 text-slate-500" /> Preferences
         </button>
         <button
-          onClick={() => insightsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-          className="flex items-center gap-1.5 px-3 py-1.5 md:px-6 md:py-2 bg-white/60 backdrop-blur-md rounded-full text-xs md:text-sm font-medium text-[#1a1a1a] hover:bg-white transition-all border border-white/60 shadow-sm shrink-0"
-        >
-          <Lightbulb className="w-3.5 h-3.5 text-amber-500" /> View AI Insights
-        </button>
-        <button
           onClick={() => setShowRegenOptions(true)}
           disabled={generating}
           className="flex items-center gap-1.5 px-3 py-1.5 md:px-6 md:py-2 bg-black text-white rounded-full text-xs md:text-sm font-medium hover:bg-black transition-all shadow-lg hover:shadow-black/5 active:scale-95 disabled:opacity-50 shrink-0"
@@ -383,34 +377,18 @@ export default function DietPlan() {
                     <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Precision Curation</span>
                   </div>
                   <h3 className="text-xl font-bold text-slate-800 tracking-tight">
-                    This plan is specially designed for you
+                    This diet plan is specially designed by considering your health parameters, fitness goals and BMI for optimal results.
                   </h3>
-                  <p className="text-slate-500 text-sm font-medium mt-1">
-                    Considering your <span className="text-emerald-600 font-bold">Health Reports</span> + 
-                    <span className="text-blue-600 font-bold"> Fitness Goals</span> + 
-                    <span className="text-indigo-600 font-bold"> BMI</span> for optimal results.
-                  </p>
                 </div>
 
                 <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-full">
-                    <div className={`w-1.5 h-1.5 rounded-full ${activePlan?.inputData?.hasReports ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                    <span className="text-[10px] font-bold text-emerald-700">Health Reports</span>
-                  </div>
-                  <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-100 rounded-full">
-                    <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-                    <span className="text-[10px] font-bold text-blue-700">Fitness Goals</span>
-                  </div>
-                  <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-full">
-                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-                    <span className="text-[10px] font-bold text-indigo-700">BMI Analysis</span>
-                  </div>
-                  {activePlan?.labReportInsights?.length > 0 && (
-                    <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-100 rounded-full">
-                      <Sparkles className="w-3 h-3 text-amber-500" />
-                      <span className="text-[10px] font-bold text-amber-700">{activePlan.labReportInsights.length} Lab Markers Considered</span>
-                    </div>
-                  )}
+                  <button 
+                    onClick={() => insightsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                    className="flex items-center gap-2 px-6 py-3 bg-white text-black rounded-full text-xs font-black uppercase tracking-widest border border-black hover:bg-black hover:text-white transition-all shadow-md active:scale-95"
+                  >
+                    <Sparkles className="w-4 h-4 text-emerald-500" />
+                    View AI Insights
+                  </button>
                 </div>
               </div>
             </div>
