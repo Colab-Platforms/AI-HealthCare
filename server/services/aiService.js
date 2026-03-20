@@ -3,15 +3,17 @@ const { robustJsonParse } = require('../utils/aiParser');
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const CLAUDE_MODEL = 'claude-sonnet-4-6';
+const CLAUDE_HAIKU_MODEL = 'claude-haiku-4-5';
 
-const makeAnthropicRequest = async (messages, maxTokens = 4096) => {
+const makeAnthropicRequest = async (messages, maxTokens = 4096, modelOverride = null) => {
   try {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey || !apiKey.startsWith('sk-ant')) {
       throw new Error('ANTHROPIC_API_KEY is not set or invalid for direct access');
     }
 
-    console.log('🔄 Anthropic request | model:', CLAUDE_MODEL, '| max_tokens:', maxTokens);
+    const selectedModel = modelOverride || CLAUDE_MODEL;
+    console.log('🔄 Anthropic request | model:', selectedModel, '| max_tokens:', maxTokens);
 
     // Filter out system message to use as 'system' parameter in Anthropic API
     let systemMessage = '';
@@ -24,12 +26,13 @@ const makeAnthropicRequest = async (messages, maxTokens = 4096) => {
     });
 
     // Use shorter timeout on Vercel to stay within serverless limits (maxDuration is 120s)
-    const requestTimeout = process.env.VERCEL ? 110000 : 120000;
+    // Hobby plan is capped at 10s by Vercel despite maxDuration setting
+    const requestTimeout = (process.env.VERCEL || process.env.VERCEL_ID) ? 55000 : 120000;
 
     const response = await axios.post(
       ANTHROPIC_API_URL,
       {
-        model: CLAUDE_MODEL,
+        model: selectedModel,
         system: systemMessage,
         messages: filteredMessages,
         max_tokens: maxTokens,
@@ -61,7 +64,13 @@ const makeAnthropicRequest = async (messages, maxTokens = 4096) => {
   } catch (error) {
     const errorMsg = error.response?.data?.error?.message || error.message;
     console.error('❌ Anthropic Error:', errorMsg);
-    throw error;
+    
+    // Add specific Vercel troubleshooting hint
+    if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      throw new Error(`AI Analysis Timed Out: Vercel functions have strict execution limits. Try smaller files.`);
+    }
+    
+    throw new Error(`AI Analysis Failed: ${errorMsg}`);
   }
 };
 
@@ -160,7 +169,7 @@ CRITICAL RULES:
 2. Keep string values SHORT and CONCISE, EXCEPT for the "summary", "radiologistReport.findings", and "patientFriendlySummary" fields.
 3. Include ALL metrics found in the report with correct status (normal/high/low/borderline) for standard lab reports.
 4. For MRI reports, SKIP metrics and dietPlan to focus entirely on anatomical findings.
-5. Provide EXACTLY 4 meal options for EACH of these 5 categories: "breakfast", "midMorningSnack", "lunch", "eveningSnack", and "dinner".
+5. Provide EXACTLY 2 meal options for EACH of these 5 categories: "breakfast", "midMorningSnack", "lunch", "eveningSnack", and "dinner". Keep it extremely brief.
 6. Use Indian food options when appropriate.
 7. Use numbers for numeric values, not strings.
 8. Always provide at least 3-5 summaryPoints as individual pointers for the user.
@@ -222,8 +231,9 @@ exports.analyzeHealthReport = async (reportText, user = {}, imageData = null, re
     ];
 
     // Use fewer tokens on Vercel to stay within timeout limits
-    const maxTokens = process.env.VERCEL ? 8000 : 20000;
-    const content = await makeAnthropicRequest(messages, maxTokens);
+    // local/non-vercel: Increase to 12k to avoid truncation for dense reports
+    const maxTokens = (process.env.VERCEL || process.env.VERCEL_ID) ? 4000 : 12000;
+    const content = await makeAnthropicRequest(messages, maxTokens, CLAUDE_MODEL);
 
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {

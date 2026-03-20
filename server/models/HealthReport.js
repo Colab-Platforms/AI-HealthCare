@@ -17,7 +17,7 @@ const healthReportSchema = new mongoose.Schema({
     metrics: mongoose.Schema.Types.Mixed,
     deficiencies: [{
       name: String,
-      severity: { type: String, enum: ['mild', 'moderate', 'severe'] },
+      severity: { type: String, enum: ['mild', 'moderate', 'severe', 'low', 'high'] },
       currentValue: String,
       normalRange: String,
       symptoms: [String]
@@ -30,13 +30,13 @@ const healthReportSchema = new mongoose.Schema({
     }],
     dietPlan: {
       overview: String,
-      breakfast: [{ meal: String, nutrients: [String], tip: String }],
-      lunch: [{ meal: String, nutrients: [String], tip: String }],
-      dinner: [{ meal: String, nutrients: [String], tip: String }],
-      snacks: [{ meal: String, nutrients: [String], tip: String }],
+      breakfast: [{ meal: String, nutrients: [String], tip: String, calories: Number, protein: Number, carbs: Number, fats: Number }],
+      midMorningSnack: [{ meal: String, nutrients: [String], tip: String, calories: Number, protein: Number, carbs: Number, fats: Number }],
+      lunch: [{ meal: String, nutrients: [String], tip: String, calories: Number, protein: Number, carbs: Number, fats: Number }],
+      eveningSnack: [{ meal: String, nutrients: [String], tip: String, calories: Number, protein: Number, carbs: Number, fats: Number }],
+      dinner: [{ meal: String, nutrients: [String], tip: String, calories: Number, protein: Number, carbs: Number, fats: Number }],
       foodsToIncrease: [String],
       foodsToLimit: [String],
-      hydration: String,
       tips: [String]
     },
     fitnessPlan: {
@@ -111,6 +111,20 @@ healthReportSchema.pre('save', function (next) {
       } else {
         this.aiAnalysis.deficiencies = [];
       }
+    }
+
+    // New Fix for deficiencies severity enum mapping
+    if (Array.isArray(this.aiAnalysis.deficiencies)) {
+      this.aiAnalysis.deficiencies.forEach(def => {
+        if (def.severity) {
+          const sev = def.severity.toLowerCase();
+          if (sev === 'high' || sev === 'urgent') def.severity = 'severe';
+          else if (sev === 'low' || sev === 'minor') def.severity = 'mild';
+          else if (!['mild', 'moderate', 'severe'].includes(sev)) def.severity = 'moderate';
+        } else {
+          def.severity = 'moderate';
+        }
+      });
     }
 
     // Fix supplements - check if it's an array of strings instead of objects
