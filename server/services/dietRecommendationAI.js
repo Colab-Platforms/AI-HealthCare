@@ -100,18 +100,20 @@ LAB REPORT DATA & DEFICIENCIES:
 ${labReports?.length > 0 ? labReports.map(r => `- ${r.parameter}: ${r.value} ${r.unit} (${r.status})`).join('\n') : 'No lab data available, base recommendations on Fitness Goal and BMI.'}
 ${deficiencies?.length > 0 ? deficiencies.map(d => `- ${d.nutrient || d.name} (${d.severity})`).join('\n') : ''}
 
-CRITICAL INSTRUCTIONS:
-1. Provide EXACTLY 3 DISTINCT meal options for EVERY category (breakfast, midMorningSnack, lunch, eveningSnack, dinner).
-2. BE ULTRA-CONCISE. Use short meal names and 1-sentence descriptions. This is critical for performance.
-3. Ensure the combined nutrition of these options FULFILLS the user's daily macro targets.
-4. Use ONLY Indian foods.
-5. TRULY PRIORITIZE the user's specific food preferences for each meal.
-6. STRICTLY avoid any 'Foods to Avoid' and adhere to 'Dietary Restrictions'.
-7. Provide specific portion sizes in grams/pieces.
-8. Each meal option MUST include: name, description, calories, protein, carbs, fats, and benefits.
-9. Ensure variety - no two options should be similar.
-10. If the user wants to REGENERATE, provide COMPLETELY DIFFERENT meal options.
-11. ${promptExtension || ''}
+CRITICAL INSTRUCTIONS (STRICT PREFERENCE MODE):
+1. If 'Preferred Foods' or 'Meal Favorites' are provided, you MUST construct the meal plan EXCLUSIVELY from those items.
+2. DO NOT suggest random new foods if the user has a preference list. Only use items from the preference list for every meal option.
+3. If a preference list is provided but it's too short to fulfill 3 options per category, prioritize quality over quantity - but STAY within the user's preferred food universe.
+4. Provide EXACTLY 3 DISTINCT meal options for EVERY category (breakfast, midMorningSnack, lunch, eveningSnack, dinner).
+5. BE ULTRA-CONCISE. Use short meal names and 1-sentence descriptions. This is critical for performance.
+6. Ensure the combined nutrition of these options FULFILLS the user's daily macro targets.
+7. Use ONLY Indian foods.
+8. STRICTLY avoid any 'Foods to Avoid' and adhere to 'Dietary Restrictions'.
+9. Provide specific portion sizes in grams/pieces.
+10. Each meal option MUST include: name, description, calories, protein, carbs, fats, and benefits.
+11. Ensure variety - no two options should be similar.
+12. If the user wants to REGENERATE, provide COMPLETELY DIFFERENT meal options from their preference pool.
+13. ${promptExtension || ''}
 
 RETURN JSON ONLY. Ensure the JSON is valid and complete:
 {
