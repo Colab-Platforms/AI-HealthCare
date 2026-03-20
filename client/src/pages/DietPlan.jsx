@@ -259,7 +259,7 @@ export default function DietPlan() {
           <ChefHat className="absolute inset-0 m-auto w-8 h-8 text-black animate-pulse" />
         </div>
         <p className="text-[#A795C7] font-black uppercase tracking-[0.2em] text-xs text-center mb-3">
-          {generating ? 'Hang tight, diet plan is generating...' : 'Curating your diet protocol...'}
+          {generating ? 'Analyzing Reports, Goals & BMI...' : 'Curating your diet protocol...'}
         </p>
         {generating && (
           <p className="text-red-400 font-bold text-[10px] uppercase tracking-widest text-center max-w-xs leading-relaxed border border-red-100 bg-red-50 p-3 rounded-2xl">
@@ -321,16 +321,19 @@ export default function DietPlan() {
           <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto mb-8 border border-white shadow-inner">
             <ChefHat className="w-10 h-10 text-slate-400" />
           </div>
-          <h2 className="text-3xl font-light text-slate-800 mb-4 tracking-tight">Ready for your roadmap?</h2>
+          <h2 className="text-3xl font-light text-slate-800 mb-4 tracking-tight">Personalized Nutrition Engine</h2>
           <p className="text-slate-500 mb-10 leading-relaxed text-lg">
-            We'll calculate your metabolic needs based on your profile and health reports to create a perfect plan.
+            Our AI will analyze your <span className="font-bold text-slate-800">Health Reports</span>, 
+            <span className="font-bold text-slate-800"> Fitness Goals</span>, and <span className="font-bold text-slate-800">BMI</span> 
+            to curate a clinical-grade diet plan just for you.
           </p>
           <button
             onClick={() => generatePlan(false)}
             disabled={generating}
-            className="bg-black text-white px-10 py-5 rounded-[2rem] font-black uppercase tracking-[0.2em] text-xs shadow-2xl hover:bg-slate-800 transition-all disabled:opacity-50 active:scale-95"
+            className="bg-black text-white px-10 py-5 rounded-[2rem] font-black uppercase tracking-[0.2em] text-xs shadow-2xl hover:bg-slate-800 transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-3 mx-auto"
           >
-            {generating ? 'Calculating...' : 'Create My Plan'}
+            <Sparkles className="w-4 h-4 text-emerald-400" />
+            {generating ? 'Synthesizing Data...' : 'Generate My Personalized Plan'}
           </button>
         </div>
       ) : (
@@ -356,6 +359,29 @@ export default function DietPlan() {
                   </div>
                 </div>
               ))}
+            </div>
+
+            {/* Intelligence Context Badge */}
+            <div className="mt-8 flex flex-wrap items-center gap-3">
+              <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mr-2">Curation Context:</span>
+              <div className="flex items-center gap-2 px-4 py-2 bg-emerald-50 border border-emerald-100 rounded-full">
+                <div className={`w-1.5 h-1.5 rounded-full ${activePlan?.inputData?.hasReports ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                <span className="text-[10px] font-bold text-emerald-700">Health Reports</span>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 bg-blue-50 border border-blue-100 rounded-full">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                <span className="text-[10px] font-bold text-blue-700">Fitness Goals</span>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 border border-indigo-100 rounded-full">
+                <div className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
+                <span className="text-[10px] font-bold text-indigo-700">BMI Analysis</span>
+              </div>
+              {activePlan?.labReportInsights?.length > 0 && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 border border-amber-100 rounded-full">
+                  <Sparkles className="w-3 h-3 text-amber-500" />
+                  <span className="text-[10px] font-bold text-amber-700">{activePlan.labReportInsights.length} Lab Markers Considered</span>
+                </div>
+              )}
             </div>
           </section>
 

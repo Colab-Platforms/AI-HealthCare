@@ -45,12 +45,6 @@ export default function ReportAnalysisMobile() {
             const textsToTranslate = [
                 aiAnalysis.summary,
                 ...(aiAnalysis.keyFindings || []),
-                aiAnalysis.dietPlan?.overview,
-                ...(aiAnalysis.dietPlan?.tips || []),
-                ...(aiAnalysis.dietPlan?.breakfast?.map(m => m.meal) || []),
-                ...(aiAnalysis.dietPlan?.lunch?.map(m => m.meal) || []),
-                ...(aiAnalysis.dietPlan?.dinner?.map(m => m.meal) || []),
-                ...(aiAnalysis.dietPlan?.snacks?.map(m => m.meal) || []),
                 ...(aiAnalysis.dietPlan?.foodsToIncrease || []),
                 ...(aiAnalysis.dietPlan?.foodsToLimit || []),
                 ...(aiAnalysis.recommendations?.lifestyle || []),
@@ -539,46 +533,39 @@ export default function ReportAnalysisMobile() {
                     </div>
                 )}
 
-                {/* Diet Plan */}
-                {!isMRI && aiAnalysis?.dietPlan && (
-                    <div className={`${glassCard} p-6 md:p-8`}>
-                        <div className="flex items-center gap-3 mb-4">
-                            <div className="w-10 h-10 bg-[#F0FDF4] rounded-full flex items-center justify-center">
-                                <Apple className="w-5 h-5 text-[#16A34A]" />
+                {/* Generate Diet Plan CTA */}
+                <div className={`${glassCard} p-8 bg-gradient-to-br from-[#F0FDF4] to-[#DCFCE7] border border-emerald-100 relative overflow-hidden group`}>
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-200/20 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-125 transition-transform" />
+                    <div className="relative z-10">
+                        <div className="flex items-center gap-4 mb-6">
+                            <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-md border border-emerald-50">
+                                <Apple className="w-7 h-7 text-emerald-600" />
                             </div>
-                            <h3 className="text-lg font-bold text-[#1a1a1a]">{isHindi ? 'व्यक्तिगत आहार योजना' : 'Personalized Diet Plan'}</h3>
+                            <div>
+                                <h3 className="text-xl font-bold text-[#1a1a1a]">{isHindi ? 'व्यक्तिगत आहार योजना' : 'Personalized Diet Plan'}</h3>
+                                <div className="flex items-center gap-1.5 mt-1">
+                                    <Sparkles className="w-3 h-3 text-emerald-600" />
+                                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">AI Curation Tool</span>
+                                </div>
+                            </div>
                         </div>
 
-                        <p className="text-[#888888] text-sm leading-relaxed mb-6">
-                            {isHindi ? 'आपकी कमियों और फिटनेस लक्ष्यों के आधार पर, हमने प्राकृतिक खाद्य स्रोतों के माध्यम से इष्टतम स्तरों को बहाल करने में मदद करने के लिए एक पोषण योजना तैयार की है।' : 'Based on your deficiencies and fitness goals, we\'ve curated a nutrition plan to help restore optimal levels through natural food sources.'}
+                        <p className="text-[#666666] text-sm leading-relaxed mb-8 font-medium">
+                            {isHindi 
+                                ? 'अपनी रिपोर्ट के निष्कर्षों, फिटनेस लक्ष्यों और बीएमआई के आधार पर एक विस्तृत आहार योजना प्राप्त करें।' 
+                                : "Get a comprehensive diet plan tailored to your report findings, fitness goals, and BMI analysis."}
                         </p>
 
-                        <div className="space-y-4">
-                            {[
-                                { label: isHindi ? 'नाश्ता' : 'Breakfast', items: aiAnalysis.dietPlan.breakfast?.slice(0, 4) || [], icon: '🌅' },
-                                { label: isHindi ? 'दोपहर का भोजन' : 'Lunch', items: aiAnalysis.dietPlan.lunch?.slice(0, 4) || [], icon: '☀️' },
-                                { label: isHindi ? 'रात का खाना' : 'Dinner', items: aiAnalysis.dietPlan.dinner?.slice(0, 4) || [], icon: '🌙' },
-                                { label: isHindi ? 'स्नैक्स' : 'Snacks', items: aiAnalysis.dietPlan.snacks?.slice(0, 4) || [], icon: '🍎' }
-                            ].map((group, idx) => (
-                                group.items.length > 0 && (
-                                    <div key={idx} className="bg-[#F5F5F7]/50 rounded-2xl p-5 border border-white/50">
-                                        <div className="flex items-center gap-2 mb-4">
-                                            <span className="text-lg">{group.icon}</span>
-                                            <h4 className="font-bold text-[#1a1a1a] text-xs uppercase tracking-wider">{group.label}</h4>
-                                        </div>
-                                        <div className="flex flex-wrap gap-2">
-                                            {group.items.map((item, i) => (
-                                                <div key={i} className="px-3 py-2 bg-white rounded-xl text-xs font-medium text-[#666666] border border-slate-100 shadow-sm">
-                                                    {t(item.meal || item)}
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )
-                            ))}
-                        </div>
+                        <button
+                            onClick={() => navigate('/diet-plan')}
+                            className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-[1.25rem] font-bold text-sm uppercase tracking-widest shadow-lg shadow-emerald-100 hover:shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-3"
+                        >
+                            <UtensilsCrossed className="w-4 h-4" />
+                            {isHindi ? 'विशेष रूप से आपके लिए व्यक्तिगत आहार योजना देखें' : 'View personalized diet plan specially for you'}
+                        </button>
                     </div>
-                )}
+                </div>
+
 
                 {/* Health Tips */}
                 {(aiAnalysis?.recommendations?.lifestyle?.length > 0 || aiAnalysis?.dietPlan?.tips?.length > 0) && (

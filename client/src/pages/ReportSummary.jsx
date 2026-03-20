@@ -41,10 +41,7 @@ export default function ReportSummary() {
         aiAnalysis.summary,
         ...(aiAnalysis.keyFindings || []),
         ...(aiAnalysis.riskFactors || []),
-        aiAnalysis.dietPlan?.overview,
-        ...(aiAnalysis.dietPlan?.tips || []),
-        ...(aiAnalysis.dietPlan?.foodsToIncrease || []),
-        ...(aiAnalysis.dietPlan?.foodsToLimit || []),
+
         ...(aiAnalysis.recommendations?.immediate || []),
         ...(aiAnalysis.recommendations?.shortTerm || []),
         ...(aiAnalysis.recommendations?.longTerm || []),
@@ -409,122 +406,26 @@ export default function ReportSummary() {
         </div>
       )}
 
-      {/* Personalized Diet Plan */}
-      {aiAnalysis?.dietPlan && (
-        <div className="bg-white rounded-2xl border-l-[6px] border-black border-2 border-slate-200 p-8 shadow-sm">
-          <h2 className="text-2xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <UtensilsCrossed className="w-6 h-6 text-black" /> {isHindi ? 'व्यक्तिगत आहार योजना (4 विकल्प प्रति भोजन)' : 'Personalized Meal Plan (4 Options Per Meal)'}
-          </h2>
-          <p className="text-slate-700 mb-8 font-medium text-lg italic">{t(aiAnalysis.dietPlan.overview)}</p>
+      {/* Generate Diet Plan CTA */}
+      <div className="bg-white rounded-2xl border-l-[6px] border-emerald-500 border-2 border-slate-200 p-8 shadow-sm">
+        <h2 className="text-2xl font-bold text-slate-800 mb-3 flex items-center gap-2">
+          <UtensilsCrossed className="w-6 h-6 text-emerald-600" /> {isHindi ? 'व्यक्तिगत आहार योजना' : 'Personalized Diet Plan'}
+        </h2>
+        <p className="text-slate-600 mb-6 leading-relaxed">
+          {isHindi
+            ? 'अपनी रिपोर्ट के निष्कर्षों, फिटनेस लक्ष्यों और BMI के आधार पर एक व्यापक आहार योजना प्राप्त करें।'
+            : 'Get a comprehensive diet plan tailored to your report findings, fitness goals, and BMI. Our AI will analyze everything together.'}
+        </p>
+        <Link
+          to="/diet-plan"
+          className="inline-flex items-center gap-3 px-6 py-3 bg-black hover:bg-slate-800 text-white rounded-xl font-bold text-sm uppercase tracking-wider transition-all hover:shadow-lg"
+        >
+          <Apple className="w-5 h-5" />
+          {isHindi ? 'विशेष रूप से आपके लिए व्यक्तिगत आहार योजना देखें' : 'View personalized diet plan specially for you'}
+          <ArrowLeft className="w-4 h-4 rotate-180" />
+        </Link>
+      </div>
 
-          <div className="grid md:grid-cols-2 gap-8 mb-8">
-            {aiAnalysis.dietPlan.breakfast?.length > 0 && (
-              <div className="p-6 bg-slate-50 rounded-2xl border-2 border-slate-200 shadow-sm transition-all hover:shadow-md">
-                <h3 className="font-bold text-black mb-4 text-xl flex items-center gap-2">🌅 {isHindi ? 'नाश्ता' : 'Breakfast'}</h3>
-                <div className="space-y-4">
-                  {aiAnalysis.dietPlan.breakfast.map((meal, i) => (
-                    <div key={i} className="bg-white p-4 rounded-xl border border-slate-100">
-                      <p className="font-bold text-slate-800 text-base">{t(meal.meal)}</p>
-                      {meal.nutrients && <p className="text-xs text-slate-500 mt-1 uppercase tracking-wider font-semibold">{isHindi ? 'पोषक तत्व' : 'Nutrients'}: {Array.isArray(meal.nutrients) ? meal.nutrients.join(', ') : meal.nutrients}</p>}
-                      {meal.tip && <p className="text-sm text-slate-600 italic mt-2">💡 {t(meal.tip)}</p>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {aiAnalysis.dietPlan.lunch?.length > 0 && (
-              <div className="p-6 bg-slate-100 rounded-2xl border-2 border-slate-200 shadow-sm transition-all hover:shadow-md">
-                <h3 className="font-bold text-black mb-4 text-xl flex items-center gap-2">🥗 {isHindi ? 'दोपहर का भोजन' : 'Lunch'}</h3>
-                <div className="space-y-4">
-                  {aiAnalysis.dietPlan.lunch.map((meal, i) => (
-                    <div key={i} className="bg-white p-4 rounded-xl border border-slate-100">
-                      <p className="font-bold text-slate-800 text-base">{t(meal.meal)}</p>
-                      {meal.nutrients && <p className="text-xs text-slate-500 mt-1 uppercase tracking-wider font-semibold">{isHindi ? 'पोषक तत्व' : 'Nutrients'}: {Array.isArray(meal.nutrients) ? meal.nutrients.join(', ') : meal.nutrients}</p>}
-                      {meal.tip && <p className="text-sm text-slate-600 italic mt-2">💡 {t(meal.tip)}</p>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {aiAnalysis.dietPlan.dinner?.length > 0 && (
-              <div className="p-6 bg-slate-200 rounded-2xl border-2 border-slate-300 shadow-sm transition-all hover:shadow-md">
-                <h3 className="font-bold text-black mb-4 text-xl flex items-center gap-2">🌙 {isHindi ? 'रात का खाना' : 'Dinner'}</h3>
-                <div className="space-y-4">
-                  {aiAnalysis.dietPlan.dinner.map((meal, i) => (
-                    <div key={i} className="bg-white p-4 rounded-xl border border-slate-100">
-                      <p className="font-bold text-slate-800 text-base">{t(meal.meal)}</p>
-                      {meal.nutrients && <p className="text-xs text-slate-500 mt-1 uppercase tracking-wider font-semibold">{isHindi ? 'पोषक तत्व' : 'Nutrients'}: {Array.isArray(meal.nutrients) ? meal.nutrients.join(', ') : meal.nutrients}</p>}
-                      {meal.tip && <p className="text-sm text-slate-600 italic mt-2">💡 {t(meal.tip)}</p>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {aiAnalysis.dietPlan.snacks?.length > 0 && (
-              <div className="p-6 bg-slate-50 rounded-2xl border-2 border-slate-200 shadow-sm transition-all hover:shadow-md">
-                <h3 className="font-bold text-black mb-4 text-xl flex items-center gap-2">🍎 {isHindi ? 'स्नैक्स' : 'Snacks'}</h3>
-                <div className="space-y-4">
-                  {aiAnalysis.dietPlan.snacks.map((meal, i) => (
-                    <div key={i} className="bg-white p-4 rounded-xl border border-slate-100">
-                      <p className="font-bold text-slate-800 text-base">{t(meal.meal)}</p>
-                      {meal.nutrients && <p className="text-xs text-slate-500 mt-1 uppercase tracking-wider font-semibold">{isHindi ? 'पोषक तत्व' : 'Nutrients'}: {Array.isArray(meal.nutrients) ? meal.nutrients.join(', ') : meal.nutrients}</p>}
-                      {meal.tip && <p className="text-sm text-slate-600 italic mt-2">💡 {t(meal.tip)}</p>}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          <div className="grid md:grid-cols-2 gap-6 mb-6">
-            {aiAnalysis.dietPlan.foodsToIncrease?.length > 0 && (
-              <div className="p-6 bg-slate-50 rounded-2xl border-2 border-slate-200">
-                <h3 className="font-bold text-black mb-4 text-[10px] uppercase tracking-widest">✅ {isHindi ? 'इन खाद्य पदार्थों को बढ़ाएं' : 'Foods to Increase'}</h3>
-                <div className="flex flex-wrap gap-2">
-                  {aiAnalysis.dietPlan.foodsToIncrease.map((food, i) => (
-                    <span key={i} className="bg-black text-white px-3 py-1.5 rounded-lg border border-black text-sm font-semibold shadow-sm">{t(food)}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {aiAnalysis.dietPlan.foodsToLimit?.length > 0 && (
-              <div className="p-6 bg-slate-100 rounded-2xl border-2 border-slate-200">
-                <h3 className="font-bold text-slate-700 mb-4 text-[10px] uppercase tracking-widest">⚠️ {isHindi ? 'इन खाद्य पदार्थों को सीमित करें' : 'Foods to Limit'}</h3>
-                <div className="flex flex-wrap gap-2">
-                  {aiAnalysis.dietPlan.foodsToLimit.map((food, i) => (
-                    <span key={i} className="bg-white px-3 py-1.5 rounded-lg border border-slate-300 text-sm font-semibold text-slate-800 shadow-sm">{t(food)}</span>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-
-          {aiAnalysis.dietPlan.hydration && (
-            <div className="p-6 bg-slate-50 rounded-2xl border-2 border-slate-200 mb-6">
-              <h3 className="font-bold text-black mb-2 flex items-center gap-2">💧 {isHindi ? 'जलयोजन' : 'Hydration'}</h3>
-              <p className="text-slate-700 font-medium">{t(aiAnalysis.dietPlan.hydration)}</p>
-            </div>
-          )}
-
-          {aiAnalysis.dietPlan.tips?.length > 0 && (
-            <div className="p-6 bg-slate-900 rounded-2xl border-2 border-black text-white">
-              <h3 className="font-bold text-white mb-4 flex items-center gap-2">💡 {isHindi ? 'स्वास्थ्य युक्तियाँ' : 'Health Tips'}</h3>
-              <ul className="space-y-3">
-                {aiAnalysis.dietPlan.tips.map((tip, i) => (
-                  <li key={i} className="text-white/80 flex items-start gap-3">
-                    <span className="bg-white text-black w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">{i + 1}</span>
-                    <span className="font-medium">{t(tip)}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
 
       {/* Supplement Recommendations */}
       {aiAnalysis?.supplementRecommendations && Object.keys(aiAnalysis.supplementRecommendations).length > 0 && (

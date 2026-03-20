@@ -658,98 +658,34 @@ export default function ReportDetailsEnhanced() {
         </div>
       )}
 
-      {/* Diet Plan */}
-      {aiAnalysis?.dietPlan && (
-        <div className="card p-8">
-          <h2 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-3">
-            <div className="w-10 h-10 bg-emerald-50 rounded-xl flex items-center justify-center">
-              <Apple className="w-5 h-5 text-emerald-600" />
+      {/* Generate Diet Plan CTA */}
+      <div className="card p-8 bg-gradient-to-br from-emerald-50 to-teal-50 border-2 border-emerald-100 relative overflow-hidden">
+        <div className="absolute top-0 right-0 w-48 h-48 bg-emerald-100 rounded-full -mr-16 -mt-16 opacity-30 blur-2xl" />
+        <div className="relative z-10">
+          <div className="flex items-start gap-6">
+            <div className="w-16 h-16 bg-white rounded-[1.5rem] flex items-center justify-center shadow-lg border border-emerald-100">
+              <Apple className="w-8 h-8 text-emerald-600" />
             </div>
-            PERSONALIZED DIET PLAN
-          </h2>
-          {aiAnalysis.dietPlan.overview && (
-            <p className="text-slate-700 mb-8 text-sm font-bold leading-relaxed bg-white/40 p-5 rounded-[2rem] border border-white/60 italic shadow-inner">
-              "{aiAnalysis.dietPlan.overview}"
-            </p>
-          )}
-
-          {/* Meal Plan */}
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            {[
-              { key: 'breakfast', label: 'Breakfast', icon: '🌅', bg: 'bg-emerald-50/50', border: 'border-emerald-100', text: 'text-emerald-700' },
-              { key: 'lunch', label: 'Lunch', icon: '☀️', bg: 'bg-blue-50/50', border: 'border-blue-100', text: 'text-blue-700' },
-              { key: 'dinner', label: 'Dinner', icon: '🌙', bg: 'bg-purple-50/50', border: 'border-purple-100', text: 'text-purple-700' },
-              { key: 'snacks', label: 'Snacks', icon: '🍎', bg: 'bg-amber-50/50', border: 'border-amber-100', text: 'text-amber-700' }
-            ].map(({ key, label, icon, bg, border, text }) =>
-              aiAnalysis.dietPlan[key]?.length > 0 && (
-                <div key={key} className={`p-5 rounded-3xl ${bg} border-2 ${border} shadow-sm group hover:scale-[1.02] transition-transform duration-300`}>
-                  <div className="flex items-center gap-3 mb-4">
-                    <span className="text-2xl filter drop-shadow-sm">{icon}</span>
-                    <span className={`text-[10px] font-black uppercase tracking-[0.2em] ${text}`}>{label}</span>
-                  </div>
-                  <div className="space-y-3">
-                    {aiAnalysis.dietPlan[key].map((meal, i) => (
-                      <div key={i} className="bg-white/60 p-3 rounded-2xl border border-white/80">
-                        <p className={`text-xs ${text} font-black`}>{meal.meal || meal}</p>
-                        {meal.tip && <p className="text-[10px] text-slate-500 italic mt-1 font-medium">{meal.tip}</p>}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )
-            )}
+            <div className="flex-1">
+              <h2 className="text-xl font-black text-slate-800 mb-2">Personalized Diet Plan</h2>
+              <p className="text-sm text-slate-600 font-medium leading-relaxed mb-6">
+                Get a comprehensive diet plan based on <span className="font-black text-emerald-700">this report's findings</span>, your 
+                <span className="font-black text-emerald-700"> fitness goals</span>, and <span className="font-black text-emerald-700">BMI</span>. 
+                Our AI will analyze everything together to create the perfect meal plan for you.
+              </p>
+              <Link
+                to="/diet-plan"
+                className="inline-flex items-center gap-3 px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-2xl font-black text-sm uppercase tracking-wider shadow-xl shadow-emerald-200 hover:shadow-2xl hover:shadow-emerald-300 transition-all hover:-translate-y-0.5 active:scale-95"
+              >
+                <Sparkles className="w-5 h-5" />
+                View personalized diet plan specially for you
+                <ArrowLeft className="w-4 h-4 rotate-180" />
+              </Link>
+            </div>
           </div>
-
-          {/* Foods to Increase/Limit */}
-          {(aiAnalysis.dietPlan.foodsToIncrease?.length > 0 || aiAnalysis.dietPlan.foodsToLimit?.length > 0) && (
-            <div className="grid md:grid-cols-2 gap-6 mb-8">
-              {aiAnalysis.dietPlan.foodsToIncrease?.length > 0 && (
-                <div className="p-6 bg-emerald-50/40 rounded-3xl border-2 border-emerald-100">
-                  <h3 className="text-[10px] font-black tracking-widest text-emerald-700 mb-4 uppercase">✅ Foods to Increase</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {aiAnalysis.dietPlan.foodsToIncrease.map((food, i) => (
-                      <span key={i} className="text-[10px] bg-white text-emerald-700 px-4 py-2 rounded-xl font-black border border-emerald-100 shadow-sm">
-                        {food}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {aiAnalysis.dietPlan.foodsToLimit?.length > 0 && (
-                <div className="p-6 bg-red-50/40 rounded-3xl border-2 border-red-100">
-                  <h3 className="text-[10px] font-black tracking-widest text-red-700 mb-4 uppercase">⚠️ Foods to Limit</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {aiAnalysis.dietPlan.foodsToLimit.map((food, i) => (
-                      <span key={i} className="text-[10px] bg-white text-red-700 px-4 py-2 rounded-xl font-black border border-red-100 shadow-sm">
-                        {food}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Diet Tips */}
-          {aiAnalysis.dietPlan.tips?.length > 0 && (
-            <div className="p-6 bg-slate-50 border-none rounded-3xl shadow-inner">
-              <h3 className="text-[10px] font-black text-slate-800 mb-4 flex items-center gap-2 uppercase tracking-widest">
-                <Sparkles className="w-4 h-4 text-amber-500" /> Diet Tips
-              </h3>
-              <div className="grid sm:grid-cols-2 gap-4">
-                {aiAnalysis.dietPlan.tips.map((tip, i) => (
-                  <div key={i} className="flex items-start gap-4 p-4 bg-white/60 rounded-2xl border border-white">
-                    <div className="w-6 h-6 rounded-full bg-amber-50 flex items-center justify-center shrink-0">
-                      <span className="text-amber-600 text-[10px] font-black">{i + 1}</span>
-                    </div>
-                    <p className="text-[11px] text-slate-700 font-bold leading-relaxed">{tip}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
-      )}
+      </div>
+
 
       {/* Fitness Plan */}
       {aiAnalysis?.fitnessPlan && (

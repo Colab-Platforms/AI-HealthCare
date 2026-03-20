@@ -438,108 +438,30 @@ export default function ReportDetails() {
         </div>
       )}
 
-      {aiAnalysis?.dietPlan && (
-        <div className="bg-white rounded-2xl border-l-4 border-green-500 border-t-2 border-r-2 border-b-2 border-t-slate-200 border-r-slate-200 border-b-slate-200 p-6 shadow-sm">
-          <h2 className="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2"><UtensilsCrossed className="w-5 h-5 text-green-500" /> Personalized Diet Plan</h2>
-          <p className="text-slate-700 mb-6 font-medium">{aiAnalysis.dietPlan.overview}</p>
-          
-          <div className="grid md:grid-cols-2 gap-6 mb-6">
-            {aiAnalysis.dietPlan.breakfast?.length > 0 && (
-              <div className="p-4 bg-orange-50 rounded-xl border-2 border-orange-200">
-                <h3 className="font-bold text-orange-700 mb-3">🌅 Breakfast</h3>
-                {aiAnalysis.dietPlan.breakfast.map((meal, i) => (
-                  <div key={i} className="mb-3 pb-3 border-b border-orange-200 last:border-0">
-                    <p className="font-medium text-slate-800">{meal.meal}</p>
-                    <p className="text-xs text-slate-600">Nutrients: {meal.nutrients?.join(', ')}</p>
-                    <p className="text-xs text-orange-600 italic">💡 {meal.tip}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-            
-            {aiAnalysis.dietPlan.lunch?.length > 0 && (
-              <div className="p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
-                <h3 className="font-bold text-blue-700 mb-3">🍽️ Lunch</h3>
-                {aiAnalysis.dietPlan.lunch.map((meal, i) => (
-                  <div key={i} className="mb-3 pb-3 border-b border-blue-200 last:border-0">
-                    <p className="font-medium text-slate-800">{meal.meal}</p>
-                    <p className="text-xs text-slate-600">Nutrients: {meal.nutrients?.join(', ')}</p>
-                    <p className="text-xs text-blue-600 italic">💡 {meal.tip}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-            
-            {aiAnalysis.dietPlan.dinner?.length > 0 && (
-              <div className="p-4 bg-indigo-50 rounded-xl border-2 border-indigo-200">
-                <h3 className="font-bold text-indigo-700 mb-3">🌙 Dinner</h3>
-                {aiAnalysis.dietPlan.dinner.map((meal, i) => (
-                  <div key={i} className="mb-3 pb-3 border-b border-indigo-200 last:border-0">
-                    <p className="font-medium text-slate-800">{meal.meal}</p>
-                    <p className="text-xs text-slate-600">Nutrients: {meal.nutrients?.join(', ')}</p>
-                    <p className="text-xs text-indigo-600 italic">💡 {meal.tip}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-            
-            {aiAnalysis.dietPlan.snacks?.length > 0 && (
-              <div className="p-4 bg-pink-50 rounded-xl border-2 border-pink-200">
-                <h3 className="font-bold text-pink-700 mb-3">🥜 Snacks</h3>
-                {aiAnalysis.dietPlan.snacks.map((meal, i) => (
-                  <div key={i} className="mb-3 pb-3 border-b border-pink-200 last:border-0">
-                    <p className="font-medium text-slate-800">{meal.meal}</p>
-                    <p className="text-xs text-slate-600">Nutrients: {meal.nutrients?.join(', ')}</p>
-                    <p className="text-xs text-pink-600 italic">💡 {meal.tip}</p>
-                  </div>
-                ))}
-              </div>
-            )}
+      {/* Generate Diet Plan CTA */}
+      <div className="bg-white rounded-2xl border-l-[6px] border-emerald-500 border-2 border-slate-200 p-8 shadow-sm">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <div className="flex-1">
+            <h2 className="text-2xl font-bold text-slate-800 mb-3 flex items-center gap-2">
+              <UtensilsCrossed className="w-6 h-6 text-emerald-600" /> Personalized Diet Plan
+            </h2>
+            <p className="text-slate-600 leading-relaxed mb-4">
+              Get a comprehensive diet plan tailored to your <span className="font-bold text-emerald-600">report findings</span>, 
+              <span className="font-bold text-emerald-600"> fitness goals</span>, and <span className="font-bold text-emerald-600">BMI</span>. 
+              Our AI will analyze everything together to create the perfect meal plan for you.
+            </p>
           </div>
-
-          <div className="grid md:grid-cols-2 gap-4 mb-4">
-            {aiAnalysis.dietPlan.foodsToIncrease?.length > 0 && (
-              <div className="p-4 bg-emerald-50 rounded-xl border-2 border-emerald-200">
-                <h3 className="font-bold text-emerald-700 mb-2">✅ Foods to Increase</h3>
-                <ul className="space-y-1">
-                  {aiAnalysis.dietPlan.foodsToIncrease.map((food, i) => (
-                    <li key={i} className="text-sm text-slate-700">• {food}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-            
-            {aiAnalysis.dietPlan.foodsToLimit?.length > 0 && (
-              <div className="p-4 bg-red-50 rounded-xl border-2 border-red-200">
-                <h3 className="font-bold text-red-700 mb-2">⚠️ Foods to Limit</h3>
-                <ul className="space-y-1">
-                  {aiAnalysis.dietPlan.foodsToLimit.map((food, i) => (
-                    <li key={i} className="text-sm text-slate-700">• {food}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-
-          {aiAnalysis.dietPlan.hydration && (
-            <div className="p-4 bg-cyan-50 rounded-xl border-2 border-cyan-200 mb-4">
-              <h3 className="font-bold text-cyan-700 mb-2">💧 Hydration</h3>
-              <p className="text-sm text-slate-700">{aiAnalysis.dietPlan.hydration}</p>
-            </div>
-          )}
-
-          {aiAnalysis.dietPlan.tips?.length > 0 && (
-            <div className="p-4 bg-yellow-50 rounded-xl border-2 border-yellow-200">
-              <h3 className="font-bold text-yellow-700 mb-2">💡 Tips</h3>
-              <ul className="space-y-1">
-                {aiAnalysis.dietPlan.tips.map((tip, i) => (
-                  <li key={i} className="text-sm text-slate-700">• {tip}</li>
-                ))}
-              </ul>
-            </div>
-          )}
+          <Link
+            to="/diet-plan"
+            className="inline-flex items-center gap-3 px-8 py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition-all hover:shadow-lg hover:-translate-y-0.5 active:scale-95"
+          >
+            <Sparkles className="w-5 h-5" />
+            View personalized diet plan specially for you
+            <ArrowLeft className="w-4 h-4 rotate-180" />
+          </Link>
         </div>
-      )}
+      </div>
+
 
       {aiAnalysis?.recommendations && (
         <div className="bg-white rounded-2xl border-l-4 border-red-500 border-t-2 border-r-2 border-b-2 border-t-slate-200 border-r-slate-200 border-b-slate-200 p-6 shadow-sm">

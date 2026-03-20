@@ -107,27 +107,6 @@ JSON STRUCTURE (follow EXACTLY):
   "supplements": [
     {"category": "Vitamins", "reason": "Deficiency", "naturalSources": "Foods", "note": "Consult doctor"}
   ],
-  "dietPlan": {
-    "overview": "Brief dietary strategy based on results",
-    "breakfast": [
-      {"meal": "Meal Option 1", "nutrients": ["Nutrient"], "tip": "Tip"}
-    ],
-    "midMorningSnack": [
-      {"meal": "Meal Option 1", "nutrients": ["Nutrient"], "tip": "Tip"}
-    ],
-    "lunch": [
-      {"meal": "Meal Option 1", "nutrients": ["Nutrient"], "tip": "Tip"}
-    ],
-    "eveningSnack": [
-      {"meal": "Meal Option 1", "nutrients": ["Nutrient"], "tip": "Tip"}
-    ],
-    "dinner": [
-      {"meal": "Meal Option 1", "nutrients": ["Nutrient"], "tip": "Tip"}
-    ],
-    "foodsToIncrease": ["food1", "food2", "food3"],
-    "foodsToLimit": ["food1", "food2"],
-    "tips": ["tip1", "tip2", "tip3"]
-  },
   "recommendations": {
     "immediate": ["action1", "action2"],
     "shortTerm": ["action1", "action2"],
@@ -167,13 +146,14 @@ CRITICAL RULES:
 1. Return ONLY valid JSON. No markdown, no extra text.
 2. Keep string values SHORT and CONCISE, EXCEPT for the "summary", "radiologistReport.findings", and "patientFriendlySummary" fields.
 3. Include ALL metrics found in the report with correct status (normal/high/low/borderline) for standard lab reports.
-4. For MRI reports, SKIP metrics and dietPlan to focus entirely on anatomical findings.
-5. Provide EXACTLY 2 meal options for EACH of these 5 categories: "breakfast", "midMorningSnack", "lunch", "eveningSnack", and "dinner". Keep it extremely brief.
-6. Use Indian food options when appropriate.
+4. For MRI reports, SKIP metrics to focus entirely on anatomical findings.
+5. DO NOT include any diet plan or meal suggestions. Diet plans are generated separately.
+6. Use Indian food options in topFoods when appropriate.
 7. Use numbers for numeric values, not strings.
 8. Always provide at least 3-5 summaryPoints as individual pointers for the user.
-9. If reportType is MRI, populate the "mriData" field comprehensively and skip dietary advice.
+9. If reportType is MRI, populate the "mriData" field comprehensively.
 10. Do NOT use true/false as unquoted literals in string fields.`;
+
 
 exports.analyzeHealthReport = async (reportText, user = {}, imageData = null, reportType = 'general') => {
   try {
