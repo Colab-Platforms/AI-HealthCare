@@ -29,6 +29,9 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
+  const [heightUnit, setHeightUnit] = useState('cm');
+  const [feet, setFeet] = useState('');
+  const [inches, setInches] = useState('');
   const { register, refreshUser, user } = useAuth();
   const navigate = useNavigate();
 
@@ -396,25 +399,64 @@ export default function Register() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-slate-700">Height (cm) *</label>
-                  <input
-                    type="number"
-                    value={formData.height}
-                    onChange={(e) => setFormData({ ...formData, height: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold"
-                    placeholder="170"
-                    min="100" max="250"
-                    required
-                  />
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block text-sm font-medium text-slate-700">Height *</label>
+                    <div className="flex bg-slate-100 rounded-lg p-0.5">
+                      <button type="button" onClick={() => setHeightUnit('cm')} className={`px-2 py-0.5 text-[10px] font-black uppercase rounded-md transition-all ${heightUnit === 'cm' ? 'bg-white shadow-sm text-black' : 'text-slate-400'}`}>cm</button>
+                      <button type="button" onClick={() => setHeightUnit('ft')} className={`px-2 py-0.5 text-[10px] font-black uppercase rounded-md transition-all ${heightUnit === 'ft' ? 'bg-white shadow-sm text-black' : 'text-slate-400'}`}>ft/in</button>
+                    </div>
+                  </div>
+                  
+                  {heightUnit === 'cm' ? (
+                    <input
+                      type="number"
+                      value={formData.height}
+                      onChange={(e) => setFormData({ ...formData, height: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold"
+                      placeholder="170"
+                      min="100" max="250"
+                      required
+                    />
+                  ) : (
+                    <div className="flex gap-2">
+                      <input
+                        type="number"
+                        placeholder="Ft"
+                        value={feet}
+                        onChange={(e) => {
+                          const f = e.target.value;
+                          setFeet(f);
+                          const totalCm = (parseFloat(f || 0) * 30.48) + (parseFloat(inches || 0) * 2.54);
+                          setFormData({ ...formData, height: totalCm.toFixed(1) });
+                        }}
+                        className="w-1/2 bg-slate-50 border border-slate-100 rounded-xl py-3 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold"
+                        required
+                      />
+                      <input
+                        type="number"
+                        placeholder="In"
+                        value={inches}
+                        onChange={(e) => {
+                          const i = e.target.value;
+                          setInches(i);
+                          const totalCm = (parseFloat(feet || 0) * 30.48) + (parseFloat(i || 0) * 2.54);
+                          setFormData({ ...formData, height: totalCm.toFixed(1) });
+                        }}
+                        className="w-1/2 bg-slate-50 border border-slate-100 rounded-xl py-3 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold"
+                        required
+                      />
+                    </div>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-1 text-slate-700">Weight (kg) *</label>
                   <input
                     type="number"
+                    step="0.1"
                     value={formData.weight}
                     onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold"
-                    placeholder="70"
+                    placeholder="70.5"
                     min="30" max="300"
                     required
                   />
