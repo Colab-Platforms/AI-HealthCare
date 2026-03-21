@@ -488,6 +488,8 @@ function Nutrition() {
     }
   };
 
+  const finalTranscriptRef = React.useRef('');
+
   const startVoiceCapture = () => {
     const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (!SpeechRecognition) {
@@ -496,37 +498,39 @@ function Nutrition() {
     }
     const recognition = new SpeechRecognition();
     recognitionRef.current = recognition;
-    recognition.lang = 'en-IN'; // Changed to en-IN for Indian users as well
+    recognition.lang = 'en-IN';
     recognition.continuous = true;
     recognition.interimResults = true;
 
     recognition.onstart = () => {
       setIsListening(true);
+      finalTranscriptRef.current = ''; // Reset accumulated transcript
       if (inputMethod === 'Predict') {
-        setFoodInput(''); // Clear initially if starting from fresh Voice Log tab
+        setFoodInput('');
       }
       toast('Listening...', { icon: '🎙️', duration: 2000 });
     };
 
     recognition.onend = () => {
       setIsListening(false);
-      // Removed auto-analyze. The user must manually review and send it.
     };
 
     recognition.onresult = (event) => {
-      let finalTranscript = '';
+      let interimTranscript = '';
+      
+      // Process only from the latest resultIndex to avoid reprocessing old results
       for (let i = event.resultIndex; i < event.results.length; ++i) {
+        const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
+          finalTranscriptRef.current += transcript;
+        } else {
+          interimTranscript += transcript;
         }
       }
-      if (finalTranscript) {
-        setFoodInput(prev => {
-          const combined = (prev + ' ' + finalTranscript).trim();
-          // Simple de-duplication if names are repeated immediately
-          return combined.split(' ').filter((w, i, a) => w !== a[i-1]).join(' ');
-        });
-      }
+      
+      // Build display text: committed finals + current interim
+      const displayText = (finalTranscriptRef.current + ' ' + interimTranscript).trim();
+      setFoodInput(displayText);
     };
 
     recognition.onerror = (event) => {
