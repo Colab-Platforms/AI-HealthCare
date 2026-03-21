@@ -532,48 +532,42 @@ exports.getDashboardData = async (req, res) => {
     const generateProfileInsights = (user) => {
       if (!user || !user.profile) return null;
 
-      const { age, weight, height, activityLevel, gender } = user.profile;
+      const { weight, height, activityLevel } = user.profile;
       const bmi = (weight && height) ? (weight / ((height / 100) ** 2)).toFixed(1) : null;
-
+      
+      // Get today's dynamic metrics
+      const cals = todayHistory?.calories || 0;
+      const steps = todayHistory?.steps || 0;
+      
       let lifestyleAdvice = "";
       let dietaryGoal = "Maintain balanced nutrition";
+      let nutritionalTrend = "Balanced";
 
-      if (activityLevel === 'sedentary') {
-        lifestyleAdvice = "Consider adding a 15-minute daily walk to boost your metabolism.";
-      } else if (bmi && bmi > 25) {
-        lifestyleAdvice = "Focus on a balanced diet and regular exercise for healthy weight management.";
-        dietaryGoal = "Higher protein, controlled portions";
-      } else if (bmi && bmi < 18.5) {
-        lifestyleAdvice = "Focus on nutrient-dense foods to support healthy weight gain.";
-        dietaryGoal = "Higher calorie, protein-rich foods";
-      } else {
-        lifestyleAdvice = "Maintain your current activity level and stay hydrated for optimal performance.";
-      }
+      if (cals > calorieGoal) nutritionalTrend = "Nutritional Surfeit (High Calorie Today)";
+      else if (cals > 0 && cals < calorieGoal * 0.5) nutritionalTrend = "Incremental Intake (Light Day)";
 
-      // Generate basic metrics based only on known data
-      const basicMetrics = {};
-      if (bmi) {
-        basicMetrics["BMI"] = {
-          value: bmi,
-          status: bmi > 25 ? "Overweight" : bmi < 18.5 ? "Underweight" : "Healthy",
-          normalRange: "18.5 - 24.9"
-        };
-      }
+      if (steps > 0 && steps < 3000) lifestyleAdvice = "Sedentary Pattern: A short 15-min walk would help today.";
+      else if (steps >= 8000) lifestyleAdvice = "High Activity: Excellent momentum today!";
+      else if (activityLevel === 'sedentary') lifestyleAdvice = "Profile Goal: Aim for light movement to boost your metabolism.";
+      else lifestyleAdvice = "Metabolic Activity: Your movement is tracking with your goals.";
 
-      // Create a realistic, personalized summary based only on what we know
-      let summaryParts = [`Welcome to your health dashboard.`];
-      if (bmi) summaryParts.push(`Your calculated BMI is ${bmi}.`);
+      if (bmi && bmi > 25) dietaryGoal = "Portion Control & Protein Prioritized";
+      else if (bmi && bmi < 18.5) dietaryGoal = "Nutrient Dense & Calorie Rich";
+
+      // Create a daily summary
+      let summaryParts = [`Insight Hub:`];
+      if (cals > 0) summaryParts.push(`Today's consumption of ${cals} kcal is ${nutritionalTrend}.`);
+      if (steps > 0) summaryParts.push(`Recorded ${steps} steps so far.`);
       summaryParts.push(lifestyleAdvice);
-      summaryParts.push(`Upload your first medical report for a complete AI health analysis and personalized deficiency tracking.`);
 
       return {
-        healthScore: 75,
+        healthScore: cals > calorieGoal ? 68 : (steps > 5000 ? 82 : 75),
         summary: summaryParts.join(' '),
-        metrics: basicMetrics,
-        deficiencies: [], // Empty to trigger the "Upload your report" UI
+        metrics: bmi ? { "BMI": { value: bmi, status: bmi > 25 ? "Overweight" : "Normal", normalRange: "18.5-25" } } : {},
+        deficiencies: [], 
         recommendations: {
-          lifestyle: [lifestyleAdvice, "Aim for 7-9 hours of consistent sleep.", "Monitor your daily step count."],
-          nutritional: ["Drink 2-3L of water daily.", "Increase fiber intake with whole grains.", `Focus on: ${dietaryGoal}`]
+          lifestyle: [lifestyleAdvice, steps < 2000 ? "Active Protocol needed." : "Consistent pacing observed."],
+          nutritional: [dietaryGoal, cals > calorieGoal ? "Lower sugar intake." : "Hydration sync recommended."]
         }
       };
     };

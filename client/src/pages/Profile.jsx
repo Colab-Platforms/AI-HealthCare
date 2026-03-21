@@ -400,8 +400,12 @@ export default function Profile() {
     }
   };
 
+
+
   const bmi = formData.profile.height && formData.profile.weight
     ? (formData.profile.weight / Math.pow(formData.profile.height / 100, 2)).toFixed(1) : null;
+
+
 
   const getBmiStatus = (bmi) => {
     if (!bmi) return { label: 'N/A', color: 'slate' };
@@ -914,7 +918,42 @@ export default function Profile() {
 
             {/* Right Column: Mini Info / Stats (1/3 width) */}
             <div className="space-y-8">
-              {/* Account Control at the bottom of the grid or strictly after */}
+              {/* AI Health Insights Section - Now above Account Control */}
+              <div className="space-y-6">
+                <div className="flex items-center gap-2">
+                  <div className="p-1.5 bg-purple-100 text-purple-600 rounded-lg">
+                    <Sparkles className="w-5 h-5 transition-transform group-hover:rotate-12" />
+                  </div>
+                  <h1 className="text-xl md:text-2xl font-bold text-slate-900 uppercase">AI Health Insights</h1>
+                </div>
+                <div className="bg-[#F8FAFF] rounded-[2rem] p-6 md:p-8 border border-[#EBF2FF] relative overflow-hidden group hover:shadow-md transition-all">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-purple-200/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
+                  <div className="relative flex flex-col gap-5">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center flex-shrink-0 text-purple-600">
+                        <Activity className="w-6 h-6" />
+                      </div>
+                      <h4 className="text-lg font-bold text-slate-900">
+                        {extraData.latestAnalysis?.summary ? "Daily Analysis" : "Personalized Summary"}
+                      </h4>
+                    </div>
+                    <p className="text-slate-600 leading-relaxed text-sm">
+                      {extraData.latestAnalysis?.summary || 
+                       extraData.latestAnalysis?.recommendations?.lifestyle?.[0] ||
+                       user?.healthAnalysis?.summary || 
+                       "Based on your profile, we recommend maintaining a consistent sleep schedule and monitoring your activity levels."}
+                    </p>
+                    {extraData.latestAnalysis?.recommendations?.nutritional?.length > 0 && (
+                      <div className="pt-4 border-t border-purple-100/50">
+                        <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-2">Nutritional Focus</p>
+                        <p className="text-xs font-bold text-slate-700 italic">"{(extraData.latestAnalysis.recommendations.nutritional[0] || '').replace('Focus on: ', '')}"</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Account Control */}
               <div className="bg-white rounded-[2rem] p-8 border border-slate-100 shadow-sm">
                  <h3 className="text-xl font-bold text-slate-900 mb-6">Account Control</h3>
                  <button
@@ -927,35 +966,6 @@ export default function Profile() {
                     </div>
                     <ChevronRight className="w-4 h-4" />
                   </button>
-              </div>
-            </div>
-          </div>
-
-          {/* AI Health Insights Section */}
-          <div className="space-y-6 mt-12">
-            <div className="flex items-center gap-2">
-              <div className="p-1.5 bg-purple-100 text-purple-600 rounded-lg">
-                <Sparkles className="w-5 h-5 transition-transform group-hover:rotate-12" />
-              </div>
-              <h3 className="text-xl md:text-2xl font-bold text-slate-900">AI Health Insights</h3>
-            </div>
-            <div className="bg-[#F8FAFF] rounded-[2rem] p-6 md:p-8 border border-[#EBF2FF] relative overflow-hidden group hover:shadow-md transition-all">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-purple-200/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-              <div className="relative flex gap-5 md:gap-6">
-                <div className="w-14 h-14 md:w-16 md:h-16 rounded-3xl bg-white shadow-sm flex items-center justify-center flex-shrink-0 text-purple-600">
-                  <Activity className="w-8 h-8 md:w-10 md:h-10" />
-                </div>
-                <div className="space-y-2">
-                  <h4 className="text-lg md:text-xl font-bold text-slate-900">
-                    {extraData.latestAnalysis?.summary ? "Personalized Analysis" : "General Health Summary"}
-                  </h4>
-                  <p className="text-slate-600 leading-relaxed max-w-2xl text-sm md:text-base">
-                    {extraData.latestAnalysis?.summary || 
-                     extraData.latestAnalysis?.recommendations?.lifestyle?.[0] ||
-                     user?.healthAnalysis?.summary || 
-                     "Based on your profile, we recommend maintaining a consistent sleep schedule and monitoring your activity levels."}
-                  </p>
-                </div>
               </div>
             </div>
           </div>
