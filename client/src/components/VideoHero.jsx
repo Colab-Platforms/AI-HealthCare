@@ -6,21 +6,36 @@ const VideoHero = () => {
     <div className="relative min-h-screen flex items-center overflow-hidden bg-gradient-to-b from-[#0a3d5c] to-[#0d5a8a]">
       {/* Video Background - Clear and visible */}
       <div className="absolute inset-0 z-0">
+        {/* Desktop Video */}
         <video
           autoPlay
           loop
           muted
           playsInline
-          className="w-full h-full object-cover opacity-60"
+          className="hidden md:block w-full h-full object-cover opacity-60"
         >
           <source src="https://cdn.shopify.com/videos/c/o/v/bec0c00b6d494ad9b4966b1d431f29c5.mp4" type="video/mp4" />
-          {/* Fallback for browsers that don't support video */}
+        </video>
+
+        {/* Mobile Video */}
+        <video
+          autoPlay
+          loop
+          muted
+          playsInline
+          className="block md:hidden w-full h-full object-cover opacity-60"
+        >
+          <source src="https://cdn.shopify.com/videos/c/o/v/9fbf6dd9c71a47238ee8bdb92c2851ff.mp4" type="video/mp4" />
+        </video>
+
+        {/* Fallback for browsers that don't support video */}
+        <noscript>
           <img 
             src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=1920&h=1080&fit=crop" 
             alt="Healthcare" 
             className="w-full h-full object-cover opacity-60"
           />
-        </video>
+        </noscript>
         {/* Overlay for text readability - lighter overlay */}
         <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-black/20 to-transparent" />
       </div>
