@@ -335,6 +335,9 @@ export default function Register() {
                     key={i}
                     id={`otp-${i}`}
                     type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    autoComplete={i === 0 ? 'one-time-code' : 'off'}
                     maxLength="1"
                     value={digit}
                     onChange={(e) => {

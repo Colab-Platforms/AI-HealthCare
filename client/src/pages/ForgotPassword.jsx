@@ -156,22 +156,30 @@ export default function ForgotPassword() {
                                     {[...Array(4)].map((_, i) => (
                                         <input
                                             key={i}
+                                            id={`otp-${i}`}
                                             type="text"
+                                            inputMode="numeric"
+                                            pattern="[0-9]*"
+                                            autoComplete={i === 0 ? 'one-time-code' : 'off'}
                                             maxLength="1"
                                             value={code[i] || ''}
                                             onChange={(e) => {
                                                 const val = e.target.value.replace(/\D/g, '');
+                                                const newCode = code.split('');
                                                 if (val) {
-                                                    const newCode = code.split('');
                                                     newCode[i] = val;
                                                     const combined = newCode.join('');
                                                     setCode(combined);
-                                                    if (i < 3 && e.target.nextSibling) e.target.nextSibling.focus();
+                                                    if (i < 3) document.getElementById(`otp-${i+1}`).focus();
                                                 } else {
-                                                    const newCode = code.split('');
                                                     newCode[i] = '';
                                                     setCode(newCode.join(''));
-                                                    if (i > 0 && e.target.previousSibling) e.target.previousSibling.focus();
+                                                    if (i > 0) document.getElementById(`otp-${i-1}`).focus();
+                                                }
+                                            }}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Backspace' && !code[i] && i > 0) {
+                                                    document.getElementById(`otp-${i - 1}`).focus();
                                                 }
                                             }}
                                             className="w-16 h-20 text-center text-4xl font-black bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black text-black"
