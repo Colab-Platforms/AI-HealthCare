@@ -112,10 +112,16 @@ const MealCard = ({ meal, mealType, onLog, isLogged, idx, isLoading }) => {
 
 export default function DietPlan() {
   const { user } = useAuth();
-  const { invalidateCache } = useData();
+  const { 
+    invalidateCache, 
+    fetchDietPlan, 
+    fetchNutritionLogs, 
+    fetchHealthGoals,
+    healthGoals 
+  } = useData();
   const navigate = useNavigate();
 
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [activePlan, setActivePlan] = useState(null);
   const [history, setHistory] = useState([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -135,19 +141,28 @@ export default function DietPlan() {
 
   const loadInitialData = async () => {
     try {
-      setLoading(true);
-      const [planRes, logsRes, historyRes] = await Promise.all([
-        dietRecommendationService.getActiveDietPlan(),
-        nutritionService.getTodayLogs(),
-        dietRecommendationService.getDietPlanHistory()
+      // Check for cached plan first
+      const cachedPlan = await fetchDietPlan();
+      if (cachedPlan) {
+        setActivePlan(cachedPlan);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
+
+      const today = new Date().toISOString().split('T')[0];
+      const [plan, logs, historyRes] = await Promise.all([
+        fetchDietPlan(),
+        fetchNutritionLogs(today),
+        dietRecommendationService.getDietPlanHistory(),
+        fetchHealthGoals()
       ]);
 
-      if (planRes.data.success) setActivePlan(planRes.data.dietPlan);
+      if (plan) setActivePlan(plan);
       if (historyRes.data.success) setHistory(historyRes.data.history);
 
-      const logs = logsRes.data?.foodLogs || logsRes.data?.logs || [];
       const loggedMap = {};
-      logs.forEach(log => {
+      (logs || []).forEach(log => {
         const type = log.mealType;
         const name = log.name || log.foodItems?.[0]?.name;
         loggedMap[`${type}-${name}`] = true;
@@ -219,32 +234,35 @@ export default function DietPlan() {
       const data = analysisRes.analysis;
 
       // 2. Log with rich data
+      // 2. Log with data from diet plan PREFERRED (for calorie goal consistency) 
+      // but enrich with AI analysis findings (benefits, alternatives)
       await nutritionService.logMeal({
         mealType: type,
         foodItems: [{
           name: mealName,
-          quantity: data.foodItem?.quantity || '1 serving',
-          nutrition: data.foodItem?.nutrition || {
-            calories: meal.calories || 200,
-            protein: meal.protein || 10,
-            carbs: meal.carbs || 30,
-            fats: meal.fats || 5
+          quantity: data.foodItem?.quantity || meal.portionSize || '1 serving',
+          nutrition: {
+            calories: meal.calories || data.foodItem?.nutrition?.calories || 200,
+            protein: meal.protein || data.foodItem?.nutrition?.protein || 10,
+            carbs: meal.carbs || data.foodItem?.nutrition?.carbs || 30,
+            fats: meal.fats || data.foodItem?.nutrition?.fats || 5
           }
         }],
-        healthScore: data.healthScore || data.foodItem?.healthScore,
-        healthScore10: data.healthScore10 || data.foodItem?.healthScore10,
-        micronutrients: data.micronutrients || data.foodItem?.micronutrients,
-        enhancementTips: data.enhancementTips || data.foodItem?.enhancementTips,
-        healthBenefitsSummary: data.healthBenefitsSummary || data.foodItem?.healthBenefitsSummary,
-        warnings: data.warnings || data.foodItem?.warnings,
-        alternatives: data.alternatives || data.foodItem?.alternatives,
+        healthScore: data.healthScore || data.foodItem?.healthScore || 80,
+        healthScore10: data.healthScore10 || data.foodItem?.healthScore10 || 8,
+        micronutrients: data.micronutrients || data.foodItem?.micronutrients || [],
+        enhancementTips: data.enhancementTips || data.foodItem?.enhancementTips || [],
+        healthBenefitsSummary: meal.benefits || data.healthBenefitsSummary || data.foodItem?.healthBenefitsSummary || '',
+        warnings: data.warnings || data.foodItem?.warnings || [],
+        alternatives: data.alternatives || data.foodItem?.alternatives || [],
         source: 'meal_plan'
       });
 
       toast.dismiss(analyzeToastId);
       toast.success('Meal logged! Keep it up 🚀');
       setLoggedMeals(prev => ({ ...prev, [mealId]: true }));
-      invalidateCache(['dashboard', `nutrition_${new Date().toISOString().split('T')[0]}`]);
+      invalidateCache(['dashboard', `logs_${new Date().toISOString().split('T')[0]}`, `nutrition_${new Date().toISOString().split('T')[0]}`]);
+      loadInitialData(); // Refresh UI
     } catch (err) {
       console.error("Log meal error:", err);
       toast.error('Failed to log meal');
@@ -279,10 +297,10 @@ export default function DietPlan() {
 
   // --- Prioritize Profile Goals for Overview ---
   const dailyGoals = {
-    calories: user?.nutritionGoal?.calorieGoal || activePlan?.nutritionGoals?.dailyCalorieTarget || 2100,
-    protein: user?.nutritionGoal?.proteinGoal || activePlan?.nutritionGoals?.macroTargets?.protein || 150,
-    carbs: user?.nutritionGoal?.carbsGoal || activePlan?.nutritionGoals?.macroTargets?.carbs || 200,
-    fats: user?.nutritionGoal?.fatGoal || activePlan?.nutritionGoals?.macroTargets?.fat || 65
+    calories: user?.nutritionGoal?.calorieGoal || healthGoals?.dailyCalorieTarget || activePlan?.nutritionGoals?.dailyCalorieTarget || 2100,
+    protein: user?.nutritionGoal?.proteinGoal || healthGoals?.macroTargets?.protein || activePlan?.nutritionGoals?.macroTargets?.protein || 150,
+    carbs: user?.nutritionGoal?.carbsGoal || healthGoals?.macroTargets?.carbs || activePlan?.nutritionGoals?.macroTargets?.carbs || 200,
+    fats: user?.nutritionGoal?.fatGoal || healthGoals?.macroTargets?.fats || healthGoals?.macroTargets?.fat || activePlan?.nutritionGoals?.macroTargets?.fat || 65
   };
 
   return (

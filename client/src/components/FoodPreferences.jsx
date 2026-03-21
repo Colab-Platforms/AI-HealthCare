@@ -22,6 +22,60 @@ const MEAL_TABS = [
   ]}
 ];
 
+const UNHEALTHY_KEYWORDS = [
+  'burger', 'pizza', 'fries', 'french fries', 'soda', 'coke', 'pepsi', 
+  'chips', 'crisps', 'fried', 'donuts', 'doughnuts', 'cake', 'brownie', 
+  'candy', 'sweets', 'ice cream', 'hot dog', 'processed', 'nachos', 
+  'cola', 'energy drink', 'deep fried', 'nuggets', 'sausage', 'bacon',
+  'maggie', 'instant noodles', 'pasta white', 'maida', 'junk',
+  'samosa', 'pakora', 'bhajiya', 'jalebi', 'gulab jamun', 'bhature', 
+  'puri', 'kachori', 'vada pav', 'misal pav', 'pav bhaji', 'naan', 
+  'paratha aloo', 'biryani oily', 'chowmein', 'manchurian'
+];
+
+const HEALTHY_ALTERNATIVES = {
+  'burger': 'Veggie Wrap or Paneer Sandwich',
+  'pizza': 'Whole Wheat Pizza or Flatbread',
+  'fries': 'Baked Sweet Potato Fries or Roasted Makhana',
+  'soda': 'Lemon Water or Fruit Infused Water',
+  'chips': 'Air-fried Kale Chips or Roasted Chana',
+  'cola': 'Cold Pressed Juice or Coconut Water',
+  'fried': 'Air-fried or Grilled version',
+  'maggie': 'Whole Wheat Noodles or Oats Maggi',
+  'sweets': 'Fresh Fruits or Dates',
+  'ice cream': 'Frozen Yogurt or Fruit Sorbet',
+  'white bread': 'Whole Wheat or Multigrain Bread',
+  'cake': 'Sugar-free Oat Muffins',
+  'donut': 'Whole Wheat Baked Rings',
+  'samosa': 'Baked Samosa or Air-fried Khakra',
+  'pakora': 'Air-fried Pakora or Grilled Paneer',
+  'jalebi': 'Fresh Steamed Yogurt (Bhapa Doi)',
+  'gulab jamun': 'Dry Fruit Ladoo or Honey Glazed Dates',
+  'bhature': 'Whole Wheat Roti or Baked Kulcha',
+  'puri': 'Baked Whole Wheat Puri or Chapatis',
+  'kachori': 'Baked Whole Wheat Kachori',
+  'vada pav': 'Whole Wheat Pav with Grilled Vada',
+  'pav bhaji': 'Whole Wheat Pav with vegetable-rich Bhaji',
+  'manchurian': 'Steamed Cabbage Dumplings or Stir-fried Veggies',
+  'chowmein': 'Zucchini Noodles or Whole Wheat Chowmein'
+};
+
+const HIGH_SUGAR_KEYWORDS = [
+  'sugar', 'sweet', 'candy', 'jalebi', 'gulab jamun', 'cake', 'brownie', 
+  'ice cream', 'dessert', 'halwa', 'ladoo', 'laddu', 'barfi', 'kheer',
+  'rasgulla', 'soda', 'coke', 'pepsi', 'juice sugary', 'syrup'
+];
+
+const DIABETIC_ALTERNATIVES = {
+  'sweet': 'Stevia-based dessert or Fresh Berries',
+  'sugar': 'Stevia, Monk Fruit, or Erythritol',
+  'jalebi': 'Sugar-free Apple Slices with Cinnamon',
+  'gulab jamun': 'Steamed Yogurt with Cardamom',
+  'halwa': 'Sugar-free Moong Dal Sheera (Small portion)',
+  'dessert': 'Sugar-free Chia Pudding or Greek Yogurt',
+  'soda': 'Unsweetened Iced Tea or Seltzer Water'
+};
+
 export default function FoodPreferences({ onClose, onGenerate, mode = 'save' }) {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('breakfast');
@@ -47,6 +101,7 @@ export default function FoodPreferences({ onClose, onGenerate, mode = 'save' }) 
     foodsToAvoid: '',
     dietaryRestrictions: ''
   });
+  const [healthWarning, setHealthWarning] = useState(null); // { food: '', alternative: '', type: '', isSuggestion: false }
 
   useEffect(() => {
     fetchPreferences();
@@ -99,9 +154,43 @@ export default function FoodPreferences({ onClose, onGenerate, mode = 'save' }) 
     }
   };
 
-  const addItem = (type) => {
+  const addItem = (type, forced = false) => {
     const value = inputValues[type]?.trim();
     if (!value) return;
+
+    // Check for unhealthy food (but allow it in "To Avoid" section)
+    if (!forced && type !== 'foodsToAvoid') {
+      const lowerVal = value.toLowerCase();
+      
+      // DIABETES SPECIFIC GUARD
+      const isDiabetic = user?.profile?.medicalHistory?.conditions?.some(c => c.toLowerCase().includes('diabetes')) || 
+                         user?.profile?.diabetesProfile?.type;
+      
+      const matchedSugarKey = HIGH_SUGAR_KEYWORDS.find(k => lowerVal.includes(k));
+      
+      if (isDiabetic && matchedSugarKey) {
+        setHealthWarning({ 
+          food: value, 
+          alternative: DIABETIC_ALTERNATIVES[matchedSugarKey] || 'a low-glycemic, sugar-free version',
+          type,
+          isSuggestion: false,
+          isClinical: true // More serious warning
+        });
+        return;
+      }
+
+      const matchedKey = UNHEALTHY_KEYWORDS.find(k => lowerVal.includes(k));
+      if (matchedKey) {
+        setHealthWarning({ 
+          food: value, 
+          alternative: HEALTHY_ALTERNATIVES[matchedKey] || 'a healthier high-fiber version',
+          type,
+          isSuggestion: false,
+          isClinical: false
+        });
+        return;
+      }
+    }
 
     if (activeTab === 'general') {
       const current = preferences[type] || [];
@@ -132,7 +221,41 @@ export default function FoodPreferences({ onClose, onGenerate, mode = 'save' }) 
     setInputValues(prev => ({ ...prev, [type]: '' }));
   };
 
-  const addSuggestion = (type, food) => {
+  const addSuggestion = (type, food, forced = false) => {
+    // Check for unhealthy selection (skip check for "To Avoid" category)
+    if (!forced && type !== 'foodsToAvoid') {
+      const lowerVal = food.toLowerCase();
+      
+      // DIABETES SPECIFIC GUARD
+      const isDiabetic = user?.profile?.medicalHistory?.conditions?.some(c => c.toLowerCase().includes('diabetes')) || 
+                         user?.profile?.diabetesProfile?.type;
+      
+      const matchedSugarKey = HIGH_SUGAR_KEYWORDS.find(k => lowerVal.includes(k));
+      
+      if (isDiabetic && matchedSugarKey) {
+        setHealthWarning({ 
+          food: food, 
+          alternative: DIABETIC_ALTERNATIVES[matchedSugarKey] || 'a low-GI alternative',
+          type,
+          isSuggestion: true,
+          isClinical: true
+        });
+        return;
+      }
+
+      const matchedKey = UNHEALTHY_KEYWORDS.find(k => lowerVal.includes(k));
+      if (matchedKey) {
+        setHealthWarning({ 
+          food: food, 
+          alternative: HEALTHY_ALTERNATIVES[matchedKey] || 'a healthier choice',
+          type,
+          isSuggestion: true,
+          isClinical: false
+        });
+        return;
+      }
+    }
+
     if (activeTab === 'general') {
       const current = preferences[type] || [];
       if (current.includes(food)) return;
@@ -153,6 +276,26 @@ export default function FoodPreferences({ onClose, onGenerate, mode = 'save' }) 
       }));
       setHasChanges(true);
     }
+  };
+
+  const handleHandleWarning = (action) => {
+    const { food, alternative, type, isSuggestion } = healthWarning;
+    
+    if (action === 'keep') {
+      // User chooses to keep unhealthy food
+      if (isSuggestion) addSuggestion(type, food, true);
+      else addItem(type, true);
+    } else if (action === 'replace') {
+      // User chooses to replace with healthy alternative
+      if (isSuggestion) addSuggestion(type, alternative, true);
+      else {
+        setInputValues(prev => ({ ...prev, [type]: alternative }));
+        // Delay to ensure state update for input values
+        setTimeout(() => addItem(type, true), 10);
+      }
+      toast.success('Smart Choice! 🌿');
+    }
+    setHealthWarning(null);
   };
 
   const removeItem = (type, index) => {
@@ -374,6 +517,60 @@ export default function FoodPreferences({ onClose, onGenerate, mode = 'save' }) 
             {totalItems > 0 && <span className="bg-white/20 px-2 py-0.5 rounded-full text-[9px]">{totalItems} items</span>}
           </button>
         </div>
+
+        {/* Health Warning Modal */}
+        <AnimatePresence>
+          {healthWarning && (
+            <div className="fixed inset-0 bg-black/40 backdrop-blur-md z-[120] flex items-center justify-center p-6">
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className={`bg-white rounded-[3rem] p-8 max-w-sm w-full border ${healthWarning.isClinical ? 'border-rose-100 shadow-rose-200' : 'border-slate-100 shadow-2xl'} shadow-2xl overflow-hidden relative`}
+              >
+                <div className={`absolute top-0 right-0 w-32 h-32 ${healthWarning.isClinical ? 'bg-rose-500/10' : 'bg-orange-500/10'} rounded-full blur-3xl -mr-16 -mt-16`} />
+                
+                <div className="flex flex-col items-center text-center mb-8">
+                  <div className={`w-16 h-16 ${healthWarning.isClinical ? 'bg-rose-50' : 'bg-orange-50'} rounded-[1.5rem] flex items-center justify-center mb-6 border ${healthWarning.isClinical ? 'border-rose-100' : 'border-orange-100'}`}>
+                    <AlertCircle className={`w-8 h-8 ${healthWarning.isClinical ? 'text-rose-500' : 'text-orange-500'}`} />
+                  </div>
+                  <h3 className="text-2xl font-black text-slate-800 mb-2 leading-tight">
+                    {healthWarning.isClinical ? 'Clinical Alert' : 'Nutritional Warning'}
+                  </h3>
+                  <p className="text-xs font-bold text-slate-400 leading-relaxed uppercase tracking-wide px-4">
+                    {healthWarning.isClinical ? (
+                      <>Diabetes Profile: <span className="text-rose-600 font-black">{healthWarning.food}</span> may cause sharp blood glucose spikes.</>
+                    ) : (
+                      <>The platform identifies <span className="text-black">{healthWarning.food}</span> as a caloric or processed choice.</>
+                    )}
+                  </p>
+                </div>
+
+                <div className={`${healthWarning.isClinical ? 'bg-rose-50/50' : 'bg-slate-50'} rounded-3xl p-6 mb-8 border ${healthWarning.isClinical ? 'border-rose-100' : 'border-slate-100'}`}>
+                  <p className={`text-[10px] font-black uppercase tracking-widest ${healthWarning.isClinical ? 'text-rose-400' : 'text-slate-400'} mb-3`}>
+                    {healthWarning.isClinical ? 'Diabetes Safe Alternative' : 'Healthier Upgrade'}
+                  </p>
+                  <p className="text-sm font-black text-slate-800 mb-1">How about {healthWarning.alternative} instead?</p>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  <button 
+                    onClick={() => handleHandleWarning('replace')}
+                    className={`w-full py-4 ${healthWarning.isClinical ? 'bg-rose-600 shadow-rose-200' : 'bg-black shadow-lg'} text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:opacity-90 transition-all active:scale-95 flex items-center justify-center gap-2`}
+                  >
+                    <CheckCircle className="w-4 h-4" /> Replace with Sugar-Free
+                  </button>
+                  <button 
+                    onClick={() => handleHandleWarning('keep')}
+                    className="w-full py-4 bg-white text-slate-400 rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] border border-slate-100 hover:bg-slate-50 transition-all active:scale-95"
+                  >
+                    Add anyway
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
       </motion.div>
     </div>

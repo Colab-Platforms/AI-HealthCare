@@ -178,15 +178,21 @@ DINNER (what Indians ACTUALLY eat):
 6. Provide EXACTLY 3 DISTINCT meal options for EVERY category (breakfast, midMorningSnack, lunch, eveningSnack, dinner).
 7. BE ULTRA-CONCISE. Use short meal names and 1-sentence descriptions.
 8. Ensure the combined nutrition FULFILLS the user's daily macro targets.
-9. Use ONLY authentic Indian foods that are commonly available across India.
-10. STRICTLY avoid any 'Foods to Avoid' and adhere to 'Dietary Restrictions'.
+9. MEAL CALORIE TARGETS (CRITICAL): Every meal option you suggest must strictly follow the calorie distribution for that meal time (±50 kcal):
+   - Breakfast: 25% of daily calories (~${Math.round((userData.nutritionGoals?.dailyCalories || 2000) * 0.25)} kcal)
+   - Mid-Morning: 10% of daily calories (~${Math.round((userData.nutritionGoals?.dailyCalories || 2000) * 0.10)} kcal)
+   - Lunch: 30% of daily calories (~${Math.round((userData.nutritionGoals?.dailyCalories || 2000) * 0.30)} kcal)
+   - Evening: 10% of daily calories (~${Math.round((userData.nutritionGoals?.dailyCalories || 2000) * 0.10)} kcal)
+   - Dinner: 25% of daily calories (~${Math.round((userData.nutritionGoals?.dailyCalories || 2000) * 0.25)} kcal)
+10. Ensure variety — no two options should be similar.
 11. Provide specific portion sizes in grams/pieces/cups.
 12. Each meal option MUST include: name, description, calories, protein, carbs, fats, and benefits.
-13. Ensure variety — no two options should be similar.
-14. If the user wants to REGENERATE, provide COMPLETELY DIFFERENT meal options.
-15. For vegetarian users: Use paneer, dal, chole, rajma, soya chunks, tofu, sprouts, dairy as protein sources.
-16. For non-vegetarian users: Use chicken, mutton/goat, fish, eggs (NEVER beef) along with vegetarian options.
-17. ${promptExtension || ''}
+13. STRICTLY avoid any 'Foods to Avoid' and adhere to 'Dietary Restrictions'.
+14. Use ONLY authentic Indian foods that are commonly available across India.
+15. If the user wants to REGENERATE, provide COMPLETELY DIFFERENT meal options.
+16. For vegetarian users: Use paneer, dal, chole, rajma, soya chunks, tofu, sprouts, dairy as protein sources.
+17. For non-vegetarian users: Use chicken, mutton/goat, fish, eggs (NEVER beef) along with vegetarian options.
+18. ${promptExtension || ''}
 
 RETURN JSON ONLY. Ensure the JSON is valid and complete:
 {

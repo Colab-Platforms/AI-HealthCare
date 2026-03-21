@@ -18,10 +18,15 @@ export const DataProvider = ({ children }) => {
   const [dashboardData, setDashboardData] = useState(null);
   const [wearableData, setWearableData] = useState(null);
   const [nutritionData, setNutritionData] = useState(null);
+  const [nutritionLogs, setNutritionLogs] = useState(null);
+  const [weeklyTrends, setWeeklyTrends] = useState(null);
+  const [healthGoals, setHealthGoals] = useState(null);
   const [loading, setLoading] = useState({
     dashboard: false,
     wearable: false,
-    nutrition: false
+    nutrition: false,
+    logs: false,
+    goals: false
   });
 
   // Clear all data when user changes (login/logout/register)
@@ -32,6 +37,9 @@ export const DataProvider = ({ children }) => {
       setDashboardData(null);
       setWearableData(null);
       setNutritionData(null);
+      setNutritionLogs(null);
+      setWeeklyTrends(null);
+      setHealthGoals(null);
     }
   }, [user?.id]); // Only trigger when user ID changes
 
@@ -121,6 +129,82 @@ export const DataProvider = ({ children }) => {
     }
   }, []);
 
+  // Fetch nutrition logs with caching
+  const fetchNutritionLogs = useCallback(async (date, forceRefresh = false) => {
+    const cacheKey = `logs_${date}`;
+    if (!forceRefresh) {
+      const cached = cache.get(cacheKey);
+      if (cached) {
+        setNutritionLogs(cached);
+        return cached;
+      }
+    }
+
+    setLoading(prev => ({ ...prev, logs: true }));
+    try {
+      const response = await nutritionService.getLogs(date);
+      const data = response.data?.logs || [];
+      setNutritionLogs(data);
+      cache.set(cacheKey, data, 5 * 60 * 1000);
+      return data;
+    } catch (error) {
+      console.error('Failed to fetch logs:', error);
+      return [];
+    } finally {
+      setLoading(prev => ({ ...prev, logs: false }));
+    }
+  }, []);
+
+  // Fetch weekly trends with caching
+  const fetchWeeklyTrends = useCallback(async (forceRefresh = false) => {
+    if (!forceRefresh) {
+      const cached = cache.get('weekly_trends');
+      if (cached) {
+        setWeeklyTrends(cached);
+        return cached;
+      }
+    }
+
+    try {
+      const response = await nutritionService.getWeeklySummary();
+      const data = response.data?.trends || [];
+      setWeeklyTrends(data);
+      cache.set('weekly_trends', data, 15 * 60 * 1000);
+      return data;
+    } catch (error) {
+      console.error('Failed to fetch weekly trends:', error);
+      return [];
+    }
+  }, []);
+
+  // Fetch health goals with caching
+  const fetchHealthGoals = useCallback(async (forceRefresh = false) => {
+    if (!forceRefresh) {
+      const cached = cache.get('health_goals');
+      if (cached) {
+        setHealthGoals(cached);
+        return cached;
+      }
+    }
+
+    setLoading(prev => ({ ...prev, goals: true }));
+    try {
+      const response = await nutritionService.getGoals();
+      const data = response.data?.healthGoal || null;
+      setHealthGoals(data);
+      cache.set('health_goals', data, 30 * 60 * 1000);
+      return data;
+    } catch (error) {
+      if (error.response?.status !== 404) {
+        console.error('Failed to fetch health goals:', error);
+      }
+      setHealthGoals(null);
+      return null;
+    } finally {
+      setLoading(prev => ({ ...prev, goals: false }));
+    }
+  }, []);
+
   // Fetch active diet plan with caching
   const fetchDietPlan = useCallback(async (forceRefresh = false) => {
     // Check cache first
@@ -159,6 +243,9 @@ export const DataProvider = ({ children }) => {
         if (key === 'dashboard') setDashboardData(null);
         if (key === 'wearable') setWearableData(null);
         if (key.startsWith('nutrition_')) setNutritionData(null);
+        if (key.startsWith('logs_')) setNutritionLogs(null);
+        if (key === 'weekly_trends') setWeeklyTrends(null);
+        if (key === 'health_goals') setHealthGoals(null);
       });
     }
   }, []);
@@ -176,12 +263,18 @@ export const DataProvider = ({ children }) => {
     dashboardData,
     wearableData,
     nutritionData,
+    nutritionLogs,
+    weeklyTrends,
+    healthGoals,
     loading,
 
     // Methods
     fetchDashboard,
     fetchWearable,
     fetchNutrition,
+    fetchNutritionLogs,
+    fetchWeeklyTrends,
+    fetchHealthGoals,
     fetchDietPlan,
     invalidateCache,
     clearAllData

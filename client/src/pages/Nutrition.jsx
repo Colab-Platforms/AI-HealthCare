@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   ChevronLeft, ChevronRight, Plus, Camera, Mic, Lightbulb,
@@ -17,8 +17,20 @@ import NutritionSkeleton from '../components/skeletons/NutritionSkeleton';
 
 function Nutrition() {
   const { user } = useAuth();
-  const { invalidateCache, dashboardData } = useData();
+  const { 
+    invalidateCache, 
+    dashboardData, 
+    fetchNutrition, 
+    fetchNutritionLogs, 
+    fetchWeeklyTrends, 
+    fetchHealthGoals,
+    nutritionData: cachedNutritionData,
+    nutritionLogs: cachedNutritionLogs,
+    weeklyTrends: cachedWeeklyTrends,
+    healthGoals: cachedHealthGoals
+  } = useData();
   const location = useLocation();
+  const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mealTab, setMealTab] = useState('Breakfast');
   const [inputMethod, setInputMethod] = useState('Predict'); // 'Predict', 'Type', 'Scan'
@@ -39,7 +51,7 @@ function Nutrition() {
     Evening: [],
     Dinner: []
   });
-  const [weeklyTrends, setWeeklyTrends] = useState([]);
+  const [weeklyTrendsData, setWeeklyTrendsData] = useState([]);
   const [waterIntake, setWaterIntake] = useState({ current: 0, target: 8 });
   const [loading, setLoading] = useState(true);
   const [recentMeals, setRecentMeals] = useState([]);
@@ -229,79 +241,87 @@ function Nutrition() {
   }, []);
 
   const fetchData = async () => {
-    setLoading(true);
+    // Only show full page loader if we have NO data at all
+    if (!cachedNutritionData && !cachedNutritionLogs) {
+      setLoading(true);
+    }
+
     try {
       const date = selectedDate;
-      const [summaryRes, logsRes, weeklyRes, goalsRes, dietRes] = await Promise.all([
-        api.get(`nutrition/summary/daily?date=${date}`),
-        api.get(`nutrition/logs?date=${date}`),
-        api.get('nutrition/summary/weekly'),
-        api.get('nutrition/goals').catch(() => ({ data: { healthGoal: { dailyCalorieTarget: 1800, macroTargets: { protein: 70, carbs: 200, fats: 55 } } } })),
+      const [summary, logs, trends, goals] = await Promise.all([
+        fetchNutrition(date),
+        fetchNutritionLogs(date),
+        fetchWeeklyTrends(),
+        fetchHealthGoals(),
         dietRecommendationService.getActiveDietPlan().catch(() => ({ data: { dietPlan: null } }))
       ]);
 
-      // Summary
-      const summary = summaryRes.data.summary || {};
-      const goals = goalsRes.data.healthGoal || {};
+      // Update state from data context results
       setDailySummary({
-        caloriesConsumed: summary.totalCalories || 0,
-        calorieTarget: goals.dailyCalorieTarget || 1800,
-        protein: summary.totalProtein || 0,
-        proteinTarget: goals.macroTargets?.protein || 70,
-        carbs: summary.totalCarbs || 0,
-        carbsTarget: goals.macroTargets?.carbs || 200,
-        fats: summary.totalFats || 0,
-        fatsTarget: goals.macroTargets?.fats || 55
+        caloriesConsumed: summary?.totalCalories || 0,
+        calorieTarget: goals?.dailyCalorieTarget || 1800,
+        protein: summary?.totalProtein || 0,
+        proteinTarget: goals?.macroTargets?.protein || 70,
+        carbs: summary?.totalCarbs || 0,
+        carbsTarget: goals?.macroTargets?.carbs || 200,
+        fats: summary?.totalFats || 0,
+        fatsTarget: goals?.macroTargets?.fats || 55
       });
-
-      // Logs - Group by mealType
-      const logs = logsRes.data.foodLogs || logsRes.data.logs || [];
-      const grouped = { Breakfast: [], 'Mid-Morning': [], Lunch: [], Evening: [], Dinner: [] };
-      logs.forEach(log => {
-        const type = log.mealType;
-        if (type.toLowerCase().includes('breakfast')) grouped.Breakfast.push(log);
-        else if (type.toLowerCase().includes('mid') || type.toLowerCase().includes('morning')) grouped['Mid-Morning'].push(log);
-        else if (type.toLowerCase().includes('lunch')) grouped.Lunch.push(log);
-        else if (type.toLowerCase().includes('evening') || type.toLowerCase().includes('afternoon')) grouped.Evening.push(log);
-        else if (type.toLowerCase().includes('dinner')) grouped.Dinner.push(log);
-        else grouped.Evening.push(log); // Fallback to evening for generic snacks
-      });
-      setMealLogs(grouped);
-      setRecentMeals(logs.slice(0, 15));
-
-      // Weekly Trends
-      const weekly = weeklyRes.data.weeklyStats?.dailySummaries || [];
-      const chartData = weekly.map(day => ({
-        day: new Date(day.date).toLocaleDateString('en-IN', { weekday: 'short', timeZone: 'Asia/Kolkata' }),
-        value: day.totalCalories,
-        active: new Date(day.date).toISOString().split('T')[0] === date
-      }));
-      setWeeklyTrends(chartData);
 
       // Water (Assuming it's part of daily summary)
       setWaterIntake({
-        current: summary.waterIntake || 0,
-        target: goals.waterTarget || 8
+        current: summary?.waterIntake || 0,
+        target: goals?.waterTarget || 8
       });
+      
+      const grouped = {
+        Breakfast: [],
+        'Mid-Morning': [],
+        Lunch: [],
+        Evening: [],
+        Dinner: []
+      };
+
+      if (logs) {
+        logs.forEach(log => {
+          const type = log.mealType;
+          if (type.toLowerCase().includes('breakfast')) grouped.Breakfast.push(log);
+          else if (type.toLowerCase().includes('mid') || type.toLowerCase().includes('morning')) grouped['Mid-Morning'].push(log);
+          else if (type.toLowerCase().includes('lunch')) grouped.Lunch.push(log);
+          else if (type.toLowerCase().includes('evening') || type.toLowerCase().includes('afternoon')) grouped.Evening.push(log);
+          else if (type.toLowerCase().includes('dinner')) grouped.Dinner.push(log);
+          else grouped.Evening.push(log); // Fallback to evening for generic snacks
+        });
+        setMealLogs(grouped);
+        setRecentMeals(logs.slice(0, 15));
+      }
+
+      if (trends) {
+        const chartData = trends.map(day => ({
+          day: new Date(day.date).toLocaleDateString('en-IN', { weekday: 'short', timeZone: 'Asia/Kolkata' }),
+          value: day.totalCalories,
+          active: new Date(day.date).toISOString().split('T')[0] === date
+        }));
+        setWeeklyTrendsData(chartData);
+      }
 
       // Insights & Suggestions
       let insight = "Analyzing your eating patterns...";
-      const bCals = grouped.Breakfast.reduce((sum, l) => sum + (l.foodItems?.[0]?.nutrition?.calories || 0), 0);
-      const lCals = grouped.Lunch.reduce((sum, l) => sum + (l.foodItems?.[0]?.nutrition?.calories || 0), 0);
-      const dCals = grouped.Dinner.reduce((sum, l) => sum + (l.foodItems?.[0]?.nutrition?.calories || 0), 0);
+      const bCals = (grouped.Breakfast || []).reduce((sum, l) => sum + (l.foodItems?.[0]?.nutrition?.calories || 0), 0);
+      const lCals = (grouped.Lunch || []).reduce((sum, l) => sum + (l.foodItems?.[0]?.nutrition?.calories || 0), 0);
+      const dCals = (grouped.Dinner || []).reduce((sum, l) => sum + (l.foodItems?.[0]?.nutrition?.calories || 0), 0);
 
-      const cTarget = goals.dailyCalorieTarget || 1800;
+      const cTarget = goals?.dailyCalorieTarget || 1800;
       const bT = Math.round(cTarget * 0.3);
       const lT = Math.round(cTarget * 0.35);
       const dT = Math.round(cTarget * 0.25);
 
-      if (bCals > bT) insight = "Your breakfast was heavy ({bCals} kcal). Stay light on lunch to balance.";
+      if (bCals > bT) insight = `Your breakfast was heavy (${bCals} kcal). Stay light on lunch to balance.`;
       else if (lCals > lT) insight = "Lunch was calorie-dense. A high-protein dinner would be ideal.";
       else if (dCals > dT) insight = "Dinner exceeded target. Consider an active start tomorrow.";
-      else if (summary.totalCalories > 0) insight = "Excellent! You're managing your meal portions very well.";
+      else if (summary?.totalCalories > 0) insight = "Excellent! You're managing your meal portions very well.";
 
-
-      setAiInsights(insight.replace('{bCals}', bCals));
+      setAiInsights(insight);
 
     } catch (error) {
       console.error('Failed to fetch nutrition data:', error);
@@ -479,7 +499,7 @@ function Nutrition() {
       };
       await nutritionService.logMeal(logData);
       toast.success('Added to ' + mealTab);
-      invalidateCache(['dashboard', `nutrition_${selectedDate}`]);
+      invalidateCache(['dashboard', `logs_${selectedDate}`, `nutrition_${selectedDate}`]);
       fetchData();
       setIsModalOpen(false);
       setAnalysisResult(null);
@@ -573,7 +593,7 @@ function Nutrition() {
 
   const remainingCals = Math.max(0, dailySummary.calorieTarget - dailySummary.caloriesConsumed);
   const progressPercent = Math.min(100, (dailySummary.caloriesConsumed / dailySummary.calorieTarget) * 100);
-  if (loading) {
+  if (loading && (!dailySummary.caloriesConsumed && !mealLogs.Breakfast.length)) {
     return <NutritionSkeleton />;
   }
 
@@ -623,6 +643,47 @@ function Nutrition() {
             </div>
           </div>
         </div>
+
+        {/* Dynamic Goal Exceeded Alert */}
+        <AnimatePresence>
+          {(dailySummary.caloriesConsumed > dailySummary.calorieTarget || 
+            dailySummary.protein > dailySummary.proteinTarget || 
+            dailySummary.carbs > dailySummary.carbsTarget || 
+            dailySummary.fats > dailySummary.fatsTarget) && (
+            <motion.div 
+              initial={{ height: 0, opacity: 0, marginBottom: 0 }}
+              animate={{ height: 'auto', opacity: 1, marginBottom: 32 }}
+              exit={{ height: 0, opacity: 0, marginBottom: 0 }}
+              className="bg-black text-white p-6 rounded-[2.5rem] flex flex-col md:flex-row items-center gap-6 border-4 border-red-500/50 shadow-2xl relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-[400px] h-full bg-red-500/10 rounded-full blur-[80px] pointer-events-none" />
+              <div className="w-14 h-14 bg-red-500 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-red-500/40">
+                <AlertCircle className="w-8 h-8 text-white" />
+              </div>
+              <div className="flex-1 text-center md:text-left">
+                <h4 className="text-lg font-black uppercase tracking-tighter mb-1">
+                  Threshold Exceeded
+                </h4>
+                <p className="text-xs font-bold text-red-100 uppercase tracking-widest leading-relaxed">
+                  You have surpassed your recommended intake for 
+                  {dailySummary.caloriesConsumed > dailySummary.calorieTarget && <span className="text-white bg-red-500/20 px-2 mx-1 rounded-lg border border-red-500/20">Calories</span>}
+                  {dailySummary.protein > dailySummary.proteinTarget && <span className="text-white bg-red-500/20 px-2 mx-1 rounded-lg border border-red-500/20">Protein</span>}
+                  {dailySummary.carbs > dailySummary.carbsTarget && <span className="text-white bg-red-500/20 px-2 mx-1 rounded-lg border border-red-500/20">Carbs</span>}
+                  {dailySummary.fats > dailySummary.fatsTarget && <span className="text-white bg-red-500/20 px-2 mx-1 rounded-lg border border-red-500/20">Fats</span>}
+                   today. Consider lighter meals for the rest of the protocol.
+                </p>
+              </div>
+              <div className="flex flex-wrap justify-center gap-3">
+                 <button 
+                   onClick={() => navigate('/diet-plan')} 
+                   className="bg-white text-black px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all flex items-center gap-2"
+                 >
+                   <Sparkles className="w-3 h-3 text-emerald-500" /> View Recovery Diet
+                 </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] xl:grid-cols-[1.5fr_1fr] gap-8">
 
@@ -984,14 +1045,14 @@ function Nutrition() {
               </div>
               <div className="h-44 mb-8">
                 <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={weeklyTrends}>
+                  <BarChart data={weeklyTrendsData}>
                     <Tooltip
                       cursor={{ fill: '#f8fafc' }}
                       contentStyle={{ borderRadius: '1rem', border: 'none', boxShadow: '0 10px 30px -10px rgba(0,0,0,0.1)', padding: '12px' }}
                       labelStyle={{ fontWeight: '900', color: '#1e293b', fontSize: '10px', textTransform: 'uppercase' }}
                     />
                     <Bar dataKey="value" radius={[4, 4, 0, 0]} barSize={32}>
-                      {weeklyTrends.map((entry, index) => (
+                      {(weeklyTrendsData || []).map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.active ? '#1e293b' : '#f1f5f9'} className="transition-all duration-300 hover:opacity-80" />
                       ))}
                     </Bar>

@@ -257,7 +257,9 @@ export const nutritionService = {
   analyzeFood: (foodDescription) => api.post('nutrition/analyze-food', { foodDescription }),
   logMeal: (mealData) => api.post('nutrition/log-meal', mealData),
   getTodayLogs: () => api.get('nutrition/logs/today'),
+  getLogs: (date) => api.get('nutrition/logs', { params: { date } }),
   getDailySummary: (date) => api.get('nutrition/summary/daily', { params: { date } }),
+  getWeeklySummary: () => api.get('nutrition/summary/weekly'),
   getGoals: () => api.get('nutrition/goals'),
   updateGoals: (goals) => api.put('nutrition/goals', goals)
 };

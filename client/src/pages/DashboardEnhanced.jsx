@@ -648,17 +648,16 @@ export default function DashboardEnhanced() {
           fetchNutrition(new Date().toISOString().split('T')[0]),
           fetchWearable(),
           fetchDietPlan().then(plan => setDietPlan(plan)),
-          nutritionService.getTodayLogs().then(res => {
-            const logs = res.data?.foodLogs || res.data?.logs || [];
+          fetchNutritionLogs(new Date().toISOString().split('T')[0]).then(logs => {
             const logMap = {};
-            logs.forEach(l => {
+            (logs || []).forEach(l => {
               if (l.foodItems) {
                 l.foodItems.forEach(fi => {
                   logMap[`${l.mealType}-${fi.name}`] = true;
                 });
               }
             });
-            setLoggedMeals(logs);
+            setLoggedMeals(logs || []);
             setLoggedMealsMap(logMap);
           })
         ]);
@@ -793,7 +792,8 @@ export default function DashboardEnhanced() {
     return 'Good evening';
   };
 
-  if (loading.dashboard || !dashboardData) {
+  // Only show skeleton if we have NO data and we are currently loading
+  if (!dashboardData && (loading.dashboard || loading.nutrition)) {
     return <DashboardSkeleton />;
   }
 
