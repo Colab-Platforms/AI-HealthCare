@@ -508,7 +508,7 @@ const MealDetailModal = ({ meal, onClose, onAdd }) => {
 
 export default function DashboardEnhanced() {
   const { user } = useAuth();
-  const { dashboardData, nutritionData, wearableData, fetchDashboard, fetchNutrition, fetchDietPlan, fetchWearable, loading } = useData();
+  const { dashboardData, nutritionData, wearableData, fetchDashboard, fetchNutrition, fetchNutritionLogs, fetchDietPlan, fetchWearable, loading } = useData();
   const navigate = useNavigate();
 
   const [dietPlan, setDietPlan] = useState(null);
