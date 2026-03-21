@@ -17,9 +17,9 @@ const ScrollPhoneShowcase = () => {
 
   // Responsive offsets based on screen size to ensure cards clear the phone
   const getOffsets = (baseX, baseY) => {
-    let multiplier = 1.1; // Desktop
+    let multiplier = 1.3; // Increased for Desktop to push cards further from larger phone
     if (isMobile) multiplier = 0.45; // Tuned for standard mobile screens to stay within bounds
-    else if (isTablet) multiplier = 0.85;
+    else if (isTablet) multiplier = 0.9;
 
     return { x: baseX * multiplier, y: baseY * multiplier };
   };
@@ -105,10 +105,10 @@ const ScrollPhoneShowcase = () => {
   return (
     <div id="showcase" ref={containerRef} className="relative bg-transparent" style={{ height: `${(features.length + 1) * 100}vh` }}>
       {/* Sticky container for phone and cards */}
-      <div className="sticky top-0 h-screen flex flex-col items-center justify-center overflow-hidden pt-12 sm:pt-20 lg:pt-32">
+      <div className="sticky top-0 h-screen flex flex-col items-center justify-center overflow-hidden pt-12 sm:pt-20 lg:pt-24">
 
-        {/* Header Text - Increased top safety zone */}
-        <div className="w-full text-center px-6 z-[60] mb-6 sm:mb-16">
+        {/* Header Text - Balanced space for smaller laptop screens */}
+        <div className="w-full text-center px-6 z-[60] mb-4 sm:mb-6 lg:mb-8">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeSection}
@@ -118,10 +118,10 @@ const ScrollPhoneShowcase = () => {
               transition={{ duration: 0.5, ease: "easeOut" }}
               className="max-w-4xl mx-auto"
             >
-              <h2 className="text-3xl sm:text-5xl md:text-6xl lg:text-7xl font-black text-white leading-tight mb-4 drop-shadow-2xl tracking-tighter">
+              <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-5xl font-black text-white leading-tight mb-2 drop-shadow-2xl tracking-tighter">
                 {features[activeSection].title}
               </h2>
-              <p className="text-cyan-200/90 text-sm sm:text-lg lg:text-xl max-w-2xl mx-auto font-medium px-4">
+              <p className="text-cyan-200/90 text-sm sm:text-base lg:text-base max-w-2xl mx-auto font-medium px-4">
                 {features[activeSection].description}
               </p>
             </motion.div>
@@ -129,7 +129,7 @@ const ScrollPhoneShowcase = () => {
         </div>
 
         {/* Animation Zone */}
-        <div className="relative flex items-center justify-center w-full max-w-7xl mx-auto h-[45vh] sm:h-auto">
+        <div className="relative flex items-center justify-center w-full max-w-7xl mx-auto h-[40vh] sm:h-auto">
 
           {/* Floating Cards Layer - Coming from BEHIND (Z-INDEX 10) */}
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
@@ -157,7 +157,7 @@ const ScrollPhoneShowcase = () => {
                     }}
                     className="absolute"
                   >
-                    <div className="bg-[#0f172a]/95 backdrop-blur-2xl border border-cyan-400/40 rounded-2xl sm:rounded-3xl p-0 overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.6)] w-32 sm:w-44 md:w-56 lg:w-64 transition-all">
+                    <div className="bg-[#0f172a]/95 backdrop-blur-2xl border border-cyan-400/40 rounded-2xl sm:rounded-3xl p-0 overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.6)] w-32 sm:w-44 md:w-48 lg:w-52 transition-all">
                       {/* Feature Card Header with Image */}
                       <div className="h-20 sm:h-28 relative overflow-hidden">
                         <img
@@ -189,8 +189,9 @@ const ScrollPhoneShowcase = () => {
               y: isMobile ? 40 : 0
             }}
           >
-            {/* Phone Frame - Resized and constrained to prevent cutting */}
-            <div className="relative w-[180px] sm:w-[240px] md:w-[280px] lg:w-[310px] h-[370px] sm:h-[480px] md:h-[580px] lg:h-[620px] max-h-[75vh] bg-slate-900 rounded-[2rem] sm:rounded-[3rem] p-2 sm:p-3 shadow-[0_0_100px_rgba(0,0,0,0.6)] border-4 border-slate-800/80">
+            {/* Phone Frame - Proportional sizing for laptop screens */}
+            {/* Phone Frame - Optimized for laptop screens to prevent vertical clipping */}
+            <div className="relative w-[180px] sm:w-[220px] md:w-[260px] lg:w-[280px] h-[360px] sm:h-[440px] md:h-[520px] lg:h-[540px] max-h-[65vh] bg-slate-900 rounded-[2rem] sm:rounded-[3rem] p-2 sm:p-3 shadow-[0_0_80px_rgba(0,0,0,0.6)] border-4 border-slate-800/80">
               {/* Screen Content */}
               <div className="relative w-full h-full bg-slate-900 rounded-[1.8rem] sm:rounded-[2.5rem] overflow-hidden">
                 <AnimatePresence mode="wait">
