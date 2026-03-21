@@ -846,26 +846,26 @@ export default function Profile() {
                             </div>
                           </div>
 
-                          {healthGoal && (
-                            <div className="p-4 bg-orange-50 rounded-2xl border border-orange-100 grid grid-cols-3 gap-2">
-                              <div>
-                                <p className="text-[10px] font-bold text-orange-400 uppercase">Calories</p>
-                                <p className="font-bold text-orange-700">{healthGoal.dailyCalorieTarget}</p>
-                              </div>
-                              <div>
-                                <p className="text-[10px] font-bold text-orange-400 uppercase">Protein</p>
-                                <p className="font-bold text-orange-700">{healthGoal.macroTargets.protein}g</p>
-                              </div>
-                              <div>
-                                <p className="text-[10px] font-bold text-orange-400 uppercase">Carbs</p>
-                                <p className="font-bold text-orange-700">{healthGoal.macroTargets.carbs}g</p>
-                              </div>
-                              <div>
-                                <p className="text-[10px] font-bold text-orange-400 uppercase">Fats</p>
-                                <p className="font-bold text-orange-700">{healthGoal.macroTargets.fats}g</p>
-                              </div>
+                        {healthGoal && healthGoal.macroTargets && (
+                          <div className="p-4 bg-orange-50 rounded-2xl border border-orange-100 grid grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in shadow-inner">
+                            <div>
+                              <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-1">Calories</p>
+                              <p className="text-xl font-black text-orange-700">{healthGoal.dailyCalorieTarget || '—'}</p>
                             </div>
-                          )}
+                            <div>
+                              <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-1">Protein</p>
+                              <p className="text-xl font-black text-orange-700">{healthGoal.macroTargets?.protein ? `${healthGoal.macroTargets.protein}g` : '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-1">Carbs</p>
+                              <p className="text-xl font-black text-orange-700">{healthGoal.macroTargets?.carbs ? `${healthGoal.macroTargets.carbs}g` : '—'}</p>
+                            </div>
+                            <div>
+                              <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-1">Fats</p>
+                              <p className="text-xl font-black text-orange-700">{healthGoal.macroTargets?.fats ? `${healthGoal.macroTargets.fats}g` : '—'}</p>
+                            </div>
+                          </div>
+                        )}
 
                           <button
                             type="submit"
