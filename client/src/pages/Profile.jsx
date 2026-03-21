@@ -108,7 +108,7 @@ export default function Profile() {
 
       setExtraData({
         appointmentsCount: aptRes.data.length,
-        reportsCount: reportsCount || 0,
+        reportsCount: dashRes.data.totalReports || reportsRes.data.length || 0,
         metrics: summaryRes.data,
         recentActivity: aptRes.data.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 4),
         wearable: wearableRes.data,
@@ -181,7 +181,7 @@ export default function Profile() {
               conditions: newConditions
             },
             // Clear diabetes profile if switching to 'no'
-             diabetesProfile: isNo ? { type: '', hba1c: '' } : prev.profile.diabetesProfile
+             diabetesProfile: isNo ? { type: 'Type 2', hba1c: '' } : prev.profile.diabetesProfile
           }
         };
       });
@@ -197,6 +197,7 @@ export default function Profile() {
     e.preventDefault();
     setLoading(true);
     try {
+      const isDiabetic = formData.profile.isDiabetic === 'yes';
       const payload = {
         name: formData.name,
         phone: formData.profile.phone,
@@ -212,7 +213,9 @@ export default function Profile() {
             ...formData.profile.lifestyle,
             sleepHours: Number(formData.profile.lifestyle.sleepHours),
             waterIntake: Number(formData.profile.lifestyle.waterIntake)
-          }
+          },
+          // Only send diabetesProfile if they are diabetic and have a type
+          diabetesProfile: (isDiabetic && formData.profile.diabetesProfile?.type) ? formData.profile.diabetesProfile : undefined
         }
       };
       const { data } = await api.put('auth/profile', payload);
@@ -491,7 +494,7 @@ export default function Profile() {
           <div className="flex items-center justify-center w-full max-w-xl mx-auto gap-12">
             <div className="text-center space-y-1">
               <p className="text-3xl md:text-4xl font-black text-black">
-                {extraData.latestAnalysis?.healthScore || '75'}
+                {user?.healthMetrics?.healthScore || extraData.latestAnalysis?.healthScore || 'N/A'}
               </p>
               <div className="flex flex-col items-center">
                 <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-wider">Health Score</p>
@@ -501,7 +504,7 @@ export default function Profile() {
             <div className="h-12 w-px bg-slate-100" />
             <div className="text-center space-y-1">
               <p className="text-3xl md:text-4xl font-black text-black">
-                {extraData.reportsCount || '0'}
+                {extraData.reportsCount || 0}
               </p>
               <div className="flex flex-col items-center">
                 <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-wider">Reports</p>
@@ -573,7 +576,7 @@ export default function Profile() {
                               <input
                                 type="number"
                                 name="profile.age"
-                                value={formData.profile.age}
+                                value={formData.profile.age || ''}
                                 onChange={handleChange}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:ring-0 focus:outline-none"
                               />
@@ -582,7 +585,7 @@ export default function Profile() {
                               <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Gender</label>
                               <select
                                 name="profile.gender"
-                                value={formData.profile.gender}
+                                value={formData.profile.gender || ''}
                                 onChange={handleChange}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
                               >
@@ -597,7 +600,7 @@ export default function Profile() {
                               <input
                                 type="number"
                                 name="profile.height"
-                                value={formData.profile.height}
+                                value={formData.profile.height || ''}
                                 onChange={handleChange}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
                               />
@@ -607,7 +610,7 @@ export default function Profile() {
                               <input
                                 type="number"
                                 name="profile.weight"
-                                value={formData.profile.weight}
+                                value={formData.profile.weight || ''}
                                 onChange={handleChange}
                                 className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
                               />
@@ -662,7 +665,7 @@ export default function Profile() {
                                 <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Phone Number</label>
                                 <input
                                   name="profile.phone"
-                                  value={formData.profile.phone}
+                                  value={formData.profile.phone || ''}
                                   onChange={handleChange}
                                   className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
                                   placeholder="e.g. +1 234 567 890"
@@ -715,7 +718,6 @@ export default function Profile() {
                                       onChange={handleChange}
                                       className="w-4 h-4 text-blue-600 rounded"
                                     />
-                                    <span className="text-xs font-bold text-slate-400 uppercase">Alcohol</span>
                                   </label>
                                 </div>
                               </div>
@@ -743,7 +745,7 @@ export default function Profile() {
                             </div>
 
                             {/* Diabetes Profile */}
-                             {(formData.profile.isDiabetic === 'yes' || formData.profile.diabetesProfile?.type || formData.profile.medicalHistory.conditions.some(c => c.toLowerCase().includes('diabetes'))) && (
+                             {formData.profile.isDiabetic === 'yes' && (
                               <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
                                 <div>
                                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Diabetes Type</label>

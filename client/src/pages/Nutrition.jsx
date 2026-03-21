@@ -1123,7 +1123,7 @@ function Nutrition() {
               </div>
 
               {/* Body */}
-              <div className="p-8 overflow-y-auto flex-1 scrollbar-hide">
+              <div className="p-5 md:p-8 overflow-y-auto flex-1 scrollbar-hide">
 
                 {isAnalyzing ? (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center space-y-6 h-full py-12">
@@ -1322,21 +1322,21 @@ function Nutrition() {
                   </motion.div>
                 ) : inputMethod === 'Scan' ? (
                   <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center space-y-8">
-                    <div className="w-full aspect-square bg-slate-50 rounded-[3rem] flex items-center justify-center relative overflow-hidden border-4 border-dashed border-slate-200 group transition-all hover:border-slate-300 cursor-pointer"
+                    <div className="w-full h-48 md:h-80 bg-slate-50 rounded-[2rem] md:rounded-[3rem] flex items-center justify-center relative overflow-hidden border-4 border-dashed border-slate-200 group transition-all hover:border-slate-300 cursor-pointer"
                       onClick={() => document.getElementById('food-img-upload').click()}>
 
                       {imagePreview ? (
                         <img src={imagePreview} className="w-full h-full object-cover" />
                       ) : (
                         <>
-                          <div className="absolute top-10 left-10 w-12 h-12 border-t-4 border-l-4 border-slate-200 rounded-tl-2xl group-hover:border-slate-400 transition-colors" />
-                          <div className="absolute top-10 right-10 w-12 h-12 border-t-4 border-r-4 border-slate-200 rounded-tr-2xl group-hover:border-slate-400 transition-colors" />
-                          <div className="absolute bottom-10 left-10 w-12 h-12 border-b-4 border-l-4 border-slate-200 rounded-bl-2xl group-hover:border-slate-400 transition-colors" />
-                          <div className="absolute bottom-10 right-10 w-12 h-12 border-b-4 border-r-4 border-slate-200 rounded-br-2xl group-hover:border-slate-400 transition-colors" />
+                          <div className="absolute top-6 left-6 w-8 h-8 border-t-4 border-l-4 border-slate-200 rounded-tl-xl group-hover:border-slate-400 transition-colors" />
+                          <div className="absolute top-6 right-6 w-8 h-8 border-t-4 border-r-4 border-slate-200 rounded-tr-xl group-hover:border-slate-400 transition-colors" />
+                          <div className="absolute bottom-6 left-6 w-8 h-8 border-b-4 border-l-4 border-slate-200 rounded-bl-xl group-hover:border-slate-400 transition-colors" />
+                          <div className="absolute bottom-6 right-6 w-8 h-8 border-b-4 border-r-4 border-slate-200 rounded-br-xl group-hover:border-slate-400 transition-colors" />
 
-                          <div className="text-center space-y-4">
-                            <div className="w-20 h-20 bg-white rounded-3xl shadow-xl flex items-center justify-center mx-auto transition-transform duration-500 group-hover:rotate-12">
-                              <Camera className="w-10 h-10 text-slate-900" />
+                          <div className="text-center space-y-3">
+                            <div className="w-16 h-16 bg-white rounded-2xl shadow-xl flex items-center justify-center mx-auto transition-transform duration-500 group-hover:rotate-12">
+                              <Camera className="w-8 h-8 text-slate-900" />
                             </div>
                             <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Click to upload photo</p>
                           </div>
@@ -1374,9 +1374,6 @@ function Nutrition() {
                       </div>
                     </div>
 
-                    <p className="text-[10px] font-black text-slate-400 text-center leading-relaxed">
-                      AI will analyze the photo. Providing quantity<br />helps make calculations more accurate.
-                    </p>
 
                     <button
                       onClick={handleAnalyzeAndLog}
@@ -1387,7 +1384,7 @@ function Nutrition() {
                       {isAnalyzing ? analyzingMessage : 'Analyze Photo'}
                     </button>
 
-                    <p className="text-[10px] text-slate-400 text-center font-bold px-8 leading-relaxed uppercase tracking-tight">
+                    <p className="hidden md:block text-[10px] text-slate-400 text-center font-bold px-8 leading-relaxed uppercase tracking-tight">
                       Point your camera at the food. AI will instantly detect the dish, portion size and calculate accurate macros.
                     </p>
                   </motion.div>

@@ -162,7 +162,7 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
           <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
             {navItems.map(({ path, icon: Icon, label, comingSoon, badge, isDiabeticOnly }) => {
               // Conditionally hide diabetes if not diabetic
-              const isDiabetic = user?.profile?.medicalHistory?.conditions?.some(c => c.toLowerCase().includes('diabetes')) || user?.profile?.diabetesProfile?.type;
+              const isDiabetic = user?.profile?.isDiabetic === 'yes';
               if (isDiabeticOnly && !isDiabetic) return null;
 
               if (comingSoon) {
