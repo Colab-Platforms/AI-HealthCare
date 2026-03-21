@@ -652,16 +652,16 @@ function Nutrition() {
             dailySummary.fats > dailySummary.fatsTarget) && (
             <motion.div 
               initial={{ height: 0, opacity: 0, marginBottom: 0 }}
-              animate={{ height: 'auto', opacity: 1, marginBottom: 32 }}
+              animate={{ height: 'auto', opacity: 1, marginBottom: 16 }}
               exit={{ height: 0, opacity: 0, marginBottom: 0 }}
-              className="bg-black text-white p-6 rounded-[2.5rem] flex flex-col md:flex-row items-center gap-6 border-4 border-red-500/50 shadow-2xl relative overflow-hidden"
+              className="bg-black text-white p-4 md:p-6 rounded-3xl md:rounded-[2.5rem] flex flex-col md:flex-row items-center gap-3 md:gap-6 border-2 md:border-4 border-red-500/50 shadow-2xl relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 w-[400px] h-full bg-red-500/10 rounded-full blur-[80px] pointer-events-none" />
-              <div className="w-14 h-14 bg-red-500 rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-red-500/40">
-                <AlertCircle className="w-8 h-8 text-white" />
+              <div className="w-10 h-10 md:w-14 md:h-14 bg-red-500 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-red-500/40">
+                <AlertCircle className="w-5 h-5 md:w-8 md:h-8 text-white" />
               </div>
               <div className="flex-1 text-center md:text-left">
-                <h4 className="text-lg font-black uppercase tracking-tighter mb-1">
+                <h4 className="text-base md:text-lg font-black uppercase tracking-tighter mb-0.5 md:mb-1">
                   Threshold Exceeded
                 </h4>
                 <p className="text-xs font-bold text-red-100 uppercase tracking-widest leading-relaxed">
@@ -676,7 +676,7 @@ function Nutrition() {
               <div className="flex flex-wrap justify-center gap-3">
                  <button 
                    onClick={() => navigate('/diet-plan')} 
-                   className="bg-white text-black px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all flex items-center gap-2"
+                   className="bg-white text-black px-4 py-2 md:px-6 md:py-2.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all flex items-center gap-2"
                  >
                    <Sparkles className="w-3 h-3 text-emerald-500" /> View Recovery Diet
                  </button>
@@ -691,12 +691,12 @@ function Nutrition() {
           <div className="space-y-6">
 
             {/* Daily Calorie Intake Card */}
-            <div className="bg-white rounded-[2.5rem] p-8 md:p-10 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)] border border-slate-100">
+            <div className="bg-white rounded-3xl md:rounded-[2.5rem] p-5 md:p-10 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)] border border-slate-100">
               <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-4">Daily Calorie Intake</p>
               <div className="flex items-center justify-between mb-6 flex-nowrap">
                 <div className="flex items-baseline gap-1 shrink-0">
-                  <span className="text-4xl md:text-6xl font-black text-slate-900 tracking-tighter">{dailySummary.caloriesConsumed}</span>
-                  <span className="text-sm md:text-xl text-slate-400 font-bold">/ {dailySummary.calorieTarget}</span>
+                  <span className="text-3xl md:text-6xl font-black text-slate-900 tracking-tighter">{dailySummary.caloriesConsumed}</span>
+                  <span className="text-xs md:text-xl text-slate-400 font-bold">/ {dailySummary.calorieTarget}</span>
                 </div>
                 <div className="flex items-center gap-1.5 md:gap-2 bg-slate-50 px-3 md:px-4 py-2 rounded-2xl border border-slate-100 shadow-sm shrink-0 ml-2">
                   <div className="text-lg md:text-3xl font-black text-slate-900 leading-none">{Math.round(progressPercent)}%</div>
@@ -754,12 +754,12 @@ function Nutrition() {
                       key={meal.name}
                       layout
                       onClick={() => setExpandedMeal(isExpanded ? null : meal.name)}
-                      className={`p-5 bg-white border ${isOver ? 'border-red-200' : 'border-slate-100'} rounded-[2.5rem] shadow-sm hover:border-slate-300 transition-all cursor-pointer overflow-hidden ${isExpanded ? 'ring-2 ring-slate-900 ring-offset-2' : ''}`}
+                      className={`p-4 md:p-5 bg-white border ${isOver ? 'border-red-200' : 'border-slate-100'} rounded-3xl md:rounded-[2.5rem] shadow-sm hover:border-slate-300 transition-all cursor-pointer overflow-hidden ${isExpanded ? 'ring-2 ring-slate-900 ring-offset-2' : ''}`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-5">
-                          <div className={`w-14 h-14 rounded-[1.5rem] ${isOver ? 'bg-red-50 text-red-600' : 'bg-slate-50 text-slate-900'} flex items-center justify-center border border-slate-100 transition-colors`}>
-                            <meal.icon className="w-6 h-6" />
+                          <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl md:rounded-[1.5rem] ${isOver ? 'bg-red-50 text-red-600' : 'bg-slate-50 text-slate-900'} flex items-center justify-center border border-slate-100 transition-colors`}>
+                            <meal.icon className="w-5 h-5 md:w-6 md:h-6" />
                           </div>
                           <div>
                             <span className="font-black text-sm text-slate-900 uppercase tracking-tight">{meal.name}</span>
