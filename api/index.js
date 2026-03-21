@@ -31,16 +31,20 @@ module.exports = (req, res) => {
     url = '/' + url;
   }
 
-  // Force /api prefix if missing. Many rewrites in Vercel strip the prefix,
-  // but our Express app mounts explicitly at /api/...
-  // This also handles /admin routes by ensuring they get the /api prefix
+  // Force /api prefix if missing or if Vercel rewritten to /api/index
   if (!url.startsWith('/api/')) {
     if (url.startsWith('/admin')) {
       url = '/api' + url;
       console.log(`[Vercel Handler] Admin route detected, forcing /api prefix: ${url}`);
-    } else if (url !== '/api') { // Only add /api if it's not already /api and not an admin route
+    } else if (url === '/' || url === '/index' || url === '/api/index') {
+       // Catch root case
+       url = '/api';
+    } else if (url !== '/api') {
       url = '/api' + url;
     }
+  } else if (url === '/api/index') {
+      // Specifically fix the case where rewriter sends to /api/index
+      url = '/api';
   }
 
   // Update request object for Express routing
