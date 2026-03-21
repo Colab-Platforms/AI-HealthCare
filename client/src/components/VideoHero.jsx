@@ -13,7 +13,7 @@ const VideoHero = () => {
           playsInline
           className="w-full h-full object-cover opacity-60"
         >
-          <source src="https://cdn.shopify.com/videos/c/o/v/dcb48db72fdb4641a2af2df51c03aad5.mp4" type="video/mp4" />
+          <source src="https://cdn.shopify.com/videos/c/o/v/bec0c00b6d494ad9b4966b1d431f29c5.mp4" type="video/mp4" />
           {/* Fallback for browsers that don't support video */}
           <img 
             src="https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?w=1920&h=1080&fit=crop" 
