@@ -467,45 +467,45 @@ export default function DietPlan() {
           })}
 
           {/* AI Insights Bar */}
-          <section ref={insightsRef} className="bg-black rounded-[3rem] p-10 lg:p-16 text-white overflow-hidden relative">
+          <section ref={insightsRef} className="bg-black rounded-[2.5rem] md:rounded-[3rem] p-6 md:p-12 lg:p-16 text-white overflow-hidden relative">
             <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-indigo-500/10 rounded-full blur-[100px]" />
-            <div className="relative z-10 flex flex-col lg:flex-row items-center gap-12">
+            <div className="relative z-10 flex flex-col lg:flex-row gap-8 lg:gap-16">
               <div className="flex-1">
-                <div className="flex items-center gap-3 mb-6">
-                  <Sparkles className="w-8 h-8 text-emerald-400" />
-                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-slate-400">Dietary Intelligence</span>
+                <div className="flex items-center gap-3 mb-4 md:mb-6">
+                  <Sparkles className="w-5 h-5 md:w-8 md:h-8 text-emerald-400" />
+                  <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-slate-400">Dietary Intelligence</span>
                 </div>
-                <h2 className="text-4xl font-light mb-8 leading-tight tracking-tight">AI Insights based on your health profile</h2>
-                <div className="space-y-4">
+                <h2 className="text-2xl md:text-3xl lg:text-4xl font-light mb-6 md:mb-8 leading-tight tracking-tight">AI Insights based on your health profile</h2>
+                <div className="grid grid-cols-1 gap-3 md:gap-4">
                   {(activePlan.lifestyleRecommendations || ["Balance carbs with fiber.", "Hydrate 30m before breakfast.", "Avoid caffeine after 4pm."]).slice(0, 3).map((rec, i) => (
-                    <div key={i} className="flex items-start gap-4 p-4 rounded-3xl bg-white/5 border border-white/5 hover:bg-white/10 transition-colors">
-                      <div className="w-8 h-8 rounded-full bg-emerald-500/20 flex items-center justify-center shrink-0">
-                        <CheckCircle className="w-4 h-4 text-emerald-400" />
+                    <div key={i} className="flex items-start gap-4 py-1 group transition-colors">
+                      <div className="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/20">
+                        <CheckCircle className="w-3 h-3 text-emerald-400" />
                       </div>
-                      <p className="text-slate-300 font-medium leading-relaxed">{rec}</p>
+                      <p className="text-slate-300 font-medium leading-relaxed text-sm md:text-base">{rec}</p>
                     </div>
                   ))}
                 </div>
               </div>
 
-              <div className="lg:w-1/3 w-full">
-                <div className="bg-white/5 backdrop-blur-3xl p-8 rounded-[2.5rem] border border-white/10">
-                  <div className="flex items-center gap-3 mb-6">
-                    <AlertCircle className="w-6 h-6 text-rose-500" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Restricted Foods</span>
+              <div className="lg:w-1/3 w-full pt-8 lg:pt-0 border-t lg:border-t-0 lg:border-l border-white/10 lg:pl-12">
+                <div className="flex flex-col gap-6">
+                  <div>
+                    <div className="flex items-center gap-3 mb-4">
+                      <AlertCircle className="w-5 h-5 text-rose-500" />
+                      <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-400">Restricted Foods</span>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {(activePlan.avoidSuggestions || ["Refined Sugar", "Processed Meats", "Soda", "High Sodium Snacks"]).map((food, i) => (
+                        <span key={i} className="px-3 py-1.5 bg-rose-500/10 text-rose-400 rounded-full text-[9px] font-black uppercase tracking-widest border border-rose-500/20">
+                          {food}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {(activePlan.avoidSuggestions || ["Refined Sugar", "Processed Meats", "Soda", "High Sodium Snacks"]).map((food, i) => (
-                      <span key={i} className="px-4 py-2 bg-rose-500/10 text-rose-400 rounded-full text-[10px] font-black uppercase tracking-widest border border-rose-500/20">
-                        {food}
-                      </span>
-                    ))}
-                  </div>
-                  <div className="mt-8 pt-8 border-t border-white/5">
-                    <p className="text-xs text-slate-400 leading-relaxed font-medium">
-                      Based on your latest records, avoiding these will significantly improve your {user?.nutritionGoal?.goal?.replace('_', ' ') || 'metabolic health'}.
-                    </p>
-                  </div>
+                  <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
+                    Based on your latest records, avoiding these will improve your {user?.nutritionGoal?.goal?.replace('_', ' ') || 'metabolic health'}.
+                  </p>
                 </div>
               </div>
             </div>
