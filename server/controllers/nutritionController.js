@@ -257,6 +257,12 @@ const normalizeAnalysisResult = (item) => {
   };
 
   // APPLY RIGID STANDARDS (Override AI and Cached variance)
+  // BUT SKIP for image-based scans — the AI vision model has already computed
+  // portion-accurate nutrition by actually seeing the food. Standards are only
+  // useful for text-based queries where quantity/portion is ambiguous.
+  if (pojo.scanType === 'image') {
+    return base;
+  }
   return applyStandards(base.foodItem.name, base.foodItem.quantity, base);
 };
 
