@@ -51,8 +51,8 @@ export default function AdminDashboard() {
 
     return last7Days.map(date => {
         const dayName = days[new Date(date).getDay()];
-        const reportCount = stats.stats?.reportGrowth?.find(g => g._id === date)?.count || 0;
-        const userCount = stats.stats?.userGrowth?.find(g => g._id === date)?.count || 0;
+        const reportCount = stats?.stats?.reportGrowth?.find(g => g._id === date)?.count || 0;
+        const userCount = stats?.stats?.userGrowth?.find(g => g._id === date)?.count || 0;
         return { name: dayName, users: userCount, reports: reportCount };
     });
   })() : [];
@@ -62,10 +62,10 @@ export default function AdminDashboard() {
     : [{ name: 'No Data', value: 1 }];
 
   const statCards = [
-    { label: 'Total Users', value: stats.stats?.totalUsers || 0, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', trend: 12.5 },
-    { label: 'Total Reports', value: stats.stats?.totalReports || 0, icon: FileText, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: 8.2 },
-    { label: 'Completion Rate', value: `${((stats.stats?.completedReports / stats.stats?.totalReports) * 100 || 0).toFixed(1)}%`, icon: Activity, color: 'text-orange-600', bg: 'bg-orange-50', trend: 2.4 },
-    { label: 'IQ Cache', value: stats.stats?.totalCachedFoods || '4.2k', icon: Utensils, color: 'text-purple-600', bg: 'bg-purple-50' }
+    { label: 'Total Users', value: stats?.stats?.totalUsers || 0, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', trend: 12.5 },
+    { label: 'Total Reports', value: stats?.stats?.totalReports || 0, icon: FileText, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: 8.2 },
+    { label: 'Completion Rate', value: `${((stats?.stats?.completedReports / stats?.stats?.totalReports) * 100 || 0).toFixed(1)}%`, icon: Activity, color: 'text-orange-600', bg: 'bg-orange-50', trend: 2.4 },
+    { label: 'IQ Cache', value: stats?.stats?.totalCachedFoods || '4.2k', icon: Utensils, color: 'text-purple-600', bg: 'bg-purple-50' }
   ];
 
   return (
