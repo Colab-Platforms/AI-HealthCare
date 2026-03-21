@@ -801,14 +801,19 @@ exports.setHealthGoal = async (req, res) => {
     await healthGoal.save({ maxTimeMS: 30000 });
     
     // SYNC: Update user's nutritionGoal in User model to keep dashboard in sync
+    // Ensure macroTargets exist before accessing them to avoid crashes
+    const proteinGoal = healthGoal.macroTargets?.protein || 150;
+    const carbsGoal = healthGoal.macroTargets?.carbs || 200;
+    const fatGoal = healthGoal.macroTargets?.fats || 65;
+
     await User.findByIdAndUpdate(req.user._id, {
       nutritionGoal: {
         goal: healthGoal.goalType,
         targetWeight: healthGoal.targetWeight,
         calorieGoal: healthGoal.dailyCalorieTarget,
-        proteinGoal: healthGoal.macroTargets.protein,
-        carbsGoal: healthGoal.macroTargets.carbs,
-        fatGoal: healthGoal.macroTargets.fats,
+        proteinGoal: proteinGoal,
+        carbsGoal: carbsGoal,
+        fatGoal: fatGoal,
         lastUpdated: new Date()
       },
       'profile.age': Number(healthGoal.age),
@@ -890,23 +895,29 @@ exports.updateHealthGoal = async (req, res) => {
       userId: req.user._id
     };
 
-    const healthGoal = await withTimeout(
-      HealthGoal.findOneAndUpdate(
-        { userId: req.user._id },
-        goalData,
-        { new: true, upsert: true }
-      )
-    );
+    let healthGoal = await withTimeout(HealthGoal.findOne({ userId: req.user._id }));
+    
+    if (healthGoal) {
+      Object.assign(healthGoal, goalData);
+    } else {
+      healthGoal = new HealthGoal(goalData);
+    }
 
-    // SYNC: Update user's nutritionGoal in User model to keep dashboard in sync
+    await healthGoal.save({ maxTimeMS: 30000 });
+
+    // SYNC: Update user's nutritionGoal in User model
+    const proteinGoal = healthGoal.macroTargets?.protein || 150;
+    const carbsGoal = healthGoal.macroTargets?.carbs || 200;
+    const fatGoal = healthGoal.macroTargets?.fats || 65;
+
     await User.findByIdAndUpdate(req.user._id, {
       nutritionGoal: {
         goal: healthGoal.goalType,
         targetWeight: healthGoal.targetWeight,
         calorieGoal: healthGoal.dailyCalorieTarget,
-        proteinGoal: healthGoal.macroTargets.protein,
-        carbsGoal: healthGoal.macroTargets.carbs,
-        fatGoal: healthGoal.macroTargets.fats,
+        proteinGoal: proteinGoal,
+        carbsGoal: carbsGoal,
+        fatGoal: fatGoal,
         lastUpdated: new Date()
       },
       'profile.age': Number(healthGoal.age),
@@ -1018,15 +1029,19 @@ exports.logWeight = async (req, res) => {
       await healthGoal.save({ maxTimeMS: 30000 });
       console.log('Health goal weight updated');
 
-      // SYNC: Update user's nutritionGoal in User model to keep dashboard in sync
+      // Ensure macroTargets exist before accessing them to avoid crashes
+      const proteinGoal = healthGoal.macroTargets?.protein || 150;
+      const carbsGoal = healthGoal.macroTargets?.carbs || 200;
+      const fatGoal = healthGoal.macroTargets?.fats || 65;
+
       await User.findByIdAndUpdate(req.user._id, {
         nutritionGoal: {
           goal: healthGoal.goalType,
           targetWeight: healthGoal.targetWeight,
           calorieGoal: healthGoal.dailyCalorieTarget,
-          proteinGoal: healthGoal.macroTargets.protein,
-          carbsGoal: healthGoal.macroTargets.carbs,
-          fatGoal: healthGoal.macroTargets.fats,
+          proteinGoal: proteinGoal,
+          carbsGoal: carbsGoal,
+          fatGoal: fatGoal,
           lastUpdated: new Date()
         }
       });
@@ -1449,9 +1464,9 @@ async function updateDailySummary(userId, date) {
         console.log('✅ Daily goals synced from active PersonalizedDietPlan');
       } else if (healthGoal) {
         newSummary.calorieGoal = healthGoal.dailyCalorieTarget;
-        newSummary.proteinGoal = healthGoal.macroTargets.protein;
-        newSummary.carbsGoal = healthGoal.macroTargets.carbs;
-        newSummary.fatsGoal = healthGoal.macroTargets.fats;
+        newSummary.proteinGoal = healthGoal.macroTargets?.protein || 150;
+        newSummary.carbsGoal = healthGoal.macroTargets?.carbs || 200;
+        newSummary.fatsGoal = healthGoal.macroTargets?.fats || 65;
         console.log('✅ Daily goals synced from HealthGoal model');
       }
 
@@ -1492,9 +1507,9 @@ async function updateDailySummary(userId, date) {
       summary.fatsGoal = activePlan.nutritionGoals?.macroTargets?.fats || activePlan.macroTargets?.fats || 65;
     } else if (healthGoal) {
       summary.calorieGoal = healthGoal.dailyCalorieTarget;
-      summary.proteinGoal = healthGoal.macroTargets.protein;
-      summary.carbsGoal = healthGoal.macroTargets.carbs;
-      summary.fatsGoal = healthGoal.macroTargets.fats;
+      summary.proteinGoal = healthGoal.macroTargets?.protein || 150;
+      summary.carbsGoal = healthGoal.macroTargets?.carbs || 200;
+      summary.fatsGoal = healthGoal.macroTargets?.fats || 65;
     }
 
     // Force recalculation of status and percentages
