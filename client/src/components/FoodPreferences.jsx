@@ -3,6 +3,7 @@ import { X, Plus, Sparkles, Loader2, CheckCircle, AlertCircle, Target, Activity,
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '../context/AuthContext';
 
 const Moon = ({ className }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -77,6 +78,7 @@ const DIABETIC_ALTERNATIVES = {
 };
 
 export default function FoodPreferences({ onClose, onGenerate, mode = 'save' }) {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('breakfast');
   const [activeGeneralTab, setActiveGeneralTab] = useState('preferredFoods');
