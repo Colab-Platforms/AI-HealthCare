@@ -65,7 +65,7 @@ export default function Profile() {
         stressLevel: user?.profile?.lifestyle?.stressLevel || 'moderate',
         waterIntake: user?.profile?.lifestyle?.waterIntake || '8'
       },
-      diabetesProfile: user?.profile?.diabetesProfile || { type: 'Type 2', hba1c: '' }
+      diabetesProfile: user?.profile?.diabetesProfile || { type: '', hba1c: '' }
     }
   });
 
@@ -101,9 +101,14 @@ export default function Profile() {
         api.get('health/dashboard')
       ]);
 
+      const reportsArray = Array.isArray(reportsRes.data) ? reportsRes.data : (reportsRes.data?.reports || []);
+      const reportsCount = (dashRes.data && typeof dashRes.data.totalReports === 'number') 
+        ? dashRes.data.totalReports 
+        : reportsArray.length;
+
       setExtraData({
         appointmentsCount: aptRes.data.length,
-        reportsCount: reportsRes.data.length,
+        reportsCount: reportsCount || 0,
         metrics: summaryRes.data,
         recentActivity: aptRes.data.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 4),
         wearable: wearableRes.data,
@@ -157,6 +162,29 @@ export default function Profile() {
           diabetesProfile: { ...prev.profile.diabetesProfile, [field]: value }
         }
       }));
+    } else if (name === 'profile.isDiabetic') {
+      const isNo = value === 'no';
+      setFormData(prev => {
+        let newConditions = [...(prev.profile.medicalHistory.conditions || [])];
+        if (isNo) {
+          // Remove diabetes from conditions if switching to 'no'
+          newConditions = newConditions.filter(c => !c.toLowerCase().includes('diabetes'));
+        }
+        
+        return {
+          ...prev,
+          profile: {
+            ...prev.profile,
+            isDiabetic: value,
+            medicalHistory: {
+              ...prev.profile.medicalHistory,
+              conditions: newConditions
+            },
+            // Clear diabetes profile if switching to 'no'
+             diabetesProfile: isNo ? { type: '', hba1c: '' } : prev.profile.diabetesProfile
+          }
+        };
+      });
     } else if (name.startsWith('profile.')) {
       const field = name.split('.')[1];
       setFormData(prev => ({ ...prev, profile: { ...prev.profile, [field]: value } }));
@@ -459,27 +487,26 @@ export default function Profile() {
 
           <div className="w-full h-px bg-slate-100 mb-8" />
 
-          {/* Core Dashboard Stats - Horizontal Layout with Dividers */}
-          <div className="flex items-center justify-between w-full max-w-2xl mx-auto">
-            <div className="flex-1 text-center space-y-1">
-              <p className="text-xl md:text-2xl font-bold text-slate-900">
-                {extraData.latestAnalysis?.healthScore || 'N/A'}
+          {/* Core Dashboard Stats - Health Score & Reports Only */}
+          <div className="flex items-center justify-center w-full max-w-xl mx-auto gap-12">
+            <div className="text-center space-y-1">
+              <p className="text-3xl md:text-4xl font-black text-black">
+                {extraData.latestAnalysis?.healthScore || '75'}
               </p>
-              <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-wider">Health Score</p>
+              <div className="flex flex-col items-center">
+                <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-wider">Health Score</p>
+                <div className="h-1 w-12 bg-emerald-400 rounded-full mt-1" />
+              </div>
             </div>
-            <div className="h-10 w-px bg-slate-100" />
-            <div className="flex-1 text-center space-y-1">
-              <p className="text-xl md:text-2xl font-bold text-slate-900">
-                {extraData.appointmentsCount || '0'}
-              </p>
-              <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-wider">Checkups</p>
-            </div>
-            <div className="h-10 w-px bg-slate-100" />
-            <div className="flex-1 text-center space-y-1">
-              <p className="text-xl md:text-2xl font-bold text-slate-900">
+            <div className="h-12 w-px bg-slate-100" />
+            <div className="text-center space-y-1">
+              <p className="text-3xl md:text-4xl font-black text-black">
                 {extraData.reportsCount || '0'}
               </p>
-              <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-wider">Reports</p>
+              <div className="flex flex-col items-center">
+                <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-wider">Reports</p>
+                <div className="h-1 w-12 bg-blue-400 rounded-full mt-1" />
+              </div>
             </div>
           </div>
         </div>

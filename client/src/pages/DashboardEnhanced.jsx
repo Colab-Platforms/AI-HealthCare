@@ -662,14 +662,21 @@ export default function DashboardEnhanced() {
           })
         ]);
 
-        const diabeticStatus = user?.profile?.medicalHistory?.conditions?.some(c => c.toLowerCase().includes('diabetes')) ||
-          user?.profile?.diabetesProfile?.type;
-        setIsDiabetic(!!diabeticStatus);
       } catch (err) {
         console.error("Dashboard mount load error:", err);
       }
     };
     loadData();
+  }, [user]);
+
+  // Separate effect for diabetic status to ensure it shows immediately regardless of other data loads
+  useEffect(() => {
+    if (user?.profile) {
+      const diabeticStatus = user.profile.isDiabetic === 'yes' || 
+        user.profile.isDiabetic === true ||
+        (user.profile.medicalHistory?.conditions?.some(c => c.toLowerCase().includes('diabetes')) && user.profile.isDiabetic !== 'no');
+      setIsDiabetic(!!diabeticStatus);
+    }
   }, [user]);
 
   const isMealLogged = (mealType, meal) => {
