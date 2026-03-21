@@ -103,7 +103,7 @@ export default function StepTracker() {
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col font-roboto w-full max-w-md mx-auto shadow-2xl overflow-hidden relative">
-            <header className="bg-white px-6 py-5 flex items-center justify-between border-b border-slate-100 z-10 sticky top-0">
+            <header className="bg-white px-6 py-3 md:py-5 flex items-center justify-between border-b border-slate-100 z-10 sticky top-0">
                 <button onClick={() => navigate(-1)} className="text-slate-700 hover:text-black transition-colors">
                     <ChevronLeft className="w-6 h-6" />
                 </button>

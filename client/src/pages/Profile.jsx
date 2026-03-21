@@ -433,7 +433,7 @@ export default function Profile() {
       {/* Black Header Background */}
       <div className="absolute top-0 left-0 right-0 h-48 md:h-64 bg-black" />
 
-      <div className="relative z-10 px-4 md:px-8 pt-8 md:pt-12 max-w-5xl mx-auto space-y-6">
+      <div className="relative z-10 px-4 md:px-8 pt-2 md:pt-12 max-w-5xl mx-auto space-y-6">
         {/* Profile Header Card */}
         <div className="bg-white rounded-[2.5rem] p-6 md:p-10 shadow-xl border border-slate-100">
           <div className="flex items-center gap-6 mb-8">

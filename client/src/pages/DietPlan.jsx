@@ -304,12 +304,12 @@ export default function DietPlan() {
   };
 
   return (
-    <div className="min-h-screen bg-transparent pb-32 px-4 md:px-6 lg:px-12 pt-8">
+    <div className="min-h-screen bg-transparent pb-32 px-4 md:px-6 lg:px-12 pt-2 md:pt-8">
       {/* Background elements */}
       <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-purple-100/20 rounded-full blur-[120px] pointer-events-none" />
 
       {/* Header - Simplified for Global Sticky Header */}
-      <div className="relative z-10 flex items-center gap-2 overflow-x-auto scrollbar-hide mb-8 mt-4">
+      <div className="relative z-10 flex items-center gap-2 overflow-x-auto scrollbar-hide mb-8 mt-0 md:mt-4">
         <div className="flex items-center gap-1.5 bg-white/60 backdrop-blur-md px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-white/60 shadow-sm shrink-0">
           <Calendar className="w-3 h-3 md:w-3.5 md:h-3.5 text-slate-400" />
           <span className="text-xs md:text-sm font-medium text-slate-600 whitespace-nowrap">

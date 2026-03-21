@@ -337,7 +337,7 @@ export default function LogVitals() {
     };
 
     return (
-        <div className="min-h-full bg-transparent p-4 md:p-8 font-sans relative">
+        <div className="min-h-full bg-transparent px-4 md:px-8 pt-2 md:pt-8 font-sans relative">
             <div className="max-w-[1000px] mx-auto relative z-10 space-y-8">
 
                 <div className="pt-4" />

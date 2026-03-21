@@ -806,14 +806,14 @@ export default function DashboardEnhanced() {
 
   console.log('Rendering Dashboard', { hasData: !!dashboardData, isDiabetic });
   return (
-    <div className="min-h-screen bg-transparent pb-32 px-4 md:px-6 lg:px-16 pt-8 relative overflow-hidden">
+    <div className="min-h-screen bg-transparent pb-32 px-4 md:px-6 lg:px-16 pt-2 md:pt-8 relative overflow-hidden">
 
 
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 md:mb-16 pt-4"
+        className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 md:mb-16 pt-0 md:pt-4"
       >
         <div className="flex flex-col md:block">
           <h1 className="text-3xl md:text-5xl font-light tracking-tight text-[#1a1a1a] whitespace-nowrap">

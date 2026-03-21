@@ -245,7 +245,7 @@ export default function UploadReport() {
   const viewingReport = allReports.find(r => r._id === viewingReportId);
 
   return (
-    <div className="p-4 md:p-8 max-w-[1400px] mx-auto space-y-8 relative font-sans bg-transparent">
+    <div className="px-4 md:px-8 pt-2 md:pt-8 max-w-[1400px] mx-auto space-y-8 relative font-sans bg-transparent">
       <div className="pt-4" />
       <div className="flex items-center gap-4">
         <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200">

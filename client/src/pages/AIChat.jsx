@@ -217,7 +217,7 @@ export default function AIChat() {
 
       {/* Main Chat Interface */}
       <div className="flex-1 flex flex-col h-full relative bg-transparent">
-        <div className="pt-4" />
+        <div className="pt-1 md:pt-4" />
 
         {/* Message Viewport */}
         <div ref={chatContainerRef} className="flex-1 overflow-y-auto px-6 py-8 space-y-8 scroll-smooth">

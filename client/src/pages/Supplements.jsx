@@ -71,7 +71,7 @@ export default function Supplements() {
   // No reports uploaded
   if (reports.length === 0) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6 animate-fade-in p-4">
+      <div className="max-w-4xl mx-auto space-y-6 animate-fade-in px-4 pt-2 md:pt-8 shadow-sm">
         <div className="flex items-center gap-4 mb-6">
           <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-black font-medium transition-colors">
             <ArrowLeft className="w-4 h-4" /> Back to Dashboard
@@ -101,7 +101,7 @@ export default function Supplements() {
   // No supplements found in selected report
   if (supplements.length === 0 && selectedReport) {
     return (
-      <div className="max-w-4xl mx-auto space-y-6 animate-fade-in p-4">
+      <div className="max-w-4xl mx-auto space-y-6 animate-fade-in px-4 pt-2 md:pt-8 shadow-sm">
         <div className="flex items-center gap-4 mb-6">
           <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-black font-medium transition-colors">
             <ArrowLeft className="w-4 h-4" /> Back to Dashboard
@@ -161,7 +161,7 @@ export default function Supplements() {
   }, {});
 
   return (
-    <div className="w-full mx-auto space-y-6 animate-fade-in p-4 pb-20">
+    <div className="w-full mx-auto space-y-6 animate-fade-in px-4 pt-2 md:pt-8 pb-20 shadow-sm">
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

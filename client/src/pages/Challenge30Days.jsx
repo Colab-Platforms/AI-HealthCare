@@ -146,7 +146,7 @@ export default function Challenge30Days() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FDFDFD] pb-32 px-4 md:px-8 lg:px-16 pt-8 font-sans">
+    <div className="min-h-screen bg-[#FDFDFD] pb-32 px-4 md:px-8 lg:px-16 pt-2 md:pt-8 font-sans">
       <div className="max-w-[1200px] mx-auto">
         
         <div className="pt-4" />

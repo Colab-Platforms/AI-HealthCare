@@ -295,9 +295,9 @@ const GlucoseLog = () => {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-28 pt-4 md:pt-0">
+    <div className="min-h-screen bg-slate-50 pb-28 pt-1 md:pt-0">
 
-      <div className="px-3 md:px-4 py-4 space-y-6 max-w-7xl mx-auto">
+      <div className="px-3 md:px-4 pt-1 pb-4 space-y-6 max-w-7xl mx-auto">
         <p className="text-center text-gray-500 text-sm">
           {status === "stable"
             ? "Your current status is stable"
