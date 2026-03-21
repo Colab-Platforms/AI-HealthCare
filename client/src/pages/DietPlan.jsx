@@ -364,50 +364,27 @@ export default function DietPlan() {
       ) : (
         <div className="space-y-12 md:space-y-24">
 
-          {/* Quick Metrics Bar - Protocol Overview */}
-          <section>
-            <div className="grid grid-cols-4 gap-2 md:gap-4">
-              {[
-                { label: 'Calories', val: Math.round(dailyGoals.calories), unit: 'kcal', color: 'bg-indigo-500', icon: Flame },
-                { label: 'Protein', val: Math.round(dailyGoals.protein), unit: 'g', color: 'bg-emerald-500', icon: Zap },
-                { label: 'Carbs', val: Math.round(dailyGoals.carbs), unit: 'g', color: 'bg-blue-500', icon: Target },
-                { label: 'Fats', val: Math.round(dailyGoals.fats), unit: 'g', color: 'bg-orange-500', icon: Heart }
-              ].map((m, i) => (
-                <div key={m.label} className="bg-white p-2.5 md:p-6 rounded-2xl md:rounded-[2.5rem] border border-slate-100 shadow-sm flex flex-col items-center justify-center">
-                  <div className={`w-7 h-7 md:w-10 md:h-10 ${m.color} bg-opacity-10 rounded-xl md:rounded-2xl flex items-center justify-center mb-2 md:mb-4`}>
-                    <m.icon className={`w-3.5 h-3.5 md:w-5 md:h-5 ${m.color.replace('bg-', 'text-')}`} />
-                  </div>
-                  <span className="text-[7px] md:text-[10px] font-black uppercase tracking-[0.1em] md:tracking-[0.2em] text-slate-400 mb-0.5 md:mb-1">{m.label}</span>
-                  <div className="flex items-baseline gap-0.5 md:gap-1">
-                    <span className="text-sm md:text-2xl font-light text-slate-800">{m.val}</span>
-                    <span className="text-[8px] md:text-xs font-bold text-slate-400">{m.unit}</span>
-                  </div>
+          {/* Intelligence Context Message */}
+          <section className="mt-8 p-6 bg-white/40 backdrop-blur-md rounded-[2rem] border border-white/60 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div>
+                <div className="flex items-center gap-2 mb-2">
+                  <Sparkles className="w-4 h-4 text-emerald-500" />
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Precision Curation</span>
                 </div>
-              ))}
-            </div>
+                <h3 className="text-xl font-bold text-slate-800 tracking-tight">
+                  This diet plan is specially designed by considering your health parameters, fitness goals and BMI for optimal results.
+                </h3>
+              </div>
 
-            {/* Intelligence Context Message */}
-            <div className="mt-8 p-6 bg-white/40 backdrop-blur-md rounded-[2rem] border border-white/60 shadow-sm">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="w-4 h-4 text-emerald-500" />
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Precision Curation</span>
-                  </div>
-                  <h3 className="text-xl font-bold text-slate-800 tracking-tight">
-                    This diet plan is specially designed by considering your health parameters, fitness goals and BMI for optimal results.
-                  </h3>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                  <button 
-                    onClick={() => insightsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                    className="flex items-center gap-2 px-6 py-3 bg-white text-black rounded-full text-xs font-black uppercase tracking-widest border border-black hover:bg-black hover:text-white transition-all shadow-md active:scale-95"
-                  >
-                    <Sparkles className="w-4 h-4 text-emerald-500" />
-                    View AI Insights
-                  </button>
-                </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <button 
+                  onClick={() => insightsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
+                  className="flex items-center gap-2 px-6 py-3 bg-white text-black rounded-full text-xs font-black uppercase tracking-widest border border-black hover:bg-black hover:text-white transition-all shadow-md active:scale-95"
+                >
+                  <Sparkles className="w-4 h-4 text-emerald-500" />
+                  View AI Insights
+                </button>
               </div>
             </div>
           </section>
