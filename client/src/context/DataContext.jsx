@@ -143,7 +143,7 @@ export const DataProvider = ({ children }) => {
     setLoading(prev => ({ ...prev, logs: true }));
     try {
       const response = await nutritionService.getLogs(date);
-      const data = response.data?.logs || [];
+      const data = response.data?.logs || response.data?.foodLogs || [];
       setNutritionLogs(data);
       cache.set(cacheKey, data, 5 * 60 * 1000);
       return data;

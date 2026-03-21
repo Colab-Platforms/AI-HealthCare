@@ -236,6 +236,7 @@ export default function DietPlan() {
       // 2. Log with rich data
       // 2. Log with data from diet plan PREFERRED (for calorie goal consistency) 
       // but enrich with AI analysis findings (benefits, alternatives)
+      const todayStr = new Date().toISOString().split('T')[0];
       await nutritionService.logMeal({
         mealType: type,
         foodItems: [{
@@ -255,13 +256,14 @@ export default function DietPlan() {
         healthBenefitsSummary: meal.benefits || data.healthBenefitsSummary || data.foodItem?.healthBenefitsSummary || '',
         warnings: data.warnings || data.foodItem?.warnings || [],
         alternatives: data.alternatives || data.foodItem?.alternatives || [],
-        source: 'meal_plan'
+        source: 'meal_plan',
+        date: todayStr
       });
 
       toast.dismiss(analyzeToastId);
       toast.success('Meal logged! Keep it up 🚀');
       setLoggedMeals(prev => ({ ...prev, [mealId]: true }));
-      invalidateCache(['dashboard', `logs_${new Date().toISOString().split('T')[0]}`, `nutrition_${new Date().toISOString().split('T')[0]}`]);
+      invalidateCache(['dashboard', `logs_${todayStr}`, `nutrition_${todayStr}`]);
       loadInitialData(); // Refresh UI
     } catch (err) {
       console.error("Log meal error:", err);

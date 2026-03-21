@@ -442,7 +442,7 @@ exports.getDashboardData = async (req, res) => {
     const todayLogs = await FoodLog.find({
       userId: req.user._id,
       timestamp: { $gte: targetDate, $lt: tomorrow }
-    }).select('source mealType totalNutrition');
+    }).select('source mealType totalNutrition foodItems');
 
     // 🆕 Get 90-day history for trends (Real-time data)
     const ninetyDaysAgo = new Date(targetDate);

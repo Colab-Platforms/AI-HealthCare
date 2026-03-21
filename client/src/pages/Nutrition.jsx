@@ -741,7 +741,10 @@ function Nutrition() {
                   { name: 'Dinner', icon: Moon, ratio: 0.25 }
                 ].map((meal) => {
                   const logs = mealLogs[meal.name] || [];
-                  const cals = logs.reduce((sum, l) => sum + (l.foodItems?.[0]?.nutrition?.calories || 0), 0);
+                  const cals = logs.reduce((sum, l) => {
+                    const mealCals = (l.foodItems || []).reduce((mSum, fi) => mSum + (fi.nutrition?.calories || 0), 0);
+                    return sum + mealCals;
+                  }, 0);
                   const mealTarget = Math.round(dailySummary.calorieTarget * meal.ratio);
                   const isOver = cals > mealTarget;
                   const isExpanded = expandedMeal === meal.name;
