@@ -1,5 +1,5 @@
 // FitCure Service Worker
-const CACHE_NAME = 'fitcure-v2'; // Updated version to force refresh
+const CACHE_NAME = 'fitcure-v3'; // Version bump to force update
 const urlsToCache = [
   '/',
   '/index.html',
@@ -39,43 +39,46 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   
-  // CRITICAL: Skip caching for API calls (especially image uploads)
-  // This prevents service worker from interfering with POST requests
-  if (url.pathname.startsWith('/api/')) {
-    // Just pass through to network, don't cache
-    event.respondWith(fetch(event.request));
-    return;
+  // 1. BYPASS for API and non-GET requests
+  // We NEVER want the service worker to interfere with data mutations or auth
+  if (url.pathname.includes('/api/') || event.request.method !== 'GET') {
+    return; // Let the browser handle it naturally
   }
-  
-  // Skip caching for chrome-extension and other non-http schemes
+
+  // 2. BYPASS for non-http(s)
   if (!event.request.url.startsWith('http')) {
-    event.respondWith(fetch(event.request));
     return;
   }
   
-  // For other requests, use network first with cache fallback
+  // 3. Strategy: Network First, Cache Fallback
   event.respondWith(
     fetch(event.request)
       .then((response) => {
-        // Only cache successful GET requests
-        if (event.request.method === 'GET' && response.status === 200) {
+        // Cache successful GET responses
+        if (response.status === 200) {
           const responseToCache = response.clone();
-          
-          caches.open(CACHE_NAME)
-            .then((cache) => {
-              cache.put(event.request, responseToCache);
-            })
-            .catch((err) => {
-              // Silently fail cache writes (prevents chrome-extension errors)
-              console.log('Cache write failed:', err.message);
-            });
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          }).catch(() => {}); // Silence cache errors
         }
-        
         return response;
       })
-      .catch(() => {
-        // If network fails, try cache
-        return caches.match(event.request);
+      .catch(async (err) => {
+        // Network failed, try cache
+        const cachedResponse = await caches.match(event.request);
+        if (cachedResponse) return cachedResponse;
+
+        // If it's a navigation request (page reload/link), return index.html
+        if (event.request.mode === 'navigate') {
+          const indexCache = await caches.match('/index.html');
+          if (indexCache) return indexCache;
+        }
+
+        // Ultimate fallback to prevent "Failed to convert value to Response"
+        return new Response('Offline: Resource not available', {
+          status: 503,
+          headers: { 'Content-Type': 'text/plain' }
+        });
       })
   );
 });

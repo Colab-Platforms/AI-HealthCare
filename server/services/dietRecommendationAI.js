@@ -69,7 +69,7 @@ class DietRecommendationAI {
       nutritionGoals, foodPreferences
     } = userData;
 
-    const prompt = `You are an expert Indian nutritionist and clinical dietitian. Generate a highly personalized Indian meal plan.
+    const prompt = `You are an expert Indian nutritionist and clinical dietitian who has deep knowledge of REAL Indian cuisine and eating habits. Generate a highly personalized Indian meal plan using ONLY authentic, commonly eaten Indian foods.
 
 USER PROFILE:
 - Age/Gender: ${age}, ${gender}
@@ -100,20 +100,93 @@ LAB REPORT DATA & DEFICIENCIES:
 ${labReports?.length > 0 ? labReports.map(r => `- ${r.parameter}: ${r.value} ${r.unit} (${r.status})`).join('\n') : 'No lab data available, base recommendations on Fitness Goal and BMI.'}
 ${deficiencies?.length > 0 ? deficiencies.map(d => `- ${d.nutrient || d.name} (${d.severity})`).join('\n') : ''}
 
-CRITICAL INSTRUCTIONS (STRICT PREFERENCE MODE):
-1. If 'Preferred Foods' or 'Meal Favorites' are provided, you MUST construct the meal plan EXCLUSIVELY from those items.
-2. DO NOT suggest random new foods if the user has a preference list. Only use items from the preference list for every meal option.
-3. If a preference list is provided but it's too short to fulfill 3 options per category, prioritize quality over quantity - but STAY within the user's preferred food universe.
-4. Provide EXACTLY 3 DISTINCT meal options for EVERY category (breakfast, midMorningSnack, lunch, eveningSnack, dinner).
-5. BE ULTRA-CONCISE. Use short meal names and 1-sentence descriptions. This is critical for performance.
-6. Ensure the combined nutrition of these options FULFILLS the user's daily macro targets.
-7. Use ONLY Indian foods.
-8. STRICTLY avoid any 'Foods to Avoid' and adhere to 'Dietary Restrictions'.
-9. Provide specific portion sizes in grams/pieces.
-10. Each meal option MUST include: name, description, calories, protein, carbs, fats, and benefits.
-11. Ensure variety - no two options should be similar.
-12. If the user wants to REGENERATE, provide COMPLETELY DIFFERENT meal options from their preference pool.
-13. ${promptExtension || ''}
+═══════════════════════════════════════════════════
+🚫 ABSOLUTE BAN - BEEF (MOST IMPORTANT RULE):
+═══════════════════════════════════════════════════
+NEVER suggest beef, steak, beef curry, beef biryani, beef fry, beef keema, beef stew, or ANY beef-based dish to ANY user regardless of their dietary preference. This is a strict cultural rule for this platform. Use chicken, mutton/goat, fish, eggs, paneer, or dal as protein alternatives instead.
+
+═══════════════════════════════════════════════════
+🚫 BANNED FOOD COMBINATIONS (DO NOT SUGGEST THESE):
+═══════════════════════════════════════════════════
+The following are UNNATURAL combinations that NO Indian eats. NEVER suggest these:
+- "White egg with sambar" or "Egg sambar" — Indians don't eat this
+- "Palak chicken" or "Spinach chicken" — This is not an Indian dish
+- "Chicken poha" — No Indian eats chicken in poha
+- "Paneer dosa" — This is not a real Indian combo
+- "Chicken idli" — Nobody eats this
+- "Egg uttapam" — Not a common Indian dish
+- "Fish paratha" — Indians don't eat this
+- "Chicken upma" — Not an Indian dish
+- "Mutton poha" — This does not exist
+- "Paneer with sambar" — Not eaten together
+- "Chicken with curd rice" — Not a real combo
+- Any fusion of South Indian + North Indian items that don't go together
+
+═══════════════════════════════════════════════════
+✅ AUTHENTIC INDIAN MEAL EXAMPLES (USE THESE AS REFERENCE):
+═══════════════════════════════════════════════════
+BREAKFAST (what Indians ACTUALLY eat):
+- Poha (plain, or with peanuts/sev), Upma, Idli with coconut chutney & sambar, Dosa with chutney & sambar
+- Paratha (aloo/gobi/methi) with curd & pickle, Stuffed paratha with butter
+- Besan chilla / Moong dal chilla, Bread omelette, Boiled eggs with toast
+- Oats porridge, Daliya/broken wheat porridge, Rava idli, Medu vada with sambar
+- Poori with aloo sabzi, Chole bhature, Pongal with chutney
+- Ragi dosa, Pesarattu, Sabudana khichdi
+
+MID-MORNING SNACK (what Indians ACTUALLY eat):
+- Fruits (banana, apple, papaya, guava, pomegranate, seasonal fruits)
+- Handful of dry fruits (almonds, walnuts, cashews)
+- Buttermilk / Chaas, Coconut water, Nimbu pani / lemon water
+- Makhana (roasted fox nuts), Chana (roasted chickpeas)
+- Sprouts chaat, Fruit chaat
+
+LUNCH (what Indians ACTUALLY eat):
+- Dal (toor/moong/masoor) + Rice + Sabzi + Roti + Salad
+- Rajma chawal, Chole chawal, Kadhi chawal
+- Chicken curry with rice/roti, Egg curry with rice/roti
+- Fish curry with rice (especially South/East India)
+- Mutton curry with roti/rice, Keema with roti
+- Sambar rice, Rasam rice, Curd rice with pickle
+- Biryani (chicken/mutton/veg), Pulao with raita
+- Roti + dal + any seasonal sabzi (bhindi, lauki, tinda, baingan, aloo gobi, mixed veg)
+- Paneer butter masala with naan/roti, Palak paneer with roti
+
+EVENING SNACK (what Indians ACTUALLY eat):
+- Chai/coffee with biscuits or rusk, Bread pakora, Samosa
+- Dhokla, Khandvi, Bhel puri, Sev puri
+- Idli or dosa (leftover), Vada pav, Aloo tikki
+- Popcorn, Makhana, Murmura/puffed rice, Mixture/chivda
+- Fruit plate, Sprouts salad
+
+DINNER (what Indians ACTUALLY eat):
+- Roti/chapati with dal + sabzi, Paratha with curd
+- Khichdi with papad + ghee, Dal rice with sabzi
+- Chicken curry/butter chicken with roti/naan
+- Egg bhurji with roti, Paneer bhurji with roti
+- Fish fry with rice + dal, Grilled chicken with salad
+- Light moong dal with jeera rice, Mix veg sabzi with roti
+- Palak paneer with roti, Dal makhani with jeera rice
+
+═══════════════════════════════════════════════════
+📋 CRITICAL INSTRUCTIONS:
+═══════════════════════════════════════════════════
+1. NEVER suggest beef or any beef-based dish. This is NON-NEGOTIABLE.
+2. ONLY suggest meals that a typical Indian household would cook and eat. If a meal combination would look strange to an average Indian person, DO NOT suggest it.
+3. GOLDEN RULE: If a dish doesn't exist on any normal Indian restaurant menu or in any Indian household, DO NOT invent it.
+4. Keep food combinations culturally authentic — sambar goes with idli/dosa/rice, dal goes with rice/roti, curries go with rice/roti/naan, etc.
+5. If 'Preferred Foods' or 'Meal Favorites' are provided, construct the plan from those items BUT still follow authentic combinations.
+6. Provide EXACTLY 3 DISTINCT meal options for EVERY category (breakfast, midMorningSnack, lunch, eveningSnack, dinner).
+7. BE ULTRA-CONCISE. Use short meal names and 1-sentence descriptions.
+8. Ensure the combined nutrition FULFILLS the user's daily macro targets.
+9. Use ONLY authentic Indian foods that are commonly available across India.
+10. STRICTLY avoid any 'Foods to Avoid' and adhere to 'Dietary Restrictions'.
+11. Provide specific portion sizes in grams/pieces/cups.
+12. Each meal option MUST include: name, description, calories, protein, carbs, fats, and benefits.
+13. Ensure variety — no two options should be similar.
+14. If the user wants to REGENERATE, provide COMPLETELY DIFFERENT meal options.
+15. For vegetarian users: Use paneer, dal, chole, rajma, soya chunks, tofu, sprouts, dairy as protein sources.
+16. For non-vegetarian users: Use chicken, mutton/goat, fish, eggs (NEVER beef) along with vegetarian options.
+17. ${promptExtension || ''}
 
 RETURN JSON ONLY. Ensure the JSON is valid and complete:
 {
@@ -143,7 +216,7 @@ RETURN JSON ONLY. Ensure the JSON is valid and complete:
   "avoidSuggestions": ["Suggestion 1", "Suggestion 2"]
 }`;
 
-    const systemMsg = "You are an expert Indian nutritionist and clinical dietitian. Provide personalized meal plans in JSON format.";
+    const systemMsg = "You are an expert Indian nutritionist and clinical dietitian. Provide personalized meal plans in JSON format. CRITICAL RULES: 1) NEVER suggest beef or any beef product to any user. 2) ONLY suggest authentic Indian meals that real Indian families actually cook and eat daily. 3) Do NOT invent weird food combinations — every suggested meal must be something commonly found in Indian households or restaurants. 4) Use chicken, mutton/goat, fish, eggs, paneer, dal, legumes as protein sources — NEVER beef.";
 
     const payload = {
       max_tokens: 4000,
