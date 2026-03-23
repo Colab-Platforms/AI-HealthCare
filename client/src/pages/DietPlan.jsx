@@ -73,8 +73,8 @@ const MealCard = ({ meal, mealType, onLog, isLogged, idx, isLoading }) => {
       </div>
 
       <div className="flex-1">
-        <h3 className="text-sm md:text-lg font-bold text-[#064e3b] mb-1 leading-tight line-clamp-1">{name}</h3>
-        <p className="text-[10px] md:text-[11px] font-medium text-emerald-800/60 line-clamp-1 mb-3 md:mb-6 leading-relaxed">
+        <h3 className="text-sm md:text-lg font-bold text-[#064e3b] mb-1.5 leading-tight line-clamp-2 min-h-[1.5rem] md:min-h-0">{name}</h3>
+        <p className="text-[10px] md:text-[12px] font-medium text-emerald-800/60 line-clamp-2 mb-4 md:mb-6 leading-relaxed">
           {meal.description || meal.benefits || "Nutrient-rich choice designed for your goals."}
         </p>
       </div>

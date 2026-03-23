@@ -429,9 +429,13 @@ export default function Profile() {
   if (!user) return <ProfileSkeleton />;
 
   return (
-    <div className="w-full relative min-h-screen bg-slate-50 overflow-x-hidden animate-fade-in pb-24">
-      {/* Black Header Background */}
-      <div className="absolute top-0 left-0 right-0 h-48 md:h-64 bg-black" />
+    <div className="w-full relative min-h-screen bg-transparent overflow-x-hidden animate-fade-in pb-24">
+      {/* Brand Header Background - Deep Healthy Green Gradient */}
+      <div className="absolute top-0 left-0 right-0 h-48 md:h-72 bg-gradient-to-br from-[#064e3b] via-[#065f46] to-[#042f24] shadow-2xl" />
+      
+      {/* Decorative Glow Elements */}
+      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-400/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+      <div className="absolute top-0 left-0 w-[300px] h-[300px] bg-cyan-400/10 rounded-full blur-[100px] -translate-y-1/4 -translate-x-1/4 pointer-events-none" />
 
       <div className="relative z-10 px-4 md:px-8 pt-2 md:pt-12 max-w-5xl mx-auto space-y-6">
         {/* Profile Header Card */}
@@ -477,7 +481,7 @@ export default function Profile() {
               <div className="flex flex-col gap-1 mt-2">
                 <div className="flex items-center gap-2 text-xs text-slate-400 font-bold uppercase tracking-widest">
                   <Mail className="w-3.5 h-3.5" />
-                  {user?.email}
+                  <span className="truncate max-w-[200px] md:max-w-[400px]" title={user?.email}>{user?.email}</span>
                 </div>
                 {(user?.phone || user?.profile?.phone) && (
                   <div className="flex items-center gap-2 text-xs text-slate-400 font-bold uppercase tracking-widest">
@@ -486,7 +490,7 @@ export default function Profile() {
                   </div>
                 )}
               </div>
-              <div className="inline-flex items-center px-4 py-1 bg-black text-white rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-widest mt-3">
+              <div className="inline-flex items-center px-4 py-1 bg-[#064e3b] text-white rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-widest mt-3 shadow-md border border-[#065f46]">
                 {user?.subscription?.plan || 'Free'} Member
               </div>
             </div>
@@ -782,7 +786,7 @@ export default function Profile() {
                           <button
                             type="submit"
                             disabled={loading}
-                            className="w-full py-4 bg-black text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-slate-800 transition-all flex items-center justify-center gap-2 shadow-xl active:scale-95"
+                            className="w-full py-4 bg-[#064e3b] text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#065f46] transition-all flex items-center justify-center gap-2 shadow-xl active:scale-95 border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
                           >
                             {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                             Update Profile Info
@@ -798,7 +802,7 @@ export default function Profile() {
                       className="p-6 flex items-center justify-between cursor-pointer hover:bg-slate-50"
                     >
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-[#FFF7ED] text-[#F97316] flex items-center justify-center">
+                        <div className="w-12 h-12 rounded-2xl bg-[#064e3b]/10 text-[#064e3b] flex items-center justify-center">
                           <Target className="w-6 h-6" />
                         </div>
                         <div>
@@ -829,8 +833,8 @@ export default function Profile() {
                               </select>
                             </div>
                             {/* Age, Height, Current Weight — read-only from General Profile */}
-                            <div className="md:col-span-2 p-4 bg-blue-50/50 rounded-2xl border border-blue-100">
-                              <p className="text-[10px] font-black text-blue-400 uppercase tracking-wider mb-3">From Your Profile</p>
+                            <div className="md:col-span-2 p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50">
+                              <p className="text-[10px] font-black text-[#065f46] uppercase tracking-wider mb-3">From Your Profile</p>
                               <div className="grid grid-cols-3 gap-4">
                                 <div>
                                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Age</p>
@@ -846,7 +850,7 @@ export default function Profile() {
                                 </div>
                               </div>
                               {(!profileAge || !profileHeight || !profileWeight) && (
-                                <button type="button" onClick={() => setExpandedSection('profile')} className="mt-3 text-xs font-bold text-blue-600 hover:text-blue-800 underline">
+                                <button type="button" onClick={() => setExpandedSection('profile')} className="mt-3 text-xs font-bold text-[#064e3b] hover:text-[#065f46] underline">
                                   → Update in General Profile
                                 </button>
                               )}
@@ -880,22 +884,22 @@ export default function Profile() {
                           </div>
 
                         {healthGoal && healthGoal.macroTargets && (
-                          <div className="p-4 bg-orange-50 rounded-2xl border border-orange-100 grid grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in shadow-inner">
+                          <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 grid grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in shadow-inner">
                             <div>
-                              <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-1">Calories</p>
-                              <p className="text-xl font-black text-orange-700">{healthGoal.dailyCalorieTarget || '—'}</p>
+                              <p className="text-[10px] font-black text-[#065f46] uppercase tracking-widest mb-1">Calories</p>
+                              <p className="text-xl font-black text-[#064e3b]">{healthGoal.dailyCalorieTarget || '—'}</p>
                             </div>
                             <div>
-                              <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-1">Protein</p>
-                              <p className="text-xl font-black text-orange-700">{healthGoal.macroTargets?.protein ? `${healthGoal.macroTargets.protein}g` : '—'}</p>
+                              <p className="text-[10px] font-black text-[#065f46] uppercase tracking-widest mb-1">Protein</p>
+                              <p className="text-xl font-black text-[#064e3b]">{healthGoal.macroTargets?.protein ? `${healthGoal.macroTargets.protein}g` : '—'}</p>
                             </div>
                             <div>
-                              <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-1">Carbs</p>
-                              <p className="text-xl font-black text-orange-700">{healthGoal.macroTargets?.carbs ? `${healthGoal.macroTargets.carbs}g` : '—'}</p>
+                              <p className="text-[10px] font-black text-[#065f46] uppercase tracking-widest mb-1">Carbs</p>
+                              <p className="text-xl font-black text-[#064e3b]">{healthGoal.macroTargets?.carbs ? `${healthGoal.macroTargets.carbs}g` : '—'}</p>
                             </div>
                             <div>
-                              <p className="text-[10px] font-black text-orange-400 uppercase tracking-widest mb-1">Fats</p>
-                              <p className="text-xl font-black text-orange-700">{healthGoal.macroTargets?.fats ? `${healthGoal.macroTargets.fats}g` : '—'}</p>
+                              <p className="text-[10px] font-black text-[#065f46] uppercase tracking-widest mb-1">Fats</p>
+                              <p className="text-xl font-black text-[#064e3b]">{healthGoal.macroTargets?.fats ? `${healthGoal.macroTargets.fats}g` : '—'}</p>
                             </div>
                           </div>
                         )}
@@ -903,7 +907,7 @@ export default function Profile() {
                           <button
                             type="submit"
                             disabled={goalLoading}
-                            className="w-full py-3 bg-[#F97316] text-white rounded-xl text-sm font-bold hover:bg-orange-600 transition-colors flex items-center justify-center gap-2"
+                            className="w-full py-4 bg-[#064e3b] text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#065f46] transition-all flex items-center justify-center gap-2 shadow-xl active:scale-95 border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
                           >
                             {goalLoading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
                             Recalculate & Save Goal

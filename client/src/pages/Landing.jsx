@@ -708,47 +708,96 @@ function CTA() {
 // Footer Component
 function Footer() {
   return (
-    <footer className="bg-gradient-to-b from-[#0a3d5c] to-[#051f2e] text-white py-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mb-12">
-          {/* Brand */}
-          <div className="col-span-2 lg:col-span-1">
-            <div className="flex items-center mb-4">
+    <footer className="relative bg-[#020617] text-white pt-24 pb-12 overflow-hidden">
+      {/* Decorative background elements */}
+      <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[120px] -translate-y-1/2" />
+      <div className="absolute bottom-0 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-[120px] translate-y-1/2" />
+
+      <div className="max-w-7xl mx-auto px-6 lg:px-8 relative z-10">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12 mb-16">
+          {/* Brand Column */}
+          <div className="space-y-6 flex flex-col items-center md:items-start text-center md:text-left">
+            <Link to="/" className="inline-block transform hover:scale-105 transition-transform">
               <img 
                 src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
                 alt="take.health AI Platform" 
-                className="h-18 w-auto object-contain"
+                className="h-14 w-auto object-contain brightness-0 invert" 
               />
+            </Link>
+            <p className="text-slate-400 text-sm leading-relaxed max-w-xs">
+              Revolutionizing personalized healthcare with AI-driven insights, 24/7 coaching, and comprehensive medical analysis.
+            </p>
+            <div className="flex items-center gap-4">
+              {['Twitter', 'Instagram', 'LinkedIn'].map((platform) => (
+                <a 
+                  key={platform} 
+                  href="#" 
+                  className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 hover:border-white/20 transition-all group"
+                  aria-label={platform}
+                >
+                  <Sparkles className="w-4 h-4 text-slate-400 group-hover:text-white transition-colors" />
+                </a>
+              ))}
             </div>
-            <p className="text-white/60 text-sm mb-4">AI-powered health insights for better living.</p>
           </div>
 
-          {/* Navigation - Matching Header */}
-          <div>
-            <h4 className="font-semibold mb-4 text-[#8B7355]">Quick Links</h4>
-            <ul className="space-y-3 text-sm">
-              <li><a href="#features" className="text-white/60 hover:text-white transition-colors">Features</a></li>
-              <li><a href="#experience" className="text-white/60 hover:text-white transition-colors">Experience</a></li>
-              <li><a href="#testimonials" className="text-white/60 hover:text-white transition-colors">Testimonials</a></li>
-              <li><a href="#faq" className="text-white/60 hover:text-white transition-colors">FAQ</a></li>
+          {/* Quick Links */}
+          <div className="text-center md:text-left">
+            <h4 className="text-sm font-black uppercase tracking-[0.2em] text-white mb-6">Platform</h4>
+            <ul className="space-y-4">
+              {['Features', 'AI Analysis', 'Health Coaching', 'Pricing'].map((item) => (
+                <li key={item}>
+                  <a href={`#${item.toLowerCase().replace(' ', '-')}`} className="text-slate-400 hover:text-white transition-colors text-sm font-medium">
+                    {item}
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          {/* Support */}
+          <div className="text-center md:text-left">
+            <h4 className="text-sm font-black uppercase tracking-[0.2em] text-white mb-6">Support</h4>
+            <ul className="space-y-4">
+              {['Help Center', 'Safety Guide', 'Community', 'Contact'].map((item) => (
+                <li key={item}>
+                  <a href="#" className="text-slate-400 hover:text-white transition-colors text-sm font-medium">
+                    {item}
+                  </a>
+                </li>
+              ))}
             </ul>
           </div>
 
           {/* Legal */}
-          <div>
-            <h4 className="font-semibold mb-4 text-[#8B7355]">Legal</h4>
-            <ul className="space-y-3 text-sm">
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors">Privacy Policy</a></li>
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors">Terms of Service</a></li>
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors">HIPAA Compliance</a></li>
+          <div className="text-center md:text-left">
+            <h4 className="text-sm font-black uppercase tracking-[0.2em] text-white mb-6">Legal</h4>
+            <ul className="space-y-4">
+              {['Privacy Policy', 'Terms of Service', 'Cookie Settings', 'HIPAA'].map((item) => (
+                <li key={item}>
+                  <a href="#" className="text-slate-400 hover:text-white transition-colors text-sm font-medium">
+                    {item}
+                  </a>
+                </li>
+              ))}
             </ul>
           </div>
         </div>
 
-        {/* Bottom */}
-        <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-white/60">© 2026 take.health AI Platform. All rights reserved.</p>
-          {/* <p className="text-sm text-white/60">Made with ❤️ for better health</p> */}
+        {/* Bottom Bar */}
+        <div className="pt-8 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="flex flex-col md:flex-row items-center gap-4 md:gap-8">
+            <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
+              © 2026 take.health AI Platform
+            </p>
+            <div className="flex items-center gap-4">
+              <span className="w-1 h-1 rounded-full bg-emerald-500" />
+              <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">System Status: Operational</p>
+            </div>
+          </div>
+          <p className="text-[10px] font-bold text-slate-600 uppercase tracking-[0.3em]">
+            Designed for better living
+          </p>
         </div>
       </div>
     </footer>
