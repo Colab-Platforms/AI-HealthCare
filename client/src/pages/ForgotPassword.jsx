@@ -269,7 +269,7 @@ export default function ForgotPassword() {
                         </div>
                         <p className="text-xs text-slate-500 font-bold leading-relaxed relative z-10">
                             <span className="text-black uppercase tracking-tighter mr-1">Security Note:</span>
-                            FitCure AI never asks for your password over email. All password resets are handled through our secure verification system.
+                            take.health AI Platform never asks for your password over email. All password resets are handled through our secure verification system.
                         </p>
                     </div>
                 </div>

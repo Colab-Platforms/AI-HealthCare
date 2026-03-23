@@ -91,7 +91,7 @@ function Header() {
           <Link to="/" className="flex items-center">
             <img 
               src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
-              alt="FitCure" 
+              alt="take.health AI Platform" 
               className="h-16 w-auto object-contain"
             />
           </Link>
@@ -277,7 +277,7 @@ function Features() {
             Everything you need for better health, in one platform
           </h2>
           <p className="text-lg text-slate-600">
-            We've reimagined healthcare to be proactive, not reactive. Here's how FitCure keeps you thriving.
+            We've reimagined healthcare to be proactive, not reactive. Here's how take.health AI Platform keeps you thriving.
           </p>
         </div>
 
@@ -609,7 +609,7 @@ function FAQ() {
   const faqs = [
     {
       question: "What types of health reports can I upload?",
-      answer: "FitCure supports all common medical report formats including blood tests, lab results, imaging reports, and general health checkups. You can upload PDFs, images, or even photos of paper reports. Our AI can extract and analyze data from virtually any medical document.",
+      answer: "take.health AI Platform supports all common medical report formats including blood tests, lab results, imaging reports, and general health checkups. You can upload PDFs, images, or even photos of paper reports. Our AI can extract and analyze data from virtually any medical document.",
     },
     {
       question: "How accurate is the AI analysis?",
@@ -716,7 +716,7 @@ function Footer() {
             <div className="flex items-center mb-4">
               <img 
                 src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
-                alt="FitCure" 
+                alt="take.health AI Platform" 
                 className="h-18 w-auto object-contain"
               />
             </div>
@@ -747,7 +747,7 @@ function Footer() {
 
         {/* Bottom */}
         <div className="pt-8 border-t border-white/10 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-white/60">© 2026 FitCure. All rights reserved.</p>
+          <p className="text-sm text-white/60">© 2026 take.health AI Platform. All rights reserved.</p>
           {/* <p className="text-sm text-white/60">Made with ❤️ for better health</p> */}
         </div>
       </div>

@@ -35,4 +35,4 @@ if ('serviceWorker' in navigator) {
   });
 }
 */
-console.log('🚀 FitCure React Initialized');
+console.log('🚀 take.health AI Platform Initialized');

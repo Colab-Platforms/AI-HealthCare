@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { 
-  LayoutDashboard, MessageSquare, Utensils, FileText, MoreVertical, 
-  Settings, LogOut, Heart, Watch, X, Calendar, ScanLine, 
-  Activity, Bell, Plus, Scale, Droplets, Moon, Footprints, 
+import {
+  LayoutDashboard, MessageSquare, Utensils, FileText, MoreVertical,
+  Settings, LogOut, Heart, Watch, X, Calendar, ScanLine,
+  Activity, Bell, Plus, Scale, Droplets, Moon, Footprints,
   Apple, Sparkles, Trophy
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -51,7 +51,7 @@ export default function MobileBottomNav() {
 
   // Routes where the navbar should be completely hidden
   const isExcludedPage = location.pathname === '/ai-chat' || location.pathname === '/profile';
-  
+
   // Logic to hide the navbar UI but keep the component mounted (to allow the log modal to open)
   const hideNavbarUI = isModalOpen || showMoreMenu || showLogModal;
 
@@ -64,7 +64,7 @@ export default function MobileBottomNav() {
 
   const logActivities = [
     { label: 'Food Log', icon: Utensils, path: '/nutrition', color: 'text-orange-500', borderColor: 'border-orange-100', iconBg: 'bg-orange-50', state: { openLogMeal: true } },
-    { label: 'Ask AI', icon: Sparkles, path: '/ai-chat', color: 'text-emerald-600', borderColor: 'border-emerald-100', iconBg: 'bg-emerald-50' },
+    { label: 'Ask Coach', icon: Sparkles, path: '/ai-chat', color: 'text-emerald-600', borderColor: 'border-emerald-100', iconBg: 'bg-emerald-50' },
     { label: 'Challenge', icon: Trophy, path: '/challenge', color: 'text-amber-500', borderColor: 'border-amber-100', iconBg: 'bg-amber-50' },
     { label: 'Sleep', icon: Moon, path: '/log-vitals/sleep', color: 'text-blue-500', borderColor: 'border-blue-100', iconBg: 'bg-blue-50' },
     { label: 'Weight', icon: Scale, path: '/log-vitals/weight', color: 'text-emerald-500', borderColor: 'border-emerald-100', iconBg: 'bg-emerald-50' },
@@ -100,9 +100,9 @@ export default function MobileBottomNav() {
           <div className="p-6 bg-slate-900 rounded-[2rem] mb-2">
             <div className="flex items-center justify-between">
               <div className="flex items-center">
-                <img 
-                  src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
-                  alt="FitCure" 
+                <img
+                  src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099"
+                  alt="take.health"
                   className="h-8 w-auto object-contain brightness-0 invert"
                 />
               </div>

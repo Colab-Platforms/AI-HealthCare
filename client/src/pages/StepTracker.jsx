@@ -62,7 +62,7 @@ export default function StepTracker() {
 
     const loadChartData = useCallback(() => {
         let data = [];
-        try { data = JSON.parse(localStorage.getItem('fitcure_daily_steps') || '[]'); } catch { }
+        try { data = JSON.parse(localStorage.getItem('takehealth_daily_steps') || '[]'); } catch { }
         const chart = [];
         for (let i = 6; i >= 0; i--) {
             const d = new Date();

@@ -12,7 +12,7 @@ const getTodayString = () => {
 
 const loadTodaySteps = () => {
     try {
-        const data = JSON.parse(localStorage.getItem('fitcure_daily_steps') || '[]');
+        const data = JSON.parse(localStorage.getItem('takehealth_daily_steps') || '[]');
         const today = data.find(d => d.date === getTodayString());
         return today ? today.steps : 0;
     } catch { return 0; }
@@ -21,18 +21,18 @@ const loadTodaySteps = () => {
 const persistSteps = (count) => {
     const todayStr = getTodayString();
     let data = [];
-    try { data = JSON.parse(localStorage.getItem('fitcure_daily_steps') || '[]'); } catch { }
+    try { data = JSON.parse(localStorage.getItem('takehealth_daily_steps') || '[]'); } catch { }
     const idx = data.findIndex(d => d.date === todayStr);
     if (idx >= 0) { data[idx].steps = count; }
     else { data.push({ date: todayStr, steps: count }); }
     if (data.length > 30) data = data.slice(-30);
-    localStorage.setItem('fitcure_daily_steps', JSON.stringify(data));
+    localStorage.setItem('takehealth_daily_steps', JSON.stringify(data));
 };
 
 export const PedometerProvider = ({ children }) => {
     const [steps, setSteps] = useState(() => loadTodaySteps());
     const [sensorStatus, setSensorStatus] = useState('initializing');
-    const [dailyGoal, setDailyGoal] = useState(() => parseInt(localStorage.getItem('fitcure_step_goal')) || 7000);
+    const [dailyGoal, setDailyGoal] = useState(() => parseInt(localStorage.getItem('takehealth_step_goal')) || 7000);
     const [debugInfo, setDebugInfo] = useState({ readings: 0, lastMag: 0, gyroActive: false });
 
     // === SENSOR FUSION REFS ===
@@ -210,7 +210,7 @@ export const PedometerProvider = ({ children }) => {
 
     const updateGoal = (newGoal) => {
         setDailyGoal(newGoal);
-        localStorage.setItem('fitcure_step_goal', newGoal.toString());
+        localStorage.setItem('takehealth_step_goal', newGoal.toString());
     };
 
     useEffect(() => {

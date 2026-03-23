@@ -38,7 +38,7 @@ const MinimalHeader = () => {
               <Link to="/" className="absolute left-1/2 -translate-x-1/2">
                 <img 
                   src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
-                  alt="FitCure" 
+                  alt="take.health AI Platform" 
                   className="h-20 w-auto object-contain"
                 />
               </Link>

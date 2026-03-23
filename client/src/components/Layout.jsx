@@ -151,7 +151,7 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
             <Link to={homeLink} className="flex items-center">
               <img 
                 src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
-                alt="FitCure" 
+                alt="take.health AI Platform" 
                 className="h-18 w-auto object-contain"
               />
             </Link>
@@ -258,7 +258,7 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
               <Link to={homeLink} className="flex items-center">
                 <img 
                   src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
-                  alt="FitCure" 
+                  alt="take.health AI Platform" 
                   className="h-16 w-auto object-contain"
                 />
               </Link>

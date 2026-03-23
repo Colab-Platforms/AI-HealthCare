@@ -1,5 +1,5 @@
-// FitCure Service Worker
-const CACHE_NAME = 'fitcure-v3'; // Version bump to force update
+// take.health Service Worker
+const CACHE_NAME = 'takehealth-v1'; // Brand update to take.health
 const urlsToCache = [
   '/',
   '/index.html',
