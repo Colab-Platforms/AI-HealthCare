@@ -436,6 +436,19 @@ function Nutrition() {
       const result = response.data.data;
       const isCached = response.data.isCached || response.data.source === 'global_cache';
       
+      // NEW: Validation for food detection
+      const totalCals = result.foodItem?.nutrition?.calories || result.totalNutrition?.calories || result.nutrition?.calories || result.calories || 0;
+      const name = result.foodItem?.name || result.foodName || result.foodItems?.[0]?.name;
+      const isWater = name?.toLowerCase().includes('water');
+
+      if (!name || name === 'Unknown Food' || (totalCals === 0 && !isWater)) {
+        toast.error('Food not detected. Please upload a clearer image of your meal.', {
+          icon: '🍽️',
+          duration: 4000
+        });
+        return;
+      }
+
       // AUTO-LOG: Directly log the meal to the database using the selected mealTab
       await handleConfirmLog(result);
       
