@@ -173,14 +173,14 @@ export default function DiabetesRegister() {
             <div className="absolute bottom-20 right-20 w-96 h-96 bg-white/10 rounded-full blur-3xl" />
           </div>
           <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
-            <div className="relative w-32 h-32 mb-8">
-              <div className="absolute inset-0 bg-white/20 backdrop-blur-xl rounded-full animate-pulse"></div>
-              <div className="absolute inset-4 bg-white/30 backdrop-blur-xl rounded-full flex items-center justify-center">
-                <Heart className="w-12 h-12 animate-pulse" />
-              </div>
+            <div className="flex justify-center mb-6">
+              <img 
+                src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
+                alt="FitCure" 
+                className="h-16 w-auto object-contain brightness-0 invert"
+              />
             </div>
-            <h1 className="text-4xl font-bold mb-4 text-center">Welcome to FitCure</h1>
-            <p className="text-xl text-white/80 text-center max-w-md mb-6">
+            <p className="text-xl text-white/80 text-center max-w-md mb-6 font-medium">
               Your personalized diabetes management platform
             </p>
             <div className="flex items-center gap-3 mt-4">

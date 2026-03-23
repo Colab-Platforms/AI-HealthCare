@@ -66,10 +66,13 @@ export default function Login() {
         </div>
 
         <div className="relative z-10 flex flex-col justify-center items-center w-full p-12 text-white">
-          <div className="w-20 h-20 bg-white/20 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-8">
-            <Activity className="w-10 h-10 text-white" />
+          <div className="flex justify-center mb-10">
+            <img 
+              src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
+              alt="take.health" 
+              className="h-28 w-auto object-contain brightness-0 invert"
+            />
           </div>
-          <h1 className="text-4xl font-black mb-4 text-center tracking-tighter uppercase">Patient Portal</h1>
           <p className="text-xl text-white/80 text-center max-w-md">
             Your AI-powered health companion for smarter healthcare decisions.
           </p>
@@ -80,11 +83,12 @@ export default function Login() {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
-          <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-            <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center border border-slate-200 shadow-lg">
-              <Activity className="w-7 h-7 text-white" />
-            </div>
-            <h2 className="text-3xl font-black mb-2 text-black uppercase tracking-tighter">Your Health Profile</h2>
+          <div className="lg:hidden flex justify-center mb-12">
+            <img 
+              src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
+              alt="take.health" 
+              className="h-24 w-auto object-contain"
+            />
           </div>
 
           <div className="text-center mb-8">

@@ -8,8 +8,8 @@ import api from './api';
 export const getFoodImage = async (query) => {
     if (!query) return null;
 
-    // Check cache first to avoid redundant API calls
-    const cacheKey = `food_img_${query.toLowerCase().replace(/\s+/g, '_')}`;
+    // Check cache first but use new v5 prefix to clear random stock photos
+    const cacheKey = `food_img_v5_${query.toLowerCase().replace(/\s+/g, '_')}`;
     const cached = localStorage.getItem(cacheKey);
     if (cached) return cached;
 
@@ -27,9 +27,10 @@ export const getFoodImage = async (query) => {
         console.warn(`Backend image proxy failed for: ${query}. Using fallback.`, error.message);
     }
 
-    // Fallback to Unsplash if backend fails
+    // Fallback to Free accurate image search if backend fails
     try {
-        const fallbackUrl = `https://source.unsplash.com/800x600/?food,${encodeURIComponent(query)}`;
+        const cleanQuery = query.replace(/[^a-zA-Z0-9 ]/g, '');
+        const fallbackUrl = `https://tse1.mm.bing.net/th?q=${encodeURIComponent(cleanQuery + ' food meal')}&w=500&h=500&c=7&rs=1&p=0`;
         return fallbackUrl;
     } catch (err) {
         return 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=500&q=80';

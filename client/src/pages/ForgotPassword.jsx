@@ -101,11 +101,12 @@ export default function ForgotPassword() {
             <div className="flex-1 flex items-center justify-center p-8">
                 <div className="w-full max-w-md">
                     {/* Mobile Logo */}
-                    <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-                        <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center border border-white/10 shadow-lg shadow-black/10">
-                            <Activity className="w-7 h-7 text-white" />
-                        </div>
-                        <h2 className="text-3xl font-black mb-2 text-black uppercase tracking-tighter">FitCure</h2>
+                    <div className="lg:hidden flex justify-center mb-10">
+                        <img 
+                            src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
+                            alt="take.health" 
+                            className="h-20 w-auto object-contain"
+                        />
                     </div>
 
                     <button onClick={() => step === 1 ? navigate('/login') : setStep(step - 1)} className="flex items-center gap-2 mb-6 text-black font-black uppercase tracking-tighter text-xs hover:text-slate-600 transition-colors">

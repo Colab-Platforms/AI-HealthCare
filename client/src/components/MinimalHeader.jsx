@@ -29,15 +29,19 @@ const MinimalHeader = () => {
               <a href="#features" className="text-sm text-gray-700 hover:text-gray-900 transition-colors font-medium">
                 Features
               </a>
-              <a href="#showcase" className="text-sm text-gray-700 hover:text-gray-900 transition-colors font-medium">
-                Showcase
-              </a>
-            </nav>
+                <a href="#experience" className="text-sm text-gray-700 hover:text-gray-900 transition-colors font-medium">
+                  Experience
+                </a>
+              </nav>
 
-            {/* Center: Logo */}
-            <Link to="/" className="absolute left-1/2 -translate-x-1/2">
-              <span className="text-xl lg:text-2xl font-serif text-gray-900">FitCure</span>
-            </Link>
+              {/* Center: Logo */}
+              <Link to="/" className="absolute left-1/2 -translate-x-1/2">
+                <img 
+                  src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
+                  alt="FitCure" 
+                  className="h-20 w-auto object-contain"
+                />
+              </Link>
 
             {/* Right: Navigation Links + Profile */}
             <div className="hidden lg:flex items-center gap-6">
@@ -94,8 +98,8 @@ const MinimalHeader = () => {
                 <a href="#features" className="text-sm text-gray-700 hover:text-gray-900 py-2 font-medium">
                   Features
                 </a>
-                <a href="#showcase" className="text-sm text-gray-700 hover:text-gray-900 py-2 font-medium">
-                  Showcase
+                <a href="#experience" className="text-sm text-gray-700 hover:text-gray-900 py-2 font-medium">
+                  Experience
                 </a>
                 <a href="#testimonials" className="text-sm text-gray-700 hover:text-gray-900 py-2 font-medium">
                   Testimonials

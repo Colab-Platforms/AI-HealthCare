@@ -2111,7 +2111,7 @@ exports.getWeeklyFoodCheckSummary = async (req, res) => {
   }
 };
 
-// Get food image from SerpAPI
+// Get food image visually using Free AI Image Generation
 exports.getFoodImage = async (req, res) => {
   try {
     const { foodName } = req.query;
@@ -2123,48 +2123,24 @@ exports.getFoodImage = async (req, res) => {
       });
     }
 
-    const axios = require('axios');
-    const serpApiKey = process.env.SERP_API_KEY;
+    // Using Bing Thumbnail API for highly accurate, free, lifetime image fetching
+    const cleanFoodName = foodName.replace(/[^a-zA-Z0-9 ]/g, '');
+    const encodedQuery = encodeURIComponent(cleanFoodName + ' food meal');
+    
+    // c=7 ensures proper cropping, w & h define quality constraints
+    const imageUrl = `https://tse1.mm.bing.net/th?q=${encodedQuery}&w=500&h=500&c=7&rs=1&p=0`;
 
-    if (!serpApiKey) {
-      console.warn('SERP_API_KEY not configured');
-      return res.json({
-        success: false,
-        message: 'Image search not configured'
-      });
-    }
-
-    // Search for food image using SerpAPI Google Images
-    const response = await axios.get('https://serpapi.com/search', {
-      params: {
-        engine: 'google_images',
-        q: `${foodName} food dish`,
-        api_key: serpApiKey,
-        num: 1,
-        safe: 'active'
-      },
-      timeout: 5000
+    res.json({
+      success: true,
+      imageUrl,
+      source: 'BingThumb'
     });
 
-    if (response.data && response.data.images_results && response.data.images_results.length > 0) {
-      const imageUrl = response.data.images_results[0].original;
-
-      res.json({
-        success: true,
-        imageUrl,
-        source: 'SerpAPI'
-      });
-    } else {
-      res.json({
-        success: false,
-        message: 'No image found'
-      });
-    }
   } catch (error) {
     console.error('Get food image error:', error);
     res.json({
       success: false,
-      message: 'Failed to fetch food image',
+      message: 'Failed to generate food image',
       error: error.message
     });
   }

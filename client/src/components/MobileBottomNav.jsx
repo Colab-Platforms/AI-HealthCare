@@ -64,7 +64,7 @@ export default function MobileBottomNav() {
 
   const logActivities = [
     { label: 'Food Log', icon: Utensils, path: '/nutrition', color: 'text-orange-500', borderColor: 'border-orange-100', iconBg: 'bg-orange-50', state: { openLogMeal: true } },
-    { label: 'Ask AI', icon: Sparkles, path: '/ai-chat', color: 'text-purple-500', borderColor: 'border-purple-100', iconBg: 'bg-purple-50' },
+    { label: 'Ask AI', icon: Sparkles, path: '/ai-chat', color: 'text-emerald-600', borderColor: 'border-emerald-100', iconBg: 'bg-emerald-50' },
     { label: 'Challenge', icon: Trophy, path: '/challenge', color: 'text-amber-500', borderColor: 'border-amber-100', iconBg: 'bg-amber-50' },
     { label: 'Sleep', icon: Moon, path: '/log-vitals/sleep', color: 'text-blue-500', borderColor: 'border-blue-100', iconBg: 'bg-blue-50' },
     { label: 'Weight', icon: Scale, path: '/log-vitals/weight', color: 'text-emerald-500', borderColor: 'border-emerald-100', iconBg: 'bg-emerald-50' },
@@ -99,8 +99,12 @@ export default function MobileBottomNav() {
         <div className="fixed bottom-24 right-4 left-4 sm:left-auto sm:w-72 bg-white rounded-[2.5rem] shadow-[0_20px_60px_-15px_rgba(0,0,0,0.3)] z-50 overflow-hidden animate-fade-in border border-slate-100 p-2">
           <div className="p-6 bg-slate-900 rounded-[2rem] mb-2">
             <div className="flex items-center justify-between">
-              <div>
-                <h3 className="font-black text-white text-lg tracking-tighter uppercase leading-none">FitCure</h3>
+              <div className="flex items-center">
+                <img 
+                  src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
+                  alt="FitCure" 
+                  className="h-8 w-auto object-contain brightness-0 invert"
+                />
               </div>
               <button onClick={() => setShowMoreMenu(false)} className="text-white hover:bg-white/10 rounded-xl p-2 transition-colors">
                 <X className="w-6 h-6" />
@@ -179,7 +183,7 @@ export default function MobileBottomNav() {
               <div className="w-16 h-1.5 bg-slate-100 rounded-full mx-auto mb-10" />
 
               <div className="flex items-center justify-between mb-8">
-                <h3 className="text-2xl font-black text-black tracking-tight uppercase">Quick Log</h3>
+                <h3 className="text-2xl font-black text-[#064e3b] tracking-tight uppercase">Quick Log</h3>
                 <button
                   onClick={() => setShowLogModal(false)}
                   className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-black active:bg-slate-100 transition-colors"
@@ -221,7 +225,7 @@ export default function MobileBottomNav() {
         )}
       </AnimatePresence>
 
-      <nav className={`mobile-bottom-nav-container ${hideNavbarUI ? 'hidden' : ''} !bg-white border-t border-slate-200/50 shadow-[0_-5px_20px_rgba(0,0,0,0.03)]`}>
+      <nav className={`mobile-bottom-nav-container ${hideNavbarUI ? 'hidden' : ''} !bg-[#EBF0E6] border-t border-emerald-100/30 shadow-[0_-5px_20px_rgba(0,0,0,0.03)]`}>
         <div className="mobile-bottom-nav">
           {navItems.map((item, index) => {
             const Icon = item.icon;
@@ -247,7 +251,7 @@ export default function MobileBottomNav() {
                 key={key}
                 to={item.path}
                 state={item.state}
-                className={`nav-item-modern flex flex-col items-center justify-center gap-0.5 ${active ? 'active' : ''} text-slate-400 [&.active]:text-black`}
+                className={`nav-item-modern flex flex-col items-center justify-center gap-0.5 ${active ? 'active' : ''} text-[#065f46]/50 [&.active]:text-[#064e3b]`}
                 aria-label={item.label}
                 title={item.label}
               >
@@ -259,7 +263,7 @@ export default function MobileBottomNav() {
 
           <Link
             to="/diet-plan"
-            className={`nav-item-modern flex flex-col items-center justify-center gap-0.5 ${isActive('/diet-plan') ? 'active' : ''} text-slate-400 [&.active]:text-black`}
+            className={`nav-item-modern flex flex-col items-center justify-center gap-0.5 ${isActive('/diet-plan') ? 'active' : ''} text-[#065f46]/50 [&.active]:text-[#064e3b]`}
             aria-label="Diet Plan"
             title="Diet Plan"
           >

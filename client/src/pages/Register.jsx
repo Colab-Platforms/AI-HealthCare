@@ -207,11 +207,12 @@ export default function Register() {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           {/* Mobile Identity */}
-          <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-            <div className="w-12 h-12 bg-black rounded-xl flex items-center justify-center border border-slate-200 shadow-lg">
-              <Activity className="w-7 h-7 text-white" />
-            </div>
-            <span className="text-2xl font-black text-black uppercase tracking-tighter">FitCure</span>
+          <div className="lg:hidden flex justify-center mb-10">
+            <img 
+              src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
+              alt="take.health" 
+              className="h-22 w-auto object-contain"
+            />
           </div>
 
           <div className="mb-8 relative">

@@ -72,7 +72,7 @@ function Nutrition() {
         calories: 320, protein: 12, carbs: 48, fats: 8,
         tags: ['HOME STYLE', 'HIGH FIBER'],
         reason: 'A wholesome balanced meal with complete plant proteins for your daily energy.',
-        image: 'https://images.unsplash.com/photo-1546833999-b9f581a1996d?w=800&q=80',
+        image: null,
         ingredients: ['Yellow Moong Dal', 'Basmati Rice', 'Ghee', 'Cumin Seeds', 'Turmeric', 'Green Chilies'],
         instructions: ['Pressure cook dal with turmeric.', 'Perform "Tadka" with ghee, cumin and chilies.', 'Steam rice until fluffy and serve together.']
       } : {
@@ -80,7 +80,7 @@ function Nutrition() {
         calories: 350, protein: 28, carbs: 42, fats: 10,
         tags: ['OMEGA-3', 'LEAN PROTEIN'],
         reason: 'Traditional Indian style fish curry to support your heart health and protein goals.',
-        image: 'https://images.unsplash.com/photo-1589187151032-573a91317445?w=800&q=80',
+        image: null,
         ingredients: ['Fresh Fish Fillet', 'Onion-Tomato Masala', 'Ginger-Garlic Paste', 'Brown Rice', 'Curry Leaves'],
         instructions: ['Sauté onion and tomato paste with spices.', 'Add fish pieces and simmer in curry base.', 'Serve with warm cooked brown rice.']
       },
@@ -89,7 +89,7 @@ function Nutrition() {
         calories: 420, protein: 22, carbs: 38, fats: 18,
         tags: ['MUSCLE REPAIR', 'PROTEIN RICH'],
         reason: 'Specifically suggested to help reach your protein target of 70g using fresh paneer.',
-        image: 'https://images.unsplash.com/photo-1567188040759-fb8a883dc6d8?w=800&q=80',
+        image: null,
         ingredients: ['Crumbled Paneer (150g)', 'Whole Wheat Roti', 'Chopped Onions', 'Bell Peppers', 'Garam Masala'],
         instructions: ['Heat oil and sauté onions and peppers.', 'Add crumbled paneer and spice mix.', 'Serve with freshly made soft wheat rotis.']
       } : {
@@ -97,7 +97,7 @@ function Nutrition() {
         calories: 380, protein: 44, carbs: 10, fats: 14,
         tags: ['LEAN MUSCLE', 'POST WORKOUT'],
         reason: 'High protein, low carb meal to support muscle recovery without extra calories.',
-        image: 'https://images.unsplash.com/photo-1599487488170-d11ec9c172f0?w=800&q=80',
+        image: null,
         ingredients: ['Chicken Breast Cubes', 'Hung Curd', 'Lemon Juice', 'Tandoori Masala', 'Fresh Salad Leaves'],
         instructions: ['Marinate chicken in curd and spices for 30 mins.', 'Air fry or grill until charred and juicy.', 'Serve with a fresh squeeze of lemon and salad.']
       },
@@ -106,7 +106,7 @@ function Nutrition() {
         calories: 310, protein: 14, carbs: 45, fats: 6,
         tags: ['EASY DIGESTION', 'GUT FRIENDLY'],
         reason: 'A light, gut-healing meal that balances all necessary macronutrients.',
-        image: 'https://images.unsplash.com/photo-1606491956689-2ea866880c84?w=800&q=80',
+        image: null,
         ingredients: ['Rice & Lentils Mix', 'Carrots', 'Peas', 'Fresh Curd (Dahi)', 'Roasted Cumin'],
         instructions: ['Cook rice, lentils and chopped veg in a pressure cooker.', 'Finish with a tiny dollop of ghee.', 'Serve with a bowl of refreshing cold curd.']
       },
@@ -115,7 +115,7 @@ function Nutrition() {
         calories: 240, protein: 18, carbs: 6, fats: 15,
         tags: ['WEIGHT LOSS', 'KETO STYLE'],
         reason: 'Simple Indian egg scramble to keep you full without traditional heavy carbs.',
-        image: 'https://images.unsplash.com/photo-1543339308-43e59d6b73a6?w=800&q=80',
+        image: null,
         ingredients: ['3 Whole Eggs', 'Onions', 'Tomatoes', 'Green Chilies', 'Coriander'],
         instructions: ['Whisk eggs with a pinch of salt.', 'Sauté onions and chilies until soft.', 'Add eggs and scramble until moist and fully cooked.']
       } : {
@@ -123,7 +123,7 @@ function Nutrition() {
         calories: 260, protein: 20, carbs: 12, fats: 14,
         tags: ['LOW CALORIE', 'ENERGY SNAP'],
         reason: 'A low-glycemic choice that helps maintain stable blood sugar levels.',
-        image: 'https://images.unsplash.com/photo-1510693395975-2292190049bd?w=800&q=80',
+        image: null,
         ingredients: ['2 Eggs', 'Green Sprouted Moong', 'Spinach', 'Onions', 'Black Pepper'],
         instructions: ['Prepare a spicy masala omelette with veggies.', 'Steamed sprouts served on the side as a fiber source.']
       }
@@ -139,7 +139,7 @@ function Nutrition() {
           calories: 240, protein: 18, carbs: 10, fats: 14,
           tags: ['IRON RICH', 'BLOOD HEALTH'],
           reason: `Iron optimization: Based on your lab reports, this meal will help improve your ${deficiencies[0].name} levels.`,
-          image: 'https://images.unsplash.com/photo-1598103442097-8b74394b95c6?w=800&q=80',
+          image: null,
           ingredients: ['Palak (Spinach)', 'Yellow Lentils', 'Garlic', 'Ghee'],
           instructions: ['Boil lentils.', 'Sauté spinach and spices.', 'Combine and temper with garlic ghee.']
         };
@@ -149,7 +149,7 @@ function Nutrition() {
           calories: 330, protein: 12, carbs: 55, fats: 4,
           tags: ['HIGH FIBER', 'GUT HEALTH'],
           reason: `Fiber boost: Found to be low in your recent analysis, this meal will help fix your digestion.`,
-          image: 'https://images.unsplash.com/photo-1547592166-23ac45744acd?w=800&q=80',
+          image: null,
           ingredients: ['Bajra (Pearl Millet)', 'Moong Dal', 'Buttermilk (Chaas)', 'Ginger'],
           instructions: ['Soak and pressure cook bajra and dal mix.', 'Whisk buttermilk with roasted cumin powder.', 'Serve warm for best results.']
         };
@@ -436,13 +436,19 @@ function Nutrition() {
       const result = response.data.data;
       const isCached = response.data.isCached || response.data.source === 'global_cache';
       
+      // AUTO-LOG: Directly log the meal to the database using the selected mealTab
+      await handleConfirmLog(result);
+      
+      // We set the result to show the modal so the user sees the details, 
+      // but it will already be marked as logged.
       setAnalysisResult({
         ...result,
+        _userInput: foodInput,
         _isFromCache: isCached,
-        _cacheSource: response.data.source
+        _cacheSource: response.data.source,
+        _alreadyLogged: true
       });
 
-      // Instead of auto-logging, we show the result modal first
       if (isCached) {
         toast.success('Instant Analysis: Retrieved from Food DB Cache');
       } else {
@@ -501,8 +507,10 @@ function Nutrition() {
       toast.success('Added to ' + mealTab);
       invalidateCache(['dashboard', `logs_${selectedDate}`, `nutrition_${selectedDate}`]);
       fetchData();
-      setIsModalOpen(false);
-      setAnalysisResult(null);
+      
+      // If we are auto-logging from analysis, we don't want to close the result detail view
+      // But we DO want to close the initial "Add Meal" input modal
+      setIsModalOpen(false); 
     } catch (error) {
       toast.error('Failed to log meal');
     }
@@ -617,14 +625,14 @@ function Nutrition() {
             <div className="flex items-center gap-3 overflow-x-auto pb-2 md:pb-0 scrollbar-hide -mx-4 px-4 md:mx-0 md:px-0">
               <button
                 onClick={() => openModal('Lunch')}
-                className="flex-shrink-0 flex items-center gap-1.5 bg-slate-900 text-white px-5 py-3 rounded-full text-sm font-semibold hover:bg-black transition-colors"
+                className="flex-shrink-0 flex items-center gap-1.5 bg-[#064e3b] text-emerald-50 px-5 py-3 rounded-full text-sm font-semibold hover:bg-[#042f2e] transition-colors shadow-md"
               >
                 <Plus className="w-4 h-4" /> Log Meal
               </button>
 
               <button
                 onClick={() => { setInputMethod('Scan'); openModal('Lunch'); }}
-                className="flex-shrink-0 flex items-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 px-5 py-3 rounded-full text-sm font-semibold shadow-sm transition-colors"
+                className="flex-shrink-0 flex items-center gap-1.5 bg-emerald-50/20 border border-emerald-100/30 hover:bg-emerald-50/40 px-5 py-3 rounded-full text-sm font-semibold shadow-sm transition-colors text-[#064e3b]"
               >
                 <Camera className="w-4 h-4" /> Scan
               </button>
@@ -636,7 +644,7 @@ function Nutrition() {
                   setFoodInput('');
                   setTimeout(startVoiceCapture, 100);
                 }}
-                className="flex-shrink-0 flex items-center gap-1.5 bg-white border border-slate-200 hover:bg-slate-50 px-5 py-3 rounded-full text-sm font-semibold shadow-sm transition-colors text-slate-800"
+                className="flex-shrink-0 flex items-center gap-1.5 bg-emerald-50/20 border border-emerald-100/30 hover:bg-emerald-50/40 px-5 py-3 rounded-full text-sm font-semibold shadow-sm transition-colors text-[#064e3b]"
               >
                 <Mic className={`w-4 h-4 ${isListening ? 'text-red-500 animate-pulse' : ''}`} /> Voice
               </button>
@@ -654,14 +662,14 @@ function Nutrition() {
               initial={{ height: 0, opacity: 0, marginBottom: 0 }}
               animate={{ height: 'auto', opacity: 1, marginBottom: 16 }}
               exit={{ height: 0, opacity: 0, marginBottom: 0 }}
-              className="md:bg-black md:text-white p-0 md:p-6 rounded-3xl md:rounded-[2.5rem] flex flex-col md:flex-row items-center gap-2 md:gap-6 md:border-2 md:border-4 border-red-500/50 md:shadow-2xl relative overflow-hidden"
+              className="md:bg-[#064e3b] md:text-emerald-50 p-0 md:p-6 rounded-3xl md:rounded-[2.5rem] flex flex-col md:flex-row items-center gap-2 md:gap-6 md:border-2 md:border-4 border-red-500/50 md:shadow-2xl relative overflow-hidden"
             >
               <div className="absolute top-0 right-0 w-[400px] h-full bg-red-500/10 rounded-full blur-[80px] pointer-events-none hidden md:block" />
               <div className="hidden md:flex w-10 h-10 md:w-14 md:h-14 bg-red-500 rounded-xl md:rounded-2xl items-center justify-center shrink-0 shadow-lg shadow-red-500/40">
                 <AlertCircle className="w-5 h-5 md:w-8 md:h-8 text-white" />
               </div>
               <div className="flex-1 text-left">
-                <h4 className="hidden md:block text-base md:text-lg font-black uppercase tracking-tighter mb-0.5 md:mb-1">
+                <h4 className="hidden md:block text-base md:text-lg font-black uppercase tracking-tighter mb-0.5 md:mb-1 text-emerald-50">
                   Threshold Exceeded
                 </h4>
                 <p className="text-[10px] md:text-xs font-black text-red-500 md:text-red-100 uppercase tracking-widest leading-relaxed line-clamp-2 md:line-clamp-none">
@@ -677,7 +685,7 @@ function Nutrition() {
               <div className="flex flex-wrap justify-center gap-3 hidden md:flex">
                  <button 
                    onClick={() => navigate('/diet-plan')} 
-                   className="bg-white text-black px-4 py-2 md:px-6 md:py-2.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all flex items-center gap-2"
+                   className="bg-emerald-50 text-[#064e3b] px-4 py-2 md:px-6 md:py-2.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-emerald-100 transition-all flex items-center gap-2"
                  >
                    <Sparkles className="w-3 h-3 text-emerald-500" /> View Recovery Diet
                  </button>
@@ -692,39 +700,39 @@ function Nutrition() {
           <div className="space-y-6">
 
             {/* Daily Calorie Intake Card */}
-            <div className="bg-white rounded-3xl md:rounded-[2.5rem] p-5 md:p-10 shadow-[0_10px_40px_-15px_rgba(0,0,0,0.05)] border border-slate-100">
-              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-4">Daily Calorie Intake</p>
+            <div className="bg-[#ffffff]/60 backdrop-blur-md rounded-3xl md:rounded-[2.5rem] p-5 md:p-10 shadow-sm border border-emerald-100/30">
+              <p className="text-[10px] text-emerald-800/40 font-black uppercase tracking-widest mb-4">Daily Calorie Intake</p>
               <div className="flex items-center justify-between mb-6 flex-nowrap">
                 <div className="flex items-baseline gap-1 shrink-0">
-                  <span className="text-3xl md:text-6xl font-black text-slate-900 tracking-tighter">{dailySummary.caloriesConsumed}</span>
-                  <span className="text-xs md:text-xl text-slate-400 font-bold">/ {dailySummary.calorieTarget}</span>
+                  <span className="text-3xl md:text-6xl font-black text-[#064e3b] tracking-tighter">{dailySummary.caloriesConsumed}</span>
+                  <span className="text-xs md:text-xl text-emerald-800/40 font-bold">/ {dailySummary.calorieTarget}</span>
                 </div>
-                <div className="flex items-center gap-1.5 md:gap-2 bg-slate-50 px-3 md:px-4 py-2 rounded-2xl border border-slate-100 shadow-sm shrink-0 ml-2">
-                  <div className="text-lg md:text-3xl font-black text-slate-900 leading-none">{Math.round(progressPercent)}%</div>
-                  <div className="text-[7px] md:text-[10px] text-slate-400 uppercase tracking-widest font-black leading-none">GOAL</div>
+                <div className="flex items-center gap-1.5 md:gap-2 bg-emerald-50/20 px-3 md:px-4 py-2 rounded-2xl border border-emerald-100/30 shadow-sm shrink-0 ml-2">
+                  <div className="text-lg md:text-3xl font-black text-[#064e3b] leading-none">{Math.round(progressPercent)}%</div>
+                  <div className="text-[7px] md:text-[10px] text-emerald-800/40 uppercase tracking-widest font-black leading-none">GOAL</div>
                 </div>
               </div>
-              <p className="text-sm text-slate-500 font-bold mb-8 uppercase tracking-tight">{remainingCals.toFixed(2)} kcal remaining</p>
+              <p className="text-sm text-emerald-800/60 font-bold mb-8 uppercase tracking-tight">{remainingCals.toFixed(2)} kcal remaining</p>
 
               {/* Progress Bar */}
-              <div className="h-4 bg-slate-50 rounded-full w-full overflow-hidden mb-10 border border-slate-100">
-                <motion.div initial={{ width: 0 }} animate={{ width: `${progressPercent}%` }} transition={{ duration: 1, ease: "easeOut" }} className="h-full bg-slate-900 rounded-full" />
+              <div className="h-4 bg-emerald-50/20 rounded-full w-full overflow-hidden mb-10 border border-emerald-100/30">
+                <motion.div initial={{ width: 0 }} animate={{ width: `${progressPercent}%` }} transition={{ duration: 1, ease: "easeOut" }} className="h-full bg-[#064e3b] rounded-full shadow-[0_0_15px_rgba(52,211,153,0.3)]" />
               </div>
 
               {/* Macros */}
               <div className="grid grid-cols-3 gap-8">
                 {[
-                  { label: 'PROTEIN', current: dailySummary.protein, target: dailySummary.proteinTarget, color: 'bg-black' },
-                  { label: 'CARBS', current: dailySummary.carbs, target: dailySummary.carbsTarget, color: 'bg-slate-400' },
-                  { label: 'FATS', current: dailySummary.fats, target: dailySummary.fatsTarget, color: 'bg-slate-900' }
+                  { label: 'PROTEIN', current: dailySummary.protein, target: dailySummary.proteinTarget, color: 'bg-[#064e3b]' },
+                  { label: 'CARBS', current: dailySummary.carbs, target: dailySummary.carbsTarget, color: 'bg-emerald-300' },
+                  { label: 'FATS', current: dailySummary.fats, target: dailySummary.fatsTarget, color: 'bg-emerald-600' }
                 ].map(macro => (
                   <div key={macro.label}>
-                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-2">{macro.label}</p>
-                    <p className="text-xs font-black text-slate-900 mb-2 uppercase">{macro.current}G / {macro.target}G</p>
-                    <div className="h-1.5 bg-slate-50 rounded-full overflow-hidden mb-1.5 border border-slate-100">
+                    <p className="text-[10px] text-emerald-800/40 font-black uppercase tracking-widest mb-2">{macro.label}</p>
+                    <p className="text-xs font-black text-[#064e3b] mb-2 uppercase">{macro.current}G / {macro.target}G</p>
+                    <div className="h-1.5 bg-emerald-50/20 rounded-full overflow-hidden mb-1.5 border border-emerald-100/30">
                       <div className={`h-full ${macro.color} rounded-full transition-all duration-1000`} style={{ width: `${Math.min(100, (macro.current / macro.target) * 100)}%` }} />
                     </div>
-                    <p className="text-[10px] text-slate-400 font-bold uppercase">{Math.max(0, macro.target - macro.current).toFixed(2)}g remaining</p>
+                    <p className="text-[10px] text-emerald-800/40 font-bold uppercase">{Math.max(0, macro.target - macro.current).toFixed(2)}g remaining</p>
                   </div>
                 ))}
               </div>
@@ -732,7 +740,7 @@ function Nutrition() {
 
             {/* Meal Timeline */}
             <div>
-              <h3 className="font-black text-slate-900 uppercase tracking-tight mb-5 text-lg">Meal Timeline</h3>
+              <h3 className="font-black text-[#064e3b] uppercase tracking-tight mb-5 text-lg">Meal Timeline</h3>
               <div className="space-y-4">
                 {[
                   { name: 'Breakfast', icon: Sun, ratio: 0.25 },
@@ -759,16 +767,16 @@ function Nutrition() {
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-5">
-                          <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl md:rounded-[1.5rem] ${isOver ? 'bg-red-50 text-red-600' : 'bg-slate-50 text-slate-900'} flex items-center justify-center border border-slate-100 transition-colors`}>
+                          <div className={`w-12 h-12 md:w-14 md:h-14 rounded-2xl md:rounded-[1.5rem] ${isOver ? 'bg-red-50 text-red-600' : 'bg-emerald-50/50 text-[#064e3b]'} flex items-center justify-center border border-emerald-100 transition-colors`}>
                             <meal.icon className="w-5 h-5 md:w-6 md:h-6" />
                           </div>
                           <div>
-                            <span className="font-black text-sm text-slate-900 uppercase tracking-tight">{meal.name}</span>
+                            <span className="font-black text-sm text-[#064e3b] uppercase tracking-tight">{meal.name}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-6">
                           <div className="text-right">
-                            <span className={`text-xs font-black ${isOver ? 'text-red-500' : 'text-slate-400'} uppercase tracking-wider block`}>{cals} of {mealTarget} kcal</span>
+                            <span className={`text-xs font-black ${isOver ? 'text-red-500' : 'text-emerald-800/40'} uppercase tracking-wider block`}>{cals} of {mealTarget} kcal</span>
                             {isOver && <span className="text-[9px] font-bold text-red-400 uppercase tracking-tight">Limit exceeded</span>}
                           </div>
                           <button
@@ -776,7 +784,7 @@ function Nutrition() {
                               e.stopPropagation();
                               openModal(meal.name);
                             }}
-                            className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center hover:bg-slate-900 hover:text-white transition-all border border-slate-100 shadow-sm"
+                            className="w-10 h-10 rounded-full bg-emerald-50 flex items-center justify-center hover:bg-[#064e3b] hover:text-emerald-50 transition-all border border-emerald-100 shadow-sm"
                           >
                             <Plus className="w-4 h-4" />
                           </button>
@@ -801,15 +809,15 @@ function Nutrition() {
                                   className="flex items-center justify-between p-3 bg-slate-50 rounded-2xl border border-slate-100 group/item cursor-pointer hover:bg-white hover:border-slate-200 transition-all"
                                 >
                                   <div>
-                                    <p className="text-xs font-black text-slate-900 uppercase tracking-tight">{log.foodItems?.[0]?.name}</p>
-                                    <p className="text-[10px] text-slate-400 font-bold uppercase">{log.foodItems?.[0]?.nutrition?.calories} kcal • {log.foodItems?.[0]?.quantity}</p>
+                                    <p className="text-xs font-black text-[#064e3b] uppercase tracking-tight">{log.foodItems?.[0]?.name}</p>
+                                    <p className="text-[10px] text-emerald-800/40 font-bold uppercase">{log.foodItems?.[0]?.nutrition?.calories} kcal • {log.foodItems?.[0]?.quantity}</p>
                                   </div>
                                   <button
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       deleteLog(log._id);
                                     }}
-                                    className="w-8 h-8 rounded-full bg-white text-slate-300 hover:text-red-500 flex items-center justify-center border border-slate-100 opacity-0 group-hover/item:opacity-100 transition-all"
+                                    className="w-8 h-8 rounded-full bg-white text-emerald-100 hover:text-red-500 flex items-center justify-center border border-emerald-50/20 opacity-0 group-hover/item:opacity-100 transition-all"
                                   >
                                     <Trash2 className="w-4 h-4" />
                                   </button>
@@ -855,10 +863,10 @@ function Nutrition() {
 
             {/* Bottom Row: Recent Meals & Frequent Foods */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm">
+              <div className="bg-[#ffffff]/60 backdrop-blur-md rounded-[2.5rem] p-8 border border-emerald-100/30 shadow-sm">
                 <div className="flex justify-between items-center mb-6">
-                  <h4 className="font-black text-xs text-slate-900 uppercase tracking-widest">Recent Meals</h4>
-                  <button className="text-[10px] font-black text-slate-400 hover:text-slate-900 uppercase tracking-widest transition-colors">View All</button>
+                  <h4 className="font-black text-xs text-[#064e3b] uppercase tracking-widest">Recent Meals</h4>
+                  <button className="text-[10px] font-black text-emerald-800/40 hover:text-[#064e3b] uppercase tracking-widest transition-colors">View All</button>
                 </div>
                 <div className="flex gap-4 overflow-x-auto pb-6 scrollbar-hide -mx-2 px-2 snap-x">
                   {recentMeals.length > 0 ? recentMeals.map((m, i) => (
@@ -873,17 +881,17 @@ function Nutrition() {
                     >
                       <div>
                         <div className="flex justify-between items-start mb-4">
-                          <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm group-hover:bg-slate-900 transition-colors">
-                            <Utensils className="w-6 h-6 text-slate-900 group-hover:text-white transition-colors" />
+                          <div className="w-12 h-12 bg-[#ffffff]/80 rounded-2xl flex items-center justify-center shadow-sm group-hover:bg-[#064e3b] transition-colors">
+                            <Utensils className="w-6 h-6 text-[#064e3b] group-hover:text-emerald-50 transition-colors" />
                           </div>
-                          <div className="bg-white/50 px-3 py-1 rounded-full border border-slate-100 backdrop-blur-sm">
-                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-tighter">{m.mealType}</span>
+                          <div className="bg-emerald-50/50 px-3 py-1 rounded-full border border-emerald-100/30 backdrop-blur-sm">
+                            <span className="text-[9px] font-black text-emerald-800/40 uppercase tracking-tighter">{m.mealType}</span>
                           </div>
                         </div>
-                        <h5 className="text-[11px] font-black text-slate-900 uppercase tracking-tight mb-1 truncate">
+                        <h5 className="text-[11px] font-black text-[#064e3b] uppercase tracking-tight mb-1 truncate">
                           {m.foodItems?.[0]?.name}
                         </h5>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">
+                        <p className="text-[10px] font-bold text-emerald-800/40 uppercase tracking-tighter">
                           {m.foodItems?.[0]?.nutrition?.calories || 0} Kcal • {m.foodItems?.[0]?.nutrition?.protein || 0}g Protein
                         </p>
                       </div>
@@ -902,20 +910,6 @@ function Nutrition() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm">
-                <div className="flex justify-between items-center mb-6">
-                  <h4 className="font-black text-xs text-slate-900 uppercase tracking-widest">Frequent Foods</h4>
-                  <button className="text-[10px] font-black text-slate-400 hover:text-slate-900 uppercase tracking-widest transition-colors">Manage</button>
-                </div>
-                <div className="flex flex-wrap gap-2.5">
-                  {['Curd', 'Chicken', 'Egg', 'Oats', 'Milk', 'Dal'].map(f => (
-                    <div key={f} className="px-4 py-2 border border-slate-100 rounded-xl flex items-center gap-3 hover:bg-slate-50 cursor-pointer transition-all hover:border-slate-300">
-                      <span className="text-[10px] font-black text-slate-900 uppercase">{f}</span>
-                      <span className="text-[10px] text-slate-400 font-bold">120k</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
 
           </div>
@@ -923,27 +917,17 @@ function Nutrition() {
           {/* Right Column */}
           <div className="space-y-6">
 
-            {/* Insights */}
-            <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm flex flex-col gap-4">
-              <div className="w-12 h-12 rounded-2xl bg-slate-50 flex items-center justify-center border border-slate-100">
-                <Lightbulb className="w-6 h-6 text-slate-900" />
-              </div>
-              <div>
-                <h4 className="font-black text-base text-slate-900 mb-1 uppercase tracking-tight">Today's Insights</h4>
-                <p className="text-sm text-slate-500 font-bold leading-relaxed">{aiInsights}</p>
-              </div>
-            </div>
 
             {/* Smart Meal Suggestions */}
-            <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm">
-              <h4 className="font-black text-base text-slate-900 mb-6 uppercase tracking-tight">Smart Meal Suggestions</h4>
+            <div className="bg-[#ffffff]/60 backdrop-blur-md rounded-[2.5rem] p-8 border border-emerald-100/30 shadow-sm">
+              <h4 className="font-black text-base text-[#064e3b] mb-6 uppercase tracking-tight">Smart Meal Suggestions</h4>
 
               <div className="flex gap-6 mb-8 overflow-x-auto pb-1 scrollbar-hide">
                 {['Recommended', 'High Protein', 'Balanced', 'Low Carb'].map(tab => (
                   <button
                     key={tab}
                     onClick={() => setRecType(tab)}
-                    className={`text-[10px] font-black uppercase tracking-widest pb-2 transition-all border-b-2 whitespace-nowrap ${recType === tab ? 'text-slate-900 border-slate-900' : 'text-slate-400 border-transparent hover:text-slate-600'}`}
+                    className={`text-[10px] font-black uppercase tracking-widest pb-2 transition-all border-b-2 whitespace-nowrap ${recType === tab ? 'text-[#064e3b] border-[#064e3b]' : 'text-emerald-800/40 border-transparent hover:text-[#064e3b]'}`}
                   >
                     {tab}
                   </button>
@@ -951,55 +935,55 @@ function Nutrition() {
               </div>
 
               {currentSuggestion ? (
-                <div className="border border-slate-50 rounded-[2rem] overflow-hidden group hover:shadow-xl transition-all duration-500">
-                  <div className="h-44 relative bg-slate-100">
+                <div className="border border-emerald-50/50 rounded-[2rem] overflow-hidden group hover:shadow-xl transition-all duration-500">
+                  <div className="h-32 md:h-36 relative bg-emerald-50/10">
                     <ImageWithFallback
                       src={currentSuggestion.image}
                       query={currentSuggestion.name}
                       alt={currentSuggestion.name}
                       className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                    <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-lg text-[9px] font-black text-slate-900 shadow-lg tracking-widest uppercase">
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-2.5 py-1 rounded-lg text-[8px] font-black text-[#064e3b] shadow-lg tracking-widest uppercase">
                       {recType === 'Recommended' ? 'Highly Personalized' : 'Targeted Prediction'}
                     </div>
                   </div>
-                  <div className="p-6">
-                    <h5 className="font-black text-lg text-slate-900 mb-4 tracking-tight uppercase leading-none">{currentSuggestion.name}</h5>
-                    <div className="flex justify-between items-center mb-6">
+                  <div className="p-5">
+                    <h5 className="font-black text-base text-[#064e3b] mb-3 md:mb-4 tracking-tight uppercase leading-none">{currentSuggestion.name}</h5>
+                    <div className="flex justify-between items-center mb-4 md:mb-5">
                       <div className="flex gap-4">
                         <div className="flex flex-col">
-                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">PRO</span>
-                          <span className="text-xs font-black text-slate-900">{currentSuggestion.protein}g</span>
+                          <span className="text-[8px] font-black text-emerald-800/40 uppercase tracking-widest">PRO</span>
+                          <span className="text-xs font-black text-[#064e3b]">{currentSuggestion.protein}g</span>
                         </div>
-                        <div className="flex flex-col border-l border-slate-100 pl-4">
-                          <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">CAL</span>
-                          <span className="text-xs font-black text-slate-900">{currentSuggestion.calories}</span>
+                        <div className="flex flex-col border-l border-emerald-50 pl-4">
+                          <span className="text-[8px] font-black text-emerald-800/40 uppercase tracking-widest">CAL</span>
+                          <span className="text-xs font-black text-[#064e3b]">{currentSuggestion.calories}</span>
                         </div>
                       </div>
-                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                        <Clock className="w-3 h-3" /> 20 MIN
+                      <span className="text-[10px] font-black text-emerald-800/40 uppercase tracking-widest flex items-center gap-1.5">
+                        <Clock className="w-3 h-3 text-[#064e3b]" /> 20 MIN
                       </span>
                     </div>
-                    <div className="flex gap-2 mb-5">
+                    <div className="flex gap-1.5 mb-4">
                       {(currentSuggestion.tags || []).map(t => (
-                        <span key={t} className="bg-slate-50 text-slate-400 text-[8px] font-black px-3 py-1.5 rounded-lg tracking-widest uppercase">{t}</span>
+                        <span key={t} className="bg-emerald-50/30 text-emerald-800/40 text-[7px] font-black px-2.5 py-1 rounded-lg tracking-widest uppercase">{t}</span>
                       ))}
                     </div>
 
-                    <div className="mb-6 p-4 bg-slate-50 border border-slate-100/50 rounded-2xl">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Sparkles className="w-3.5 h-3.5 text-slate-900" />
-                        <span className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Why suggest this?</span>
+                    <div className="mb-5 p-3.5 bg-emerald-50/20 border border-emerald-100/30 rounded-2xl">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <Sparkles className="w-3 h-3 text-[#064e3b]" />
+                        <span className="text-[9px] font-black text-[#064e3b] uppercase tracking-widest">Why suggest this?</span>
                       </div>
-                      <p className="text-[11px] font-bold text-slate-500 leading-relaxed italic">
+                      <p className="text-[10px] md:text-[11px] font-bold text-emerald-800/60 leading-relaxed italic">
                         "{currentSuggestion.reason}"
                       </p>
                     </div>
 
                     <button 
                       onClick={() => setSelectedRecipeSuggestion(currentSuggestion)}
-                      className="w-full py-4 bg-slate-900 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-black transition-all shadow-lg active:scale-95"
+                      className="w-full py-3.5 bg-[#064e3b] text-emerald-50 rounded-2xl text-[9px] font-black uppercase tracking-widest hover:bg-[#042f2e] transition-all shadow-lg active:scale-95"
                     >
                       View Recipe
                     </button>
@@ -1014,38 +998,38 @@ function Nutrition() {
             </div>
 
             {/* Water Intake */}
-            <div id="water-section" className="bg-slate-900 rounded-[2.5rem] p-8 text-white shadow-2xl relative overflow-hidden flex items-center justify-between group">
+            <div id="water-section" className="bg-[#064e3b] rounded-[2.5rem] p-8 text-emerald-50 shadow-2xl relative overflow-hidden flex items-center justify-between group">
               <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-110 transition-transform duration-700" />
 
               <div className="relative z-10 flex-1">
-                <h4 className="font-black text-[10px] uppercase tracking-widest mb-6 text-white/40">Water Intake</h4>
+                <h4 className="font-black text-[10px] uppercase tracking-widest mb-6 text-emerald-200/40">Water Intake</h4>
                 <div className="flex items-center gap-6 mb-6">
-                  <button onClick={() => handleWaterUpdate(-1)} className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center hover:bg-white/20 transition-all active:scale-90 border border-white/5"><Minus className="w-5 h-5" /></button>
+                  <button onClick={() => handleWaterUpdate(-1)} className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center hover:bg-white/20 transition-all active:scale-90 border border-white/5"><Minus className="w-5 h-5 text-emerald-50" /></button>
                   <span className="text-6xl font-black tracking-tighter">{waterIntake.current}</span>
-                  <button onClick={() => handleWaterUpdate(1)} className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center hover:bg-white/20 transition-all active:scale-90 border border-white/5"><Plus className="w-5 h-5" /></button>
+                  <button onClick={() => handleWaterUpdate(1)} className="w-10 h-10 bg-white/10 rounded-2xl flex items-center justify-center hover:bg-white/20 transition-all active:scale-90 border border-white/5"><Plus className="w-5 h-5 text-emerald-50" /></button>
                 </div>
                 <div className="space-y-3">
                   <div className="h-1.5 bg-white/10 rounded-full overflow-hidden w-full border border-white/5">
                     <motion.div
                       initial={{ width: 0 }}
                       animate={{ width: `${Math.min(100, (waterIntake.current / waterIntake.target) * 100)}%` }}
-                      className="h-full bg-white rounded-full shadow-[0_0_15px_rgba(255,255,255,0.5)]"
+                      className="h-full bg-emerald-400 rounded-full shadow-[0_0_15px_rgba(52,211,153,0.5)]"
                     />
                   </div>
-                  <p className="text-[10px] font-black text-white/40 uppercase tracking-widest">{waterIntake.current} out of {waterIntake.target} glasses</p>
+                  <p className="text-[10px] font-black text-emerald-200/40 uppercase tracking-widest">{waterIntake.current} out of {waterIntake.target} glasses</p>
                 </div>
               </div>
               <div className="relative z-10 ml-8 flex flex-col items-center gap-3">
-                <GlassWater className="w-16 h-16 text-white/90 drop-shadow-[0_0_10px_rgba(255,255,255,0.3)]" strokeWidth={1} />
-                <span className="text-[8px] font-black text-white/30 uppercase tracking-[0.2em] whitespace-nowrap">1 Glass (250 ml)</span>
+                <GlassWater className="w-16 h-16 text-emerald-100/90 drop-shadow-[0_0_10px_rgba(16,185,129,0.3)]" strokeWidth={1} />
+                <span className="text-[8px] font-black text-emerald-200/30 uppercase tracking-[0.2em] whitespace-nowrap">1 Glass (250 ml)</span>
               </div>
             </div>
 
             {/* Weekly Trends */}
-            <div className="bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-sm">
+            <div className="bg-[#ffffff]/60 backdrop-blur-md rounded-[2.5rem] p-8 border border-emerald-100/30 shadow-sm">
               <div className="flex justify-between items-center mb-8">
-                <h4 className="font-black text-xs text-slate-900 uppercase tracking-widest">Weekly Trends</h4>
-                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">LAST 7 DAYS</span>
+                <h4 className="font-black text-xs text-[#064e3b] uppercase tracking-widest">Weekly Trends</h4>
+                <span className="text-[10px] font-black text-emerald-800/40 uppercase tracking-[0.2em]">LAST 7 DAYS</span>
               </div>
               <div className="h-44 mb-8">
                 <ResponsiveContainer width="100%" height="100%">
@@ -1063,11 +1047,11 @@ function Nutrition() {
                   </BarChart>
                 </ResponsiveContainer>
               </div>
-              <p className="text-[11px] text-slate-500 font-bold mb-6 leading-relaxed uppercase tracking-tight">
-                Your average daily intake is <span className="text-slate-900">1,680 kcal</span>. Your intake is <span className="text-emerald-600">12% lower</span> than last week.
+              <p className="text-[11px] text-emerald-800/60 font-bold mb-6 leading-relaxed uppercase tracking-tight">
+                Your average daily intake is <span className="text-[#064e3b]">1,680 kcal</span>. Your intake is <span className="text-emerald-500">12% lower</span> than last week.
               </p>
-              <div className="inline-flex items-center gap-2.5 bg-slate-50 text-slate-900 px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-slate-100 shadow-sm">
-                <CheckCircle2 className="w-4 h-4 text-black" /> GOOD PROGRESS
+              <div className="inline-flex items-center gap-2.5 bg-emerald-50 text-[#064e3b] px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest border border-emerald-100 shadow-sm">
+                <CheckCircle2 className="w-4 h-4 text-[#064e3b]" /> GOOD PROGRESS
               </div>
             </div>
 
@@ -1417,34 +1401,34 @@ function Nutrition() {
               className="relative w-full max-w-2xl bg-white rounded-t-[3rem] md:rounded-[3rem] shadow-[0_32px_120px_rgba(0,0,0,0.15)] overflow-hidden h-[95vh] md:max-h-[90vh] flex flex-col"
             >
               {/* Premium Black & White Header */}
-              <div className="p-6 md:p-10 bg-slate-900 text-white relative overflow-hidden shrink-0">
+              <div className="p-5 md:p-10 bg-[#064e3b] text-emerald-50 relative overflow-hidden shrink-0">
                 <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full blur-3xl -mr-32 -mt-32" />
                 <div className="relative z-10">
-                  <div className="flex justify-between items-start mb-4 md:mb-8">
-                    <div className="w-12 h-12 md:w-16 md:h-16 bg-white/10 backdrop-blur-md rounded-[1.2rem] md:rounded-[1.5rem] flex items-center justify-center border border-white/10">
-                      <Sparkles className="w-6 h-6 md:w-8 md:h-8 text-white" />
+                  <div className="flex justify-between items-start mb-3 md:mb-8">
+                    <div className="w-10 h-10 md:w-16 md:h-16 bg-white/10 backdrop-blur-md rounded-xl md:rounded-[1.5rem] flex items-center justify-center border border-white/10">
+                      <Sparkles className="w-5 h-5 md:w-8 md:h-8 text-white" />
                     </div>
-                    <button onClick={() => setAnalysisResult(null)} className="w-10 h-10 md:w-12 md:h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all border border-white/10">
-                      <X className="w-5 h-5 md:w-6 md:h-6 text-white" />
+                    <button onClick={() => setAnalysisResult(null)} className="w-9 h-9 md:w-12 md:h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all border border-white/10">
+                      <X className="w-4 h-4 md:w-6 md:h-6 text-white" />
                     </button>
                   </div>
-                  <h4 className="text-[10px] font-black text-white/50 uppercase tracking-[0.2em] mb-2 px-1">
-                    Analysis Log View
-                  </h4>
-                  <h2 className="text-2xl md:text-4xl font-black tracking-tighter uppercase leading-none mb-4 max-w-[90%]">
+                  <h4 className="text-[9px] md:text-[10px] font-black text-white/50 uppercase tracking-[0.2em] mb-1.5 px-0.5">
                     {analysisResult.foodItem?.name || analysisResult.foodName || analysisResult.foodItems?.[0]?.name}
+                  </h4>
+                  <h2 className="text-xl md:text-4xl font-black tracking-tighter uppercase leading-none mb-3 md:mb-4 max-w-[90%]">
+                    {analysisResult._userInput || 'Analysis Log View'}
                   </h2>
-                  <div className="flex flex-wrap items-center gap-3">
-                    <span className="text-[10px] font-black bg-white/10 border border-white/10 px-4 py-2 rounded-xl tracking-[0.1em] uppercase">
+                  <div className="flex flex-wrap items-center gap-2 md:gap-3">
+                    <span className="text-[8px] md:text-[10px] font-black bg-white/10 border border-white/10 px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl tracking-[0.1em] uppercase">
                       {analysisResult.foodItem?.quantity || analysisResult.quantity || '1 serving'}
                     </span>
-                    <span className="text-[10px] font-black bg-white/10 border border-white/10 px-4 py-2 rounded-xl tracking-[0.1em] uppercase flex items-center gap-2">
-                      <Zap className="w-3 h-3 text-white" />
+                    <span className="text-[8px] md:text-[10px] font-black bg-white/10 border border-white/10 px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl tracking-[0.1em] uppercase flex items-center gap-1.5 md:gap-2">
+                      <Zap className="w-2.5 h-2.5 md:w-3 md:h-3 text-white" />
                       Score: {analysisResult.healthScore || analysisResult.healthScore10 * 10 || 0}/100
                     </span>
                     {analysisResult._isFromCache && (
-                      <span className="text-[10px] font-black bg-emerald-500 text-white px-4 py-2 rounded-xl tracking-[0.1em] uppercase flex items-center gap-2 animate-pulse">
-                        <CheckCircle2 className="w-3 h-3 text-white" />
+                      <span className="text-[8px] md:text-[10px] font-black bg-emerald-500 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl tracking-[0.1em] uppercase flex items-center gap-1.5 md:gap-2 animate-pulse">
+                        <CheckCircle2 className="w-2.5 h-2.5 md:w-3 md:h-3 text-white" />
                         Intelligence Cache
                       </span>
                     )}
@@ -1582,16 +1566,16 @@ function Nutrition() {
                   </div>
                 </div>
 
-                {/* Log Button */}
-                {(!analysisResult._id?.toString().startsWith('log') && analysisResult._id !== 'new_log_again' && !recentMeals.find(m => m._id === analysisResult._id)) || analysisResult._id === 'new_log_again' ? (
+                {/* Log Button - Only show if not already logged auto-magically */}
+                {(!analysisResult._alreadyLogged && !analysisResult._id?.toString().startsWith('log') && analysisResult._id !== 'new_log_again' && !recentMeals.find(m => m._id === analysisResult._id)) || (analysisResult._id === 'new_log_again' && !analysisResult._alreadyLogged) ? (
                   <div className="pt-6 pb-20 md:pb-6">
                     <div className="mb-6 space-y-3">
-                      <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Log this to</h4>
-                      <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-100 gap-1 overflow-x-auto scrollbar-hide">
+                      <h4 className="text-[10px] font-black text-emerald-800/40 uppercase tracking-widest text-center">Log this to</h4>
+                      <div className="flex bg-emerald-50/20 p-1.5 rounded-2xl border border-emerald-100/30 gap-1 overflow-x-auto scrollbar-hide">
                         {['Breakfast', 'Mid-Morning', 'Lunch', 'Evening', 'Dinner'].map(tab => (
                           <button
                             key={tab} onClick={() => setMealTab(tab)}
-                            className={`flex-shrink-0 px-4 py-3 text-[10px] font-black rounded-xl transition-all uppercase tracking-widest whitespace-nowrap ${mealTab === tab ? 'bg-black text-white shadow-xl' : 'text-slate-400 hover:text-black'}`}
+                            className={`flex-shrink-0 px-4 py-3 text-[10px] font-black rounded-xl transition-all uppercase tracking-widest whitespace-nowrap ${mealTab === tab ? 'bg-[#064e3b] text-emerald-50 shadow-xl' : 'text-emerald-800/40 hover:text-[#064e3b]'}`}
                           >
                             {tab}
                           </button>
@@ -1600,10 +1584,17 @@ function Nutrition() {
                     </div>
                     <button
                       onClick={() => handleConfirmLog(analysisResult)}
-                      className="w-full py-6 bg-slate-900 hover:bg-black text-white rounded-[2.5rem] text-[13px] font-black uppercase tracking-[0.2em] shadow-2xl transition-all active:scale-[0.98] flex items-center justify-center gap-4 group"
+                      className="w-full py-6 bg-[#064e3b] hover:bg-[#042f2e] text-emerald-50 rounded-[2.5rem] text-[13px] font-black uppercase tracking-[0.2em] shadow-2xl transition-all active:scale-[0.98] flex items-center justify-center gap-4 group"
                     >
                       <CheckCircle2 className="w-6 h-6 group-hover:scale-110 transition-transform" /> Log to {mealTab}
                     </button>
+                  </div>
+                ) : analysisResult._alreadyLogged ? (
+                  <div className="pt-6 pb-20 md:pb-6 flex flex-col items-center gap-3">
+                    <div className="w-12 h-12 bg-emerald-100/50 rounded-full flex items-center justify-center border border-emerald-200">
+                      <CheckCircle2 className="w-6 h-6 text-[#064e3b]" />
+                    </div>
+                    <p className="text-xs font-black text-[#064e3b] uppercase tracking-widest">Successfully Logged to {mealTab}</p>
                   </div>
                 ) : null}
               </div>

@@ -89,7 +89,7 @@ export default function App() {
 
   return (
     <PedometerProvider>
-      <div className="min-h-screen bg-white">
+      <div className="min-h-screen bg-[#F9FCF3]">
         <PWAInstallPrompt />
         <Routes>
           <Route path="/" element={<Landing />} />

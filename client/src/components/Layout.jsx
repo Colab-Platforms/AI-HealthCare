@@ -116,8 +116,8 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
     portalName = user?.doctorProfile?.specialization || 'Doctor Portal';
   }
 
-  // Clean white background for all pages - Now with more visible purple tone
-  const bgColor = 'bg-[#FAFAFF]';
+  // Consistent green gradient for all pages - 5 stops - Lighter & More Vibrant
+  const bgColor = 'bg-[linear-gradient(to_bottom,#F9FCF3_0%,#F5FAF0_25%,#F1F8ED_50%,#EDF6E9_75%,#E9F4E6_100%)]';
 
   const isDashboardPage = location.pathname === '/dashboard' || location.pathname === '/doctor/dashboard' || location.pathname === '/admin';
 
@@ -148,13 +148,12 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
         <div className="flex flex-col h-full">
           {/* Logo - Fixed at top */}
           <div className="p-8 shrink-0 border-b border-slate-50">
-            <Link to={homeLink} className="flex items-center gap-4">
-              <div className="w-8 h-8 rounded-full flex items-center justify-center border-2 border-slate-900 bg-white">
-                <div className="w-4 h-4 rounded-full border-2 border-slate-900"></div>
-              </div>
-              <div className="min-w-0">
-                <p className="font-black text-black text-xl tracking-tighter">FitCure</p>
-              </div>
+            <Link to={homeLink} className="flex items-center">
+              <img 
+                src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
+                alt="FitCure" 
+                className="h-18 w-auto object-contain"
+              />
             </Link>
           </div>
 
@@ -247,20 +246,21 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
       {/* Main Content - No left margin needed with sticky sidebar flow */}
       <div className="flex-1 flex flex-col min-h-screen relative overflow-x-hidden bg-white/50">
         {/* Background Blobs - Visible on all pages using Layout */}
-        <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-purple-300/25 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
-        <div className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-purple-300/15 rounded-full blur-[100px] translate-x-1/2 pointer-events-none" />
-        <div className="absolute bottom-0 left-1/4 w-[300px] h-[300px] bg-purple-200/20 rounded-full blur-[80px] pointer-events-none" />
+        <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-emerald-300/15 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+        <div className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-emerald-300/10 rounded-full blur-[100px] translate-x-1/2 pointer-events-none" />
+        <div className="absolute bottom-0 left-1/4 w-[300px] h-[300px] bg-emerald-200/10 rounded-full blur-[80px] pointer-events-none" />
 
         {/* Global Sticky Header - Identity & Profile */}
-        <header className="sticky top-0 z-50 bg-white/80 backdrop-blur-xl border-b border-slate-100 shadow-sm transition-all duration-300">
-          <div className="flex items-center justify-between lg:justify-end px-6 md:px-12 py-3 md:py-4 gap-6">
+        <header className="sticky top-0 z-50 bg-[#EBF0E6]/60 backdrop-blur-xl border-b border-emerald-100/30 shadow-sm transition-all duration-300">
+          <div className="flex items-center justify-between lg:justify-end px-6 md:px-12 py-0 md:py-2 gap-6">
             {/* Logo for mobile */}
             <div className="flex lg:hidden items-center gap-3">
-              <Link to={homeLink} className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full flex items-center justify-center border-2 border-slate-900 bg-white">
-                  <div className="w-3.5 h-3.5 rounded-full border-2 border-slate-900"></div>
-                </div>
-                <p className="font-black text-black text-lg tracking-tighter">FitCure</p>
+              <Link to={homeLink} className="flex items-center">
+                <img 
+                  src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
+                  alt="FitCure" 
+                  className="h-16 w-auto object-contain"
+                />
               </Link>
             </div>
 

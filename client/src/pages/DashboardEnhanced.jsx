@@ -3,7 +3,7 @@ import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import {
   Flame, Moon, Utensils, Activity, Sparkles, TrendingUp, TrendingDown,
-  ChevronRight, Plus, FileText, AlertCircle, Droplet,
+  ChevronRight, ChevronLeft, Plus, FileText, AlertCircle, Droplet,
   Search, Sun, Clock, Heart, Apple, Info, Target, Calendar,
   ArrowUpRight, Upload, Coffee, Dumbbell, MessageCircle, BarChart3,
   Circle, Smile, FlaskConical, Leaf, Pill, CheckCircle2, Zap, Eye,
@@ -29,7 +29,7 @@ const DashedGauge = ({ value, max = 2400, mode = 'Macro' }) => {
 
   return (
     <div className="relative flex flex-col items-center justify-center pt-1 pb-1">
-      <svg width="200" height="100" viewBox="0 0 240 120" className="overflow-visible">
+      <svg width="180" height="90" viewBox="0 0 240 120" className="overflow-visible lg:w-[220px] lg:h-[110px]">
         {Array.from({ length: totalDashes }).map((_, i) => {
           const angle = (i * (180 / (totalDashes - 1)));
           const isActive = i < activeDashes;
@@ -38,7 +38,7 @@ const DashedGauge = ({ value, max = 2400, mode = 'Macro' }) => {
               key={i}
               x1="20" y1="120"
               x2="52" y2="120"
-              stroke={isActive ? '#A795C7' : '#F5F5F7'}
+              stroke={isActive ? '#10b981' : '#F5F5F7'}
               strokeWidth="10"
               strokeLinecap="round"
               className="transition-colors duration-700"
@@ -47,11 +47,11 @@ const DashedGauge = ({ value, max = 2400, mode = 'Macro' }) => {
           );
         })}
       </svg>
-      <div className="absolute bottom-1 flex flex-col items-center">
-        <span className="text-2xl font-black text-[#1a1a1a] tracking-tight">
+      <div className="absolute bottom-1 lg:bottom-2 flex flex-col items-center">
+        <span className="text-lg lg:text-2xl font-black text-[#1a1a1a] tracking-tight leading-none">
           {Math.round(value)}
         </span>
-        <span className="text-[10px] font-bold text-[#888888] mt-0.5">
+        <span className="text-[8px] lg:text-[10px] font-bold text-[#888888] mt-0 lg:mt-0.5 uppercase">
           of {max}
         </span>
       </div>
@@ -74,6 +74,25 @@ const NutrientProgressRow = ({ label, value, targetLabel, icon: Icon, color = "b
       </div>
     </div>
     <div className="h-1.5 w-full bg-slate-50 rounded-full overflow-hidden border border-slate-100/50">
+      <motion.div
+        initial={{ width: 0 }}
+        animate={{ width: `${Math.min(value, 100)}%` }}
+        transition={{ duration: 1, ease: "easeOut" }}
+        className={`h-full ${color} rounded-full`}
+      />
+    </div>
+  </div>
+);
+
+const NutrientMacroCompact = ({ label, value, targetLabel, icon: Icon, color = "bg-[#064e3b]" }) => (
+  <div className="flex flex-col items-center gap-1">
+    <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center mb-0.5">
+      <Icon className="w-4 h-4 text-[#064e3b]" />
+    </div>
+    <div className="text-xs font-black text-[#064e3b] leading-tight">{Math.round(value)}%</div>
+    <div className="text-[10px] font-bold text-emerald-800/60 uppercase tracking-tighter leading-none">{label}</div>
+    {targetLabel && <div className="text-[9px] font-bold text-emerald-800/40 uppercase leading-none mt-0.5">{targetLabel}</div>}
+    <div className="h-1.5 w-full bg-emerald-50/50 rounded-full overflow-hidden mt-0.5 border border-white">
       <motion.div
         initial={{ width: 0 }}
         animate={{ width: `${Math.min(value, 100)}%` }}
@@ -133,19 +152,19 @@ const MealGallaryCard = ({ item, mealType, onClick }) => {
   );
 };
 
-const LabMetricsItem = ({ label, value, status, icon: Icon = Activity }) => (
-  <div className="p-4 bg-[#F8F9FA]/50 rounded-[2rem] flex items-center justify-between mb-3 border border-transparent hover:border-slate-100 hover:bg-white transition-all">
-    <div className="flex items-center gap-4">
-      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center text-slate-400 shadow-sm">
-        <Icon className="w-4 h-4" />
+const LabMetricsItem = ({ label, value, status, icon: Icon }) => (
+  <div className="flex items-center justify-between p-2 lg:p-4 bg-[#F8F9FB] rounded-xl lg:rounded-2xl border border-slate-50 group hover:bg-white hover:shadow-sm transition-all">
+    <div className="flex items-center gap-2 lg:gap-4">
+      <div className="w-6 h-6 lg:w-9 lg:h-9 rounded-lg bg-emerald-50/50 flex items-center justify-center shadow-sm">
+        <Icon className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-[#064e3b]" />
       </div>
       <div>
-        <h4 className="text-[15px] font-black text-[#1A1A1A] leading-tight">{label}</h4>
+        <h4 className="text-[10px] lg:text-[12px] font-medium text-[#064e3b] leading-tight">{label}</h4>
       </div>
     </div>
     <div className="text-right">
-      <div className="text-[15px] font-black text-[#1A1A1A] leading-tight mb-0.5">{value}</div>
-      <div className={`text-[9px] font-black uppercase tracking-widest ${status?.toLowerCase().includes('high') || status?.toLowerCase().includes('risk') ? 'text-black' : 'text-[#888888]'
+      <div className="text-[10px] lg:text-[12px] font-black text-[#064e3b] leading-tight mb-0.5">{value}</div>
+      <div className={`text-[8px] lg:text-[9px] font-medium uppercase tracking-widest ${status?.toLowerCase().includes('high') || status?.toLowerCase().includes('risk') ? 'text-[#064e3b]' : 'text-emerald-800/40'
         }`}>
         {status}
       </div>
@@ -256,55 +275,57 @@ const DailyMetricsCard = () => {
   const navigate = useNavigate();
 
   return (
-    <div className="bg-white rounded-[28px] p-4 lg:p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col h-full border border-slate-100/50">
-      <div className="mb-8">
-        <h3 className="text-xl font-medium text-[#1a1a1a]">Daily Vitals</h3>
-        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-1">QUICK LOG</p>
+    <div className="lg:bg-white lg:rounded-[28px] p-0 lg:p-5 lg:shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col h-full lg:border border-slate-100/50">
+      <div className="hidden lg:flex mb-2 lg:mb-8 justify-between items-center">
+        <div>
+          <h3 className="text-sm lg:text-xl font-medium text-[#1a1a1a]">Daily Vitals</h3>
+          <p className="text-[7px] lg:text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">QUICK LOG</p>
+        </div>
       </div>
 
-      <div className="space-y-4 flex-1">
-        <div className="bg-[#F5F5F7] p-5 rounded-[24px] border border-white flex items-center justify-between group hover:bg-white hover:shadow-sm transition-all">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
-              <Target className="w-5 h-5 text-black" />
+      <div className="flex flex-row lg:flex-col gap-2 lg:space-y-4 flex-1 mb-6 lg:mb-0">
+        <div className="bg-white lg:bg-emerald-50/20 p-2 lg:p-5 rounded-3xl lg:rounded-[24px] border border-emerald-100/30 flex flex-col lg:flex-row flex-1 items-center lg:justify-between group hover:shadow-md lg:hover:bg-white lg:hover:shadow-sm transition-all overflow-hidden shadow-sm lg:shadow-none">
+          <div className="flex flex-col lg:flex-row items-center gap-1 lg:gap-4 text-center lg:text-left">
+            <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-2xl bg-emerald-50 lg:bg-white flex items-center justify-center shadow-sm">
+              <Target className="w-4 h-4 lg:w-5 lg:h-5 text-[#064e3b]" />
             </div>
             <div>
-              <p className="text-[9px] font-bold text-slate-400 uppercase">WEIGHT</p>
-              <p className="text-lg font-medium text-black">{weight} <span className="text-xs font-normal text-slate-400">kg</span></p>
+              <p className="text-[9px] lg:text-[11px] font-black text-emerald-800/40 uppercase tracking-tighter leading-none mb-1">WEIGHT</p>
+              <p className="text-[15px] lg:text-2xl font-black text-[#064e3b]">{weight} <span className="text-[10px] lg:text-sm font-bold text-emerald-800/20">kg</span></p>
             </div>
           </div>
-          <button onClick={() => navigate('/log-vitals/weight')} className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors">
-            <Plus className="w-4 h-4" />
+          <button onClick={() => navigate('/log-vitals/weight')} className="mt-2 lg:mt-0 w-6 h-6 lg:w-8 lg:h-8 rounded-full border border-emerald-100/30 flex items-center justify-center hover:bg-emerald-50 transition-colors bg-emerald-50 lg:bg-transparent">
+            <Plus className="w-3 h-3 lg:w-4 lg:h-4 text-[#064e3b]" />
           </button>
         </div>
 
-        <div className="bg-[#F5F5F7] p-5 rounded-[24px] border border-white flex items-center justify-between group hover:bg-white hover:shadow-sm transition-all">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
-              <Activity className="w-5 h-5 text-black" />
+        <div className="bg-white lg:bg-emerald-50/20 p-2 lg:p-5 rounded-3xl lg:rounded-[24px] border border-emerald-100/30 flex flex-col lg:flex-row flex-1 items-center lg:justify-between group hover:shadow-md lg:hover:bg-white lg:hover:shadow-sm transition-all overflow-hidden shadow-sm lg:shadow-none">
+          <div className="flex flex-col lg:flex-row items-center gap-1 lg:gap-4 text-center lg:text-left">
+            <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-2xl bg-emerald-50 lg:bg-white flex items-center justify-center shadow-sm">
+              <Activity className="w-4 h-4 lg:w-5 lg:h-5 text-[#064e3b]" />
             </div>
             <div>
-              <p className="text-[9px] font-bold text-slate-400 uppercase">STEPS</p>
-              <p className="text-lg font-medium text-black">{Number(steps).toLocaleString()} <span className="text-xs font-normal text-slate-400">steps</span></p>
+              <p className="text-[9px] lg:text-[11px] font-black text-emerald-800/40 uppercase tracking-tighter leading-none mb-1">STEPS</p>
+              <p className="text-[15px] lg:text-2xl font-black text-[#064e3b]">{Number(steps).toLocaleString()} <span className="text-[10px] lg:text-sm font-bold text-emerald-800/20">st</span></p>
             </div>
           </div>
-          <button onClick={() => navigate('/log-vitals/steps')} className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors">
-            <Plus className="w-4 h-4" />
+          <button onClick={() => navigate('/log-vitals/steps')} className="mt-2 lg:mt-0 w-6 h-6 lg:w-8 lg:h-8 rounded-full border border-emerald-100/30 flex items-center justify-center hover:bg-emerald-50 transition-colors bg-emerald-50 lg:bg-transparent">
+            <Plus className="w-3 h-3 lg:w-4 lg:h-4 text-[#064e3b]" />
           </button>
         </div>
 
-        <div className="bg-[#F5F5F7] p-5 rounded-[24px] border border-white flex items-center justify-between group hover:bg-white hover:shadow-sm transition-all">
-          <div className="flex items-center gap-4">
-            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm">
-              <Droplet className="w-5 h-5 text-slate-400" />
+        <div className="bg-white lg:bg-emerald-50/20 p-2 lg:p-5 rounded-3xl lg:rounded-[24px] border border-emerald-100/30 flex flex-col lg:flex-row flex-1 items-center lg:justify-between group hover:shadow-md lg:hover:bg-white lg:hover:shadow-sm transition-all overflow-hidden shadow-sm lg:shadow-none">
+          <div className="flex flex-col lg:flex-row items-center gap-1 lg:gap-4 text-center lg:text-left">
+            <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-2xl bg-emerald-50 lg:bg-white flex items-center justify-center shadow-sm">
+              <Droplet className="w-4 h-4 lg:w-5 lg:h-5 text-emerald-500" />
             </div>
             <div>
-              <p className="text-[9px] font-bold text-slate-400 uppercase">WATER</p>
-              <p className="text-lg font-medium text-black">{water} <span className="text-xs font-normal text-slate-400">L</span></p>
+              <p className="text-[9px] lg:text-[11px] font-black text-emerald-800/40 uppercase tracking-tighter leading-none mb-1">WATER</p>
+              <p className="text-[15px] lg:text-2xl font-black text-[#064e3b]">{water} <span className="text-[10px] lg:text-sm font-bold text-emerald-800/20">L</span></p>
             </div>
           </div>
-          <button onClick={() => navigate('/nutrition')} className="w-8 h-8 rounded-full border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-colors">
-            <Plus className="w-4 h-4" />
+          <button onClick={() => navigate('/nutrition')} className="mt-2 lg:mt-0 w-6 h-6 lg:w-8 lg:h-8 rounded-full border border-emerald-100/30 flex items-center justify-center hover:bg-emerald-50 transition-colors bg-emerald-50 lg:bg-transparent">
+            <Plus className="w-3 h-3 lg:w-4 lg:h-4 text-[#064e3b]" />
           </button>
         </div>
       </div>
@@ -806,22 +827,23 @@ export default function DashboardEnhanced() {
 
   console.log('Rendering Dashboard', { hasData: !!dashboardData, isDiabetic });
   return (
-    <div className="min-h-screen bg-transparent pb-32 px-4 md:px-6 lg:px-16 pt-2 md:pt-8 relative overflow-hidden">
+    <div className="min-h-screen bg-[linear-gradient(to_bottom,#F2F5EC_0%,#EFF2E9_25%,#EBF0E6_50%,#E8EDE3_75%,#E5EBE0_100%)] text-[#064e3b] font-sans selection:bg-emerald-100 selection:text-emerald-900 overflow-x-hidden pb-12">
+      <div className="max-w-7xl mx-auto px-0 md:px-8">
 
 
       {/* Header */}
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-12 md:mb-16 pt-0 md:pt-4"
+        className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-6 md:mb-16 pt-0 md:pt-4"
       >
-        <div className="flex flex-col md:block">
-          <h1 className="text-3xl md:text-5xl font-light tracking-tight text-[#1a1a1a] whitespace-nowrap">
+        <div className="flex flex-col md:block px-4 md:px-0">
+          <h1 className="text-2xl md:text-5xl font-light tracking-tight text-[#064e3b] whitespace-nowrap">
             {getGreeting()}, <span className="font-medium">{user?.name?.split(' ')[0] || 'Mike'}!</span>
           </h1>
-          <p className="text-[#666666] mt-1 md:mt-2 text-sm md:text-lg">Let's make this day productive.</p>
+          <p className="text-[#065f46] mt-0.5 md:mt-2 text-[13px] md:text-lg">Let's make this day productive.</p>
         </div>
-        <div className="grid grid-cols-3 lg:flex items-center gap-2 lg:gap-3 pb-2 lg:pb-0 w-full lg:w-auto">
+        <div className="hidden lg:flex items-center gap-2 lg:gap-3 pb-2 lg:pb-0 w-full lg:w-auto">
           <button onClick={() => navigate('/nutrition', { state: { openLogMeal: true, mealType: 'Breakfast' } })} className="flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-1 py-3 lg:px-6 bg-white/60 backdrop-blur-md rounded-[20px] lg:rounded-full text-[9px] lg:text-sm font-black text-[#1a1a1a] hover:bg-white transition-all border border-white/60 shadow-sm">
             <UtensilsCrossed className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-slate-500" /> <span>Log Meal</span>
           </button>
@@ -830,18 +852,20 @@ export default function DashboardEnhanced() {
           </button>
           <button
             onClick={() => navigate('/upload')}
-            className="flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-1 py-3 lg:px-6 bg-[#1a1a1a] text-white rounded-[20px] lg:rounded-full text-[9px] lg:text-sm font-black hover:bg-black transition-all shadow-md"
+            className="flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-1 py-3 lg:px-6 bg-[#1a1a1a] text-white rounded-[20px] lg:rounded-full text-[8px] lg:text-sm font-black hover:bg-black transition-all shadow-md"
           >
-            <Upload className="w-3.5 h-3.5 lg:w-4 lg:h-4" /> <span>Upload</span>
+            <Upload className="w-3 h-3 lg:w-4 lg:h-4" /> <span>Upload Reports</span>
           </button>
         </div>
       </motion.div>
+
+
 
       {/* 3 Column Grid - Scrollable on mobile with Stack Effect */}
       <div
         ref={scrollContainerRef}
         onScroll={handleScroll}
-        className="flex overflow-x-auto lg:grid lg:grid-cols-3 gap-6 md:gap-8 pb-10 md:pb-12 lg:pb-0 scrollbar-hide snap-x snap-mandatory h-full items-stretch lg:items-start -mx-4 px-8 md:mx-0 md:px-0 mt-8 mb-6"
+        className="flex overflow-x-auto lg:grid lg:grid-cols-3 gap-6 md:gap-8 pb-4 md:pb-12 lg:pb-0 scrollbar-hide snap-x snap-mandatory h-full items-stretch lg:items-start w-full mt-2 mb-2 px-[7.5vw] md:px-0"
       >
         {/* Card 1: Nutrient Info (Reordered to be first) */}
         <motion.div
@@ -851,20 +875,20 @@ export default function DashboardEnhanced() {
             zIndex: 10 - Math.round(Math.abs(0 - activeIndex)),
             opacity: typeof window !== 'undefined' && window.innerWidth < 1024 ? 1 - (Math.abs(0 - activeIndex) * 0.2) : 1
           }}
-          className="min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-[520px] lg:h-full relative overflow-hidden group"
+          className="min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2rem] pt-5 px-5 pb-2 lg:p-8 border border-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-auto min-h-[280px] lg:h-full relative overflow-hidden group"
         >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-purple-50/50 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
           <div className="flex items-center justify-between mb-0.5 relative z-10">
-            <h2 className="text-xl font-black text-black">Nutrient Info</h2>
+            <h2 className="text-lg lg:text-xl font-black text-[#064e3b]">Nutrient Info</h2>
             <button
               onClick={() => navigate('/nutrition')}
-              className="w-8 h-8 rounded-full bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-black shadow-sm group"
+              className="w-7 h-7 lg:w-8 lg:h-8 rounded-full bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-black shadow-sm group"
             >
-              <ArrowUpRight className="w-4 h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
+              <ArrowUpRight className="w-3.5 h-3.5 lg:w-4 lg:h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </button>
           </div>
-          <p className="text-[10px] font-black text-[#A1A1A1] uppercase tracking-[0.1em] mb-4 relative z-10">DAILY TARGETS</p>
+          <p className="text-[8px] lg:text-[10px] font-black text-[#A1A1A1] uppercase tracking-[0.1em] mb-2 lg:mb-4 relative z-10 uppercase">Targets</p>
 
           <div className="relative z-10">
             {(() => {
@@ -895,12 +919,13 @@ export default function DashboardEnhanced() {
                   value={nutrientMode === 'Macro' ? (nutritionData?.totalCalories || dashboardData?.nutritionData?.totalCalories || 0) : avgMicro}
                   max={nutrientMode === 'Macro' ? (user?.nutritionGoal?.calorieGoal || nutritionData?.calorieGoal || 2000) : 100}
                   mode={nutrientMode}
+                  className="w-[180px] h-[180px] lg:w-[200px] lg:h-[200px]"
                 />
               );
             })()}
           </div>
 
-          <div className="flex justify-center gap-8 border-b border-slate-50 mb-8 pb-0.5 relative z-10">
+          <div className="flex justify-center gap-4 lg:gap-8 border-b border-slate-50 mb-4 lg:mb-8 pb-0.5 relative z-10">
             <button
               onClick={() => setNutrientMode('Macro')}
               className={`text-xs font-black uppercase tracking-widest pb-2.5 px-2 transition-all relative ${nutrientMode === 'Macro' ? 'text-black' : 'text-slate-300 hover:text-slate-400'
@@ -919,42 +944,87 @@ export default function DashboardEnhanced() {
             </button>
           </div>
 
-          <div className="flex-1 space-y-4 pt-2 relative z-10">            {nutrientMode === 'Macro' ? (
-            <div className="space-y-4">
-              <NutrientProgressRow
-                label="Protein"
-                value={(() => {
-                  const goal = user?.nutritionGoal?.proteinGoal || nutritionData?.proteinGoal || 150;
-                  const val = nutritionData?.totalProtein || dashboardData?.nutritionData?.totalProtein || 0;
-                  return goal > 0 ? (val / goal) * 100 : 0;
-                })()}
-                targetLabel={`${user?.nutritionGoal?.proteinGoal || nutritionData?.proteinGoal || 150}g target`}
-                icon={Flame} color="bg-black" iconBg="bg-slate-50" iconColor="text-black"
-              />
-              <NutrientProgressRow
-                label="Fats"
-                value={(() => {
-                  const goal = user?.nutritionGoal?.fatGoal || nutritionData?.fatGoal || 65;
-                  const val = nutritionData?.totalFats || dashboardData?.nutritionData?.totalFats || 0;
-                  return goal > 0 ? (val / goal) * 100 : 0;
-                })()}
-                targetLabel={`${user?.nutritionGoal?.fatGoal || nutritionData?.fatGoal || 65}g max`}
-                icon={Smile} color="bg-slate-600" iconBg="bg-slate-50" iconColor="text-slate-600"
-              />
-              <NutrientProgressRow
-                label="Carbs"
-                value={(() => {
-                  const goal = user?.nutritionGoal?.carbsGoal || nutritionData?.carbsGoal || 200;
-                  const val = nutritionData?.totalCarbs || dashboardData?.nutritionData?.totalCarbs || 0;
-                  return goal > 0 ? (val / goal) * 100 : 0;
-                })()}
-                targetLabel={`${user?.nutritionGoal?.carbsGoal || nutritionData?.carbsGoal || 200}g target`}
-                icon={Heart} color="bg-slate-400" iconBg="bg-slate-50" iconColor="text-slate-400"
-              />
+          <div className="space-y-2 lg:space-y-4 pt-2 relative z-10">            {nutrientMode === 'Macro' ? (
+            <div className="grid grid-cols-3 gap-2 lg:flex lg:flex-col lg:space-y-4">
+              {/* Mobile: Compact Row, Desktop: Full Row */}
+              <div className="lg:hidden">
+                <NutrientMacroCompact
+                  label="Protein"
+                  value={(() => {
+                    const goal = user?.nutritionGoal?.proteinGoal || nutritionData?.proteinGoal || 150;
+                    const val = nutritionData?.totalProtein || dashboardData?.nutritionData?.totalProtein || 0;
+                    return goal > 0 ? (val / goal) * 100 : 0;
+                  })()}
+                  targetLabel={`${user?.nutritionGoal?.proteinGoal || nutritionData?.proteinGoal || 150}g`}
+                  icon={Flame} color="bg-black"
+                />
+              </div>
+              <div className="hidden lg:block">
+                <NutrientProgressRow
+                  label="Protein"
+                  value={(() => {
+                    const goal = user?.nutritionGoal?.proteinGoal || nutritionData?.proteinGoal || 150;
+                    const val = nutritionData?.totalProtein || dashboardData?.nutritionData?.totalProtein || 0;
+                    return goal > 0 ? (val / goal) * 100 : 0;
+                  })()}
+                  targetLabel={`${user?.nutritionGoal?.proteinGoal || nutritionData?.proteinGoal || 150}g target`}
+                  icon={Flame} color="bg-black" iconBg="bg-slate-50" iconColor="text-[#064e3b]"
+                />
+              </div>
+
+              <div className="lg:hidden">
+                <NutrientMacroCompact
+                  label="Fats"
+                  value={(() => {
+                    const goal = user?.nutritionGoal?.fatGoal || nutritionData?.fatGoal || 65;
+                    const val = nutritionData?.totalFats || dashboardData?.nutritionData?.totalFats || 0;
+                    return goal > 0 ? (val / goal) * 100 : 0;
+                  })()}
+                  targetLabel={`${user?.nutritionGoal?.fatGoal || nutritionData?.fatGoal || 65}g`}
+                  icon={Smile} color="bg-slate-600"
+                />
+              </div>
+              <div className="hidden lg:block">
+                <NutrientProgressRow
+                  label="Fats"
+                  value={(() => {
+                    const goal = user?.nutritionGoal?.fatGoal || nutritionData?.fatGoal || 65;
+                    const val = nutritionData?.totalFats || dashboardData?.nutritionData?.totalFats || 0;
+                    return goal > 0 ? (val / goal) * 100 : 0;
+                  })()}
+                  targetLabel={`${user?.nutritionGoal?.fatGoal || nutritionData?.fatGoal || 65}g max`}
+                  icon={Smile} color="bg-slate-600" iconBg="bg-slate-50" iconColor="text-slate-600"
+                />
+              </div>
+
+              <div className="lg:hidden">
+                <NutrientMacroCompact
+                  label="Carbs"
+                  value={(() => {
+                    const goal = user?.nutritionGoal?.carbsGoal || nutritionData?.carbsGoal || 200;
+                    const val = nutritionData?.totalCarbs || dashboardData?.nutritionData?.totalCarbs || 0;
+                    return goal > 0 ? (val / goal) * 100 : 0;
+                  })()}
+                  targetLabel={`${user?.nutritionGoal?.carbsGoal || nutritionData?.carbsGoal || 200}g`}
+                  icon={Heart} color="bg-slate-400"
+                />
+              </div>
+              <div className="hidden lg:block">
+                <NutrientProgressRow
+                  label="Carbs"
+                  value={(() => {
+                    const goal = user?.nutritionGoal?.carbsGoal || nutritionData?.carbsGoal || 200;
+                    const val = nutritionData?.totalCarbs || dashboardData?.nutritionData?.totalCarbs || 0;
+                    return goal > 0 ? (val / goal) * 100 : 0;
+                  })()}
+                  targetLabel={`${user?.nutritionGoal?.carbsGoal || nutritionData?.carbsGoal || 200}g target`}
+                  icon={Heart} color="bg-slate-400" iconBg="bg-slate-50" iconColor="text-slate-400"
+                />
+              </div>
             </div>
 
           ) : (
-            <div className="space-y-4 overflow-y-auto max-h-[300px] pr-2 scrollbar-hide py-1">
+            <div className="space-y-3 lg:space-y-4 overflow-y-auto max-h-[135px] lg:max-h-[300px] pr-2 scrollbar-hide py-1">
               <NutrientProgressRow
                 label="Fiber"
                 value={((nutritionData?.totalFiber || dashboardData?.nutritionData?.totalFiber || 0) / 30) * 100}
@@ -1022,12 +1092,12 @@ export default function DashboardEnhanced() {
             zIndex: 10 - Math.round(Math.abs(1 - activeIndex)),
             opacity: typeof window !== 'undefined' && window.innerWidth < 1024 ? 1 - (Math.abs(1 - activeIndex) * 0.2) : 1
           }}
-          className="min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-[520px] lg:h-full"
+          className="min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2rem] p-4 lg:p-8 border border-slate-100 shadow-sm flex flex-col h-[340px] lg:h-full overflow-hidden"
         >
           <div className="flex items-center justify-between gap-2 mb-5 flex-nowrap overflow-hidden">
-            <h2 className="text-base sm:text-xl font-black text-black whitespace-nowrap truncate">Today's Diet Plan</h2>
+            <h2 className="text-base sm:text-xl font-black text-[#064e3b] whitespace-nowrap truncate">Today's Diet Plan</h2>
             <div className="flex items-center gap-1 bg-[#F8F9FB] px-1.5 py-1 rounded-lg border border-slate-50 shrink-0">
-              <Calendar className="w-2.5 h-2.5 text-slate-400" />
+              <Calendar className="w-2.5 h-2.5 text-emerald-800/60" />
               <span className="text-[8px] font-black text-slate-500 uppercase tracking-tighter">
                 {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
               </span>
@@ -1045,7 +1115,7 @@ export default function DashboardEnhanced() {
               <button
                 key={tab.id}
                 onClick={() => setActiveMealTab(tab.id)}
-                className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all px-4 min-w-max ${activeMealTab === tab.id ? 'bg-[#1A1A1A] text-white shadow-md' : 'text-[#888888] hover:text-[#1A1A1A]'
+                className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all px-4 min-w-max ${activeMealTab === tab.id ? 'bg-[#064e3b] text-white shadow-md' : 'text-emerald-800/60 hover:text-[#064e3b]'
                   }`}
               >
                 {tab.label}
@@ -1062,7 +1132,7 @@ export default function DashboardEnhanced() {
                   <p className="text-xs text-slate-400 mb-4">Set your fitness goal to see your personalized diet plan</p>
                   <button
                     onClick={() => navigate('/profile?tab=goals')}
-                    className="px-8 py-3 bg-black text-white rounded-full text-xs font-black uppercase tracking-widest shadow-xl shadow-black/20 hover:scale-105 transition-all"
+                    className="px-8 py-3 bg-[#064e3b] text-white rounded-full text-xs font-black uppercase tracking-widest shadow-xl shadow-emerald-900/20 hover:scale-105 transition-all"
                   >
                     Set Fitness Goal
                   </button>
@@ -1073,7 +1143,7 @@ export default function DashboardEnhanced() {
                   <p className="text-xs text-slate-400 mb-4">Your goal is set! Now generate your personalized diet plan</p>
                   <button
                     onClick={() => navigate('/diet-plan')}
-                    className="px-8 py-3 bg-black text-white rounded-full text-xs font-black uppercase tracking-widest shadow-xl shadow-black/20 hover:scale-105 transition-all"
+                    className="px-8 py-3 bg-[#064e3b] text-white rounded-full text-xs font-black uppercase tracking-widest shadow-xl shadow-emerald-900/20 hover:scale-105 transition-all"
                   >
                     Create Diet Plan
                   </button>
@@ -1085,10 +1155,10 @@ export default function DashboardEnhanced() {
               {(dietPlan?.mealPlan?.[activeMealTab] || []).map((item, idx) => {
                 const isLogged = isMealLogged(activeMealTab, item);
                 return (
-                  <div key={idx} className={`p-4 rounded-2xl flex items-center justify-between gap-3 transition-all ${isLogged ? 'bg-emerald-50/50 border border-emerald-100/50' : 'bg-slate-50'}`}>
-                    <div className="flex items-center gap-3">
-                      <div className={`w-2 h-2 rounded-full ${isLogged ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-[#1A1A1A]'}`} />
-                      <span className={`text-sm font-semibold ${isLogged ? 'text-emerald-900' : 'text-black'}`}>{item?.name || item?.foodItems?.[0]?.name}</span>
+                  <div key={idx} className={`p-2 lg:p-4 rounded-xl lg:rounded-2xl flex items-center justify-between gap-2 transition-all ${isLogged ? 'bg-emerald-50/50 border border-emerald-100/50' : 'bg-slate-50'}`}>
+                    <div className="flex items-center gap-2 lg:gap-3">
+                      <div className={`w-1.5 h-1.5 rounded-full ${isLogged ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-[#1A1A1A]'}`} />
+                      <span className={`text-[10px] lg:text-sm font-medium lg:font-semibold ${isLogged ? 'text-emerald-900' : 'text-black'}`}>{item?.name || item?.foodItems?.[0]?.name}</span>
                     </div>
                     {isLogged && (
                       <div className="flex items-center gap-1 bg-emerald-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tight">
@@ -1108,7 +1178,7 @@ export default function DashboardEnhanced() {
 
           <button 
             onClick={() => navigate('/diet-plan')}
-            className="w-full bg-[#1A1A1A] text-white py-4 rounded-2xl text-[13px] font-black uppercase tracking-tight hover:bg-black transition-all flex items-center justify-center gap-2 shadow-sm"
+            className="w-full bg-[#064e3b] text-emerald-50 py-4 rounded-2xl text-[13px] font-black uppercase tracking-tight hover:bg-[#042f2e] transition-all flex items-center justify-center gap-2 shadow-sm"
           >
             View Full Plan <ArrowUpRight className="w-4 h-4 ml-1" />
           </button>
@@ -1122,10 +1192,10 @@ export default function DashboardEnhanced() {
             zIndex: 10 - Math.round(Math.abs(2 - activeIndex)),
             opacity: typeof window !== 'undefined' && window.innerWidth < 1024 ? 1 - (Math.abs(2 - activeIndex) * 0.2) : 1
           }}
-          className="min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2.5rem] p-8 border border-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-[520px] lg:h-full"
+          className="min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2rem] p-4 lg:p-8 border border-slate-100 shadow-sm flex flex-col h-[340px] lg:h-full overflow-hidden"
         >
           <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-black text-black">AI Lab Insights</h2>
+            <h2 className="text-sm md:text-base font-black text-[#064e3b]">AI Lab Insights</h2>
             <Link to="/upload" className="text-[9px] font-black text-slate-400 uppercase tracking-[0.1em] flex items-center gap-1 hover:text-black group">
               UPLOAD REPORT <ArrowUpRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
             </Link>
@@ -1148,7 +1218,7 @@ export default function DashboardEnhanced() {
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 leading-loose">No Health Reports Found</p>
                 <button
                   onClick={() => navigate('/upload')}
-                  className="px-6 py-2.5 bg-black text-white text-[10px] font-black uppercase tracking-widest rounded-full hover:scale-105 transition-all shadow-lg"
+                  className="px-6 py-2.5 bg-[#064e3b] text-white text-[10px] font-black uppercase tracking-widest rounded-full hover:scale-105 transition-all shadow-lg"
                 >
                   Upload Report
                 </button>
@@ -1156,30 +1226,31 @@ export default function DashboardEnhanced() {
             )}
           </div>
 
-          <div className="mt-8 p-6 bg-white rounded-[2rem] border border-[#F1F1F4] relative group shadow-sm">
-            <div className="flex items-center gap-2 mb-3">
-              <Sparkles className="w-4 h-4 text-black" />
-              <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">AI RECOMMENDATION</span>
+          <div className="mt-4 p-3 lg:p-6 bg-white rounded-2xl lg:rounded-[2rem] border border-[#F1F1F4] relative group shadow-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="w-3 h-3 lg:w-4 lg:h-4 text-[#064e3b]" />
+              <span className="text-[8px] lg:text-[10px] font-black text-emerald-800/40 uppercase tracking-widest">AI Rec</span>
             </div>
-            <p className="text-[12px] font-medium text-[#1A1A1A] leading-relaxed">
+            <p className="text-[9px] lg:text-[12px] font-medium text-[#064e3b] leading-relaxed">
               {dashboardData?.latestAnalysis?.recommendations?.lifestyle?.[0] ? (
                 `"${dashboardData.latestAnalysis.recommendations.lifestyle[0]}"`
               ) : (
-                "Personalized health analysis will appear here once you upload your first lab report or log enough meals."
+                "Personalized health analysis will appear here."
               )}
             </p>
           </div>
         </motion.div>
       </div>
 
-      {/* Scroll Indicator for mobile */}
-      <div className="flex lg:hidden justify-center gap-2 mb-10 -mt-2">
-        {[0, 1, 2].map((i) => (
-          <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${Math.abs(activeIndex - i) < 0.5 ? 'w-6 bg-black' : 'w-2 bg-slate-200'}`} />
-        ))}
+      {/* Mobile Slider Indicators & Daily Vitals (New Position) */}
+      <div className="lg:hidden px-4 mb-4">
+        <div className="flex justify-center gap-2 mb-8 mt-2">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${Math.abs(activeIndex - i) < 0.5 ? 'w-6 bg-black' : 'w-2 bg-slate-200'}`} />
+          ))}
+        </div>
+        <DailyMetricsCard />
       </div>
-
-
 
       {/* Diabetes Monitor Block */}
       {
@@ -1188,38 +1259,35 @@ export default function DashboardEnhanced() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="bg-white/80 backdrop-blur-2xl border border-white/50 rounded-[32px] p-6 md:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] relative overflow-hidden mt-12 mb-12"
+            className="bg-white/80 backdrop-blur-2xl border border-emerald-100/30 rounded-[28px] md:rounded-[32px] p-4 md:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] relative overflow-hidden mt-8 mb-8"
           >
             {/* Subtle inside gradient */}
-            <div className="absolute inset-0 bg-gradient-to-r from-[#F5F5F7]/80 to-white/30 pointer-events-none" />
+            <div className="absolute inset-0 bg-gradient-to-r from-emerald-50/20 to-white/30 pointer-events-none" />
 
             <div className="relative z-10">
-              <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
+              <div className="flex flex-row items-center justify-between mb-4 md:mb-8">
                 <div>
-                  <h2 className="text-2xl font-medium text-[#1a1a1a] mb-1">Diabetes Monitor</h2>
-                  <p className="text-[#666666] text-sm font-medium">Track glucose & HbA1c</p>
+                  <h2 className="text-lg md:text-xl font-bold text-[#064e3b]">Diabetes Monitor</h2>
+                  <p className="text-emerald-800/40 text-[10px] md:text-xs font-medium">Track glucose & HbA1c</p>
                 </div>
-                <button onClick={() => navigate('/diabetes')} className="mt-4 md:mt-0 px-6 py-2.5 bg-white shadow-sm border border-slate-200 hover:bg-slate-50 text-[#1a1a1a] rounded-full font-medium transition-all flex items-center gap-2">
-                  <Plus className="w-4 h-4 text-[#1a1a1a]" /> Log Reading
+                <button 
+                  onClick={() => navigate('/diabetes')} 
+                  className="px-3 py-1.5 md:px-6 md:py-2.5 bg-emerald-50/50 border border-emerald-100 hover:bg-emerald-100/50 text-[#064e3b] rounded-full text-[10px] md:text-sm font-black md:font-medium transition-all flex items-center gap-1.5 shrink-0 shadow-sm"
+                >
+                  <Plus className="w-3 h-3 md:w-4 md:h-4" /> Log Reading
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div className="grid grid-cols-2 gap-3 md:gap-5">
                 {(!dashboardData?.latestAnalysis && !dashboardData?.vitals?.glucose && !dashboardData?.vitals?.hba1c) ? (
-                  <div className="md:col-span-2 bg-slate-50/50 border border-slate-100 rounded-[24px] p-8 text-center flex flex-col items-center justify-center">
-                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
-                      <Sparkles className="w-6 h-6 text-slate-400" />
+                  <div className="col-span-2 bg-emerald-50/20 border border-emerald-100/30 rounded-[24px] p-6 text-center flex flex-col items-center justify-center">
+                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm mb-3">
+                      <Sparkles className="w-5 h-5 text-emerald-400" />
                     </div>
-                    <p className="text-[#1a1a1a] font-medium mb-1">Your monitoring is starting</p>
-                    <p className="text-[#888888] text-sm max-w-sm">
-                      Upload your first lab report or log a few glucose readings to see your smart monitoring insights here.
+                    <p className="text-[#064e3b] text-xs font-bold mb-1">Monitoring ready</p>
+                    <p className="text-emerald-800/40 text-[10px] max-w-sm">
+                      Upload report or log glucose to see insights.
                     </p>
-                    <button 
-                      onClick={() => navigate('/diabetes')}
-                      className="mt-4 text-xs font-black uppercase tracking-widest text-black border-b border-black hover:text-slate-600 hover:border-slate-600 transition-all"
-                    >
-                      Log First Reading
-                    </button>
                   </div>
                 ) : (
                   <>
@@ -1228,26 +1296,22 @@ export default function DashboardEnhanced() {
                         label: 'Glucose', 
                         val: dashboardData?.vitals?.glucose?.value || dashboardData?.latestAnalysis?.metrics?.Glucose?.value || '--', 
                         unit: 'mg/dL', 
-                        status: dashboardData?.latestAnalysis?.metrics?.Glucose?.status || (dashboardData?.vitals?.glucose ? 'Recent Log' : 'Normal'), 
-                        color: 'text-slate-700', 
-                        bg: 'bg-[#F5F5F7]' 
+                        status: dashboardData?.latestAnalysis?.metrics?.Glucose?.status || (dashboardData?.vitals?.glucose ? 'Recent Log' : 'Normal')
                       },
                       { 
                         label: 'HbA1c', 
                         val: dashboardData?.vitals?.hba1c?.value || dashboardData?.latestAnalysis?.metrics?.HbA1c?.value || '--', 
                         unit: '%', 
-                        status: dashboardData?.latestAnalysis?.metrics?.HbA1c?.status || (dashboardData?.vitals?.hba1c ? 'Recent Log' : 'Good'), 
-                        color: 'text-slate-700', 
-                        bg: 'bg-[#F5F5F7]' 
+                        status: dashboardData?.latestAnalysis?.metrics?.HbA1c?.status || (dashboardData?.vitals?.hba1c ? 'Recent Log' : 'Good')
                       }
-                    ].map((stat, i) => (
-                      <div key={stat.label} className="bg-white/90 border border-white shadow-sm rounded-[24px] p-6 flex flex-col items-center justify-center relative group hover:bg-white transition-all hover:shadow-md">
-                        <span className="text-[#888888] text-[11px] font-bold uppercase tracking-widest mb-2">{stat.label}</span>
-                        <div className="flex items-baseline gap-1 mb-3">
-                          <span className="text-4xl font-light text-[#1a1a1a] tracking-tight">{stat.val}</span>
-                          {stat.val !== '--' && <span className="text-sm font-medium text-[#a0a0a0]">{stat.unit}</span>}
+                    ].map((stat) => (
+                      <div key={stat.label} className="bg-white/90 border border-emerald-50 shadow-sm rounded-2xl md:rounded-[24px] p-3 md:p-6 flex flex-col items-center justify-center relative group hover:bg-white transition-all">
+                        <span className="text-emerald-800/40 text-[9px] md:text-[11px] font-black uppercase tracking-widest mb-1 md:mb-2">{stat.label}</span>
+                        <div className="flex items-baseline gap-0.5 md:gap-1 mb-1 md:mb-3">
+                          <span className="text-2xl md:text-4xl font-light text-[#064e3b] tracking-tight">{stat.val}</span>
+                          {stat.val !== '--' && <span className="text-[10px] md:text-sm font-medium text-emerald-800/20">{stat.unit}</span>}
                         </div>
-                        <span className={`text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${stat.val === '--' ? 'bg-slate-50 text-slate-400' : 'bg-slate-100 text-slate-800'}`}>
+                        <span className={`text-[8px] md:text-[10px] font-bold px-2 py-0.5 md:px-3 md:py-1 rounded-full uppercase tracking-wider ${stat.val === '--' ? 'bg-emerald-50/10 text-emerald-800/40' : 'bg-emerald-50 text-[#064e3b]'}`}>
                           {stat.status}
                         </span>
                       </div>
@@ -1264,21 +1328,95 @@ export default function DashboardEnhanced() {
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        className="mb-12"
+        className="mb-8 px-4 md:px-0"
       >
-        {/* AI Health Insight Carousel */}
+        <div className="flex items-center justify-between mb-4 px-2">
+          <h2 className="text-xl font-medium text-[#064e3b]">Your Logged Meals</h2>
+          <button onClick={() => navigate('/nutrition')} className="text-xs font-medium text-emerald-800/60 hover:text-[#064e3b]">View Menu</button>
+        </div>
+        <div className="flex overflow-x-auto md:grid md:grid-cols-3 gap-4 md:gap-8 pb-4 md:pb-0 scrollbar-hide snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0">
+          {loggedMeals.length > 0 ? (
+            <>
+              {loggedMeals.slice(0, 3).map((meal, i) => (
+                <div key={i} className="min-w-[60vw] md:min-w-0 snap-center bg-white border border-emerald-50 rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm transition-all flex flex-col">
+                  <div className="h-20 md:h-52 relative overflow-hidden">
+                    <ImageWithFallback src={meal.imageUrl} query={meal.name || meal.foodItems?.[0]?.name || 'Delicious food'} alt={meal.name || meal.foodItems?.[0]?.name || 'Meal'} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
+                    <div className="absolute top-2 left-2 flex flex-wrap gap-1">
+                      {[(meal.totalNutrition?.calories || meal.calories) > 300 ? 'High Energy' : null].filter(Boolean).map(tag => (
+                        <span key={tag} className="px-2 py-0.5 bg-white/20 backdrop-blur-md text-white border border-white/30 text-[8px] font-black uppercase tracking-wider rounded-full">
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="absolute bottom-2 left-2 flex gap-1.5">
+                      <span className="flex items-center gap-1 px-2 py-1 bg-white/90 backdrop-blur-md text-[#064e3b] text-[8px] font-black rounded-full shadow-sm uppercase tracking-widest">
+                        <Flame className="w-2.5 h-2.5 text-[#064e3b]" /> {meal.totalNutrition?.calories || meal.calories || 0} cal
+                      </span>
+                      <span className="flex items-center gap-1 px-2 py-1 bg-white/90 backdrop-blur-md text-[#064e3b] text-[8px] font-black rounded-full shadow-sm uppercase tracking-widest">
+                        <Clock className="w-2.5 h-2.5 text-emerald-800/40" /> {meal.mealType || 'Meal'}
+                      </span>
+                    </div>
+                  </div>
+                  <div className="p-3 lg:p-8 flex-1 flex flex-col">
+                    <h3 className="font-black text-[#064e3b] text-xs md:text-xl mb-2 md:mb-5 truncate">{meal.name || meal.foodItems?.[0]?.name || 'Logged Meal'}</h3>
+                    <div className="flex gap-2 md:gap-3 mt-auto">
+                      <button onClick={() => navigate('/nutrition', { state: { prefillData: meal } })} className="flex-1 py-2.5 md:py-3 bg-[#064e3b] hover:bg-[#042f2e] text-emerald-50 text-xs md:text-sm font-medium rounded-full transition-all shadow-md">
+                        + Add Again
+                      </button>
+                      <button onClick={() => navigate('/nutrition')} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-emerald-50 hover:bg-emerald-100 text-[#064e3b] text-sm font-bold rounded-full transition-colors border border-white shrink-0">
+                        <Eye className="w-4 h-4 md:w-5 md:h-5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {loggedMeals.length > 3 && (
+                <div className="min-w-[40vw] md:hidden snap-center flex items-center justify-center p-4">
+                  <button onClick={() => navigate('/nutrition')} className="flex flex-col items-center gap-3 text-slate-500 hover:text-[#1a1a1a]">
+                    <div className="w-14 h-14 rounded-full bg-white shadow-sm border border-slate-100 flex items-center justify-center transition-transform hover:scale-105">
+                      <ArrowUpRight className="w-6 h-6" />
+                    </div>
+                    <span className="text-xs font-black uppercase tracking-widest">View All</span>
+                  </button>
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="md:col-span-3 flex flex-col items-center justify-center p-6 lg:p-12 bg-emerald-50/20 rounded-[2.5rem] border border-emerald-100/30">
+              <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-6">
+                <Utensils className="w-8 h-8 text-emerald-200" />
+              </div>
+              <h3 className="text-sm font-black text-[#064e3b] uppercase tracking-tight mb-1">No Meals Logged</h3>
+              <p className="text-[10px] text-emerald-800/40 font-bold max-w-[200px] mx-auto leading-relaxed">Log meals to see your history & suggestions.</p>
+              <button
+                onClick={() => navigate('/nutrition')}
+                className="mt-6 px-10 py-3 bg-[#064e3b] text-emerald-50 rounded-full text-xs font-black uppercase tracking-widest shadow-xl shadow-emerald-900/20 hover:scale-105 transition-all"
+              >
+                Log First Meal
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* AI Health Insights Section Moved Here */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.45 }}
-          className="mb-12 w-full"
+          className="mb-6 w-full px-4 md:px-0"
         >
-          <div className="flex items-center justify-between mb-6 px-2">
-            <h2 className="text-2xl font-medium text-[#1a1a1a]">AI Health Insights</h2>
+          <div className="flex items-center justify-between mb-4 px-2">
+            <h2 className="text-xl font-medium text-[#064e3b]">AI Health Insights</h2>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black text-emerald-800/40 uppercase tracking-widest">REAL-TIME</span>
+              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            </div>
           </div>
 
-          <div className="bg-[#1a1a1a] text-white rounded-[24px] md:rounded-[32px] p-6 md:p-8 relative overflow-hidden shadow-2xl">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-purple-500/10 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2" />
+          <div className="bg-emerald-50/40 backdrop-blur-md rounded-[2rem] p-6 lg:p-8 relative overflow-hidden group shadow-lg border border-white">
+            {/* Background Glows */}
+            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2" />
 
             <div className="relative z-10 flex items-center gap-6">
               <div className="flex-1 min-w-0 overflow-hidden">
@@ -1295,7 +1433,7 @@ export default function DashboardEnhanced() {
                       {overallPerformanceInsight[insightIndex] && (
                         <>
                           <div className="flex-shrink-0 mt-1">
-                            <div className={`${overallPerformanceInsight[insightIndex].color} opacity-80`}>
+                            <div className={`${overallPerformanceInsight[insightIndex].color} opacity-90`}>
                               {(() => {
                                 const Icon = overallPerformanceInsight[insightIndex].icon;
                                 return <Icon className="w-4 h-4 md:w-5 md:h-5" />;
@@ -1303,10 +1441,10 @@ export default function DashboardEnhanced() {
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-[#666666] leading-none mb-1.5 grayscale opacity-70">
+                            <p className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-[#065f46]/40 leading-none mb-1.5 grayscale opacity-70">
                               {overallPerformanceInsight[insightIndex].label}
                             </p>
-                            <p className="text-sm md:text-base font-medium text-gray-200 leading-snug">
+                            <p className="text-[11px] md:text-sm font-medium text-[#064e3b] leading-snug">
                               {overallPerformanceInsight[insightIndex].text}
                             </p>
                           </div>
@@ -1326,81 +1464,18 @@ export default function DashboardEnhanced() {
           </div>
         </motion.div>
 
-        <div className="flex items-center justify-between mb-6 px-2">
-          <h2 className="text-2xl font-medium text-[#1a1a1a]">Your Logged Meals</h2>
-          <button onClick={() => navigate('/nutrition')} className="text-sm font-medium text-[#666666] hover:text-[#1a1a1a]">View Menu</button>
-        </div>
-        <div className="flex overflow-x-auto md:grid md:grid-cols-3 gap-4 md:gap-8 pb-4 md:pb-0 scrollbar-hide snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0">
-          {loggedMeals.length > 0 ? (
-            <>
-              {loggedMeals.slice(0, 3).map((meal, i) => (
-                <div key={i} className="min-w-[85vw] md:min-w-0 snap-center bg-white/80 backdrop-blur-xl rounded-[24px] md:rounded-[32px] overflow-hidden border border-white/50 shadow-[0_4px_24px_rgba(0,0,0,0.02)] group hover:shadow-xl transition-all flex flex-col">
-                  <div className="h-40 md:h-52 relative overflow-hidden">
-                    <ImageWithFallback src={meal.imageUrl} query={meal.name} alt={meal.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent pointer-events-none" />
-                    <div className="absolute top-4 left-4 flex flex-wrap gap-2">
-                      {['Logged', (meal.totalNutrition?.calories || meal.calories) > 300 ? 'High Energy' : 'Balanced'].map(tag => (
-                        <span key={tag} className="px-3 py-1 bg-white/20 backdrop-blur-md text-white border border-white/30 text-[10px] font-bold uppercase tracking-wider rounded-full">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="absolute bottom-4 left-4 flex gap-2">
-                      <span className="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-md text-[#1a1a1a] text-[10px] font-bold rounded-full shadow-sm">
-                        <Flame className="w-3.5 h-3.5 text-black" /> {meal.totalNutrition?.calories || meal.calories || 0} cal
-                      </span>
-                      <span className="flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-md text-[#1a1a1a] text-[10px] font-bold rounded-full shadow-sm">
-                        <Clock className="w-3.5 h-3.5 text-slate-500" /> {meal.mealType || 'Meal'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="p-4 md:p-6 lg:p-8 flex-1 flex flex-col">
-                    <h3 className="font-medium text-[#1a1a1a] text-lg md:text-xl mb-4 md:mb-5">{meal.name || meal.foodItems?.[0]?.name || 'Logged Meal'}</h3>
-                    <div className="flex gap-2 md:gap-3 mt-auto">
-                      <button onClick={() => navigate('/nutrition', { state: { prefillData: meal } })} className="flex-1 py-2.5 md:py-3 bg-[#1a1a1a] hover:bg-black text-white text-xs md:text-sm font-medium rounded-full transition-all shadow-md">
-                        + Add Again
-                      </button>
-                      <button onClick={() => navigate('/nutrition')} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-[#F5F5F7] hover:bg-slate-200 text-[#1a1a1a] text-sm font-bold rounded-full transition-colors border border-white shrink-0">
-                        <Eye className="w-4 h-4 md:w-5 md:h-5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {loggedMeals.length > 3 && (
-                <div className="min-w-[40vw] md:hidden snap-center flex items-center justify-center p-4">
-                  <button onClick={() => navigate('/nutrition')} className="flex flex-col items-center gap-3 text-slate-500 hover:text-[#1a1a1a]">
-                    <div className="w-14 h-14 rounded-full bg-white shadow-sm border border-slate-100 flex items-center justify-center transition-transform hover:scale-105">
-                      <ArrowUpRight className="w-6 h-6" />
-                    </div>
-                    <span className="text-xs font-black uppercase tracking-widest">View All</span>
-                  </button>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="col-span-full p-20 text-center bg-[#FAF9FF] rounded-[3rem] border border-dashed border-[#EBE7FF]">
-              <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center mx-auto mb-6 shadow-sm">
-                <Utensils className="w-10 h-10 text-slate-200" />
-              </div>
-              <h3 className="text-2xl font-black text-slate-800 uppercase tracking-tight mb-2">No Meals Logged Yet</h3>
-              <p className="text-slate-400 font-bold text-base max-w-sm mx-auto">Start logging your meals to see your nutritional history and personalized suggestions here.</p>
-              <button onClick={() => navigate('/nutrition')} className="mt-8 px-10 py-4 bg-slate-900 text-white rounded-full text-sm font-black uppercase tracking-widest hover:bg-black transition-all">Log Your First Meal</button>
-            </div>
-          )}
-        </div>
       </motion.div>
 
       {/* Bottom Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 pb-8">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 px-4 md:px-0">
 
 
-        {/* Daily Vitals (Weight, Steps, Sleep) */}
+        {/* Daily Vitals (Weight, Steps, Sleep) - Visible only on Desktop here */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.6 }}
-          className="flex flex-col h-full"
+          className="hidden lg:flex flex-col h-full"
         >
           <DailyMetricsCard />
 
@@ -1408,23 +1483,23 @@ export default function DashboardEnhanced() {
           <motion.div
             whileHover={{ scale: 1.02 }}
             onClick={() => navigate('/challenge')}
-            className="mt-6 bg-gradient-to-br from-[#1a1a1a] to-[#333333] rounded-[24px] p-5 text-white shadow-lg cursor-pointer relative overflow-hidden group"
+            className="mt-4 bg-gradient-to-br from-[#064e3b] to-[#042f2e] rounded-[24px] p-5 text-emerald-50 shadow-lg cursor-pointer relative overflow-hidden group"
           >
-            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+            <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
             <div className="flex items-center justify-between relative z-10">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                  <Flame className="w-5 h-5 text-white fill-white" />
+                <div className="w-10 h-10 rounded-full bg-emerald-50/10 flex items-center justify-center">
+                  <Flame className="w-5 h-5 text-emerald-400 fill-emerald-400" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-black uppercase tracking-widest text-white/70">Challenge</h4>
-                  <p className="text-lg font-bold">{dashboardData?.streakDays || 0} Day Streak</p>
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-200/50">Challenge</h4>
+                  <p className="text-base font-bold text-emerald-50">{dashboardData?.streakDays || 0} Day Streak</p>
                 </div>
               </div>
-              <ChevronRight className="w-5 h-5 text-white/50 group-hover:translate-x-1 transition-transform" />
+              <ChevronRight className="w-5 h-5 text-emerald-300/50 group-hover:translate-x-1 transition-transform" />
             </div>
-            <div className="mt-4 h-1.5 bg-white/10 rounded-full overflow-hidden">
-              <div className="h-full bg-white rounded-full w-[40%]" />
+            <div className="mt-4 h-1.5 bg-emerald-950/20 rounded-full overflow-hidden">
+              <div className="h-full bg-emerald-400 rounded-full w-[40%]" />
             </div>
           </motion.div>
         </motion.div>
@@ -1434,16 +1509,16 @@ export default function DashboardEnhanced() {
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.7 }}
-          className="bg-white rounded-[28px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden flex flex-col h-full border border-slate-100/50"
+          className="bg-white rounded-[28px] p-4 lg:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden flex flex-col h-full border border-slate-100/50"
         >
           <div className="flex items-center justify-between mb-6 shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-[#F5F5F7] flex items-center justify-center">
-                <FlaskConical className="w-5 h-5 text-[#1a1a1a]" />
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-[#1A1A1A]/5 flex items-center justify-center">
+                <FlaskConical className="w-4 h-4 text-[#1a1a1a]" />
               </div>
-              <h3 className="text-xl font-medium text-[#1a1a1a]">Nutrition Deficiency</h3>
+              <h3 className="text-sm font-semibold text-[#1a1a1a]">Nutrition Deficiency</h3>
             </div>
-            <button className="text-[11px] font-bold text-[#666666] hover:text-[#1a1a1a] uppercase tracking-wide">Detailed &rarr;</button>
+            <button className="text-[10px] font-bold text-[#888888] hover:text-[#1a1a1a] uppercase tracking-wide">Detailed &rarr;</button>
           </div>
           <div className="space-y-6 flex-1 overflow-y-auto pr-2 pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
             {dynamicDeficiencies?.length > 0 ? (
@@ -1475,14 +1550,14 @@ export default function DashboardEnhanced() {
                       />
                     </div>
 
-                    <div className="flex flex-col gap-1.5 mt-1 p-3 bg-[#F5F5F7]/50 rounded-[16px] border border-white">
-                      <div className="flex items-start gap-2 text-xs text-[#666666]">
-                        <Leaf className="w-3.5 h-3.5 text-[#1a1a1a] flex-shrink-0 mt-0.5" />
-                        <span><span className="font-medium text-[#1a1a1a]">Eat more:</span> {item.food}</span>
+                    <div className="flex flex-col gap-1 mt-1 p-2 bg-white/40 rounded-xl border border-white">
+                      <div className="flex items-start gap-2 text-[10px] text-[#666666]">
+                        <Leaf className="w-3 h-3 text-[#1a1a1a] flex-shrink-0 mt-0.5" />
+                        <span><span className="font-semibold text-[#1a1a1a]">Eat more:</span> {item.food}</span>
                       </div>
-                      <div className="flex items-start gap-2 text-xs text-[#666666]">
-                        <Pill className="w-3.5 h-3.5 text-[#1a1a1a] flex-shrink-0 mt-0.5" />
-                        <span><span className="font-medium text-[#1a1a1a]">Supplement:</span> {item.supplement}</span>
+                      <div className="flex items-start gap-2 text-[10px] text-[#666666]">
+                        <Pill className="w-3 h-3 text-[#1a1a1a] flex-shrink-0 mt-0.5" />
+                        <span><span className="font-semibold text-[#1a1a1a]">Supplement:</span> {item.supplement}</span>
                       </div>
                     </div>
                   </div>
@@ -1515,18 +1590,18 @@ export default function DashboardEnhanced() {
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.8 }}
-          className="bg-white rounded-[28px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100/50 flex flex-col"
+          className="bg-white rounded-[28px] p-4 lg:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100/50 flex flex-col"
         >
-          <div className="flex items-center justify-between mb-8">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-[#F5F5F7] flex items-center justify-center border border-white shadow-sm">
-                <FileText className="w-5 h-5 text-[#1a1a1a]" />
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-[#1A1A1A]/5 flex items-center justify-center border border-white/40 shadow-sm">
+                <FileText className="w-4 h-4 text-[#064e3b]" />
               </div>
-              <h3 className="text-xl font-medium text-[#1a1a1a]">Care Plan</h3>
+              <h3 className="text-sm font-semibold text-[#064e3b]">Care Plan</h3>
             </div>
-            <span className="text-3xl font-light text-[#1a1a1a]">
+            <span className="text-xl font-light text-[#1a1a1a]">
               {completedTasks.length}
-              <span className="text-lg text-[#888888]">/{(dashboardData?.latestAnalysis?.recommendations?.lifestyle?.length || 4)}</span>
+              <span className="text-sm text-[#888888]">/{(dashboardData?.latestAnalysis?.recommendations?.lifestyle?.length || 4)}</span>
             </span>
           </div>
           <div className="space-y-5 flex-1 min-h-0 overflow-y-auto pr-1">
@@ -1585,10 +1660,10 @@ export default function DashboardEnhanced() {
                       );
                     }}
                   >
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center border-2 transition-colors flex-shrink-0 ${isCompleted ? 'border-[#1a1a1a] bg-[#1a1a1a]' : 'border-slate-300 group-hover:border-slate-400'}`}>
-                      {isCompleted && <CheckCircle2 className="w-4 h-4 text-white" />}
+                    <div className={`w-5 h-5 rounded-full flex items-center justify-center border transition-colors flex-shrink-0 ${isCompleted ? 'border-[#1a1a1a] bg-[#1a1a1a]' : 'border-slate-300 group-hover:border-slate-400'}`}>
+                      {isCompleted && <CheckCircle2 className="w-3 h-3 text-white" />}
                     </div>
-                    <span className={`text-sm font-semibold transition-colors uppercase tracking-tight ${isCompleted ? 'text-[#a0a0a0] line-through decoration-[#a0a0a0]' : 'text-[#1a1a1a] group-hover:text-slate-600'}`}>
+                    <span className={`text-[11px] font-semibold transition-colors uppercase tracking-tight ${isCompleted ? 'text-[#a0a0a0] line-through decoration-[#a0a0a0]' : 'text-[#1a1a1a] group-hover:text-slate-600'}`}>
                       {task}
                     </span>
                   </div>
@@ -1617,15 +1692,15 @@ export default function DashboardEnhanced() {
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.85 }}
-        className="bg-white/80 backdrop-blur-xl border border-white/50 rounded-[32px] p-6 lg:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] relative overflow-hidden mb-8"
+        className="bg-white/80 backdrop-blur-xl border border-white/50 rounded-[32px] p-6 lg:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] relative overflow-hidden mb-8 mx-4 md:mx-0"
       >
         <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
           <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-[#F5F5F7] flex items-center justify-center border border-white shadow-sm">
-              <TrendingUp className="w-5 h-5 text-[#1a1a1a]" />
+            <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center border border-white shadow-sm">
+              <TrendingUp className="w-5 h-5 text-[#064e3b]" />
             </div>
             <div>
-              <h3 className="text-xl font-medium text-[#1a1a1a]">Health Trends</h3>
+              <h3 className="text-xl font-medium text-[#064e3b]">Health Trends</h3>
               <p className="text-[#666666] text-sm">Monitor your progress over time</p>
             </div>
           </div>
@@ -1778,6 +1853,7 @@ export default function DashboardEnhanced() {
           />
         )}
       </AnimatePresence>
+      </div>
     </div>
   );
 }

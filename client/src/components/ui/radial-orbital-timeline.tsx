@@ -163,7 +163,7 @@ export default function RadialOrbitalTimeline({
         <div className="hidden md:block text-center max-w-3xl mx-auto mb-16">
           <div className="inline-flex items-center gap-2 mb-4">
             <span className="w-1.5 h-1.5 rounded-full bg-cyan-400"></span>
-            <span className="text-sm uppercase tracking-wider text-cyan-300 font-medium">Platform Features</span>
+            <span className="text-sm uppercase tracking-wider text-cyan-300 font-medium">Core Experience</span>
           </div>
           <h2 className="text-3xl md:text-5xl font-bold text-white mb-6">
             Five Core Features That Power HealthAI
@@ -191,16 +191,19 @@ export default function RadialOrbitalTimeline({
               ref={orbitRef}
               style={{
                 perspective: "1000px",
-                transform: `translate(${centerOffset.x}px, ${centerOffset.y}px)`,
+                transform: `translate3d(${centerOffset.x}px, ${centerOffset.y}px, 0)`,
+                willChange: "transform",
+                WebkitBackfaceVisibility: "hidden",
+                backfaceVisibility: "hidden"
               }}
             >
-              <div className="absolute w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 via-blue-500 to-teal-500 animate-pulse flex items-center justify-center z-50">
-                <div className="absolute w-20 h-20 rounded-full border-2 border-white/30 animate-ping opacity-70"></div>
+              <div className="absolute w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 via-blue-500 to-teal-500 flex items-center justify-center z-50 shadow-inner">
+                <div className="absolute w-20 h-20 rounded-full border-2 border-white/30 opacity-70"></div>
                 <div
-                  className="absolute w-24 h-24 rounded-full border-2 border-white/20 animate-ping opacity-50"
+                  className="absolute w-24 h-24 rounded-full border-2 border-white/20 opacity-50"
                   style={{ animationDelay: "0.5s" }}
                 ></div>
-                <div className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-md shadow-lg shadow-white/50"></div>
+                <div className="w-8 h-8 rounded-full bg-white shadow-lg shadow-white/50"></div>
               </div>
 
               <div className="absolute w-96 h-96 rounded-full border border-white/10"></div>
@@ -223,14 +226,20 @@ export default function RadialOrbitalTimeline({
                     key={item.id}
                     ref={(el) => (nodeRefs.current[item.id] = el)}
                     className="absolute transition-all duration-700 cursor-pointer"
-                    style={nodeStyle}
+                    style={{
+                      ...nodeStyle,
+                      willChange: "transform, opacity",
+                      WebkitBackfaceVisibility: "hidden",
+                      backfaceVisibility: "hidden",
+                      transform: `${nodeStyle.transform} translateZ(0)`
+                    }}
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleItem(item.id);
                     }}
                   >
                     <div
-                      className={`absolute rounded-full -inset-1 ${isPulsing ? "animate-pulse duration-1000" : ""
+                      className={`absolute rounded-full -inset-1 ${isPulsing ? "opacity-40" : ""
                         }`}
                       style={{
                         background: `radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%)`,
@@ -276,7 +285,7 @@ export default function RadialOrbitalTimeline({
                     </div>
 
                     {isExpanded && (
-                      <Card className="absolute top-14 left-1/2 -translate-x-1/2 w-48 bg-gradient-to-br from-[#0a3d5c] to-[#0d5a8a] backdrop-blur-lg border-cyan-500/50 shadow-xl shadow-cyan-500/20 overflow-visible z-50">
+                      <Card className="absolute top-14 left-1/2 -translate-x-1/2 w-48 bg-[#0a1628] border-cyan-500/50 shadow-xl shadow-cyan-500/20 overflow-visible z-50">
                         <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-px h-1.5 bg-cyan-400/70"></div>
                         <CardHeader className="pb-1.5 pt-3 px-3">
                           <div className="flex justify-between items-center mb-0.5">
@@ -466,16 +475,19 @@ export default function RadialOrbitalTimeline({
               ref={orbitRef}
               style={{
                 perspective: "1000px",
-                transform: `translate(${centerOffset.x}px, ${centerOffset.y}px)`,
+                transform: `translate3d(${centerOffset.x}px, ${centerOffset.y}px, 0)`,
+                willChange: "transform",
+                WebkitBackfaceVisibility: "hidden",
+                backfaceVisibility: "hidden"
               }}
             >
               <div className="absolute w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 via-blue-500 to-teal-500 animate-pulse flex items-center justify-center z-50">
-                <div className="absolute w-20 h-20 rounded-full border-2 border-white/30 animate-ping opacity-70"></div>
+                <div className="absolute w-20 h-20 rounded-full border-2 border-white/30 opacity-70"></div>
                 <div
-                  className="absolute w-24 h-24 rounded-full border-2 border-white/20 animate-ping opacity-50"
+                  className="absolute w-24 h-24 rounded-full border-2 border-white/20 opacity-50"
                   style={{ animationDelay: "0.5s" }}
                 ></div>
-                <div className="w-8 h-8 rounded-full bg-white/90 backdrop-blur-md shadow-lg shadow-white/50"></div>
+                <div className="w-8 h-8 rounded-full bg-white shadow-lg shadow-white/50"></div>
               </div>
 
               <div className="absolute w-96 h-96 rounded-full border border-white/10"></div>
@@ -498,14 +510,20 @@ export default function RadialOrbitalTimeline({
                     key={item.id}
                     ref={(el) => (nodeRefs.current[item.id] = el)}
                     className="absolute transition-all duration-700 cursor-pointer"
-                    style={nodeStyle}
+                    style={{
+                      ...nodeStyle,
+                      willChange: "transform, opacity",
+                      WebkitBackfaceVisibility: "hidden",
+                      backfaceVisibility: "hidden",
+                      transform: `translate3d(${position.x}px, ${position.y}px, 0)`
+                    }}
                     onClick={(e) => {
                       e.stopPropagation();
                       toggleItem(item.id);
                     }}
                   >
                     <div
-                      className={`absolute rounded-full -inset-1 ${isPulsing ? "animate-pulse duration-1000" : ""
+                      className={`absolute rounded-full -inset-1 ${isPulsing ? "opacity-40" : ""
                         }`}
                       style={{
                         background: `radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%)`,
@@ -551,7 +569,7 @@ export default function RadialOrbitalTimeline({
                     </div>
 
                     {isExpanded && (
-                      <Card className="absolute top-14 left-1/2 -translate-x-1/2 w-48 bg-gradient-to-br from-[#0a3d5c] to-[#0d5a8a] backdrop-blur-lg border-cyan-500/50 shadow-xl shadow-cyan-500/20 overflow-visible z-50">
+                      <Card className="absolute top-14 left-1/2 -translate-x-1/2 w-48 bg-[#0a1628] border-cyan-500/50 shadow-xl shadow-cyan-500/20 overflow-visible z-50">
                         <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-px h-1.5 bg-cyan-400/70"></div>
                         <CardHeader className="pb-1.5 pt-3 px-3">
                           <div className="flex justify-between items-center mb-0.5">

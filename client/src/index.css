@@ -137,9 +137,9 @@
   --bg-primary: #ffffff;
   --bg-secondary: #f8fafc;
   --bg-card: #ffffff;
-  --text-primary: #000000;
-  --text-secondary: #4b5563;
-  --accent-primary: #000000;
+  --text-primary: #064e3b;
+  --text-secondary: #065f46;
+  --accent-primary: #064e3b;
 }
 
 * {
@@ -497,6 +497,21 @@ textarea:focus {
   opacity: 0.8;
 }
 
+@keyframes pulse-emerald {
+  0% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6);
+    transform: translateX(-50%) scale(1);
+  }
+  70% {
+    box-shadow: 0 0 0 12px rgba(16, 185, 129, 0);
+    transform: translateX(-50%) scale(1.05);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0);
+    transform: translateX(-50%) scale(1);
+  }
+}
+
 .nav-center-fab {
   position: absolute;
   top: -30px;
@@ -505,21 +520,22 @@ textarea:focus {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: #64748b;
+  background: #064e3b;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   text-decoration: none;
-  box-shadow: 0 10px 25px rgba(100, 116, 139, 0.2);
+  animation: pulse-emerald 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   z-index: 10;
-  border: 4px solid #ffffff;
+  border: 4px solid #EBF0E6;
 }
 
 .nav-center-fab:hover {
   transform: translateX(-50%) scale(1.1) translateY(-5px);
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 15px 30px rgba(6, 78, 59, 0.3);
+  animation: none; /* Pause pulse on hover for cleaner interaction */
 }
 
 .nav-center-fab:active {

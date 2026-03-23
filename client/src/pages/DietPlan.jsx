@@ -55,55 +55,51 @@ const MealCard = ({ meal, mealType, onLog, isLogged, idx, isLoading }) => {
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-white rounded-[2.5rem] p-5 border border-slate-100 shadow-[0_8px_30px_rgb(0,0,0,0.02)] group hover:shadow-xl hover:shadow-slate-200/50 transition-all flex flex-col h-full min-w-[280px] md:min-w-[320px] snap-start"
+      className="bg-white rounded-[1.5rem] md:rounded-[2.5rem] p-3 md:p-5 border border-emerald-100/30 shadow-[0_4px_20px_rgb(0,0,0,0.02)] group hover:shadow-xl hover:shadow-emerald-200/50 transition-all flex flex-col h-full min-w-[170px] md:min-w-[320px] snap-start"
     >
-      <div className="relative h-48 mb-5 overflow-hidden rounded-[2rem] bg-slate-50">
+      <div className="relative h-28 md:h-48 mb-3 md:mb-5 overflow-hidden rounded-[1rem] md:rounded-[2rem] bg-emerald-50/20">
         <ImageWithFallback
           src={meal.imageUrl}
           query={name}
           alt={name}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-        <div className="absolute top-4 left-4">
-          <span className="bg-white/90 backdrop-blur-md px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest text-slate-800 shadow-sm border border-white/50">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="absolute top-2 left-2 md:top-4 md:left-4">
+          <span className="bg-white/90 backdrop-blur-md px-2 py-1 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest text-[#064e3b] shadow-sm border border-emerald-50/50">
             Option {idx + 1}
           </span>
         </div>
       </div>
 
       <div className="flex-1">
-        <h3 className="text-lg font-semibold text-slate-800 mb-2 leading-tight">{name}</h3>
-        <p className="text-[11px] font-medium text-slate-500 line-clamp-2 mb-6 leading-relaxed">
+        <h3 className="text-sm md:text-lg font-bold text-[#064e3b] mb-1 leading-tight line-clamp-1">{name}</h3>
+        <p className="text-[10px] md:text-[11px] font-medium text-emerald-800/60 line-clamp-1 mb-3 md:mb-6 leading-relaxed">
           {meal.description || meal.benefits || "Nutrient-rich choice designed for your goals."}
         </p>
       </div>
 
-      <div className="flex items-center gap-2 mb-6 scrollbar-hide">
-        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 text-orange-600 rounded-full">
-          <Flame className="w-3.5 h-3.5" />
-          <span className="text-[11px] font-black">{calories} Cal</span>
-        </div>
-        <div className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 rounded-full">
-          <Clock className="w-3.5 h-3.5" />
-          <span className="text-[11px] font-black">15m Prep</span>
+      <div className="flex items-center gap-1.5 mb-3 md:mb-6 overflow-hidden">
+        <div className="flex items-center gap-1 px-2 py-1 bg-orange-50/50 text-orange-600 rounded-full shrink-0">
+          <Flame className="w-2.5 h-2.5" />
+          <span className="text-[9px] md:text-[11px] font-black">{calories} Cal</span>
         </div>
       </div>
 
       <button
         onClick={() => onLog(meal, mealType)}
         disabled={isLogged || isLoading}
-        className={`w-full py-4 rounded-2xl text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-lg ${isLogged
-          ? 'bg-emerald-500 text-white shadow-emerald-200'
-          : 'bg-black text-white hover:bg-slate-800 shadow-black/5'
+        className={`w-full py-2.5 md:py-4 rounded-xl md:rounded-2xl text-[9px] md:text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-sm ${isLogged
+          ? 'bg-emerald-600 text-white shadow-emerald-200'
+          : 'bg-[#064e3b] text-white hover:bg-[#042f2e] shadow-[#064e3b]/10'
           } ${isLoading ? 'opacity-70 cursor-wait' : ''}`}
       >
         {isLoading ? (
-          <RefreshCw className="w-4 h-4 animate-spin" />
+          <RefreshCw className="w-3 h-3 md:w-4 md:h-4 animate-spin" />
         ) : isLogged ? (
-          <><Check className="w-4 h-4" /> Eaten</>
+          <><Check className="w-3 h-3 md:w-4 md:h-4" /> Eaten</>
         ) : (
-          'Log this meal'
+          'Log Meal'
         )}
       </button>
     </motion.div>
@@ -312,34 +308,34 @@ export default function DietPlan() {
 
       {/* Header - Simplified for Global Sticky Header */}
       <div className="relative z-10 flex items-center gap-2 overflow-x-auto scrollbar-hide mb-8 mt-0 md:mt-4">
-        <div className="flex items-center gap-1.5 bg-white/60 backdrop-blur-md px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-white/60 shadow-sm shrink-0">
-          <Calendar className="w-3 h-3 md:w-3.5 md:h-3.5 text-slate-400" />
-          <span className="text-xs md:text-sm font-medium text-slate-600 whitespace-nowrap">
+        <div className="hidden md:flex items-center gap-1.5 bg-white/60 backdrop-blur-md px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-white/60 shadow-sm shrink-0">
+          <Calendar className="w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-800/40" />
+          <span className="text-xs md:text-sm font-medium text-emerald-800/60 whitespace-nowrap">
             {new Date().toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}
           </span>
         </div>
         <button
           onClick={() => setShowHistory(true)}
-          className="flex items-center gap-1.5 px-3 py-1.5 md:px-6 md:py-2 bg-white/60 backdrop-blur-md rounded-full text-xs md:text-sm font-medium text-[#1a1a1a] hover:bg-white transition-all border border-white/60 shadow-sm shrink-0"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-6 md:py-2 bg-emerald-50/60 backdrop-blur-md rounded-full text-[10px] md:text-sm font-black text-[#064e3b] hover:bg-emerald-50 transition-all border border-emerald-200 shadow-sm shrink-0 uppercase tracking-tighter"
         >
-          <Clock className="w-3.5 h-3.5 text-slate-500" /> History
+          <Clock className="w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-800/40" /> History
         </button>
         <button
           onClick={() => {
             setPrefMode('save');
             setShowPreferences(true);
           }}
-          className="flex items-center gap-1.5 px-3 py-1.5 md:px-6 md:py-2 bg-white/60 backdrop-blur-md rounded-full text-xs md:text-sm font-medium text-[#1a1a1a] hover:bg-white transition-all border border-white/60 shadow-sm shrink-0"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-6 md:py-2 bg-emerald-50/60 backdrop-blur-md rounded-full text-[10px] md:text-sm font-black text-[#064e3b] hover:bg-emerald-50 transition-all border border-emerald-200 shadow-sm shrink-0 uppercase tracking-tighter"
         >
-          <Filter className="w-3.5 h-3.5 text-slate-500" /> Preferences
+          <Filter className="w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-800/40" /> Preference
         </button>
         <button
           onClick={() => setShowRegenOptions(true)}
           disabled={generating}
-          className="flex items-center gap-1.5 px-3 py-1.5 md:px-6 md:py-2 bg-black text-white rounded-full text-xs md:text-sm font-medium hover:bg-black transition-all shadow-lg hover:shadow-black/5 active:scale-95 disabled:opacity-50 shrink-0"
+          className="flex items-center gap-1.5 px-3 py-1.5 md:px-6 md:py-2 bg-[#064e3b] text-emerald-50 rounded-full text-[10px] md:text-sm font-bold md:font-medium hover:bg-[#042f2e] transition-all shadow-lg border border-emerald-900/10 active:scale-95 disabled:opacity-50 shrink-0 uppercase tracking-tighter"
         >
-          <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-          {generating ? 'Regenerating...' : 'Regenerate'}
+          <RefreshCw className={`w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-400 ${generating ? 'animate-spin' : ''}`} />
+          {generating ? 'Regenerating...' : 'Regen Plan'}
         </button>
       </div>
 
@@ -367,14 +363,13 @@ export default function DietPlan() {
         <div className="space-y-12 md:space-y-24">
 
           {/* Intelligence Context Message */}
-          <section className="mt-8 p-6 bg-white/40 backdrop-blur-md rounded-[2rem] border border-white/60 shadow-sm">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+          <section className="mt-4 p-4 md:p-6 bg-emerald-50/40 backdrop-blur-md rounded-[1.5rem] md:rounded-[2rem] border border-emerald-100/30 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6">
               <div>
-                <div className="flex items-center gap-2 mb-2">
-                  <Sparkles className="w-4 h-4 text-emerald-500" />
-                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Precision Curation</span>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
                 </div>
-                <h3 className="text-xl font-bold text-slate-800 tracking-tight">
+                <h3 className="text-sm md:text-lg font-bold text-[#064e3b] tracking-tight leading-snug">
                   This diet plan is specially designed by considering your health parameters, fitness goals and BMI for optimal results.
                 </h3>
               </div>
@@ -382,9 +377,9 @@ export default function DietPlan() {
               <div className="flex flex-wrap items-center gap-2">
                 <button 
                   onClick={() => insightsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                  className="flex items-center gap-2 px-6 py-3 bg-white text-black rounded-full text-xs font-black uppercase tracking-widest border border-black hover:bg-black hover:text-white transition-all shadow-md active:scale-95"
+                  className="flex items-center gap-2 px-5 py-2.5 bg-emerald-50 border border-emerald-100/50 text-[#064e3b] rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-[#064e3b] hover:text-white transition-all shadow-sm active:scale-95"
                 >
-                  <Sparkles className="w-4 h-4 text-emerald-500" />
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
                   View AI Insights
                 </button>
               </div>
@@ -401,26 +396,26 @@ export default function DietPlan() {
               <section key={sectionId} className="relative group">
                 <div className="flex items-center justify-between mb-8 px-2">
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-[1.25rem] bg-slate-50 flex items-center justify-center border border-white shadow-sm overflow-hidden text-2xl">
+                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-[1.25rem] bg-emerald-50/30 flex items-center justify-center border border-emerald-50 shadow-sm overflow-hidden text-lg md:text-2xl">
                       {section.emoji}
                     </div>
                     <div>
-                      <h2 className="text-2xl font-light tracking-tight text-slate-800 uppercase">{section.label}</h2>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{section.time}</p>
+                      <h2 className="text-base md:text-2xl font-bold md:font-light tracking-tight text-[#064e3b] uppercase leading-none mb-1">{section.label}</h2>
+                      <p className="text-[8px] md:text-[10px] font-black text-emerald-800/30 uppercase tracking-[0.2em]">{section.time}</p>
                     </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-1.5 md:gap-2">
                     <button
-                      onClick={() => rowRefs.current[sectionId]?.scrollBy({ left: -350, behavior: 'smooth' })}
-                      className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-all shadow-sm"
+                      onClick={() => rowRefs.current[sectionId]?.scrollBy({ left: -250, behavior: 'smooth' })}
+                      className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white border border-emerald-100 flex items-center justify-center hover:bg-emerald-50 transition-all shadow-sm"
                     >
-                      <ChevronLeft className="w-5 h-5" />
+                      <ChevronLeft className="w-4 h-4 md:w-5 md:h-5 text-[#064e3b]" />
                     </button>
                     <button
-                      onClick={() => rowRefs.current[sectionId]?.scrollBy({ left: 350, behavior: 'smooth' })}
-                      className="w-10 h-10 rounded-full bg-white border border-slate-200 flex items-center justify-center hover:bg-slate-50 transition-all shadow-sm"
+                      onClick={() => rowRefs.current[sectionId]?.scrollBy({ left: 250, behavior: 'smooth' })}
+                      className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white border border-emerald-100 flex items-center justify-center hover:bg-emerald-50 transition-all shadow-sm"
                     >
-                      <ChevronRight className="w-5 h-5" />
+                      <ChevronRight className="w-4 h-4 md:w-5 md:h-5 text-[#064e3b]" />
                     </button>
                   </div>
                 </div>

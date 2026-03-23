@@ -187,22 +187,22 @@ export default function DiabetesCare() {
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-8">
         <div>
-          <h1 className="text-4xl md:text-5xl font-light tracking-tight text-[#1a1a1a] mb-2">Diabetes Log</h1>
-          <p className="text-[#666666] text-lg">Comprehensive tracking for Glucose and HbA1c metrics.</p>
+          <h1 className="text-2xl md:text-5xl font-bold md:font-light tracking-tight text-[#064e3b] mb-1">Diabetes Log</h1>
+          <p className="text-emerald-800/40 text-sm md:text-lg">Track your Glucose and HbA1c metrics.</p>
         </div>
-        <div className="flex gap-4">
-          <div className="bg-white px-5 py-3 rounded-2xl border border-slate-100 shadow-sm flex flex-col">
-            <span className="text-[10px] uppercase tracking-widest font-bold text-[#888888] mb-1">Avg Fasting</span>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-black text-[#9583BC]">{avgFasting}</span>
-              <span className="text-xs font-bold text-[#a0a0a0]">mg/dL</span>
+        <div className="grid grid-cols-2 md:flex md:flex-row gap-2 md:gap-4 w-full md:w-auto">
+          <div className="bg-white px-3 py-2.5 md:px-5 md:py-3 rounded-xl md:rounded-2xl border border-emerald-100 shadow-sm flex flex-col items-center md:items-start justify-center">
+            <span className="text-[10px] uppercase tracking-widest font-bold text-emerald-800/40 mb-1">Avg Fasting</span>
+            <div className="flex items-baseline gap-1 md:gap-2">
+              <span className="text-xl md:text-2xl font-black text-[#064e3b]">{avgFasting}</span>
+              <span className="text-[10px] md:text-xs font-bold text-emerald-800/20">mg/dL</span>
             </div>
           </div>
-          <div className="bg-white px-5 py-3 rounded-2xl border border-slate-100 shadow-sm flex flex-col">
-            <span className="text-[10px] uppercase tracking-widest font-bold text-[#888888] mb-1">Latest HbA1c</span>
-            <div className="flex items-baseline gap-2">
-              <span className="text-2xl font-black text-[#1a1a1a]">{latestHba1c}</span>
-              <span className="text-xs font-bold text-[#a0a0a0]">%</span>
+          <div className="bg-white px-3 py-2.5 md:px-5 md:py-3 rounded-xl md:rounded-2xl border border-emerald-100 shadow-sm flex flex-col items-center md:items-start justify-center">
+            <span className="text-[10px] uppercase tracking-widest font-bold text-emerald-800/40 mb-1">Latest HbA1c</span>
+            <div className="flex items-baseline gap-1 md:gap-2">
+              <span className="text-xl md:text-2xl font-black text-[#064e3b]">{latestHba1c}</span>
+              <span className="text-[10px] md:text-xs font-bold text-emerald-800/20">%</span>
             </div>
           </div>
         </div>
@@ -216,12 +216,12 @@ export default function DiabetesCare() {
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className={`${glassCard} p-6 md:p-8 relative overflow-hidden`}
+            className={`${glassCard} p-4 md:p-8 relative overflow-hidden bg-white/60`}
           >
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#9583BC]/10 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
+            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2"></div>
 
-            <h3 className="text-xl font-bold text-[#1a1a1a] mb-6 flex items-center gap-2">
-              <Plus className="w-5 h-5 text-[#9583BC]" /> Log New Reading
+            <h3 className="text-base md:text-xl font-bold text-[#064e3b] mb-4 md:mb-6 flex items-center gap-2">
+              <Plus className="w-4 h-4 md:w-5 md:h-5 text-emerald-500" /> Log New Reading
             </h3>
 
             <div className="space-y-5 relative z-10">
@@ -243,14 +243,14 @@ export default function DiabetesCare() {
               {readingCategory === 'Glucose' && (
                 <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }}>
                   <label className="block text-xs font-bold text-[#666666] uppercase tracking-wide mb-2">Context</label>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-4 lg:grid-cols-2 gap-1.5 md:gap-2">
                     {['Fasting', 'Pre-Meal', 'Post-Meal', 'Random'].map(context => (
                       <button
                         key={context}
                         onClick={() => setGlucoseContext(context)}
-                        className={`py-2 px-3 text-xs font-bold rounded-xl border transition-all mt-1 ${glucoseContext === context ? 'bg-[#9583BC]/10 border-[#9583BC] text-[#9583BC]' : 'bg-white border-slate-200 text-[#888888] hover:border-[#9583BC]/50'}`}
+                        className={`py-1.5 md:py-2 px-1 text-[9px] md:text-xs font-bold rounded-lg md:rounded-xl border transition-all ${glucoseContext === context ? 'bg-emerald-50 border-emerald-500 text-emerald-700' : 'bg-white border-slate-100 text-emerald-800/40 hover:border-emerald-500/30'}`}
                       >
-                        {context}
+                        {context.replace('-Meal', '')}
                       </button>
                     ))}
                   </div>
@@ -298,10 +298,10 @@ export default function DiabetesCare() {
               <button
                 onClick={handleSaveReading}
                 disabled={saving || !readingValue}
-                className="w-full py-4 mt-2 bg-[#9583BC] text-white rounded-xl font-bold shadow-lg hover:bg-[#8574ab] transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50"
+                className="w-full py-3 md:py-4 mt-2 bg-[#064e3b] text-white rounded-xl font-bold shadow-lg hover:bg-[#042f2e] transition-all flex items-center justify-center gap-2 active:scale-[0.98] disabled:opacity-50 text-xs md:text-base uppercase tracking-widest"
               >
-                {saving ? <Loader2 className="w-5 h-5 animate-spin" /> : <Plus className="w-5 h-5" />}
-                {saving ? 'Saving...' : 'Save to Log'}
+                {saving ? <Loader2 className="w-4 h-4 md:w-5 md:h-5 animate-spin" /> : <Plus className="w-4 h-4 md:w-5 md:h-5" />}
+                {saving ? 'Saving...' : 'Save Reading'}
               </button>
             </div>
           </motion.div>

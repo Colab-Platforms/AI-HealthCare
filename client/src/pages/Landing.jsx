@@ -88,11 +88,12 @@ function Header() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-orange-600 rounded-xl flex items-center justify-center">
-              <Activity className="w-5 h-5 text-white" />
-            </div>
-            <span className="font-semibold text-slate-900 text-xl">FitCure</span>
+          <Link to="/" className="flex items-center">
+            <img 
+              src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
+              alt="FitCure" 
+              className="h-16 w-auto object-contain"
+            />
           </Link>
 
           {/* Desktop Navigation */}
@@ -204,13 +205,27 @@ function Hero() {
 
         {/* Hero Image */}
         <div className="mt-16 relative">
-          <div className="absolute inset-0 bg-gradient-to-t from-slate-50 via-transparent to-transparent z-10"></div>
           <div className="bg-white rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl shadow-blue-600/10 border border-slate-200">
-            <img
-              src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Banner-ai-diagnostic.jpg?v=1768294903"
-              alt="AI Health Dashboard"
-              className="w-full h-auto object-cover"
-            />
+            {/* Desktop Video */}
+            <video 
+              autoPlay 
+              loop 
+              muted 
+              playsInline 
+              className="hidden md:block w-full h-auto object-cover"
+            >
+              <source src="https://cdn.shopify.com/videos/c/o/v/eb123ae437614572aaef173de614bd8d.mp4" type="video/mp4" />
+            </video>
+            {/* Mobile Video */}
+            <video 
+              autoPlay 
+              loop 
+              muted 
+              playsInline 
+              className="block md:hidden w-full h-auto object-cover"
+            >
+              <source src="https://cdn.shopify.com/videos/c/o/v/ad7e9aa9cd414492b6cf528b9eacc6f3.mp4" type="video/mp4" />
+            </video>
           </div>
         </div>
       </div>
@@ -695,54 +710,33 @@ function Footer() {
   return (
     <footer className="bg-gradient-to-b from-[#0a3d5c] to-[#051f2e] text-white py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-8 mb-12">
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8 mb-12">
           {/* Brand */}
           <div className="col-span-2 lg:col-span-1">
-            <div className="flex items-center gap-2 mb-4">
-              <div className="w-8 h-8 bg-[#8B7355] rounded-xl flex items-center justify-center">
-                <Activity className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-serif text-xl">FitCure</span>
+            <div className="flex items-center mb-4">
+              <img 
+                src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
+                alt="FitCure" 
+                className="h-18 w-auto object-contain"
+              />
             </div>
             <p className="text-white/60 text-sm mb-4">AI-powered health insights for better living.</p>
           </div>
 
-          {/* Product */}
+          {/* Navigation - Matching Header */}
           <div>
-            <h4 className="font-semibold mb-4">Product</h4>
+            <h4 className="font-semibold mb-4 text-[#8B7355]">Quick Links</h4>
             <ul className="space-y-3 text-sm">
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors">Features</a></li>
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors">Pricing</a></li>
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors">Mobile App</a></li>
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors">API</a></li>
-            </ul>
-          </div>
-
-          {/* Company */}
-          <div>
-            <h4 className="font-semibold mb-4">Company</h4>
-            <ul className="space-y-3 text-sm">
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors">About</a></li>
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors">Blog</a></li>
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors">Careers</a></li>
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors">Press</a></li>
-            </ul>
-          </div>
-
-          {/* Resources */}
-          <div>
-            <h4 className="font-semibold mb-4">Resources</h4>
-            <ul className="space-y-3 text-sm">
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors">Help Center</a></li>
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors">Health Guides</a></li>
-
-              <li><a href="#" className="text-white/60 hover:text-white transition-colors">Partner with Us</a></li>
+              <li><a href="#features" className="text-white/60 hover:text-white transition-colors">Features</a></li>
+              <li><a href="#experience" className="text-white/60 hover:text-white transition-colors">Experience</a></li>
+              <li><a href="#testimonials" className="text-white/60 hover:text-white transition-colors">Testimonials</a></li>
+              <li><a href="#faq" className="text-white/60 hover:text-white transition-colors">FAQ</a></li>
             </ul>
           </div>
 
           {/* Legal */}
           <div>
-            <h4 className="font-semibold mb-4">Legal</h4>
+            <h4 className="font-semibold mb-4 text-[#8B7355]">Legal</h4>
             <ul className="space-y-3 text-sm">
               <li><a href="#" className="text-white/60 hover:text-white transition-colors">Privacy Policy</a></li>
               <li><a href="#" className="text-white/60 hover:text-white transition-colors">Terms of Service</a></li>

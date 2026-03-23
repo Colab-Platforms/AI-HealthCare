@@ -245,21 +245,9 @@ export default function UploadReport() {
   const viewingReport = allReports.find(r => r._id === viewingReportId);
 
   return (
-    <div className="px-4 md:px-8 pt-2 md:pt-8 max-w-[1400px] mx-auto space-y-8 relative font-sans bg-transparent">
-      <div className="pt-4" />
-      <div className="flex items-center gap-4">
-        <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200">
-           <Zap className="w-6 h-6 text-white" />
-        </div>
-        <div>
-           <h1 className="text-3xl md:text-5xl font-black text-[#1a1a1a] tracking-tight">AI Lab Analyzer</h1>
-           <p className="text-[#A795C7] font-bold uppercase tracking-[0.2em] text-xs mt-1">Smart Medical Intelligence</p>
-        </div>
-      </div>
-      <div className="mt-4 max-w-3xl">
-        <p className="text-[#666666] text-sm md:text-lg leading-relaxed">Upload MRI scans or lab reports and let our AI translate complex medical data into interactive insights.</p>
-      </div>
-
+    <div className="px-4 md:px-8 pt-0 md:pt-4 max-w-[1400px] mx-auto space-y-6 relative font-sans bg-transparent">
+      <div className="pt-2" />
+      
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Upload & Comparison */}
         <div className="lg:col-span-2 flex flex-col gap-8">

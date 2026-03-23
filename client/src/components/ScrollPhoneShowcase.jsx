@@ -103,7 +103,7 @@ const ScrollPhoneShowcase = () => {
   });
 
   return (
-    <div id="showcase" ref={containerRef} className="relative bg-transparent" style={{ height: `${(features.length + 1) * 100}vh` }}>
+    <div id="experience" ref={containerRef} className="relative bg-transparent" style={{ height: `${(features.length + 1) * 100}vh` }}>
       {/* Sticky container for phone and cards */}
       <div className="sticky top-0 h-screen flex flex-col items-center justify-center overflow-hidden pt-12 sm:pt-20 lg:pt-24">
 
