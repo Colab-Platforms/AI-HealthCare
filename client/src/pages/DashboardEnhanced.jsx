@@ -493,7 +493,7 @@ const MealDetailModal = ({ meal, onClose, onAdd }) => {
         {/* Footer */}
         <div className="p-8 pt-0">
           <button
-            onClick={() => onAdd(data.foodItem)}
+            onClick={() => onAdd(data)}
             className="w-full py-5 bg-slate-900 hover:bg-black text-white rounded-[24px] font-black uppercase tracking-widest shadow-xl shadow-black/10 transition-all flex items-center justify-center gap-3"
           >
             <Plus className="w-5 h-5" /> Add to Diet Plan
@@ -881,12 +881,12 @@ export default function DashboardEnhanced() {
               };
 
               const microScores = [
-                ((nutritionData?.totalFiber || 0) / driTargets.fiber) * 100,
-                ((nutritionData?.totalSugar || 0) / driTargets.sugar) * 100,
-                ((nutritionData?.totalSodium || 0) / driTargets.sodium) * 100,
-                ((nutritionData?.totalVitaminA || 0) / driTargets.vitaminA) * 100,
-                ((nutritionData?.totalVitaminC || 0) / driTargets.vitaminC) * 100,
-                ((nutritionData?.totalIron || 0) / driTargets.iron) * 100
+                ((nutritionData?.totalFiber || dashboardData?.nutritionData?.totalFiber || 0) / driTargets.fiber) * 100,
+                ((nutritionData?.totalSugar || dashboardData?.nutritionData?.totalSugar || 0) / driTargets.sugar) * 100,
+                ((nutritionData?.totalSodium || dashboardData?.nutritionData?.totalSodium || 0) / driTargets.sodium) * 100,
+                ((nutritionData?.totalVitaminA || dashboardData?.nutritionData?.totalVitaminA || 0) / driTargets.vitaminA) * 100,
+                ((nutritionData?.totalVitaminC || dashboardData?.nutritionData?.totalVitaminC || 0) / driTargets.vitaminC) * 100,
+                ((nutritionData?.totalIron || dashboardData?.nutritionData?.totalIron || 0) / driTargets.iron) * 100
               ];
               const avgMicro = Math.min(Math.round(microScores.reduce((a, b) => a + b, 0) / microScores.length), 100);
 
@@ -957,55 +957,55 @@ export default function DashboardEnhanced() {
             <div className="space-y-4 overflow-y-auto max-h-[300px] pr-2 scrollbar-hide py-1">
               <NutrientProgressRow
                 label="Fiber"
-                value={((nutritionData?.totalFiber || 0) / 30) * 100}
+                value={((nutritionData?.totalFiber || dashboardData?.nutritionData?.totalFiber || 0) / 30) * 100}
                 targetLabel="30g recommended"
                 icon={Sparkles} color="bg-emerald-500" iconBg="bg-emerald-50" iconColor="text-emerald-500"
               />
               <NutrientProgressRow
                 label="Iron"
-                value={((nutritionData?.totalIron || 0) / 18) * 100}
+                value={((nutritionData?.totalIron || dashboardData?.nutritionData?.totalIron || 0) / 18) * 100}
                 targetLabel="18mg target"
                 icon={Zap} color="bg-orange-500" iconBg="bg-orange-50" iconColor="text-orange-500"
               />
               <NutrientProgressRow
                 label="Vitamin C"
-                value={((nutritionData?.totalVitaminC || 0) / 90) * 100}
+                value={((nutritionData?.totalVitaminC || dashboardData?.nutritionData?.totalVitaminC || 0) / 90) * 100}
                 targetLabel="90mg target"
                 icon={Sun} color="bg-yellow-500" iconBg="bg-yellow-50" iconColor="text-yellow-500"
               />
               <NutrientProgressRow
                 label="Vitamin A"
-                value={((nutritionData?.totalVitaminA || 0) / 900) * 100}
+                value={((nutritionData?.totalVitaminA || dashboardData?.nutritionData?.totalVitaminA || 0) / 900) * 100}
                 targetLabel="900mcg target"
                 icon={Eye} color="bg-purple-500" iconBg="bg-purple-50" iconColor="text-purple-500"
               />
               <NutrientProgressRow
                 label="Calcium"
-                value={((nutritionData?.totalCalcium || 0) / 1000) * 100}
+                value={((nutritionData?.totalCalcium || dashboardData?.nutritionData?.totalCalcium || 0) / 1000) * 100}
                 targetLabel="1000mg target"
                 icon={Target} color="bg-blue-500" iconBg="bg-blue-50" iconColor="text-blue-500"
               />
               <NutrientProgressRow
                 label="Vitamin D"
-                value={((nutritionData?.totalVitaminD || 0) / 20) * 100}
+                value={((nutritionData?.totalVitaminD || dashboardData?.nutritionData?.totalVitaminD || 0) / 20) * 100}
                 targetLabel="20mcg target"
                 icon={Sun} color="bg-amber-500" iconBg="bg-amber-50" iconColor="text-amber-500"
               />
               <NutrientProgressRow
                 label="B12"
-                value={((nutritionData?.totalVitaminB12 || 0) / 2.4) * 100}
+                value={((nutritionData?.totalVitaminB12 || dashboardData?.nutritionData?.totalVitaminB12 || 0) / 2.4) * 100}
                 targetLabel="2.4mcg target"
                 icon={FlaskConical} color="bg-red-500" iconBg="bg-red-50" iconColor="text-red-500"
               />
               <NutrientProgressRow
                 label="Sodium"
-                value={((nutritionData?.totalSodium || 0) / 2300) * 100}
+                value={((nutritionData?.totalSodium || dashboardData?.nutritionData?.totalSodium || 0) / 2300) * 100}
                 targetLabel="2300mg max"
                 icon={AlertCircle} color="bg-slate-400" iconBg="bg-slate-50" iconColor="text-slate-400"
               />
               <NutrientProgressRow
                 label="Sugar"
-                value={((nutritionData?.totalSugar || 0) / 50) * 100}
+                value={((nutritionData?.totalSugar || dashboardData?.nutritionData?.totalSugar || 0) / 50) * 100}
                 targetLabel="50g max"
                 icon={Droplet} color="bg-slate-600" iconBg="bg-slate-50" iconColor="text-slate-600"
               />
@@ -1749,8 +1749,9 @@ export default function DashboardEnhanced() {
           <MealDetailModal
             meal={selectedMealForModal}
             onClose={() => setShowMealModal(false)}
-            onAdd={async (foodItem) => {
+            onAdd={async (foodData) => {
               try {
+                const foodItem = foodData.foodItem || foodData;
                 await api.post('nutrition/log-meal', {
                   mealType: activeMealTab === 'snacks' ? 'snack' : activeMealTab,
                   foodItems: [{
@@ -1758,6 +1759,10 @@ export default function DashboardEnhanced() {
                     quantity: foodItem.quantity,
                     nutrition: foodItem.nutrition
                   }],
+                  healthScore: foodData.healthScore,
+                  healthScore10: foodData.healthScore10,
+                  micronutrients: foodData.micronutrients,
+                  source: 'dashboard_gallery',
                   timestamp: new Date()
                 });
                 toast.success('Meal added to your logs!');

@@ -170,9 +170,26 @@ class NutritionAI {
   }
 
   async analyzeGlucoseTrends(userProfile, glucoseReadings, foodLogs, hba1cReadings = []) {
-    const prompt = `Analyze trends for patient. Data: ${JSON.stringify({ userProfile, glucoseReadings, foodLogs, hba1cReadings })}. JSON format only.`;
+    const prompt = `Analyze current glucose trends and food impact. 
+    User Profile: ${JSON.stringify(userProfile)}
+    Recent Glucose Readings: ${JSON.stringify(glucoseReadings)}
+    Today's Food Logs: ${JSON.stringify(foodLogs)}
+    Recent HbA1c: ${JSON.stringify(hba1cReadings)}
+
+    Return ONLY a JSON object with this exact structure:
+    {
+      "status": "Short status string (e.g. Stable, Volatile, Improving)",
+      "statusColor": "green, yellow, orange, or red",
+      "analysis": "2-3 sentence technical overview of patterns and food interaction",
+      "spikeCause": "Identified dietary causes of spikes (e.g., High-carb lunch at 1pm)",
+      "immediateAction": "One clear instruction for the user to follow now",
+      "recommendations": ["Tip 1", "Tip 2", "Tip 3"]
+    }
+    
+    If data is insufficient, provide a placeholder analysis asking for more logs.`;
+    
     const payload = {
-      system: 'Professional endocrinologist AI. JSON format only.',
+      system: 'You are an expert Endocrinologist AI. Provide clinical-grade analysis of glucose data and its relationship with food logs. Return ONLY valid JSON.',
       messages: [{ role: 'user', content: prompt }]
     };
     return this._parseResponse(await this.makeAIRequest(payload));

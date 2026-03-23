@@ -654,26 +654,27 @@ function Nutrition() {
               initial={{ height: 0, opacity: 0, marginBottom: 0 }}
               animate={{ height: 'auto', opacity: 1, marginBottom: 16 }}
               exit={{ height: 0, opacity: 0, marginBottom: 0 }}
-              className="bg-black text-white p-4 md:p-6 rounded-3xl md:rounded-[2.5rem] flex flex-col md:flex-row items-center gap-3 md:gap-6 border-2 md:border-4 border-red-500/50 shadow-2xl relative overflow-hidden"
+              className="md:bg-black md:text-white p-0 md:p-6 rounded-3xl md:rounded-[2.5rem] flex flex-col md:flex-row items-center gap-2 md:gap-6 md:border-2 md:border-4 border-red-500/50 md:shadow-2xl relative overflow-hidden"
             >
-              <div className="absolute top-0 right-0 w-[400px] h-full bg-red-500/10 rounded-full blur-[80px] pointer-events-none" />
-              <div className="w-10 h-10 md:w-14 md:h-14 bg-red-500 rounded-xl md:rounded-2xl flex items-center justify-center shrink-0 shadow-lg shadow-red-500/40">
+              <div className="absolute top-0 right-0 w-[400px] h-full bg-red-500/10 rounded-full blur-[80px] pointer-events-none hidden md:block" />
+              <div className="hidden md:flex w-10 h-10 md:w-14 md:h-14 bg-red-500 rounded-xl md:rounded-2xl items-center justify-center shrink-0 shadow-lg shadow-red-500/40">
                 <AlertCircle className="w-5 h-5 md:w-8 md:h-8 text-white" />
               </div>
-              <div className="flex-1 text-center md:text-left">
-                <h4 className="text-base md:text-lg font-black uppercase tracking-tighter mb-0.5 md:mb-1">
+              <div className="flex-1 text-left">
+                <h4 className="hidden md:block text-base md:text-lg font-black uppercase tracking-tighter mb-0.5 md:mb-1">
                   Threshold Exceeded
                 </h4>
-                <p className="text-xs font-bold text-red-100 uppercase tracking-widest leading-relaxed">
-                  You have surpassed your recommended intake for 
-                  {dailySummary.caloriesConsumed > dailySummary.calorieTarget && <span className="text-white bg-red-500/20 px-2 mx-1 rounded-lg border border-red-500/20">Calories</span>}
-                  {dailySummary.protein > dailySummary.proteinTarget && <span className="text-white bg-red-500/20 px-2 mx-1 rounded-lg border border-red-500/20">Protein</span>}
-                  {dailySummary.carbs > dailySummary.carbsTarget && <span className="text-white bg-red-500/20 px-2 mx-1 rounded-lg border border-red-500/20">Carbs</span>}
-                  {dailySummary.fats > dailySummary.fatsTarget && <span className="text-white bg-red-500/20 px-2 mx-1 rounded-lg border border-red-500/20">Fats</span>}
-                   today. Consider lighter meals for the rest of the protocol.
+                <p className="text-[10px] md:text-xs font-black text-red-500 md:text-red-100 uppercase tracking-widest leading-relaxed line-clamp-2 md:line-clamp-none">
+                  <span className="md:hidden inline-block mr-1">⚠️</span>
+                  Exceeded intake for 
+                  {dailySummary.caloriesConsumed > dailySummary.calorieTarget && <span className="text-red-600 md:text-white md:bg-red-500/20 md:px-2 md:mx-1 rounded-lg md:border border-red-500/20">Calories</span>}
+                  {dailySummary.protein > dailySummary.proteinTarget && <span className="text-red-600 md:text-white md:bg-red-500/20 md:px-2 md:mx-1 rounded-lg md:border border-red-500/20">Protein</span>}
+                  {dailySummary.carbs > dailySummary.carbsTarget && <span className="text-red-600 md:text-white md:bg-red-500/20 md:px-2 md:mx-1 rounded-lg md:border border-red-500/20">Carbs</span>}
+                  {dailySummary.fats > dailySummary.fatsTarget && <span className="text-red-600 md:text-white md:bg-red-500/20 md:px-2 md:mx-1 rounded-lg md:border border-red-500/20">Fats</span>}
+                   today. Consider lighter meals ahead.
                 </p>
               </div>
-              <div className="flex flex-wrap justify-center gap-3">
+              <div className="flex flex-wrap justify-center gap-3 hidden md:flex">
                  <button 
                    onClick={() => navigate('/diet-plan')} 
                    className="bg-white text-black px-4 py-2 md:px-6 md:py-2.5 rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all flex items-center gap-2"
@@ -1586,11 +1587,11 @@ function Nutrition() {
                   <div className="pt-6 pb-20 md:pb-6">
                     <div className="mb-6 space-y-3">
                       <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">Log this to</h4>
-                      <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+                      <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-100 gap-1 overflow-x-auto scrollbar-hide">
                         {['Breakfast', 'Mid-Morning', 'Lunch', 'Evening', 'Dinner'].map(tab => (
                           <button
                             key={tab} onClick={() => setMealTab(tab)}
-                            className={`flex-1 py-3 text-[10px] font-black rounded-xl transition-all uppercase tracking-widest ${mealTab === tab ? 'bg-black text-white shadow-xl' : 'text-slate-400 hover:text-black'}`}
+                            className={`flex-shrink-0 px-4 py-3 text-[10px] font-black rounded-xl transition-all uppercase tracking-widest whitespace-nowrap ${mealTab === tab ? 'bg-black text-white shadow-xl' : 'text-slate-400 hover:text-black'}`}
                           >
                             {tab}
                           </button>

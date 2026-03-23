@@ -606,8 +606,17 @@ exports.getDashboardData = async (req, res) => {
         proteinGoal,
         carbs: nutritionDataSummary?.totalCarbs || 0,
         carbsGoal,
-        fats: nutritionDataSummary?.totalFats || 0,
+        totalFats: nutritionDataSummary?.totalFats || 0,
         fatsGoal: fatGoal,
+        totalFiber: nutritionDataSummary?.totalFiber || 0,
+        totalSugar: nutritionDataSummary?.totalSugar || 0,
+        totalSodium: nutritionDataSummary?.totalSodium || 0,
+        totalVitaminA: nutritionDataSummary?.totalVitaminA || 0,
+        totalVitaminC: nutritionDataSummary?.totalVitaminC || 0,
+        totalVitaminD: nutritionDataSummary?.totalVitaminD || 0,
+        totalVitaminB12: nutritionDataSummary?.totalVitaminB12 || 0,
+        totalIron: nutritionDataSummary?.totalIron || 0,
+        totalCalcium: nutritionDataSummary?.totalCalcium || 0,
         waterIntake: nutritionDataSummary?.waterIntake || 0,
         todayLogs: todayLogs || []
       }

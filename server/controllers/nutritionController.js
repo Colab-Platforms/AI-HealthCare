@@ -587,6 +587,28 @@ exports.logMeal = async (req, res) => {
       }
     });
 
+    // Extract vitamins and minerals from micronutrients array into totalNutrition
+    // This ensures they are tracked in the summary and dashboard correctly
+    totalNutrition.vitamins = {
+      vitaminA: 0, vitaminC: 0, vitaminD: 0, vitaminB12: 0, iron: 0, calcium: 0
+    };
+    
+    sanitizedMicronutrients.forEach(m => {
+      const name = (m.name || '').toLowerCase();
+      const val = Number(parseFloat(String(m.value || '0').replace(/[^0-9.]/g, ''))) || 0;
+      if (name.includes('vitamin a')) totalNutrition.vitamins.vitaminA += val;
+      else if (name.includes('vitamin c')) totalNutrition.vitamins.vitaminC += val;
+      else if (name.includes('vitamin d')) totalNutrition.vitamins.vitaminD += val;
+      else if (name.includes('vitamin b12')) totalNutrition.vitamins.vitaminB12 += val;
+      else if (name.includes('iron')) totalNutrition.vitamins.iron += val;
+      else if (name.includes('calcium')) totalNutrition.vitamins.calcium += val;
+      
+      // Backup sync for fiber/sugar/sodium if they weren't in the main nutrition block
+      if (name.includes('fiber') && totalNutrition.fiber === 0) totalNutrition.fiber = val;
+      if (name.includes('sugar') && totalNutrition.sugar === 0) totalNutrition.sugar = val;
+      if (name.includes('sodium') && totalNutrition.sodium === 0) totalNutrition.sodium = val;
+    });
+
     const foodLog = new FoodLog({
       userId: req.user._id,
       mealType,
@@ -1404,6 +1426,22 @@ async function updateDailySummary(userId, date) {
         totals.totalVitaminB12 += Number(logNutrition.vitamins.vitaminB12) || 0;
         totals.totalIron += Number(logNutrition.vitamins.iron) || 0;
         totals.totalCalcium += Number(logNutrition.vitamins.calcium) || 0;
+      } else if (log.micronutrients && log.micronutrients.length > 0) {
+        // Fallback: Parse micronutrients array if vitamins object is missing
+        log.micronutrients.forEach(m => {
+          const name = (m.name || '').toLowerCase();
+          const val = Number(parseFloat(String(m.value || '0').replace(/[^0-9.]/g, ''))) || 0;
+          
+          if (name.includes('vitamin a')) totals.totalVitaminA += val;
+          else if (name.includes('vitamin c')) totals.totalVitaminC += val;
+          else if (name.includes('vitamin d')) totals.totalVitaminD += val;
+          else if (name.includes('vitamin b12')) totals.totalVitaminB12 += val;
+          else if (name.includes('iron')) totals.totalIron += val;
+          else if (name.includes('calcium')) totals.totalCalcium += val;
+          else if (name.includes('fiber')) totals.totalFiber += val;
+          else if (name.includes('sugar')) totals.totalSugar += val;
+          else if (name.includes('sodium')) totals.totalSodium += val;
+        });
       }
 
       // Weight the health score by calories of the item
@@ -1444,6 +1482,12 @@ async function updateDailySummary(userId, date) {
         totalFiber: totals.totalFiber,
         totalSugar: totals.totalSugar,
         totalSodium: totals.totalSodium,
+        totalVitaminA: totals.totalVitaminA,
+        totalVitaminC: totals.totalVitaminC,
+        totalVitaminD: totals.totalVitaminD,
+        totalVitaminB12: totals.totalVitaminB12,
+        totalIron: totals.totalIron,
+        totalCalcium: totals.totalCalcium,
         averageHealthScore: totals.averageHealthScore,
         mealsLogged
       });

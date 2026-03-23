@@ -86,9 +86,11 @@ const foodLogSchema = new mongoose.Schema({
 // Index for querying user's food logs by date
 foodLogSchema.index({ userId: 1, timestamp: -1 });
 
-// Calculate total nutrition before saving
+// Calculate total nutrition before saving if not already provided (e.g., from AI analysis)
 foodLogSchema.pre('save', function (next) {
-  if (this.foodItems && this.foodItems.length > 0) {
+  // If totalNutrition was already explicitly calculated (like in AI vision log), don't overwrite it
+  // This prevents losing micronutrients that were parsed globally from AI response
+  if (this.foodItems && this.foodItems.length > 0 && (!this.totalNutrition || !this.totalNutrition.calories)) {
     const total = {
       calories: 0,
       protein: 0,
