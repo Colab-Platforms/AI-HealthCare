@@ -5,6 +5,28 @@ import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import toast from 'react-hot-toast';
 
+// Clean up AI response: remove markdown bold, excessive special chars, and format as clean text
+function formatResponse(text) {
+  if (!text) return text;
+  let cleaned = text;
+  // Remove markdown bold (**text** or __text__)
+  cleaned = cleaned.replace(/\*\*([^*]+)\*\*/g, '$1');
+  cleaned = cleaned.replace(/__([^_]+)__/g, '$1');
+  // Remove markdown italic (*text* or _text_) but keep bullet points
+  cleaned = cleaned.replace(/(?<!\n)\*([^*\n]+)\*/g, '$1');
+  // Remove markdown headers (### text)
+  cleaned = cleaned.replace(/^#{1,6}\s+/gm, '');
+  // Convert markdown bullet points (- item or * item) to clean bullet
+  cleaned = cleaned.replace(/^[\-\*]\s+/gm, '• ');
+  // Remove excessive exclamation marks (!! or more)
+  cleaned = cleaned.replace(/!{2,}/g, '.');
+  // Remove stray special characters that look like jargon (multiple consecutive special chars)
+  cleaned = cleaned.replace(/[!@#$%^&]{2,}/g, '');
+  // Clean up multiple newlines into max 2
+  cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+  return cleaned.trim();
+}
+
 export default function AIChat() {
   const { user } = useAuth();
   const location = useLocation();
@@ -75,7 +97,7 @@ export default function AIChat() {
   }, [messages, streamingText]);
 
   const generateGreetingWithReports = () => {
-    let greeting = `Hello ${user?.name?.split(' ')[0] || 'there'}! I'm your **FitCure Intelligence** assistant. 👋\n\n`;
+    let greeting = `Hello ${user?.name?.split(' ')[0] || 'there'}! I'm your take.health Coach.\n\n`;
     if (userReports && userReports.length > 0) {
       greeting += `I've analyzed your health profile and recent reports. How can I assist you today with your wellness journey?`;
     } else {
@@ -150,8 +172,9 @@ export default function AIChat() {
       });
 
       if (data.success && data.response) {
-        streamResponse(data.response, () => {
-          const aiResponse = { role: 'assistant', content: data.response, timestamp: new Date() };
+        const cleanedResponse = formatResponse(data.response);
+        streamResponse(cleanedResponse, () => {
+          const aiResponse = { role: 'assistant', content: cleanedResponse, timestamp: new Date() };
           const updatedMessages = [...messages, userMessage, aiResponse];
           setMessages(updatedMessages);
           setStreamingText('');
@@ -174,7 +197,7 @@ export default function AIChat() {
   };
 
   return (
-    <div className="fixed inset-0 h-[100dvh] bg-gradient-to-br from-purple-50 via-white to-purple-100 flex flex-col md:flex-row overflow-hidden md:pb-0 safe-layout">
+    <div className="w-full bg-white flex flex-col md:flex-row md:pb-0" style={{ position: 'relative', height: '100%', minHeight: 0 }}>
       {/* Sidebar - Desktop */}
       <div className={`fixed md:relative inset-y-0 left-0 w-80 bg-slate-50 border-r border-slate-100 flex flex-col z-[60] transition-transform duration-500 ease-in-out md:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
         <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white">
@@ -199,7 +222,6 @@ export default function AIChat() {
 
           <div className="pt-4 px-2">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Recent Sessions</p>
-            {/* Placeholder for real session history if implemented */}
             <div className="p-4 bg-white rounded-2xl border border-slate-100 text-[11px] font-bold text-slate-500 italic">
               All health insights are encrypted & private.
             </div>
@@ -215,28 +237,26 @@ export default function AIChat() {
 
       {sidebarOpen && <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 md:hidden" onClick={() => setSidebarOpen(false)} />}
 
-      {/* Main Chat Interface */}
-      <div className="flex-1 flex flex-col h-full relative bg-transparent">
-        <div className="pt-1 md:pt-4" />
+      {/* Main Chat Interface - uses fixed input on mobile */}
+      <div className="flex-1 flex flex-col relative bg-transparent" style={{ height: '100%', minHeight: 0 }}>
 
-        {/* Message Viewport */}
-        <div ref={chatContainerRef} className="flex-1 overflow-y-auto px-6 py-8 space-y-8 scroll-smooth">
+        {/* Message Viewport - scrollable, with bottom padding for the fixed input dock */}
+        <div ref={chatContainerRef} className="flex-1 overflow-y-auto px-6 pt-4 pb-44 md:pb-8 space-y-8 scroll-smooth" style={{ minHeight: 0 }}>
           {messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-4 duration-500`}>
               <div className={`flex gap-3 md:gap-4 w-full md:max-w-[75%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                <div className={`w-10 h-10 rounded-xl shrink-0 flex items-center justify-center shadow-lg ${msg.role === 'user' ? 'bg-black' : 'bg-slate-100 hidden md:flex'}`}>
-                  {msg.role === 'user' ? <User className="w-5 h-5 text-white" /> : <Bot className="w-5 h-5 text-black" />}
-                </div>
-                <div className={`relative p-5 rounded-2xl shadow-sm w-full md:w-auto ${msg.role === 'user' ? 'bg-black text-white rounded-tr-none' : 'bg-slate-50 text-slate-800 border border-slate-100 rounded-tl-none md:rounded-tl-none'}`}>
-                  <div className="text-sm leading-relaxed font-bold prose prose-slate max-w-none prose-sm">
+                {msg.role === 'assistant' && (
+                  <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center border border-slate-200 bg-white">
+                    <Sparkles className="w-4 h-4 text-emerald-600" />
+                  </div>
+                )}
+                <div className={`relative w-full md:w-auto flex flex-col ${msg.role === 'user' ? 'bg-slate-100 text-slate-800 rounded-3xl px-5 py-3.5' : 'bg-transparent text-slate-800 py-1'}`}>
+                  <div className="text-sm leading-relaxed font-medium whitespace-pre-wrap max-w-none">
                     {msg.content}
                   </div>
-                  <div className={`flex items-center justify-between mt-4 gap-4 ${msg.role === 'user' ? 'text-white/60' : 'text-slate-400'}`}>
-                    <span className="text-[10px] font-black uppercase tracking-widest">
-                      {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+                  <div className={`flex items-center mt-2 gap-4 ${msg.role === 'user' ? 'justify-end hidden' : 'justify-start text-slate-400'}`}>
                     {msg.role === 'assistant' && (
-                      <button onClick={() => copyToClipboard(msg.content, i)} className="p-1 hover:bg-slate-200 rounded-lg transition-colors">
+                      <button onClick={() => copyToClipboard(msg.content, i)} className="p-1 hover:bg-slate-100 rounded transition-colors flex items-center justify-center">
                         {copiedIndex === i ? <Check className="w-3.5 h-3.5 text-black" /> : <Copy className="w-3.5 h-3.5" />}
                       </button>
                     )}
@@ -249,17 +269,17 @@ export default function AIChat() {
           {(streamingText || loading) && (
             <div className="flex justify-start animate-in fade-in duration-300">
               <div className="flex gap-3 md:gap-4 w-full md:max-w-[75%]">
-                <div className="w-10 h-10 bg-black rounded-xl shrink-0 flex items-center justify-center shadow-lg hidden md:flex">
-                  <Bot className="w-5 h-5 text-white" />
+                <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center border border-slate-200 bg-white">
+                  <Sparkles className="w-4 h-4 text-emerald-600" />
                 </div>
-                <div className="p-5 rounded-2xl bg-slate-50 text-slate-800 border border-slate-100 rounded-tl-none shadow-sm min-w-[120px] w-full md:w-auto">
+                <div className="relative w-full md:w-auto flex flex-col bg-transparent text-slate-800 py-1 min-w-[120px]">
                   {streamingText ? (
-                    <div className="text-sm leading-relaxed font-bold whitespace-pre-wrap">
+                    <div className="text-sm leading-relaxed font-medium whitespace-pre-wrap flex items-center">
                       {streamingText}
                       <span className="inline-block w-1.5 h-4 ml-1 bg-black animate-pulse"></span>
                     </div>
                   ) : (
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 h-full">
                       <Loader2 className="w-4 h-4 animate-spin text-black" />
                       <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Synthesizing...</span>
                     </div>
@@ -268,15 +288,14 @@ export default function AIChat() {
               </div>
             </div>
           )}
-          <div ref={messagesEndRef} className="h-4" />
+          <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Dock - Modern floating style with safe padding */}
-        <div className="px-6 py-6 bg-gradient-to-t from-white via-white to-white/0 sticky bottom-0 z-40">
+        {/* Input Dock - FIXED at the bottom of viewport on mobile, flex-end on desktop */}
+        <div className="fixed bottom-0 left-0 right-0 md:relative md:bottom-auto px-4 md:px-6 py-4 md:py-6 bg-white border-t border-slate-100 z-40">
           <div className="max-w-4xl mx-auto">
             <form onSubmit={handleSubmit} className="relative group">
-              <div className="absolute inset-0 bg-black rounded-[2rem] blur-[20px] opacity-[0.01] group-focus-within:opacity-[0.04] transition-opacity"></div>
-              <div className="relative bg-white border border-slate-100 focus-within:border-slate-300 rounded-[2rem] p-2 flex items-center gap-3 transition-all shadow-xl shadow-black/[0.02]">
+              <div className="relative bg-white border border-slate-200 focus-within:border-slate-300 rounded-[2rem] p-2 flex items-center gap-3 transition-all shadow-lg shadow-black/[0.03]">
                 <div className="hidden sm:flex w-10 h-10 items-center justify-center text-slate-300">
                   <MessageSquare className="w-5 h-5" />
                 </div>
@@ -297,7 +316,7 @@ export default function AIChat() {
                 </button>
               </div>
             </form>
-            <p className="text-center text-[9px] font-black text-slate-400 uppercase tracking-widest mt-4">
+            <p className="text-center text-[9px] font-black text-slate-400 uppercase tracking-widest mt-3">
               Protected by medical-grade encryption
             </p>
           </div>

@@ -244,14 +244,14 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
       )}
 
       {/* Main Content - No left margin needed with sticky sidebar flow */}
-      <div className="flex-1 flex flex-col min-h-screen relative overflow-x-hidden bg-white/50">
+      <div className="flex-1 flex flex-col min-h-screen relative bg-white/50" style={{ overflowX: 'clip' }}>
         {/* Background Blobs - Visible on all pages using Layout */}
         <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-emerald-300/15 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
         <div className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-emerald-300/10 rounded-full blur-[100px] translate-x-1/2 pointer-events-none" />
         <div className="absolute bottom-0 left-1/4 w-[300px] h-[300px] bg-emerald-200/10 rounded-full blur-[80px] pointer-events-none" />
 
-        {/* Global Sticky Header - Identity & Profile */}
-        <header className="sticky top-0 z-50 bg-[#EBF0E6]/60 backdrop-blur-xl border-b border-emerald-100/30 shadow-sm transition-all duration-300">
+        {/* Global Header - Fixed on mobile, Sticky on desktop */}
+        <header className="fixed top-0 inset-x-0 z-50 lg:sticky lg:inset-auto lg:top-0 bg-[#EBF0E6]/60 backdrop-blur-xl border-b border-emerald-100/30 shadow-sm transition-all duration-300">
           <div className="flex items-center justify-between lg:justify-end px-6 md:px-12 py-0 md:py-2 gap-6">
             {/* Logo for mobile */}
             <div className="flex lg:hidden items-center gap-3">
@@ -282,8 +282,11 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
           </div>
         </header>
 
+        {/* Spacer for fixed header on mobile */}
+        <div className="h-16 shrink-0 lg:hidden" />
+
         {/* Page Content */}
-        <main className="flex-1 main-content-mobile overflow-x-hidden w-full" style={
+        <main className={`flex-1 flex flex-col overflow-x-hidden w-full ${location.pathname === '/ai-chat' ? '' : 'main-content-mobile'}`} style={
           location.pathname === '/nutrition' || location.pathname === '/ai-chat'
             ? { padding: 0, backgroundColor: 'transparent' }
             : { padding: 0 }
