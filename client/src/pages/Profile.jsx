@@ -287,16 +287,30 @@ export default function Profile() {
       return;
     }
 
+    // New Validation Logic
+    const currentW = Number(profileWeight);
+    const targetW = Number(goalFormData.targetWeight);
+    const goalType = goalFormData.goalType;
+
+    if (goalType === 'weight_loss' && targetW >= currentW) {
+      toast.error(`For weight loss, target weight (${targetW}kg) must be less than current weight (${currentW}kg)`);
+      return;
+    }
+    if (goalType === 'weight_gain' && targetW <= currentW) {
+      toast.error(`For weight gain, target weight (${targetW}kg) must be greater than current weight (${currentW}kg)`);
+      return;
+    }
+
     setGoalLoading(true);
     try {
       const token = localStorage.getItem('token');
       const payload = {
         ...goalFormData,
-        currentWeight: profileWeight,
-        targetWeight: Number(goalFormData.targetWeight),
-        height: profileHeight,
-        age: profileAge,
-        gender: profileGender
+        currentWeight: parseFloat(profileWeight) || 0,
+        targetWeight: parseFloat(goalFormData.targetWeight) || 0,
+        height: parseFloat(profileHeight) || 0,
+        age: parseInt(profileAge) || 0,
+        gender: profileGender || 'male' // Default to male if missing for BMR
       };
 
       // Use PUT if goal exists, POST if new
@@ -862,10 +876,56 @@ export default function Profile() {
                                 name="targetWeight"
                                 value={goalFormData.targetWeight}
                                 onChange={handleGoalChange}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4"
+                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 font-bold text-[#064e3b] focus:ring-2 focus:ring-[#064e3b]/10 focus:outline-none"
                                 placeholder="Target"
                               />
                             </div>
+                            
+                            {/* Validation & Information Feedback */}
+                            {goalFormData.targetWeight && profileWeight > 0 && (
+                              <div className="md:col-span-2 space-y-4">
+                                {(goalFormData.goalType === 'weight_loss' && Number(goalFormData.targetWeight) >= profileWeight) && (
+                                  <div className="p-4 bg-red-50 rounded-2xl border border-red-100 flex items-center gap-3 animate-shake mb-4">
+                                    <div className="p-2 bg-white rounded-lg shadow-sm">
+                                      <div className="w-5 h-5 text-red-500 font-bold text-xs flex items-center justify-center border-2 border-red-500 rounded-full">!</div>
+                                    </div>
+                                    <p className="text-xs font-bold text-red-900 leading-tight">
+                                      For weight loss, target ({goalFormData.targetWeight}kg) must be <span className="underline">lower</span> than current weight ({profileWeight}kg).
+                                    </p>
+                                  </div>
+                                )}
+                                {(goalFormData.goalType === 'weight_gain' && Number(goalFormData.targetWeight) <= profileWeight) && (
+                                  <div className="p-4 bg-red-50 rounded-2xl border border-red-100 flex items-center gap-3 animate-shake mb-4">
+                                    <div className="p-2 bg-white rounded-lg shadow-sm">
+                                      <div className="w-5 h-5 text-red-500 font-bold text-xs flex items-center justify-center border-2 border-red-500 rounded-full">!</div>
+                                    </div>
+                                    <p className="text-xs font-bold text-red-900 leading-tight">
+                                      For weight gain, target ({goalFormData.targetWeight}kg) must be <span className="underline">higher</span> than current weight ({profileWeight}kg).
+                                    </p>
+                                  </div>
+                                )}
+
+                                {(goalFormData.goalType === 'weight_loss' || goalFormData.goalType === 'weight_gain') && 
+                                 Math.abs(Number(goalFormData.targetWeight) - profileWeight) > 0.1 && (
+                                  <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-center gap-4 shadow-sm animate-fade-in">
+                                    <div className="p-3 bg-white rounded-xl shadow-md">
+                                      <Clock className="w-5 h-5 text-emerald-600" />
+                                    </div>
+                                    <div>
+                                      <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">Estimated Roadmap</p>
+                                      <p className="text-sm font-bold text-[#064e3b] leading-none">
+                                        {Math.ceil(Math.abs(Number(goalFormData.targetWeight) - profileWeight) / 0.5)} Weeks 
+                                        <span className="ml-2 text-[10px] font-black text-emerald-400 uppercase tracking-wider">Goal: 0.5 kg / Week</span>
+                                      </p>
+                                      <p className="text-[10px] text-[#065f46] mt-1 font-medium opacity-60">
+                                        Sustainable target: {goalFormData.targetWeight}kg • Total variation: {Math.abs(Number(goalFormData.targetWeight) - profileWeight).toFixed(1)}kg
+                                      </p>
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+
                             <div className="md:col-span-2">
                               <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Activity Level</label>
                               <select
@@ -906,11 +966,17 @@ export default function Profile() {
 
                           <button
                             type="submit"
-                            disabled={goalLoading}
-                            className="w-full py-4 bg-[#064e3b] text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#065f46] transition-all flex items-center justify-center gap-2 shadow-xl active:scale-95 border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
+                            disabled={goalLoading || 
+                              (goalFormData.goalType === 'weight_loss' && Number(goalFormData.targetWeight) >= profileWeight) ||
+                              (goalFormData.goalType === 'weight_gain' && Number(goalFormData.targetWeight) <= profileWeight)
+                            }
+                            className="w-full py-4 bg-[#064e3b] text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#065f46] transition-all flex items-center justify-center gap-2 shadow-xl active:scale-95 border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1 disabled:grayscale disabled:opacity-50 disabled:cursor-not-allowed"
                           >
                             {goalLoading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                            Recalculate & Save Goal
+                            {((goalFormData.goalType === 'weight_loss' && Number(goalFormData.targetWeight) >= profileWeight) || 
+                              (goalFormData.goalType === 'weight_gain' && Number(goalFormData.targetWeight) <= profileWeight)) 
+                              ? 'Invalid Weight Target' 
+                              : 'Recalculate & Save Goal'}
                           </button>
                         </form>
                       </div>

@@ -30,7 +30,7 @@ const userSchema = new mongoose.Schema({
     // New comprehensive health fields
     activityLevel: {
       type: String,
-      enum: ['sedentary', 'lightly_active', 'moderately_active', 'very_active', 'extremely_active'],
+      enum: ['sedentary', 'lightly_active', 'moderately_active', 'moderate', 'very_active', 'extremely_active'],
       default: 'sedentary'
     },
     medicalHistory: {
@@ -83,7 +83,7 @@ const userSchema = new mongoose.Schema({
   nutritionGoal: {
     goal: {
       type: String,
-      enum: ['weight_loss', 'weight_gain', 'muscle_gain', 'maintain', 'general_health'],
+      enum: ['weight_loss', 'weight_gain', 'muscle_gain', 'maintain', 'maintenance', 'health_improvement', 'general_health'],
       default: 'general_health'
     },
     targetWeight: Number, // in kg

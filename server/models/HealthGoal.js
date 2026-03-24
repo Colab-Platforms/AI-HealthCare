@@ -43,7 +43,7 @@ const healthGoalSchema = new mongoose.Schema({
   },
   activityLevel: {
     type: String,
-    enum: ['sedentary', 'lightly_active', 'moderately_active', 'very_active', 'extremely_active'],
+    enum: ['sedentary', 'lightly_active', 'moderately_active', 'moderate', 'very_active', 'extremely_active'],
     default: 'sedentary'
   },
   targetDate: Date,
@@ -104,6 +104,7 @@ healthGoalSchema.methods.calculateTDEE = function () {
     sedentary: 1.2,
     lightly_active: 1.375,
     moderately_active: 1.55,
+    moderate: 1.55,
     very_active: 1.725,
     extremely_active: 1.9
   };

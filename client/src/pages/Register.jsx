@@ -176,36 +176,37 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex bg-white">
+    <div className="min-h-screen flex bg-white font-sans">
       {/* Visual Left Panel */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute inset-0 opacity-20">
-            <div className="absolute top-20 left-20 w-72 h-72 bg-slate-400/20 rounded-full blur-[120px]" />
-            <div className="absolute bottom-20 right-20 w-96 h-96 bg-slate-600/20 rounded-full blur-[120px]" />
-          </div>
-        </div>
-        <div className="relative z-10 flex flex-col justify-center items-center p-12 text-white">
-          <div className="relative w-32 h-32 mb-8">
-            <div className="absolute inset-0 bg-white/20 backdrop-blur-xl rounded-full animate-pulse"></div>
-            <div className="absolute inset-4 bg-white/30 backdrop-blur-xl rounded-full flex items-center justify-center">
-              <Heart className="w-12 h-12" />
+      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-[#064e3b]">
+        {/* Decorative Glow Elements matching Dashboard */}
+        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-400/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-cyan-400/10 rounded-full blur-[100px] translate-y-1/4 -translate-x-1/4 pointer-events-none" />
+        
+        <div className="absolute inset-0 bg-gradient-to-br from-[#064e3b] via-[#065f46] to-[#042f24] opacity-90" />
+
+        <div className="relative z-10 flex flex-col justify-center items-center w-full p-12 text-white text-center">
+          <div className="relative w-32 h-32 mb-10 group flex items-center justify-center">
+            <div className="absolute inset-0 bg-emerald-400/20 blur-2xl rounded-full group-hover:bg-emerald-400/40 transition-all duration-700" />
+            <div className="absolute inset-0 bg-white/10 backdrop-blur-3xl rounded-[2rem] border border-white/20 flex items-center justify-center transition-transform duration-700 group-hover:scale-110 shadow-2xl">
+              <Heart className="w-16 h-16 text-emerald-400 fill-emerald-400/20" />
             </div>
           </div>
-          <h1 className="text-4xl font-bold mb-4 text-center">Your Health Journey Starts Here</h1>
-          <p className="text-xl text-white/80 text-center max-w-md mb-6">
-            Get personalized health insights and proactive care management.
+          <h1 className="text-4xl font-black mb-4 text-center uppercase tracking-tight">Your Health Revolution</h1>
+          <p className="text-xl text-emerald-50/70 text-center max-w-md mb-10 leading-relaxed font-light">
+            Join thousands of users leveraging AI for proactive, personalized health management.
           </p>
-          <div className="flex gap-2">
-            <div className={`w-12 h-2 rounded-full ${step >= 1 ? 'bg-white' : 'bg-white/20'}`}></div>
-            <div className={`w-12 h-2 rounded-full ${step >= 2 ? 'bg-white' : 'bg-white/20'}`}></div>
+          <div className="flex gap-4">
+            <div className={`w-16 h-1.5 rounded-full transition-all duration-500 ${step >= 1 ? 'bg-emerald-400' : 'bg-white/10'}`}></div>
+            <div className={`w-16 h-1.5 rounded-full transition-all duration-500 ${step >= 1.5 ? 'bg-emerald-400' : 'bg-white/10'}`}></div>
+            <div className={`w-16 h-1.5 rounded-full transition-all duration-500 ${step >= 2 ? 'bg-emerald-400' : 'bg-white/10'}`}></div>
           </div>
         </div>
       </div>
 
       {/* Main Registration Form Area */}
-      <div className="flex-1 flex items-center justify-center p-8">
-        <div className="w-full max-w-md">
+      <div className="flex-1 flex items-center justify-center p-8 bg-slate-50/30">
+        <div className="w-full max-w-md bg-white p-10 rounded-[2.5rem] shadow-[0_20px_60px_rgba(6,78,59,0.05)] border border-emerald-50/50">
           {/* Mobile Identity */}
           <div className="lg:hidden flex justify-center mb-10">
             <img 
@@ -215,31 +216,31 @@ export default function Register() {
             />
           </div>
 
-          <div className="mb-8 relative">
+          <div className="mb-10 relative">
             {step > 1 && (
-              <button onClick={() => setStep(step - 0.5)} className="absolute -top-6 left-0 flex items-center gap-1 text-black font-black uppercase text-xs hover:text-slate-600 transition-all">
+              <button onClick={() => setStep(step - 0.5)} className="absolute -top-8 left-0 flex items-center gap-1 text-[#064e3b] font-black uppercase text-[10px] tracking-widest hover:text-[#042f24] transition-all">
                 <ArrowLeft className="w-4 h-4" /> Back
               </button>
             )}
-            <h2 className="text-3xl font-black mb-2 text-black uppercase tracking-tighter mt-2">
-              {step === 1 ? 'Create Account' : step === 1.5 ? 'Verify Email' : 'Setup Profile'}
+            <h2 className="text-3xl font-black mb-2 text-[#064e3b] uppercase tracking-tighter mt-2">
+              {step === 1 ? 'Start Journey' : step === 1.5 ? 'Verify Identity' : 'Setup Profile'}
             </h2>
-            <p className="text-slate-500 font-bold uppercase text-xs tracking-widest">
-              Step {step === 1.5 ? '1.5' : step === 1 ? '1' : '2'} of 2 • {step === 1 ? 'Credentials' : step === 1.5 ? 'Verification' : 'Health Identity'}
+            <p className="text-emerald-800/40 font-black uppercase text-[10px] tracking-[0.2em]">
+              Phase {step === 1.5 ? '1.5' : step === 1 ? '01' : '02'} • {step === 1 ? 'Credentials' : step === 1.5 ? 'Verification' : 'Health Identity'}
             </p>
           </div>
 
           {step === 1 ? (
             <form onSubmit={handleNext} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-1 text-slate-700">Full Name *</label>
-                <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1.5 ml-1">Full Name *</label>
+                <div className="relative group">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold placeholder:text-slate-400"
+                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20"
                     placeholder="John Doe"
                     required
                   />
@@ -247,14 +248,14 @@ export default function Register() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1 text-slate-700">Email Address *</label>
-                <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1.5 ml-1">Email Address *</label>
+                <div className="relative group">
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
                   <input
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold placeholder:text-slate-400"
+                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20"
                     placeholder="you@email.com"
                     required
                   />
@@ -262,14 +263,14 @@ export default function Register() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1 text-slate-700">Phone Number *</label>
-                <div className="relative">
-                  <Activity className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1.5 ml-1">Phone Number *</label>
+                <div className="relative group">
+                  <Activity className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
                   <input
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
-                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold placeholder:text-slate-400"
+                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20"
                     placeholder="10 digit number"
                     required
                   />
@@ -277,32 +278,32 @@ export default function Register() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1 text-slate-700">Password *</label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1.5 ml-1">Password *</label>
+                <div className="relative group">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
                   <input
                     type={showPassword ? "text" : "password"}
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-12 pr-12 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black text-black font-bold placeholder:text-slate-400"
+                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3.5 pl-12 pr-12 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20"
                     placeholder="••••••••"
                     required
                   />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400">
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-800/20 hover:text-[#064e3b] transition-colors">
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1 text-slate-700">Confirm Password *</label>
-                <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1.5 ml-1">Confirm Password *</label>
+                <div className="relative group">
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
                   <input
                     type="password"
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold placeholder:text-slate-400"
+                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20"
                     placeholder="••••••••"
                     required
                   />
@@ -312,23 +313,25 @@ export default function Register() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 mt-6 text-white font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 bg-black hover:bg-slate-900 shadow-xl disabled:opacity-70"
+                className="w-full py-5 mt-6 text-emerald-50 font-black uppercase tracking-[0.2em] rounded-2xl transition-all flex items-center justify-center gap-3 bg-[#064e3b] hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] disabled:opacity-70 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
               >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Register & Verify <ArrowRight className="w-5 h-5" /></>}
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Initialize Account <ArrowRight className="w-5 h-5" /></>}
               </button>
 
-              <div className="mt-6 text-center text-sm font-bold text-slate-500">
-                Already registered? <Link to="/login" className="text-black border-b border-black uppercase text-xs hover:text-slate-600 hover:border-slate-600 transition">Sign In</Link>
+              <div className="mt-8 text-center">
+                <span className="text-[10px] font-black text-emerald-800/40 uppercase tracking-widest">Already registered?</span>{' '}
+                <Link to="/login" className="ml-2 font-black text-[#064e3b] hover:text-[#042f24] transition-all uppercase text-[10px] tracking-widest border-b-2 border-emerald-100 hover:border-[#064e3b] pb-0.5">Sign In</Link>
               </div>
             </form>
           ) : step === 1.5 ? (
-            <div className="space-y-6 text-center">
-              <div className="w-20 h-20 bg-[#F5F5F7] rounded-full flex items-center justify-center mx-auto mb-4 border-2 border-dashed border-black/20">
-                <Mail className="w-8 h-8 text-black" />
+            <div className="space-y-8 text-center">
+              <div className="w-24 h-24 bg-emerald-50 rounded-[2rem] flex items-center justify-center mx-auto mb-4 border-2 border-dashed border-[#064e3b]/20 relative">
+                <div className="absolute inset-0 bg-emerald-400/10 animate-pulse rounded-[2rem]" />
+                <Mail className="w-10 h-10 text-[#064e3b]" />
               </div>
               <div className="space-y-2">
-                <p className="text-black font-bold text-lg">Verification Email Sent!</p>
-                <p className="text-slate-500 text-sm">We've sent a 6-digit verification code to <span className="text-black font-black uppercase text-xs px-2 py-0.5 bg-slate-100 rounded">{formData.email}</span></p>
+                <p className="text-[#064e3b] font-black text-xl uppercase tracking-tighter">Enter Code</p>
+                <p className="text-emerald-800/40 font-bold text-[10px] uppercase tracking-widest">Sent to <span className="text-[#064e3b] px-2 py-0.5 bg-emerald-50 rounded-lg">{formData.email}</span></p>
               </div>
               <div className="flex justify-center gap-3">
                 {verificationCode.map((digit, i) => (
@@ -355,42 +358,42 @@ export default function Register() {
                         document.getElementById(`otp-${i - 1}`).focus();
                       }
                     }}
-                    className="w-11 h-14 bg-white border-2 border-slate-300 rounded-xl text-center font-black text-xl focus:ring-4 focus:ring-black/10 focus:border-black focus:outline-none text-black shadow-sm transition-all"
+                    className="w-12 h-16 bg-emerald-50/30 border-2 border-emerald-100 rounded-2xl text-center font-black text-2xl focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] focus:outline-none text-[#064e3b] shadow-sm transition-all"
                   />
                 ))}
               </div>
-              <div className="space-y-3">
+              <div className="space-y-4">
                 <button
                   onClick={handleVerifyEmail}
                   disabled={loading}
-                  className="w-full py-4 bg-black text-white font-black uppercase tracking-widest rounded-xl shadow-xl hover:bg-slate-900 transition-all flex items-center justify-center gap-2"
+                  className="w-full py-5 bg-[#064e3b] text-emerald-50 font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl hover:bg-[#042f24] transition-all flex items-center justify-center gap-3 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
                 >
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Confirm Verification'}
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Confirm Identity'}
                 </button>
-                <button onClick={handleResendCode} className="text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-black">Resend Code</button>
+                <button onClick={handleResendCode} className="text-[10px] font-black text-emerald-800/30 uppercase tracking-widest hover:text-[#064e3b] transition-colors">Resend Verification Code</button>
               </div>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-5">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-slate-700">Age *</label>
+                  <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1.5 ml-1">Age *</label>
                   <input
                     type="number"
                     value={formData.age}
                     onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold"
+                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all"
                     placeholder="Years"
                     min="1" max="120"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-slate-700">Gender *</label>
+                  <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1.5 ml-1">Gender *</label>
                   <select
                     value={formData.gender}
                     onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold"
+                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold appearance-none transition-all"
                     required
                   >
                     <option value="">Select</option>
@@ -403,11 +406,11 @@ export default function Register() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block text-sm font-medium text-slate-700">Height *</label>
-                    <div className="flex bg-slate-100 rounded-lg p-0.5">
-                      <button type="button" onClick={() => setHeightUnit('cm')} className={`px-2 py-0.5 text-[10px] font-black uppercase rounded-md transition-all ${heightUnit === 'cm' ? 'bg-white shadow-sm text-black' : 'text-slate-400'}`}>cm</button>
-                      <button type="button" onClick={() => setHeightUnit('ft')} className={`px-2 py-0.5 text-[10px] font-black uppercase rounded-md transition-all ${heightUnit === 'ft' ? 'bg-white shadow-sm text-black' : 'text-slate-400'}`}>ft/in</button>
+                  <div className="flex items-center justify-between mb-1.5 ml-1">
+                    <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest">Height *</label>
+                    <div className="flex bg-emerald-100/50 rounded-lg p-0.5">
+                      <button type="button" onClick={() => setHeightUnit('cm')} className={`px-2 py-0.5 text-[9px] font-black uppercase rounded-md transition-all ${heightUnit === 'cm' ? 'bg-[#064e3b] text-white shadow-sm' : 'text-emerald-800/40'}`}>cm</button>
+                      <button type="button" onClick={() => setHeightUnit('ft')} className={`px-2 py-0.5 text-[9px] font-black uppercase rounded-md transition-all ${heightUnit === 'ft' ? 'bg-[#064e3b] text-white shadow-sm' : 'text-emerald-800/40'}`}>ft</button>
                     </div>
                   </div>
                   
@@ -416,7 +419,7 @@ export default function Register() {
                       type="number"
                       value={formData.height}
                       onChange={(e) => setFormData({ ...formData, height: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold"
+                      className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all"
                       placeholder="170"
                       min="100" max="250"
                       required
@@ -433,7 +436,7 @@ export default function Register() {
                           const totalCm = (parseFloat(f || 0) * 30.48) + (parseFloat(inches || 0) * 2.54);
                           setFormData({ ...formData, height: totalCm.toFixed(1) });
                         }}
-                        className="w-1/2 bg-slate-50 border border-slate-100 rounded-xl py-3 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold"
+                        className="w-1/2 bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3 px-3 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all"
                         required
                       />
                       <input
@@ -446,20 +449,20 @@ export default function Register() {
                           const totalCm = (parseFloat(feet || 0) * 30.48) + (parseFloat(i || 0) * 2.54);
                           setFormData({ ...formData, height: totalCm.toFixed(1) });
                         }}
-                        className="w-1/2 bg-slate-50 border border-slate-100 rounded-xl py-3 px-3 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold"
+                        className="w-1/2 bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3 px-3 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all"
                         required
                       />
                     </div>
                   )}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-slate-700">Weight (kg) *</label>
+                  <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1.5 ml-1">Weight (kg) *</label>
                   <input
                     type="number"
                     step="0.1"
                     value={formData.weight}
                     onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold"
+                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all"
                     placeholder="70.5"
                     min="30" max="300"
                     required
@@ -468,59 +471,28 @@ export default function Register() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-1 text-slate-700">Activity Level *</label>
+                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1.5 ml-1">Activity Level *</label>
                 <select
                   value={formData.activityLevel}
                   onChange={(e) => setFormData({ ...formData, activityLevel: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black text-black font-bold"
+                  className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold appearance-none transition-all"
                   required
                 >
-                  <option value="sedentary">Sedentary (Little or no exercise)</option>
-                  <option value="lightly_active">Lightly Active (1-3 days/week)</option>
-                  <option value="moderately_active">Moderately Active (3-5 days/week)</option>
-                  <option value="very_active">Very Active (6-7 days/week)</option>
+                  <option value="sedentary">Sedentary (Little/no exercise)</option>
+                  <option value="lightly_active">Lightly Active (1-3 days)</option>
+                  <option value="moderately_active">Moderately Active (3-5 days)</option>
+                  <option value="very_active">Very Active (6-7 days)</option>
                   <option value="extremely_active">Extremely Active (Athlete)</option>
                 </select>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
-                <div className="col-span-1">
-                  <label className="block text-sm font-medium mb-1 text-slate-700">Blood Group</label>
-                  <select
-                    value={formData.bloodGroup}
-                    onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold"
-                  >
-                    <option value="">Optional</option>
-                    <option value="A+">A+</option>
-                    <option value="A-">A-</option>
-                    <option value="B+">B+</option>
-                    <option value="B-">B-</option>
-                    <option value="AB+">AB+</option>
-                    <option value="AB-">AB-</option>
-                    <option value="O+">O+</option>
-                    <option value="O-">O-</option>
-                  </select>
-                </div>
-                <div className="col-span-1">
-                  <label className="block text-sm font-medium mb-1 text-slate-700">Allergies</label>
-                  <input
-                    type="text"
-                    value={formData.allergies}
-                    onChange={(e) => setFormData({ ...formData, allergies: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black text-black font-bold placeholder:text-slate-400"
-                    placeholder="e.g. Peanuts, Dust"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-slate-700">Are you Diabetic? *</label>
+                  <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1.5 ml-1">Are you Diabetic? *</label>
                   <select
                     value={formData.isDiabetic}
                     onChange={(e) => setFormData({ ...formData, isDiabetic: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold"
+                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold appearance-none transition-all"
                     required
                   >
                     <option value="no">No</option>
@@ -528,11 +500,11 @@ export default function Register() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium mb-1 text-slate-700">Diet Preference *</label>
+                  <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1.5 ml-1">Diet Preference *</label>
                   <select
                     value={formData.dietaryPreference}
                     onChange={(e) => setFormData({ ...formData, dietaryPreference: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold"
+                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold appearance-none transition-all"
                     required
                   >
                     <option value="non-vegetarian">Non-Vegetarian</option>
@@ -546,9 +518,9 @@ export default function Register() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 mt-8 text-white font-black uppercase tracking-widest rounded-xl transition-all flex items-center justify-center gap-2 bg-black hover:bg-slate-900 shadow-xl disabled:opacity-70 disabled:cursor-not-allowed"
+                className="w-full py-5 mt-4 text-emerald-50 font-black uppercase tracking-[0.2em] rounded-2xl transition-all flex items-center justify-center gap-3 bg-[#064e3b] hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] disabled:opacity-70 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
               >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Finalize & Enter Dashboard'}
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Enter Dashboard'}
               </button>
             </form>
           )}

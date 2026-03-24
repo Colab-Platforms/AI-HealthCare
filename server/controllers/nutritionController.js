@@ -805,20 +805,30 @@ exports.deleteFoodLog = async (req, res) => {
 // Set health goal
 exports.setHealthGoal = async (req, res) => {
   try {
-    const goalData = {
+    // Explicitly cast to numbers to prevent NaN crashes
+    const sanitizedData = {
       ...req.body,
+      currentWeight: Number(req.body.currentWeight) || 0,
+      targetWeight: Number(req.body.targetWeight) || 0,
+      height: Number(req.body.height) || 0,
+      age: Number(req.body.age) || 0,
+      gender: req.body.gender || 'male',
       userId: req.user._id
     };
 
     let healthGoal = await withTimeout(HealthGoal.findOne({ userId: req.user._id }));
 
     if (healthGoal) {
-      // Update existing goal
-      Object.assign(healthGoal, goalData);
+      Object.assign(healthGoal, sanitizedData);
     } else {
-      // Create new goal
-      healthGoal = new HealthGoal(goalData);
+      healthGoal = new HealthGoal(sanitizedData);
     }
+
+    // Safety: Trigger recalculations and check for NaNs before save
+    if (isNaN(healthGoal.currentWeight)) healthGoal.currentWeight = 70;
+    if (isNaN(healthGoal.targetWeight)) healthGoal.targetWeight = 70;
+    if (isNaN(healthGoal.height)) healthGoal.height = 170;
+    if (isNaN(healthGoal.age)) healthGoal.age = 25;
 
     await healthGoal.save({ maxTimeMS: 30000 });
     
@@ -838,9 +848,9 @@ exports.setHealthGoal = async (req, res) => {
         fatGoal: fatGoal,
         lastUpdated: new Date()
       },
-      'profile.age': Number(healthGoal.age),
-      'profile.height': Number(healthGoal.height),
-      'profile.weight': Number(healthGoal.currentWeight)
+      'profile.age': Number(healthGoal.age) || 0,
+      'profile.height': Number(healthGoal.height) || 0,
+      'profile.weight': Number(healthGoal.currentWeight) || 0
     });
 
     // Invalidate server-side dashboard cache
@@ -852,11 +862,30 @@ exports.setHealthGoal = async (req, res) => {
       message: 'Health goal set successfully'
     });
   } catch (error) {
-    console.error('Set health goal error:', error);
-    res.status(500).json({
+    console.error('SET_HEALTH_GOAL_CRITICAL:', error);
+    
+    // EMERGENCY LOG TO FILE for diagnostics
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const logEntry = `\n[${new Date().toISOString()}] SET_HEALTH_GOAL_ERROR: ${error.message}\nStack: ${error.stack}\nBody: ${JSON.stringify(req.body)}\n`;
+      fs.appendFileSync(path.join(__dirname, '../error.log'), logEntry);
+    } catch (e) {
+      console.error('Failed to write to log file:', e.message);
+    }
+
+    // Check if it's a Mongoose validation error
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid goal data provided: ' + Object.values(error.errors).map(e => e.message).join(', ')
+      });
+    }
+
+    res.status(error.status || 500).json({
       success: false,
-      message: 'Failed to set health goal',
-      error: error.message
+      message: error.message || 'Failed to set health goal',
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 };

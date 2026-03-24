@@ -206,7 +206,7 @@ function Hero() {
         {/* Hero Image */}
         <div className="mt-16 relative">
           <div className="bg-white rounded-2xl md:rounded-3xl overflow-hidden shadow-2xl shadow-blue-600/10 border border-slate-200">
-            {/* Desktop Video */}
+            {/* Desktop Video - High Tech AI Analysis */}
             <video 
               autoPlay 
               loop 
@@ -214,9 +214,9 @@ function Hero() {
               playsInline 
               className="hidden md:block w-full h-auto object-cover"
             >
-              <source src="https://cdn.shopify.com/videos/c/o/v/eb123ae437614572aaef173de614bd8d.mp4" type="video/mp4" />
+              <source src="https://cdn.shopify.com/videos/c/o/v/bec0c766b47c4767b9736c0d80509631.mp4" type="video/mp4" />
             </video>
-            {/* Mobile Video */}
+            {/* Mobile Video - High Tech AI Analysis */}
             <video 
               autoPlay 
               loop 
@@ -224,7 +224,7 @@ function Hero() {
               playsInline 
               className="block md:hidden w-full h-auto object-cover"
             >
-              <source src="https://cdn.shopify.com/videos/c/o/v/ad7e9aa9cd414492b6cf528b9eacc6f3.mp4" type="video/mp4" />
+              <source src="https://cdn.shopify.com/videos/c/o/v/9fbf9bc3d0d0469894676ae8ae84a1e9.mp4" type="video/mp4" />
             </video>
           </div>
         </div>
