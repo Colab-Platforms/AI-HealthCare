@@ -74,11 +74,12 @@ export default function ForgotPassword() {
     return (
         <div className="min-h-screen flex bg-white font-sans">
             {/* Left Panel - Branding */}
-            <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-black">
-                <div className="absolute inset-0 opacity-10">
-                    <div className="absolute top-20 left-20 w-72 h-72 bg-white rounded-full blur-[120px]" />
-                    <div className="absolute bottom-20 right-20 w-96 h-96 bg-white rounded-full blur-[120px]" />
-                </div>
+            <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-[#064e3b]">
+                {/* Decorative Glow Elements matching Dashboard */}
+                <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-400/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+                <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-cyan-400/10 rounded-full blur-[100px] translate-y-1/4 -translate-x-1/4 pointer-events-none" />
+                
+                <div className="absolute inset-0 bg-gradient-to-br from-[#064e3b] via-[#065f46] to-[#042f24] opacity-90" />
 
                 <div className="relative z-10 flex flex-col justify-center items-center w-full p-12 text-white">
                     <div className="w-20 h-20 bg-white/20 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-8 border border-white/30">
@@ -105,19 +106,19 @@ export default function ForgotPassword() {
                         <img 
                             src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
                             alt="take.health" 
-                            className="h-20 w-auto object-contain"
+                            className="h-24 w-auto object-contain"
                         />
                     </div>
 
-                    <button onClick={() => step === 1 ? navigate('/login') : setStep(step - 1)} className="flex items-center gap-2 mb-6 text-black font-black uppercase tracking-tighter text-xs hover:text-slate-600 transition-colors">
+                    <button onClick={() => step === 1 ? navigate('/login') : setStep(step - 1)} className="flex items-center gap-2 mb-6 text-[#064e3b] font-black uppercase tracking-tighter text-xs hover:text-[#042f24] transition-colors">
                         <ArrowLeft className="w-4 h-4" /> Back to {step === 1 ? 'Login' : 'Previous Step'}
                     </button>
 
                     <div className="text-center mb-8">
-                        <h2 className="text-3xl font-black mb-2 text-black uppercase tracking-tighter">
+                        <h2 className="text-3xl font-black mb-2 text-[#064e3b] uppercase tracking-tighter">
                             {step === 1 ? 'Reset Access' : step === 2 ? 'Verify Identity' : 'Secure Account'}
                         </h2>
-                        <p className="text-slate-500 font-bold uppercase text-[10px] tracking-widest">
+                        <p className="text-emerald-800/40 font-bold uppercase text-[10px] tracking-widest">
                             Step {step} of 3 • {step === 1 ? 'Email' : step === 2 ? 'Code' : 'New Password'}
                         </p>
                     </div>
@@ -125,14 +126,14 @@ export default function ForgotPassword() {
                     {step === 1 && (
                         <form onSubmit={handleSendCode} className="space-y-6">
                             <div>
-                                <label className="block text-sm font-medium mb-2 text-slate-700">Email Address</label>
-                                <div className="relative">
-                                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-2 ml-1">Email Address</label>
+                                <div className="relative group">
+                                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
                                     <input
                                         type="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-xl py-4 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black text-black font-bold placeholder:text-slate-400 shadow-sm"
+                                        className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20"
                                         placeholder="you@example.com"
                                         required
                                     />
@@ -142,7 +143,7 @@ export default function ForgotPassword() {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:bg-slate-900 transition-all flex items-center justify-center gap-2 disabled:opacity-50 bg-black"
+                                className="w-full py-4 bg-[#064e3b] text-emerald-50 font-black uppercase text-xs tracking-[0.2em] rounded-2xl hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] transition-all flex items-center justify-center gap-3 disabled:opacity-50 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
                             >
                                 {loading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Send Code <ArrowRight className="w-5 h-5" /></>}
                             </button>
@@ -150,9 +151,9 @@ export default function ForgotPassword() {
                     )}
 
                     {step === 2 && (
-                        <form onSubmit={handleVerifyCode} className="space-y-6">
+                        <form onSubmit={handleVerifyCode} className="space-y-8 text-center">
                             <div>
-                                <label className="block text-sm font-medium mb-2 text-slate-700">Verification Code</label>
+                                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-6 ml-1">Verification Code</label>
                                 <div className="flex justify-center gap-4">
                                     {[...Array(4)].map((_, i) => (
                                         <input
@@ -170,7 +171,7 @@ export default function ForgotPassword() {
                                                 if (val) {
                                                     newCode[i] = val;
                                                     const combined = newCode.join('');
-                                                    setCode(combined);
+                                                    setCode(combined.slice(0, 4));
                                                     if (i < 3) document.getElementById(`otp-${i+1}`).focus();
                                                 } else {
                                                     newCode[i] = '';
@@ -183,17 +184,17 @@ export default function ForgotPassword() {
                                                     document.getElementById(`otp-${i - 1}`).focus();
                                                 }
                                             }}
-                                            className="w-16 h-20 text-center text-4xl font-black bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black text-black"
+                                            className="w-16 h-20 text-center text-4xl font-black bg-emerald-50/30 border-2 border-emerald-100 rounded-2xl focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] focus:outline-none text-[#064e3b] shadow-sm transition-all"
                                         />
                                     ))}
                                 </div>
-                                <p className="text-center mt-6 text-slate-500 text-sm">Didn't receive code? <button type="button" onClick={handleSendCode} className="text-black font-bold hover:underline">Resend</button></p>
+                                <p className="text-center mt-6 text-emerald-800/40 font-bold uppercase text-[10px] tracking-widest">Didn't receive code? <button type="button" onClick={handleSendCode} className="text-[#064e3b] hover:text-[#042f24] transition-all border-b border-emerald-100 hover:border-[#064e3b]">Resend Code</button></p>
                             </div>
 
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:bg-slate-900 transition-all flex items-center justify-center gap-2 disabled:opacity-50 bg-black"
+                                className="w-full py-4 bg-[#064e3b] text-emerald-50 font-black uppercase text-xs tracking-[0.2em] rounded-2xl hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] transition-all flex items-center justify-center gap-3 disabled:opacity-50 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
                             >
                                 {loading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Verify Code <ArrowRight className="w-5 h-5" /></>}
                             </button>
@@ -203,51 +204,51 @@ export default function ForgotPassword() {
                     {step === 3 && (
                         <form onSubmit={handleResetPassword} className="space-y-5">
                             <div>
-                                <label className="block text-sm font-medium mb-2 text-slate-700">New Password</label>
-                                <div className="relative">
-                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-2 ml-1">New Password</label>
+                                <div className="relative group">
+                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
                                     <input
                                         type={showPassword ? 'text' : 'password'}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-xl py-4 pl-12 pr-12 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black text-black font-bold"
+                                        className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-4 pl-12 pr-12 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20"
                                         placeholder="••••••••"
                                         required
                                     />
-                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                    <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-800/20 hover:text-[#064e3b] transition-colors">
                                         {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                     </button>
                                 </div>
                                 {password && (
-                                    <div className="mt-2 space-y-1">
-                                        <p className={`text-[10px] font-bold flex items-center gap-1 ${/[A-Z]/.test(password) ? 'text-green-500' : 'text-slate-400'}`}>
-                                            {/[A-Z]/.test(password) ? '✓' : '○'} One uppercase letter
+                                    <div className="mt-2 space-y-1 ml-1">
+                                        <p className={`text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${/[A-Z]/.test(password) ? 'text-emerald-600' : 'text-emerald-800/20'}`}>
+                                            <div className={`w-1 h-1 rounded-full ${/[A-Z]/.test(password) ? 'bg-emerald-600' : 'bg-emerald-800/20'}`} /> One uppercase letter
                                         </p>
-                                        <p className={`text-[10px] font-bold flex items-center gap-1 ${/[0-9]/.test(password) ? 'text-green-500' : 'text-slate-400'}`}>
-                                            {/[0-9]/.test(password) ? '✓' : '○'} One number
+                                        <p className={`text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${/[0-9]/.test(password) ? 'text-emerald-600' : 'text-emerald-800/20'}`}>
+                                            <div className={`w-1 h-1 rounded-full ${/[0-9]/.test(password) ? 'bg-emerald-600' : 'bg-emerald-800/20'}`} /> One number
                                         </p>
-                                        <p className={`text-[10px] font-bold flex items-center gap-1 ${/[!@#$%^&*]/.test(password) ? 'text-green-500' : 'text-slate-400'}`}>
-                                            {/[!@#$%^&*]/.test(password) ? '✓' : '○'} One special character
+                                        <p className={`text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${/[!@#$%^&*]/.test(password) ? 'text-emerald-600' : 'text-emerald-800/20'}`}>
+                                            <div className={`w-1 h-1 rounded-full ${/[!@#$%^&*]/.test(password) ? 'bg-emerald-600' : 'bg-emerald-800/20'}`} /> One special character
                                         </p>
                                     </div>
                                 )}
                             </div>
 
                             <div>
-                                <label className="block text-sm font-medium mb-2 text-slate-700">Confirm New Password</label>
-                                <div className="relative">
-                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400" />
+                                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-2 ml-1">Confirm New Password</label>
+                                <div className="relative group">
+                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
                                     <input
                                         type="password"
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
-                                        className="w-full bg-slate-50 border border-slate-100 rounded-xl py-4 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-black/10 focus:border-black text-black font-bold"
+                                        className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20"
                                         placeholder="••••••••"
                                         required
                                     />
                                 </div>
                                 {confirmPassword && (
-                                    <p className={`text-[10px] mt-1 font-bold ${password === confirmPassword ? 'text-green-500' : 'text-red-500'}`}>
+                                    <p className={`text-[9px] mt-2 ml-1 font-black uppercase tracking-widest ${password === confirmPassword ? 'text-emerald-600' : 'text-red-500'}`}>
                                         {password === confirmPassword ? '✓ Passwords match' : '✗ Passwords do not match'}
                                     </p>
                                 )}
@@ -256,19 +257,19 @@ export default function ForgotPassword() {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full py-4 text-white font-black uppercase tracking-widest rounded-xl hover:bg-slate-900 transition-all flex items-center justify-center gap-2 disabled:opacity-50 bg-black"
+                                className="w-full py-4 bg-[#064e3b] text-emerald-50 font-black uppercase text-xs tracking-[0.2em] rounded-2xl hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] transition-all flex items-center justify-center gap-3 disabled:opacity-50 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
                             >
                                 {loading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <>Reset Password <ArrowRight className="w-5 h-5" /></>}
                             </button>
                         </form>
                     )}
 
-                    <div className="mt-10 p-6 bg-slate-50 rounded-3xl border border-slate-100 relative overflow-hidden group">
+                    <div className="mt-10 p-6 bg-emerald-50 rounded-[2rem] border border-emerald-100 relative overflow-hidden group">
                         <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-110 transition-transform">
-                            <ShieldCheck className="w-16 h-16 text-black" />
+                            <ShieldCheck className="w-16 h-16 text-[#064e3b]" />
                         </div>
-                        <p className="text-xs text-slate-500 font-bold leading-relaxed relative z-10">
-                            <span className="text-black uppercase tracking-tighter mr-1">Security Note:</span>
+                        <p className="text-[10px] text-emerald-800/40 font-black uppercase tracking-widest leading-relaxed relative z-10">
+                            <span className="text-[#064e3b] uppercase tracking-tighter mr-1.5">Security Note:</span>
                             take.health AI Platform never asks for your password over email. All password resets are handled through our secure verification system.
                         </p>
                     </div>

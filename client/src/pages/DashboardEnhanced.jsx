@@ -1124,26 +1124,28 @@ export default function DashboardEnhanced() {
           </div>
 
           {(!dietPlan || !dietPlan.mealPlan) ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-6 bg-slate-50 rounded-3xl mb-6">
-              <Target className="w-12 h-12 text-slate-300 mb-4" />
+            <div className="flex-1 flex flex-col items-center justify-center text-center p-4 lg:p-6 bg-emerald-50/20 rounded-[2rem] mb-6 border border-emerald-100/30">
+              <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
+                <Target className="w-7 h-7 text-emerald-400" />
+              </div>
               {!user?.nutritionGoal?.calorieGoal ? (
                 <>
-                  <p className="text-sm font-bold text-slate-800 mb-2">Set your fitness goal</p>
-                  <p className="text-xs text-slate-400 mb-4">Set your fitness goal to see your personalized diet plan</p>
+                  <p className="text-sm font-black text-[#064e3b] uppercase tracking-widest mb-1">Goal Required</p>
+                  <p className="text-[10px] font-bold text-emerald-800/40 mb-4 max-w-[200px] leading-relaxed uppercase tracking-widest">Set your fitness goal to unlock your personalized plan</p>
                   <button
                     onClick={() => navigate('/profile?tab=goals')}
-                    className="px-8 py-3 bg-[#064e3b] text-white rounded-full text-xs font-black uppercase tracking-widest shadow-xl shadow-emerald-900/20 hover:scale-105 transition-all"
+                    className="w-full sm:w-auto px-10 py-3.5 bg-[#064e3b] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-emerald-900/20 hover:scale-[1.02] transition-all border-b-4 border-[#042f24] active:border-b-0 active:translate-y-1"
                   >
                     Set Fitness Goal
                   </button>
                 </>
               ) : (
                 <>
-                  <p className="text-sm font-bold text-slate-800 mb-2">Create your diet plan</p>
-                  <p className="text-xs text-slate-400 mb-4">Your goal is set! Now generate your personalized diet plan</p>
+                  <p className="text-sm font-black text-[#064e3b] uppercase tracking-widest mb-1">Plan Ready</p>
+                  <p className="text-[10px] font-bold text-emerald-800/40 mb-4 max-w-[200px] leading-relaxed uppercase tracking-widest">Your goal is set! Now generate your personalized diet plan</p>
                   <button
                     onClick={() => navigate('/diet-plan')}
-                    className="px-8 py-3 bg-[#064e3b] text-white rounded-full text-xs font-black uppercase tracking-widest shadow-xl shadow-emerald-900/20 hover:scale-105 transition-all"
+                    className="w-full sm:w-auto px-10 py-3.5 bg-[#064e3b] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-emerald-900/20 hover:scale-[1.02] transition-all border-b-4 border-[#042f24] active:border-b-0 active:translate-y-1"
                   >
                     Create Diet Plan
                   </button>
@@ -1213,12 +1215,14 @@ export default function DashboardEnhanced() {
                 />
               ))
             ) : (
-              <div className="flex flex-col items-center justify-center p-8 bg-slate-50/50 rounded-3xl text-center border border-dashed border-slate-200">
-                <UploadCloud className="w-10 h-10 text-slate-300 mb-4" />
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-4 leading-loose">No Health Reports Found</p>
+              <div className="flex flex-col items-center justify-center p-6 sm:p-10 bg-emerald-50/20 rounded-[2rem] text-center border border-emerald-100/30">
+                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-4 ring-8 ring-emerald-50/10">
+                  <UploadCloud className="w-8 h-8 text-emerald-400" />
+                </div>
+                <p className="text-[10px] font-black text-emerald-800/40 uppercase tracking-[0.2em] mb-4 leading-loose">No Health Reports Found</p>
                 <button
                   onClick={() => navigate('/upload')}
-                  className="px-6 py-2.5 bg-[#064e3b] text-white text-[10px] font-black uppercase tracking-widest rounded-full hover:scale-105 transition-all shadow-lg"
+                  className="w-full sm:w-auto px-10 py-3.5 bg-[#064e3b] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-emerald-900/20 hover:scale-[1.02] transition-all border-b-4 border-[#042f24] active:border-b-0 active:translate-y-1"
                 >
                   Upload Report
                 </button>
@@ -1259,7 +1263,7 @@ export default function DashboardEnhanced() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="bg-white/80 backdrop-blur-2xl border border-emerald-100/30 rounded-[28px] md:rounded-[32px] p-4 md:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] relative overflow-hidden mt-8 mb-8"
+            className="mx-4 lg:mx-0 bg-white/80 backdrop-blur-2xl border border-emerald-100/30 rounded-[28px] md:rounded-[32px] p-4 md:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] relative overflow-hidden mt-8 mb-8"
           >
             {/* Subtle inside gradient */}
             <div className="absolute inset-0 bg-gradient-to-r from-emerald-50/20 to-white/30 pointer-events-none" />
@@ -1383,15 +1387,17 @@ export default function DashboardEnhanced() {
               )}
             </>
           ) : (
-            <div className="md:col-span-3 flex flex-col items-center justify-center p-6 lg:p-12 bg-emerald-50/20 rounded-[2.5rem] border border-emerald-100/30">
-              <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-6">
-                <Utensils className="w-8 h-8 text-emerald-200" />
+            <div className="w-full md:col-span-3 flex flex-col items-center justify-center p-6 lg:p-12 bg-white/80 backdrop-blur-md rounded-[2.5rem] border border-emerald-100/50 shadow-sm text-center">
+              <div className="w-14 h-14 bg-emerald-50/50 rounded-2xl flex items-center justify-center shadow-sm mb-4 ring-8 ring-emerald-50/20">
+                <Utensils className="w-8 h-8 text-emerald-400" />
               </div>
-              <h3 className="text-sm font-black text-[#064e3b] uppercase tracking-tight mb-1">No Meals Logged</h3>
-              <p className="text-[10px] text-emerald-800/40 font-bold max-w-[200px] mx-auto leading-relaxed">Log meals to see your history & suggestions.</p>
+              <div className="space-y-2">
+                <h3 className="text-sm md:text-xl font-black text-[#064e3b] uppercase tracking-tighter">No Meals Logged</h3>
+                <p className="text-[10px] md:text-sm text-emerald-800/40 font-bold max-w-[220px] leading-relaxed uppercase tracking-widest text-center mx-auto">Log your first meal to start tracking progress</p>
+              </div>
               <button
                 onClick={() => navigate('/nutrition')}
-                className="mt-6 px-10 py-3 bg-[#064e3b] text-emerald-50 rounded-full text-xs font-black uppercase tracking-widest shadow-xl shadow-emerald-900/20 hover:scale-105 transition-all"
+                className="mt-6 w-full sm:w-auto px-12 py-3.5 bg-[#064e3b] text-emerald-50 rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-widest shadow-xl shadow-emerald-900/20 hover:scale-[1.02] transition-all border-b-4 border-[#042f24] active:border-b-0 active:translate-y-1"
               >
                 Log First Meal
               </button>
@@ -1564,7 +1570,7 @@ export default function DashboardEnhanced() {
                 )
               })
             ) : (
-              <div className="flex flex-col items-center justify-center p-10 bg-slate-50 rounded-[2rem] border border-dashed border-slate-200 text-center">
+              <div className="flex flex-col items-center justify-center p-10 bg-emerald-50/20 rounded-[2rem] border border-emerald-100/30 text-center">
                 {loggedMeals.length > 0 || dashboardData?.latestAnalysis?.deficiencies?.length > 0 ? (
                   <>
                     <CheckCircle2 className="w-10 h-10 text-emerald-500 mb-4" />

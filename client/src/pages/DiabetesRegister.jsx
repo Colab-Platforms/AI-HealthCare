@@ -177,7 +177,7 @@ export default function DiabetesRegister() {
               <img 
                 src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
                 alt="take.health AI Platform" 
-                className="h-16 w-auto object-contain brightness-0 invert"
+                className="h-24 w-auto object-contain brightness-0 invert"
               />
             </div>
             <p className="text-xl text-white/80 text-center max-w-md mb-6 font-medium">

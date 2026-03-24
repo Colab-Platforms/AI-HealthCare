@@ -246,14 +246,14 @@ export default function Register() {
       </div>
 
       {/* Main Registration Form Area */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-slate-50/30">
-        <div className="w-full max-w-md bg-white p-10 rounded-[2.5rem] shadow-[0_20px_60px_rgba(6,78,59,0.05)] border border-emerald-50/50">
+      <div className="flex-1 flex items-center justify-center p-0 sm:p-8 bg-slate-50/30">
+        <div className="w-full max-w-md bg-white p-6 sm:p-10 rounded-none sm:rounded-[2.5rem] shadow-[0_20px_60px_rgba(6,78,59,0.05)] border-0 sm:border border-emerald-50/50">
           {/* Mobile Identity */}
           <div className="lg:hidden flex justify-center mb-10">
             <img 
               src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
               alt="take.health" 
-              className="h-22 w-auto object-contain"
+              className="h-24 w-auto object-contain"
             />
           </div>
 
@@ -354,9 +354,9 @@ export default function Register() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-5 mt-6 text-emerald-50 font-black uppercase tracking-[0.2em] rounded-2xl transition-all flex items-center justify-center gap-3 bg-[#064e3b] hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] disabled:opacity-70 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
+                className="w-full py-4 mt-6 text-emerald-50 font-black uppercase text-xs tracking-[0.2em] rounded-2xl transition-all flex items-center justify-center gap-3 bg-[#064e3b] hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] disabled:opacity-70 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
               >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <>Initialize Account <ArrowRight className="w-5 h-5" /></>}
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><span className="text-sm">Sign Up</span> <ArrowRight className="w-4 h-4" /></>}
               </button>
 
               <div className="mt-8 text-center">
@@ -407,9 +407,9 @@ export default function Register() {
                 <button
                   onClick={handleVerifyEmail}
                   disabled={loading}
-                  className="w-full py-5 bg-[#064e3b] text-emerald-50 font-black uppercase tracking-[0.2em] rounded-2xl shadow-xl hover:bg-[#042f24] transition-all flex items-center justify-center gap-3 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
+                  className="w-full py-4 bg-[#064e3b] text-emerald-50 font-black uppercase text-xs tracking-[0.2em] rounded-2xl shadow-xl hover:bg-[#042f24] transition-all flex items-center justify-center gap-3 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
                 >
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Confirm Identity'}
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span className="text-sm">Confirm Identity</span>}
                 </button>
                 <button onClick={handleResendCode} className="text-[10px] font-black text-emerald-800/30 uppercase tracking-widest hover:text-[#064e3b] transition-colors">Resend Verification Code</button>
               </div>
@@ -559,9 +559,9 @@ export default function Register() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-5 mt-4 text-emerald-50 font-black uppercase tracking-[0.2em] rounded-2xl transition-all flex items-center justify-center gap-3 bg-[#064e3b] hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] disabled:opacity-70 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
+                className="w-full py-4 mt-4 text-emerald-50 font-black uppercase text-xs tracking-[0.2em] rounded-2xl transition-all flex items-center justify-center gap-3 bg-[#064e3b] hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] disabled:opacity-70 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
               >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : 'Enter Dashboard'}
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span className="text-sm">Sign Up</span>}
               </button>
             </form>
           )}

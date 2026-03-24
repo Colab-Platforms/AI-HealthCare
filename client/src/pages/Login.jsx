@@ -87,8 +87,8 @@ export default function Login() {
       </div>
 
       {/* Right Panel - Form */}
-      <div className="flex-1 flex items-center justify-center p-8 bg-slate-50/30">
-        <div className="w-full max-w-md bg-white p-10 rounded-[2.5rem] shadow-[0_20px_60px_rgba(6,78,59,0.05)] border border-emerald-50/50">
+      <div className="flex-1 flex items-center justify-center p-0 sm:p-8 bg-slate-50/30">
+        <div className="w-full max-w-md bg-white p-6 sm:p-10 rounded-none sm:rounded-[2.5rem] shadow-[0_20px_60px_rgba(6,78,59,0.05)] border-0 sm:border border-emerald-50/50">
           {/* Mobile Logo */}
           <div className="lg:hidden flex justify-center mb-12">
             <img 
@@ -141,8 +141,8 @@ export default function Login() {
               </div>
             </div>
 
-            <div className="flex items-center justify-between px-1">
-              <label className="flex items-center gap-2 cursor-pointer group">
+            <div className="flex items-center justify-between px-1 gap-2">
+              <label className="flex items-center gap-2 cursor-pointer group whitespace-nowrap">
                 <div className="relative flex items-center justify-center">
                   <input type="checkbox" className="peer sr-only" />
                   <div className="w-5 h-5 bg-emerald-50 border-2 border-emerald-100 rounded-lg peer-checked:bg-[#064e3b] peer-checked:border-[#064e3b] transition-all" />
@@ -152,18 +152,21 @@ export default function Login() {
                 </div>
                 <span className="text-[10px] font-black text-emerald-800/40 uppercase tracking-widest group-hover:text-[#064e3b] transition-colors">Remember me</span>
               </label>
-              <Link to="/forgot-password" line title="Go to find password page" className="text-[10px] font-black text-emerald-800/40 hover:text-[#064e3b] transition-colors uppercase tracking-widest">Forgot password?</Link>
+              <Link to="/forgot-password" line title="Go to find password page" className="text-[10px] font-black text-emerald-800/40 hover:text-[#064e3b] transition-colors uppercase tracking-widest whitespace-nowrap">Forgot password?</Link>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-5 bg-[#064e3b] text-emerald-50 font-black uppercase tracking-[0.2em] rounded-2xl hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] transition-all flex items-center justify-center gap-3 disabled:opacity-50 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
+              className="w-full py-4 bg-[#064e3b] text-emerald-50 font-black uppercase text-xs tracking-[0.2em] rounded-2xl hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] transition-all flex items-center justify-center gap-3 disabled:opacity-50 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
-                <>Sign In To Dashboard <ArrowRight className="w-5 h-5" /></>
+                <>
+                  <span className="text-sm">Sign In</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
               )}
             </button>
           </form>
