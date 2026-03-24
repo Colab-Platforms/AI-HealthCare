@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Download, X } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
 export default function PWAInstallPrompt() {
+  const location = useLocation();
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
@@ -91,8 +93,8 @@ export default function PWAInstallPrompt() {
     }, 2 * 60 * 1000); // 2 minutes
   };
 
-  // Don't show if already installed or prompt is hidden
-  if (isInstalled || !showPrompt) {
+  // Don't show if already installed, prompt is hidden, or on dashboard (has inline button)
+  if (isInstalled || !showPrompt || location.pathname === '/dashboard') {
     return null;
   }
 

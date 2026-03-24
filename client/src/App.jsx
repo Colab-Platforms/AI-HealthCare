@@ -3,7 +3,6 @@ import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { PedometerProvider } from './context/PedometerContext';
 import Layout from './components/Layout';
-import PWAInstallPrompt from './components/PWAInstallPrompt';
 import GenericSkeleton from './components/skeletons/GenericSkeleton';
 import Landing from './pages/Landing';
 import Login from './pages/Login';
@@ -91,7 +90,6 @@ export default function App() {
   return (
     <PedometerProvider>
       <div className="min-h-screen bg-[#F9FCF3]">
-        <PWAInstallPrompt />
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={getLoginRedirect()} />
