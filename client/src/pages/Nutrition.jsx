@@ -333,10 +333,22 @@ function Nutrition() {
 
   const handleWaterUpdate = async (change) => {
     try {
-      const newWater = Math.max(0, waterIntake.current + change);
-      // We don't have a direct water log endpoint in the snippet, 
-      // but usually we log it as a progress or as part of daily sync.
-      // For now, let's update local state and toast.
+      const newWater = waterIntake.current + change;
+      
+      if (newWater < 0) return;
+      
+      if (newWater > waterIntake.target) {
+        toast.success("Hydration goal achieved!", {
+          icon: '🌊',
+          duration: 4000
+        });
+        toast("You've completed your daily target of 8 glasses. Stay hydrated, but you're all set!", {
+          icon: '✨',
+          duration: 4000
+        });
+        return;
+      }
+
       setWaterIntake(prev => ({ ...prev, current: newWater }));
       await api.post('health/daily-progress', {
         date: selectedDate,

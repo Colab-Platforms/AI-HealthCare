@@ -12,9 +12,9 @@ const VideoHero = () => {
           loop
           muted
           playsInline
-          className="hidden md:block w-full h-full object-cover opacity-60"
+          className="hidden md:block w-full h-full object-cover"
         >
-          <source src="https://cdn.shopify.com/videos/c/o/v/bec0c00b6d494ad9b4966b1d431f29c5.mp4" type="video/mp4" />
+          <source src="https://cdn.shopify.com/videos/c/o/v/eb123ae437614572aaef173de614bd8d.mp4" type="video/mp4" />
         </video>
 
         {/* Mobile Video */}
@@ -23,9 +23,9 @@ const VideoHero = () => {
           loop
           muted
           playsInline
-          className="block md:hidden w-full h-full object-cover opacity-60"
+          className="block md:hidden w-full h-full object-cover"
         >
-          <source src="https://cdn.shopify.com/videos/c/o/v/9fbf6dd9c71a47238ee8bdb92c2851ff.mp4" type="video/mp4" />
+          <source src="https://cdn.shopify.com/videos/c/o/v/eb123ae437614572aaef173de614bd8d.mp4" type="video/mp4" />
         </video>
 
         {/* Fallback for browsers that don't support video */}

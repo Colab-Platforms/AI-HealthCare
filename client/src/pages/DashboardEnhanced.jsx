@@ -321,7 +321,7 @@ const DailyMetricsCard = () => {
             </div>
             <div>
               <p className="text-[9px] lg:text-[11px] font-black text-emerald-800/40 uppercase tracking-tighter leading-none mb-1">WATER</p>
-              <p className="text-[15px] lg:text-2xl font-black text-[#064e3b]">{water} <span className="text-[10px] lg:text-sm font-bold text-emerald-800/20">L</span></p>
+              <p className="text-[15px] lg:text-2xl font-black text-[#064e3b]">{water} <span className="text-[10px] lg:text-sm font-bold text-emerald-800/20">glasses</span></p>
             </div>
           </div>
           <button onClick={() => navigate('/nutrition')} className="mt-2 lg:mt-0 w-6 h-6 lg:w-8 lg:h-8 rounded-full border border-emerald-100/30 flex items-center justify-center hover:bg-emerald-50 transition-colors bg-emerald-50 lg:bg-transparent">
@@ -1601,7 +1601,25 @@ export default function DashboardEnhanced() {
             </div>
             <span className="text-xl font-light text-[#1a1a1a]">
               {completedTasks.length}
-              <span className="text-sm text-[#888888]">/{(dashboardData?.latestAnalysis?.recommendations?.lifestyle?.length || 4)}</span>
+              <span className="text-sm text-[#888888]">/{ (() => {
+                const defaultTasks = ['Drink 3L Water', 'Morning walk 20 mins', 'Take Multivitamins', '8 Hours Sleep'];
+                const metrics = dashboardData?.latestAnalysis?.metrics || {};
+                const conditions = user?.profile?.medicalHistory?.conditions || [];
+                const hasCondition = (name) => conditions.some(c => c.toLowerCase().includes(name.toLowerCase()));
+                const isHigh = (name) => {
+                  const metric = Object.values(metrics).find(m => m.name?.toLowerCase().includes(name.toLowerCase()) || m.label?.toLowerCase().includes(name.toLowerCase()));
+                  return metric?.status?.toLowerCase().includes('high') || metric?.status?.toLowerCase().includes('risk');
+                };
+                if (isDiabetic || hasCondition('diabetes')) {
+                  defaultTasks[0] = 'Check Glucose Level';
+                  defaultTasks[2] = 'Sugar-free Breakfast';
+                }
+                if (hasCondition('hypertension') || isHigh('pressure')) { defaultTasks.push('Check Blood Pressure'); defaultTasks[0] = 'Low Sodium Meals'; }
+                if (hasCondition('anemia') || isHigh('hemoglobin')) { defaultTasks.push('Iron-rich Foods'); defaultTasks[2] = 'Take Iron Supplement'; }
+                if (isHigh('cholesterol')) { defaultTasks.push('Omega-3 Supplement'); defaultTasks[3] = 'Fiber-rich Dinner'; }
+                if (isOverLimit) { defaultTasks[1] = 'Extra 15m Cardio'; if (defaultTasks.length < 5) defaultTasks.push('Log Extra Calories'); }
+                return (dashboardData?.latestAnalysis?.recommendations?.lifestyle || defaultTasks.slice(0, 5)).length;
+              })() }</span>
             </span>
           </div>
           <div className="space-y-5 flex-1 min-h-0 overflow-y-auto pr-1">
@@ -1648,7 +1666,9 @@ export default function DashboardEnhanced() {
                 if (defaultTasks.length < 5) defaultTasks.push('Log Extra Calories');
               }
 
-              return (dashboardData?.latestAnalysis?.recommendations?.lifestyle || defaultTasks.slice(0, 5)).map((task, i) => {
+              const tasksToRender = (dashboardData?.latestAnalysis?.recommendations?.lifestyle || defaultTasks.slice(0, 5));
+
+              return tasksToRender.map((task, i) => {
                 const isCompleted = completedTasks.includes(i);
                 return (
                   <div
@@ -1675,13 +1695,50 @@ export default function DashboardEnhanced() {
             <div className="h-1.5 bg-[#F5F5F7] rounded-full overflow-hidden mb-3">
               <motion.div
                 initial={{ width: 0 }}
-                animate={{ width: `${(completedTasks.length / (dashboardData?.latestAnalysis?.recommendations?.lifestyle?.length || 4)) * 100}%` }}
+                animate={{ width: `${(completedTasks.length / (() => {
+                  const defaultTasks = ['Drink 3L Water', 'Morning walk 20 mins', 'Take Multivitamins', '8 Hours Sleep'];
+                  const metrics = dashboardData?.latestAnalysis?.metrics || {};
+                  const conditions = user?.profile?.medicalHistory?.conditions || [];
+                  const hasCondition = (name) => conditions.some(c => c.toLowerCase().includes(name.toLowerCase()));
+                  const isHigh = (name) => {
+                    const metric = Object.values(metrics).find(m => m.name?.toLowerCase().includes(name.toLowerCase()) || m.label?.toLowerCase().includes(name.toLowerCase()));
+                    return metric?.status?.toLowerCase().includes('high') || metric?.status?.toLowerCase().includes('risk');
+                  };
+                  if (isDiabetic || hasCondition('diabetes')) {
+                    defaultTasks[0] = 'Check Glucose Level';
+                    defaultTasks[2] = 'Sugar-free Breakfast';
+                  }
+                  if (hasCondition('hypertension') || isHigh('pressure')) { defaultTasks.push('Check Blood Pressure'); defaultTasks[0] = 'Low Sodium Meals'; }
+                  if (hasCondition('anemia') || isHigh('hemoglobin')) { defaultTasks.push('Iron-rich Foods'); defaultTasks[2] = 'Take Iron Supplement'; }
+                  if (isHigh('cholesterol')) { defaultTasks.push('Omega-3 Supplement'); defaultTasks[3] = 'Fiber-rich Dinner'; }
+                  if (isOverLimit) { defaultTasks[1] = 'Extra 15m Cardio'; if (defaultTasks.length < 5) defaultTasks.push('Log Extra Calories'); }
+                  return (dashboardData?.latestAnalysis?.recommendations?.lifestyle || defaultTasks.slice(0, 5)).length;
+                })()) * 100}%` }}
                 transition={{ duration: 1, delay: 1 }}
                 className="h-full bg-[#1a1a1a] rounded-full"
               />
             </div>
             <p className="text-xs text-center text-[#888888] font-bold uppercase tracking-wider">
-              {(dashboardData?.latestAnalysis?.recommendations?.lifestyle?.length || 4) - completedTasks.length} tasks remaining
+              {(() => {
+                const defaultTasks = ['Drink 3L Water', 'Morning walk 20 mins', 'Take Multivitamins', '8 Hours Sleep'];
+                const metrics = dashboardData?.latestAnalysis?.metrics || {};
+                const conditions = user?.profile?.medicalHistory?.conditions || [];
+                const hasCondition = (name) => conditions.some(c => c.toLowerCase().includes(name.toLowerCase()));
+                const isHigh = (name) => {
+                  const metric = Object.values(metrics).find(m => m.name?.toLowerCase().includes(name.toLowerCase()) || m.label?.toLowerCase().includes(name.toLowerCase()));
+                  return metric?.status?.toLowerCase().includes('high') || metric?.status?.toLowerCase().includes('risk');
+                };
+                if (isDiabetic || hasCondition('diabetes')) {
+                  defaultTasks[0] = 'Check Glucose Level';
+                  defaultTasks[2] = 'Sugar-free Breakfast';
+                }
+                if (hasCondition('hypertension') || isHigh('pressure')) { defaultTasks.push('Check Blood Pressure'); defaultTasks[0] = 'Low Sodium Meals'; }
+                if (hasCondition('anemia') || isHigh('hemoglobin')) { defaultTasks.push('Iron-rich Foods'); defaultTasks[2] = 'Take Iron Supplement'; }
+                if (isHigh('cholesterol')) { defaultTasks.push('Omega-3 Supplement'); defaultTasks[3] = 'Fiber-rich Dinner'; }
+                if (isOverLimit) { defaultTasks[1] = 'Extra 15m Cardio'; if (defaultTasks.length < 5) defaultTasks.push('Log Extra Calories'); }
+                const list = (dashboardData?.latestAnalysis?.recommendations?.lifestyle || defaultTasks.slice(0, 5));
+                return Math.max(0, list.length - completedTasks.length);
+              })()} tasks remaining
             </p>
           </div>
         </motion.div>
