@@ -354,6 +354,7 @@ function Nutrition() {
         date: selectedDate,
         waterIntake: newWater
       });
+      invalidateCache(['dashboard']);
       toast.success('Water intake updated');
     } catch (error) {
       toast.error('Failed to update water');
@@ -945,7 +946,15 @@ function Nutrition() {
 
             {/* Smart Meal Suggestions */}
             <div className="bg-[#ffffff]/60 backdrop-blur-md rounded-[2.5rem] p-8 border border-emerald-100/30 shadow-sm">
-              <h4 className="font-black text-base text-[#064e3b] mb-6 uppercase tracking-tight">Smart Meal Suggestions</h4>
+              <div className="flex items-center justify-between mb-6">
+                <h4 className="font-black text-base text-[#064e3b] uppercase tracking-tight">Smart Meal Suggestions</h4>
+                {user?.isDiabetic && (
+                  <span className="bg-[#064e3b]/5 text-[#064e3b] text-[8px] font-black px-3 py-1.5 rounded-full border border-[#064e3b]/10 uppercase tracking-widest flex items-center gap-1.5">
+                    <div className="w-1 h-1 bg-emerald-500 rounded-full animate-pulse" />
+                    Glycemic Optimized
+                  </span>
+                )}
+              </div>
 
               <div className="flex gap-6 mb-8 overflow-x-auto pb-1 scrollbar-hide">
                 {['Recommended', 'High Protein', 'Balanced', 'Low Carb'].map(tab => (
@@ -1100,7 +1109,10 @@ function Nutrition() {
               <div className="p-8 pb-4 border-b border-slate-50">
                 <div className="flex justify-between items-center mb-8">
                   <div className="flex flex-col">
-                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Dietary Protocol</span>
+                    <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest w-fit mb-2 ${user?.isDiabetic ? 'bg-[#064e3b] text-emerald-50 shadow-md border border-[#064e3b]/20' : 'bg-slate-100 text-slate-400'}`}>
+                      <Sparkles className="w-3 h-3" />
+                      {user?.isDiabetic ? 'Active Diabetic Care Protocol' : 'Standard Health Protocol'}
+                    </div>
                     <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Add to {mealTab}</h3>
                   </div>
                   <button onClick={() => setIsModalOpen(false)} className="w-10 h-10 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center transition-all border border-slate-100">
@@ -1112,7 +1124,7 @@ function Nutrition() {
                   {['Breakfast', 'Mid-Morning', 'Lunch', 'Evening', 'Dinner'].map(tab => (
                     <button
                       key={tab} onClick={() => setMealTab(tab)}
-                      className={`text-[10px] font-black px-5 py-2 rounded-full transition-all uppercase tracking-widest whitespace-nowrap ${mealTab === tab ? 'bg-slate-900 text-white shadow-lg' : 'text-slate-400 hover:text-slate-900 hover:bg-slate-50'}`}
+                      className={`text-[10px] font-black px-5 py-2 rounded-full transition-all uppercase tracking-widest whitespace-nowrap ${mealTab === tab ? 'bg-[#064e3b] text-emerald-50 shadow-lg' : 'text-slate-400 hover:text-[#064e3b] hover:bg-emerald-50/50'}`}
                     >
                       {tab}
                     </button>
@@ -1127,7 +1139,7 @@ function Nutrition() {
                   ].map(tab => (
                     <button
                       key={tab.name} onClick={() => setInputMethod(tab.name)}
-                      className={`flex-1 flex items-center justify-center gap-2 py-3 text-[10px] font-black rounded-xl transition-all uppercase tracking-widest ${inputMethod === tab.name ? 'bg-white shadow-xl text-slate-900' : 'text-slate-400 hover:text-slate-900'}`}
+                      className={`flex-1 flex items-center justify-center gap-2 py-3 text-[10px] font-black rounded-xl transition-all uppercase tracking-widest ${inputMethod === tab.name ? 'bg-white shadow-xl text-[#064e3b]' : 'text-slate-400 hover:text-[#064e3b]'}`}
                     >
                       <tab.icon className="w-4 h-4" /> {tab.name === 'Predict' ? 'Voice Log' : tab.name}
                     </button>
@@ -1192,7 +1204,7 @@ function Nutrition() {
                         }}
                         className={`relative w-24 h-24 md:w-28 md:h-28 rounded-full flex items-center justify-center transition-all shadow-xl ${isListening
                           ? 'bg-red-500 text-white scale-110'
-                          : 'bg-slate-900 text-white hover:bg-black hover:scale-105'
+                          : 'bg-[#064e3b] text-emerald-50 hover:bg-[#042f2e] hover:scale-105'
                           }`}
                       >
                         <Mic className={`w-10 h-10 md:w-12 md:h-12 ${isListening ? 'animate-pulse' : ''}`} />
@@ -1202,7 +1214,7 @@ function Nutrition() {
                     {/* Status Text */}
                     {!foodInput && (
                       <div className="text-center space-y-2 px-4">
-                        <h4 className="text-lg font-black text-slate-900 uppercase tracking-tight">
+                        <h4 className="text-lg font-black text-[#064e3b] uppercase tracking-tight">
                           {isListening ? 'Listening...' : 'Tap to speak'}
                         </h4>
                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest max-w-[250px] mx-auto leading-relaxed">
@@ -1254,7 +1266,7 @@ function Nutrition() {
                         <button
                           onClick={handleAnalyzeAndLog}
                           disabled={isAnalyzing}
-                          className="w-full py-5 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-black transition-all shadow-xl active:scale-[0.98] disabled:opacity-50"
+                          className="w-full py-5 bg-[#064e3b] text-emerald-50 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#042f2e] transition-all shadow-xl active:scale-[0.98] disabled:opacity-50"
                         >
                           {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
                           {isAnalyzing ? analyzingMessage : 'Analyze My Meal'}
@@ -1327,7 +1339,7 @@ function Nutrition() {
                     <button
                       onClick={handleAnalyzeAndLog}
                       disabled={isAnalyzing || !foodInput}
-                      className="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-black transition-all shadow-xl active:scale-95 disabled:opacity-50"
+                      className="w-full py-5 bg-[#064e3b] text-emerald-50 rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#042f2e] transition-all shadow-xl active:scale-95 disabled:opacity-50"
                     >
                       {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5 text-white" />}
                       {isAnalyzing ? analyzingMessage : 'Analyze & Log Meal'}
@@ -1349,7 +1361,7 @@ function Nutrition() {
 
                           <div className="text-center space-y-3">
                             <div className="w-16 h-16 bg-white rounded-2xl shadow-xl flex items-center justify-center mx-auto transition-transform duration-500 group-hover:rotate-12">
-                              <Camera className="w-8 h-8 text-slate-900" />
+                              <Camera className="w-8 h-8 text-[#064e3b]" />
                             </div>
                             <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest">Click to upload photo</p>
                           </div>
@@ -1374,7 +1386,7 @@ function Nutrition() {
                         <select
                           value={prepMethod}
                           onChange={(e) => setPrepMethod(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-100 rounded-xl py-4 px-5 text-sm font-bold text-slate-900 outline-none focus:bg-white focus:border-slate-300 transition-all appearance-none cursor-pointer"
+                          className="w-full bg-slate-50 border border-slate-100 rounded-xl py-4 px-5 text-sm font-bold text-[#064e3b] outline-none focus:bg-white focus:border-slate-300 transition-all appearance-none cursor-pointer"
                         >
                           <option value="">Select Method</option>
                           <option value="homemade">Homemade</option>
@@ -1391,7 +1403,7 @@ function Nutrition() {
                     <button
                       onClick={handleAnalyzeAndLog}
                       disabled={isAnalyzing || !image}
-                      className="w-full py-5 bg-slate-900 text-white rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-black transition-all shadow-xl active:scale-95 disabled:opacity-50"
+                      className="w-full py-5 bg-[#064e3b] text-emerald-50 rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#042f2e] transition-all shadow-xl active:scale-95 disabled:opacity-50"
                     >
                       {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5 text-white" />}
                       {isAnalyzing ? analyzingMessage : 'Analyze Photo'}
@@ -1440,7 +1452,7 @@ function Nutrition() {
                   <h4 className="text-[9px] md:text-[10px] font-black text-white/50 uppercase tracking-[0.2em] mb-1.5 px-0.5">
                     {analysisResult.foodItem?.name || analysisResult.foodName || analysisResult.foodItems?.[0]?.name}
                   </h4>
-                  <h2 className="text-xl md:text-4xl font-black tracking-tighter uppercase leading-none mb-3 md:mb-4 max-w-[90%]">
+                  <h2 className="text-xl md:text-4xl font-black tracking-tighter uppercase leading-none mb-3 md:mb-4 max-w-[90%] text-emerald-50">
                     {analysisResult._userInput || 'Analysis Log View'}
                   </h2>
                   <div className="flex flex-wrap items-center gap-2 md:gap-3">
@@ -1471,7 +1483,7 @@ function Nutrition() {
                   ].map((m) => (
                     <div key={m.label} className="bg-white p-5 rounded-[2rem] text-center border-2 border-slate-900 flex flex-col justify-center shadow-sm">
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{m.label}</p>
-                      <p className="text-2xl font-black text-slate-900 tracking-tighter leading-none">{m.value}<span className="text-[10px] ml-0.5 text-slate-400 font-bold uppercase">{m.unit}</span></p>
+                      <p className="text-2xl font-black text-[#064e3b] tracking-tighter leading-none">{m.value}<span className="text-[10px] ml-0.5 text-slate-400 font-bold uppercase">{m.unit}</span></p>
                     </div>
                   ))}
                 </div>

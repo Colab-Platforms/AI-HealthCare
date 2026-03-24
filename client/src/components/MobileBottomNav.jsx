@@ -5,7 +5,7 @@ import {
   LayoutDashboard, MessageSquare, Utensils, FileText, MoreVertical,
   Settings, LogOut, Heart, Watch, X, Calendar, ScanLine,
   Activity, Bell, Plus, Scale, Droplets, Moon, Footprints,
-  Apple, Sparkles, Trophy
+  Apple, Sparkles, Trophy, BarChart3
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -55,17 +55,25 @@ export default function MobileBottomNav() {
   // Logic to hide the navbar UI but keep the component mounted (to allow the log modal to open)
   const hideNavbarUI = isModalOpen || showMoreMenu || showLogModal;
 
+  const isDiabetic = user?.profile?.isDiabetic === 'yes';
+
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Home' },
-    { path: '/nutrition', icon: Activity, label: 'Nutrition' },
+    isDiabetic
+      ? { path: '/complete-analysis', icon: BarChart3, label: 'Analysis' }
+      : { path: '/nutrition', icon: Activity, label: 'Nutrition' },
     { path: '#log', icon: Plus, label: 'Log', isCenter: true },
     { path: '/upload', icon: FileText, label: 'Reports' }
   ];
 
   const logActivities = [
     { label: 'Food Log', icon: Utensils, path: '/nutrition', color: 'text-orange-500', borderColor: 'border-orange-100', iconBg: 'bg-orange-50', state: { openLogMeal: true } },
+    isDiabetic
+      ? { label: 'Nutrition', icon: Activity, path: '/nutrition', color: 'text-emerald-700', borderColor: 'border-emerald-100', iconBg: 'bg-emerald-50' }
+      : { label: 'Analysis', icon: BarChart3, path: '/complete-analysis', color: 'text-purple-600', borderColor: 'border-purple-100', iconBg: 'bg-purple-50' },
     { label: 'Ask Coach', icon: Sparkles, path: '/ai-chat', color: 'text-emerald-600', borderColor: 'border-emerald-100', iconBg: 'bg-emerald-50' },
     { label: 'Challenge', icon: Trophy, path: '/challenge', color: 'text-amber-500', borderColor: 'border-amber-100', iconBg: 'bg-amber-50' },
+    { label: 'Steps', icon: Footprints, path: '/log-vitals/steps', color: 'text-indigo-500', borderColor: 'border-indigo-100', iconBg: 'bg-indigo-50' },
     { label: 'Sleep', icon: Moon, path: '/log-vitals/sleep', color: 'text-blue-500', borderColor: 'border-blue-100', iconBg: 'bg-blue-50' },
     { label: 'Weight', icon: Scale, path: '/log-vitals/weight', color: 'text-emerald-500', borderColor: 'border-emerald-100', iconBg: 'bg-emerald-50' },
     { label: 'Water', icon: Droplets, path: '/nutrition', color: 'text-cyan-500', borderColor: 'border-cyan-100', iconBg: 'bg-cyan-50', state: { scrollToWater: true } }
@@ -178,17 +186,17 @@ export default function MobileBottomNav() {
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[3.5rem] z-[101] md:hidden p-8 pb-12 shadow-[0_-20px_80px_rgba(0,0,0,0.2)] border-t border-slate-100 max-h-[90vh] overflow-y-auto"
+              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[3.5rem] z-[101] md:hidden p-6 pb-8 shadow-[0_-20px_80px_rgba(0,0,0,0.2)] border-t border-slate-100 max-h-[90vh] overflow-y-auto"
             >
-              <div className="w-16 h-1.5 bg-slate-100 rounded-full mx-auto mb-10" />
+              <div className="w-16 h-1.5 bg-slate-100 rounded-full mx-auto mb-6" />
 
-              <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center justify-between mb-6">
                 <h3 className="text-2xl font-black text-[#064e3b] tracking-tight uppercase">Quick Log</h3>
                 <button
                   onClick={() => setShowLogModal(false)}
-                  className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center text-black active:bg-slate-100 transition-colors"
+                  className="w-11 h-11 rounded-full bg-slate-50 flex items-center justify-center text-black active:bg-slate-100 transition-colors"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-5 h-5" />
                 </button>
               </div>
 
@@ -201,9 +209,9 @@ export default function MobileBottomNav() {
                       to={act.path}
                       state={act.state}
                       onClick={() => setShowLogModal(false)}
-                      className={`flex flex-col items-center justify-center gap-2 p-4 rounded-[2rem] border ${act.borderColor} bg-white shadow-sm active:scale-95 transition-all group hover:shadow-md`}
+                      className={`flex flex-col items-center justify-center gap-1.5 p-3.5 rounded-[2rem] border ${act.borderColor} bg-white shadow-sm active:scale-95 transition-all group hover:shadow-md`}
                     >
-                      <div className={`w-11 h-11 rounded-full ${act.iconBg} flex items-center justify-center shrink-0 transition-transform group-hover:scale-110`}>
+                      <div className={`w-10 h-10 rounded-full ${act.iconBg} flex items-center justify-center shrink-0 transition-transform group-hover:scale-110`}>
                         <Icon className={`w-5 h-5 ${act.color}`} />
                       </div>
                       <span className="text-[10px] font-semibold text-slate-700 tracking-tight uppercase">{act.label}</span>
@@ -212,10 +220,10 @@ export default function MobileBottomNav() {
                 })}
               </div>
 
-              <div className="mt-12 flex justify-center">
+              <div className="mt-8 flex justify-center">
                 <button
                   onClick={() => setShowLogModal(false)}
-                  className="w-14 h-14 rounded-full bg-black text-white flex items-center justify-center shadow-xl active:scale-90 transition-transform"
+                  className="w-12 h-12 rounded-full bg-black text-white flex items-center justify-center shadow-xl active:scale-90 transition-transform"
                 >
                   <X className="w-6 h-6" />
                 </button>

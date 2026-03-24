@@ -34,6 +34,7 @@ import AdminFoodCache from './pages/AdminFoodCache';
 
 import StepTracker from './pages/StepTracker';
 import FoodSafety from './pages/FoodSafety';
+import CompleteAnalysis from './pages/CompleteAnalysis';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -111,6 +112,7 @@ export default function App() {
           <Route path="/supplements" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><Supplements /></Layout></ProtectedRoute>} />
           <Route path="/subscription" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><Subscription /></Layout></ProtectedRoute>} />
           <Route path="/diet-plan" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><DietPlan /></Layout></ProtectedRoute>} />
+          <Route path="/complete-analysis" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><CompleteAnalysis /></Layout></ProtectedRoute>} />
           <Route path="/log-vitals/:metric" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><LogVitals /></Layout></ProtectedRoute>} />
           <Route path="/step-tracker" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><StepTracker /></Layout></ProtectedRoute>} />
           <Route path="/ai-chat" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><AIChat /></Layout></ProtectedRoute>} />

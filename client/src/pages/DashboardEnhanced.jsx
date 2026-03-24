@@ -278,7 +278,7 @@ const DailyMetricsCard = () => {
     <div className="lg:bg-white lg:rounded-[28px] p-0 lg:p-5 lg:shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col h-full lg:border border-slate-100/50">
       <div className="hidden lg:flex mb-2 lg:mb-8 justify-between items-center">
         <div>
-          <h3 className="text-sm lg:text-xl font-medium text-[#1a1a1a]">Daily Vitals</h3>
+          <h3 className="text-sm lg:text-xl font-medium text-[#064e3b]">Daily Vitals</h3>
           <p className="text-[7px] lg:text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">QUICK LOG</p>
         </div>
       </div>
@@ -1516,7 +1516,7 @@ export default function DashboardEnhanced() {
               <div className="w-8 h-8 rounded-full bg-[#1A1A1A]/5 flex items-center justify-center">
                 <FlaskConical className="w-4 h-4 text-[#1a1a1a]" />
               </div>
-              <h3 className="text-sm font-semibold text-[#1a1a1a]">Nutrition Deficiency</h3>
+              <h3 className="text-sm font-semibold text-[#064e3b]">Nutrition Deficiency</h3>
             </div>
             <button className="text-[10px] font-bold text-[#888888] hover:text-[#1a1a1a] uppercase tracking-wide">Detailed &rarr;</button>
           </div>

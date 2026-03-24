@@ -111,7 +111,8 @@ exports.register = async (req, res) => {
           activityLevel: profile.activityLevel || 'sedentary',
           goal: nutritionGoal.goal || 'general_health',
           targetWeight: nutritionGoal.targetWeight,
-          weeklyGoal: nutritionGoal.weeklyGoal || 0.5
+          weeklyGoal: nutritionGoal.weeklyGoal || 0.5,
+          isDiabetic: profile.isDiabetic === 'yes'
         });
       } catch (calcError) {
         console.error('Nutrition goal calculation error:', calcError.message);
@@ -421,7 +422,8 @@ exports.updateProfile = async (req, res) => {
             activityLevel: user.profile.activityLevel || 'sedentary',
             goal: req.body.nutritionGoal.goal || 'general_health',
             targetWeight: req.body.nutritionGoal.targetWeight,
-            weeklyGoal: req.body.nutritionGoal.weeklyGoal || 0.5
+            weeklyGoal: req.body.nutritionGoal.weeklyGoal || 0.5,
+            isDiabetic: user.profile.isDiabetic === 'yes'
           });
 
           user.nutritionGoal = {

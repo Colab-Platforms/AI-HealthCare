@@ -16,6 +16,7 @@ import { useRef } from 'react';
 const patientNavItems = [
   { path: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { path: '/diabetes', icon: Droplet, label: 'Diabetes', isDiabeticOnly: true },
+  { path: '/complete-analysis', icon: TrendingUp, label: 'Analysis' },
   { path: '/upload', icon: Brain, label: 'AI Analyzer' },
   { path: '/nutrition', icon: Utensils, label: 'Nutrition' },
   { path: '/diet-plan', icon: FileText, label: 'Diet Plan' }

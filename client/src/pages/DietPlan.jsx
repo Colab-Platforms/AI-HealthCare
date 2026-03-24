@@ -7,7 +7,7 @@ import {
   Heart, Clock, ArrowLeft, Flame, Target,
   AlertCircle, Sparkles, CheckCircle, Lightbulb, X, UtensilsCrossed, Utensils,
   ChevronLeft, ChevronRight, Calendar, Search, Filter, RefreshCw, Eye, ChefHat,
-  ArrowRight, Check, Zap, Info, Coffee, Sun
+  ArrowRight, Check, Zap, Info, Coffee, Sun, Activity
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -342,6 +342,14 @@ export default function DietPlan() {
           <RefreshCw className={`w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-400 ${generating ? 'animate-spin' : ''}`} />
           {generating ? 'Regenerating...' : 'Regen Plan'}
         </button>
+        {user?.profile?.isDiabetic === 'yes' && (
+          <button
+            onClick={() => navigate('/nutrition')}
+            className="flex items-center gap-1.5 px-3 py-1.5 md:px-6 md:py-2 bg-rose-50/80 text-rose-600 rounded-full text-[10px] md:text-sm font-black border border-rose-200 shadow-sm shrink-0 uppercase tracking-tighter"
+          >
+            <Activity className="w-3 h-3 md:w-3.5 md:h-3.5 opacity-70" /> Nutrition
+          </button>
+        )}
       </div>
 
       {!activePlan ? (

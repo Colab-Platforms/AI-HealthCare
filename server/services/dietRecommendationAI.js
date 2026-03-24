@@ -198,7 +198,16 @@ DINNER (what Indians ACTUALLY eat):
 15. If the user wants to REGENERATE, provide COMPLETELY DIFFERENT meal options.
 16. For vegetarian users: Use paneer, dal, chole, rajma, soya chunks, tofu, sprouts, dairy as protein sources.
 17. For non-vegetarian users: Use chicken, mutton/goat, fish, eggs (NEVER beef) along with vegetarian options.
-18. ${promptExtension || ''}
+18. SPECIAL DIABETIC PROTOCOL (IF APPLICABLE):
+    If the user is diabetic:
+    - Strictly PRIORITIZE low Glycemic Index (GI) foods (e.g., Brown Rice, Whole Wheat, Bajra, Jowar, Ragi, Oats).
+    - Ensure EVERY meal has a high fiber component (green leafy vegetables, legumes).
+    - NEVER suggest refined sugars, white flour (Maida), white bread, or sweetened juices.
+    - Suggest small, frequent meals if appropriate, but keep to the 5-meal structure.
+    - Focus on proteins and healthy fats to slow down glucose absorption.
+    - Limit high-sugar fruits (like mango, chickoo, grapes) and suggest low-GI fruits like apple, pear, or papaya instead.
+
+19. ${promptExtension || ''}
 
 RETURN JSON ONLY. Ensure the JSON is valid and complete:
 {

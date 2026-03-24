@@ -511,7 +511,8 @@ exports.getDashboardData = async (req, res) => {
         calories: nutrition?.totalCalories || 0,
         steps,
         sleep,
-        weight: dayWeight
+        weight: dayWeight,
+        water: nutrition?.waterIntake || 0
       });
     }
 

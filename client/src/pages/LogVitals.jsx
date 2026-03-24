@@ -337,10 +337,8 @@ export default function LogVitals() {
     };
 
     return (
-        <div className="min-h-full bg-transparent px-4 md:px-8 pt-2 md:pt-8 font-sans relative">
-            <div className="max-w-[1000px] mx-auto relative z-10 space-y-8">
-
-                <div className="pt-4" />
+        <div className="min-h-full bg-transparent px-4 md:px-8 pt-0 md:pt-8 font-sans relative">
+            <div className="max-w-[1000px] mx-auto relative z-10 space-y-4 md:space-y-8">
 
                 {/* Content Card */}
                 <motion.div
@@ -350,7 +348,7 @@ export default function LogVitals() {
                     className="bg-white/80 backdrop-blur-xl rounded-[32px] p-6 md:p-8 border border-white/50 shadow-[0_4px_24px_rgba(0,0,0,0.02)]"
                 >
                     {/* Tabs */}
-                    <div className="flex bg-[#F5F5F7] p-1 rounded-full border border-white shadow-sm w-full mb-8">
+                    <div className="flex bg-[#F5F5F7] p-1 rounded-full border border-white shadow-sm w-full mb-4 md:mb-8">
                         {tabs.map((tab) => {
                             const isActive = activeTab === tab.id;
                             const Icon = tab.icon;
@@ -369,7 +367,7 @@ export default function LogVitals() {
                     </div>
 
                     {/* Content Area */}
-                    <div className="py-4">
+                    <div className="py-2 md:py-4">
                         <AnimatePresence mode="wait">
 
                             {activeTab === 'weight' && (

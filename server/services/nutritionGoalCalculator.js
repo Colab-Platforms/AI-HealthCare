@@ -30,6 +30,15 @@ const MACRO_RATIOS = {
   general_health: { protein: 0.30, carbs: 0.40, fat: 0.30 }
 };
 
+// Diabetic-Specific Macro Adjustments (Lower Carbs, Higher Protein/Fats)
+const DIABETIC_MACRO_RATIOS = {
+  weight_loss: { protein: 0.45, carbs: 0.25, fat: 0.30 },
+  weight_gain: { protein: 0.35, carbs: 0.30, fat: 0.35 },
+  muscle_gain: { protein: 0.45, carbs: 0.25, fat: 0.30 },
+  maintain: { protein: 0.40, carbs: 0.25, fat: 0.35 },
+  general_health: { protein: 0.40, carbs: 0.25, fat: 0.35 }
+};
+
 /**
  * Calculate Basal Metabolic Rate (BMR) using Mifflin-St Jeor Equation
  * @param {number} weight - Weight in kg
@@ -95,10 +104,15 @@ function calculateTargetCalories(tdee, goal, weeklyGoal = 0.5) {
  * @param {number} calories - Target calories
  * @param {string} goal - Nutrition goal
  * @param {number} weight - Body weight in kg (for protein calculation)
+ * @param {boolean} isDiabetic - Whether the user is diabetic
  * @returns {object} Macro goals {protein, carbs, fat}
  */
-function calculateMacros(calories, goal, weight) {
-  const ratios = MACRO_RATIOS[goal] || MACRO_RATIOS.general_health;
+function calculateMacros(calories, goal, weight, isDiabetic = false) {
+  // Use diabetic-specific ratios if user is diabetic
+  const standardRatios = MACRO_RATIOS[goal] || MACRO_RATIOS.general_health;
+  const diabeticRatios = DIABETIC_MACRO_RATIOS[goal] || DIABETIC_MACRO_RATIOS.general_health;
+  
+  const ratios = isDiabetic ? diabeticRatios : standardRatios;
   
   // Calculate grams for each macro
   // Protein: 4 cal/g, Carbs: 4 cal/g, Fat: 9 cal/g
@@ -111,7 +125,7 @@ function calculateMacros(calories, goal, weight) {
   const fat = Math.round(fatCalories / 9);
   
   // Ensure minimum protein intake (1.6-2.2g per kg body weight for muscle gain/maintenance)
-  if (goal === 'muscle_gain' || goal === 'weight_loss') {
+  if (goal === 'muscle_gain' || goal === 'weight_loss' || isDiabetic) {
     const minProtein = Math.round(weight * 1.8);
     protein = Math.max(protein, minProtein);
   }
@@ -121,7 +135,7 @@ function calculateMacros(calories, goal, weight) {
 
 /**
  * Main function to calculate complete nutrition goals
- * @param {object} userProfile - User profile data
+ * @param {object} userProfile - User profile data (including isDiabetic)
  * @returns {object} Complete nutrition goals
  */
 function calculateNutritionGoals(userProfile) {
@@ -133,7 +147,8 @@ function calculateNutritionGoals(userProfile) {
     activityLevel = 'sedentary',
     goal = 'general_health',
     targetWeight,
-    weeklyGoal = 0.5
+    weeklyGoal = 0.5,
+    isDiabetic = false
   } = userProfile;
   
   // Validate required fields
@@ -151,7 +166,7 @@ function calculateNutritionGoals(userProfile) {
   const calorieGoal = calculateTargetCalories(tdee, goal, weeklyGoal);
   
   // Calculate macros
-  const macros = calculateMacros(calorieGoal, goal, weight);
+  const macros = calculateMacros(calorieGoal, goal, weight, isDiabetic);
   
   // Calculate estimated time to goal (if applicable)
   let estimatedWeeks = null;
