@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Download, X } from 'lucide-react';
+import { Download, X, Smartphone } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function PWAInstallPrompt() {
   const location = useLocation();
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
+  const [isClosing, setIsClosing] = useState(false);
 
   useEffect(() => {
     // Check if already installed
@@ -19,10 +21,9 @@ export default function PWAInstallPrompt() {
     const dismissedTime = localStorage.getItem('pwa-install-dismissed');
     if (dismissedTime) {
       const timeSinceDismissed = Date.now() - parseInt(dismissedTime);
-      const twoMinutes = 2 * 60 * 1000; // 2 minutes in milliseconds
+      const twoMinutes = 2 * 60 * 1000;
 
       if (timeSinceDismissed < twoMinutes) {
-        // Set timeout to show after remaining time
         const remainingTime = twoMinutes - timeSinceDismissed;
         setTimeout(() => {
           setShowPrompt(true);
@@ -31,8 +32,10 @@ export default function PWAInstallPrompt() {
       }
     }
 
-    // Show prompt immediately if not dismissed recently
-    setShowPrompt(true);
+    // Show prompt after a short delay for better UX
+    const showTimer = setTimeout(() => {
+      setShowPrompt(true);
+    }, 1500);
 
     // Listen for beforeinstallprompt event
     const handleBeforeInstallPrompt = (e) => {
@@ -53,6 +56,7 @@ export default function PWAInstallPrompt() {
     window.addEventListener('appinstalled', handleAppInstalled);
 
     return () => {
+      clearTimeout(showTimer);
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
     };
@@ -62,6 +66,7 @@ export default function PWAInstallPrompt() {
     if (!deferredPrompt) {
       // Fallback for browsers that don't support beforeinstallprompt
       alert('To install this app:\n\n1. Tap the Share button\n2. Select "Add to Home Screen"');
+      handleClose();
       return;
     }
 
@@ -83,42 +88,106 @@ export default function PWAInstallPrompt() {
   };
 
   const handleClose = () => {
-    setShowPrompt(false);
-    // Store dismissal time
-    localStorage.setItem('pwa-install-dismissed', Date.now().toString());
+    setIsClosing(true);
+    setTimeout(() => {
+      setShowPrompt(false);
+      setIsClosing(false);
+      // Store dismissal time
+      localStorage.setItem('pwa-install-dismissed', Date.now().toString());
+    }, 300);
 
     // Show again after 2 minutes
     setTimeout(() => {
       setShowPrompt(true);
-    }, 2 * 60 * 1000); // 2 minutes
+    }, 2 * 60 * 1000);
   };
 
-  // Don't show if already installed, prompt is hidden, or on dashboard (has inline button)
-  if (isInstalled || !showPrompt || location.pathname === '/dashboard') {
+  // Don't show if already installed or prompt is hidden
+  if (isInstalled || !showPrompt) {
     return null;
   }
 
   return (
-    <div className="fixed bottom-24 right-4 z-40 md:hidden animate-slide-up">
-      <div className="relative">
-        {/* Close button - positioned at top right */}
-        <button
-          onClick={handleClose}
-          className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center transition-all shadow-lg z-10"
-          aria-label="Close"
+    <AnimatePresence>
+      {showPrompt && !isClosing && (
+        <motion.div
+          initial={{ y: 80, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          exit={{ y: 80, opacity: 0 }}
+          transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+          className="fixed left-0 right-0 z-[45] md:hidden"
+          style={{ bottom: '80px' }}
         >
-          <X className="w-3 h-3 text-white" />
-        </button>
+          <div className="mx-3">
+            <div
+              className="relative overflow-hidden rounded-2xl shadow-[0_8px_40px_rgba(0,0,0,0.15)]"
+              style={{
+                background: 'linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%)',
+              }}
+            >
+              {/* Decorative elements */}
+              <div
+                className="absolute top-0 right-0 w-32 h-32 rounded-full opacity-10"
+                style={{
+                  background: 'radial-gradient(circle, white 0%, transparent 70%)',
+                  transform: 'translate(30%, -30%)',
+                }}
+              />
+              <div
+                className="absolute bottom-0 left-0 w-24 h-24 rounded-full opacity-10"
+                style={{
+                  background: 'radial-gradient(circle, white 0%, transparent 70%)',
+                  transform: 'translate(-30%, 30%)',
+                }}
+              />
 
-        {/* Circular main button */}
-        <button
-          onClick={handleInstallClick}
-          className="w-12 h-12 rounded-full bg-black shadow-xl flex items-center justify-center border-2 border-white hover:scale-110 transition-transform active:scale-95"
-          aria-label="Install App"
-        >
-          <Download className="w-5 h-5 text-white" />
-        </button>
-      </div>
-    </div>
+              <div className="relative p-4">
+                <div className="flex items-center gap-3">
+                  {/* App Icon */}
+                  <div className="shrink-0 w-12 h-12 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center border border-white/20 shadow-inner">
+                    <Smartphone className="w-6 h-6 text-white" />
+                  </div>
+
+                  {/* Text */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-white font-bold text-sm leading-tight">
+                      Install take.health
+                    </p>
+                    <p className="text-emerald-200/80 text-xs mt-0.5 leading-tight">
+                      Add to home screen for quick access
+                    </p>
+                  </div>
+
+                  {/* Buttons */}
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={handleClose}
+                      className="px-3 py-2 rounded-xl text-white/70 hover:text-white hover:bg-white/10 text-xs font-semibold transition-all active:scale-95"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleInstallClick}
+                      className="px-4 py-2 rounded-xl bg-white text-emerald-900 text-xs font-bold shadow-lg hover:shadow-xl transition-all active:scale-95 flex items-center gap-1.5"
+                    >
+                      <Download className="w-3.5 h-3.5" />
+                      Install
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Bottom shine line */}
+              <div
+                className="h-[1px] w-full"
+                style={{
+                  background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.2) 50%, transparent 100%)',
+                }}
+              />
+            </div>
+          </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

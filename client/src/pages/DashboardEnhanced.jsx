@@ -7,7 +7,7 @@ import {
   Search, Sun, Clock, Heart, Apple, Info, Target, Calendar,
   ArrowUpRight, Upload, Coffee, Dumbbell, MessageCircle, BarChart3,
   Circle, Smile, FlaskConical, Leaf, Pill, CheckCircle2, Zap, Eye,
-  UtensilsCrossed, UploadCloud, ShieldCheck, AlertTriangle, Check, Download
+  UtensilsCrossed, UploadCloud, ShieldCheck, AlertTriangle, Check
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Link, useNavigate } from 'react-router-dom';
@@ -544,35 +544,7 @@ export default function DashboardEnhanced() {
   const [activeTrendTab, setActiveTrendTab] = useState('Calories');
   const [scrollProgress, setScrollProgress] = useState(0);
 
-  // PWA Install Logic (inline for mobile header)
-  const [pwaPrompt, setPwaPrompt] = useState(null);
-  const [isPwaInstalled, setIsPwaInstalled] = useState(false);
 
-  useEffect(() => {
-    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
-      setIsPwaInstalled(true);
-      return;
-    }
-    const handleBIP = (e) => { e.preventDefault(); setPwaPrompt(e); };
-    const handleInstalled = () => { setIsPwaInstalled(true); setPwaPrompt(null); };
-    window.addEventListener('beforeinstallprompt', handleBIP);
-    window.addEventListener('appinstalled', handleInstalled);
-    return () => {
-      window.removeEventListener('beforeinstallprompt', handleBIP);
-      window.removeEventListener('appinstalled', handleInstalled);
-    };
-  }, []);
-
-  const handlePwaInstall = async () => {
-    if (!pwaPrompt) {
-      alert('To install this app:\n\n1. Tap the Share button\n2. Select "Add to Home Screen"');
-      return;
-    }
-    pwaPrompt.prompt();
-    const { outcome } = await pwaPrompt.userChoice;
-    if (outcome === 'accepted') setIsPwaInstalled(true);
-    setPwaPrompt(null);
-  };
   const [completedTasks, setCompletedTasks] = useState(() => {
     const saved = localStorage.getItem('carePlanTasks');
     if (!saved) return [0, 2];
@@ -874,14 +846,7 @@ export default function DashboardEnhanced() {
             </h1>
             <p className="text-[#065f46] mt-0.5 md:mt-2 text-[13px] md:text-lg">Let's make this day productive.</p>
           </div>
-          {!isPwaInstalled && (
-            <button
-              onClick={handlePwaInstall}
-              className="lg:hidden flex items-center px-3 py-2.5 bg-[#064e3b] text-white rounded-xl text-[8px] font-black uppercase tracking-widest shadow-md hover:bg-[#042f24] transition-all active:scale-95 shrink-0"
-            >
-              <span style={{ textShadow: '0 0 8px rgba(16,185,129,0.8), 0 0 16px rgba(16,185,129,0.4)' }}>Download App</span>
-            </button>
-          )}
+
         </div>
         <div className="hidden lg:flex items-center gap-2 lg:gap-3 pb-2 lg:pb-0 w-full lg:w-auto">
           <button onClick={() => navigate('/nutrition', { state: { openLogMeal: true, mealType: 'Breakfast' } })} className="flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-1 py-3 lg:px-6 bg-white/60 backdrop-blur-md rounded-[20px] lg:rounded-full text-[9px] lg:text-sm font-black text-[#1a1a1a] hover:bg-white transition-all border border-white/60 shadow-sm">
