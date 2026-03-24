@@ -365,16 +365,17 @@ export default function DietPlan() {
           </button>
         </div>
       ) : (
-        <div className="space-y-12 md:space-y-24">
+        <div className="space-y-8 md:space-y-24">
 
           {/* Intelligence Context Message */}
-          <section className="mt-4 p-4 md:p-6 bg-emerald-50/40 backdrop-blur-md rounded-[1.5rem] md:rounded-[2rem] border border-emerald-100/30 shadow-sm">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 md:gap-6">
+          <section className="mt-2 p-3 md:p-6 bg-emerald-50/40 backdrop-blur-md rounded-[1.5rem] md:rounded-[2rem] border border-emerald-100/30 shadow-sm">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-6">
               <div>
-                <div className="flex items-center gap-2 mb-1.5">
+                <div className="hidden md:flex items-center gap-2 mb-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
                 </div>
-                <h3 className="text-sm md:text-lg font-bold text-[#064e3b] tracking-tight leading-snug">
+                <h3 className="text-xs md:text-lg font-bold text-[#064e3b] tracking-tight leading-snug">
+                  <Sparkles className="inline-block md:hidden w-3 h-3 text-emerald-500 mr-2" />
                   This diet plan is specially designed by considering your health parameters, fitness goals and BMI for optimal results.
                 </h3>
               </div>
@@ -382,9 +383,9 @@ export default function DietPlan() {
               <div className="flex flex-wrap items-center gap-2">
                 <button 
                   onClick={() => insightsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-emerald-50 border border-emerald-100/50 text-[#064e3b] rounded-full text-[10px] font-black uppercase tracking-widest hover:bg-[#064e3b] hover:text-white transition-all shadow-sm active:scale-95"
+                  className="flex items-center gap-2 px-4 py-1.5 md:px-5 md:py-2.5 bg-emerald-50 border border-emerald-100/50 text-[#064e3b] rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-[#064e3b] hover:text-white transition-all shadow-sm active:scale-95"
                 >
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
+                  <Sparkles className="w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-500" />
                   View AI Insights
                 </button>
               </div>
@@ -399,7 +400,7 @@ export default function DietPlan() {
 
             return (
               <section key={sectionId} className="relative group">
-                <div className="flex items-center justify-between mb-8 px-2">
+                <div className="flex items-center justify-between mb-4 md:mb-8 px-2">
                   <div className="flex items-center gap-4">
                     <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-[1.25rem] bg-emerald-50/30 flex items-center justify-center border border-emerald-50 shadow-sm overflow-hidden text-lg md:text-2xl">
                       {section.emoji}

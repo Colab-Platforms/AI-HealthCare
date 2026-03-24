@@ -186,8 +186,13 @@ DINNER (what Indians ACTUALLY eat):
    - Dinner: 25% of daily calories (~${Math.round((userData.nutritionGoals?.dailyCalories || 2000) * 0.25)} kcal)
 10. Ensure variety — no two options should be similar.
 11. Provide specific portion sizes in grams, pieces, or cups in a new field: "portionSize".
-12. MEAL CALORIE TARGETS (NON-NEGOTIABLE): Every meal option you suggest MUST STRICTLY be within ±30 kcal of the target. Do NOT exceed these limits.
-13. Each meal option MUST include: name, description, portionSize, calories, protein, carbs, fats, and benefits.
+12. MEAL NUTRITION TARGETS (NON-NEGOTIABLE): Every meal option you suggest MUST STRICTLY follow both calorie AND macro distributions (±10%):
+    - Breakfast: 25% of daily targets (Cal: ~${Math.round((userData.nutritionGoals?.dailyCalories || 2000) * 0.25)} kcal, Protein: ~${Math.round((userData.nutritionGoals?.protein || 120) * 0.25)}g, Carbs: ~${Math.round((userData.nutritionGoals?.carbs || 200) * 0.25)}g, Fats: ~${Math.round((userData.nutritionGoals?.fats || 60) * 0.25)}g)
+    - Mid-Morning: 10% of daily targets (Cal: ~${Math.round((userData.nutritionGoals?.dailyCalories || 2000) * 0.10)} kcal, Protein: ~${Math.round((userData.nutritionGoals?.protein || 120) * 0.10)}g, Carbs: ~${Math.round((userData.nutritionGoals?.carbs || 200) * 0.10)}g, Fats: ~${Math.round((userData.nutritionGoals?.fats || 60) * 0.10)}g)
+    - Lunch: 30% of daily targets (Cal: ~${Math.round((userData.nutritionGoals?.dailyCalories || 2000) * 0.30)} kcal, Protein: ~${Math.round((userData.nutritionGoals?.protein || 120) * 0.30)}g, Carbs: ~${Math.round((userData.nutritionGoals?.carbs || 200) * 0.30)}g, Fats: ~${Math.round((userData.nutritionGoals?.fats || 60) * 0.30)}g)
+    - Evening: 10% of daily targets (Cal: ~${Math.round((userData.nutritionGoals?.dailyCalories || 2000) * 0.10)} kcal, Protein: ~${Math.round((userData.nutritionGoals?.protein || 120) * 0.10)}g, Carbs: ~${Math.round((userData.nutritionGoals?.carbs || 200) * 0.10)}g, Fats: ~${Math.round((userData.nutritionGoals?.fats || 60) * 0.10)}g)
+    - Dinner: 25% of daily targets (Cal: ~${Math.round((userData.nutritionGoals?.dailyCalories || 2000) * 0.25)} kcal, Protein: ~${Math.round((userData.nutritionGoals?.protein || 120) * 0.25)}g, Carbs: ~${Math.round((userData.nutritionGoals?.carbs || 200) * 0.25)}g, Fats: ~${Math.round((userData.nutritionGoals?.fats || 60) * 0.25)}g)
+13. Each meal option MUST include: name, description, portionSize, calories, protein, carbs, fats, and benefits. Do NOT exceed the daily total goal when the meals are combined.
 13. STRICTLY avoid any 'Foods to Avoid' and adhere to 'Dietary Restrictions'.
 14. Use ONLY authentic Indian foods that are commonly available across India.
 15. If the user wants to REGENERATE, provide COMPLETELY DIFFERENT meal options.
