@@ -134,6 +134,47 @@ export default function Register() {
       return;
     }
 
+    const age = parseInt(formData.age);
+    const weight = parseFloat(formData.weight);
+    const height = parseFloat(formData.height);
+
+    // ✅ NEW MEDICAL VALIDATION (Logical Consistency Check)
+    if (age < 10) {
+      toast.error('Minimum age for health tracking is 10 years');
+      return;
+    }
+    if (age > 120) {
+      toast.error('Please enter a valid age (max 120)');
+      return;
+    }
+    
+    // Check for impossible physical combinations
+    if (age < 15 && height > 200) {
+      toast.error('Height seems unusually high for this age. Please verify.');
+      return;
+    }
+    if (age < 12 && weight > 100) {
+      toast.error('Weight seems unusually high for this age. Please verify.');
+      return;
+    }
+    
+    // Global bounds check
+    if (height < 100 || height > 250) {
+      toast.error('Please enter a valid height (100cm - 250cm)');
+      return;
+    }
+    if (weight < 30 || weight > 300) {
+      toast.error('Please enter a valid weight (30kg - 300kg)');
+      return;
+    }
+
+    // BMI Extrema Protection
+    const bmi = weight / ((height / 100) ** 2);
+    if (bmi < 10 || bmi > 80) {
+      toast.error('Height and weight combination seems physiologically improbable.');
+      return;
+    }
+
     setLoading(true);
 
     try {
