@@ -142,8 +142,11 @@ export default function CompleteAnalysis() {
   if (loading || contextLoading.dashboard) {
     return (
       <div className="min-h-screen bg-[#F9FCF3] flex flex-col items-center justify-center p-8">
-        <div className="w-16 h-16 border-4 border-emerald-100 border-t-emerald-500 rounded-full animate-spin mb-4" />
-        <p className="text-emerald-800/60 font-bold animate-pulse uppercase tracking-widest text-xs">Calibrating Analysis Hub...</p>
+        <div className="w-16 h-16 border-4 border-emerald-100 border-t-emerald-500 rounded-full animate-spin mb-6" />
+        <div className="text-center space-y-2">
+          <p className="text-[#064e3b] font-black uppercase tracking-widest text-sm animate-pulse">Checking latest data...</p>
+          <p className="text-emerald-800/40 font-bold uppercase tracking-[0.2em] text-[10px]">Calibrating Analysis Hub</p>
+        </div>
       </div>
     );
   }
