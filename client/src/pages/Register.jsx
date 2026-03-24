@@ -425,7 +425,7 @@ export default function Register() {
                     onChange={(e) => setFormData({ ...formData, age: e.target.value })}
                     className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all"
                     placeholder="Years"
-                    min="1" max="120"
+                    min="10" max="120"
                     required
                   />
                 </div>

@@ -78,12 +78,17 @@ const MealCard = ({ meal, mealType, onLog, isLogged, idx, isLoading }) => {
           {meal.description || meal.benefits || "Nutrient-rich choice designed for your goals."}
         </p>
       </div>
-
       <div className="flex items-center gap-1.5 mb-3 md:mb-6 overflow-hidden">
         <div className="flex items-center gap-1 px-2 py-1 bg-orange-50/50 text-orange-600 rounded-full shrink-0">
           <Flame className="w-2.5 h-2.5" />
           <span className="text-[9px] md:text-[11px] font-black">{calories} Cal</span>
         </div>
+        {meal.portionSize && (
+          <div className="flex items-center gap-1 px-2 py-1 bg-blue-50/50 text-blue-600 rounded-full shrink-0">
+            <UtensilsCrossed className="w-2.5 h-2.5" />
+            <span className="text-[9px] md:text-[11px] font-black">{meal.portionSize}</span>
+          </div>
+        )}
       </div>
 
       <button
@@ -237,7 +242,7 @@ export default function DietPlan() {
         mealType: type,
         foodItems: [{
           name: mealName,
-          quantity: data.foodItem?.quantity || meal.portionSize || '1 serving',
+          quantity: meal.portionSize || data.foodItem?.quantity || '1 serving',
           nutrition: {
             calories: meal.calories || data.foodItem?.nutrition?.calories || 200,
             protein: meal.protein || data.foodItem?.nutrition?.protein || 10,

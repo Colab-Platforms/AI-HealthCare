@@ -185,8 +185,9 @@ DINNER (what Indians ACTUALLY eat):
    - Evening: 10% of daily calories (~${Math.round((userData.nutritionGoals?.dailyCalories || 2000) * 0.10)} kcal)
    - Dinner: 25% of daily calories (~${Math.round((userData.nutritionGoals?.dailyCalories || 2000) * 0.25)} kcal)
 10. Ensure variety — no two options should be similar.
-11. Provide specific portion sizes in grams/pieces/cups.
-12. Each meal option MUST include: name, description, calories, protein, carbs, fats, and benefits.
+11. Provide specific portion sizes in grams, pieces, or cups in a new field: "portionSize".
+12. MEAL CALORIE TARGETS (NON-NEGOTIABLE): Every meal option you suggest MUST STRICTLY be within ±30 kcal of the target. Do NOT exceed these limits.
+13. Each meal option MUST include: name, description, portionSize, calories, protein, carbs, fats, and benefits.
 13. STRICTLY avoid any 'Foods to Avoid' and adhere to 'Dietary Restrictions'.
 14. Use ONLY authentic Indian foods that are commonly available across India.
 15. If the user wants to REGENERATE, provide COMPLETELY DIFFERENT meal options.
@@ -200,19 +201,19 @@ RETURN JSON ONLY. Ensure the JSON is valid and complete:
   "macroTargets": { "protein": number, "carbs": number, "fats": number },
   "mealPlan": {
     "breakfast": [
-      { "name": "Meal Name", "description": "desc", "calories": 300, "protein": 15, "carbs": 40, "fats": 10, "benefits": "benefits" }
+      { "name": "Meal Name", "description": "desc", "portionSize": "100g / 2 pieces", "calories": 300, "protein": 15, "carbs": 40, "fats": 10, "benefits": "benefits" }
     ],
     "midMorningSnack": [
-      { "name": "Meal Name", "description": "desc", "calories": 150, "protein": 5, "carbs": 20, "fats": 5, "benefits": "benefits" }
+      { "name": "Meal Name", "description": "desc", "portionSize": "1 bowl", "calories": 150, "protein": 5, "carbs": 20, "fats": 5, "benefits": "benefits" }
     ],
     "lunch": [
-      { "name": "Meal Name", "description": "desc", "calories": 500, "protein": 30, "carbs": 60, "fats": 15, "benefits": "benefits" }
+      { "name": "Meal Name", "description": "desc", "portionSize": "2 rotis + 1 bowl dal", "calories": 500, "protein": 30, "carbs": 60, "fats": 15, "benefits": "benefits" }
     ],
     "eveningSnack": [
-      { "name": "Meal Name", "description": "desc", "calories": 150, "protein": 5, "carbs": 20, "fats": 5, "benefits": "benefits" }
+      { "name": "Meal Name", "description": "desc", "portionSize": "1 cup", "calories": 150, "protein": 5, "carbs": 20, "fats": 5, "benefits": "benefits" }
     ],
     "dinner": [
-      { "name": "Meal Name", "description": "desc", "calories": 400, "protein": 25, "carbs": 50, "fats": 10, "benefits": "benefits" }
+      { "name": "Meal Name", "description": "desc", "portionSize": "1 plate", "calories": 400, "protein": 25, "carbs": 50, "fats": 10, "benefits": "benefits" }
     ]
   },
   "keyFoods": [{ "name": "Food", "reason": "Why", "frequency": "Daily" }],
