@@ -409,7 +409,7 @@ class EmailService {
     const emailOptions = {
       from: process.env.FROM_EMAIL,
       to: email,
-      subject: 'Email Verification - FitCure AI',
+      subject: 'Email Verification - take.health AI',
       html: this.getVerificationTemplate(name, code)
     };
 
@@ -433,35 +433,35 @@ class EmailService {
         <style>
           body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1e293b; margin: 0; padding: 0; background-color: #f8fafc; }
           .container { max-width: 600px; margin: 20px auto; padding: 0; background-color: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
-          .header { background: linear-gradient(135deg, #2FC8B9, #22d3ee); color: white; padding: 40px 20px; text-align: center; }
+          .header { background: linear-gradient(135deg, #059669, #10b981); color: white; padding: 40px 20px; text-align: center; }
           .logo { font-size: 28px; font-weight: 800; letter-spacing: -1px; margin-bottom: 10px; }
           .content { padding: 40px; text-align: center; }
           .welcome-text { font-size: 18px; color: #64748b; margin-bottom: 30px; }
           .otp-container { background-color: #f1f5f9; border-radius: 12px; padding: 20px; margin: 30px 0; display: inline-block; }
-          .otp-code { font-size: 42px; font-weight: 900; color: #2FC8B9; letter-spacing: 12px; font-family: 'Courier New', monospace; padding-left: 12px; }
+          .otp-code { font-size: 42px; font-weight: 900; color: #059669; letter-spacing: 12px; font-family: 'Courier New', monospace; padding-left: 12px; }
           .expiry-note { font-size: 14px; color: #94a3b8; margin-top: 20px; }
           .footer { text-align: center; padding: 30px; color: #94a3b8; font-size: 12px; background-color: #f8fafc; }
-          .highlight { color: #2FC8B9; font-weight: 600; }
+          .highlight { color: #059669; font-weight: 600; }
         </style>
       </head>
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">FitCure AI</div>
+            <div class="logo">take.health AI</div>
             <h2 style="margin: 0;">Verify Your Email</h2>
           </div>
           <div class="content">
             <p class="welcome-text">Hi ${name},</p>
-            <p>Welcome to FitCure AI! To complete your registration and start your health journey, please verify your email using the 6-digit code below:</p>
+            <p>Welcome to take.health AI! To complete your registration and start your health journey, please verify your email using the 6-digit code below:</p>
             
             <div class="otp-container">
               <div class="otp-code">${code}</div>
             </div>
-
+ 
             <p class="expiry-note">This code is valid for <span class="highlight">15 minutes</span>. If you didn't create an account, you can safely ignore this email.</p>
           </div>
           <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} FitCure AI. All rights reserved.</p>
+            <p>&copy; ${new Date().getFullYear()} take.health AI. All rights reserved.</p>
             <p>Empowering your health journey with AI.</p>
           </div>
         </div>
