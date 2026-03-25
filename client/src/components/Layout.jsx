@@ -297,12 +297,8 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
       </div>
 
       {/* Mobile Bottom Navigation - Outside main content wrapper for proper fixed positioning */}
-      {!isAdmin() && !isDoctor() && !isAdminLayout && !isDoctorLayout && (
-        <>
-          <MobileBottomNav />
-          <PWAInstallPrompt />
-        </>
-      )}
+      <MobileBottomNav />
+      <PWAInstallPrompt />
 
       {/* Text Selection Popup - Disabled on AI Chat page */}
       {location.pathname !== '/ai-chat' && <TextSelectionPopup />}

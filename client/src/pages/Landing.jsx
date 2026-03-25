@@ -790,10 +790,6 @@ function Footer() {
             <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
               © 2026 take.health AI Platform
             </p>
-            <div className="flex items-center gap-4">
-              <span className="w-1 h-1 rounded-full bg-emerald-500" />
-              <p className="text-[10px] font-black text-emerald-500 uppercase tracking-widest">System Status: Operational</p>
-            </div>
           </div>
           <p className="text-[10px] font-bold text-slate-600 uppercase tracking-[0.3em]">
             Designed for better living
@@ -807,7 +803,7 @@ function Footer() {
 // Main Landing Page Component
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0a1628] via-[#061e33] to-[#0a1628]">
+    <div className="min-h-screen bg-gradient-to-b from-[#0a1628] via-[#061e33] to-[#0a1628] overflow-x-hidden">
       <MinimalHeader />
       <VideoHero />
       <FeaturesSection />

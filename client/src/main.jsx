@@ -20,8 +20,15 @@ ReactDOM.createRoot(document.getElementById('root')).render(
   </React.StrictMode>
 );
 
-// Register Service Worker for PWA (Temporarily disabled to debug blank screen)
-/*
+// Capture beforeinstallprompt globally BEFORE React mounts so it's never lost
+window.__deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  window.__deferredInstallPrompt = e;
+  console.log('✅ beforeinstallprompt captured globally');
+});
+
+// Register Service Worker for PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
@@ -34,5 +41,4 @@ if ('serviceWorker' in navigator) {
       });
   });
 }
-*/
 console.log('🚀 take.health AI Platform Initialized');
