@@ -31,8 +31,9 @@ exports.enqueueTask = async (taskType, payload, customBaseUrl = null) => {
     if (taskType === 'process-report') {
       endpoint = "/api/health/process-report-bg";
     } else if (taskType === 'process-diet') {
-      endpoint = "/api/diet-recommendation/process-diet-bg";
+      endpoint = "/api/diet-recommendations/process-diet-bg";
     }
+
 
     const destinationUrl = `${appUrl}${endpoint}`;
     console.log(`🚀 [QStash V2] Dispatching to: ${destinationUrl}`);
