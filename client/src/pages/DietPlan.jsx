@@ -648,7 +648,7 @@ export default function DietPlan() {
                 </div>
                 <h2 className="text-2xl md:text-3xl lg:text-4xl font-light mb-6 md:mb-8 leading-tight tracking-tight">AI Insights based on your health profile</h2>
                 <div className="grid grid-cols-1 gap-3 md:gap-4">
-                  {(activePlan.lifestyleRecommendations || ["Balance carbs with fiber.", "Hydrate 30m before breakfast.", "Avoid caffeine after 4pm."]).slice(0, 3).map((rec, i) => (
+                  {(dietPlan.lifestyleRecommendations || ["Balance carbs with fiber.", "Hydrate 30m before breakfast.", "Avoid caffeine after 4pm."]).slice(0, 3).map((rec, i) => (
                     <div key={i} className="flex items-start gap-4 py-1 group transition-colors">
                       <div className="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/20">
                         <CheckCircle className="w-3 h-3 text-emerald-400" />
@@ -667,13 +667,14 @@ export default function DietPlan() {
                       <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-400">Restricted Foods</span>
                     </div>
                     <div className="flex flex-wrap gap-2">
-                      {(activePlan.avoidSuggestions || ["Refined Sugar", "Processed Meats", "Soda", "High Sodium Snacks"]).map((food, i) => (
+                      {(dietPlan.avoidSuggestions || ["Refined Sugar", "Processed Meats", "Soda", "High Sodium Snacks"]).map((food, i) => (
                         <span key={i} className="px-3 py-1.5 bg-rose-500/10 text-rose-400 rounded-full text-[9px] font-black uppercase tracking-widest border border-rose-500/20">
                           {food}
                         </span>
                       ))}
                     </div>
                   </div>
+
                   <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
                     Based on your latest records, avoiding these will improve your {user?.nutritionGoal?.goal?.replace('_', ' ') || 'metabolic health'}.
                   </p>
