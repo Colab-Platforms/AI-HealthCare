@@ -1,17 +1,18 @@
 const axios = require('axios');
 
 /**
- * Enqueue a background task using Upstash QStash
+ * Enqueue a background task using Upstash QStash (Version 2)
  * This allows Vercel serverless functions to trigger long-running tasks (>10-60s)
  * without timing out the main request.
  */
 exports.enqueueTask = async (taskType, payload) => {
   try {
     const qstashToken = process.env.QSTASH_TOKEN;
-    const qstashUrl = process.env.QSTASH_URL || "https://qstash.upstash.io";
+    
+    // 🔥 QStash V2 Publish Endpoint
+    const QSTASH_PUBLISH_URL = "https://qstash.upstash.io/v2/publish/";
     
     // Production: Use the current Vercel deployment URL
-    // Local: This will only work if you use something like 'ngrok'
     const appUrl = process.env.VERCEL_URL 
       ? `https://${process.env.VERCEL_URL}` 
       : (process.env.APP_URL || 'http://localhost:5001');
@@ -32,24 +33,25 @@ exports.enqueueTask = async (taskType, payload) => {
     }
 
     const destinationUrl = `${appUrl}${endpoint}`;
-    console.log(`🔄 Enqueuing QStash task for ${taskType} | Call: ${destinationUrl}`);
+    console.log(`🔄 [QStash V2] Enqueuing ${taskType} | Call: ${destinationUrl}`);
 
+    // QStash V2 uses: /v2/publish/{url}
     const response = await axios.post(
-      `https://qstash.upstash.io/v1/publish/${destinationUrl}`,
+      `${QSTASH_PUBLISH_URL}${destinationUrl}`,
       payload,
       {
         headers: {
           'Authorization': `Bearer ${qstashToken}`,
           'Content-Type': 'application/json',
-          'Upstash-Retries': '1' 
+          'Upstash-Retries': '2' 
         }
       }
     );
 
-    console.log(`✅ [QStash] ${taskType} enqueued | ID: ${response.data.messageId}`);
+    console.log(`✅ [QStash V2] ${taskType} enqueued | ID: ${response.data.messageId}`);
     return true;
   } catch (error) {
-    console.error(`❌ [QStash] Enqueue Error [${taskType}]:`, error.response?.data || error.message);
+    console.error(`❌ [QStash V2] Enqueue Error [${taskType}]:`, error.response?.data || error.message);
     return false;
   }
 };
