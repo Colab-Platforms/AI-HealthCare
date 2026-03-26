@@ -27,14 +27,17 @@ export const DataProvider = ({ children }) => {
   
   const [weeklyTrends, setWeeklyTrends] = useState(() => cache.get('weekly_trends'));
   const [healthGoals, setHealthGoals] = useState(() => cache.get('health_goals'));
+  const [dietPlan, setDietPlan] = useState(() => cache.get('diet_plan'));
   
   const [loading, setLoading] = useState({
     dashboard: false,
     wearable: false,
     nutrition: false,
     logs: false,
-    goals: false
+    goals: false,
+    dietPlan: false
   });
+
 
   // Clear all data only when user is CONFIRMED logged out (not just loading)
   useEffect(() => {
@@ -220,24 +223,28 @@ export const DataProvider = ({ children }) => {
     if (!forceRefresh) {
       const cached = cache.get('diet_plan');
       if (cached) {
+        setDietPlan(cached);
         return cached;
       }
     }
 
+    setLoading(prev => ({ ...prev, dietPlan: true }));
     try {
       const { dietRecommendationService } = await import('../services/api');
       const { data } = await dietRecommendationService.getActiveDietPlan({ 
         params: forceRefresh ? { t: Date.now() } : {} 
       });
       if (data.success && data.dietPlan) {
+        setDietPlan(data.dietPlan);
         cache.set('diet_plan', data.dietPlan, 15 * 60 * 1000); // Cache for 15 minutes
         return data.dietPlan;
       }
       return null;
     } catch (error) {
-
       console.error('Failed to fetch diet plan:', error);
       return null;
+    } finally {
+      setLoading(prev => ({ ...prev, dietPlan: false }));
     }
   }, []);
 
@@ -253,13 +260,13 @@ export const DataProvider = ({ children }) => {
     if (keys.length === 0 || keys.includes('dashboard')) promises.push(fetchDashboard(true));
     if (keys.length === 0 || keys.includes('wearable')) promises.push(fetchWearable(true));
     if (keys.length === 0 || keys.includes('diet_plan')) promises.push(fetchDietPlan(true));
+    if (keys.length === 0 || keys.includes('health_goals')) promises.push(fetchHealthGoals(true));
     
     await Promise.allSettled(promises);
     
     // Always trigger refresh after clearing/updating cache
     setDataRefreshTrigger(prev => prev + 1);
-  }, [fetchDashboard, fetchWearable, fetchDietPlan]);
-
+  }, [fetchDashboard, fetchWearable, fetchDietPlan, fetchHealthGoals]);
 
   const clearAllData = useCallback(() => {
     cache.clear();
@@ -269,10 +276,12 @@ export const DataProvider = ({ children }) => {
     setNutritionLogs(null);
     setWeeklyTrends([]);
     setHealthGoals(null);
+    setDietPlan(null);
     setPendingAnalysisIds([]);
     setPendingDietPlanIds([]);
     setDataRefreshTrigger(0);
   }, []);
+
 
   const [pendingAnalysisIds, setPendingAnalysisIds] = useState([]);
   const [pendingDietPlanIds, setPendingDietPlanIds] = useState([]);
@@ -385,7 +394,9 @@ export const DataProvider = ({ children }) => {
     nutritionLogs,
     weeklyTrends,
     healthGoals,
+    dietPlan,
     loading,
+
     pendingAnalysisIds,
     dataRefreshTrigger,
 

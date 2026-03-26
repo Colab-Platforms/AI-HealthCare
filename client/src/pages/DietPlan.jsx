@@ -241,14 +241,13 @@ export default function DietPlan() {
     addPendingDietPlan,
     pendingDietPlanIds,
     healthGoals,
+    dietPlan,
     dataRefreshTrigger 
   } = useData();
   const navigate = useNavigate();
 
   const [loading, setLoading] = useState(false);
-  const [activePlan, setActivePlan] = useState(null);
   const [history, setHistory] = useState([]);
-  const [showHistory, setShowHistory] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [showPreferences, setShowPreferences] = useState(false);
   const [showRegenOptions, setShowRegenOptions] = useState(false);
@@ -269,10 +268,7 @@ export default function DietPlan() {
     try {
       // Check for cached plan first
       const cachedPlan = await fetchDietPlan();
-      if (cachedPlan) {
-        setActivePlan(cachedPlan);
-        setLoading(false);
-      } else {
+      if (!cachedPlan) {
         setLoading(true);
       }
 
@@ -284,7 +280,6 @@ export default function DietPlan() {
         fetchHealthGoals()
       ]);
 
-      if (plan) setActivePlan(plan);
       if (historyRes.data.success) setHistory(historyRes.data.history);
 
       const loggedMap = {};
@@ -317,7 +312,8 @@ export default function DietPlan() {
         if (data.backgroundProcessing) {
           toast.success('AI generation started in background');
           addPendingDietPlan(data.dietPlan._id);
-          setActivePlan(data.dietPlan); // Set the "generating" plan as active
+          // fetchDietPlan will update the global state
+          await fetchDietPlan(true); 
         } else {
           toast.success(isRegenerate ? 'Plan updated!' : 'New plan ready!');
           invalidateCache(['diet_plan', 'dashboard']);
@@ -336,8 +332,9 @@ export default function DietPlan() {
       setLoading(true);
       const { data } = await dietRecommendationService.getDietPlanById(planId);
       if (data.success) {
-        setActivePlan(data.dietPlan);
-        setShowHistory(false);
+        // setActivePlan(data.dietPlan); // This line is removed as per the instruction to use dietPlan from context
+        // The fetchDietPlan() call in loadInitialData() will update the context's dietPlan
+        // For now, we'll just rely on the context update. If direct setting is needed, it would be `setDietPlan(data.dietPlan)`
         toast.success('Loaded past plan');
       }
     } catch (err) {
@@ -405,11 +402,11 @@ export default function DietPlan() {
     }
   };
 
-  const isCurrentlyGenerating = generating || (activePlan?.status === 'generating') || (pendingDietPlanIds?.length > 0);
+  // Use context's dietPlan status
+  const isCurrentlyGenerating = generating || (dietPlan?.status === 'generating') || (pendingDietPlanIds?.length > 0);
   const showCraftingScreen = loading || isCurrentlyGenerating;
 
   if (showCraftingScreen) {
-
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFDFD] px-6">
         <div className="relative w-32 h-32 mb-10 flex items-center justify-center">
@@ -530,7 +527,7 @@ export default function DietPlan() {
         )}
       </div>
 
-      {!activePlan ? (
+      {!dietPlan ? (
         <div className="bg-white rounded-[3rem] p-12 border border-slate-100 shadow-xl text-center max-w-2xl mx-auto mt-20">
           <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto mb-8 border border-white shadow-inner">
             <ChefHat className="w-10 h-10 text-slate-400" />
@@ -581,7 +578,7 @@ export default function DietPlan() {
           {/* Meal Rows - Vertical sections with horizontal scroll */}
           {MEAL_ORDER.map((sectionId, sIdx) => {
             const section = SECTION_INFO[sectionId];
-            const meals = activePlan.mealPlan?.[sectionId] || [];
+            const meals = dietPlan.mealPlan?.[sectionId] || [];
             if (meals.length === 0) return null;
 
             return (
@@ -777,21 +774,21 @@ export default function DietPlan() {
                     <button
                       key={plan._id}
                       onClick={() => loadSelectedPlan(plan._id)}
-                      className={`w-full p-6 rounded-3xl border text-left transition-all flex items-center justify-between group ${activePlan?._id === plan._id ? 'bg-black border-black shadow-xl ring-4 ring-black/5' : 'bg-slate-50 border-transparent hover:border-slate-200'}`}
+                      className={`w-full p-6 rounded-3xl border text-left transition-all flex items-center justify-between group ${dietPlan?._id === plan._id ? 'bg-black border-black shadow-xl ring-4 ring-black/5' : 'bg-slate-50 border-transparent hover:border-slate-200'}`}
                     >
                       <div>
                         <div className="flex items-center gap-2 mb-2">
-                        <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${activePlan?._id === plan._id ? 'bg-white/20 text-white border border-white/20' : 'bg-white text-slate-800 border border-slate-100'}`}>
+                        <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${dietPlan?._id === plan._id ? 'bg-white/20 text-white border border-white/20' : 'bg-white text-slate-800 border border-slate-100'}`}>
                             {plan.inputData?.bmiGoal?.replace('_', ' ') || plan.fitnessGoal || 'General Health'}
                           </div>
-                          {activePlan?._id === plan._id && (
+                          {dietPlan?._id === plan._id && (
                             <div className="flex items-center gap-1 text-emerald-400 text-[9px] font-black uppercase tracking-widest">
                               <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
                               Active Now
                             </div>
                           )}
                         </div>
-                        <p className={`text-sm font-black ${activePlan?._id === plan._id ? 'text-white' : 'text-slate-800'}`}>
+                        <p className={`text-sm font-black ${dietPlan?._id === plan._id ? 'text-white' : 'text-slate-800'}`}>
                           {new Date(plan.generatedAt || plan.createdAt).toLocaleDateString('en-US', {
                             weekday: 'short',
                             day: 'numeric',
@@ -799,11 +796,11 @@ export default function DietPlan() {
                             year: 'numeric'
                           })}
                         </p>
-                        <p className={`text-[10px] font-bold mt-1 ${activePlan?._id === plan._id ? 'text-slate-400' : 'text-slate-400'}`}>
+                        <p className={`text-[10px] font-bold mt-1 ${dietPlan?._id === plan._id ? 'text-slate-400' : 'text-slate-400'}`}>
                           {plan.nutritionGoals?.dailyCalorieTarget} kcal • {plan.foodType || 'Balanced'}
                         </p>
                       </div>
-                      <ChevronRight className={`w-5 h-5 transition-transform group-hover:translate-x-1 ${activePlan?._id === plan._id ? 'text-white' : 'text-slate-300'}`} />
+                      <ChevronRight className={`w-5 h-5 transition-transform group-hover:translate-x-1 ${dietPlan?._id === plan._id ? 'text-white' : 'text-slate-300'}`} />
                     </button>
                   ))
                 ) : (
