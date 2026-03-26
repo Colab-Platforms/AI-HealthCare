@@ -150,16 +150,21 @@ exports.uploadReport = async (req, res) => {
 
     // Trigger analysis
     const isVercel = !!(process.env.VERCEL || process.env.VERCEL_ID);
+    const protocol = req.protocol || 'https';
+    const host = req.get('host');
+    const baseUrl = `${protocol}://${host}`;
+
     if (isVercel) {
       await queueService.enqueueTask('process-report', {
         userId: req.user._id,
         reportId: report._id,
         fileMimetype: req.file.mimetype,
         extractedText
-      });
+      }, baseUrl);
     } else {
       setImmediate(() => processReportInternal(req.user._id, report._id, req.file.mimetype, extractedText));
     }
+
   } catch (error) {
     console.error('Upload error:', error);
     res.status(500).json({ message: error.message });

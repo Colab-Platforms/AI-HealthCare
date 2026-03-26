@@ -219,6 +219,10 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
 
     // 5. TRIGGER BACKGROUND GENERATION
     const isVercel = !!(process.env.VERCEL || process.env.VERCEL_ID);
+    const protocol = req.protocol || 'https';
+    const host = req.get('host');
+    const baseUrl = `${protocol}://${host}`;
+
     if (isVercel) {
       // 🚀 ON VERCEL: Use QStash for reliable background processing (bypasses timeouts)
       await queueService.enqueueTask('process-diet', {
@@ -226,11 +230,12 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
         dietPlanId: dietPlan._id,
         userData,
         promptEx
-      });
+      }, baseUrl);
     } else {
       // 💻 ON LOCAL: Use setImmediate
       setImmediate(() => processDietInternal(userId, dietPlan._id, userData, promptEx));
     }
+
   } catch (error) {
     console.error('❌ Generate diet plan error:', error);
     res.status(500).json({ success: false, message: 'Failed to initiate diet generation', error: error.message });
