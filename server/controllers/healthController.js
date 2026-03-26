@@ -144,6 +144,26 @@ exports.getReportById = async (req, res) => {
   }
 };
 
+exports.getReports = async (req, res) => {
+  try {
+    const cacheKey = `reports:${req.user._id}`;
+    const cached = await cache.get(cacheKey);
+
+    if (cached) {
+      return res.json(cached);
+    }
+
+    const reports = await withTimeout(HealthReport.find({ user: req.user._id })
+      .sort({ createdAt: -1 })
+      .limit(50));
+
+    await cache.set(cacheKey, reports, 180); // Cache for 3 minutes
+    res.json(reports);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // 🆕 Lightweight polling endpoint for background processing status
 exports.getReportStatus = async (req, res) => {
   try {
