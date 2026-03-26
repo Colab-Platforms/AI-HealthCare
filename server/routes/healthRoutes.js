@@ -17,11 +17,13 @@ const {
   getReportComparison,
   syncDailyProgress,
   getDailyProgress,
-  getVitalsInsights
+  getVitalsInsights,
+  processReportBG
 } = require('../controllers/healthController');
 const { protect } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 
+router.post('/process-report-bg', processReportBG);
 router.post('/upload', protect, upload.single('report'), uploadReport);
 router.get('/reports', protect, getReports);
 router.get('/history', protect, getHealthHistory);

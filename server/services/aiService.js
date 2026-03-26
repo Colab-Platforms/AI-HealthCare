@@ -2,8 +2,8 @@ const axios = require('axios');
 const { robustJsonParse } = require('../utils/aiParser');
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-const CLAUDE_MODEL = 'claude-sonnet-4-6';
-const CLAUDE_HAIKU_MODEL = 'claude-haiku-4-5';
+const CLAUDE_MODEL = 'claude-3-5-sonnet-latest';
+const CLAUDE_HAIKU_MODEL = 'claude-3-5-haiku-latest';
 
 const makeAnthropicRequest = async (messages, maxTokens = 4096, modelOverride = null) => {
   try {
@@ -26,7 +26,7 @@ const makeAnthropicRequest = async (messages, maxTokens = 4096, modelOverride = 
     });
 
     // Match timeout to vercel.json maxDuration (120s) minus a small buffer
-    const requestTimeout = (process.env.VERCEL || process.env.VERCEL_ID) ? 110000 : 120000;
+    const requestTimeout = (process.env.VERCEL || process.env.VERCEL_ID) ? 140000 : 150000;
 
     const response = await axios.post(
       ANTHROPIC_API_URL,
@@ -73,121 +73,62 @@ const makeAnthropicRequest = async (messages, maxTokens = 4096, modelOverride = 
   }
 };
 
-const HEALTH_ANALYSIS_PROMPT = `You are a medical report analyzer. Analyze the health report and return a JSON object. Be CONCISE - use short strings, not paragraphs. Keep each string value under 100 characters.
+const HEALTH_ANALYSIS_PROMPT = `Analyze this health report as an expert medical AI. Be extremely concise and fast.
 
-JSON STRUCTURE (follow EXACTLY):
+STRUCTURE:
 {
-  "patientName": "Name from report",
+  "patientName": "Name",
   "reportDate": "YYYY-MM-DD",
   "healthScore": 75,
-  "summary": "Detailed overview of health status. Provide this as a newline-separated list of 3-5 bullet points (start each line with •).",
-  "summaryPoints": [
-    "Crucial finding 1 with simple explanation",
-    "Crucial finding 2 with simple explanation",
-    "Overall wellbeing status pointer"
-  ],
-  "keyFindings": ["finding1", "finding2", "finding3"],
-  "riskFactors": ["risk1", "risk2"],
+  "summary": "Short 3-5 bullet points (•).",
+  "summaryPoints": ["Brief findings"],
+  "keyFindings": ["finding1"],
   "metrics": {
     "MetricName": {
       "value": 14.2, 
-      "unit": "g/dL", 
-      "status": "normal", 
-      "normalRange": "12-16",
-      "whatIsThis": "Explain what this metric is in very simple layman terms (e.g. 'Hemoglobin is a protein in red blood cells that carries oxygen')",
-      "whatItDoes": "Brief explanation of its role in body",
-      "lowHighImpact": "What happens if Low (e.g. Fatigue) vs High (e.g. Risk)",
-      "topFoods": ["Food 1", "Food 2"],
-      "symptoms": ["Symptom 1", "Symptom 2"]
+      "unit": "unit", 
+      "status": "normal/high/low", 
+      "normalRange": "range",
+      "whatIsThis": "ONE SENTENCE (only for non-normal metrics)",
+      "topFoods": ["Indian foods only if low/high"],
+      "symptoms": ["Only if low/high"]
     }
   },
-  "deficiencies": [
-    {"name": "Vitamin D", "severity": "moderate", "currentValue": "15", "normalRange": "30-100", "symptoms": ["Fatigue"]}
-  ],
-  "supplements": [
-    {"category": "Vitamins", "reason": "Deficiency", "naturalSources": "Foods", "note": "Consult doctor"}
-  ],
-  "recommendations": {
-    "immediate": ["action1", "action2"],
-    "shortTerm": ["action1", "action2"],
-    "longTerm": ["action1", "action2"],
-    "lifestyle": ["habit1", "habit2"],
-    "tests": ["test1"]
-  },
-  "doctorConsultation": {
-    "recommended": true,
-    "urgency": "low / medium / high / urgent",
-    "specializations": ["Specialist"],
-    "reason": "Brief reason"
-  },
+  "deficiencies": [{"name": "Vit D", "severity": "mod", "currentValue": "15"}],
+  "recommendations": {"immediate": ["action1"], "lifestyle": ["habit1"]},
+  "doctorConsultation": {"recommended": true, "urgency": "low-high", "specializations": ["Specialist"]},
   "mriData": {
-    "bodyRegion": "e.g. Spine, Brain, Knee",
-    "studyDate": "Nov 26, 2025",
-    "modality": "MRI",
-    "accession": "WM2352-109",
-    "description": "e.g. MRI Spine Lumbar",
-    "institution": "City Hospital PACS",
-    "series": [
-      {"name": "Localizer", "count": 383, "region": "Whole Body"},
-      {"name": "Spine Sagittal T2", "count": 95, "region": "Spine", "active": true},
-      {"name": "Spine STIR", "count": 28, "region": "Spine"}
-    ],
-    "radiologistReport": {
-      "findings": "Detailed medical findings from the MRI slices",
-      "impressions": ["Key takeaway 1", "Key takeaway 2"],
-      "patientFriendlySummary": "Explain the MRI findings in very simple, plain English for a non-medical person (3-4 sentences).",
-      "status": "Final",
-      "radiologist": "Dr. Smith"
-    }
+    "findings": "Anatomical findings",
+    "impressions": ["takeaway"],
+    "patientFriendlySummary": "3-4 simple sentences"
   }
 }
 
-CRITICAL RULES:
-1. Return ONLY valid JSON. No markdown, no extra text.
-2. Keep string values SHORT and CONCISE, EXCEPT for the "summary", "radiologistReport.findings", and "patientFriendlySummary" fields.
-3. Include ALL metrics found in the report with correct status (normal/high/low/borderline) for standard lab reports.
-4. For MRI reports, SKIP metrics to focus entirely on anatomical findings.
-5. DO NOT include any diet plan or meal suggestions. Diet plans are generated separately.
-6. Use Indian food options in topFoods when appropriate.
-7. Use numbers for numeric values, not strings.
-8. Always provide at least 3-5 summaryPoints as individual pointers for the user.
-9. If reportType is MRI, populate the "mriData" field comprehensively.
-10. Do NOT use true/false as unquoted literals in string fields.`;
-
+RULES:
+1. Provide medical details/foods ONLY for flagged/abnormal results. Keep normal results brief.
+2. Return ONLY valid JSON. 
+3. Include max 12 most critical lab metrics to ensure speed.
+4. MRI reports focus on anatomical findings.`;
 
 exports.analyzeHealthReport = async (reportText, user = {}, imageData = null, reportType = 'general') => {
   try {
     console.log(`🔄 Analyzing ${reportType} report...`);
 
-    // Build user profile context for AI
-    let userContext = `Report Type: ${reportType}\nUser Profile: `;
-    if (user.name) userContext += `Name: ${user.name}, `;
-    if (user.profile) {
-      if (user.profile.age) userContext += `Age: ${user.profile.age}, `;
-      if (user.profile.gender) userContext += `Gender: ${user.profile.gender}, `;
-      if (user.profile.dietaryPreference) userContext += `Dietary Preference: ${user.profile.dietaryPreference}, `;
-      if (user.profile.medicalHistory?.conditions?.length > 0) {
-        userContext += `Conditions: ${user.profile.medicalHistory.conditions.join(', ')}, `;
-      }
-    }
+    let userContext = `Type: ${reportType}\nProfile: `;
+    if (user.name) userContext += `${user.name}, `;
+    if (user.profile?.age) userContext += `${user.profile.age}y, `;
+    if (user.profile?.gender) userContext += `${user.profile.gender}, `;
 
     const userContent = [];
-
-    // Add text content if available
     if (reportText && reportText.trim().length > 0) {
+      // Truncate text to avoid huge payloads that slow down analysis
+      const truncatedText = reportText.length > 30000 ? reportText.substring(0, 30000) + '...[truncated]' : reportText;
       userContent.push({
         type: 'text',
-        text: `${userContext}\n\nPlease analyze the following health report text:\n\n${reportText}`
-      });
-    } else if (imageData) {
-      // If no text but we have image, add context
-      userContent.push({
-        type: 'text',
-        text: `${userContext}\n\nPlease analyze this health report image.`
+        text: `${userContext}\n\nReport Text:\n${truncatedText}`
       });
     }
 
-    // Add image content if available
     if (imageData && imageData.buffer) {
       const base64Image = imageData.buffer.toString('base64');
       userContent.push({
@@ -200,181 +141,56 @@ exports.analyzeHealthReport = async (reportText, user = {}, imageData = null, re
       });
     }
 
-    if (userContent.length === 0) {
-      throw new Error('No content provided for analysis (text or image)');
-    }
+    if (userContent.length === 0) throw new Error('No content provided');
 
     const messages = [
       { role: 'system', content: HEALTH_ANALYSIS_PROMPT },
       { role: 'user', content: userContent }
     ];
 
-    // Use 10000 tokens on Vercel to get full analysis (vercel.json maxDuration=120s gives plenty of time)
-    // local/non-vercel: 12k for extra room
-    const maxTokens = (process.env.VERCEL || process.env.VERCEL_ID) ? 10000 : 12000;
-
+    const maxTokens = (process.env.VERCEL || process.env.VERCEL_ID) ? 8000 : 10000;
     const content = await makeAnthropicRequest(messages, maxTokens, CLAUDE_MODEL);
 
     const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error('❌ No JSON found in AI response. Raw content:', content.substring(0, 500));
-      throw new Error('AI Response was not valid JSON format');
-    }
+    if (!jsonMatch) throw new Error('AI Response invalid format');
 
-    try {
-      const analysis = robustJsonParse(jsonMatch[0]);
-      console.log('✅ Analysis complete');
-      return analysis;
-    } catch (parseError) {
-      console.error('❌ JSON Parse Error. Raw content around error:', content.substring(Math.max(0, content.indexOf('{') - 50), 2000));
-      throw new Error(`AI Analysis failed: ${parseError.message}`);
-    }
+    return robustJsonParse(jsonMatch[0]);
   } catch (error) {
-    console.error('❌ Error in analyzeHealthReport:', error.message);
-    throw error; // Rethrow to let controller handle it
+    console.error('❌ AI Analysis Error:', error.message);
+    throw error;
   }
 };
 
 exports.compareReports = async (currentReport, previousReport) => {
   try {
-    const prompt = `You are a medical data analyst. Compare the following two reports for the same patient and identify trends, improvements, and areas of concern.
-    
-    Current Report (${currentReport.createdAt}):
-    ${JSON.stringify(currentReport.aiAnalysis?.metrics || {})}
-    
-    Previous Report (${previousReport.createdAt}):
-    ${JSON.stringify(previousReport.aiAnalysis?.metrics || {})}
-    
-    Return JSON:
-    {
-      "overallTrend": "improving / stable / declining",
-      "summary": "Brief summary of changes",
-      "improvements": ["Items that got better"],
-      "deteriorations": ["Items that got worse"],
-      "stableMetrics": ["Items that stayed the same"],
-      "recommendations": ["Adjusted advice based on trends"]
-    }`;
-
-    const content = await makeAnthropicRequest([
-      { role: 'system', content: 'You are a medical trend analyst. Return JSON only.' },
-      { role: 'user', content: prompt }
-    ]);
-
+    const prompt = `Trend analyzer: Compare reports.\nCurrent: ${JSON.stringify(currentReport.aiAnalysis?.metrics || {})}\nPrev: ${JSON.stringify(previousReport.aiAnalysis?.metrics || {})}\nReturn JSON: {"overallTrend": "improving/declining", "summary": "brief", "improvements": [], "deteriorations": []}`;
+    const content = await makeAnthropicRequest([{ role: 'user', content: prompt }], 1000, CLAUDE_HAIKU_MODEL);
     const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return { overallTrend: 'unknown', summary: 'No JSON returned' };
-
-    try {
-      return robustJsonParse(jsonMatch[0]);
-    } catch (e) {
-      return { overallTrend: 'unknown', summary: 'JSON parse error in comparison' };
-    }
-  } catch (error) {
-    console.error('Comparison error:', error);
-    return { overallTrend: 'unknown', summary: 'Failed to generate comparison.' };
-  }
+    return jsonMatch ? robustJsonParse(jsonMatch[0]) : { overallTrend: 'stable' };
+  } catch (e) { return { overallTrend: 'unknown' }; }
 };
 
 exports.chatWithReport = async (report, message, chatHistory) => {
   try {
-    const systemPrompt = `You are a medical AI assistant. You have access to the user's health report:
-    Report Summary: ${report.aiAnalysis?.summary}
-    Health Score: ${report.aiAnalysis?.healthScore}
-    Key Findings: ${report.aiAnalysis?.keyFindings?.join(', ')}
-    
-    Answer the user's questions based on this data. Be helpful but remind them to consult a doctor for serious concerns.`;
-
-    const messages = [
-      { role: 'system', content: systemPrompt },
-      ...chatHistory.slice(-5),
-      { role: 'user', content: message }
-    ];
-
-    return await makeAnthropicRequest(messages, 1000);
-  } catch (error) {
-    return "I'm sorry, I'm having trouble analyzing your report right now.";
-  }
+    const systemPrompt = `AI medical assistant. Report: ${report.aiAnalysis?.summary}. Findings: ${report.aiAnalysis?.keyFindings?.join(', ')}`;
+    return await makeAnthropicRequest([{ role: 'system', content: systemPrompt }, ...chatHistory.slice(-4), { role: 'user', content: message }], 800, CLAUDE_HAIKU_MODEL);
+  } catch (e) { return "I'm sorry, I'm having trouble analyzing your report right now."; }
 };
 
 exports.generateMetricInfo = async (metricName, metricValue, normalRange, unit) => {
   try {
-    const prompt = `Explain the medical metric "${metricName}" in simple terms for a patient.
-    Current Value: ${metricValue} ${unit}
-    Normal Range: ${normalRange}
-    
-    Return a JSON object with two keys "en" and "hi".
-    The "en" key should contain the English explanation.
-    The "hi" key should contain the Hindi translation.
-    
-    Structure:
-    {
-      "en": {
-        "whatIsIt": "Simple explanation of what this metric is",
-        "significance": "Why this metric is important for health",
-        "interpretation": "What the current value means exactly for the user",
-        "actions": ["Bullet points of what to do"],
-        "dietaryTips": ["Food items that help improve this metric"]
-      },
-      "hi": {
-        "whatIsIt": "Hindi translation of whatIsIt",
-        "significance": "Hindi translation of significance",
-        "interpretation": "Hindi translation of interpretation",
-        "actions": ["Hindi translation of actions"],
-        "dietaryTips": ["Hindi translation of dietaryTips"]
-      }
-    }
-    
-    CRITICAL: Return ONLY valid JSON. Keep it concise.`;
-
-    const content = await makeAnthropicRequest([
-      { role: 'system', content: 'You are a medical educator. Return JSON only.' },
-      { role: 'user', content: prompt }
-    ], 1000);
-
+    const prompt = `Metric Educator. Explain "${metricName}" (${metricValue} ${unit}, Normal: ${normalRange}). JSON: {"en": {"whatIsIt": "", "significance": "", "interpretation": ""}, "hi": {...}}`;
+    const content = await makeAnthropicRequest([{ role: 'user', content: prompt }], 1000, CLAUDE_HAIKU_MODEL);
     const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return { whatIsIt: 'JSON Missing' };
-
-    try {
-      return robustJsonParse(jsonMatch[0]);
-    } catch (e) {
-      return { whatIsIt: 'Format error.' };
-    }
-  } catch (error) {
-    return { whatIsIt: 'Information unavailable.' };
-  }
+    return jsonMatch ? robustJsonParse(jsonMatch[0]) : { whatIsIt: 'Missing' };
+  } catch (e) { return { whatIsIt: 'Error' }; }
 };
 
 exports.generateVitalsInsights = async (metricType, history, user) => {
   try {
-    const prompt = `Analyze the user's ${metricType} history for the last 7 days and provide professional health advice.
-    
-    Metric Type: ${metricType}
-    History Data: ${JSON.stringify(history)}
-    User Profile: ${JSON.stringify(user.profile || {})}
-    User Goal: ${JSON.stringify(user.nutritionGoal || {})}
-    
-    Your goal is to tell the user how they are doing and what they should do for betterment. Be ultra-concise.
-    
-    Return a JSON object:
-    {
-      "status": "A very short status (e.g., 'Excellent', 'Stable', 'Needs Work')",
-      "analysis": "A one-sentence impact analysis of the trend (e.g. 'Consistent step count shows improved stamina.')",
-      "recommendations": ["3-4 very short actionable points (max 5 words each)"],
-      "encouragement": "A short motivating one-liner"
-    }
-    
-    CRITICAL: Return ONLY valid JSON. Keep it extremely brief. no fluff. JSON only.`;
-
-    const content = await makeAnthropicRequest([
-      { role: 'system', content: 'You are a professional health and fitness AI coach. Return JSON only.' },
-      { role: 'user', content: prompt }
-    ], 1000);
-
+    const prompt = `Health Coach. ${metricType} history: ${JSON.stringify(history)}. Return JSON: {"status": "", "analysis": "", "recommendations": []}`;
+    const content = await makeAnthropicRequest([{ role: 'user', content: prompt }], 800, CLAUDE_HAIKU_MODEL);
     const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('AI response missing JSON');
-
-    return robustJsonParse(jsonMatch[0]);
-  } catch (error) {
-    console.error('Error generating vitals insights:', error);
-    throw error;
-  }
+    return jsonMatch ? robustJsonParse(jsonMatch[0]) : null;
+  } catch (e) { throw e; }
 };
