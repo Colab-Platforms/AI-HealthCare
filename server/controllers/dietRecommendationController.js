@@ -4,6 +4,10 @@ const HealthReport = require('../models/HealthReport');
 const User = require('../models/User');
 const dietRecommendationAI = require('../services/dietRecommendationAI');
 const { calculateNutritionGoals, getDietRecommendations } = require('../services/nutritionGoalCalculator');
+const queueService = require('../services/queueService');
+const cache = require('../utils/cache');
+const notificationService = require('../services/notificationService');
+const emailService = require('../services/emailService');
 
 /**
  * Generate personalized diet plan based on comprehensive health data
@@ -213,112 +217,116 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
     await cache.delete(`diet_plan:${userId}`);
     await cache.delete(`dashboard:${userId}`);
 
-    // 5. RESPOND IMMEDIATELY
-    res.json({
-      success: true,
-      message: 'Diet plan generation started in background',
-      dietPlan,
-      backgroundProcessing: true
-    });
-
-    // ══════════════════════════════════════════════════════════
-    // 6. BACKGROUND PROCESSING - Runs AFTER response is sent
-    // ══════════════════════════════════════════════════════════
-    const emailService = require('../services/emailService');
-    const notificationService = require('../services/notificationService');
-
-    setImmediate(async () => {
-      try {
-        console.log(`[DietGeneration][BG] Starting AI generation for ${dietPlan._id}...`);
-        
-        let aiDietPlan;
-        try {
-          aiDietPlan = await dietRecommendationAI.generatePersonalizedDietPlan(userData, promptEx);
-          if (!aiDietPlan || typeof aiDietPlan !== 'object') throw new Error('Invalid AI response');
-        } catch (aiError) {
-          console.error('[DietGeneration][BG] AI Error:', aiError.message);
-          await PersonalizedDietPlan.findByIdAndUpdate(dietPlan._id, { status: 'failed' });
-          return;
-        }
-
-        console.log(`[DietGeneration][BG] AI success, updating document...`);
-        
-        const finalData = {
-          ...aiDietPlan,
-          status: 'completed',
-          inputData: {
-            age: userData.age,
-            gender: userData.gender,
-            weight: userData.weight,
-            height: userData.height,
-            currentBMI: userData.currentBMI,
-            bmiGoal: userData.bmiGoal,
-            targetWeight: userData.targetWeight,
-            dietaryPreference: userData.dietaryPreference,
-            activityLevel: userData.activityLevel,
-            fitnessGoals: userData.fitnessGoals,
-            medicalConditions: userData.medicalConditions,
-            allergies: userData.allergies,
-            hasReports: hasReports
-          },
-          labReportInsights,
-          nutritionGoals: {
-            dailyCalorieTarget: nutritionGoals.calorieGoal,
-            macroTargets: {
-              protein: nutritionGoals.proteinGoal,
-              carbs: nutritionGoals.carbsGoal,
-              fats: nutritionGoals.fatsGoal
-            }
-          }
-        };
-
-        const updatedPlan = await PersonalizedDietPlan.findByIdAndUpdate(dietPlan._id, finalData, { new: true });
-        
-        // Deactivate older plans
-        await PersonalizedDietPlan.updateMany(
-          { userId, isActive: true, _id: { $ne: updatedPlan._id } },
-          { isActive: false }
-        );
-
-        console.log(`[DietGeneration][BG] Completed for ${userId}`);
-
-        // Notify user
-        await notificationService.createNotification(userId, {
-          type: 'diet_ready',
-          title: '🍽️ Diet Plan Ready!',
-          message: 'Your personalized AI diet plan has been generated based on your latest data.',
-          icon: '🍽️',
-          priority: 'high',
-          actionUrl: '/diet-plan'
-        });
-
-        // Email user
-        try {
-          await emailService.sendDietPlanComplete(user.email, user.name);
-        } catch (emailErr) {
-          console.error('[DietGeneration][BG] Email fail:', emailErr.message);
-        }
-
-        // Invalidate cache again
-        await cache.delete(`diet_plan:${userId}`);
-        await cache.delete(`dashboard:${userId}`);
-
-      } catch (bgError) {
-        console.error('[DietGeneration][BG] Fatal error:', bgError.message);
-        await PersonalizedDietPlan.findByIdAndUpdate(dietPlan._id, { status: 'failed' });
-      }
-    });
+    // 5. TRIGGER BACKGROUND GENERATION
+    const isVercel = !!(process.env.VERCEL || process.env.VERCEL_ID);
+    if (isVercel) {
+      // 🚀 ON VERCEL: Use QStash for reliable background processing (bypasses timeouts)
+      await queueService.enqueueTask('process-diet', {
+        userId,
+        dietPlanId: dietPlan._id,
+        userData,
+        promptEx
+      });
+    } else {
+      // 💻 ON LOCAL: Use setImmediate
+      setImmediate(() => processDietInternal(userId, dietPlan._id, userData, promptEx));
+    }
   } catch (error) {
     console.error('❌ Generate diet plan error:', error);
-    if (error.name === 'ValidationError') {
-      console.error('Validation Errors:', Object.keys(error.errors).map(key => `${key}: ${error.errors[key].message}`));
+    res.status(500).json({ success: false, message: 'Failed to initiate diet generation', error: error.message });
+  }
+};
+
+/**
+ * 🚀 INTERNAL BACKGROUND DIET PROCESSOR
+ */
+async function processDietInternal(userId, dietPlanId, userData, promptEx) {
+  console.log(`🔄 [BG-DIET] Starting generation for ${dietPlanId}...`);
+  try {
+    const user = await User.findById(userId);
+    if (!user) throw new Error('User not found');
+
+    let aiDietPlan;
+    try {
+      aiDietPlan = await dietRecommendationAI.generatePersonalizedDietPlan(userData, promptEx);
+      if (!aiDietPlan || typeof aiDietPlan !== 'object') throw new Error('Invalid AI response');
+    } catch (aiError) {
+      console.error('[BG-DIET] AI Error:', aiError.message);
+      await PersonalizedDietPlan.findByIdAndUpdate(dietPlanId, { status: 'failed' });
+      return;
     }
-    res.status(500).json({
-      success: false,
-      message: 'Failed to generate diet plan',
-      error: error.message,
-      details: error.errors ? Object.keys(error.errors).map(key => `${key}: ${error.errors[key].message}`) : null
+
+    const finalData = {
+      ...aiDietPlan,
+      status: 'completed',
+      inputData: {
+        age: userData.age,
+        gender: userData.gender,
+        weight: userData.weight,
+        height: userData.height,
+        currentBMI: userData.currentBMI,
+        bmiGoal: userData.bmiGoal,
+        targetWeight: userData.targetWeight,
+        dietaryPreference: userData.dietaryPreference,
+        activityLevel: userData.activityLevel,
+        fitnessGoals: userData.fitnessGoals,
+        medicalConditions: userData.medicalConditions,
+        allergies: userData.allergies,
+        hasReports: userData.hasReports
+      },
+      nutritionGoals: {
+        dailyCalorieTarget: userData.nutritionGoals.dailyCalories,
+        macroTargets: {
+          protein: userData.nutritionGoals.protein,
+          carbs: userData.nutritionGoals.carbs,
+          fats: userData.nutritionGoals.fats
+        }
+      }
+    };
+
+    const updatedPlan = await PersonalizedDietPlan.findByIdAndUpdate(dietPlanId, finalData, { new: true });
+    
+    // Deactivate older plans
+    await PersonalizedDietPlan.updateMany(
+      { userId, isActive: true, _id: { $ne: updatedPlan._id } },
+      { isActive: false }
+    );
+
+    // Notifications & Email
+    await notificationService.createNotification(userId, {
+      type: 'diet_ready',
+      title: '🍽️ Diet Plan Ready!',
+      message: 'Your personalized AI diet plan has been generated.',
+      icon: '🍽️',
+      priority: 'high',
+      actionUrl: '/diet-plan'
     });
+
+    try { await emailService.sendDietPlanComplete(user.email, user.name); }
+    catch (e) { console.warn('[BG-DIET] Email fail:', e.message); }
+
+    await cache.delete(`diet_plan:${userId}`);
+    await cache.delete(`dashboard:${userId}`);
+    console.log(`✅ [BG-DIET] Done for ${userId}`);
+
+  } catch (error) {
+    console.error('[BG-DIET] Fatal error:', error.message);
+    await PersonalizedDietPlan.findByIdAndUpdate(dietPlanId, { status: 'failed' });
+  }
+}
+
+/**
+ * 📡 QStash Webhook Endpoint for Diet (Production/Vercel)
+ */
+exports.processDietBG = async (req, res) => {
+  try {
+    const { userId, dietPlanId, userData, promptEx } = req.body;
+    console.log(`🔔 QStash diet callback received for plan ${dietPlanId}`);
+    res.status(202).json({ success: true });
+    await processDietInternal(userId, dietPlanId, userData, promptEx);
+  } catch (err) {
+    console.error('QStash Diet Callback Error:', err.message);
+    if (!res.headersSent) res.status(500).end();
   }
 };
 

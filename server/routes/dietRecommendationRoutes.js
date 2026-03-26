@@ -3,7 +3,10 @@ const router = express.Router();
 const dietRecommendationController = require('../controllers/dietRecommendationController');
 const { protect } = require('../middleware/auth');
 
-// All routes require authentication
+// Background callback route (No Auth needed as it's called by QStash)
+router.post('/process-diet-bg', dietRecommendationController.processDietBG);
+
+// All other routes require authentication
 router.use(protect);
 
 // Diet plan routes

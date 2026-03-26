@@ -5,38 +5,51 @@ const axios = require('axios');
  * This allows Vercel serverless functions to trigger long-running tasks (>10-60s)
  * without timing out the main request.
  */
-exports.enqueueTask = async (topic, payload, options = {}) => {
+exports.enqueueTask = async (taskType, payload) => {
   try {
-    const qstashUrl = process.env.QSTASH_URL || "https://qstash-eu-central-1.upstash.io";
     const qstashToken = process.env.QSTASH_TOKEN;
-    const appUrl = process.env.APP_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:5001';
+    const qstashUrl = process.env.QSTASH_URL || "https://qstash.upstash.io";
+    
+    // Production: Use the current Vercel deployment URL
+    // Local: This will only work if you use something like 'ngrok'
+    const appUrl = process.env.VERCEL_URL 
+      ? `https://${process.env.VERCEL_URL}` 
+      : (process.env.APP_URL || 'http://localhost:5001');
 
     if (!qstashToken) {
-      console.warn('⚠️ QSTASH_TOKEN not found, background tasks may fail on Vercel');
+      console.warn('⚠️ QSTASH_TOKEN not found, background tasks will fail on Vercel');
       return false;
     }
 
-    // Distinguish between local dev and production for callback URL
-    const destinationUrl = `${appUrl}/api/health/process-report-bg`;
+    // Determine the correct callback endpoint based on task type
+    let endpoint = "";
+    if (taskType === 'process-report') {
+      endpoint = "/api/health/process-report-bg";
+    } else if (taskType === 'process-diet') {
+      endpoint = "/api/diet-recommendation/process-diet-bg";
+    } else {
+      throw new Error(`Unknown task type: ${taskType}`);
+    }
 
-    console.log(`🔄 Enqueuing QStash task for ${topic} | Destination: ${destinationUrl}`);
+    const destinationUrl = `${appUrl}${endpoint}`;
+    console.log(`🔄 Enqueuing QStash task for ${taskType} | Call: ${destinationUrl}`);
 
     const response = await axios.post(
-      `${qstashUrl}/v1/publish/${destinationUrl}`,
+      `https://qstash.upstash.io/v1/publish/${destinationUrl}`,
       payload,
       {
         headers: {
           'Authorization': `Bearer ${qstashToken}`,
           'Content-Type': 'application/json',
-          'Upstash-Retries': '1' // Reduce retries to avoid wasting AI credits on timeouts
+          'Upstash-Retries': '1' 
         }
       }
     );
 
-    console.log(`✅ Task enqueued | MessageID: ${response.data.messageId}`);
+    console.log(`✅ [QStash] ${taskType} enqueued | ID: ${response.data.messageId}`);
     return true;
   } catch (error) {
-    console.error('❌ QStash Enqueue Error:', error.response?.data || error.message);
+    console.error(`❌ [QStash] Enqueue Error [${taskType}]:`, error.response?.data || error.message);
     return false;
   }
 };
