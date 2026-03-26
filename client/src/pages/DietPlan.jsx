@@ -406,8 +406,10 @@ export default function DietPlan() {
   };
 
   const isCurrentlyGenerating = generating || (activePlan?.status === 'generating') || (pendingDietPlanIds?.length > 0);
+  const showCraftingScreen = loading || isCurrentlyGenerating;
 
-  if (loading || (isCurrentlyGenerating && (!activePlan || activePlan.status === 'generating'))) {
+  if (showCraftingScreen) {
+
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFDFD] px-6">
         <div className="relative w-32 h-32 mb-10 flex items-center justify-center">

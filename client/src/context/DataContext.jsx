@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import { healthService, wearableService, nutritionService } from '../services/api';
+import { healthService, wearableService, nutritionService, dietRecommendationService } from '../services/api';
 import toast from 'react-hot-toast';
 import { cache } from '../utils/cache';
 import { useAuth } from './AuthContext';
@@ -337,7 +337,6 @@ export const DataProvider = ({ children }) => {
       const results = await Promise.all(
         pendingDietPlanIds.map(async (id) => {
           try {
-            const { dietRecommendationService } = await import('../services/api');
             const { data } = await dietRecommendationService.getDietPlanStatus(id);
             return { id, status: data.status };
           } catch (e) {
@@ -345,6 +344,7 @@ export const DataProvider = ({ children }) => {
           }
         })
       );
+
 
       const completed = results.filter(r => r.status === 'completed' || r.status === 'failed');
       
