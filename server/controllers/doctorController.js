@@ -11,7 +11,7 @@ exports.getAllDoctors = async (req, res) => {
   try {
     const { specialization, available } = req.query;
     const cacheKey = `doctors:${specialization || 'all'}:${available || 'all'}`;
-    const cached = cache.get(cacheKey);
+    const cached = await cache.get(cacheKey);
     
     if (cached) {
       return res.json(cached);
@@ -34,7 +34,7 @@ exports.getAllDoctors = async (req, res) => {
       user: doc.user ? doc.user : { name: doc.name, email: doc.email }
     }));
     
-    cache.set(cacheKey, transformedDoctors, 300); // Cache for 5 minutes
+    await cache.set(cacheKey, transformedDoctors, 300); // Cache for 5 minutes
     res.json(transformedDoctors);
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -3,9 +3,11 @@ import { useAuth } from '../context/AuthContext';
 import {
   LayoutDashboard, Calendar, FileText, Settings, LogOut,
   Bell, Search, Activity, Watch, Clock, Apple, MessageSquare, Utensils, ArrowLeft,
-  Droplet, Brain, TrendingUp, Sun, Moon, MessageCircle, BarChart3, Dumbbell, Users, ShieldCheck
+  Droplet, Brain, TrendingUp, Sun, Moon, MessageCircle, BarChart3, Dumbbell, Users, ShieldCheck,
+  Sparkles, RefreshCw
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { useData } from '../context/DataContext';
 import TextSelectionPopup from './TextSelectionPopup';
 import MobileBottomNav from './MobileBottomNav';
 import PWAInstallPrompt from './PWAInstallPrompt';
@@ -37,6 +39,7 @@ const adminExtraNavItems = [
 
 export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isDoctorLayout }) {
   const { user, logout, isAdmin, isDoctor, refreshUser } = useAuth();
+  const { pendingAnalysisIds, pendingDietPlanIds } = useData();
   const location = useLocation();
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -302,6 +305,31 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
 
       {/* Text Selection Popup - Disabled on AI Chat page */}
       {location.pathname !== '/ai-chat' && <TextSelectionPopup />}
+
+      {/* Global AI Generation Status Banner */}
+      {(pendingAnalysisIds?.length > 0 || pendingDietPlanIds?.length > 0) && (
+        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-md pointer-events-none">
+          <div className="bg-black/80 backdrop-blur-xl border border-white/10 p-4 rounded-[2rem] shadow-2xl flex items-center gap-4 pointer-events-auto">
+            <div className="relative shrink-0">
+              <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 flex items-center justify-center">
+                <Sparkles className="w-5 h-5 text-emerald-400 animate-pulse" />
+              </div>
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-emerald-500 rounded-full animate-ping" />
+            </div>
+            <div className="flex-1">
+              <h4 className="text-xs font-bold text-white tracking-tight">
+                AI {pendingAnalysisIds?.length > 0 ? 'Analysis' : 'Diet Generation'} in Progress
+              </h4>
+              <p className="text-[9px] font-medium text-slate-400 leading-tight">
+                {pendingAnalysisIds?.length > 0 ? 'We are analyzing your medical report...' : 'Crafting your personalized nutrition protocol...'}
+              </p>
+            </div>
+            <div className="shrink-0">
+              <RefreshCw className="w-4 h-4 text-emerald-400 animate-spin" />
+            </div>
+          </div>
+        </div>
+      )}
       </div>
     </div>
   );

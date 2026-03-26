@@ -7,12 +7,128 @@ import {
   Heart, Clock, ArrowLeft, Flame, Target,
   AlertCircle, Sparkles, CheckCircle, Lightbulb, X, UtensilsCrossed, Utensils,
   ChevronLeft, ChevronRight, Calendar, Search, Filter, RefreshCw, Eye, ChefHat,
-  ArrowRight, Check, Zap, Info, Coffee, Sun, Activity
+  ArrowRight, Check, Zap, Info, Coffee, Sun, Activity, Mail
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import FoodPreferences from '../components/FoodPreferences';
 import { ImageWithFallback } from '../components/ImageWithFallback';
+
+// --- UI Components ---
+const FoodDetailModal = ({ food, onClose, onLog, isLogged, isLoading }) => {
+  if (!food) return null;
+
+  return (
+    <div className="fixed inset-0 z-[150] flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/80 backdrop-blur-md"
+      />
+      <motion.div
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.9, opacity: 0, y: 20 }}
+        className="relative w-full max-w-2xl bg-white rounded-[2.5rem] overflow-hidden shadow-2xl"
+      >
+        <button 
+          onClick={onClose}
+          className="absolute top-6 right-6 z-10 w-10 h-10 rounded-full bg-black/10 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/20 transition-all"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        <div className="flex flex-col md:flex-row h-full max-h-[90vh]">
+          {/* Top/Left: Image */}
+          <div className="w-full md:w-1/2 h-64 md:h-auto relative bg-emerald-50">
+            <ImageWithFallback
+              src={food.imageUrl}
+              query={food.name}
+              alt={food.name}
+              className="w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent md:hidden" />
+            <div className="absolute bottom-6 left-6 md:hidden">
+              <h2 className="text-2xl font-black text-white">{food.name}</h2>
+            </div>
+          </div>
+
+          {/* Right: Details */}
+          <div className="flex-1 p-6 md:p-10 overflow-y-auto">
+            <div className="hidden md:block mb-6">
+              <h2 className="text-3xl font-black text-[#064e3b] tracking-tight">{food.name}</h2>
+              <p className="text-emerald-800/40 font-bold uppercase tracking-widest text-xs mt-1">Nutrition Protocol</p>
+            </div>
+
+            <div className="grid grid-cols-4 gap-2 mb-8">
+              {[
+                { label: 'Calories', val: food.calories, unit: 'kcal', color: 'orange' },
+                { label: 'Protein', val: food.protein, unit: 'g', color: 'emerald' },
+                { label: 'Carbs', val: food.carbs, unit: 'g', color: 'blue' },
+                { label: 'Fats', val: food.fats, unit: 'g', color: 'amber' }
+              ].map(n => (
+                <div key={n.label} className={`p-3 rounded-2xl bg-${n.color}-50/50 border border-${n.color}-100 flex flex-col items-center justify-center`}>
+                  <span className={`text-[10px] font-black uppercase text-${n.color}-800/40 mb-1`}>{n.label}</span>
+                  <span className={`text-sm md:text-lg font-black text-${n.color}-700`}>{n.val || 0}</span>
+                  <span className={`text-[8px] font-bold text-${n.color}-600/60 uppercase`}>{n.unit}</span>
+                </div>
+              ))}
+            </div>
+
+            <div className="space-y-6">
+              <section>
+                <h4 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-emerald-800/40 mb-3">
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-500" /> Key Benefits
+                </h4>
+                <p className="text-sm text-slate-600 leading-relaxed bg-emerald-50/30 p-4 rounded-2xl border border-emerald-50 italic font-medium">
+                  {food.benefits || "Highly nutritious and balanced for your current health profile."}
+                </p>
+              </section>
+
+              <section>
+                <h4 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-emerald-800/40 mb-3">
+                  <UtensilsCrossed className="w-3.5 h-3.5 text-emerald-500" /> Portion Guidance
+                </h4>
+                <div className="flex items-center gap-2 p-4 rounded-2xl bg-slate-50 border border-slate-100">
+                  <Info className="w-4 h-4 text-slate-400" />
+                  <p className="text-sm font-bold text-slate-700">{food.portionSize || '1 standard serving size'}</p>
+                </div>
+              </section>
+
+              <section>
+                <h4 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-emerald-800/40 mb-3">
+                  <Lightbulb className="w-3.5 h-3.5 text-emerald-500" /> Instructions
+                </h4>
+                <p className="text-sm text-slate-500 leading-relaxed font-medium">
+                  {food.description || "Consume as per the recommended time for optimal metabolic absorption and energy levels."}
+                </p>
+              </section>
+            </div>
+
+            <button
+              onClick={() => onLog(food)}
+              disabled={isLogged || isLoading}
+              className={`w-full mt-10 py-5 rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl ${isLogged
+                ? 'bg-emerald-600 text-white shadow-emerald-200'
+                : 'bg-black text-white hover:bg-slate-800 shadow-slate-200'
+                } ${isLoading ? 'opacity-70 cursor-wait' : ''}`}
+            >
+              {isLoading ? (
+                <RefreshCw className="w-4 h-4 animate-spin" />
+              ) : isLogged ? (
+                <><Check className="w-4 h-4" /> Logged as Eaten</>
+              ) : (
+                'Log this Meal'
+              )}
+            </button>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+};
 
 // --- Constants & Helpers ---
 const Sunset = ({ className }) => (
@@ -47,7 +163,7 @@ function getMealCalories(m) {
 
 // --- UI Components ---
 
-const MealCard = ({ meal, mealType, onLog, isLogged, idx, isLoading }) => {
+const MealCard = ({ meal, mealType, onLog, isLogged, idx, isLoading, onClick }) => {
   const name = getMealName(meal);
   const calories = getMealCalories(meal);
 
@@ -55,7 +171,8 @@ const MealCard = ({ meal, mealType, onLog, isLogged, idx, isLoading }) => {
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-white rounded-[1.5rem] md:rounded-[2.5rem] p-3 md:p-5 border border-emerald-100/30 shadow-[0_4px_20px_rgb(0,0,0,0.02)] group hover:shadow-xl hover:shadow-emerald-200/50 transition-all flex flex-col h-full min-w-[170px] md:min-w-[320px] snap-start"
+      className="bg-white rounded-[1.5rem] md:rounded-[2.5rem] p-3 md:p-5 border border-emerald-100/30 shadow-[0_4px_20px_rgb(0,0,0,0.02)] group hover:shadow-xl hover:shadow-emerald-200/50 transition-all flex flex-col h-full min-w-[170px] md:min-w-[320px] snap-start cursor-pointer"
+      onClick={onClick}
     >
       <div className="relative h-28 md:h-48 mb-3 md:mb-5 overflow-hidden rounded-[1rem] md:rounded-[2rem] bg-emerald-50/20">
         <ImageWithFallback
@@ -92,7 +209,10 @@ const MealCard = ({ meal, mealType, onLog, isLogged, idx, isLoading }) => {
       </div>
 
       <button
-        onClick={() => onLog(meal, mealType)}
+        onClick={(e) => {
+          e.stopPropagation();
+          onLog(meal, mealType);
+        }}
         disabled={isLogged || isLoading}
         className={`w-full py-2.5 md:py-4 rounded-xl md:rounded-2xl text-[9px] md:text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-sm ${isLogged
           ? 'bg-emerald-600 text-white shadow-emerald-200'
@@ -118,7 +238,10 @@ export default function DietPlan() {
     fetchDietPlan, 
     fetchNutritionLogs, 
     fetchHealthGoals,
-    healthGoals 
+    addPendingDietPlan,
+    pendingDietPlanIds,
+    healthGoals,
+    dataRefreshTrigger 
   } = useData();
   const navigate = useNavigate();
 
@@ -132,13 +255,15 @@ export default function DietPlan() {
   const [prefMode, setPrefMode] = useState('save');
   const [loggedMeals, setLoggedMeals] = useState({});
   const [loggingMealId, setLoggingMealId] = useState(null);
+  const [selectedFood, setSelectedFood] = useState(null);
+  const [selectedFoodType, setSelectedFoodType] = useState(null);
 
   const rowRefs = useRef({});
   const insightsRef = useRef(null);
 
   useEffect(() => {
     loadInitialData();
-  }, []);
+  }, [dataRefreshTrigger]);
 
   const loadInitialData = async () => {
     try {
@@ -189,9 +314,15 @@ export default function DietPlan() {
     try {
       const { data } = await dietRecommendationService.generateDietPlan({ isRegenerate, usePreferences });
       if (data.success) {
-        toast.success(isRegenerate ? 'Plan updated!' : 'New plan ready!');
-        invalidateCache(['diet_plan', 'dashboard']);
-        loadInitialData();
+        if (data.backgroundProcessing) {
+          toast.success('AI generation started in background');
+          addPendingDietPlan(data.dietPlan._id);
+          setActivePlan(data.dietPlan); // Set the "generating" plan as active
+        } else {
+          toast.success(isRegenerate ? 'Plan updated!' : 'New plan ready!');
+          invalidateCache(['diet_plan', 'dashboard']);
+          loadInitialData();
+        }
       }
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update plan');
@@ -274,26 +405,71 @@ export default function DietPlan() {
     }
   };
 
-  if (loading || generating) {
+  const isCurrentlyGenerating = generating || (activePlan?.status === 'generating') || (pendingDietPlanIds?.length > 0);
+
+  if (loading || (isCurrentlyGenerating && (!activePlan || activePlan.status === 'generating'))) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFDFD] px-4">
-        <div className="relative w-24 h-24 mb-6">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-[#FDFDFD] px-6">
+        <div className="relative w-32 h-32 mb-10 flex items-center justify-center">
           <div className="absolute inset-0 rounded-full border-4 border-slate-100" />
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
-            className="absolute inset-0 rounded-full border-4 border-black border-t-transparent"
+            className="absolute inset-0 rounded-full border-4 border-emerald-500 border-t-transparent"
           />
-          <ChefHat className="absolute inset-0 m-auto w-8 h-8 text-black animate-pulse" />
+          <div className="relative w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center shadow-inner">
+            <ChefHat className="w-10 h-10 text-emerald-600 animate-pulse" />
+          </div>
+          <div className="absolute -top-2 -right-2 w-8 h-8 bg-white rounded-full shadow-lg flex items-center justify-center animate-bounce">
+            <Sparkles className="w-4 h-4 text-emerald-500" />
+          </div>
         </div>
-        <p className="text-[#A795C7] font-black uppercase tracking-[0.2em] text-xs text-center mb-3">
-          {generating ? 'Analyzing Reports, Goals & BMI...' : 'Curating your diet protocol...'}
-        </p>
-        {generating && (
-          <p className="text-red-400 font-bold text-[10px] uppercase tracking-widest text-center max-w-xs leading-relaxed border border-red-100 bg-red-50 p-3 rounded-2xl">
-            Please do not click the back button or refresh the page
-          </p>
-        )}
+
+        <div className="max-w-md w-full text-center space-y-6">
+          <div className="space-y-2">
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Crafting Your Protocol</h2>
+            <p className="text-sm font-bold text-slate-400 uppercase tracking-[0.2em]">AI Generation in Progress</p>
+          </div>
+
+          <div className="p-6 bg-emerald-50 border border-emerald-100 rounded-[2rem] shadow-sm">
+            <p className="text-emerald-800 text-sm font-bold leading-relaxed mb-4 italic">
+              "We're analyzing your latest medical reports, BMI, and nutritional goals to create a scientifically optimized diet plan just for you."
+            </p>
+            <div className="flex flex-col items-center gap-4">
+              <div className="w-full bg-emerald-100/50 h-3 rounded-full overflow-hidden">
+                <motion.div 
+                  initial={{ width: "10%" }}
+                  animate={{ width: "95%" }}
+                  transition={{ duration: 60, ease: "linear" }}
+                  className="bg-emerald-500 h-full shadow-[0_0_10px_rgba(16,185,129,0.5)]" 
+                />
+              </div>
+              <div className="flex items-center gap-2 text-emerald-600 text-[10px] font-black uppercase tracking-widest">
+                <Clock className="w-4 h-4 animate-spin" />
+                Estimated time: 1-2 minutes
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white border border-slate-100 p-5 rounded-[2rem] shadow-xl">
+            <p className="text-slate-500 text-xs font-medium leading-relaxed mb-4">
+              While our AI works, feel free to explore other areas of the platform. We'll send you an email and a notification the moment it's ready!
+            </p>
+            <div className="flex gap-2">
+              <Link to="/dashboard" className="flex-1 py-4 bg-black text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all">
+                Platform Tour
+              </Link>
+              <Link to="/nutrition" className="flex-1 py-4 bg-slate-100 text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">
+                Food Tracker
+              </Link>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-center gap-2 text-slate-300">
+            <Mail className="w-4 h-4" />
+            <span className="text-[10px] font-bold uppercase tracking-widest leading-none mt-0.5">Notification will be sent to your inbox</span>
+          </div>
+        </div>
       </div>
     );
   }
@@ -447,6 +623,10 @@ export default function DietPlan() {
                       isLogged={!!loggedMeals[`${sectionId}-${getMealName(meal)}`]}
                       onLog={handleLogMeal}
                       isLoading={loggingMealId === `${sectionId}-${getMealName(meal)}`}
+                      onClick={() => {
+                        setSelectedFood(meal);
+                        setSelectedFoodType(sectionId);
+                      }}
                     />
                   ))}
                 </div>
@@ -599,8 +779,8 @@ export default function DietPlan() {
                     >
                       <div>
                         <div className="flex items-center gap-2 mb-2">
-                          <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${activePlan?._id === plan._id ? 'bg-white/20 text-white border border-white/20' : 'bg-white text-slate-800 border border-slate-100'}`}>
-                            {plan.fitnessGoal?.replace('_', ' ') || 'General Health'}
+                        <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${activePlan?._id === plan._id ? 'bg-white/20 text-white border border-white/20' : 'bg-white text-slate-800 border border-slate-100'}`}>
+                            {plan.inputData?.bmiGoal?.replace('_', ' ') || plan.fitnessGoal || 'General Health'}
                           </div>
                           {activePlan?._id === plan._id && (
                             <div className="flex items-center gap-1 text-emerald-400 text-[9px] font-black uppercase tracking-widest">
@@ -610,7 +790,7 @@ export default function DietPlan() {
                           )}
                         </div>
                         <p className={`text-sm font-black ${activePlan?._id === plan._id ? 'text-white' : 'text-slate-800'}`}>
-                          {new Date(plan.createdAt).toLocaleDateString('en-US', {
+                          {new Date(plan.generatedAt || plan.createdAt).toLocaleDateString('en-US', {
                             weekday: 'short',
                             day: 'numeric',
                             month: 'short',
@@ -635,6 +815,25 @@ export default function DietPlan() {
           </div>
         )}
       </AnimatePresence>
+      {/* Food Detail Modal */}
+      <AnimatePresence>
+        {selectedFood && (
+          <FoodDetailModal
+            food={selectedFood}
+            mealType={selectedFoodType}
+            onClose={() => {
+              setSelectedFood(null);
+              setSelectedFoodType(null);
+            }}
+            onLog={(food) => {
+              handleLogMeal(food, selectedFoodType);
+            }}
+            isLogged={!!loggedMeals[`${selectedFoodType}-${getMealName(selectedFood)}`]}
+            isLoading={loggingMealId === `${selectedFoodType}-${getMealName(selectedFood)}`}
+          />
+        )}
+      </AnimatePresence>
+
     </div>
   );
 }

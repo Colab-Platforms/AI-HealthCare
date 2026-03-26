@@ -196,4 +196,8 @@ healthReportSchema.pre('save', function (next) {
   next();
 });
 
+// Add indexes for faster queries as we scale
+healthReportSchema.index({ user: 1, createdAt: -1 });
+healthReportSchema.index({ user: 1, reportType: 1 });
+
 module.exports = mongoose.model('HealthReport', healthReportSchema);

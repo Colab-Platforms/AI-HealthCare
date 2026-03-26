@@ -74,7 +74,7 @@ class NutritionAI {
        - 1 Large Egg = 6g Protein, 5g Fat, 0g Carbs, 70 kcal.
        - 100g Chicken breast = 31g Protein, 3g Fat, 0g Carbs, 165 kcal.
        - 100g Paneer = 18g Protein, 20g Fat, 2g Carbs, 260 kcal.
-       - 1 Chapati = 3g Protein, 1g Fat, 15g Carbs, 70-80 kcal.
+       - 1 Chapati/Roti = 3g Protein, 1g Fat, 15g Carbs, 70-80 kcal.
     7. CRITICAL: Keep all "description", "benefit", and "analysis" strings extremely short (max 15 words each).
     
     JSON STRUCTURE:

@@ -11,6 +11,15 @@ class EmailService {
         pass: process.env.SMTP_PASS,
       },
     });
+    
+    // Verify connection on startup
+    this.transporter.verify((error, success) => {
+      if (error) {
+        console.error('❌ Email Service: Connection Error:', error);
+      } else {
+        console.log('✅ Email Service: Ready to send messages with: ', process.env.SMTP_USER);
+      }
+    });
   }
 
   async sendAppointmentConfirmation(appointmentData) {
@@ -459,6 +468,125 @@ class EmailService {
             </div>
  
             <p class="expiry-note">This code is valid for <span class="highlight">15 minutes</span>. If you didn't create an account, you can safely ignore this email.</p>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} take.health AI. All rights reserved.</p>
+            <p>Empowering your health journey with AI.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+  async sendReportAnalysisComplete(email, name, reportId) {
+    const emailOptions = {
+      from: process.env.FROM_EMAIL,
+      to: email,
+      subject: 'Report Analysis Completed - take.health AI',
+      html: this.getReportAnalysisCompleteTemplate(name, reportId)
+    };
+
+    try {
+      await this.transporter.sendMail(emailOptions);
+      console.log(`Report analysis completion email sent to ${email}`);
+    } catch (error) {
+      console.error('Error sending report analysis completion email:', error);
+    }
+  }
+
+  getReportAnalysisCompleteTemplate(name, reportId) {
+    const reportUrl = `${process.env.APP_URL}/reports/${reportId}`;
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Report Analysis Completed</title>
+        <style>
+          body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1e293b; margin: 0; padding: 0; background-color: #f8fafc; }
+          .container { max-width: 600px; margin: 20px auto; padding: 0; background-color: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+          .header { background: linear-gradient(135deg, #059669, #10b981); color: white; padding: 40px 20px; text-align: center; }
+          .logo { font-size: 28px; font-weight: 800; letter-spacing: -1px; margin-bottom: 10px; }
+          .content { padding: 40px; text-align: center; }
+          .welcome-text { font-size: 18px; color: #64748b; margin-bottom: 30px; }
+          .button { display: inline-block; background: linear-gradient(135deg, #059669, #10b981); color: white; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: 600; margin: 30px 0; }
+          .footer { text-align: center; padding: 30px; color: #94a3b8; font-size: 12px; background-color: #f8fafc; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">take.health AI</div>
+            <h2 style="margin: 0;">Analysis Completed</h2>
+          </div>
+          <div class="content">
+            <p class="welcome-text">Hi ${name},</p>
+            <p>Great news! Your health report analysis has been completed. Our AI has extracted key insights and generated a personalized health score for you.</p>
+            
+            <a href="${reportUrl}" class="button">View My Detailed Report</a>
+
+            <p>You can also view your updated diet plan and health dashboard for more information.</p>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} take.health AI. All rights reserved.</p>
+            <p>Empowering your health journey with AI.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  async sendDietPlanComplete(email, name) {
+    const emailOptions = {
+      from: process.env.FROM_EMAIL,
+      to: email,
+      subject: 'Customized Diet Plan Ready - take.health AI',
+      html: this.getDietPlanCompleteTemplate(name)
+    };
+
+    try {
+      await this.transporter.sendMail(emailOptions);
+      console.log(`Diet plan completion email sent to ${email}`);
+    } catch (error) {
+      console.error('Error sending diet plan completion email:', error);
+    }
+  }
+
+  getDietPlanCompleteTemplate(name) {
+    const dietUrl = `${process.env.APP_URL}/diet-plan`;
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Diet Plan Ready</title>
+        <style>
+          body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1e293b; margin: 0; padding: 0; background-color: #f8fafc; }
+          .container { max-width: 600px; margin: 20px auto; padding: 0; background-color: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+          .header { background: linear-gradient(135deg, #059669, #10b981); color: white; padding: 40px 20px; text-align: center; }
+          .logo { font-size: 28px; font-weight: 800; letter-spacing: -1px; margin-bottom: 10px; }
+          .content { padding: 40px; text-align: center; }
+          .welcome-text { font-size: 18px; color: #64748b; margin-bottom: 30px; }
+          .button { display: inline-block; background: linear-gradient(135deg, #059669, #10b981); color: white; padding: 14px 28px; text-decoration: none; border-radius: 12px; font-weight: 600; margin: 30px 0; }
+          .footer { text-align: center; padding: 30px; color: #94a3b8; font-size: 12px; background-color: #f8fafc; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">take.health AI</div>
+            <h2 style="margin: 0;">Your Diet Plan is Ready</h2>
+          </div>
+          <div class="content">
+            <p class="welcome-text">Hi ${name},</p>
+            <p>Your personalized AI diet plan has been generated based on your latest health data, goals, and preferences.</p>
+            
+            <a href="${dietUrl}" class="button">View My Diet Plan</a>
+
+            <p>Following this plan consistently will help you reach your health goals faster.</p>
           </div>
           <div class="footer">
             <p>&copy; ${new Date().getFullYear()} take.health AI. All rights reserved.</p>

@@ -4,6 +4,7 @@ const {
   uploadReport,
   getReports,
   getReportById,
+  getReportStatus,
   getDashboardData,
   compareWithPrevious,
   chatAboutReport,
@@ -26,6 +27,7 @@ router.get('/reports', protect, getReports);
 router.get('/history', protect, getHealthHistory);
 router.get('/dashboard', protect, getDashboardData);
 router.get('/report-comparison', protect, getReportComparison);
+router.get('/reports/:id/status', protect, getReportStatus);
 router.get('/reports/:id', protect, getReportById);
 router.delete('/reports/:id', protect, deleteReport);
 router.get('/reports/:id/compare', protect, compareWithPrevious);

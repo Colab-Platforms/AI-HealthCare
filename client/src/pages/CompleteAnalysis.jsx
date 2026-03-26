@@ -23,7 +23,7 @@ export default function CompleteAnalysis() {
   const { user } = useAuth();
   const { dashboardData, fetchDashboard, loading: contextLoading } = useData();
   
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!dashboardData);
   const [glucoseLogs, setGlucoseLogs] = useState([]);
   const [hba1cLogs, setHba1cLogs] = useState([]);
   const [diabetesAnalysis, setDiabetesAnalysis] = useState(null);

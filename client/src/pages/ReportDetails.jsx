@@ -281,6 +281,36 @@ export default function ReportDetails() {
     fetchReport();
   }, [id]);
 
+  // Polling logic for background processing
+  useEffect(() => {
+    let pollInterval;
+    if (report && report.status === 'processing') {
+      pollInterval = setInterval(async () => {
+        try {
+          const { data } = await healthService.getReportStatus(id);
+          if (data.status === 'completed' || data.status === 'failed') {
+            // Processing finished, fetch the full report again to get the data
+            const fullReport = await healthService.getReport(id);
+            setReport(fullReport.data.report);
+            clearInterval(pollInterval);
+            
+            if (data.status === 'completed') {
+              toast.success('Report analysis completed');
+            } else {
+              toast.error('Report analysis failed.');
+            }
+          }
+        } catch (error) {
+          console.error('Polling error:', error);
+        }
+      }, 3000); // Poll every 3 seconds
+    }
+    
+    return () => {
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [report?.status, id]);
+
   const handleCompare = async () => {
     try {
       const { data } = await healthService.compareReport(id);
@@ -301,6 +331,30 @@ export default function ReportDetails() {
 
   const { aiAnalysis } = report;
   const healthScore = aiAnalysis?.healthScore || 0;
+
+  if (report.status === 'processing') {
+    return (
+      <div className="w-full max-w-2xl mx-auto mt-12 text-center animate-fade-in space-y-6">
+        <Link to="/reports" className="inline-flex items-center gap-2 text-slate-400 hover:text-cyan-400 font-medium transition-colors mb-4"><ArrowLeft className="w-4 h-4" /> Back to History</Link>
+        <div className="bg-white rounded-3xl p-10 border border-slate-100 shadow-sm flex flex-col items-center">
+          <div className="relative mb-8">
+            <div className="w-24 h-24 rounded-full border-4 border-slate-100 border-t-cyan-500 border-l-cyan-500 animate-spin"></div>
+            <div className="absolute inset-0 flex items-center justify-center">
+              <Activity className="w-10 h-10 text-cyan-500 animate-pulse" />
+            </div>
+          </div>
+          <h2 className="text-2xl font-bold text-slate-800 mb-3">Report analysis in process</h2>
+          <p className="text-slate-500 max-w-sm leading-relaxed mb-6 font-medium">
+            It will take 1-2 minutes to analyze. Till that time, feel free to <Link to="/dashboard" className="text-cyan-600 hover:underline">take a tour of our platform</Link>.
+          </p>
+          <div className="inline-flex items-center gap-2 px-4 py-2 bg-cyan-50 text-cyan-600 rounded-full text-sm font-bold animate-pulse">
+            <div className="w-2 h-2 rounded-full bg-cyan-500"></div>
+            Analyzing your health data...
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full mx-auto space-y-6 animate-fade-in">

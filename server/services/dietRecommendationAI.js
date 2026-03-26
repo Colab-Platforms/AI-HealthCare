@@ -201,13 +201,25 @@ DINNER (what Indians ACTUALLY eat):
 18. SPECIAL DIABETIC PROTOCOL (IF APPLICABLE):
     If the user is diabetic:
     - Strictly PRIORITIZE low Glycemic Index (GI) foods (e.g., Brown Rice, Whole Wheat, Bajra, Jowar, Ragi, Oats).
-    - Ensure EVERY meal has a high fiber component (green leafy vegetables, legumes).
+    - Ensure EVERY meal has a high fiber component.
     - NEVER suggest refined sugars, white flour (Maida), white bread, or sweetened juices.
-    - Suggest small, frequent meals if appropriate, but keep to the 5-meal structure.
-    - Focus on proteins and healthy fats to slow down glucose absorption.
-    - Limit high-sugar fruits (like mango, chickoo, grapes) and suggest low-GI fruits like apple, pear, or papaya instead.
+    - Limit high-sugar fruits (like mango, chickoo, grapes).
 
-19. ${promptExtension || ''}
+19. EXTREME NUTRITION MATH ACCURACY (MANDATORY & CRITICAL): 
+    You are a math engine making precise calculations. You CANNOT hallucinate protein values. You MUST use these exact scientific values to calculate macros:
+    - 1 Egg (any style) = EXACTLY 6g Protein, 70 kcal
+    - 100g Chicken Breast = EXACTLY 31g Protein, 165 kcal
+    - 100g Paneer = EXACTLY 18g Protein, 265 kcal
+    - 100g Dal/Lentils (Cooked) = EXACTLY 8g Protein, 120 kcal
+    - 1 Roti / Chapati = EXACTLY 3g Protein, 80 kcal
+    - 1 Slice Bread = EXACTLY 4g Protein, 70 kcal
+    - 1 Banana / Apple = EXACTLY 1g Protein, 100 kcal
+    
+    If you suggest "Egg Bhurji (3 eggs) + 2 slices Whole Wheat Toast + 1 Banana", the protein MUST BE MATHEMATICALLY:
+    (3 * 6g) + (2 * 4g) + (1 * 1g) = 18g + 8g + 1g = 27g Protein. DO NOT write 42g. DO NOT inflate numbers. 
+    If a meal has over 30g of protein, it MUST contain at least 150g of chicken or 5 eggs. Do not fake it. Calculate it.
+
+20. ${promptExtension || ''}
 
 RETURN JSON ONLY. Ensure the JSON is valid and complete:
 {

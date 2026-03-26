@@ -11,6 +11,7 @@ router.post('/diet-plan/generate', dietRecommendationController.generatePersonal
 router.get('/diet-plan/active', dietRecommendationController.getActiveDietPlan);
 router.get('/diet-plan/history', dietRecommendationController.getDietPlanHistory);
 router.get('/diet-plan/:planId', dietRecommendationController.getDietPlanById);
+router.get('/diet-plan/:planId/status', dietRecommendationController.getDietPlanStatus);
 router.post('/diet-plan/:planId/rate', dietRecommendationController.rateDietPlan);
 
 // Supplement recommendation routes

@@ -188,95 +188,126 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
     console.log(`[DietGeneration] Starting for user ${userId}. isRegenerate: ${isRegenerate}`);
     console.log(`[DietGeneration] User Preferences:`, JSON.stringify(userData.foodPreferences, null, 2));
 
-    let aiDietPlan;
-    try {
-      console.log(`[DietGeneration] Calling AI Service...`);
-      aiDietPlan = await dietRecommendationAI.generatePersonalizedDietPlan(userData, promptEx);
-      if (!aiDietPlan || typeof aiDietPlan !== 'object') {
-        throw new Error('AI returned invalid non-object data');
-      }
-    } catch (aiError) {
-      console.error('[DietGeneration] AI Service Error:', aiError.message);
-      return res.status(500).json({ 
-        success: false, 
-        message: 'AI failed to generate plan', 
-        error: aiError.message,
-        stack: process.env.NODE_ENV === 'development' ? aiError.stack : undefined
-      });
-    }
-
-    console.log('[DietGeneration] AI plan received successfully');
-
-    try {
-      const dietPlanData = {
-        ...aiDietPlan,
-        userId: userId,
-        inputData: {
-          age: userData.age,
-          gender: userData.gender,
-          weight: userData.weight,
-          height: userData.height,
-          currentBMI: userData.currentBMI,
-          bmiGoal: userData.bmiGoal,
-          targetWeight: userData.targetWeight,
-          dietaryPreference: userData.dietaryPreference,
-          activityLevel: userData.activityLevel,
-          fitnessGoals: userData.fitnessGoals,
-          medicalConditions: userData.medicalConditions,
-          allergies: userData.allergies,
-          hasReports: hasReports
-        },
-        labReportInsights,
-        nutritionGoals: {
-          dailyCalorieTarget: nutritionGoals.calorieGoal,
-          macroTargets: {
-            protein: nutritionGoals.proteinGoal,
-            carbs: nutritionGoals.carbsGoal,
-            fats: nutritionGoals.fatGoal
-          }
-        },
-        generatedAt: new Date(),
-        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-        isActive: true
-      };
-
-      // Ensure root macroTargets and dailyCalorieTarget are populated if AI didn't return them correctly
-      if (!dietPlanData.dailyCalorieTarget) dietPlanData.dailyCalorieTarget = nutritionGoals.calorieGoal;
-      if (!dietPlanData.macroTargets) {
-        dietPlanData.macroTargets = {
+    // 3. Create a "generating" placeholder IMMEDIATELY
+    const dietPlan = new PersonalizedDietPlan({
+      userId: userId,
+      status: 'generating',
+      isActive: true, // Make it active so getActiveDietPlan finds it
+      generatedAt: new Date(),
+      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      nutritionGoals: {
+        dailyCalorieTarget: nutritionGoals.calorieGoal,
+        macroTargets: {
           protein: nutritionGoals.proteinGoal,
           carbs: nutritionGoals.carbsGoal,
           fats: nutritionGoals.fatGoal
-        };
+        }
       }
+    });
 
-      console.log('[DietGeneration] Formatting final document and saving...');
-      const dietPlan = new PersonalizedDietPlan(dietPlanData);
+    await dietPlan.save();
+    console.log('[DietGeneration] Placeholder saved: ', dietPlan._id);
 
-      await dietPlan.save();
-      console.log('[DietGeneration] New plan saved to DB successfully: ', dietPlan._id);
+    // 4. INVALIDATE CACHE
+    const cache = require('../utils/cache');
+    await cache.delete(`diet_plan:${userId}`);
+    await cache.delete(`dashboard:${userId}`);
 
-      // ONLY DEACTIVATE OLD PLANS AFTER NEW ONE IS SAVED SUCCESSFULLY
-      const deactResult = await PersonalizedDietPlan.updateMany(
-        { userId: userId, isActive: true, _id: { $ne: dietPlan._id } },
-        { isActive: false }
-      );
-      console.log(`[DietGeneration] Deactivated ${deactResult.modifiedCount} older plans`);
+    // 5. RESPOND IMMEDIATELY
+    res.json({
+      success: true,
+      message: 'Diet plan generation started in background',
+      dietPlan,
+      backgroundProcessing: true
+    });
 
-      res.json({
-        success: true,
-        message: hasReports ? 'Plan generated with health reports' : 'Plan generated with goals',
-        dietPlan
-      });
-    } catch (dbError) {
-      console.error('[DietGeneration] Database Error:', dbError.message);
-      res.status(500).json({ 
-        success: false, 
-        message: 'Failed to save generated plan to database', 
-        error: dbError.message 
-      });
-    }
+    // ══════════════════════════════════════════════════════════
+    // 6. BACKGROUND PROCESSING - Runs AFTER response is sent
+    // ══════════════════════════════════════════════════════════
+    const emailService = require('../services/emailService');
+    const notificationService = require('../services/notificationService');
 
+    setImmediate(async () => {
+      try {
+        console.log(`[DietGeneration][BG] Starting AI generation for ${dietPlan._id}...`);
+        
+        let aiDietPlan;
+        try {
+          aiDietPlan = await dietRecommendationAI.generatePersonalizedDietPlan(userData, promptEx);
+          if (!aiDietPlan || typeof aiDietPlan !== 'object') throw new Error('Invalid AI response');
+        } catch (aiError) {
+          console.error('[DietGeneration][BG] AI Error:', aiError.message);
+          await PersonalizedDietPlan.findByIdAndUpdate(dietPlan._id, { status: 'failed' });
+          return;
+        }
+
+        console.log(`[DietGeneration][BG] AI success, updating document...`);
+        
+        const finalData = {
+          ...aiDietPlan,
+          status: 'completed',
+          inputData: {
+            age: userData.age,
+            gender: userData.gender,
+            weight: userData.weight,
+            height: userData.height,
+            currentBMI: userData.currentBMI,
+            bmiGoal: userData.bmiGoal,
+            targetWeight: userData.targetWeight,
+            dietaryPreference: userData.dietaryPreference,
+            activityLevel: userData.activityLevel,
+            fitnessGoals: userData.fitnessGoals,
+            medicalConditions: userData.medicalConditions,
+            allergies: userData.allergies,
+            hasReports: hasReports
+          },
+          labReportInsights,
+          nutritionGoals: {
+            dailyCalorieTarget: nutritionGoals.calorieGoal,
+            macroTargets: {
+              protein: nutritionGoals.proteinGoal,
+              carbs: nutritionGoals.carbsGoal,
+              fats: nutritionGoals.fatsGoal
+            }
+          }
+        };
+
+        const updatedPlan = await PersonalizedDietPlan.findByIdAndUpdate(dietPlan._id, finalData, { new: true });
+        
+        // Deactivate older plans
+        await PersonalizedDietPlan.updateMany(
+          { userId, isActive: true, _id: { $ne: updatedPlan._id } },
+          { isActive: false }
+        );
+
+        console.log(`[DietGeneration][BG] Completed for ${userId}`);
+
+        // Notify user
+        await notificationService.createNotification(userId, {
+          type: 'diet_ready',
+          title: '🍽️ Diet Plan Ready!',
+          message: 'Your personalized AI diet plan has been generated based on your latest data.',
+          icon: '🍽️',
+          priority: 'high',
+          actionUrl: '/diet-plan'
+        });
+
+        // Email user
+        try {
+          await emailService.sendDietPlanComplete(user.email, user.name);
+        } catch (emailErr) {
+          console.error('[DietGeneration][BG] Email fail:', emailErr.message);
+        }
+
+        // Invalidate cache again
+        await cache.delete(`diet_plan:${userId}`);
+        await cache.delete(`dashboard:${userId}`);
+
+      } catch (bgError) {
+        console.error('[DietGeneration][BG] Fatal error:', bgError.message);
+        await PersonalizedDietPlan.findByIdAndUpdate(dietPlan._id, { status: 'failed' });
+      }
+    });
   } catch (error) {
     console.error('❌ Generate diet plan error:', error);
     if (error.name === 'ValidationError') {
@@ -301,7 +332,8 @@ exports.getActiveDietPlan = async (req, res) => {
     const dietPlan = await PersonalizedDietPlan.findOne({
       userId,
       isActive: true,
-      validUntil: { $gt: new Date() }
+      validUntil: { $gt: new Date() },
+      status: { $ne: 'failed' } // Don't return failed plans
     }).sort({ generatedAt: -1 });
 
     if (!dietPlan) {
@@ -336,7 +368,7 @@ exports.getDietPlanHistory = async (req, res) => {
     const history = await PersonalizedDietPlan.find({ userId })
       .sort({ generatedAt: -1 })
       .limit(10)
-      .select('generatedAt isActive inputData nutritionGoals');
+      .select('generatedAt createdAt isActive inputData nutritionGoals foodType status');
 
     res.json({
       success: true,
@@ -382,6 +414,39 @@ exports.getDietPlanById = async (req, res) => {
       success: false,
       message: 'Failed to fetch diet plan',
       error: error.message
+    });
+  }
+};
+
+/**
+ * Get diet plan generation status
+ */
+exports.getDietPlanStatus = async (req, res) => {
+  try {
+    const { planId } = req.params;
+    const userId = req.user._id;
+
+    const dietPlan = await PersonalizedDietPlan.findOne({
+      _id: planId,
+      userId
+    }).select('status generatedAt');
+
+    if (!dietPlan) {
+      return res.status(404).json({
+        success: false,
+        message: 'Diet plan not found'
+      });
+    }
+
+    res.json({
+      success: true,
+      status: dietPlan.status,
+      generatedAt: dietPlan.generatedAt
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: error.message
     });
   }
 };

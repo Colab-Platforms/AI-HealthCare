@@ -19,6 +19,8 @@ function Nutrition() {
   const { user } = useAuth();
   const { 
     invalidateCache, 
+    triggerRefresh,
+    dataRefreshTrigger,
     dashboardData, 
     fetchNutrition, 
     fetchNutritionLogs, 
@@ -53,7 +55,7 @@ function Nutrition() {
   });
   const [weeklyTrendsData, setWeeklyTrendsData] = useState([]);
   const [waterIntake, setWaterIntake] = useState({ current: 0, target: 8 });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!cachedNutritionData && !cachedNutritionLogs);
   const [recentMeals, setRecentMeals] = useState([]);
   const [frequentFoods, setFrequentFoods] = useState([]);
   const [aiInsights, setAiInsights] = useState("Analyzing your eating patterns...");
@@ -199,7 +201,7 @@ function Nutrition() {
   }, [isAnalyzing]);
 
   useEffect(() => {
-    fetchData();
+    fetchData(dataRefreshTrigger > 0);
     if (location.state?.openLogMeal) {
       setIsModalOpen(true);
       if (location.state?.mealType) setMealTab(location.state.mealType);
@@ -226,7 +228,7 @@ function Nutrition() {
         document.getElementById('water-section')?.scrollIntoView({ behavior: 'smooth' });
       }, 500);
     }
-  }, [location.state, selectedDate]);
+  }, [location.state, selectedDate, dataRefreshTrigger]);
 
   useEffect(() => {
     if (!isModalOpen) {
@@ -240,19 +242,22 @@ function Nutrition() {
     };
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = async (force = false) => {
     // Only show full page loader if we have NO data at all
-    if (!cachedNutritionData && !cachedNutritionLogs) {
+    if (!cachedNutritionData && !cachedNutritionLogs && !force) {
       setLoading(true);
     }
+    
+    // Auto-force if refresh trigger changed
+    const effectiveForce = force;
 
     try {
       const date = selectedDate;
       const [summary, logs, trends, goals] = await Promise.all([
-        fetchNutrition(date),
-        fetchNutritionLogs(date),
-        fetchWeeklyTrends(),
-        fetchHealthGoals(),
+        fetchNutrition(date, force),
+        fetchNutritionLogs(date, force),
+        fetchWeeklyTrends(force),
+        fetchHealthGoals(force),
         dietRecommendationService.getActiveDietPlan().catch(() => ({ data: { dietPlan: null } }))
       ]);
 
@@ -462,18 +467,20 @@ function Nutrition() {
         return;
       }
 
-      // AUTO-LOG: Directly log the meal to the database using the selected mealTab
-      await handleConfirmLog(result);
-      
-      // We set the result to show the modal so the user sees the details, 
-      // but it will already be marked as logged.
-      setAnalysisResult({
+      // Inject user input directly into result so it can be logged exactly as typed
+      const finalResult = {
         ...result,
         _userInput: foodInput,
         _isFromCache: isCached,
-        _cacheSource: response.data.source,
+        _cacheSource: response.data?.source,
         _alreadyLogged: true
-      });
+      };
+
+      // AUTO-LOG: Directly log the meal to the database using the selected mealTab
+      await handleConfirmLog(finalResult);
+      
+      // We set the result to show the modal so the user sees the details, 
+      setAnalysisResult(finalResult);
 
       if (isCached) {
         toast.success('Instant Analysis: Retrieved from Food DB Cache');
@@ -516,7 +523,7 @@ function Nutrition() {
       const logData = {
         mealType: mappedMealType,
         foodItems: [{
-          name: data.foodItem?.name || data.foodName,
+          name: data._userInput || data.foodItem?.name || data.foodName,
           quantity: data.foodItem?.quantity || data.quantity || '1 serving',
           nutrition: data.foodItem?.nutrition || data.nutrition || {}
         }],
@@ -532,7 +539,8 @@ function Nutrition() {
       await nutritionService.logMeal(logData);
       toast.success('Added to ' + mealTab);
       invalidateCache(['dashboard', `logs_${selectedDate}`, `nutrition_${selectedDate}`]);
-      fetchData();
+      triggerRefresh();
+      await fetchData(true);
       
       // If we are auto-logging from analysis, we don't want to close the result detail view
       // But we DO want to close the initial "Add Meal" input modal
@@ -613,7 +621,8 @@ function Nutrition() {
     try {
       await api.delete(`nutrition/logs/${id}`);
       toast.success('Deleted');
-      fetchData();
+      triggerRefresh();
+      await fetchData(true);
     } catch (error) {
       toast.error('Delete failed');
     }
@@ -1437,35 +1446,45 @@ function Nutrition() {
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               className="relative w-full max-w-2xl bg-white rounded-t-[3rem] md:rounded-[3rem] shadow-[0_32px_120px_rgba(0,0,0,0.15)] overflow-hidden h-[95vh] md:max-h-[90vh] flex flex-col"
             >
-              {/* Premium Black & White Header */}
-              <div className="p-5 md:p-10 bg-[#064e3b] text-emerald-50 relative overflow-hidden shrink-0">
-                <div className="absolute top-0 right-0 w-80 h-80 bg-white/5 rounded-full blur-3xl -mr-32 -mt-32" />
-                <div className="relative z-10">
-                  <div className="flex justify-between items-start mb-3 md:mb-8">
-                    <div className="w-10 h-10 md:w-16 md:h-16 bg-white/10 backdrop-blur-md rounded-xl md:rounded-[1.5rem] flex items-center justify-center border border-white/10">
-                      <Sparkles className="w-5 h-5 md:w-8 md:h-8 text-white" />
-                    </div>
-                    <button onClick={() => setAnalysisResult(null)} className="w-9 h-9 md:w-12 md:h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-all border border-white/10">
-                      <X className="w-4 h-4 md:w-6 md:h-6 text-white" />
-                    </button>
+              {/* Visual Image Header */}
+              <div className="p-5 md:p-10 relative overflow-hidden shrink-0 min-h-[220px] md:min-h-[280px] flex flex-col justify-between">
+                <div className="absolute inset-0 z-0 bg-slate-800">
+                  <ImageWithFallback 
+                    src={analysisResult.image || analysisResult.imageUrl}
+                    query={analysisResult.foodItem?.name || analysisResult.foodName || analysisResult.foodItems?.[0]?.name || "Healthy Plate"}
+                    alt="Analyzed Food"
+                    className="w-full h-full object-cover opacity-90"
+                  />
+                </div>
+                <div className="absolute inset-0 z-0 bg-gradient-to-t from-black/95 via-black/50 to-black/30 backdrop-blur-[2px]" />
+                
+                <div className="relative z-10 w-full flex justify-between items-start mb-6">
+                  <div className="w-10 h-10 md:w-12 md:h-12 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/20 shadow-xl">
+                    <Sparkles className="w-5 h-5 text-white" />
                   </div>
-                  <h4 className="text-[9px] md:text-[10px] font-black text-white/50 uppercase tracking-[0.2em] mb-1.5 px-0.5">
-                    {analysisResult.foodItem?.name || analysisResult.foodName || analysisResult.foodItems?.[0]?.name}
+                  <button onClick={() => setAnalysisResult(null)} className="w-10 h-10 md:w-12 md:h-12 bg-white/10 hover:bg-white/30 backdrop-blur-md rounded-full flex items-center justify-center transition-all border border-white/20 shadow-xl">
+                    <X className="w-5 h-5 text-white" />
+                  </button>
+                </div>
+
+                <div className="relative z-10 w-full mt-auto">
+                  <h4 className="text-[9px] md:text-[10px] font-black text-emerald-400 uppercase tracking-[0.2em] mb-2 px-0.5 drop-shadow-md">
+                    {analysisResult._userInput ? (analysisResult.foodItem?.name || analysisResult.foodName || 'Intelligence Analysis') : 'Intelligence Analysis'}
                   </h4>
-                  <h2 className="text-xl md:text-4xl font-black tracking-tighter uppercase leading-none mb-3 md:mb-4 max-w-[90%] text-emerald-50">
-                    {analysisResult._userInput || 'Analysis Log View'}
+                  <h2 className="text-2xl md:text-4xl font-black tracking-tighter uppercase leading-none mb-4 max-w-[95%] text-white drop-shadow-lg">
+                    {analysisResult._userInput || analysisResult.foodItems?.[0]?.name || analysisResult.foodItem?.name || analysisResult.foodName || 'Analyzed Meal'}
                   </h2>
                   <div className="flex flex-wrap items-center gap-2 md:gap-3">
-                    <span className="text-[8px] md:text-[10px] font-black bg-white/10 border border-white/10 px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl tracking-[0.1em] uppercase">
+                    <span className="text-[8px] md:text-[10px] font-black bg-white/20 backdrop-blur-md border border-white/20 px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-white tracking-[0.1em] uppercase shadow-lg">
                       {analysisResult.foodItem?.quantity || analysisResult.quantity || '1 serving'}
                     </span>
-                    <span className="text-[8px] md:text-[10px] font-black bg-white/10 border border-white/10 px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl tracking-[0.1em] uppercase flex items-center gap-1.5 md:gap-2">
-                      <Zap className="w-2.5 h-2.5 md:w-3 md:h-3 text-white" />
+                    <span className="text-[8px] md:text-[10px] font-black bg-white/20 backdrop-blur-md border border-white/20 px-3 py-1.5 md:px-4 md:py-2 rounded-lg text-white tracking-[0.1em] uppercase flex items-center gap-1.5 md:gap-2 shadow-lg">
+                      <Zap className="w-3 h-3 text-amber-300" />
                       Score: {analysisResult.healthScore || analysisResult.healthScore10 * 10 || 0}/100
                     </span>
                     {analysisResult._isFromCache && (
-                      <span className="text-[8px] md:text-[10px] font-black bg-emerald-500 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl tracking-[0.1em] uppercase flex items-center gap-1.5 md:gap-2 animate-pulse">
-                        <CheckCircle2 className="w-2.5 h-2.5 md:w-3 md:h-3 text-white" />
+                      <span className="text-[8px] md:text-[10px] font-black bg-emerald-500/80 backdrop-blur-md border border-emerald-400/50 text-white px-3 py-1.5 md:px-4 md:py-2 rounded-lg tracking-[0.1em] uppercase flex items-center gap-1.5 md:gap-2 animate-pulse shadow-lg">
+                        <CheckCircle2 className="w-3 h-3 text-white" />
                         Intelligence Cache
                       </span>
                     )}

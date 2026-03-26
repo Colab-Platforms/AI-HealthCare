@@ -24,5 +24,5 @@ const fileFilter = (req, file, cb) => {
 module.exports = multer({
   storage,
   fileFilter,
-  limits: { fileSize: 50 * 1024 * 1024 } // Increased to 50MB for high-res mobile photos
+  limits: { fileSize: 4 * 1024 * 1024 } // Set to 4MB as requested
 });

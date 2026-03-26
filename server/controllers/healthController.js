@@ -10,6 +10,7 @@ const NutritionSummary = require('../models/NutritionSummary');
 const DailyProgress = require('../models/DailyProgress');
 const cache = require('../utils/cache');
 const cloudinary = require('../services/cloudinary');
+const emailService = require('../services/emailService');
 
 // Helper function to add timeout to all queries for Vercel compatibility
 const withTimeout = (query, timeoutMs = 30000) => {
@@ -22,68 +23,34 @@ exports.uploadReport = async (req, res) => {
       return res.status(400).json({ message: 'Please upload a file' });
     }
 
-    let aiAnalysis;
     let extractedText = '';
     let cloudinaryUrl = null;
-    try {
-      const dataBuffer = req.file.buffer || (req.file.path ? fs.readFileSync(req.file.path) : null);
+    const dataBuffer = req.file.buffer || (req.file.path ? fs.readFileSync(req.file.path) : null);
 
-      if (!dataBuffer) {
-        throw new Error('No file data found to process');
-      }
-
-      // 1. Text extraction (fast)
-      if (req.file.mimetype === 'application/pdf') {
-        const pdfData = await pdfParse(dataBuffer);
-        extractedText = pdfData.text;
-      } else {
-        extractedText = req.body.manualText || 'Image report - vision analysis requested';
-      }
-
-      if (!extractedText || extractedText.trim().length < 20) {
-        return res.status(400).json({ message: 'Could not extract text from report. Please provide details manually.' });
-      }
-
-      // 2. AI analysis and Cloudinary upload
-      console.log('🔄 Starting AI analysis and Cloudinary upload...');
-
-      // On Vercel, run sequentially to avoid ECONNRESET due to bandwidth/memory limits
-      if (process.env.VERCEL) {
-        console.log('⚡ Vercel detected: Running tasks sequentially for stability');
-        cloudinaryUrl = await cloudinary.uploadImage(dataBuffer, 'health_reports');
-
-        if (req.file.mimetype === 'application/pdf') {
-          aiAnalysis = await analyzeHealthReport(extractedText, req.user);
-        } else {
-          aiAnalysis = await analyzeHealthReport(null, req.user, {
-            buffer: dataBuffer,
-            mimetype: req.file.mimetype
-          });
-        }
-      } else {
-        // Local: Run in parallel for speed
-        const uploadPromise = cloudinary.uploadImage(dataBuffer, 'health_reports');
-        let aiPromise;
-        if (req.file.mimetype === 'application/pdf') {
-          aiPromise = analyzeHealthReport(extractedText, req.user);
-        } else {
-          aiPromise = analyzeHealthReport(null, req.user, {
-            buffer: dataBuffer,
-            mimetype: req.file.mimetype
-          });
-        }
-        const [uploadedUrl, analysisResult] = await Promise.all([uploadPromise, aiPromise]);
-        cloudinaryUrl = uploadedUrl;
-        aiAnalysis = analysisResult;
-      }
-
-      console.log('✅ Tasks complete | Score:', aiAnalysis.healthScore);
-    } catch (error) {
-      console.error('Processing error:', error.message);
-      return res.status(500).json({ message: `Analysis failed: ${error.message}` });
+    if (!dataBuffer) {
+      throw new Error('No file data found to process');
     }
 
-    // 3. Create the report record
+    // 1. Text extraction (fast - do synchronously)
+    if (req.file.mimetype === 'application/pdf') {
+      const pdfData = await pdfParse(dataBuffer);
+      extractedText = pdfData.text;
+    } else {
+      extractedText = req.body.manualText || 'Image report - vision analysis requested';
+    }
+
+    if (!extractedText || extractedText.trim().length < 20) {
+      return res.status(400).json({ message: 'Could not extract text from report. Please provide details manually.' });
+    }
+
+    // 2. Upload to Cloudinary (fast, do before responding)
+    try {
+      cloudinaryUrl = await cloudinary.uploadImage(dataBuffer, 'health_reports');
+    } catch (e) {
+      console.error('Cloudinary upload failed:', e.message);
+    }
+
+    // 3. Create report in "processing" state IMMEDIATELY
     const report = await HealthReport.create({
       user: req.user._id,
       reportType: req.body.reportType || 'general',
@@ -94,151 +61,189 @@ exports.uploadReport = async (req, res) => {
         cloudinaryUrl: cloudinaryUrl
       },
       extractedText,
-      status: 'completed',
-      aiAnalysis
+      status: 'processing',
+      aiAnalysis: { summary: 'Analysis in progress...', healthScore: 0 }
     });
 
+    // 4. INVALIDATE CACHE immediately so next fetch sees the "processing" report
+    await cache.delete(`reports:${req.user._id}`);
+    await cache.delete(`dashboard:${req.user._id}`);
 
-    // Extract and save metadata from AI analysis
-    if (aiAnalysis.reportDate) {
-      try { report.reportDate = new Date(aiAnalysis.reportDate); }
-      catch (e) { report.reportDate = new Date(); }
-    } else { report.reportDate = new Date(); }
+    // 5. RESPOND IMMEDIATELY - User sees "processing" state
+    res.status(201).json({ report, backgroundProcessing: true });
 
-    if (aiAnalysis.patientName) report.patientName = aiAnalysis.patientName.trim();
-    if (aiAnalysis.patientAge) report.patientAge = Number(aiAnalysis.patientAge);
-    if (aiAnalysis.patientGender) report.patientGender = aiAnalysis.patientGender.trim();
+    // ══════════════════════════════════════════════════════════
+    // 5. BACKGROUND PROCESSING - Runs AFTER response is sent
+    // ══════════════════════════════════════════════════════════
+    const userId = req.user._id;
+    const userDoc = req.user;
+    const reportId = report._id;
+    const fileMimetype = req.file.mimetype;
 
-    report.status = 'completed';
-    await report.save();
-
-    // Update user health score
-    if (aiAnalysis.healthScore) {
-      req.user.healthMetrics = {
-        ...req.user.healthMetrics,
-        healthScore: aiAnalysis.healthScore,
-        lastCheckup: new Date()
-      };
-      await req.user.save();
-    }
-
-    // Invalidate cache for this user
-    cache.delete(`reports:${req.user._id}`);
-    cache.delete(`dashboard:${req.user._id}`);
-
-    // 🆕 AUTO-UPDATE PERSONALIZED DIET PLAN FROM REPORT
-    if (aiAnalysis.dietPlan) {
+    // Wrap in setImmediate to ensure it runs after the response
+    setImmediate(async () => {
+      console.log(`🔄 [BG] Starting background analysis for report ${reportId}...`);
       try {
-        const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
+        let aiAnalysis;
 
-        // Map report diet plan to personalized diet plan structure
-        const mapMealItems = (items) => {
-          if (!Array.isArray(items)) return [];
-          return items.map(item => ({
-            name: typeof item === 'string' ? item : (item.meal || 'Healthy Meal'),
-            description: item.tip || '',
-            benefits: Array.isArray(item.nutrients) ? item.nutrients.join(', ') : '',
-            calories: Number(item.calories) || 0,
-            protein: Number(item.protein) || 0,
-            carbs: Number(item.carbs) || 0,
-            fats: Number(item.fats) || 0
-          }));
-        };
-
-        const dailyCalTarget = aiAnalysis.dietPlan.dailyCalorieTarget || 2000;
-
-        const newDietPlan = new PersonalizedDietPlan({
-          userId: req.user._id,
-          isActive: true,
-          dailyCalorieTarget: dailyCalTarget,
-          nutritionGoals: {
-            dailyCalorieTarget: dailyCalTarget,
-            macroTargets: {
-              protein: req.user.nutritionGoal?.proteinGoal || 150,
-              carbs: req.user.nutritionGoal?.carbsGoal || 200,
-              fats: req.user.nutritionGoal?.fatGoal || 65
-            }
-          },
-          mealPlan: {
-            breakfast: mapMealItems(aiAnalysis.dietPlan.breakfast),
-            midMorningSnack: mapMealItems(aiAnalysis.dietPlan.midMorningSnack || []),
-            lunch: mapMealItems(aiAnalysis.dietPlan.lunch),
-            eveningSnack: mapMealItems(aiAnalysis.dietPlan.eveningSnack || aiAnalysis.dietPlan.snacks || []),
-            dinner: mapMealItems(aiAnalysis.dietPlan.dinner)
-          },
-          avoidSuggestions: aiAnalysis.dietPlan.foodsToLimit || [],
-          lifestyleRecommendations: aiAnalysis.recommendations?.lifestyle || [],
-          inputData: {
-            hasReports: true,
-            bmiGoal: req.user.nutritionGoal?.goal || 'maintain',
-            reportId: report._id
-          },
-          generatedAt: new Date(),
-          validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
-        });
-
-        await newDietPlan.save();
-        console.log('✅ Personalized diet plan saved successfully:', newDietPlan._id);
-
-        // ONLY DEACTIVATE OLD PLANS AFTER NEW ONE IS SAVED SUCCESSFULLY
-        await PersonalizedDietPlan.updateMany(
-          { userId: req.user._id, isActive: true, _id: { $ne: newDietPlan._id } },
-          { isActive: false }
-        );
-        console.log('✅ Older diet plans deactivated');
-      } catch (dpError) {
-        console.error('⚠️ Failed to update personalized diet plan:', dpError.message);
-      }
-    }
-
-    // 🆕 AUTO-COMPARE WITH PREVIOUS REPORT
-    // Skip on Vercel to avoid timeout (this triggers another expensive AI call)
-    let comparisonData = null;
-    if (!process.env.VERCEL) {
-      try {
-        const previousReport = await HealthReport.findOne({
-          user: req.user._id,
-          reportType: report.reportType,
-          _id: { $ne: report._id },
-          status: 'completed',
-          createdAt: { $lt: report.createdAt }
-        }).sort({ createdAt: -1 });
-
-        if (previousReport && previousReport.aiAnalysis) {
-          console.log('🔄 Generating comparison with previous report...');
-          comparisonData = await compareReports(report, previousReport);
-          report.comparison = {
-            previousReportId: previousReport._id,
-            previousReportDate: previousReport.createdAt,
-            data: comparisonData
-          };
-          await report.save();
-          console.log('✅ Comparison saved');
+        if (fileMimetype === 'application/pdf') {
+          aiAnalysis = await analyzeHealthReport(extractedText, userDoc);
+        } else {
+          aiAnalysis = await analyzeHealthReport(null, userDoc, {
+            buffer: dataBuffer,
+            mimetype: fileMimetype
+          });
         }
-      } catch (compError) {
-        console.error('⚠️ Comparison failed (non-critical):', compError.message);
+
+        console.log(`✅ [BG] AI Analysis complete for ${reportId} | Score: ${aiAnalysis.healthScore}`);
+
+        // Update report with AI results
+        const updatedReport = await HealthReport.findById(reportId);
+        if (!updatedReport) {
+          console.error(`❌ [BG] Report ${reportId} not found after analysis`);
+          return;
+        }
+
+        updatedReport.aiAnalysis = aiAnalysis;
+        updatedReport.status = 'completed';
+
+        // Extract metadata
+        if (aiAnalysis.reportDate) {
+          try { updatedReport.reportDate = new Date(aiAnalysis.reportDate); }
+          catch (e) { updatedReport.reportDate = new Date(); }
+        } else { updatedReport.reportDate = new Date(); }
+
+        if (aiAnalysis.patientName) updatedReport.patientName = aiAnalysis.patientName.trim();
+        if (aiAnalysis.patientAge) updatedReport.patientAge = Number(aiAnalysis.patientAge);
+        if (aiAnalysis.patientGender) updatedReport.patientGender = aiAnalysis.patientGender.trim();
+
+        await updatedReport.save();
+        console.log(`✅ [BG] Report ${reportId} saved with completed status`);
+
+        // Send completion email
+        try {
+          await emailService.sendReportAnalysisComplete(userDoc.email, userDoc.name, reportId);
+        } catch (emailErr) {
+          console.error(`⚠️ [BG] Failed to send completion email for ${reportId}:`, emailErr.message);
+        }
+
+        // Update user health score
+        if (aiAnalysis.healthScore) {
+          const user = await User.findById(userId);
+          if (user) {
+            user.healthMetrics = {
+              ...user.healthMetrics,
+              healthScore: aiAnalysis.healthScore,
+              lastCheckup: new Date()
+            };
+            await user.save();
+          }
+        }
+
+        // Invalidate cache
+        await cache.delete(`reports:${userId}`);
+        await cache.delete(`dashboard:${userId}`);
+
+        // AUTO-UPDATE PERSONALIZED DIET PLAN
+        if (aiAnalysis.dietPlan) {
+          try {
+            const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
+            const mapMealItems = (items) => {
+              if (!Array.isArray(items)) return [];
+              return items.map(item => ({
+                name: typeof item === 'string' ? item : (item.meal || 'Healthy Meal'),
+                description: item.tip || '',
+                benefits: Array.isArray(item.nutrients) ? item.nutrients.join(', ') : '',
+                calories: Number(item.calories) || 0,
+                protein: Number(item.protein) || 0,
+                carbs: Number(item.carbs) || 0,
+                fats: Number(item.fats) || 0
+              }));
+            };
+
+            const dailyCalTarget = aiAnalysis.dietPlan.dailyCalorieTarget || 2000;
+            const newDietPlan = new PersonalizedDietPlan({
+              userId: userId,
+              isActive: true,
+              dailyCalorieTarget: dailyCalTarget,
+              nutritionGoals: {
+                dailyCalorieTarget: dailyCalTarget,
+                macroTargets: {
+                  protein: userDoc.nutritionGoal?.proteinGoal || 150,
+                  carbs: userDoc.nutritionGoal?.carbsGoal || 200,
+                  fats: userDoc.nutritionGoal?.fatGoal || 65
+                }
+              },
+              mealPlan: {
+                breakfast: mapMealItems(aiAnalysis.dietPlan.breakfast),
+                midMorningSnack: mapMealItems(aiAnalysis.dietPlan.midMorningSnack || []),
+                lunch: mapMealItems(aiAnalysis.dietPlan.lunch),
+                eveningSnack: mapMealItems(aiAnalysis.dietPlan.eveningSnack || aiAnalysis.dietPlan.snacks || []),
+                dinner: mapMealItems(aiAnalysis.dietPlan.dinner)
+              },
+              avoidSuggestions: aiAnalysis.dietPlan.foodsToLimit || [],
+              lifestyleRecommendations: aiAnalysis.recommendations?.lifestyle || [],
+              inputData: {
+                hasReports: true,
+                bmiGoal: userDoc.nutritionGoal?.goal || 'maintain',
+                reportId: reportId
+              },
+              generatedAt: new Date(),
+              validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+            });
+
+            await newDietPlan.save();
+            await PersonalizedDietPlan.updateMany(
+              { userId: userId, isActive: true, _id: { $ne: newDietPlan._id } },
+              { isActive: false }
+            );
+            console.log(`✅ [BG] Diet plan updated for ${reportId}`);
+          } catch (dpError) {
+            console.error('⚠️ [BG] Diet plan update failed:', dpError.message);
+          }
+        }
+
+        // AUTO-COMPARE WITH PREVIOUS REPORT
+        try {
+          const previousReport = await HealthReport.findOne({
+            user: userId,
+            reportType: updatedReport.reportType,
+            _id: { $ne: reportId },
+            status: 'completed',
+            createdAt: { $lt: updatedReport.createdAt }
+          }).sort({ createdAt: -1 });
+
+          if (previousReport && previousReport.aiAnalysis) {
+            console.log(`🔄 [BG] Generating comparison for ${reportId}...`);
+            const comparisonData = await compareReports(updatedReport, previousReport);
+            updatedReport.comparison = {
+              previousReportId: previousReport._id,
+              previousReportDate: previousReport.createdAt,
+              data: comparisonData
+            };
+            await updatedReport.save();
+            console.log(`✅ [BG] Comparison saved for ${reportId}`);
+          }
+        } catch (compError) {
+          console.error('⚠️ [BG] Comparison failed:', compError.message);
+        }
+
+        console.log(`🎉 [BG] All background tasks complete for report ${reportId}`);
+
+      } catch (bgError) {
+        console.error(`❌ [BG] Background analysis failed for ${reportId}:`, bgError.message);
+        // Mark report as failed so the client can show an error
+        try {
+          await HealthReport.findByIdAndUpdate(reportId, {
+            status: 'failed',
+            'aiAnalysis.summary': 'Analysis failed. Please try uploading again.'
+          });
+        } catch (updateErr) {
+          console.error('❌ [BG] Could not update report status to failed:', updateErr.message);
+        }
       }
-    } else {
-      console.log('⚡ Skipping auto-comparison on Vercel to save time');
-    }
+    });
 
-    // Find recommended doctors from platform
-    let recommendedDoctors = [];
-    if (aiAnalysis.doctorConsultation?.recommended && aiAnalysis.doctorConsultation?.specializations?.length > 0) {
-      const doctors = await Doctor.find({
-        specialization: { $in: aiAnalysis.doctorConsultation.specializations.map(s => new RegExp(s, 'i')) },
-        isAvailable: true
-      })
-        .sort({ rating: -1 })
-        .limit(3);
-
-      recommendedDoctors = doctors.map(doc => ({
-        ...doc.toObject(),
-        user: { name: doc.name, email: doc.email }
-      }));
-    }
-
-    res.status(201).json({ report, recommendedDoctors });
   } catch (error) {
     console.error('Upload error:', error);
     res.status(500).json({ message: error.message });
@@ -248,7 +253,7 @@ exports.uploadReport = async (req, res) => {
 exports.getReports = async (req, res) => {
   try {
     const cacheKey = `reports:${req.user._id}`;
-    const cached = cache.get(cacheKey);
+    const cached = await cache.get(cacheKey);
 
     if (cached) {
       return res.json(cached);
@@ -258,7 +263,7 @@ exports.getReports = async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(50));
 
-    cache.set(cacheKey, reports, 180); // Cache for 3 minutes
+    await cache.set(cacheKey, reports, 180); // Cache for 3 minutes
     res.json(reports);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -290,6 +295,29 @@ exports.getReportById = async (req, res) => {
     }
 
     res.json({ report, recommendedDoctors });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// 🆕 Lightweight polling endpoint for background processing status
+exports.getReportStatus = async (req, res) => {
+  try {
+    const report = await HealthReport.findOne({ _id: req.params.id, user: req.user._id })
+      .select('status aiAnalysis.summary aiAnalysis.healthScore reportType createdAt');
+    
+    if (!report) {
+      return res.status(404).json({ message: 'Report not found' });
+    }
+
+    res.json({
+      id: report._id,
+      status: report.status,
+      reportType: report.reportType,
+      healthScore: report.aiAnalysis?.healthScore || 0,
+      summary: report.aiAnalysis?.summary || '',
+      createdAt: report.createdAt
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -391,23 +419,28 @@ exports.getHealthHistory = async (req, res) => {
 exports.getDashboardData = async (req, res) => {
   try {
     const cacheKey = `dashboard:${req.user._id}`;
-    const cached = cache.get(cacheKey);
+    const cached = await cache.get(cacheKey);
 
     if (cached) {
       return res.json(cached);
     }
 
-    const reports = await HealthReport.find({ user: req.user._id, status: 'completed' })
+    const reports = await HealthReport.find({ 
+      user: req.user._id, 
+      status: { $in: ['completed', 'processing'] } 
+    })
       .sort({ createdAt: -1 })
       .limit(10);
 
-    const healthScores = reports.map(r => ({
+    const processingReport = reports.find(r => r.status === 'processing');
+    const completedReports = reports.filter(r => r.status === 'completed');
+    const healthScores = completedReports.map(r => ({
       date: r.createdAt,
       score: r.aiAnalysis?.healthScore || 0,
       type: r.reportType
     })).reverse();
 
-    const latestReport = reports[0];
+    const latestReport = completedReports[0];
 
     // Get report type counts for comparison availability
     const reportTypeCounts = {};
@@ -431,18 +464,46 @@ exports.getDashboardData = async (req, res) => {
     const targetDate = new Date(todayStr);
     targetDate.setUTCHours(0, 0, 0, 0);
 
-    const nutritionDataSummary = await NutritionSummary.findOne({
-      userId: req.user._id,
-      date: targetDate
-    });
-
     const tomorrow = new Date(targetDate);
     tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
 
-    const todayLogs = await FoodLog.find({
+    const todayLogsArr = await FoodLog.find({
       userId: req.user._id,
       timestamp: { $gte: targetDate, $lt: tomorrow }
-    }).select('source mealType totalNutrition foodItems');
+    }).select('source mealType totalNutrition foodItems healthScore');
+
+    // Calculate real-time totals to avoid "ghost" calories from stale summary
+    const realTimeTotals = todayLogsArr.reduce((acc, log) => {
+      const nut = log.totalNutrition || { calories: 0, protein: 0, carbs: 0, fats: 0 };
+      acc.calories += Number(nut.calories) || 0;
+      acc.protein += Number(nut.protein) || 0;
+      acc.carbs += Number(nut.carbs) || 0;
+      acc.fats += Number(nut.fats) || 0;
+      return acc;
+    }, { calories: 0, protein: 0, carbs: 0, fats: 0 });
+
+    const nutritionDataSummary = (await NutritionSummary.findOne({
+      userId: req.user._id,
+      date: targetDate
+    })) || { waterIntake: 0 };
+
+    // Set totals from real logs for 100% accuracy
+    const finalNutrition = {
+      totalCalories: realTimeTotals.calories,
+      totalProtein: realTimeTotals.protein,
+      totalCarbs: realTimeTotals.carbs,
+      totalFats: realTimeTotals.fats,
+      waterIntake: nutritionDataSummary.waterIntake || 0,
+      totalFiber: nutritionDataSummary.totalFiber || 0,
+      totalSugar: nutritionDataSummary.totalSugar || 0,
+      totalSodium: nutritionDataSummary.totalSodium || 0,
+      totalVitaminA: nutritionDataSummary.totalVitaminA || 0,
+      totalVitaminC: nutritionDataSummary.totalVitaminC || 0,
+      totalVitaminD: nutritionDataSummary.totalVitaminD || 0,
+      totalVitaminB12: nutritionDataSummary.totalVitaminB12 || 0,
+      totalIron: nutritionDataSummary.totalIron || 0,
+      totalCalcium: nutritionDataSummary.totalCalcium || 0
+    };
 
     // 🆕 Get 90-day history for trends (Real-time data)
     const ninetyDaysAgo = new Date(targetDate);
@@ -508,16 +569,16 @@ exports.getDashboardData = async (req, res) => {
 
       history.push({
         date: dStr,
-        calories: nutrition?.totalCalories || 0,
+        calories: dStr === todayStr ? realTimeTotals.calories : (nutrition?.totalCalories || 0),
         steps,
         sleep,
         weight: dayWeight,
-        water: nutrition?.waterIntake || 0
+        water: dStr === todayStr ? (finalNutrition.waterIntake || 0) : (nutrition?.waterIntake || 0)
       });
     }
 
     // Get today's values for quick access
-    const todayHistory = history.find(h => h.date === todayStr);
+    const todayHistory = history[history.length - 1];
 
     // Get goals
     const calorieGoal = req.user.nutritionGoal?.calorieGoal || 2100;
@@ -579,6 +640,7 @@ exports.getDashboardData = async (req, res) => {
       healthScores,
       latestAnalysis: latestReport?.aiAnalysis || generateProfileInsights(req.user),
       latestReportId: latestReport?._id,
+      processingReport, // 🆕 Add processing report info
       latestComparison, // 🆕 Add comparison data
       totalReports: await HealthReport.countDocuments({ user: req.user._id }),
       recentReports: reports.slice(0, 5),
@@ -601,25 +663,25 @@ exports.getDashboardData = async (req, res) => {
         hba1c: latestHbA1cLog ? { value: latestHbA1cLog.value, unit: latestHbA1cLog.unit, date: latestHbA1cLog.recordedAt } : null
       },
       nutritionData: {
-        totalCalories: nutritionDataSummary?.totalCalories || 0,
+        totalCalories: finalNutrition.totalCalories || 0,
         calorieGoal,
-        protein: nutritionDataSummary?.totalProtein || 0,
+        protein: finalNutrition.totalProtein || 0,
         proteinGoal,
-        carbs: nutritionDataSummary?.totalCarbs || 0,
+        carbs: finalNutrition.totalCarbs || 0,
         carbsGoal,
-        totalFats: nutritionDataSummary?.totalFats || 0,
+        totalFats: finalNutrition.totalFats || 0,
         fatsGoal: fatGoal,
-        totalFiber: nutritionDataSummary?.totalFiber || 0,
-        totalSugar: nutritionDataSummary?.totalSugar || 0,
-        totalSodium: nutritionDataSummary?.totalSodium || 0,
-        totalVitaminA: nutritionDataSummary?.totalVitaminA || 0,
-        totalVitaminC: nutritionDataSummary?.totalVitaminC || 0,
-        totalVitaminD: nutritionDataSummary?.totalVitaminD || 0,
-        totalVitaminB12: nutritionDataSummary?.totalVitaminB12 || 0,
-        totalIron: nutritionDataSummary?.totalIron || 0,
-        totalCalcium: nutritionDataSummary?.totalCalcium || 0,
-        waterIntake: nutritionDataSummary?.waterIntake || 0,
-        todayLogs: todayLogs || []
+        totalFiber: finalNutrition.totalFiber || 0,
+        totalSugar: finalNutrition.totalSugar || 0,
+        totalSodium: finalNutrition.totalSodium || 0,
+        totalVitaminA: finalNutrition.totalVitaminA || 0,
+        totalVitaminC: finalNutrition.totalVitaminC || 0,
+        totalVitaminD: finalNutrition.totalVitaminD || 0,
+        totalVitaminB12: finalNutrition.totalVitaminB12 || 0,
+        totalIron: finalNutrition.totalIron || 0,
+        totalCalcium: finalNutrition.totalCalcium || 0,
+        waterIntake: finalNutrition.waterIntake || 0,
+        todayLogs: todayLogsArr || []
       }
     };
 
@@ -634,7 +696,7 @@ exports.getDashboardData = async (req, res) => {
       console.error('Notification service loading error:', nError);
     }
 
-    cache.set(cacheKey, dashboardData, 120); // Cache for 2 minutes
+    await cache.set(cacheKey, dashboardData, 120); // Cache for 2 minutes
     res.json(dashboardData);
   } catch (error) {
     res.status(500).json({ message: error.message });

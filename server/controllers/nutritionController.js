@@ -21,8 +21,10 @@ const STANDARDS = {
   paneer: { calories: 265, protein: 18, fats: 20, carbs: 1.2, unit: '100g' },
   apple: { calories: 95, protein: 0.5, fats: 0.3, carbs: 25, unit: 'apple' },
   chapati: { calories: 104, protein: 3, fats: 0.4, carbs: 22, unit: 'chapati' },
+  roti: { calories: 104, protein: 3, fats: 0.4, carbs: 22, unit: 'roti' },
   rice: { calories: 130, protein: 2.7, fats: 0.3, carbs: 28, unit: '100g' },
-  biryani: { calories: 180, protein: 9, fats: 8, carbs: 22, unit: '100g' }
+  biryani: { calories: 180, protein: 9, fats: 8, carbs: 22, unit: '100g' },
+  dal: { calories: 116, protein: 9, fats: 0.4, carbs: 20, unit: '100g' }
 };
 
 const applyStandards = (foodName, description, data) => {
@@ -378,7 +380,8 @@ const findAndScaleCachedFood = async (description) => {
   const baseItems = await QuickFoodCheck.find({
     $or: [
       { foodName: { $regex: new RegExp(`^${cleanSuffix}$`, 'i') } },
-      { searchDescription: { $regex: new RegExp(`${cleanSuffix}`, 'i') } }
+      { searchDescription: { $regex: new RegExp(`^\\d*\\s*[a-zA-Z]*\\s*${cleanSuffix}$`, 'i') } },
+      { searchDescription: cleanSuffix }
     ]
   }).sort({ timestamp: -1 }).limit(15);
 
@@ -1183,14 +1186,20 @@ exports.getDailySummary = async (req, res) => {
 
     console.log(`Fetching summary for user ${req.user._id} on ${targetDate.toISOString()}`);
 
-    let summary = await withTimeout(NutritionSummary.findOne({
-      userId: req.user._id,
-      date: targetDate
-    }));
-
-    if (!summary) {
-      // Create summary if doesn't exist
-      summary = await createDailySummary(req.user._id, targetDate);
+    const isToday = targetDate.toISOString().split('T')[0] === new Date().toISOString().split('T')[0];
+    
+    let summary;
+    if (isToday) {
+      summary = await updateDailySummary(req.user._id, targetDate);
+    } else {
+      summary = await withTimeout(NutritionSummary.findOne({
+        userId: req.user._id,
+        date: targetDate
+      }));
+      
+      if (!summary) {
+        summary = await createDailySummary(req.user._id, targetDate);
+      }
     }
 
     res.json({
@@ -1362,6 +1371,7 @@ exports.getRecommendations = async (req, res) => {
 };
 
 // Helper function to update daily summary
+exports.updateDailySummaryInternal = updateDailySummary;
 async function updateDailySummary(userId, date) {
   try {
     // Normalize date to UTC midnight for consistency

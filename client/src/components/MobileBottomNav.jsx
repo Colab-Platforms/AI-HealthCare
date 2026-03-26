@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { useData } from '../context/DataContext';
 import {
   LayoutDashboard, MessageSquare, Utensils, FileText, MoreVertical,
   Settings, LogOut, Heart, Watch, X, Calendar, ScanLine,
@@ -14,9 +15,15 @@ export default function MobileBottomNav() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, logout } = useAuth();
+  const { dashboardData } = useData() || {};
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const [showLogModal, setShowLogModal] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Determine the best path for 'Reports' tab
+  // If there's an active processing report, go there; otherwise go to upload
+  const processingReportId = dashboardData?.processingReport?._id;
+  const reportsPath = processingReportId ? `/reports/${processingReportId}` : '/upload';
 
   // Check if modal is open by looking for modal elements
   useEffect(() => {
@@ -63,7 +70,7 @@ export default function MobileBottomNav() {
       ? { path: '/complete-analysis', icon: BarChart3, label: 'Analysis' }
       : { path: '/nutrition', icon: Activity, label: 'Nutrition' },
     { path: '#log', icon: Plus, label: 'Log', isCenter: true },
-    { path: '/upload', icon: FileText, label: 'Reports' }
+    { path: reportsPath, icon: FileText, label: 'Reports' }
   ];
 
   const logActivities = [

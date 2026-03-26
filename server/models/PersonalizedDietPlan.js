@@ -141,6 +141,11 @@ const personalizedDietPlanSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  status: {
+    type: String,
+    enum: ['pending', 'generating', 'completed', 'failed'],
+    default: 'completed'
   }
 }, {
   timestamps: true,

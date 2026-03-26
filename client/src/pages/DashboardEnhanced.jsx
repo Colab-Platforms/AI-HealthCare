@@ -529,7 +529,7 @@ const MealDetailModal = ({ meal, onClose, onAdd }) => {
 
 export default function DashboardEnhanced() {
   const { user } = useAuth();
-  const { dashboardData, nutritionData, wearableData, fetchDashboard, fetchNutrition, fetchNutritionLogs, fetchDietPlan, fetchWearable, loading } = useData();
+  const { dashboardData, nutritionData, wearableData, fetchDashboard, fetchNutrition, fetchNutritionLogs, fetchDietPlan, fetchWearable, loading, dataRefreshTrigger } = useData();
   const navigate = useNavigate();
 
   const [dietPlan, setDietPlan] = useState(null);
@@ -666,12 +666,13 @@ export default function DashboardEnhanced() {
   useEffect(() => {
     const loadData = async () => {
       try {
+        const force = dataRefreshTrigger > 0;
         await Promise.all([
-          fetchDashboard(),
-          fetchNutrition(new Date().toISOString().split('T')[0]),
-          fetchWearable(),
-          fetchDietPlan().then(plan => setDietPlan(plan)),
-          fetchNutritionLogs(new Date().toISOString().split('T')[0]).then(logs => {
+          fetchDashboard(force),
+          fetchNutrition(new Date().toISOString().split('T')[0], force),
+          fetchWearable(force),
+          fetchDietPlan(force).then(plan => setDietPlan(plan)),
+          fetchNutritionLogs(new Date().toISOString().split('T')[0], force).then(logs => {
             const logMap = {};
             (logs || []).forEach(l => {
               if (l.foodItems) {
@@ -690,7 +691,7 @@ export default function DashboardEnhanced() {
       }
     };
     loadData();
-  }, [user]);
+  }, [user, dataRefreshTrigger]);
 
   // Separate effect for diabetic status to ensure it shows immediately regardless of other data loads
   useEffect(() => {
@@ -1209,7 +1210,20 @@ export default function DashboardEnhanced() {
           </div>
 
           <div className="space-y-3 flex-1 overflow-y-auto max-h-[300px] pr-2 scrollbar-thin scrollbar-thumb-black scrollbar-track-transparent">
-            {dashboardData?.totalReports > 0 && dashboardData?.latestAnalysis?.metrics && Object.keys(dashboardData.latestAnalysis.metrics).length > 0 ? (
+            {dashboardData?.processingReport ? (
+              <div className="flex flex-col items-center justify-center h-full p-6 sm:p-10 bg-amber-50/20 rounded-[2rem] text-center border border-amber-100/30">
+                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-4 ring-8 ring-amber-50/10">
+                  <Clock className="w-8 h-8 text-amber-500 animate-spin" />
+                </div>
+                <p className="text-[10px] font-black text-amber-800/60 uppercase tracking-[0.2em] mb-4 leading-loose text-center">Your report analysis<br />is in progress</p>
+                <button
+                  onClick={() => navigate(`/reports/${dashboardData.processingReport._id}`)}
+                  className="w-full sm:w-auto px-10 py-3.5 bg-amber-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-amber-900/20 hover:scale-[1.02] transition-all border-b-4 border-amber-700 active:border-b-0 active:translate-y-1"
+                >
+                  View Status
+                </button>
+              </div>
+            ) : dashboardData?.totalReports > 0 && dashboardData?.latestAnalysis?.metrics && Object.keys(dashboardData.latestAnalysis.metrics).length > 0 ? (
               Object.entries(dashboardData.latestAnalysis.metrics).map(([key, val]) => (
                 <LabMetricsItem
                   key={key}
@@ -1346,7 +1360,7 @@ export default function DashboardEnhanced() {
         <div className="flex overflow-x-auto md:grid md:grid-cols-3 gap-4 md:gap-8 pb-4 md:pb-0 scrollbar-hide snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0">
           {loggedMeals.length > 0 ? (
             <>
-              {loggedMeals.slice(0, 3).map((meal, i) => (
+              {[...loggedMeals].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 3).map((meal, i) => (
                 <div key={i} className="min-w-[60vw] md:min-w-0 snap-center bg-white border border-emerald-50 rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm transition-all flex flex-col">
                   <div className="h-20 md:h-52 relative overflow-hidden">
                     <ImageWithFallback src={meal.imageUrl} query={meal.name || meal.foodItems?.[0]?.name || 'Delicious food'} alt={meal.name || meal.foodItems?.[0]?.name || 'Meal'} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />

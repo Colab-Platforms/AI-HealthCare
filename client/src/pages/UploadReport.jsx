@@ -6,7 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload, FileText, X, Loader2, CheckCircle, Shield, AlertTriangle,
   ChevronDown, Trash2, Info, Lock, Eye, Calendar, History, BarChart2,
-  Activity, Zap, Sparkles, ChevronRight, Check, TrendingUp, TrendingDown, Search
+  Activity, Zap, Sparkles, ChevronRight, Check, TrendingUp, TrendingDown, Search, Clock
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
@@ -36,7 +36,9 @@ export default function UploadReport() {
   const [selectedMetric, setSelectedMetric] = useState('All');
   const [aiComparison, setAiComparison] = useState(null);
   const [loadingReports, setLoadingReports] = useState(true);
-  const { invalidateCache } = useData();
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingReportId, setProcessingReportId] = useState(null);
+  const { invalidateCache, addPendingAnalysis, dataRefreshTrigger, pendingAnalysisIds } = useData();
   const navigate = useNavigate();
 
   const glassCard = "bg-white rounded-[24px] shadow-sm relative overflow-hidden";
@@ -51,9 +53,25 @@ export default function UploadReport() {
       setLoadingReports(true);
       const { data } = await healthService.getReports();
       setAllReports(data || []);
-      // Auto-select latest 2 for comparison
+
+      // Check for processing report
+      if (data && data.length > 0) {
+        const processing = data.find(r => r.status === 'processing');
+        if (processing) {
+          setIsProcessing(true);
+          setProcessingReportId(processing._id);
+          navigate(`/reports/${processing._id}`); // Auto-redirect to the dedicated status screen as requested
+        } else {
+          setIsProcessing(false);
+          setProcessingReportId(null);
+        }
+      }
+
+      // Auto-select latest 2 for comparison or latest 1 for analysis
       if (data && data.length >= 2) {
         setSelectedReports([data[0]._id, data[1]._id]);
+      } else if (data && data.length === 1) {
+        setSelectedReports([data[0]._id]);
       }
     } catch (error) {
       console.error('Failed to fetch reports', error);
@@ -61,6 +79,52 @@ export default function UploadReport() {
       setLoadingReports(false);
     }
   };
+
+  // Refresh reports when dataRefreshTrigger changes (from global polling)
+  useEffect(() => {
+    fetchAllReports();
+  }, [dataRefreshTrigger]);
+
+  // Synchronize local processing state with global pending analyses
+  useEffect(() => {
+    if (pendingAnalysisIds.length > 0) {
+      if (!isProcessing) setIsProcessing(true);
+      if (!processingReportId) setProcessingReportId(pendingAnalysisIds[0]);
+    } else if (isProcessing && !pendingAnalysisIds.some(id => allReports.find(r => r._id === id && r.status === 'processing'))) {
+      // Only set to false if No reports are in pending state globally
+      setIsProcessing(false);
+      setProcessingReportId(null);
+      fetchAllReports();
+    }
+  }, [pendingAnalysisIds, processingReportId, allReports, isProcessing]);
+
+  const handleDeleteReport = async (reportId, e) => {
+    e.preventDefault();
+    e.stopPropagation();
+
+    if (!window.confirm('Are you sure you want to delete this report? This action cannot be undone.')) {
+      return;
+    }
+
+    try {
+      await healthService.deleteReport(reportId);
+      setAllReports(prev => prev.filter(r => r._id !== reportId));
+      setSelectedReports(prev => prev.filter(id => id !== reportId));
+      toast.success('Report deleted successfully');
+    } catch (error) {
+      toast.error('Failed to delete report');
+    }
+  };
+
+  // Register initial processing reports in global poll
+  useEffect(() => {
+    if (allReports.length > 0) {
+      const processing = allReports.find(r => r.status === 'processing');
+      if (processing && !pendingAnalysisIds.includes(processing._id)) {
+        addPendingAnalysis(processing._id);
+      }
+    }
+  }, [allReports, pendingAnalysisIds, addPendingAnalysis]);
 
   // Build comparison data when selectedReports change
   useEffect(() => {
@@ -137,7 +201,7 @@ export default function UploadReport() {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: { 'application/pdf': ['.pdf'], 'image/*': ['.png', '.jpg', '.jpeg'] },
-    maxSize: 10 * 1024 * 1024
+    maxSize: 4 * 1024 * 1024
   });
 
   const updateFileType = (id, reportType) => {
@@ -157,8 +221,8 @@ export default function UploadReport() {
 
     const fileToUpload = files[0];
 
-    if (fileToUpload.file.type === 'application/pdf' && fileToUpload.file.size > 4.5 * 1024 * 1024) {
-      toast.error('PDF file is too large (Max 4.5MB). Please compress it.');
+    if (fileToUpload.file.type === 'application/pdf' && fileToUpload.file.size > 4 * 1024 * 1024) {
+      toast.error('PDF file is too large (Max 4MB). Please compress it.');
       return;
     }
 
@@ -215,13 +279,20 @@ export default function UploadReport() {
       const { data } = await healthService.uploadReport(formData);
       clearInterval(progressInterval);
       setUploadProgress(100);
-      toast.success('Report analyzed successfully!');
+      
+      if (data.backgroundProcessing) {
+        addPendingAnalysis(data.report._id);
+        toast.success('Report uploaded! Analysis in progress...');
+      } else {
+        toast.success('Report analyzed successfully!');
+      }
+
       invalidateCache(['diet_plan', 'dashboard']);
       setTimeout(() => navigate(`/reports/${data.report._id}`), 500);
     } catch (error) {
       clearInterval(progressInterval);
       const errorMsg = error.response?.status === 413
-        ? 'File too large (Max 4.5MB).'
+        ? 'File too large (Max 4MB).'
         : (error.response?.data?.message || 'Failed to analyze report');
       toast.error(errorMsg);
       setUploadProgress(0);
@@ -248,13 +319,107 @@ export default function UploadReport() {
     <div className="px-4 md:px-8 pt-0 md:pt-4 max-w-[1400px] mx-auto space-y-6 relative font-sans bg-transparent">
       <div className="pt-2" />
       
+      {/* Active Analysis Banner or Full Page Processing UI */}
+      {isProcessing ? null : allReports.find(r => r.status === 'processing') && (
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-amber-50 border border-amber-100 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4"
+        >
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm">
+              <Clock className="w-6 h-6 text-amber-500 animate-spin" />
+            </div>
+            <div>
+              <h4 className="text-amber-900 font-bold">Analysis in Progress</h4>
+              <p className="text-amber-700 text-sm">We are still analyzing your recently uploaded report. It will be ready in a moment.</p>
+            </div>
+          </div>
+          <button 
+            onClick={() => navigate(`/reports/${allReports.find(r => r.status === 'processing')._id}`)}
+            className="w-full md:w-auto px-6 py-2.5 bg-amber-500 text-white font-bold rounded-xl shadow-lg border-b-4 border-amber-700 active:border-b-0 active:translate-y-1 transition-all"
+          >
+            Check Status
+          </button>
+        </motion.div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Left Column: Upload & Comparison */}
         <div className="lg:col-span-2 flex flex-col gap-8">
 
-          {/* Upload Card */}
+          {/* Upload Card or Processing UI */}
           <AnimatePresence mode="wait">
-            {!loading ? (
+            {loadingReports ? (
+              <motion.div
+                key="loading"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className={`${glassCard} p-10 flex items-center justify-center min-h-[300px]`}
+              >
+                <div className="flex flex-col items-center gap-4">
+                  <Loader2 className="w-10 h-10 text-[#A795C7] animate-spin" />
+                  <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Loading context...</p>
+                </div>
+              </motion.div>
+            ) : isProcessing ? (
+              <motion.div
+                key="processing"
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0 }}
+                className={`${glassCard} p-8 md:p-12 text-center overflow-hidden relative shadow-2xl border-2 border-amber-100`}
+              >
+                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50/50 rounded-full blur-3xl -mr-16 -mt-16" />
+                
+                <div className="relative z-10 flex flex-col items-center">
+                  <div className="relative mb-8">
+                    <div className="w-20 h-20 md:w-28 md:h-28 rounded-3xl bg-amber-50 flex items-center justify-center ring-8 ring-amber-50/10">
+                      <Clock className="w-10 h-10 md:w-12 md:h-12 text-amber-500 animate-spin" />
+                    </div>
+                    <div className="absolute -top-2 -right-2 w-8 h-8 md:w-10 md:h-10 bg-white rounded-2xl shadow-md border border-amber-100 flex items-center justify-center">
+                      <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-amber-500 animate-pulse" />
+                    </div>
+                  </div>
+
+                  <h3 className="text-2xl md:text-3xl font-black text-[#1a1a1a] mb-3">Analysis in Process</h3>
+                  <p className="text-[#92400e] text-sm md:text-base font-semibold leading-relaxed mb-8 max-w-sm">
+                    We are extracting medical insights from your report. This usually takes 1-2 minutes.
+                  </p>
+
+                  <div className="w-full max-w-md bg-amber-50 border border-amber-100 rounded-3xl p-5 mb-8">
+                    <div className="w-full bg-white h-2.5 rounded-full overflow-hidden mb-3 border border-amber-100/50 shadow-inner">
+                      <motion.div 
+                        initial={{ width: "0%" }}
+                        animate={{ width: "85%" }}
+                        transition={{ duration: 60, ease: "linear" }}
+                        className="bg-gradient-to-r from-amber-400 to-amber-600 h-full"
+                      />
+                    </div>
+                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-[#92400e]">
+                      <span>Deep Analysis</span>
+                      <span>85% (Optimistic)</span>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
+                    <Link 
+                      to="/dashboard"
+                      className="flex-1 py-4 bg-white border-2 border-amber-200 text-[#92400e] font-black rounded-2xl hover:bg-amber-50 transition-all uppercase tracking-widest text-xs shadow-sm"
+                    >
+                      Explore Platform
+                    </Link>
+                    <Link 
+                      to={`/reports/${processingReportId}`}
+                      className="flex-1 py-4 bg-amber-500 text-white font-black rounded-2xl hover:bg-amber-600 transition-all uppercase tracking-widest text-xs shadow-lg shadow-amber-200"
+                    >
+                      Check Details
+                    </Link>
+                  </div>
+                </div>
+              </motion.div>
+            ) : !loading ? (
               <motion.div
                 key="upload"
                 initial={{ opacity: 0, y: 20 }}
@@ -277,7 +442,7 @@ export default function UploadReport() {
                       <Upload className="w-5 h-5 md:w-8 md:h-8" />
                     </div>
                     <h3 className="font-medium text-lg md:text-2xl text-[#1a1a1a] mb-1 md:mb-3">Upload Lab Report</h3>
-                    <p className="text-[#666666] text-xs md:text-sm mb-4 md:mb-6 max-w-md">PDF or image. Max size: 10MB.</p>
+                    <p className="text-[#666666] text-xs md:text-sm mb-4 md:mb-6 max-w-md">PDF or image. Max size: 4MB.</p>
                     <button className="px-8 py-3.5 bg-[#A795C7] text-white font-medium rounded-full hover:bg-[#9583B5] transition-all">
                       Select File
                     </button>
@@ -456,10 +621,80 @@ export default function UploadReport() {
                   </div>
                 )}
               </>
+            ) : selectedReports.length === 1 && allReports.find(r => r._id === selectedReports[0])?.aiAnalysis ? (
+              <div className="space-y-6">
+                {(() => {
+                  const report = allReports.find(r => r._id === selectedReports[0]);
+                  const analysis = report.aiAnalysis;
+                  return (
+                    <>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center">
+                              <Sparkles className="w-5 h-5 text-emerald-500" />
+                            </div>
+                            <h4 className="font-bold text-[#1a1a1a]">Analysis Summary</h4>
+                          </div>
+                          <p className="text-sm text-[#666666] leading-relaxed line-clamp-6">
+                            {analysis.summary || 'Summary not available.'}
+                          </p>
+                          <div className="pt-4">
+                            <Link 
+                              to={`/reports/${report._id}`}
+                              className="inline-flex items-center gap-2 text-sm font-bold text-[#A795C7] hover:underline"
+                            >
+                              Explore Full Report <ChevronRight className="w-4 h-4" />
+                            </Link>
+                          </div>
+                        </div>
+
+                        <div className="bg-[#F8F8FC] rounded-[32px] p-6 text-center flex flex-col items-center justify-center border border-slate-100 shadow-inner">
+                          <span className="text-[10px] font-black text-[#A795C7] uppercase tracking-widest mb-4">Overall Vitality</span>
+                          <div className="relative w-32 h-32 flex items-center justify-center mb-4">
+                            <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                              <circle cx="50" cy="50" r="45" fill="none" stroke="#e2e8f0" strokeWidth="8" />
+                              <circle 
+                                cx="50" cy="50" r="45" fill="none" stroke="#A795C7" strokeWidth="8"
+                                strokeDasharray={283}
+                                strokeDashoffset={283 - (283 * (analysis.healthScore || 0)) / 100}
+                                strokeLinecap="round"
+                              />
+                            </svg>
+                            <span className="absolute text-3xl font-black text-[#1a1a1a]">{analysis.healthScore || '--'}</span>
+                          </div>
+                          <p className="text-[10px] font-bold text-[#a0a0a0]">HEALTH SCORE / 100</p>
+                        </div>
+                      </div>
+
+                      <div className="pt-8 border-t border-slate-100">
+                        <h4 className="text-xs font-black text-[#a0a0a0] uppercase tracking-widest mb-4">Top Biological Markers</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {Object.entries(analysis.metrics || {}).slice(0, 4).map(([name, data]) => (
+                            <div key={name} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
+                              <span className="text-xs font-bold text-slate-700 truncate mr-2">{name.replace(/([A-Z])/g, ' $1').trim()}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-black text-[#1a1a1a]">
+                                  {typeof data === 'object' ? data.value : data} 
+                                  <span className="text-[9px] text-slate-400 ml-0.5">{typeof data === 'object' ? data.unit : ''}</span>
+                                </span>
+                                <div className={`w-2 h-2 rounded-full ${
+                                  (data.status === 'normal' || data.status === 'good') ? 'bg-emerald-500' : 
+                                  (data.status === 'borderline' || data.status === 'moderate') ? 'bg-amber-500' : 'bg-red-500'
+                                }`} />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-slate-200 rounded-[24px] bg-[#F5F5F7]/30">
                 <Activity className="w-8 h-8 text-[#a0a0a0] mb-3" />
-                <p className="text-[#666666] font-medium">Select exactly 2 reports from your history<br />to view a detailed visual comparison.</p>
+                <p className="text-[#666666] font-medium">Select a report from history to view insights,<br />or select 2 reports to view a detailed comparison.</p>
               </div>
             )}
           </motion.div>
@@ -628,21 +863,28 @@ export default function UploadReport() {
                           </div>
                         </div>
                       </div>
-                      <div className="flex justify-between items-center mt-3 pl-10">
-                        <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider ${report.status === 'completed' ? 'bg-[#F0FDF4] text-[#16A34A]' : 'bg-[#FFF8F5] text-[#FF8A66]'
-                          }`}>
-                          {report.status || 'Pending'}
-                        </span>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate(`/reports/${report._id}`);
-                          }}
-                          className="text-[10px] font-bold text-[#A795C7] uppercase tracking-widest hover:underline flex items-center"
-                        >
-                          View <ChevronRight className="w-3 h-3" />
-                        </button>
-                      </div>
+                        <div className="flex items-center gap-1.5 mt-3 pl-10 h-7 overflow-hidden">
+                          <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${report.status === 'completed' ? 'bg-[#F0FDF4] text-[#16A34A]' : 'bg-[#FFF8F5] text-[#FF8A66]'
+                            }`}>
+                            {report.status || 'Pending'}
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigate(`/reports/${report._id}`);
+                            }}
+                            className="text-[8px] font-bold text-[#A795C7] uppercase tracking-widest hover:underline flex items-center pr-2"
+                          >
+                            View
+                          </button>
+                          <button
+                            onClick={(e) => handleDeleteReport(report._id, e)}
+                            className="bg-red-50 text-red-400 p-1.5 rounded-lg hover:bg-red-500 hover:text-white transition-all ml-auto opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
+                            title="Delete Report"
+                          >
+                            <Trash2 className="w-3 h-3" />
+                          </button>
+                        </div>
                     </motion.div>
                   );
                 })

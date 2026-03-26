@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useCallback, useEffect } from 'react';
 import { healthService, wearableService, nutritionService } from '../services/api';
+import toast from 'react-hot-toast';
 import { cache } from '../utils/cache';
 import { useAuth } from './AuthContext';
 
@@ -15,12 +16,18 @@ export const useData = () => {
 
 export const DataProvider = ({ children }) => {
   const { user } = useAuth();
-  const [dashboardData, setDashboardData] = useState(null);
-  const [wearableData, setWearableData] = useState(null);
-  const [nutritionData, setNutritionData] = useState(null);
-  const [nutritionLogs, setNutritionLogs] = useState(null);
-  const [weeklyTrends, setWeeklyTrends] = useState(null);
-  const [healthGoals, setHealthGoals] = useState(null);
+  
+  // Initialize states from cache to prevent "loading every time" flash
+  const [dashboardData, setDashboardData] = useState(() => cache.get('dashboard'));
+  const [wearableData, setWearableData] = useState(() => cache.get('wearable'));
+  
+  const today = new Date().toISOString().split('T')[0];
+  const [nutritionData, setNutritionData] = useState(() => cache.get(`nutrition_${today}`));
+  const [nutritionLogs, setNutritionLogs] = useState(() => cache.get(`logs_${today}`));
+  
+  const [weeklyTrends, setWeeklyTrends] = useState(() => cache.get('weekly_trends'));
+  const [healthGoals, setHealthGoals] = useState(() => cache.get('health_goals'));
+  
   const [loading, setLoading] = useState({
     dashboard: false,
     wearable: false,
@@ -229,34 +236,132 @@ export const DataProvider = ({ children }) => {
     }
   }, []);
 
-  // Invalidate cache when data changes
   const invalidateCache = useCallback((keys = []) => {
     if (keys.length === 0) {
-      // Clear all cache
       cache.clear();
-      setDashboardData(null);
-      setWearableData(null);
-      setNutritionData(null);
     } else {
-      keys.forEach(key => {
-        cache.delete(key);
-        if (key === 'dashboard') setDashboardData(null);
-        if (key === 'wearable') setWearableData(null);
-        if (key.startsWith('nutrition_')) setNutritionData(null);
-        if (key.startsWith('logs_')) setNutritionLogs(null);
-        if (key === 'weekly_trends') setWeeklyTrends(null);
-        if (key === 'health_goals') setHealthGoals(null);
-      });
+      keys.forEach(key => cache.delete(key));
     }
-  }, []);
+    
+    // Refresh relevant data if currently in memory
+    if (keys.length === 0 || keys.includes('dashboard')) fetchDashboard(true);
+    if (keys.length === 0 || keys.includes('wearable')) fetchWearable(true);
+    if (keys.length === 0 || keys.includes('diet_plan')) fetchDietPlan(true);
+  }, [fetchDashboard, fetchWearable, fetchDietPlan]);
 
-  // Clear all data when user changes (for logout/login scenarios)
   const clearAllData = useCallback(() => {
     cache.clear();
     setDashboardData(null);
     setWearableData(null);
     setNutritionData(null);
+    setNutritionLogs(null);
+    setWeeklyTrends([]);
+    setHealthGoals(null);
+    setPendingAnalysisIds([]);
+    setPendingDietPlanIds([]);
+    setDataRefreshTrigger(0);
   }, []);
+
+  const [pendingAnalysisIds, setPendingAnalysisIds] = useState([]);
+  const [pendingDietPlanIds, setPendingDietPlanIds] = useState([]);
+  const [dataRefreshTrigger, setDataRefreshTrigger] = useState(0);
+
+  const triggerRefresh = useCallback(() => {
+    setDataRefreshTrigger(prev => prev + 1);
+  }, []);
+
+  // Use a ref for the navigate function to avoid dependency loops if needed, 
+  // but since this is a context provider, we can't use useNavigate here unless we wrap it properly.
+  // Actually, DataProvider is inside BrowserRouter usually.
+  
+  // Track and poll for pending analyses
+  useEffect(() => {
+    if (pendingAnalysisIds.length === 0) return;
+
+    let pollInterval = setInterval(async () => {
+      const results = await Promise.all(
+        pendingAnalysisIds.map(async (id) => {
+          try {
+            const { data } = await healthService.getReportStatus(id);
+            return { id, status: data.status };
+          } catch (e) {
+            return { id, status: 'error' };
+          }
+        })
+      );
+
+      const completed = results.filter(r => r.status === 'completed' || r.status === 'failed');
+      
+      if (completed.length > 0) {
+        completed.forEach(report => {
+          if (report.status === 'completed') {
+            toast.success('Report analysis completed!', {
+              duration: 4000,
+              icon: '📋',
+              id: `completed-${report.id}` // Unique ID to prevent duplicates
+            });
+            invalidateCache(['dashboard', 'diet_plan']);
+            triggerRefresh(); // Notify other components to refresh their local lists
+          } else if (report.status === 'failed') {
+            toast.error('Report analysis failed. Please try again.', { id: `failed-${report.id}` });
+          }
+        });
+
+        setPendingAnalysisIds(prev => prev.filter(id => !completed.find(c => c.id === id)));
+      }
+    }, 5000);
+
+    return () => clearInterval(pollInterval);
+  }, [pendingAnalysisIds, invalidateCache, triggerRefresh]);
+
+  const addPendingAnalysis = useCallback((id) => {
+    setPendingAnalysisIds(prev => [...new Set([...prev, id])]);
+  }, []);
+
+  const addPendingDietPlan = useCallback((id) => {
+    setPendingDietPlanIds(prev => [...new Set([...prev, id])]);
+  }, []);
+
+  // Track and poll for pending diet plans
+  useEffect(() => {
+    if (pendingDietPlanIds.length === 0) return;
+
+    let pollInterval = setInterval(async () => {
+      const results = await Promise.all(
+        pendingDietPlanIds.map(async (id) => {
+          try {
+            const { dietRecommendationService } = await import('../services/api');
+            const { data } = await dietRecommendationService.getDietPlanStatus(id);
+            return { id, status: data.status };
+          } catch (e) {
+            return { id, status: 'error' };
+          }
+        })
+      );
+
+      const completed = results.filter(r => r.status === 'completed' || r.status === 'failed');
+      
+      if (completed.length > 0) {
+        completed.forEach(plan => {
+          if (plan.status === 'completed') {
+            toast.success('Diet plan generated successfully!', {
+              duration: 4000,
+              icon: '🍽️',
+              id: `completed-diet-${plan.id}`
+            });
+            invalidateCache(['diet_plan', 'dashboard']);
+            triggerRefresh(); 
+          } else if (plan.status === 'failed') {
+            toast.error('Diet plan generation failed.', { id: `failed-diet-${plan.id}` });
+          }
+        });
+
+        setPendingDietPlanIds(prev => prev.filter(id => !completed.find(c => c.id === id)));
+      }
+    }, 5000);
+
+    return () => clearInterval(pollInterval);
+  }, [pendingDietPlanIds, invalidateCache, triggerRefresh]);
 
   const value = {
     // Data
@@ -267,6 +372,8 @@ export const DataProvider = ({ children }) => {
     weeklyTrends,
     healthGoals,
     loading,
+    pendingAnalysisIds,
+    dataRefreshTrigger,
 
     // Methods
     fetchDashboard,
@@ -277,6 +384,9 @@ export const DataProvider = ({ children }) => {
     fetchHealthGoals,
     fetchDietPlan,
     invalidateCache,
+    addPendingAnalysis,
+    addPendingDietPlan,
+    triggerRefresh,
     clearAllData
   };
 

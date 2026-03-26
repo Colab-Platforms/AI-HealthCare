@@ -378,7 +378,7 @@ class NotificationService {
     }
 
     // Create a notification for a specific user (can be called from controllers)
-    static async createNotification(userId, { type, title, message, icon, priority, actionUrl, metadata, expiresAt }) {
+    async createNotification(userId, { type, title, message, icon, priority, actionUrl, metadata, expiresAt }) {
         try {
             return await Notification.create({
                 userId,

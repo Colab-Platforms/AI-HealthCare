@@ -13,9 +13,12 @@ import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
 import VitalDetailsPopup from '../components/VitalDetailsPopup';
 
+import { useData } from '../context/DataContext';
+
 export default function ReportAnalysisMobile() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const { addPendingAnalysis, pendingAnalysisIds, dataRefreshTrigger } = useData();
     const [report, setReport] = useState(null);
     const [loading, setLoading] = useState(true);
     const [isHindi, setIsHindi] = useState(false);
@@ -88,6 +91,13 @@ export default function ReportAnalysisMobile() {
             try {
                 const { data } = await healthService.getReport(id);
                 setReport(data.report);
+                
+                // If report is processing, register it in global poll
+                if (data.report.status === 'processing') {
+                    if (!pendingAnalysisIds.includes(id)) {
+                        addPendingAnalysis(id);
+                    }
+                }
             } catch (error) {
                 toast.error('Failed to load report');
             } finally {
@@ -95,13 +105,35 @@ export default function ReportAnalysisMobile() {
             }
         };
         fetchReport();
-    }, [id]);
+    }, [id, addPendingAnalysis]);
+
+    // Re-fetch when global data updates or status changes
+    useEffect(() => {
+        if (report?.status === 'processing' && !pendingAnalysisIds.includes(id)) {
+            // Processing finished
+            const fetchUpdated = async () => {
+                const { data } = await healthService.getReport(id);
+                setReport(data.report);
+            };
+            fetchUpdated();
+        }
+    }, [pendingAnalysisIds, id, report?.status]);
+
+    useEffect(() => {
+        if (dataRefreshTrigger > 0) {
+            const fetchUpdated = async () => {
+                const { data } = await healthService.getReport(id);
+                setReport(data.report);
+            };
+            fetchUpdated();
+        }
+    }, [dataRefreshTrigger, id]);
 
     if (loading) return (
         <div className="flex items-center justify-center h-screen bg-white">
             <div className="text-center">
                 <div className="w-16 h-16 border-4 border-[#F5F5F7] border-t-[#A795C7] rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-[#888888] font-medium">Loading Report...</p>
+                <p className="text-[#888888] font-medium">Loading Report Data...</p>
             </div>
         </div>
     );
@@ -121,6 +153,7 @@ export default function ReportAnalysisMobile() {
     );
 
     const { aiAnalysis } = report;
+    const isProcessing = report.status === 'processing';
     const metrics = aiAnalysis?.metrics || {};
     const metricsList = Object.entries(metrics);
 
@@ -271,35 +304,63 @@ export default function ReportAnalysisMobile() {
                         </div>
                     </div>
 
-                    <div className="absolute top-6 right-6 bg-[#F0FDF4] border border-[#BBF7D0] rounded-full px-3 py-1.5 z-10">
+                    <div className={`absolute top-6 right-6 ${isProcessing ? 'bg-amber-50 border-amber-100' : 'bg-[#F0FDF4] border-[#BBF7D0]'} border rounded-full px-3 py-1.5 z-10`}>
                         <div className="flex items-center gap-1.5">
-                            <span className="w-2 h-2 bg-[#16A34A] rounded-full animate-pulse"></span>
-                            <span className="text-[10px] font-bold uppercase tracking-widest text-[#16A34A]">Analyzed</span>
+                            <span className={`w-2 h-2 ${isProcessing ? 'bg-amber-500' : 'bg-[#16A34A]'} rounded-full animate-pulse`}></span>
+                            <span className={`text-[10px] font-bold uppercase tracking-widest ${isProcessing ? 'text-amber-600' : 'text-[#16A34A]'}`}>
+                                {isProcessing ? 'Analyzing' : 'Analyzed'}
+                            </span>
                         </div>
                     </div>
                 </div>
 
-                {/* Executive Summary */}
-                {(aiAnalysis?.summary || aiAnalysis?.summaryPoints) && (
-                    <div className={`${glassCard} p-6 md:p-8`}>
-                        <div className="flex items-center gap-3 mb-6">
-                            <div className="w-10 h-10 bg-[#F5F5F7] rounded-full flex items-center justify-center">
+                {/* Executive Summary / Processing State */}
+                <div className={`${glassCard} p-6 md:p-8`}>
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="w-10 h-10 bg-[#F5F5F7] rounded-full flex items-center justify-center">
+                            {isProcessing ? (
+                                <Clock className="w-5 h-5 text-amber-500 animate-spin" />
+                            ) : (
                                 <Activity className="w-5 h-5 text-[#A795C7]" />
-                            </div>
-                            <h3 className="text-lg font-bold text-[#1a1a1a]">{isHindi ? 'कार्यकारी सारांश' : 'Executive Summary'}</h3>
+                            )}
                         </div>
+                        <h3 className="text-lg font-bold text-[#1a1a1a]">
+                            {isProcessing ? 'Analysis in Process' : (isHindi ? 'कार्यकारी सारांश' : 'Executive Summary')}
+                        </h3>
+                    </div>
 
+                    {isProcessing ? (
+                        <div className="space-y-6">
+                            <div className="p-6 bg-amber-50 border border-amber-100 rounded-3xl">
+                                <p className="text-[#92400e] text-sm font-medium leading-relaxed mb-4">
+                                    Report analysis in process. It will take 1-2 minutes to analyze. Till that time, you can <Link to="/dashboard" className="text-amber-700 underline font-bold">take a tour of our platform</Link>.
+                                </p>
+                                <div className="flex items-center gap-2 text-[#b45309] text-xs font-bold uppercase tracking-wider">
+                                    <Mail className="w-4 h-4" />
+                                    An email will be sent once analysis is complete
+                                </div>
+                            </div>
+                            
+                            <div className="flex flex-col items-center py-4">
+                                <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mb-2">
+                                    <div className="bg-amber-500 h-full animate-[loading_2s_ease-in-out_infinite]" style={{ width: '40%' }}></div>
+                                </div>
+                                <span className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] animate-pulse">Extracting medical insights...</span>
+                            </div>
+                        </div>
+                    ) : (
+                        <>
                         {aiAnalysis.summary && (
                             <div className="space-y-4 mb-6">
-                            {t(aiAnalysis.summary).split('\n').filter(line => line.trim()).map((line, i) => (
-                                <div key={i} className="flex items-start gap-3">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-[#A795C7] mt-1.5 flex-shrink-0" />
-                                    <p className="text-[#666666] leading-relaxed text-sm">
-                                        {line.replace(/^[•\-\*]\s*/, '').trim()}
-                                    </p>
-                                </div>
-                            ))}
-                        </div>
+                                {t(aiAnalysis.summary).split('\n').filter(line => line.trim()).map((line, i) => (
+                                    <div key={i} className="flex items-start gap-3">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-[#A795C7] mt-1.5 flex-shrink-0" />
+                                        <p className="text-[#666666] leading-relaxed text-sm">
+                                            {line.replace(/^[•\-\*]\s*/, '').trim()}
+                                        </p>
+                                    </div>
+                                ))}
+                            </div>
                         )}
 
                         {isMRI && aiAnalysis?.radiologistReport?.patientFriendlySummary && (
@@ -336,11 +397,12 @@ export default function ReportAnalysisMobile() {
                                 {t(aiAnalysis.keyFindings?.[0] || "Your health markers are generally within range, but some areas require focus.")}
                             </p>
                         </div>
-                    </div>
-                )}
+                        </>
+                    )}
+                </div>
 
                 {/* MRI Findings Section */}
-                {isMRI && (
+                {!isProcessing && isMRI && (
                     <div className={`${glassCard} p-6 md:p-8 space-y-8`}>
                         <div>
                             <div className="flex items-center gap-3 mb-6">
@@ -389,7 +451,7 @@ export default function ReportAnalysisMobile() {
                 )}
 
                 {/* Health Metrics */}
-                {!isMRI && (
+                {!isProcessing && !isMRI && (
                     <div>
                     <div className="flex items-center justify-between mb-6 px-2">
                         <h3 className="text-lg font-bold text-[#1a1a1a]">{isHindi ? 'स्वास्थ्य मेट्रिक्स' : 'Health Metrics'}</h3>
@@ -483,7 +545,7 @@ export default function ReportAnalysisMobile() {
                 )}
 
                 {/* Deficiencies */}
-                {!isMRI && aiAnalysis?.deficiencies?.length > 0 && (
+                {!isProcessing && !isMRI && aiAnalysis?.deficiencies?.length > 0 && (
                     <div className={`${glassCard} p-6 md:p-8`}>
                         <div className="flex items-center gap-3 mb-6">
                             <div className="w-10 h-10 bg-[#FFF0F0] rounded-full flex items-center justify-center">
@@ -534,41 +596,43 @@ export default function ReportAnalysisMobile() {
                 )}
 
                 {/* Generate Diet Plan CTA */}
-                <div className={`${glassCard} p-8 bg-gradient-to-br from-[#F0FDF4] to-[#DCFCE7] border border-emerald-100 relative overflow-hidden group`}>
-                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-200/20 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-125 transition-transform" />
-                    <div className="relative z-10">
-                        <div className="flex items-center gap-4 mb-6">
-                            <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-md border border-emerald-50">
-                                <Apple className="w-7 h-7 text-emerald-600" />
-                            </div>
-                            <div>
-                                <h3 className="text-xl font-bold text-[#1a1a1a]">{isHindi ? 'व्यक्तिगत आहार योजना' : 'Personalized Diet Plan'}</h3>
-                                <div className="flex items-center gap-1.5 mt-1">
-                                    <Sparkles className="w-3 h-3 text-emerald-600" />
-                                    <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">AI Curation Tool</span>
+                {!isProcessing && (
+                    <div className={`${glassCard} p-8 bg-gradient-to-br from-[#F0FDF4] to-[#DCFCE7] border border-emerald-100 relative overflow-hidden group`}>
+                        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-200/20 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-125 transition-transform" />
+                        <div className="relative z-10">
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-md border border-emerald-50">
+                                    <Apple className="w-7 h-7 text-emerald-600" />
+                                </div>
+                                <div>
+                                    <h3 className="text-xl font-bold text-[#1a1a1a]">{isHindi ? 'व्यक्तिगत आहार योजना' : 'Personalized Diet Plan'}</h3>
+                                    <div className="flex items-center gap-1.5 mt-1">
+                                        <Sparkles className="w-3 h-3 text-emerald-600" />
+                                        <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-widest">AI Curation Tool</span>
+                                    </div>
                                 </div>
                             </div>
+
+                            <p className="text-[#666666] text-sm leading-relaxed mb-8 font-medium">
+                                {isHindi 
+                                    ? 'अपनी रिपोर्ट के निष्कर्षों, फिटनेस लक्ष्यों और बीएमआई के आधार पर एक विस्तृत आहार योजना प्राप्त करें।' 
+                                    : "Get a comprehensive diet plan tailored to your report findings, fitness goals, and BMI analysis."}
+                            </p>
+
+                            <button
+                                onClick={() => navigate('/diet-plan')}
+                                className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-[1.25rem] font-bold text-sm uppercase tracking-widest shadow-lg shadow-emerald-100 hover:shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-3"
+                            >
+                                <UtensilsCrossed className="w-4 h-4" />
+                                {isHindi ? 'विशेष रूप से आपके लिए व्यक्तिगत आहार योजना देखें' : 'View personalized diet plan specially for you'}
+                            </button>
                         </div>
-
-                        <p className="text-[#666666] text-sm leading-relaxed mb-8 font-medium">
-                            {isHindi 
-                                ? 'अपनी रिपोर्ट के निष्कर्षों, फिटनेस लक्ष्यों और बीएमआई के आधार पर एक विस्तृत आहार योजना प्राप्त करें।' 
-                                : "Get a comprehensive diet plan tailored to your report findings, fitness goals, and BMI analysis."}
-                        </p>
-
-                        <button
-                            onClick={() => navigate('/diet-plan')}
-                            className="w-full py-4 bg-emerald-600 hover:bg-emerald-700 text-white rounded-[1.25rem] font-bold text-sm uppercase tracking-widest shadow-lg shadow-emerald-100 hover:shadow-xl transition-all active:scale-[0.98] flex items-center justify-center gap-3"
-                        >
-                            <UtensilsCrossed className="w-4 h-4" />
-                            {isHindi ? 'विशेष रूप से आपके लिए व्यक्तिगत आहार योजना देखें' : 'View personalized diet plan specially for you'}
-                        </button>
                     </div>
-                </div>
+                )}
 
 
                 {/* Health Tips */}
-                {(aiAnalysis?.recommendations?.lifestyle?.length > 0 || aiAnalysis?.dietPlan?.tips?.length > 0) && (
+                {!isProcessing && (aiAnalysis?.recommendations?.lifestyle?.length > 0 || aiAnalysis?.dietPlan?.tips?.length > 0) && (
                     <div className={`${glassCard} p-6 md:p-8 bg-gradient-to-br from-[#A795C7] to-[#715c99] border-none`}>
                         <div className="flex items-center gap-3 mb-6">
                             <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
