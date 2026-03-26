@@ -48,28 +48,31 @@ class DietRecommendationAI {
 
   async generatePersonalizedDietPlan(userData, promptExtension = '') {
     const { age, gender, weight, height, currentBMI, bmiGoal, activityLevel, nutritionGoals } = userData;
-    const prompt = `Indian Nutritionist. Create meal plan. 
-USER: ${age}y ${gender}, BMI ${currentBMI}, Goal: ${bmiGoal}, Activity: ${activityLevel}.
-JSON Structure:
+    const prompt = `Indian Clinical Nutritionist. Generate a 100% accurate JSON meal plan.
+STRUCTURE:
 {
   "dailyCalorieTarget": ${nutritionGoals?.dailyCalories || 2000},
   "mealPlan": {
-    "breakfast": [{"name": "", "description": "", "portionSize": "", "calories": 0, "protein": 0, "carbs": 0, "fats": 0}],
-    "midMorningSnack": [...], "lunch": [...], "eveningSnack": [...], "dinner": [...]
+    "breakfast": [{"name": "Poha", "portion": "1 cup", "calories": 250, "protein": 5, "carbs": 40, "fats": 7}],
+    "lunch": [{"name": "Dal Chawal", "portion": "2 roti + 1 bowl dal", "calories": 450, "protein": 15, "carbs": 60, "fats": 10}],
+    "snacks": [{"name": "Roasted Chana", "portion": "30g", "calories": 120, "protein": 6, "carbs": 20, "fats": 2}],
+    "dinner": [{"name": "Grilled Paneer/Chicken", "portion": "150g", "calories": 350, "protein": 25, "carbs": 10, "fats": 15}]
   }
-}`;
-    const systemMsg = "Clinical dietitian. Indian cuisine.";
+}
+USER: ${age}y ${gender}, BMI ${currentBMI}, Goal: ${bmiGoal}. Focus on Indian vegetarian/non-veg split based on preferences.`;
+
     try {
       const aiResponse = await this.makeAIRequest({
-        max_tokens: 3000,
-        system: systemMsg,
+        max_tokens: 2000,
+        system: "Expert Clinical Dietitian. Fast JSON output only.",
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.2
+        temperature: 0.1
       });
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
       return jsonMatch ? robustJsonParse(jsonMatch[0]) : null;
     } catch (error) { throw error; }
   }
+
 
   async generateSupplementRecommendations(userData) {
     const { deficiencies, age, gender } = userData;

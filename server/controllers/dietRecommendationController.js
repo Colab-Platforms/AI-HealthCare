@@ -327,8 +327,9 @@ exports.processDietBG = async (req, res) => {
   try {
     const { userId, dietPlanId, userData, promptEx } = req.body;
     console.log(`🔔 QStash diet callback received for plan ${dietPlanId}`);
-    res.status(202).json({ success: true });
     await processDietInternal(userId, dietPlanId, userData, promptEx);
+    res.status(200).json({ success: true, message: 'Diet plan generated successfully' });
+
   } catch (err) {
     console.error('QStash Diet Callback Error:', err.message);
     if (!res.headersSent) res.status(500).end();

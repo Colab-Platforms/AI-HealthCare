@@ -108,8 +108,9 @@ exports.processReportBG = async (req, res) => {
   try {
     const { userId, reportId, fileMimetype, extractedText } = req.body;
     console.log(`🔔 QStash callback received for report ${reportId}`);
-    res.status(202).json({ success: true });
     await processReportInternal(userId, reportId, fileMimetype, extractedText);
+    res.status(202).json({ success: true });
+
   } catch (err) {
     console.error('QStash Callback Error:', err.message);
     if (!res.headersSent) res.status(500).end();
