@@ -478,11 +478,12 @@ export default function DietPlan() {
 
   // --- Prioritize Profile Goals for Overview ---
   const dailyGoals = {
-    calories: user?.nutritionGoal?.calorieGoal || healthGoals?.dailyCalorieTarget || activePlan?.nutritionGoals?.dailyCalorieTarget || 2100,
-    protein: user?.nutritionGoal?.proteinGoal || healthGoals?.macroTargets?.protein || activePlan?.nutritionGoals?.macroTargets?.protein || 150,
-    carbs: user?.nutritionGoal?.carbsGoal || healthGoals?.macroTargets?.carbs || activePlan?.nutritionGoals?.macroTargets?.carbs || 200,
-    fats: user?.nutritionGoal?.fatGoal || healthGoals?.macroTargets?.fats || healthGoals?.macroTargets?.fat || activePlan?.nutritionGoals?.macroTargets?.fat || 65
+    calories: user?.nutritionGoal?.calorieGoal || healthGoals?.dailyCalorieTarget || dietPlan?.nutritionGoals?.dailyCalorieTarget || 2100,
+    protein: user?.nutritionGoal?.proteinGoal || healthGoals?.macroTargets?.protein || dietPlan?.nutritionGoals?.macroTargets?.protein || 150,
+    carbs: user?.nutritionGoal?.carbsGoal || healthGoals?.macroTargets?.carbs || dietPlan?.nutritionGoals?.macroTargets?.carbs || 200,
+    fats: user?.nutritionGoal?.fatGoal || healthGoals?.macroTargets?.fats || healthGoals?.macroTargets?.fat || dietPlan?.nutritionGoals?.macroTargets?.fat || 65
   };
+
 
   return (
     <div className="min-h-screen bg-transparent pb-32 px-4 md:px-6 lg:px-12 pt-2 md:pt-8">
