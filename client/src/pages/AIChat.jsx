@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Send, Bot, User, Loader2, Copy, Check, Trash2, Menu, X, Bell, Sparkles, ArrowLeft, MoreVertical, MessageSquare, ShieldCheck, History } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -39,8 +40,21 @@ export default function AIChat() {
   const [copiedIndex, setCopiedIndex] = useState(null);
   const [userReports, setUserReports] = useState([]);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [loaderMessageIndex, setLoaderMessageIndex] = useState(0);
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
+
+  // Rotate loader messages during analysis
+  useEffect(() => {
+    let interval;
+    if (loading) {
+      interval = setInterval(() => {
+        setLoaderMessageIndex(prev => (prev + 1) % 3);
+      }, 2000);
+    }
+    return () => clearInterval(interval);
+  }, [loading]);
+
 
   useEffect(() => {
     const fetchUserReports = async () => {
@@ -278,12 +292,32 @@ export default function AIChat() {
                       {streamingText}
                       <span className="inline-block w-1.5 h-4 ml-1 bg-black animate-pulse"></span>
                     </div>
-                  ) : (
-                    <div className="flex items-center gap-3 h-full">
-                      <Loader2 className="w-4 h-4 animate-spin text-black" />
-                      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Synthesizing...</span>
-                    </div>
-                  )}
+                      ) : (
+                        <div className="flex items-center gap-4 py-2">
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            className="w-4 h-4 rounded-full border-2 border-slate-200 border-t-black"
+                          />
+                          <div className="flex flex-col">
+                            <motion.span 
+                              key={loaderMessageIndex}
+                              initial={{ opacity: 0, y: 5 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="text-[10px] md:text-sm font-black uppercase tracking-[0.2em] text-slate-600"
+                            >
+                              {[
+                                "Medical Coach Analyzing...",
+                                "Reviewing Health Reports...",
+                                "Optimizing Recommendations..."
+                              ][loaderMessageIndex]}
+                            </motion.span>
+                            <span className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Clinical Intelligence Active</span>
+                          </div>
+
+                        </div>
+                      )}
+
                 </div>
               </div>
             </div>
