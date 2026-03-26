@@ -236,18 +236,25 @@ export const DataProvider = ({ children }) => {
     }
   }, []);
 
-  const invalidateCache = useCallback((keys = []) => {
+  const invalidateCache = useCallback(async (keys = []) => {
     if (keys.length === 0) {
       cache.clear();
     } else {
       keys.forEach(key => cache.delete(key));
     }
     
-    // Refresh relevant data if currently in memory
-    if (keys.length === 0 || keys.includes('dashboard')) fetchDashboard(true);
-    if (keys.length === 0 || keys.includes('wearable')) fetchWearable(true);
-    if (keys.length === 0 || keys.includes('diet_plan')) fetchDietPlan(true);
+    // Refresh relevant data if currently in memory - AWAIT these to ensure cache is updated before triggerRefresh
+    const promises = [];
+    if (keys.length === 0 || keys.includes('dashboard')) promises.push(fetchDashboard(true));
+    if (keys.length === 0 || keys.includes('wearable')) promises.push(fetchWearable(true));
+    if (keys.length === 0 || keys.includes('diet_plan')) promises.push(fetchDietPlan(true));
+    
+    await Promise.allSettled(promises);
+    
+    // Always trigger refresh after clearing/updating cache
+    setDataRefreshTrigger(prev => prev + 1);
   }, [fetchDashboard, fetchWearable, fetchDietPlan]);
+
 
   const clearAllData = useCallback(() => {
     cache.clear();
@@ -293,15 +300,14 @@ export const DataProvider = ({ children }) => {
       const completed = results.filter(r => r.status === 'completed' || r.status === 'failed');
       
       if (completed.length > 0) {
-        completed.forEach(report => {
+        completed.forEach(async (report) => {
           if (report.status === 'completed') {
             toast.success('Report analysis completed!', {
               duration: 4000,
               icon: '📋',
-              id: `completed-${report.id}` // Unique ID to prevent duplicates
+              id: `completed-${report.id}`
             });
-            invalidateCache(['dashboard', 'diet_plan']);
-            triggerRefresh(); // Notify other components to refresh their local lists
+            await invalidateCache(['dashboard', 'diet_plan']);
           } else if (report.status === 'failed') {
             toast.error('Report analysis failed. Please try again.', { id: `failed-${report.id}` });
           }
@@ -310,6 +316,7 @@ export const DataProvider = ({ children }) => {
         setPendingAnalysisIds(prev => prev.filter(id => !completed.find(c => c.id === id)));
       }
     }, 5000);
+
 
     return () => clearInterval(pollInterval);
   }, [pendingAnalysisIds, invalidateCache, triggerRefresh]);
@@ -342,15 +349,14 @@ export const DataProvider = ({ children }) => {
       const completed = results.filter(r => r.status === 'completed' || r.status === 'failed');
       
       if (completed.length > 0) {
-        completed.forEach(plan => {
+        completed.forEach(async (plan) => {
           if (plan.status === 'completed') {
             toast.success('Diet plan generated successfully!', {
               duration: 4000,
               icon: '🍽️',
               id: `completed-diet-${plan.id}`
             });
-            invalidateCache(['diet_plan', 'dashboard']);
-            triggerRefresh(); 
+            await invalidateCache(['diet_plan', 'dashboard']);
           } else if (plan.status === 'failed') {
             toast.error('Diet plan generation failed.', { id: `failed-diet-${plan.id}` });
           }
@@ -359,6 +365,7 @@ export const DataProvider = ({ children }) => {
         setPendingDietPlanIds(prev => prev.filter(id => !completed.find(c => c.id === id)));
       }
     }, 5000);
+
 
     return () => clearInterval(pollInterval);
   }, [pendingDietPlanIds, invalidateCache, triggerRefresh]);

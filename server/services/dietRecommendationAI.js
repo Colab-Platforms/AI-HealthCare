@@ -54,16 +54,17 @@ STRUCTURE:
   "dailyCalorieTarget": ${nutritionGoals?.dailyCalories || 2000},
   "mealPlan": {
     "breakfast": [{"name": "Poha", "portion": "1 cup", "calories": 250, "protein": 5, "carbs": 40, "fats": 7}],
+    "midMorningSnack": [{"name": "Fruit/Nuts", "portion": "small bowl", "calories": 100, "protein": 2, "carbs": 15, "fats": 5}],
     "lunch": [{"name": "Dal Chawal", "portion": "2 roti + 1 bowl dal", "calories": 450, "protein": 15, "carbs": 60, "fats": 10}],
-    "snacks": [{"name": "Roasted Chana", "portion": "30g", "calories": 120, "protein": 6, "carbs": 20, "fats": 2}],
+    "eveningSnack": [{"name": "Tea/Makhana", "portion": "1 cup", "calories": 80, "protein": 2, "carbs": 10, "fats": 3}],
     "dinner": [{"name": "Grilled Paneer/Chicken", "portion": "150g", "calories": 350, "protein": 25, "carbs": 10, "fats": 15}]
   }
 }
-USER: ${age}y ${gender}, BMI ${currentBMI}, Goal: ${bmiGoal}. Focus on Indian vegetarian/non-veg split based on preferences.`;
+USER: ${age}y ${gender}, BMI ${currentBMI}, Goal: ${bmiGoal}. Focus on Indian split based on preferences. Output 1-2 options per meal.`;
 
     try {
       const aiResponse = await this.makeAIRequest({
-        max_tokens: 2000,
+        max_tokens: 3000,
         system: "Expert Clinical Dietitian. Fast JSON output only.",
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.1
@@ -72,6 +73,7 @@ USER: ${age}y ${gender}, BMI ${currentBMI}, Goal: ${bmiGoal}. Focus on Indian ve
       return jsonMatch ? robustJsonParse(jsonMatch[0]) : null;
     } catch (error) { throw error; }
   }
+
 
 
   async generateSupplementRecommendations(userData) {
