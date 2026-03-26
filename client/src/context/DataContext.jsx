@@ -15,7 +15,7 @@ export const useData = () => {
 };
 
 export const DataProvider = ({ children }) => {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   
   // Initialize states from cache to prevent "loading every time" flash
   const [dashboardData, setDashboardData] = useState(() => cache.get('dashboard'));
@@ -36,10 +36,10 @@ export const DataProvider = ({ children }) => {
     goals: false
   });
 
-  // Clear all data when user changes (login/logout/register)
+  // Clear all data only when user is CONFIRMED logged out (not just loading)
   useEffect(() => {
-    if (!user) {
-      // User logged out or not authenticated
+    if (!authLoading && !user) {
+      // User explicitly logged out or not authenticated
       cache.clear();
       setDashboardData(null);
       setWearableData(null);
@@ -48,7 +48,8 @@ export const DataProvider = ({ children }) => {
       setWeeklyTrends(null);
       setHealthGoals(null);
     }
-  }, [user?.id]); // Only trigger when user ID changes
+  }, [user?.id, authLoading]); 
+
 
   // Fetch dashboard data with caching
   const fetchDashboard = useCallback(async (forceRefresh = false) => {
@@ -63,8 +64,9 @@ export const DataProvider = ({ children }) => {
 
     setLoading(prev => ({ ...prev, dashboard: true }));
     try {
-      const response = await healthService.getDashboard();
+      const response = await healthService.getDashboard({ params: forceRefresh ? { t: Date.now() } : {} });
       const data = response.data;
+
       setDashboardData(data);
       cache.set('dashboard', data, 10 * 60 * 1000); // Cache for 10 minutes
       return data;
@@ -224,13 +226,16 @@ export const DataProvider = ({ children }) => {
 
     try {
       const { dietRecommendationService } = await import('../services/api');
-      const { data } = await dietRecommendationService.getActiveDietPlan();
+      const { data } = await dietRecommendationService.getActiveDietPlan({ 
+        params: forceRefresh ? { t: Date.now() } : {} 
+      });
       if (data.success && data.dietPlan) {
         cache.set('diet_plan', data.dietPlan, 15 * 60 * 1000); // Cache for 15 minutes
         return data.dietPlan;
       }
       return null;
     } catch (error) {
+
       console.error('Failed to fetch diet plan:', error);
       return null;
     }
@@ -300,7 +305,7 @@ export const DataProvider = ({ children }) => {
       const completed = results.filter(r => r.status === 'completed' || r.status === 'failed');
       
       if (completed.length > 0) {
-        completed.forEach(async (report) => {
+        for (const report of completed) {
           if (report.status === 'completed') {
             toast.success('Report analysis completed!', {
               duration: 4000,
@@ -311,11 +316,12 @@ export const DataProvider = ({ children }) => {
           } else if (report.status === 'failed') {
             toast.error('Report analysis failed. Please try again.', { id: `failed-${report.id}` });
           }
-        });
+        }
 
         setPendingAnalysisIds(prev => prev.filter(id => !completed.find(c => c.id === id)));
       }
     }, 5000);
+
 
 
     return () => clearInterval(pollInterval);
@@ -349,7 +355,7 @@ export const DataProvider = ({ children }) => {
       const completed = results.filter(r => r.status === 'completed' || r.status === 'failed');
       
       if (completed.length > 0) {
-        completed.forEach(async (plan) => {
+        for (const plan of completed) {
           if (plan.status === 'completed') {
             toast.success('Diet plan generated successfully!', {
               duration: 4000,
@@ -360,11 +366,12 @@ export const DataProvider = ({ children }) => {
           } else if (plan.status === 'failed') {
             toast.error('Diet plan generation failed.', { id: `failed-diet-${plan.id}` });
           }
-        });
+        }
 
         setPendingDietPlanIds(prev => prev.filter(id => !completed.find(c => c.id === id)));
       }
     }, 5000);
+
 
 
     return () => clearInterval(pollInterval);

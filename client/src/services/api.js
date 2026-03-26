@@ -129,7 +129,7 @@ export const healthService = {
   getReport: (id) => api.get(`health/reports/${id}`),
   getReportStatus: (id) => api.get(`health/reports/${id}/status`),
   deleteReport: (id) => api.delete(`health/reports/${id}`),
-  getDashboard: () => api.get('health/dashboard'),
+  getDashboard: (config) => api.get('health/dashboard', config),
   getHistory: (reportType) => api.get('health/history', { params: { reportType } }),
   compareReport: (id) => api.get(`health/reports/${id}/compare`),
   chatAboutReport: (id, message, chatHistory) => api.post(`health/reports/${id}/chat`, { message, chatHistory }),
@@ -267,7 +267,8 @@ export const nutritionService = {
 
 export const dietRecommendationService = {
   generateDietPlan: (data) => api.post('diet-recommendations/diet-plan/generate', data),
-  getActiveDietPlan: () => api.get('diet-recommendations/diet-plan/active'),
+  getActiveDietPlan: (config) => api.get('diet-recommendations/diet-plan/active', config),
+
   getDietPlanHistory: () => api.get('diet-recommendations/diet-plan/history'),
   getDietPlanById: (planId) => api.get(`diet-recommendations/diet-plan/${planId}`),
   getDietPlanStatus: (planId) => api.get(`diet-recommendations/diet-plan/${planId}/status`),
