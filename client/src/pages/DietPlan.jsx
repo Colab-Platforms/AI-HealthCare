@@ -236,6 +236,7 @@ export default function DietPlan() {
   const { 
     invalidateCache, 
     fetchDietPlan, 
+    setDietPlan,
     fetchNutritionLogs, 
     fetchHealthGoals,
     addPendingDietPlan,
@@ -248,7 +249,9 @@ export default function DietPlan() {
 
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState([]);
+  const [showHistory, setShowHistory] = useState(false);
   const [generating, setGenerating] = useState(false);
+
   const [showPreferences, setShowPreferences] = useState(false);
   const [showRegenOptions, setShowRegenOptions] = useState(false);
   const [prefMode, setPrefMode] = useState('save');
@@ -332,13 +335,13 @@ export default function DietPlan() {
       setLoading(true);
       const { data } = await dietRecommendationService.getDietPlanById(planId);
       if (data.success) {
-        // setActivePlan(data.dietPlan); // This line is removed as per the instruction to use dietPlan from context
-        // The fetchDietPlan() call in loadInitialData() will update the context's dietPlan
-        // For now, we'll just rely on the context update. If direct setting is needed, it would be `setDietPlan(data.dietPlan)`
+        setDietPlan(data.dietPlan);
+        setShowHistory(false);
         toast.success('Loaded past plan');
       }
     } catch (err) {
-      toast.error('Failed to load plan');
+      console.error("Error loading selected plan:", err);
+      toast.error('Failed to load selected plan');
     } finally {
       setLoading(false);
     }

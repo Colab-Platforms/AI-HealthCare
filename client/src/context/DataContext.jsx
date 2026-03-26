@@ -408,12 +408,14 @@ export const DataProvider = ({ children }) => {
     fetchWeeklyTrends,
     fetchHealthGoals,
     fetchDietPlan,
+    setDietPlan,
     invalidateCache,
     addPendingAnalysis,
     addPendingDietPlan,
     triggerRefresh,
     clearAllData
   };
+
 
   return <DataContext.Provider value={value}>{children}</DataContext.Provider>;
 };
