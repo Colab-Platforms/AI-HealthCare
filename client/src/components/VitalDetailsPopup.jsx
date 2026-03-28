@@ -63,7 +63,7 @@ export default function VitalDetailsPopup({ vital, onClose, initialLanguage = 'e
 
   // Merge data sources
   const data = {
-    role: translate(whatItDoes || aiInfo?.whatIsIt || description || 'Information not available.'),
+    role: translate(whatItDoes || aiInfo?.whatItDoes || aiInfo?.whatIsIt || description || 'Information not available.'),
     impact: translate(lowHighImpact || aiInfo?.significance || (status !== 'normal' ? aiInfo?.interpretation : null) || 'No significant issues detected.'),
     foods: (topFoods.length > 0 ? topFoods : (aiInfo?.dietaryTips || foodsToConsume || [])).map(f => translate(f)),
     relatableSymptoms: (symptoms.length > 0 ? symptoms : (aiInfo?.symptoms || [])).map(s => translate(s)),

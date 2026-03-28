@@ -52,7 +52,9 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
     if (aiAnalysis.patientAge) updatedReport.patientAge = Number(aiAnalysis.patientAge);
     if (aiAnalysis.patientGender) updatedReport.patientGender = aiAnalysis.patientGender.trim();
 
+    updatedReport.markModified('aiAnalysis');
     await updatedReport.save();
+    console.log(`✅ [BG] Report saved. Metrics count: ${Object.keys(aiAnalysis.metrics || {}).length}`);
 
     // Invalidate caches
     await cache.delete(`reports:${userId}`);
@@ -92,6 +94,22 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
     catch (e) { console.warn('Email failed:', e.message); }
 
     console.log(`✅ [BG] Analysis complete for ${reportId}`);
+
+    // 🚀 Auto-trigger diet plan generation after successful report analysis
+    try {
+      const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
+      const existingPlan = await PersonalizedDietPlan.findOne({ userId, isActive: true });
+      if (!existingPlan) {
+        console.log('[BG] No active diet plan found. Auto-generating based on new report...');
+        // Trigger diet generation in background (non-blocking)
+        const { generateDietAfterReport } = require('./dietRecommendationController');
+        if (generateDietAfterReport) {
+          setImmediate(() => generateDietAfterReport(userId).catch(e => console.warn('[BG] Auto-diet failed:', e.message)));
+        }
+      }
+    } catch (dietErr) {
+      console.warn('[BG] Auto-diet trigger skipped:', dietErr.message);
+    }
   } catch (error) {
     console.error(`❌ [BG] Analysis failed for ${reportId}:`, error.message);
     await HealthReport.findByIdAndUpdate(reportId, {

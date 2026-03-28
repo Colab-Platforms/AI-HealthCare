@@ -17,7 +17,7 @@ const healthReportSchema = new mongoose.Schema({
     metrics: mongoose.Schema.Types.Mixed,
     deficiencies: [{
       name: String,
-      severity: { type: String, enum: ['mild', 'moderate', 'severe', 'low', 'high'] },
+      severity: { type: String, enum: ['mild', 'moderate', 'severe', 'low', 'high', 'mild-moderate', 'moderate-severe'] },
       currentValue: String,
       normalRange: String,
       symptoms: [String]
@@ -117,14 +117,17 @@ healthReportSchema.pre('save', function (next) {
     if (Array.isArray(this.aiAnalysis.deficiencies)) {
       this.aiAnalysis.deficiencies.forEach(def => {
         if (def.severity) {
-          const sev = def.severity.toLowerCase();
+          const sev = def.severity.toLowerCase().trim();
           if (sev === 'high' || sev === 'urgent') def.severity = 'severe';
           else if (sev === 'low' || sev === 'minor') def.severity = 'mild';
-          else if (!['mild', 'moderate', 'severe'].includes(sev)) def.severity = 'moderate';
+          else if (sev.includes('mild') && sev.includes('mod')) def.severity = 'mild-moderate';
+          else if (sev.includes('mod') && sev.includes('sev')) def.severity = 'moderate-severe';
+          else if (!['mild', 'moderate', 'severe', 'mild-moderate', 'moderate-severe'].includes(sev)) def.severity = 'moderate';
         } else {
           def.severity = 'moderate';
         }
       });
+      this.markModified('aiAnalysis.deficiencies');
     }
 
     // Fix supplements - check if it's an array of strings instead of objects

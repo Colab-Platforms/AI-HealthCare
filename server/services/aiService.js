@@ -3,9 +3,9 @@ const { robustJsonParse } = require('../utils/aiParser');
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
-// 🚨 USER SPECIFIC MODEL - The user insists on using 'claude-sonnet-4-6'
+// 🚨 USER SPECIFIC MODEL - The user insists on using 'claude-sonnet-4-6' for EVERYTHING
 const CLAUDE_MODEL = 'claude-sonnet-4-6'; 
-const CLAUDE_HAIKU_MODEL = 'claude-3-5-haiku-latest';
+const CLAUDE_HAIKU_MODEL = 'claude-sonnet-4-6';
 
 const makeAnthropicRequest = async (messages, maxTokens = 4096, modelOverride = null) => {
   try {
@@ -57,7 +57,7 @@ const makeAnthropicRequest = async (messages, maxTokens = 4096, modelOverride = 
   }
 };
 
-const HEALTH_ANALYSIS_PROMPT = `Analyze this health report as an expert medical AI. 
+const HEALTH_ANALYSIS_PROMPT = `Analyze this health report as an expert medical AI. You MUST extract EVERY SINGLE health marker, lab result, and medical observation found in the report text without exception.
 STRUCTURE:
 {
   "patientName": "Name",
@@ -72,13 +72,19 @@ STRUCTURE:
       "unit": "unit", 
       "status": "normal/high/low", 
       "normalRange": "range",
-      "whatIsThis": "meaning"
+      "whatIsThis": "1-line definition of this marker",
+      "whatItDoes": "Detailed role this marker plays in the body",
+      "lowHighImpact": "What it means when this value is low or high for health",
+      "topFoods": ["Food1", "Food2", "Food3"],
+      "symptoms": ["Symptom1", "Symptom2"]
     }
   },
-  "deficiencies": [{"name": "Vit D", "severity": "mod"}],
+  "deficiencies": [{"name": "Vit D", "severity": "mild/moderate/severe"}],
   "recommendations": {"immediate": [], "lifestyle": []},
   "doctorConsultation": {"recommended": true, "urgency": "low", "specializations": ["Specialist"]}
-}`;
+}
+CRITICAL: Extraction is your priority. Scan the entire report text and populate the "metrics" object with ALL found markers. For EACH metric, you MUST fill in whatIsThis, whatItDoes, lowHighImpact, topFoods, and symptoms.
+IMPORTANT: Deficiency "severity" MUST be one of: "mild", "moderate", "severe".`;
 
 exports.analyzeHealthReport = async (reportText, user = {}, imageData = null, reportType = 'general') => {
   try {
@@ -97,7 +103,7 @@ exports.analyzeHealthReport = async (reportText, user = {}, imageData = null, re
     }
 
     const messages = [{ role: 'system', content: HEALTH_ANALYSIS_PROMPT }, { role: 'user', content: userContent }];
-    const content = await makeAnthropicRequest(messages, 4000); // 4000 tokens sufficient for report
+    const content = await makeAnthropicRequest(messages, 8000); // 8000 tokens for comprehensive extraction
 
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('AI format invalid');
@@ -125,11 +131,27 @@ exports.chatWithReport = async (report, message, chatHistory) => {
 
 exports.generateMetricInfo = async (metricName, metricValue, normalRange, unit) => {
   try {
-    const prompt = `Explain "${metricName}". JSON: {"en": {"whatIsIt": ""}}`;
-    const content = await makeAnthropicRequest([{ role: 'user', content: prompt }], 800, CLAUDE_HAIKU_MODEL);
+    const prompt = `Provide a professional medical explanation for the health metric "${metricName}" with a current value of ${metricValue} ${unit} (Normal Range: ${normalRange}). 
+    
+    Return ONLY a JSON object with this structure:
+    {
+      "en": {
+        "whatIsIt": "A concise 1-sentence medical definition.",
+        "whatItDoes": "Detailed explanation of its physiological role.",
+        "significance": "What the current status (${metricValue} ${unit}) specifically means for health.",
+        "dietaryTips": ["Food 1", "Food 2", "Food 3"],
+        "symptoms": ["Symptom 1", "Symptom 2"],
+        "actions": ["Action 1", "Action 2"]
+      }
+    }`;
+    
+    const content = await makeAnthropicRequest([{ role: 'user', content: prompt }], 1200, CLAUDE_HAIKU_MODEL);
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     return jsonMatch ? robustJsonParse(jsonMatch[0]) : null;
-  } catch (e) { return null; }
+  } catch (e) { 
+    console.error('generateMetricInfo error:', e);
+    return null; 
+  }
 };
 
 exports.generateVitalsInsights = async (metricType, history, user) => {
