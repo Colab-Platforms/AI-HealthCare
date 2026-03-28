@@ -18,7 +18,8 @@ const {
   syncDailyProgress,
   getDailyProgress,
   getVitalsInsights,
-  processReportBG
+  processReportBG,
+  getHealthDNA
 } = require('../controllers/healthController');
 const { protect } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -42,6 +43,9 @@ router.get('/challenge', protect, getChallengeData);
 // Daily Progress Synchronization Routes
 router.post('/daily-progress', protect, syncDailyProgress);
 router.get('/daily-progress/:date', protect, getDailyProgress);
+
+// Health DNA Profile
+router.get('/health-dna', protect, getHealthDNA);
 
 // AI Vitals Insights
 router.get('/vitals-insights/:metricType', protect, getVitalsInsights);

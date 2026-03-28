@@ -7,10 +7,11 @@ import {
   Search, Sun, Clock, Heart, Apple, Info, Target, Calendar,
   ArrowUpRight, Upload, Coffee, Dumbbell, MessageCircle, BarChart3,
   Circle, Smile, FlaskConical, Leaf, Pill, CheckCircle2, Zap, Eye,
-  UtensilsCrossed, UploadCloud, ShieldCheck, AlertTriangle, Check
+  UtensilsCrossed, UploadCloud, ShieldCheck, AlertTriangle, Check, Dna
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Link, useNavigate } from 'react-router-dom';
+import { Joyride, STATUS } from 'react-joyride';
 import DashboardSkeleton from '../components/skeletons/DashboardSkeleton';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
@@ -362,7 +363,7 @@ const MealDetailModal = ({ meal, onClose, onAdd }) => {
   const data = aiData || {
     foodItem: {
       name: meal.name,
-      quantity: meal.quantity || '1 serving',
+      quantity: meal.portionSize || meal.quantity || '1 serving',
       nutrition: {
         calories: meal.calories || 0,
         protein: meal.protein || 0,
@@ -543,6 +544,109 @@ export default function DashboardEnhanced() {
   const [activeDiabetesTab, setActiveDiabetesTab] = useState('Fasting');
   const [activeTrendTab, setActiveTrendTab] = useState('Calories');
   const [scrollProgress, setScrollProgress] = useState(0);
+
+  // Joyride Tour State
+  const [runTour, setRunTour] = useState(false);
+  const [tourSteps] = useState([
+    {
+      target: '.tour-profile',
+      content: 'Tap your profile here anytime to set your core fitness and hydration goals.',
+      disableBeacon: true,
+      placement: 'bottom',
+    },
+    {
+      target: '.tour-nutrient-info',
+      content: 'Track your daily macros, micros, and live diet goals here. Swipe left to see more cards!',
+      disableBeacon: true,
+      placement: 'bottom',
+    },
+    {
+      target: '.tour-diet-plan',
+      content: 'Your AI-generated daily meal schedule appears here based on your fitness goals.',
+      disableBeacon: true,
+      placement: 'bottom',
+    },
+    {
+      target: '.tour-ai-insights',
+      content: 'Upload your medical reports here to get deep AI Lab Insights instantly.',
+      disableBeacon: true,
+      placement: 'bottom',
+    },
+    {
+      target: '.tour-health-profile',
+      content: 'Tap here to unlock your full AI-generated Health Archetype and medical summary.',
+      disableBeacon: true,
+      placement: 'top',
+    },
+    {
+      target: '.tour-logged-meals',
+      content: 'All your tracked meals appear here. Keep eating healthy to hit your targets!',
+      disableBeacon: true,
+      placement: 'top',
+    },
+    {
+      target: '.nav-center-fab',
+      content: 'The action hub! Tap this bold button to quick-log your meals, sleep, steps, and water intake.',
+      disableBeacon: true,
+      placement: 'top',
+    },
+    {
+      target: '.mobile-bottom-nav-container',
+      content: 'Navigate between your Dashboard, Nutrition, and Medical Reports swiftly using these tabs.',
+      disableBeacon: true,
+      placement: 'top',
+    }
+  ]);
+
+  useEffect(() => {
+    if (user?._id) {
+      const hasSeenTour = localStorage.getItem(`hasSeenMobileTour_${user._id}`);
+      if (!hasSeenTour) {
+        setRunTour(true);
+      }
+    }
+  }, [user?._id]);
+
+  const handleJoyrideCallback = (data) => {
+    const { status, type, step } = data;
+    const finishedStatuses = [STATUS.FINISHED, STATUS.SKIPPED];
+    
+    if (finishedStatuses.includes(status)) {
+      setRunTour(false);
+      if (user?._id) {
+        localStorage.setItem(`hasSeenMobileTour_${user._id}`, 'true');
+      }
+      return;
+    }
+
+    // Bulletproof manual scroll injection on step preparation and tooltip mount
+    if (type === 'step:before' || type === 'tooltip') {
+      setTimeout(() => {
+        // 1. Execute horizontal snap logic based on target
+        if (step?.target && ['.tour-nutrient-info', '.tour-diet-plan', '.tour-ai-insights'].includes(step.target)) {
+          if (scrollContainerRef.current) {
+            const leftScroll = step.target === '.tour-nutrient-info' ? 0 
+              : step.target === '.tour-diet-plan' ? window.innerWidth * 0.85 
+              : window.innerWidth * 1.7;
+            scrollContainerRef.current.scrollTo({ left: leftScroll, behavior: 'smooth' });
+          }
+        }
+        
+        // 2. Absolute mathematical vertical alignment targeting the center
+        if (step?.target) {
+          const targetEl = document.querySelector(step.target);
+          if (targetEl) {
+            const bodyRect = document.body.getBoundingClientRect().top;
+            const elementRect = targetEl.getBoundingClientRect().top;
+            const elementPosition = elementRect - bodyRect;
+            const yOffset = elementPosition - (window.innerHeight / 2) + (targetEl.clientHeight / 2);
+            
+            window.scrollTo({ top: Math.max(0, yOffset), behavior: 'smooth' });
+          }
+        }
+      }, 50);
+    }
+  };
 
 
   const [completedTasks, setCompletedTasks] = useState(() => {
@@ -831,8 +935,23 @@ export default function DashboardEnhanced() {
   console.log('Rendering Dashboard', { hasData: !!dashboardData, isDiabetic });
   return (
     <div className="min-h-screen bg-[linear-gradient(to_bottom,#F2F5EC_0%,#EFF2E9_25%,#EBF0E6_50%,#E8EDE3_75%,#E5EBE0_100%)] text-[#064e3b] font-sans selection:bg-emerald-100 selection:text-emerald-900 overflow-x-hidden pb-12">
+      <Joyride
+        steps={tourSteps}
+        run={runTour}
+        continuous={true}
+        showSkipButton={true}
+        showProgress={true}
+        scrollToFirstStep={false}
+        disableScrolling={true}
+        callback={handleJoyrideCallback}
+        styles={{
+          options: {
+            primaryColor: '#064e3b',
+            zIndex: 10000,
+          }
+        }}
+      />
       <div className="max-w-7xl mx-auto px-0 md:px-8">
-
 
       {/* Header */}
       <motion.div
@@ -840,14 +959,13 @@ export default function DashboardEnhanced() {
         animate={{ opacity: 1, y: 0 }}
         className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-6 md:mb-16 pt-0 md:pt-4"
       >
-        <div className="flex items-center justify-between gap-4 md:block px-4 md:px-0 w-full md:w-auto">
+        <div className="flex items-center justify-between gap-4 w-full md:w-auto px-4 md:px-0">
           <div>
             <h1 className="text-2xl md:text-5xl font-light tracking-tight text-[#064e3b] whitespace-nowrap">
               {getGreeting()}, <span className="font-medium">{user?.name?.split(' ')[0] || 'Mike'}!</span>
             </h1>
             <p className="text-[#065f46] mt-0.5 md:mt-2 text-[13px] md:text-lg">Let's make this day productive.</p>
           </div>
-
         </div>
         <div className="hidden lg:flex items-center gap-2 lg:gap-3 pb-2 lg:pb-0 w-full lg:w-auto">
           <button onClick={() => navigate('/nutrition', { state: { openLogMeal: true, mealType: 'Breakfast' } })} className="flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-1 py-3 lg:px-6 bg-white/60 backdrop-blur-md rounded-[20px] lg:rounded-full text-[9px] lg:text-sm font-black text-[#1a1a1a] hover:bg-white transition-all border border-white/60 shadow-sm">
@@ -881,7 +999,7 @@ export default function DashboardEnhanced() {
             zIndex: 10 - Math.round(Math.abs(0 - activeIndex)),
             opacity: typeof window !== 'undefined' && window.innerWidth < 1024 ? 1 - (Math.abs(0 - activeIndex) * 0.2) : 1
           }}
-          className="min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2rem] pt-5 px-5 pb-2 lg:p-8 border border-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-auto min-h-[280px] lg:h-full relative overflow-hidden group"
+          className="tour-nutrient-info min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2rem] pt-5 px-5 pb-2 lg:p-8 border border-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-auto min-h-[280px] lg:h-full relative overflow-hidden group"
         >
           <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
 
@@ -1098,7 +1216,7 @@ export default function DashboardEnhanced() {
             zIndex: 10 - Math.round(Math.abs(1 - activeIndex)),
             opacity: typeof window !== 'undefined' && window.innerWidth < 1024 ? 1 - (Math.abs(1 - activeIndex) * 0.2) : 1
           }}
-          className="min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2rem] p-4 lg:p-8 border border-slate-100 shadow-sm flex flex-col h-[340px] lg:h-full overflow-hidden"
+          className="tour-diet-plan min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2rem] p-4 lg:p-8 border border-slate-100 shadow-sm flex flex-col h-[340px] lg:h-full overflow-hidden"
         >
           <div className="flex items-center justify-between gap-2 mb-5 flex-nowrap overflow-hidden">
             <h2 className="text-base sm:text-xl font-black text-[#064e3b] whitespace-nowrap truncate">Today's Diet Plan</h2>
@@ -1131,11 +1249,19 @@ export default function DashboardEnhanced() {
 
           {(!dietPlan || !dietPlan.mealPlan) ? (
             <div className="flex-1 flex flex-col items-center justify-center text-center p-4 lg:p-6 bg-emerald-50/20 rounded-[2rem] mb-6 border border-emerald-100/30">
-              <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
-                <Target className="w-7 h-7 text-emerald-400" />
-              </div>
-              {!user?.nutritionGoal?.calorieGoal ? (
+              {dietPlan?.status === 'generating' ? (
                 <>
+                  <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
+                    <Clock className="w-7 h-7 text-emerald-400 animate-spin" />
+                  </div>
+                  <p className="text-sm font-black text-[#064e3b] uppercase tracking-widest mb-1">Generating Plan</p>
+                  <p className="text-[10px] font-bold text-emerald-800/40 mb-4 max-w-[200px] leading-relaxed uppercase tracking-widest">AI is crafting your personalized meals for the day...</p>
+                </>
+              ) : !user?.nutritionGoal?.calorieGoal ? (
+                <>
+                  <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
+                    <Target className="w-7 h-7 text-emerald-400" />
+                  </div>
                   <p className="text-sm font-black text-[#064e3b] uppercase tracking-widest mb-1">Goal Required</p>
                   <p className="text-[10px] font-bold text-emerald-800/40 mb-4 max-w-[200px] leading-relaxed uppercase tracking-widest">Set your fitness goal to unlock your personalized plan</p>
                   <button
@@ -1147,6 +1273,9 @@ export default function DashboardEnhanced() {
                 </>
               ) : (
                 <>
+                  <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
+                    <Target className="w-7 h-7 text-emerald-400" />
+                  </div>
                   <p className="text-sm font-black text-[#064e3b] uppercase tracking-widest mb-1">Plan Ready</p>
                   <p className="text-[10px] font-bold text-emerald-800/40 mb-4 max-w-[200px] leading-relaxed uppercase tracking-widest">Your goal is set! Now generate your personalized diet plan</p>
                   <button
@@ -1166,7 +1295,10 @@ export default function DashboardEnhanced() {
                   <div key={idx} className={`p-2 lg:p-4 rounded-xl lg:rounded-2xl flex items-center justify-between gap-2 transition-all ${isLogged ? 'bg-emerald-50/50 border border-emerald-100/50' : 'bg-slate-50'}`}>
                     <div className="flex items-center gap-2 lg:gap-3">
                       <div className={`w-1.5 h-1.5 rounded-full ${isLogged ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-[#1A1A1A]'}`} />
-                      <span className={`text-[10px] lg:text-sm font-medium lg:font-semibold ${isLogged ? 'text-emerald-900' : 'text-black'}`}>{item?.name || item?.foodItems?.[0]?.name}</span>
+                      <span className={`text-[10px] lg:text-sm font-medium lg:font-semibold ${isLogged ? 'text-emerald-900' : 'text-black'}`}>
+                        {item?.name || item?.foodItems?.[0]?.name}
+                        {item?.portionSize && <span className="ml-2 text-slate-400 font-normal">({item.portionSize})</span>}
+                      </span>
                     </div>
                     {isLogged && (
                       <div className="flex items-center gap-1 bg-emerald-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tight">
@@ -1200,7 +1332,7 @@ export default function DashboardEnhanced() {
             zIndex: 10 - Math.round(Math.abs(2 - activeIndex)),
             opacity: typeof window !== 'undefined' && window.innerWidth < 1024 ? 1 - (Math.abs(2 - activeIndex) * 0.2) : 1
           }}
-          className="min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2rem] p-4 lg:p-8 border border-slate-100 shadow-sm flex flex-col h-[340px] lg:h-full overflow-hidden"
+          className="tour-ai-insights min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2rem] p-4 lg:p-8 border border-slate-100 shadow-sm flex flex-col h-[340px] lg:h-full overflow-hidden"
         >
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-sm md:text-base font-black text-[#064e3b]">AI Lab Insights</h2>
@@ -1346,12 +1478,41 @@ export default function DashboardEnhanced() {
           </motion.div>
         )}
 
+      {/* Health DNA Entry Card - Disabled as requested */}
+      {/* 
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.45 }}
+        onClick={() => navigate('/health-dna')}
+        whileHover={{ scale: 1.01 }}
+        className="tour-health-profile mx-4 lg:mx-0 mb-8 p-6 bg-gradient-to-br from-[#064e3b] to-[#042f24] rounded-[2rem] shadow-xl relative overflow-hidden cursor-pointer group"
+      >
+        <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-400/10 rounded-full blur-3xl -mr-16 -mt-16 group-hover:bg-emerald-400/20 transition-all" />
+        <div className="relative z-10 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 lg:w-14 lg:h-14 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-md">
+              <Dna className="w-6 h-6 lg:w-8 lg:h-8 text-emerald-400" />
+            </div>
+            <div>
+              <h3 className="text-lg lg:text-xl font-bold text-white mb-1">Your Health Profile</h3>
+              <p className="text-emerald-400/60 text-[10px] font-black uppercase tracking-widest leading-none">Complete Personalized Profile</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="hidden lg:block text-[10px] font-black text-white/40 uppercase tracking-widest">View Analysis</span>
+            <ChevronRight className="w-6 h-6 text-white/40 group-hover:text-white transition-colors" />
+          </div>
+        </div>
+      </motion.div>
+      */}
+
       {/* Your Logged Meals */}
       <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.5 }}
-        className="mb-8 px-4 md:px-0"
+        className="tour-logged-meals mb-8 px-4 md:px-0"
       >
         <div className="flex items-center justify-between mb-4 px-2">
           <h2 className="text-xl font-medium text-[#064e3b]">Your Logged Meals</h2>

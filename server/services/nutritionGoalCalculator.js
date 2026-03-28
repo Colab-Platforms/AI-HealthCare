@@ -114,22 +114,56 @@ function calculateMacros(calories, goal, weight, isDiabetic = false) {
   
   const ratios = isDiabetic ? diabeticRatios : standardRatios;
   
-  // Calculate grams for each macro
-  // Protein: 4 cal/g, Carbs: 4 cal/g, Fat: 9 cal/g
-  const proteinCalories = calories * ratios.protein;
-  const carbsCalories = calories * ratios.carbs;
-  const fatCalories = calories * ratios.fat;
+  // PROTEIN CALCULATION: Weight-based is more accurate than % for very high/low calorie diets
+  // Standard (1.2g/kg): Good balance for moderate activity and general health
+  // Muscle Gain (1.8g/kg): For muscle growth support
+  // Weight Loss (1.6g/kg): To preserve muscle during deficit
+  // Diabetic (1.0g-1.2g/kg): Kidney-safe moderate intake
   
-  let protein = Math.round(proteinCalories / 4);
-  const carbs = Math.round(carbsCalories / 4);
-  const fat = Math.round(fatCalories / 9);
-  
-  // Ensure minimum protein intake (1.6-2.2g per kg body weight for muscle gain/maintenance)
-  if (goal === 'muscle_gain' || goal === 'weight_loss' || isDiabetic) {
-    const minProtein = Math.round(weight * 1.8);
-    protein = Math.max(protein, minProtein);
+  let proteinPerKg;
+  if (isDiabetic) {
+    proteinPerKg = 1.2; // Optimized for diabetic kidney health
+  } else if (goal === 'muscle_gain') {
+    proteinPerKg = 1.8; // High protein for growth
+  } else if (goal === 'weight_loss') {
+    proteinPerKg = 1.6; // Preserving muscle during deficit
+  } else {
+    proteinPerKg = 1.2; // Base healthy active adult target (1.2g/kg)
   }
   
+  let protein = Math.round(weight * proteinPerKg);
+  
+  // Safety cap for protein: Don't exceed 35% of total calories or 250g unless specifically for high performance
+  const maxProteinByCalories = Math.round((calories * 0.35) / 4);
+  protein = Math.min(protein, maxProteinByCalories, 220); 
+
+  // CARB CALCULATION: 
+  // Diabetic users should have capped carbs (usually 40-45% max or fixed limit)
+  let carbsRatio = ratios.carbs;
+  if (isDiabetic) {
+    carbsRatio = Math.min(carbsRatio, 0.30); // Cap carbs at 30% for diabetics
+  }
+
+  // Calculate grams for Fat and then Carbs (the remainder)
+  // Fat: 9 cal/g, Carbs: 4 cal/g
+  let fatCalories = calories * ratios.fat;
+  let fat = Math.round(fatCalories / 9);
+  
+  // Carbs are the remainder: Total Calories - (Protein*4 + Fat*9)
+  let remainingCalories = calories - (protein * 4) - (fat * 9);
+  let carbs = Math.round(remainingCalories / 4);
+
+  // If carbs are too low (<100g), adjust fat down to allow more carbs
+  if (carbs < 100 && !isDiabetic) {
+      carbs = 100;
+      remainingCalories = calories - (protein * 4) - (carbs * 4);
+      fat = Math.round(remainingCalories / 9);
+  } else if (carbs < 60 && isDiabetic) {
+      carbs = 70; // Hard floor for diabetic carbs to prevent keto flu unless intended
+      remainingCalories = calories - (protein * 4) - (carbs * 4);
+      fat = Math.round(remainingCalories / 9);
+  }
+
   return { protein, carbs, fat };
 }
 

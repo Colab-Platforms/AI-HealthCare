@@ -297,6 +297,14 @@ export const DataProvider = ({ children }) => {
   
   // Track and poll for pending analyses
   useEffect(() => {
+    // If we have an active diet plan that is still 'generating', add it to pending to resume polling (e.g. after refresh)
+    if (dietPlan?.status === 'generating' && dietPlan?._id && !pendingDietPlanIds.includes(dietPlan._id)) {
+      setPendingDietPlanIds(prev => [...new Set([...prev, dietPlan._id])]);
+    }
+  }, [dietPlan?.status, dietPlan?._id, pendingDietPlanIds]);
+
+  // Track and poll for pending analyses
+  useEffect(() => {
     if (pendingAnalysisIds.length === 0) return;
 
     let pollInterval = setInterval(async () => {
@@ -361,7 +369,7 @@ export const DataProvider = ({ children }) => {
       );
 
 
-      const completed = results.filter(r => r.status === 'completed' || r.status === 'failed');
+      const completed = results.filter(r => r.status === 'completed' || r.status === 'failed' || r.status === 'error');
       
       if (completed.length > 0) {
         for (const plan of completed) {
@@ -371,12 +379,12 @@ export const DataProvider = ({ children }) => {
               icon: '🍽️',
               id: `completed-diet-${plan.id}`
             });
-            await invalidateCache(['diet_plan', 'dashboard']);
-          } else if (plan.status === 'failed') {
-            toast.error('Diet plan generation failed.', { id: `failed-diet-${plan.id}` });
+          } else if (plan.status === 'failed' || plan.status === 'error') {
+            toast.error('Diet plan generation failed or timed out. Please try again.', { id: `failed-diet-${plan.id}` });
           }
+          await invalidateCache(['diet_plan', 'dashboard']);
         }
-
+        
         setPendingDietPlanIds(prev => prev.filter(id => !completed.find(c => c.id === id)));
       }
     }, 5000);

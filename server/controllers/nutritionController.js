@@ -1084,8 +1084,8 @@ exports.logWeight = async (req, res) => {
       console.log('Health goal weight updated');
 
       // Ensure macroTargets exist before accessing them to avoid crashes
-      const proteinGoal = healthGoal.macroTargets?.protein || 150;
-      const carbsGoal = healthGoal.macroTargets?.carbs || 200;
+      const proteinGoal = healthGoal.macroTargets?.protein || 100;
+      const carbsGoal = healthGoal.macroTargets?.carbs || 250;
       const fatGoal = healthGoal.macroTargets?.fats || 65;
 
       await User.findByIdAndUpdate(req.user._id, {
@@ -1541,14 +1541,14 @@ async function updateDailySummary(userId, date) {
 
       if (activePlan && (activePlan.nutritionGoals || activePlan.dailyCalorieTarget)) {
         newSummary.calorieGoal = activePlan.nutritionGoals?.dailyCalorieTarget || activePlan.dailyCalorieTarget || 2000;
-        newSummary.proteinGoal = activePlan.nutritionGoals?.macroTargets?.protein || activePlan.macroTargets?.protein || 150;
-        newSummary.carbsGoal = activePlan.nutritionGoals?.macroTargets?.carbs || activePlan.macroTargets?.carbs || 200;
+        newSummary.proteinGoal = activePlan.nutritionGoals?.macroTargets?.protein || activePlan.macroTargets?.protein || 100;
+        newSummary.carbsGoal = activePlan.nutritionGoals?.macroTargets?.carbs || activePlan.macroTargets?.carbs || 250;
         newSummary.fatsGoal = activePlan.nutritionGoals?.macroTargets?.fats || activePlan.macroTargets?.fats || 65;
         console.log('✅ Daily goals synced from active PersonalizedDietPlan');
       } else if (healthGoal) {
         newSummary.calorieGoal = healthGoal.dailyCalorieTarget;
-        newSummary.proteinGoal = healthGoal.macroTargets?.protein || 150;
-        newSummary.carbsGoal = healthGoal.macroTargets?.carbs || 200;
+        newSummary.proteinGoal = healthGoal.macroTargets?.protein || 100;
+        newSummary.carbsGoal = healthGoal.macroTargets?.carbs || 250;
         newSummary.fatsGoal = healthGoal.macroTargets?.fats || 65;
         console.log('✅ Daily goals synced from HealthGoal model');
       }
@@ -1585,13 +1585,13 @@ async function updateDailySummary(userId, date) {
 
     if (activePlan && (activePlan.nutritionGoals || activePlan.dailyCalorieTarget)) {
       summary.calorieGoal = activePlan.nutritionGoals?.dailyCalorieTarget || activePlan.dailyCalorieTarget || 2000;
-      summary.proteinGoal = activePlan.nutritionGoals?.macroTargets?.protein || activePlan.macroTargets?.protein || 150;
-      summary.carbsGoal = activePlan.nutritionGoals?.macroTargets?.carbs || activePlan.macroTargets?.carbs || 200;
+      summary.proteinGoal = activePlan.nutritionGoals?.macroTargets?.protein || activePlan.macroTargets?.protein || 100;
+      summary.carbsGoal = activePlan.nutritionGoals?.macroTargets?.carbs || activePlan.macroTargets?.carbs || 250;
       summary.fatsGoal = activePlan.nutritionGoals?.macroTargets?.fats || activePlan.macroTargets?.fats || 65;
     } else if (healthGoal) {
       summary.calorieGoal = healthGoal.dailyCalorieTarget;
-      summary.proteinGoal = healthGoal.macroTargets?.protein || 150;
-      summary.carbsGoal = healthGoal.macroTargets?.carbs || 200;
+      summary.proteinGoal = healthGoal.macroTargets?.protein || 100;
+      summary.carbsGoal = healthGoal.macroTargets?.carbs || 250;
       summary.fatsGoal = healthGoal.macroTargets?.fats || 65;
     }
 

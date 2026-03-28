@@ -87,36 +87,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
 
     // Calculate user's nutrition goals or use saved ones
     let nutritionGoals = null;
-    if (user.nutritionGoal?.calorieGoal && user.nutritionGoal?.calorieGoal > 0) {
-      nutritionGoals = {
-        calorieGoal: user.nutritionGoal.calorieGoal,
-        proteinGoal: user.nutritionGoal.proteinGoal || 150,
-        carbsGoal: user.nutritionGoal.carbsGoal || 200,
-        fatGoal: user.nutritionGoal.fatGoal || 65
-      };
-    } else {
-      try {
-        nutritionGoals = calculateNutritionGoals({
-          age: user.profile?.age || 25,
-          gender: user.profile?.gender || 'male',
-          weight: currentWeight,
-          height: height,
-          activityLevel: user.profile?.activityLevel || 'moderately_active',
-          goal: bmiGoal,
-          targetWeight: targetWeight
-        });
-      } catch (error) {
-        console.warn('Could not calculate nutrition goals:', error.message);
-        nutritionGoals = {
-          calorieGoal: 2000,
-          proteinGoal: 150,
-          carbsGoal: 200,
-          fatGoal: 65
-        };
-      }
-    }
-
-    // --- Diabetes detection ---
+    // --- Diabetes detection (Moved up to use in goal calculation) ---
     const diabetesProfile = user.profile?.diabetesProfile || {};
     const medicalHistoryConditions = user.profile?.medicalHistory?.conditions || [];
     const chronicConditions = user.profile?.chronicConditions || [];
@@ -144,6 +115,38 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       onMedication: diabetesProfile.onMedication,
       medicationType: diabetesProfile.medicationType || [],
     } : null;
+
+    // Calculate user's nutrition goals or use saved ones
+    let nutritionGoals = null;
+    if (user.nutritionGoal?.calorieGoal && user.nutritionGoal?.calorieGoal > 0) {
+      nutritionGoals = {
+        calorieGoal: user.nutritionGoal.calorieGoal,
+        proteinGoal: user.nutritionGoal.proteinGoal || (isDiabetic ? 84 : 90),
+        carbsGoal: user.nutritionGoal.carbsGoal || (isDiabetic ? 180 : 250),
+        fatGoal: user.nutritionGoal.fatGoal || 65
+      };
+    } else {
+      try {
+        nutritionGoals = calculateNutritionGoals({
+          age: user.profile?.age || 25,
+          gender: user.profile?.gender || 'male',
+          weight: currentWeight,
+          height: height,
+          activityLevel: user.profile?.activityLevel || 'moderately_active',
+          goal: bmiGoal,
+          targetWeight: targetWeight,
+          isDiabetic: isDiabetic || isPrediabetic // Pass the flag!
+        });
+      } catch (error) {
+        console.warn('Could not calculate nutrition goals:', error.message);
+        nutritionGoals = {
+          calorieGoal: isDiabetic ? 1800 : 2000,
+          proteinGoal: isDiabetic ? 84 : 90,
+          carbsGoal: isDiabetic ? 180 : 250,
+          fatGoal: 60
+        };
+      }
+    }
 
     // Prepare user data for AI
     const userData = {
@@ -184,15 +187,27 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
     };
 
     // Generate AI-powered diet plan
-    const isRegenerate = req.body?.isRegenerate || false;
-    const promptEx = isRegenerate
-      ? 'IMPORTANT: This is a REGENERATION request. You MUST provide COMPLETELY NEW and DIFFERENT meal options. Every single meal option must be fresh and unique.'
-      : '';
+    // 3. Find the previous active plan to extract its meals for "Complete New" variety
+    const previousPlan = await PersonalizedDietPlan.findOne({ userId, isActive: true }).sort({ createdAt: -1 });
+    let avoidMealsList = [];
+    if (previousPlan && previousPlan.mealPlan) {
+      Object.values(previousPlan.mealPlan).forEach(meals => {
+        if (Array.isArray(meals)) {
+          meals.forEach(m => {
+            const name = m.name || (m.foodItems && m.foodItems[0]?.name);
+            if (name) avoidMealsList.push(name);
+          });
+        }
+      });
+    }
 
-    console.log(`[DietGeneration] Starting for user ${userId}. isRegenerate: ${isRegenerate}`);
-    console.log(`[DietGeneration] User Preferences:`, JSON.stringify(userData.foodPreferences, null, 2));
-
-    // 3. Create a "generating" placeholder IMMEDIATELY
+    // 4. Deactivate ALL previous active plans immediately so getActiveDietPlan only sees the new one
+    await PersonalizedDietPlan.updateMany(
+      { userId, isActive: true },
+      { isActive: false }
+    );
+    
+    // 5. Create a "generating" placeholder IMMEDIATELY
     const dietPlan = new PersonalizedDietPlan({
       userId: userId,
       status: 'generating',
@@ -210,6 +225,16 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
     });
 
     await dietPlan.save();
+
+    // Prepare prompt extension for variety
+    const isRegenerate = req.body?.isRegenerate || false;
+    let promptEx = isRegenerate
+      ? 'IMPORTANT: This is a REGENERATION request. You MUST provide COMPLETELY NEW and DIFFERENT meal options. Every single meal option must be fresh and unique.'
+      : '';
+    
+    if (avoidMealsList.length > 0) {
+      promptEx += `\nCRITICAL: DO NOT suggest any of these meals which were in the previous plan: ${avoidMealsList.join(', ')}. Provide a completely different menu.`;
+    }
     console.log('[DietGeneration] Placeholder saved: ', dietPlan._id);
 
     // 4. INVALIDATE CACHE
@@ -235,6 +260,14 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       // 💻 ON LOCAL: Use setImmediate
       setImmediate(() => processDietInternal(userId, dietPlan._id, userData, promptEx));
     }
+
+    // ✅ SEND SUCCESS RESPONSE IMMEDIATELY
+    res.status(200).json({ 
+      success: true, 
+      message: 'Diet plan generation started in background', 
+      dietPlan,
+      backgroundProcessing: true 
+    });
 
   } catch (error) {
     console.error('❌ Generate diet plan error:', error);
@@ -667,5 +700,110 @@ exports.trackSupplementUsage = async (req, res) => {
       message: 'Failed to track supplement usage',
       error: error.message
     });
+  }
+};
+
+/**
+ * 🚀 AUTO-GENERATE DIET PLAN AFTER REPORT ANALYSIS
+ * Called internally (no req/res) after a health report is successfully analyzed
+ */
+exports.generateDietAfterReport = async (userId) => {
+  console.log(`[AutoDiet] Starting auto diet generation for user ${userId}...`);
+  try {
+    const user = await User.findById(userId);
+    if (!user) throw new Error('User not found');
+
+    // --- Diabetes detection ---
+    const diabetesProfile = user.profile?.diabetesProfile || {};
+    const medicalHistoryConditions = user.profile?.medicalHistory?.conditions || [];
+    const chronicConditions = user.profile?.chronicConditions || [];
+    const isDiabetic = !!(
+      diabetesProfile.type ||
+      medicalHistoryConditions.some(c => /diabet/i.test(c)) ||
+      chronicConditions.some(c => /diabet/i.test(c))
+    );
+    const isPrediabetic = !!(
+      diabetesProfile.type === 'Prediabetes' ||
+      medicalHistoryConditions.some(c => /prediabet/i.test(c))
+    );
+
+    let nutritionGoals;
+    if (user.nutritionGoal?.calorieGoal && user.nutritionGoal.calorieGoal > 0) {
+      nutritionGoals = {
+        calorieGoal: user.nutritionGoal.calorieGoal,
+        proteinGoal: user.nutritionGoal.proteinGoal || (isDiabetic ? 84 : 90),
+        carbsGoal: user.nutritionGoal.carbsGoal || (isDiabetic ? 180 : 250),
+        fatGoal: user.nutritionGoal.fatGoal || 65
+      };
+    } else {
+      nutritionGoals = {
+        calorieGoal: isDiabetic ? 1800 : 2000,
+        proteinGoal: isDiabetic ? 84 : 90,
+        carbsGoal: isDiabetic ? 180 : 250,
+        fatGoal: 65
+      };
+    }
+
+    const diabetesInfo = isDiabetic || isPrediabetic ? {
+      isDiabetic,
+      isPrediabetic,
+      diabetesType: diabetesProfile.type || 'Type 2'
+    } : null;
+
+    // Get latest report data
+    const healthReports = await HealthReport.find({ user: userId }).sort({ createdAt: -1 }).limit(3);
+    const deficiencies = [];
+    healthReports.forEach(r => {
+      if (r.aiAnalysis?.deficiencies && Array.isArray(r.aiAnalysis.deficiencies)) {
+        r.aiAnalysis.deficiencies.forEach(d => deficiencies.push({ nutrient: d.name || d, severity: d.severity || 'detected' }));
+      }
+    });
+
+    const userData = {
+      age: user.profile?.age || 25,
+      gender: user.profile?.gender || 'male',
+      weight: currentWeight,
+      height,
+      currentBMI: currentBMI.toFixed(1),
+      bmiGoal,
+      dietaryPreference: user.profile?.dietaryPreference || 'non-vegetarian',
+      activityLevel: user.profile?.activityLevel || 'moderately_active',
+      fitnessGoals: user.profile?.fitnessGoals || [],
+      medicalConditions: user.profile?.medicalConditions || [],
+      allergies: user.profile?.allergies || [],
+      deficiencies,
+      nutritionGoals: {
+        dailyCalories: nutritionGoals.calorieGoal,
+        protein: nutritionGoals.proteinGoal,
+        carbs: nutritionGoals.carbsGoal,
+        fats: nutritionGoals.fatGoal
+      },
+      foodPreferences: user.foodPreferences || {}
+    };
+
+    // Deactivate old plans
+    await PersonalizedDietPlan.updateMany({ userId, isActive: true }, { isActive: false });
+
+    // Create generating placeholder
+    const dietPlan = new PersonalizedDietPlan({
+      userId,
+      status: 'generating',
+      isActive: true,
+      generatedAt: new Date(),
+      validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      nutritionGoals: {
+        dailyCalorieTarget: nutritionGoals.calorieGoal,
+        macroTargets: { protein: nutritionGoals.proteinGoal, carbs: nutritionGoals.carbsGoal, fats: nutritionGoals.fatGoal }
+      }
+    });
+    await dietPlan.save();
+    await cache.delete(`diet_plan:${userId}`);
+    await cache.delete(`dashboard:${userId}`);
+
+    // Generate in background
+    await processDietInternal(userId, dietPlan._id, userData, 'Generate based on the user latest health report findings.');
+    console.log(`[AutoDiet] Completed for user ${userId}`);
+  } catch (error) {
+    console.error(`[AutoDiet] Failed for user ${userId}:`, error.message);
   }
 };

@@ -272,7 +272,7 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
               {/* Profile Image - Large and Round as per image */}
               <button
                 onClick={() => navigate('/profile')}
-                className="w-10 h-10 rounded-full overflow-hidden border border-slate-100 shadow-sm hover:ring-4 hover:ring-slate-100 transition-all pointer-events-auto"
+                className="tour-profile w-10 h-10 rounded-full overflow-hidden border border-slate-100 shadow-sm hover:ring-4 hover:ring-slate-100 transition-all pointer-events-auto"
               >
                 {user?.profilePicture ? (
                   <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" />

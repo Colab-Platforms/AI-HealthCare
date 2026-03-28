@@ -34,6 +34,7 @@ import AdminFoodCache from './pages/AdminFoodCache';
 import StepTracker from './pages/StepTracker';
 import FoodSafety from './pages/FoodSafety';
 import CompleteAnalysis from './pages/CompleteAnalysis';
+// import HealthDNA from './pages/HealthDNA';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
@@ -114,6 +115,7 @@ export default function App() {
           <Route path="/log-vitals/:metric" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><LogVitals /></Layout></ProtectedRoute>} />
           <Route path="/step-tracker" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><StepTracker /></Layout></ProtectedRoute>} />
           <Route path="/ai-chat" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><AIChat /></Layout></ProtectedRoute>} />
+{/* <Route path="/health-dna" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><HealthDNA /></Layout></ProtectedRoute>} /> */}
           <Route path="/food-safety" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><FoodSafety /></Layout></ProtectedRoute>} />
 
           {/* Shared Routes */}

@@ -162,3 +162,44 @@ exports.generateVitalsInsights = async (metricType, history, user) => {
     return jsonMatch ? robustJsonParse(jsonMatch[0]) : null;
   } catch (e) { return null; }
 };
+
+exports.generateHealthDNA = async (userData, metricsSummary, recentTrends) => {
+  try {
+    const prompt = `Create a "Complete Health DNA Profile" for ${userData.name}.
+    Context:
+    - User Profile: ${JSON.stringify(userData)}
+    - Aggregated Lab Metrics: ${JSON.stringify(metricsSummary)}
+    - Recent Vitals Trends: ${JSON.stringify(recentTrends)}
+
+    Return ONLY a JSON object with this structure:
+    {
+      "personality": {
+        "title": "Short catchy title (e.g. The Balanced Athlete)",
+        "motto": "A health motto",
+        "description": "2-3 sentences describing their current health state/archetype"
+      },
+      "organHealth": [
+        { "organ": "Heart", "score": 85, "status": "Optimal", "detail": "Detail based on BP/Heart rate" },
+        { "organ": "Kidneys", "score": 75, "status": "Good", "detail": "Detail based on Urea/Creatinine" },
+        { "organ": "Metabolism", "score": 60, "status": "Needs Focus", "detail": "Detail based on Glucose/A1c" }
+      ],
+      "riskAssessment": [
+        { "hazard": "Diabetes", "riskLevel": "Moderate", "trend": "Increasing", "prevention": "Top advice" }
+      ],
+      "nutritionalGaps": {
+        "critical": ["Vitamin D"],
+        "optimal": ["Iron"],
+        "advice": "Summary dietary advice"
+      },
+      "healthStory": "A long-form, 200-word personalized narrative of their health journey based on all data. Mention improvements or areas of regression."
+    }`;
+    
+    const content = await makeAnthropicRequest([{ role: 'user', content: prompt }], 2500, CLAUDE_MODEL);
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    return jsonMatch ? robustJsonParse(jsonMatch[0]) : null;
+  } catch (e) {
+    console.error('generateHealthDNA error:', e);
+    return null;
+  }
+};
+

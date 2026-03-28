@@ -64,6 +64,7 @@ const personalizedDietPlanSchema = new mongoose.Schema({
     breakfast: [{
       name: String,
       description: String,
+      portionSize: String,
       calories: Number,
       protein: Number,
       carbs: Number,
@@ -73,6 +74,7 @@ const personalizedDietPlanSchema = new mongoose.Schema({
     midMorningSnack: [{
       name: String,
       description: String,
+      portionSize: String,
       calories: Number,
       protein: Number,
       carbs: Number,
@@ -82,6 +84,7 @@ const personalizedDietPlanSchema = new mongoose.Schema({
     lunch: [{
       name: String,
       description: String,
+      portionSize: String,
       calories: Number,
       protein: Number,
       carbs: Number,
@@ -91,6 +94,7 @@ const personalizedDietPlanSchema = new mongoose.Schema({
     eveningSnack: [{
       name: String,
       description: String,
+      portionSize: String,
       calories: Number,
       protein: Number,
       carbs: Number,
@@ -100,6 +104,7 @@ const personalizedDietPlanSchema = new mongoose.Schema({
     dinner: [{
       name: String,
       description: String,
+      portionSize: String,
       calories: Number,
       protein: Number,
       carbs: Number,

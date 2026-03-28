@@ -12,6 +12,8 @@ const cache = require('../utils/cache');
 const cloudinary = require('../services/cloudinary');
 const emailService = require('../services/emailService');
 const queueService = require('../services/queueService');
+const HealthMetric = require('../models/HealthMetric');
+const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
 
 const withTimeout = (query, timeoutMs = 45000) => {
   return query.maxTimeMS(timeoutMs);
@@ -336,8 +338,15 @@ exports.getDashboardData = async (req, res) => {
       return acc;
     }, { calories: 0, protein: 0, carbs: 0, fats: 0 });
 
-    const nutritionDataSummary = (await NutritionSummary.findOne({ userId: req.user._id, date: targetDate })) || { waterIntake: 0 };
-    const finalNutrition = { totalCalories: realTimeTotals.calories, totalProtein: realTimeTotals.protein, totalCarbs: realTimeTotals.carbs, totalFats: realTimeTotals.fats, ...nutritionDataSummary.toObject() };
+    const nutritionDoc = await NutritionSummary.findOne({ userId: req.user._id, date: targetDate });
+    const nutritionDataSummary = nutritionDoc ? nutritionDoc.toObject() : { waterIntake: 0 };
+    const finalNutrition = { 
+      totalCalories: realTimeTotals.calories, 
+      totalProtein: realTimeTotals.protein, 
+      totalCarbs: realTimeTotals.carbs, 
+      totalFats: realTimeTotals.fats, 
+      ...nutritionDataSummary 
+    };
 
     const ninetyDaysAgo = new Date(targetDate);
     ninetyDaysAgo.setUTCDate(ninetyDaysAgo.getUTCDate() - 89);
@@ -478,6 +487,65 @@ exports.getDailyProgress = async (req, res) => {
     const progress = await DailyProgress.findOne({ userId: req.user._id, date: req.params.date });
     res.json({ success: true, progress });
   } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getHealthDNA = async (req, res) => {
+  try {
+    const cacheKey = `health_dna:${req.user._id}`;
+    const cached = await cache.get(cacheKey);
+    if (cached) return res.json(cached);
+
+    // 1. Gather all data
+    const [reports, vitals, nutrition] = await Promise.all([
+      HealthReport.find({ user: req.user._id, status: 'completed' }).sort({ createdAt: -1 }),
+      HealthMetric.find({ userId: req.user._id }).sort({ recordedAt: -1 }).limit(10),
+      NutritionSummary.find({ userId: req.user._id }).sort({ date: -1 }).limit(7)
+    ]);
+
+    // 2. Aggregate Lab Metrics (Take the latest result for each unique key)
+    const aggregatedMetrics = {};
+    reports.forEach(report => {
+      if (report.aiAnalysis?.metrics) {
+        Object.entries(report.aiAnalysis.metrics).forEach(([key, val]) => {
+          if (!aggregatedMetrics[key]) {
+            aggregatedMetrics[key] = val;
+          }
+        });
+      }
+    });
+
+    // 3. Prepare Trends for AI
+    const trends = {
+      vitals: vitals.map(v => ({ type: v.type, value: v.value, unit: v.unit, date: v.recordedAt })),
+      nutritionAverages: nutrition.reduce((acc, n) => {
+        acc.calories += n.totalCalories || 0;
+        acc.protein += n.totalProtein || 0;
+        acc.water += n.waterIntake || 0;
+        return acc;
+      }, { calories: 0, protein: 0, water: 0 })
+    };
+    if (nutrition.length > 0) {
+      trends.nutritionAverages.calories /= nutrition.length;
+      trends.nutritionAverages.protein /= nutrition.length;
+      trends.nutritionAverages.water /= nutrition.length;
+    }
+
+    // 4. Generate DNA with AI
+    const dna = await require('../services/aiService').generateHealthDNA(
+      req.user.toObject(),
+      aggregatedMetrics,
+      trends
+    );
+
+    if (!dna) throw new Error('Failed to generate health identity');
+
+    await cache.set(cacheKey, dna, 86400); // 24 hour cache
+    res.json(dna);
+
+  } catch (error) {
+    console.error('getHealthDNA error:', error);
     res.status(500).json({ message: error.message });
   }
 };

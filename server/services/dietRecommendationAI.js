@@ -33,7 +33,7 @@ class DietRecommendationAI {
         temperature: payload.temperature || 0.3
       }, { 
         headers, 
-        timeout: 180000 
+        timeout: 300000 
       });
 
       if (response.data && response.data.content && response.data.content[0]) {
@@ -47,27 +47,46 @@ class DietRecommendationAI {
   }
 
   async generatePersonalizedDietPlan(userData, promptExtension = '') {
-    const { age, gender, weight, height, currentBMI, bmiGoal, activityLevel, nutritionGoals } = userData;
+    const { age, gender, weight, height, currentBMI, bmiGoal, activityLevel, nutritionGoals, medicalConditions, allergies, diabetesInfo } = userData;
+    const isDiabetic = !!diabetesInfo;
+    
     const prompt = `Indian Clinical Nutritionist. Generate a 100% accurate JSON meal plan.
 STRUCTURE:
 {
   "dailyCalorieTarget": ${nutritionGoals?.dailyCalories || 2000},
   "mealPlan": {
-    "breakfast": [{"name": "Poha", "portion": "1 cup", "calories": 250, "protein": 5, "carbs": 40, "fats": 7}],
-    "midMorningSnack": [{"name": "Fruit/Nuts", "portion": "small bowl", "calories": 100, "protein": 2, "carbs": 15, "fats": 5}],
-    "lunch": [{"name": "Dal Chawal", "portion": "2 roti + 1 bowl dal", "calories": 450, "protein": 15, "carbs": 60, "fats": 10}],
-    "eveningSnack": [{"name": "Tea/Makhana", "portion": "1 cup", "calories": 80, "protein": 2, "carbs": 10, "fats": 3}],
-    "dinner": [{"name": "Grilled Paneer/Chicken", "portion": "150g", "calories": 350, "protein": 25, "carbs": 10, "fats": 15}]
+    "breakfast": [{"name": "Meal Name", "portionSize": "descriptive size (e.g. 1 bowl, 2 pieces)", "calories": 0, "protein": 0, "carbs": 0, "fats": 0}],
+    "midMorningSnack": [...],
+    "lunch": [...],
+    "eveningSnack": [...],
+    "dinner": [...]
   }
 }
-USER: ${age}y ${gender}, BMI ${currentBMI}, Goal: ${bmiGoal}. Focus on Indian split based on preferences. Output 1-2 options per meal.`;
+USER DATA:
+- Profile: ${age}y ${gender}, Weight: ${weight}kg, Height: ${height}cm, BMI: ${currentBMI}
+- Goal: ${bmiGoal}
+- Activity: ${activityLevel}
+- Medical Conditions: ${medicalConditions?.join(', ') || 'None'}
+- Allergies: ${allergies?.join(', ') || 'None'}
+- Diabetes Status: ${isDiabetic ? `Positive (${diabetesInfo.diabetesType})` : 'Negative'}
+- Macro Targets: Protein ${nutritionGoals?.protein}g, Carbs ${nutritionGoals?.carbs}g, Fats ${nutritionGoals?.fats}g
+
+REQUIREMENTS:
+1. Provide COMPLETELY UNIQUE AND VARIED options. Do NOT repeat standardized meals for every user.
+2. Focus on Indian cuisine (varied regions: North, South, East, West).
+3. Output 1-2 options per meal.
+4. Descriptive measurements (e.g., 100g, 1 bowl, 2 pieces) required in "portionSize".
+5. For Diabetic users: Low Glycemic Index (GI), higher fiber, controlled portions.
+6. ${promptExtension}
+
+JSON output ONLY. High variety requested.`;
 
     try {
       const aiResponse = await this.makeAIRequest({
-        max_tokens: 3000,
-        system: "Expert Clinical Dietitian. Fast JSON output only.",
+        max_tokens: 4000,
+        system: "Expert Clinical Dietitian. Generate varied, scientifically accurate Indian meal plans. Never repeat the same plan for different users. Variety is prioritized.",
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.1
+        temperature: 0.7 // Increased for variety
       });
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
       return jsonMatch ? robustJsonParse(jsonMatch[0]) : null;

@@ -187,7 +187,16 @@ export default function UploadReport() {
     ? comparisonData
     : comparisonData.filter(d => d.metric === selectedMetric);
 
-  const onDrop = useCallback((acceptedFiles) => {
+  const onDrop = useCallback((acceptedFiles, fileRejections) => {
+    if (fileRejections.length > 0) {
+      const isSizeError = fileRejections.some(rej => rej.errors.some(err => err.code === 'file-too-large'));
+      if (isSizeError) {
+        toast.error('File too large (Max size: 4MB). Please select a smaller file.');
+      } else {
+        toast.error('Invalid file type. Please upload PDF or Images.');
+      }
+    }
+
     const newFiles = acceptedFiles.map(file => ({
       file,
       id: Math.random().toString(36).substr(2, 9),
