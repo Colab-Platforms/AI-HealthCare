@@ -608,13 +608,16 @@ export default function DashboardEnhanced() {
   }, [user?._id]);
 
   const handleJoyrideCallback = (data) => {
-    const { status, type, step } = data;
-    const finishedStatuses = [STATUS.FINISHED, STATUS.SKIPPED];
+    const { status, type, step, action } = data;
     
-    if (finishedStatuses.includes(status)) {
+    // Check both STATUS object and raw strings to ensure compatibility, plus close actions
+    if (status === 'finished' || status === 'skipped' || type === 'tour:end' || action === 'close' || 
+        (typeof STATUS !== 'undefined' && [STATUS.FINISHED, STATUS.SKIPPED].includes(status))) {
       setRunTour(false);
       if (user?._id) {
         localStorage.setItem(`hasSeenMobileTour_${user._id}`, 'true');
+      } else {
+        localStorage.setItem(`hasSeenMobileTour_guest`, 'true');
       }
       return;
     }
