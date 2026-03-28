@@ -355,7 +355,7 @@ function Nutrition() {
       }
 
       setWaterIntake(prev => ({ ...prev, current: newWater }));
-      await api.post('health/daily-progress', {
+      await api.post('nutrition/log-water', {
         date: selectedDate,
         waterIntake: newWater
       });
