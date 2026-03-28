@@ -127,13 +127,13 @@ healthGoalSchema.methods.calculateCalorieTarget = function () {
 
   switch (this.goalType) {
     case 'weight_loss':
-      calorieAdjust = -400; // Fat loss: 400 calorie deficit
+      calorieAdjust = -500; // Fat loss: 500 calorie deficit for ~0.5kg/week
       break;
     case 'weight_gain':
-      calorieAdjust = 350; // Weight gain: 350 calorie surplus
+      calorieAdjust = 500; // Weight gain: 500 calorie surplus
       break;
     case 'muscle_gain':
-      calorieAdjust = 350; // Muscle gain: 350 calorie surplus
+      calorieAdjust = 300; // Muscle gain: 300 calorie lean surplus
       break;
     case 'maintenance':
     case 'maintain':
@@ -155,23 +155,52 @@ healthGoalSchema.methods.calculateMacros = function () {
     this.calculateCalorieTarget();
   }
 
-  // Protein: 1.6g per kg body weight (realistic and sustainable for most people)
-  // This is sufficient for muscle maintenance and growth without being excessive
-  const protein = Math.round(this.currentWeight * 1.6);
+  // Dynamic multipliers based on goal
+  let proteinPerKg = 1.2; // Base healthy active adult target
+  let fatPerKg = 0.8; // Essential hormone production baseline
 
-  // Fats: 0.8g per kg body weight (essential for hormone production)
-  const fats = Math.round(this.currentWeight * 0.8);
+  switch (this.goalType) {
+    case 'weight_loss':
+      proteinPerKg = 1.6; // Higher protein to preserve muscle mass in deficit
+      fatPerKg = 0.6; // Lower fat to accommodate caloric restriction
+      break;
+    case 'muscle_gain':
+      proteinPerKg = 1.8; // High protein for optimal muscle protein synthesis
+      fatPerKg = 0.8;
+      break;
+    case 'weight_gain':
+      proteinPerKg = 1.4;
+      fatPerKg = 1.0; // Higher fat for easier caloric surplus
+      break;
+    default:
+      proteinPerKg = 1.2;
+      fatPerKg = 0.8;
+      break;
+  }
 
-  // Carbs: Fill remaining calories
-  // Protein provides 4 cal/g, Fats provide 9 cal/g
+  let protein = Math.round(this.currentWeight * proteinPerKg);
+  let fats = Math.round(this.currentWeight * fatPerKg);
+
+  // Safety cap for extremely large weights ensuring protein/fats aren't absurdly high
+  const maxProtein = Math.round((this.dailyCalorieTarget * 0.35) / 4);
+  protein = Math.min(protein, maxProtein, 250);
+
   const proteinCalories = protein * 4;
   const fatsCalories = fats * 9;
-  const remainingCalories = this.dailyCalorieTarget - proteinCalories - fatsCalories;
-  const carbs = Math.round(remainingCalories / 4); // Carbs provide 4 cal/g
+  
+  let remainingCalories = this.dailyCalorieTarget - proteinCalories - fatsCalories;
+  
+  // If baseline calories drop too low, re-adjust fats to ensure at least some carbs
+  if (remainingCalories < 400) {
+    fats = Math.max(Math.round((this.dailyCalorieTarget * 0.2) / 9), 30);
+    remainingCalories = this.dailyCalorieTarget - proteinCalories - (fats * 9);
+  }
+
+  const carbs = Math.round(Math.max(remainingCalories / 4, 0)); // Carbs provide 4 cal/g
 
   this.macroTargets = {
     protein: protein,
-    carbs: Math.max(carbs, 0), // Ensure non-negative
+    carbs: carbs,
     fats: fats
   };
 

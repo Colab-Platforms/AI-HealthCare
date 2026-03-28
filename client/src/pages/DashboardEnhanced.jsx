@@ -599,7 +599,9 @@ export default function DashboardEnhanced() {
   ]);
 
   useEffect(() => {
-    if (user?._id) {
+    // Check global fallback as well to absolutely prevent loop
+    const globalSeen = localStorage.getItem('hasSeenMobileTour_global');
+    if (user?._id && !globalSeen) {
       const hasSeenTour = localStorage.getItem(`hasSeenMobileTour_${user._id}`);
       if (!hasSeenTour) {
         setRunTour(true);
@@ -614,10 +616,9 @@ export default function DashboardEnhanced() {
     if (status === 'finished' || status === 'skipped' || type === 'tour:end' || action === 'close' || 
         (typeof STATUS !== 'undefined' && [STATUS.FINISHED, STATUS.SKIPPED].includes(status))) {
       setRunTour(false);
+      localStorage.setItem('hasSeenMobileTour_global', 'true');
       if (user?._id) {
         localStorage.setItem(`hasSeenMobileTour_${user._id}`, 'true');
-      } else {
-        localStorage.setItem(`hasSeenMobileTour_guest`, 'true');
       }
       return;
     }
@@ -625,12 +626,14 @@ export default function DashboardEnhanced() {
     // Bulletproof manual scroll injection on step preparation and tooltip mount
     if (type === 'step:before' || type === 'tooltip') {
       setTimeout(() => {
-        // 1. Execute horizontal snap logic based on target
+        // 1. Execute horizontal snap logic based on target AND update activeIndex to unblur
         if (step?.target && ['.tour-nutrient-info', '.tour-diet-plan', '.tour-ai-insights'].includes(step.target)) {
           if (scrollContainerRef.current) {
-            const leftScroll = step.target === '.tour-nutrient-info' ? 0 
-              : step.target === '.tour-diet-plan' ? window.innerWidth * 0.85 
-              : window.innerWidth * 1.7;
+            let leftScroll = 0;
+            if (step.target === '.tour-nutrient-info') { leftScroll = 0; setActiveIndex(0); }
+            else if (step.target === '.tour-diet-plan') { leftScroll = window.innerWidth * 0.85; setActiveIndex(1); }
+            else if (step.target === '.tour-ai-insights') { leftScroll = window.innerWidth * 1.7; setActiveIndex(2); }
+            
             scrollContainerRef.current.scrollTo({ left: leftScroll, behavior: 'smooth' });
           }
         }
