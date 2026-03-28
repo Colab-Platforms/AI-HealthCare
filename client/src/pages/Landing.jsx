@@ -803,7 +803,7 @@ function Footer() {
 // Main Landing Page Component
 export default function Landing() {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#0a1628] via-[#061e33] to-[#0a1628] overflow-x-hidden">
+    <div className="min-h-screen bg-gradient-to-b from-[#0a1628] via-[#061e33] to-[#0a1628] overflow-x-clip">
       <MinimalHeader />
       <VideoHero />
       <FeaturesSection />
@@ -812,7 +812,9 @@ export default function Landing() {
       {/* <ConnoisseurStackInteractor /> */}
       <Component />
       {/* <HealthCardsSection /> */}
-      <RadialOrbitalTimeline timelineData={timelineData} />
+      <div className="md:py-4">
+        <RadialOrbitalTimeline timelineData={timelineData} />
+      </div>
       <ScrollPhoneShowcase />
       {/* <Testimonials /> */}
       <StaggerTestimonials />

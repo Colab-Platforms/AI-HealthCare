@@ -154,7 +154,7 @@ export default function RadialOrbitalTimeline({
 
   return (
     <div
-      className="w-full mt-0 md:mt-0 py-8 md:py-32 bg-gradient-to-b from-transparent via-transparent to-transparent overflow-visible"
+      className="w-full mt-0 md:mt-0 py-4 md:py-12 bg-gradient-to-b from-transparent via-transparent to-transparent overflow-visible"
       ref={containerRef}
       onClick={handleContainerClick}
     >

@@ -18,7 +18,7 @@ const ScrollPhoneShowcase = () => {
   // Responsive offsets based on screen size to ensure cards clear the phone
   const getOffsets = (baseX, baseY) => {
     let multiplier = 1.3; // Increased for Desktop to push cards further from larger phone
-    if (isMobile) multiplier = 0.45; // Tuned for standard mobile screens to stay within bounds
+    if (isMobile) multiplier = 0.4; // Tuned for standard mobile screens to stay within bounds
     else if (isTablet) multiplier = 0.9;
 
     return { x: baseX * multiplier, y: baseY * multiplier };
@@ -91,11 +91,15 @@ const ScrollPhoneShowcase = () => {
 
   const [activeSection, setActiveSection] = useState(0);
 
-  // Use a listener to update active section
+  // Use a listener to update active section with optimized logic
+  const sectionCount = features.length;
+  
   scrollYProgress.on("change", (latest) => {
+    // We use a small multiplier to give the last section some "hold" time
+    // without creating too much empty space.
     const sectionIndex = Math.min(
-      Math.floor(latest * (features.length + 1)),
-      features.length - 1
+      Math.floor(latest * (sectionCount + 0.2)),
+      sectionCount - 1
     );
     if (sectionIndex !== activeSection) {
       setActiveSection(sectionIndex);
@@ -103,12 +107,12 @@ const ScrollPhoneShowcase = () => {
   });
 
   return (
-    <div id="experience" ref={containerRef} className="relative bg-transparent" style={{ height: `${(features.length + 1) * 100}vh` }}>
-      {/* Sticky container for phone and cards */}
-      <div className="sticky top-0 h-screen flex flex-col items-center justify-center overflow-hidden pt-12 sm:pt-20 lg:pt-24">
+    <div id="experience" ref={containerRef} className="relative bg-transparent" style={{ height: `${(sectionCount + 0.2) * 100}vh` }}>
+      {/* Sticky container for phone and cards - using z-index for stability */}
+      <div className="sticky top-0 h-[100dvh] flex flex-col items-center justify-center overflow-hidden pt-4 sm:pt-10 lg:pt-16 z-20">
 
         {/* Header Text - Balanced space for smaller laptop screens */}
-        <div className="w-full text-center px-6 z-[60] mb-4 sm:mb-6 lg:mb-8">
+        <div className="w-full text-center px-6 z-[60] mb-2 sm:mb-4 lg:mb-6">
           <AnimatePresence mode="wait">
             <motion.div
               key={activeSection}
