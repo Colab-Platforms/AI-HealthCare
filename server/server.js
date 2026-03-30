@@ -180,20 +180,14 @@ app.use((req, res, next) => {
 
 // 🔍 Direct Debug Routes (Bypass all routers/auth)
 app.get('/api/ping', (req, res) => res.json({ status: 'pong', domain: req.headers.host }));
-// 🛡️ GLOBAL ADMIN TRAP (To find the 404 source)
-app.all('/api/admin/*', (req, res, next) => {
-  console.log(`[ADMIN TRAP] ${req.method} ${req.path}`);
-  // If it's a ping, let it through
-  if (req.path === '/api/admin/ping' || req.path === '/api/admin/ping-internal') {
-    return next();
+// 🛡️ Admin Deep-Trace (Releasing trap into the router)
+app.use('/api/admin', (req, res, next) => {
+  console.log(`[Admin Trace Stage 1] Request: ${req.method} ${req.originalUrl}`);
+  // If it's a diagnostic ping, just handle it here to keep it simple
+  if (req.path === '/ping' || req.path === '/ping-internal') {
+    return res.json({ status: 'admin-diagnostic-ok', msg: 'Trace hit the admin mount point!' });
   }
-  // For everything else, return a debug message
-  res.json({ 
-    message: 'TRAPPED AT APP LEVEL', 
-    requestedPath: req.path,
-    fullUrl: req.originalUrl,
-    method: req.method
-  });
+  next();
 });
 
 try {
