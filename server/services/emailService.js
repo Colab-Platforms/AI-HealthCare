@@ -5,6 +5,8 @@ class EmailService {
     const port = parseInt(process.env.SMTP_PORT) || 587;
     const isSecure = port === 465;
 
+    console.log(`📧 Email Service: Initializing with host ${process.env.SMTP_HOST} on port ${port} (Secure: ${isSecure})`);
+
     this.transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
       port: port,
@@ -15,19 +17,22 @@ class EmailService {
       },
       // 🛡️ Added for Cloud Compatibility (Railway/Render)
       tls: {
-        rejectUnauthorized: false // Helps with handshake issues in some environments
+        rejectUnauthorized: false
       },
-      connectionTimeout: 20000, // 20 seconds
-      greetingTimeout: 20000,   // 20 seconds
-      socketTimeout: 30000      // 30 seconds
+      connectionTimeout: 20000,
+      greetingTimeout: 20000,
+      socketTimeout: 30000,
+      // 🔍 DEBUG LOGS
+      debug: true, 
+      logger: true 
     });
     
     // Verify connection on startup
     this.transporter.verify((error, success) => {
       if (error) {
-        console.error('❌ Email Service: Connection Error:', error);
+        console.error('❌ Email Service: Connection Error Status:', error.message);
       } else {
-        console.log('✅ Email Service: Ready to send messages with:', process.env.SMTP_USER);
+        console.log('✅ Email Service: Connection verified and ready');
       }
     });
   }
