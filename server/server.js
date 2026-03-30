@@ -182,6 +182,12 @@ app.use((req, res, next) => {
 app.get('/api/ping', (req, res) => res.json({ status: 'pong', domain: req.headers.host }));
 app.get('/api/admin/ping', (req, res) => res.json({ status: 'admin-pong', msg: 'If you see this, /api/admin works' }));
 
+// 🛡️ HARDCODED BYPASS TEST (To isolate if the router is the problem)
+app.get('/api/admin/users', (req, res) => {
+  console.log('[DEBUG] Caught /api/admin/users at APP LEVEL - Router has failed!');
+  res.json({ message: 'YOU REACHED THE APP LEVEL BYPASS!', debug: 'This means the router is NOT working' });
+});
+
 try {
   const routes = [
     { path: '/api/admin', module: './routes/adminRoutes' }, // 🚀 TOP PRIORITY
