@@ -2,14 +2,24 @@ const nodemailer = require('nodemailer');
 
 class EmailService {
   constructor() {
+    const port = parseInt(process.env.SMTP_PORT) || 587;
+    const isSecure = port === 465;
+
     this.transporter = nodemailer.createTransport({
       host: process.env.SMTP_HOST,
-      port: process.env.SMTP_PORT,
-      secure: false, // true for 465, false for other ports
+      port: port,
+      secure: isSecure,
       auth: {
         user: process.env.SMTP_USER,
         pass: process.env.SMTP_PASS,
       },
+      // 🛡️ Added for Cloud Compatibility (Railway/Render)
+      tls: {
+        rejectUnauthorized: false // Helps with handshake issues in some environments
+      },
+      connectionTimeout: 20000, // 20 seconds
+      greetingTimeout: 20000,   // 20 seconds
+      socketTimeout: 30000      // 30 seconds
     });
     
     // Verify connection on startup
@@ -17,7 +27,7 @@ class EmailService {
       if (error) {
         console.error('❌ Email Service: Connection Error:', error);
       } else {
-        console.log('✅ Email Service: Ready to send messages with: ', process.env.SMTP_USER);
+        console.log('✅ Email Service: Ready to send messages with:', process.env.SMTP_USER);
       }
     });
   }
