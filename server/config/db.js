@@ -32,16 +32,17 @@ const connectDB = async () => {
         minPoolSize: process.env.VERCEL ? 0 : 2,
         maxIdleTimeMS: process.env.VERCEL ? 10000 : 30000,
         family: 4,
-        autoIndex: !process.env.VERCEL,
+        autoIndex: !process.env.VERCEL && !process.env.RAILWAY_ENVIRONMENT,
       };
 
-      console.log('Connecting to MongoDB...');
+      console.log('Connecting to MongoDB Atlas...');
       cached.promise = mongoose.connect(process.env.MONGODB_URI, options)
         .then((conn) => {
-          console.log(`✓ MongoDB Connected: ${conn.connection.host}`);
+          console.log(`✅ MongoDB Connected: ${conn.connection.host}`);
           return conn;
         })
         .catch((error) => {
+          console.error(`❌ MongoDB Connection Error during handshake: ${error.message}`);
           cached.promise = null;
           throw error;
         });
