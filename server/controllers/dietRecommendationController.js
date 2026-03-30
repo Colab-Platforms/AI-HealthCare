@@ -116,8 +116,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       medicationType: diabetesProfile.medicationType || [],
     } : null;
 
-    // Calculate user's nutrition goals or use saved ones
-    let nutritionGoals = null;
+    // Check for saved goals first, otherwise calculate them
     if (user.nutritionGoal?.calorieGoal && user.nutritionGoal?.calorieGoal > 0) {
       nutritionGoals = {
         calorieGoal: user.nutritionGoal.calorieGoal,
@@ -358,7 +357,18 @@ async function processDietInternal(userId, dietPlanId, userData, promptEx) {
  */
 exports.processDietBG = async (req, res) => {
   try {
-    const { userId, dietPlanId, userData, promptEx } = req.body;
+    const { userId, dietPlanId, userData, promptEx, isAutoTrigger } = req.body;
+    
+    // Handle auto-trigger from report analysis (no plan created yet)
+    if (isAutoTrigger && !dietPlanId) {
+      console.log(`🔔 QStash auto-diet callback received for user ${userId}`);
+      const { generateDietAfterReport } = require('./dietRecommendationController');
+      if (generateDietAfterReport) {
+        await generateDietAfterReport(userId);
+      }
+      return res.status(200).json({ success: true, message: 'Auto diet plan generated' });
+    }
+
     console.log(`🔔 QStash diet callback received for plan ${dietPlanId}`);
     await processDietInternal(userId, dietPlanId, userData, promptEx);
     res.status(200).json({ success: true, message: 'Diet plan generated successfully' });
@@ -382,6 +392,24 @@ exports.getActiveDietPlan = async (req, res) => {
       validUntil: { $gt: new Date() },
       status: { $ne: 'failed' } // Don't return failed plans
     }).sort({ generatedAt: -1 });
+
+    // 🔧 AUTO-RECOVER: If diet plan stuck in 'generating' for >10 minutes, mark as failed
+    if (dietPlan && dietPlan.status === 'generating') {
+      const ageMs = Date.now() - new Date(dietPlan.generatedAt || dietPlan.createdAt).getTime();
+      const TEN_MINUTES = 10 * 60 * 1000;
+      if (ageMs > TEN_MINUTES) {
+        console.warn(`⚠️ [Recovery] Diet plan ${dietPlan._id} stuck in generating for ${Math.round(ageMs / 60000)}min. Marking as failed.`);
+        await PersonalizedDietPlan.findByIdAndUpdate(dietPlan._id, {
+          status: 'failed',
+          isActive: false
+        });
+        return res.json({
+          success: true,
+          message: 'Diet plan generation timed out. Please try generating again.',
+          dietPlan: null
+        });
+      }
+    }
 
     if (!dietPlan) {
       return res.json({
@@ -758,6 +786,13 @@ exports.generateDietAfterReport = async (userId) => {
         r.aiAnalysis.deficiencies.forEach(d => deficiencies.push({ nutrient: d.name || d, severity: d.severity || 'detected' }));
       }
     });
+
+    // Extract user profile stats
+    const currentWeight = user.profile?.weight || 70;
+    const height = user.profile?.height || 170;
+    const heightInMeters = height / 100;
+    const currentBMI = currentWeight / (heightInMeters * heightInMeters);
+    const bmiGoal = user.nutritionGoal?.goal || 'maintain';
 
     const userData = {
       age: user.profile?.age || 25,

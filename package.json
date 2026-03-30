@@ -3,7 +3,13 @@
   "version": "1.0.0",
   "description": "AI-powered healthcare platform",
   "private": true,
-  "scripts": {},
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "scripts": {
+    "start": "node server/server.js",
+    "postinstall": "cd server && npm install"
+  },
   "dependencies": {
     "@vercel/analytics": "^1.6.1",
     "agora-token": "^2.0.5",

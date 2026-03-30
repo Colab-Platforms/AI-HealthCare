@@ -100,13 +100,25 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
     // 🚀 Auto-trigger diet plan generation after successful report analysis
     try {
       const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
-      const existingPlan = await PersonalizedDietPlan.findOne({ userId, isActive: true });
+      const existingPlan = await PersonalizedDietPlan.findOne({ userId, isActive: true, status: 'completed' });
       if (!existingPlan) {
         console.log('[BG] No active diet plan found. Auto-generating based on new report...');
-        // Trigger diet generation in background (non-blocking)
-        const { generateDietAfterReport } = require('./dietRecommendationController');
-        if (generateDietAfterReport) {
-          setImmediate(() => generateDietAfterReport(userId).catch(e => console.warn('[BG] Auto-diet failed:', e.message)));
+        const isVercel = !!(process.env.VERCEL || process.env.VERCEL_ID);
+        if (isVercel) {
+          // On Vercel: dispatch diet as separate QStash job (setImmediate is unreliable on serverless)
+          console.log('[BG] Dispatching auto-diet via QStash...');
+          const appUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null;
+          await queueService.enqueueTask('process-diet', {
+            userId,
+            dietPlanId: null, // Will be created by generateDietAfterReport
+            isAutoTrigger: true
+          }, appUrl);
+        } else {
+          // On local: use setImmediate (server stays alive)
+          const { generateDietAfterReport } = require('./dietRecommendationController');
+          if (generateDietAfterReport) {
+            setImmediate(() => generateDietAfterReport(userId).catch(e => console.warn('[BG] Auto-diet failed:', e.message)));
+          }
         }
       }
     } catch (dietErr) {
@@ -233,6 +245,28 @@ exports.getReportStatus = async (req, res) => {
     const report = await HealthReport.findOne({ _id: req.params.id, user: req.user._id })
       .select('status aiAnalysis.summary aiAnalysis.healthScore reportType createdAt');
     if (!report) return res.status(404).json({ message: 'Report not found' });
+
+    // 🔧 AUTO-RECOVER: If report stuck in 'processing' for >10 minutes, mark as failed
+    if (report.status === 'processing') {
+      const ageMs = Date.now() - new Date(report.createdAt).getTime();
+      const TEN_MINUTES = 10 * 60 * 1000;
+      if (ageMs > TEN_MINUTES) {
+        console.warn(`⚠️ [Recovery] Report ${report._id} stuck in processing for ${Math.round(ageMs / 60000)}min. Marking as failed.`);
+        await HealthReport.findByIdAndUpdate(report._id, {
+          status: 'failed',
+          'aiAnalysis.summary': 'Analysis timed out. Please delete this report and re-upload to try again.'
+        });
+        return res.json({
+          id: report._id,
+          status: 'failed',
+          reportType: report.reportType,
+          healthScore: 0,
+          summary: 'Analysis timed out. Please delete this report and re-upload to try again.',
+          createdAt: report.createdAt
+        });
+      }
+    }
+
     res.json({
       id: report._id,
       status: report.status,

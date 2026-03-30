@@ -63,6 +63,9 @@ export default function MobileBottomNav() {
   const hideNavbarUI = isModalOpen || showMoreMenu || showLogModal;
 
   const isDiabetic = user?.profile?.isDiabetic === 'yes';
+  const hasSeenTour = user?.profile?.hasSeenMobileTour || 
+                      (user?._id && localStorage.getItem(`joyride-completed-${user._id}`) === 'true') ||
+                      localStorage.getItem("joyride-completed-any") === 'true';
 
   const navItems = [
     { path: '/dashboard', icon: LayoutDashboard, label: 'Home' },
@@ -252,7 +255,7 @@ export default function MobileBottomNav() {
                 <button
                   key={key}
                   onClick={() => setShowLogModal(true)}
-                  className="nav-center-fab flex flex-col items-center justify-center !shadow-slate-200/50"
+                  className={`nav-center-fab flex flex-col items-center justify-center !shadow-slate-200/50 ${hasSeenTour ? 'no-pulse' : ''}`}
                   aria-label={item.label}
                   title={item.label}
                 >

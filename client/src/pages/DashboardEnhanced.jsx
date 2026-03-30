@@ -545,111 +545,114 @@ export default function DashboardEnhanced() {
   const [activeTrendTab, setActiveTrendTab] = useState('Calories');
   const [scrollProgress, setScrollProgress] = useState(0);
 
-  // Joyride Tour State
+  // Simple Joyride Tour State
   const [runTour, setRunTour] = useState(false);
   const [tourSteps] = useState([
     {
       target: '.tour-profile',
-      content: 'Tap your profile here anytime to set your core fitness and hydration goals.',
-      disableBeacon: true,
+      content: 'Tap your profile here anytime to set your fitness Goal.',
       placement: 'bottom',
     },
     {
       target: '.tour-nutrient-info',
       content: 'Track your daily macros, micros, and live diet goals here. Swipe left to see more cards!',
-      disableBeacon: true,
       placement: 'bottom',
     },
     {
       target: '.tour-diet-plan',
       content: 'Your AI-generated daily meal schedule appears here based on your fitness goals.',
-      disableBeacon: true,
       placement: 'bottom',
     },
     {
       target: '.tour-ai-insights',
       content: 'Upload your medical reports here to get deep AI Lab Insights instantly.',
-      disableBeacon: true,
       placement: 'bottom',
     },
     {
       target: '.tour-health-profile',
       content: 'Tap here to unlock your full AI-generated Health Archetype and medical summary.',
-      disableBeacon: true,
       placement: 'top',
     },
     {
       target: '.tour-logged-meals',
       content: 'All your tracked meals appear here. Keep eating healthy to hit your targets!',
-      disableBeacon: true,
       placement: 'top',
     },
     {
       target: '.nav-center-fab',
       content: 'The action hub! Tap this bold button to quick-log your meals, sleep, steps, and water intake.',
-      disableBeacon: true,
       placement: 'top',
     },
     {
       target: '.mobile-bottom-nav-container',
       content: 'Navigate between your Dashboard, Nutrition, and Medical Reports swiftly using these tabs.',
-      disableBeacon: true,
       placement: 'top',
     }
   ]);
 
+  // 🔐 Synchronous Ironclad Guard: Resolve instantly to prevent refresh flicker
+  const isTourCompleted = (() => {
+    if (localStorage.getItem("joyride-completed-any") === "true") return true;
+    if (user?._id && localStorage.getItem(`joyride-completed-${user._id}`) === "true") return true;
+    if (user?.profile?.hasSeenMobileTour) return true;
+    return false;
+  })();
+
+  // Instant DOM synchronization
+  if (isTourCompleted) {
+    document.body.classList.add('onboarding-tour-finished');
+    if (document.documentElement) document.documentElement.setAttribute('data-tour-finished', 'true');
+  }
+
+  // Step 1: Trigger the tour for authenticated new users ONLY
   useEffect(() => {
-    // Check global fallback as well to absolutely prevent loop
-    const globalSeen = localStorage.getItem('hasSeenMobileTour_global');
-    if (user?._id && !globalSeen) {
-      const hasSeenTour = localStorage.getItem(`hasSeenMobileTour_${user._id}`);
-      if (!hasSeenTour) {
-        setRunTour(true);
-      }
-    }
-  }, [user?._id]);
+    if (!user?._id || isTourCompleted) return;
+    setRunTour(true);
+  }, [user?._id, isTourCompleted]);
 
+  // Step 2: Mark tour as completed in local storage AND database
   const handleJoyrideCallback = (data) => {
-    const { status, type, step, action } = data;
-    
-    // Check both STATUS object and raw strings to ensure compatibility, plus close actions
-    if (status === 'finished' || status === 'skipped' || type === 'tour:end' || action === 'close' || 
-        (typeof STATUS !== 'undefined' && [STATUS.FINISHED, STATUS.SKIPPED].includes(status))) {
-      setRunTour(false);
-      localStorage.setItem('hasSeenMobileTour_global', 'true');
-      if (user?._id) {
-        localStorage.setItem(`hasSeenMobileTour_${user._id}`, 'true');
-      }
-      return;
-    }
+    const { status, type } = data;
 
-    // Bulletproof manual scroll injection on step preparation and tooltip mount
+    if (status === "finished" || status === "skipped" || type === "tour:end") {
+      if (user?._id) {
+        // Double-lock persistence
+        localStorage.setItem(`joyride-completed-${user._id}`, "true");
+        localStorage.setItem("joyride-completed-any", "true"); 
+        
+        const updatedProfile = { ...user.profile, hasSeenMobileTour: true };
+        api.put('auth/profile', { profile: { hasSeenMobileTour: true } })
+          .then(() => updateUser && updateUser({ ...user, profile: updatedProfile }))
+          .catch(e => console.error('DB Sync Fail:', e));
+      }
+      setRunTour(false);
+      document.body.classList.add('onboarding-tour-finished');
+    }
+    
+    // Smooth scroll logic maintained below...
+    
+    // Maintain the smooth scrolling logic for tour steps
     if (type === 'step:before' || type === 'tooltip') {
       setTimeout(() => {
-        // 1. Execute horizontal snap logic based on target AND update activeIndex to unblur
-        if (step?.target && ['.tour-nutrient-info', '.tour-diet-plan', '.tour-ai-insights'].includes(step.target)) {
-          if (scrollContainerRef.current) {
-            let leftScroll = 0;
-            if (step.target === '.tour-nutrient-info') { leftScroll = 0; setActiveIndex(0); }
-            else if (step.target === '.tour-diet-plan') { leftScroll = window.innerWidth * 0.85; setActiveIndex(1); }
-            else if (step.target === '.tour-ai-insights') { leftScroll = window.innerWidth * 1.7; setActiveIndex(2); }
-            
-            scrollContainerRef.current.scrollTo({ left: leftScroll, behavior: 'smooth' });
+        try {
+          if (step?.target && ['.tour-nutrient-info', '.tour-diet-plan', '.tour-ai-insights'].includes(step.target)) {
+            if (scrollContainerRef.current) {
+              let leftScroll = 0;
+              if (step.target === '.tour-nutrient-info') { leftScroll = 0; }
+              else if (step.target === '.tour-diet-plan') { leftScroll = window.innerWidth * 0.85; }
+              else if (step.target === '.tour-ai-insights') { leftScroll = window.innerWidth * 1.7; }
+              scrollContainerRef.current.scrollTo({ left: leftScroll, behavior: 'smooth' });
+            }
           }
-        }
-        
-        // 2. Absolute mathematical vertical alignment targeting the center
-        if (step?.target) {
           const targetEl = document.querySelector(step.target);
           if (targetEl) {
             const bodyRect = document.body.getBoundingClientRect().top;
             const elementRect = targetEl.getBoundingClientRect().top;
             const elementPosition = elementRect - bodyRect;
             const yOffset = elementPosition - (window.innerHeight / 2) + (targetEl.clientHeight / 2);
-            
             window.scrollTo({ top: Math.max(0, yOffset), behavior: 'smooth' });
           }
-        }
+        } catch (err) { console.error('Tour focus fail:', err); }
       }, 50);
     }
   };
@@ -941,22 +944,27 @@ export default function DashboardEnhanced() {
   console.log('Rendering Dashboard', { hasData: !!dashboardData, isDiabetic });
   return (
     <div className="min-h-screen bg-[linear-gradient(to_bottom,#F2F5EC_0%,#EFF2E9_25%,#EBF0E6_50%,#E8EDE3_75%,#E5EBE0_100%)] text-[#064e3b] font-sans selection:bg-emerald-100 selection:text-emerald-900 overflow-x-hidden pb-12">
-      <Joyride
-        steps={tourSteps}
-        run={runTour}
-        continuous={true}
-        showSkipButton={true}
-        showProgress={true}
-        scrollToFirstStep={false}
-        disableScrolling={true}
-        callback={handleJoyrideCallback}
-        styles={{
-          options: {
-            primaryColor: '#064e3b',
-            zIndex: 10000,
-          }
-        }}
-      />
+      {runTour && !isTourCompleted && (
+        <Joyride
+          steps={tourSteps}
+          run={runTour && !isTourCompleted}
+          continuous={true}
+          showSkipButton={true}
+          showProgress={true}
+          scrollToFirstStep={false}
+          disableScrolling={true}
+          callback={handleJoyrideCallback}
+          floaterProps={{
+            disableAnimation: false,
+          }}
+          styles={{
+            options: {
+              primaryColor: '#064e3b',
+              zIndex: 10000,
+            }
+          }}
+        />
+      )}
       <div className="max-w-7xl mx-auto px-0 md:px-8">
 
       {/* Header */}

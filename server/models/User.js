@@ -78,7 +78,8 @@ const userSchema = new mongoose.Schema({
       primaryGoal: String,
       timeframe: String,
       biggestChallenge: String
-    }
+    },
+    hasSeenMobileTour: { type: Boolean, default: false }
   },
   nutritionGoal: {
     goal: {

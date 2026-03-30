@@ -45,7 +45,8 @@ exports.enqueueTask = async (taskType, payload, customBaseUrl = null) => {
         headers: {
           'Authorization': `Bearer ${qstashToken}`,
           'Content-Type': 'application/json',
-          'Upstash-Retries': '2' 
+          'Upstash-Retries': '2',
+          'Upstash-Timeout': '300' // Wait up to 5 minutes for endpoint response
         }
       }
     );

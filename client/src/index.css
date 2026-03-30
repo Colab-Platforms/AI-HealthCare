@@ -537,6 +537,15 @@ textarea:focus {
   border: 4px solid #EBF0E6;
 }
 
+.nav-center-fab.no-pulse {
+  animation: none !important;
+}
+
+.nav-center-fab.no-pulse::before {
+  display: none !important;
+}
+
+
 .nav-center-fab:hover {
   transform: translateX(-50%) scale(1.1) translateY(-5px);
   box-shadow: 0 15px 30px rgba(6, 78, 59, 0.3);
@@ -688,6 +697,7 @@ textarea:focus {
   animation: scan 2s ease-in-out infinite;
 }
 
+
 @media print {
 
   .no-print,
@@ -728,4 +738,28 @@ textarea:focus {
     box-shadow: none !important;
     border: 1px solid #e2e8f0 !important;
   }
+}
+
+/* Absolute Nuclear Override - Prevents ANY tour flickering or beacons if finished */
+[data-tour-finished="true"] .joyride-beacon,
+[data-tour-finished="true"] .joyride-tooltip,
+[data-tour-finished="true"] .react-joyride__beacon,
+[data-tour-finished="true"] .react-joyride__tooltip,
+[data-tour-finished="true"] [class*="JoyrideBeacon"],
+[data-tour-finished="true"] [class*="JoyrideTooltip"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  height: 0 !important;
+  width: 0 !important;
+  overflow: hidden !important;
+}
+
+[data-tour-finished="true"] .nav-center-fab {
+  animation: none !important;
+}
+
+[data-tour-finished="true"] .onboarding-pulse {
+  display: none !important;
 }

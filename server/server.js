@@ -6,7 +6,8 @@ const connectDB = require('./config/db');
 const fs = require('fs');
 const path = require('path');
 
-dotenv.config();
+dotenv.config(); // Works for local dev (CWD = server/)
+dotenv.config({ path: path.join(__dirname, '.env') }); // Works for Railway (CWD = repo root)
 
 // Create uploads dir (skip on Vercel - uses memory/cloudinary)
 if (!process.env.VERCEL) {
@@ -42,7 +43,24 @@ app.use(async (req, res, next) => {
 });
 
 app.use(cors({
-  origin: process.env.VERCEL ? '*' : (process.env.CLIENT_URL || '*'),
+  origin: function(origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc)
+    if (!origin) return callback(null, true);
+    // Allow all localhost origins for development
+    if (origin.includes('localhost') || origin.includes('127.0.0.1') || origin.includes('192.168.')) {
+      return callback(null, true);
+    }
+    // Allow Vercel frontend domains
+    if (origin.includes('.vercel.app') || origin.includes('fitcure') || origin.includes('healthcare')) {
+      return callback(null, true);
+    }
+    // Allow any origin set in CLIENT_URL env var
+    if (process.env.CLIENT_URL && origin.includes(new URL(process.env.CLIENT_URL).hostname)) {
+      return callback(null, true);
+    }
+    // Default: allow all (for now)
+    callback(null, true);
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization']
@@ -229,8 +247,11 @@ if (!process.env.VERCEL) {
 if (process.env.VERCEL) {
   module.exports = app;
 } else {
-  const PORT = process.env.PORT || 5000;
+  const PORT = process.env.PORT || 5001;
   const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server running on port ${PORT}`);
+    if (process.env.RAILWAY_ENVIRONMENT) {
+      console.log(`🚂 Railway deployment detected: ${process.env.RAILWAY_PUBLIC_DOMAIN || 'Ready'}`);
+    }
   });
 }

@@ -1,3 +1,24 @@
+/**
+ * Global Onboarding Guard - Synchronous logic executed before React mounts.
+ * This ensures that if the tour is finished, we instantly lock out all beacons via root CSS.
+ */
+(function() {
+  const isFinished = localStorage.getItem('joyride-completed-any') === 'true';
+  const userData = localStorage.getItem('user');
+  let hasSeenTour = isFinished;
+  if (userData) {
+    try {
+      const user = JSON.parse(userData);
+      if (user?.profile?.hasSeenMobileTour || localStorage.getItem(`joyride-completed-${user._id}`) === 'true') {
+        hasSeenTour = true;
+      }
+    } catch(e) {}
+  }
+  if (hasSeenTour) {
+    document.documentElement.setAttribute('data-tour-finished', 'true');
+  }
+})();
+
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';

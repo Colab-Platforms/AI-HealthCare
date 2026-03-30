@@ -2,36 +2,31 @@ import axios from 'axios';
 import cache from '../utils/cache';
 
 // Determine API URL based on environment
+// Determine API URL based on environment
 const getApiUrl = () => {
-  // If VITE_API_URL is explicitly set, use it
+  // 1. If VITE_API_URL is explicitly set (BEST PRACTICE for cross-domain production)
   if (import.meta.env.VITE_API_URL) {
     return import.meta.env.VITE_API_URL;
   }
 
-  // Check if we're in production (Vercel, Netlify, etc.)
   const currentHost = window.location.hostname;
-  const isProduction =
-    import.meta.env.PROD ||
-    currentHost.includes('vercel.app') ||
-    currentHost.includes('netlify.app') ||
-    (currentHost !== 'localhost' && currentHost !== '127.0.0.1');
-
-  // For production, use relative path (same domain)
-  if (isProduction) {
-    return '/api';
-  }
-
-  // For local development - try common ports
+  
+  // 2. Local development
   if (currentHost === 'localhost' || currentHost === '127.0.0.1') {
-    // Try to detect which port the server is running on
-    // Default to 5001 (not 5000), can be overridden by VITE_API_PORT env var
     const port = import.meta.env.VITE_API_PORT || '5001';
     return `http://localhost:${port}/api`;
-  } else {
-    // On mobile or different device in dev, use the same host with port 5001
-    const port = import.meta.env.VITE_API_PORT || '5001';
-    return `http://${currentHost}:${port}/api`;
   }
+
+  // 3. Mobile dev (different device on same network)
+  if (/^\d+\.\d+\.\d+\.\d+$/.test(currentHost)) {
+     const port = import.meta.env.VITE_API_PORT || '5001';
+     return `http://${currentHost}:${port}/api`;
+  }
+
+  // 4. Production - Default to /api (works with Vercel/Netlify proxy)
+  // If your backend is moved to a DIFFERENT domain (like Railway),
+  // YOU MUST set VITE_API_URL in your deployment dashboard.
+  return '/api';
 };
 
 const api = axios.create({
@@ -98,9 +93,10 @@ api.interceptors.response.use(
 
       if (!skipAutoLogout) {
         console.log('🚪 Triggering auto-logout and redirecting to /login');
-        // Clear all storage on 401
-        localStorage.clear();
-        sessionStorage.clear();
+        // Clear only sensitive auth data, preserving UI flags like onboarding tour status
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        sessionStorage.removeItem('token');
         cache.clear();
         window.location.href = '/login';
       } else {

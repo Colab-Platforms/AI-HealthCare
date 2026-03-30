@@ -33,7 +33,7 @@ class DietRecommendationAI {
         temperature: payload.temperature || 0.3
       }, { 
         headers, 
-        timeout: 300000 
+        timeout: 280000 
       });
 
       if (response.data && response.data.content && response.data.content[0]) {

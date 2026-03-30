@@ -18,17 +18,18 @@ export const AuthProvider = ({ children }) => {
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
       }
     } catch (error) {
-      console.error('Error restoring session:', error);
-      localStorage.clear();
+      localStorage.removeItem('token');
+      localStorage.removeItem('user');
     } finally {
       setLoading(false);
     }
   }, []);
 
   const login = async (emailOrPhone, password) => {
-    // Clear any existing data before logging in new user
-    localStorage.clear();
-    sessionStorage.clear();
+    // Clear sensitive items instead of wiping all storage
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
 
     // Clear service worker cache immediately
     if ('caches' in window) {
@@ -65,9 +66,10 @@ export const AuthProvider = ({ children }) => {
   };
 
   const register = async (name, email, phone, password, profile = {}, nutritionGoal = null, otp = null) => {
-    // Clear any existing data before registering new user
-    localStorage.clear();
-    sessionStorage.clear();
+    // Clear sensitive items instead of wiping all storage
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
 
     // Clear service worker cache immediately
     if ('caches' in window) {
@@ -98,9 +100,10 @@ export const AuthProvider = ({ children }) => {
   };
 
   const registerDoctor = async (doctorData) => {
-    // Clear any existing data before registering new doctor
-    localStorage.clear();
-    sessionStorage.clear();
+    // Clear sensitive items instead of wiping all storage
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
 
     // Clear service worker cache immediately
     if ('caches' in window) {
@@ -123,9 +126,10 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
-    // Clear all storage to prevent data leakage between users
-    localStorage.clear();
-    sessionStorage.clear();
+    // Logout should not wipe non-sensitive UI state like onboarding tour completion
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
+    sessionStorage.removeItem('token');
 
     // Clear API headers
     delete api.defaults.headers.common['Authorization'];

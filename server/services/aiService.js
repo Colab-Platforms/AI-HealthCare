@@ -24,7 +24,7 @@ const makeAnthropicRequest = async (messages, maxTokens = 4096, modelOverride = 
       return true;
     });
 
-    const requestTimeout = (process.env.VERCEL || process.env.VERCEL_ID) ? 140000 : 150000;
+    const requestTimeout = (process.env.VERCEL || process.env.VERCEL_ID) ? 280000 : 150000;
 
     const response = await axios.post(
       ANTHROPIC_API_URL,
