@@ -334,6 +334,25 @@ export default function Register() {
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
+                {/* 🔒 Password Requirements Alert */}
+                <div className="mt-2 ml-1 flex flex-wrap gap-x-3 gap-y-1">
+                  <div className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-widest transition-colors ${/[A-Z]/.test(formData.password) ? 'text-emerald-500' : 'text-emerald-800/20'}`}>
+                    <div className={`w-1 h-1 rounded-full ${/[A-Z]/.test(formData.password) ? 'bg-emerald-500' : 'bg-emerald-800/20'}`} />
+                    1 Uppercase
+                  </div>
+                  <div className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-widest transition-colors ${/[!@#$%^&*]/.test(formData.password) ? 'text-emerald-500' : 'text-emerald-800/20'}`}>
+                    <div className={`w-1 h-1 rounded-full ${/[!@#$%^&*]/.test(formData.password) ? 'bg-emerald-500' : 'bg-emerald-800/20'}`} />
+                    1 Special Char
+                  </div>
+                  <div className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-widest transition-colors ${/[0-9]/.test(formData.password) ? 'text-emerald-500' : 'text-emerald-800/20'}`}>
+                    <div className={`w-1 h-1 rounded-full ${/[0-9]/.test(formData.password) ? 'bg-emerald-500' : 'bg-emerald-800/20'}`} />
+                    1 Number
+                  </div>
+                  <div className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-widest transition-colors ${formData.password.length >= 6 ? 'text-emerald-500' : 'text-emerald-800/20'}`}>
+                    <div className={`w-1 h-1 rounded-full ${formData.password.length >= 6 ? 'bg-emerald-500' : 'bg-emerald-800/20'}`} />
+                    Min 6 Chars
+                  </div>
+                </div>
               </div>
 
               <div>
