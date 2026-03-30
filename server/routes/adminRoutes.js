@@ -12,6 +12,11 @@ const {
 } = require('../controllers/adminController');
 const { getDoctorScheduleOverview } = require('../controllers/doctorController');
 
+// 🏓 Internal Router Ping (Bypasses Auth for Debugging)
+router.get('/ping-internal', (req, res) => {
+  res.json({ status: 'admin-router-active', msg: 'Admin Router is correctly mounted and receiving traffic!' });
+});
+
 // All routes require admin role
 router.use(protect, authorize('admin'));
 
