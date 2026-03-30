@@ -1,115 +1,80 @@
-const nodemailer = require('nodemailer');
+const { Resend } = require('resend');
+const fs = require('fs');
 
 class EmailService {
   constructor() {
-    const port = parseInt(process.env.SMTP_PORT) || 587;
-    const isSecure = port === 465;
+    this.apiKey = process.env.RESEND_API_KEY;
+    if (this.apiKey) {
+      this.resend = new Resend(this.apiKey);
+      console.log('✅ Email Service: Resend API initialized');
+    } else {
+      console.warn('⚠️ Email Service: RESEND_API_KEY is missing. Emails will fail to send on Production.');
+    }
+  }
 
-    console.log(`📧 Email Service: Initializing with host ${process.env.SMTP_HOST} on port ${port} (Secure: ${isSecure})`);
+  async sendEmail({ to, subject, html }) {
+    if (!this.resend) {
+      console.error('❌ Email Service: No Resend API key found');
+      return { success: false, error: 'API key missing' };
+    }
 
-    this.transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: port,
-      secure: isSecure,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
-      // 🛡️ Added for Cloud Compatibility (Railway/Render)
-      tls: {
-        rejectUnauthorized: false
-      },
-      connectionTimeout: 20000,
-      greetingTimeout: 20000,
-      socketTimeout: 30000,
-      // 🔍 DEBUG LOGS
-      debug: true, 
-      logger: true 
-    });
-    
-    // Verify connection on startup
-    this.transporter.verify((error, success) => {
-      if (error) {
-        console.error('❌ Email Service: Connection Error Status:', error.message);
-      } else {
-        console.log('✅ Email Service: Connection verified and ready');
-      }
-    });
+    try {
+      console.log(`📧 Sending email to ${to}: ${subject}`);
+      const data = await this.resend.emails.send({
+        from: process.env.FROM_EMAIL || 'onboarding@resend.dev',
+        to,
+        subject,
+        html,
+      });
+
+      console.log('✅ Email sent successfully:', data.id);
+      return { success: true, data };
+    } catch (error) {
+      console.error('❌ Email Service: Failed to send email via Resend:', error.message);
+      return { success: false, error: error.message };
+    }
   }
 
   async sendAppointmentConfirmation(appointmentData) {
     const { patient, doctor, appointment } = appointmentData;
+    const html = this.getPatientConfirmationTemplate(patient, doctor, appointment);
+    const doctorHtml = this.getDoctorNotificationTemplate(patient, doctor, appointment);
 
-    const patientEmailOptions = {
-      from: process.env.FROM_EMAIL,
-      to: patient.email,
-      subject: 'Appointment Confirmation - HealthAI',
-      html: this.getPatientConfirmationTemplate(patient, doctor, appointment)
-    };
-
-    const doctorEmailOptions = {
-      from: process.env.FROM_EMAIL,
-      to: doctor.email,
-      subject: 'New Appointment Booking - HealthAI',
-      html: this.getDoctorNotificationTemplate(patient, doctor, appointment)
-    };
-
-    try {
-      await Promise.all([
-        this.transporter.sendMail(patientEmailOptions),
-        this.transporter.sendMail(doctorEmailOptions)
-      ]);
-      console.log('Appointment confirmation emails sent successfully');
-    } catch (error) {
-      console.error('Error sending appointment emails:', error);
-      throw error;
-    }
+    await Promise.all([
+      this.sendEmail({ to: patient.email, subject: 'Appointment Confirmation - HealthAI', html }),
+      this.sendEmail({ to: doctor.email, subject: 'New Appointment Booking - HealthAI', html: doctorHtml })
+    ]);
   }
 
   async sendConsultationReminder(appointmentData) {
     const { patient, doctor, appointment } = appointmentData;
+    const html = this.getPatientReminderTemplate(patient, doctor, appointment);
+    const doctorHtml = this.getDoctorReminderTemplate(patient, doctor, appointment);
 
-    const patientReminderOptions = {
-      from: process.env.FROM_EMAIL,
-      to: patient.email,
-      subject: 'Consultation Reminder - HealthAI',
-      html: this.getPatientReminderTemplate(patient, doctor, appointment)
-    };
-
-    const doctorReminderOptions = {
-      from: process.env.FROM_EMAIL,
-      to: doctor.email,
-      subject: 'Consultation Reminder - HealthAI',
-      html: this.getDoctorReminderTemplate(patient, doctor, appointment)
-    };
-
-    try {
-      await Promise.all([
-        this.transporter.sendMail(patientReminderOptions),
-        this.transporter.sendMail(doctorReminderOptions)
-      ]);
-      console.log('Consultation reminder emails sent successfully');
-    } catch (error) {
-      console.error('Error sending reminder emails:', error);
-      throw error;
-    }
+    await Promise.all([
+      this.sendEmail({ to: patient.email, subject: 'Consultation Reminder - HealthAI', html }),
+      this.sendEmail({ to: doctor.email, subject: 'Consultation Reminder - HealthAI', html: doctorHtml })
+    ]);
   }
 
   async sendPasswordResetCode(email, name, code) {
-    const emailOptions = {
-      from: process.env.FROM_EMAIL,
-      to: email,
-      subject: 'Password Reset Verification - HealthAI',
-      html: this.getPasswordResetTemplate(name, code)
-    };
+    const html = this.getPasswordResetTemplate(name, code);
+    return this.sendEmail({ to: email, subject: 'Password Reset Verification - HealthAI', html });
+  }
 
-    try {
-      await this.transporter.sendMail(emailOptions);
-      console.log(`Password reset code sent to ${email}`);
-    } catch (error) {
-      console.error('Error sending password reset email:', error);
-      throw error;
-    }
+  async sendVerificationCode(email, name, code) {
+    const html = this.getVerificationTemplate(name, code);
+    return this.sendEmail({ to: email, subject: 'Email Verification - take.health AI', html });
+  }
+
+  async sendReportAnalysisComplete(email, name, reportId) {
+    const html = this.getReportAnalysisCompleteTemplate(name, reportId);
+    return this.sendEmail({ to: email, subject: 'Report Analysis Completed - take.health AI', html });
+  }
+
+  async sendDietPlanComplete(email, name) {
+    const html = this.getDietPlanCompleteTemplate(name);
+    return this.sendEmail({ to: email, subject: 'Customized Diet Plan Ready - take.health AI', html });
   }
 
   getPasswordResetTemplate(name, code) {
@@ -429,23 +394,6 @@ class EmailService {
     `;
   }
 
-  async sendVerificationCode(email, name, code) {
-    const emailOptions = {
-      from: process.env.FROM_EMAIL,
-      to: email,
-      subject: 'Email Verification - take.health AI',
-      html: this.getVerificationTemplate(name, code)
-    };
-
-    try {
-      await this.transporter.sendMail(emailOptions);
-      console.log(`Verification code sent to ${email}`);
-    } catch (error) {
-      console.error('Error sending verification email:', error);
-      throw error;
-    }
-  }
-
   getVerificationTemplate(name, code) {
     return `
       <!DOCTYPE html>
@@ -493,21 +441,6 @@ class EmailService {
       </html>
     `;
   }
-  async sendReportAnalysisComplete(email, name, reportId) {
-    const emailOptions = {
-      from: process.env.FROM_EMAIL,
-      to: email,
-      subject: 'Report Analysis Completed - take.health AI',
-      html: this.getReportAnalysisCompleteTemplate(name, reportId)
-    };
-
-    try {
-      await this.transporter.sendMail(emailOptions);
-      console.log(`Report analysis completion email sent to ${email}`);
-    } catch (error) {
-      console.error('Error sending report analysis completion email:', error);
-    }
-  }
 
   getReportAnalysisCompleteTemplate(name, reportId) {
     const reportUrl = `${process.env.APP_URL}/reports/${reportId}`;
@@ -551,22 +484,6 @@ class EmailService {
       </body>
       </html>
     `;
-  }
-
-  async sendDietPlanComplete(email, name) {
-    const emailOptions = {
-      from: process.env.FROM_EMAIL,
-      to: email,
-      subject: 'Customized Diet Plan Ready - take.health AI',
-      html: this.getDietPlanCompleteTemplate(name)
-    };
-
-    try {
-      await this.transporter.sendMail(emailOptions);
-      console.log(`Diet plan completion email sent to ${email}`);
-    } catch (error) {
-      console.error('Error sending diet plan completion email:', error);
-    }
   }
 
   getDietPlanCompleteTemplate(name) {
