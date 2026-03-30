@@ -180,12 +180,20 @@ app.use((req, res, next) => {
 
 // 🔍 Direct Debug Routes (Bypass all routers/auth)
 app.get('/api/ping', (req, res) => res.json({ status: 'pong', domain: req.headers.host }));
-app.get('/api/admin/ping', (req, res) => res.json({ status: 'admin-pong', msg: 'If you see this, /api/admin works' }));
-
-// 🛡️ HARDCODED BYPASS TEST (To isolate if the router is the problem)
-app.get('/api/admin/users', (req, res) => {
-  console.log('[DEBUG] Caught /api/admin/users at APP LEVEL - Router has failed!');
-  res.json({ message: 'YOU REACHED THE APP LEVEL BYPASS!', debug: 'This means the router is NOT working' });
+// 🛡️ GLOBAL ADMIN TRAP (To find the 404 source)
+app.all('/api/admin/*', (req, res, next) => {
+  console.log(`[ADMIN TRAP] ${req.method} ${req.path}`);
+  // If it's a ping, let it through
+  if (req.path === '/api/admin/ping' || req.path === '/api/admin/ping-internal') {
+    return next();
+  }
+  // For everything else, return a debug message
+  res.json({ 
+    message: 'TRAPPED AT APP LEVEL', 
+    requestedPath: req.path,
+    fullUrl: req.originalUrl,
+    method: req.method
+  });
 });
 
 try {
