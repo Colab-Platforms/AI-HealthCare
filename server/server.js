@@ -172,23 +172,31 @@ app.get('/api/health-check', async (req, res) => {
   });
 });
 
+// 🛠️ Request Logger for Debugging
+app.use((req, res, next) => {
+  if (req.path.includes('/api/admin')) {
+    console.log(`[Admin Request] ${req.method} ${req.originalUrl}`);
+  }
+  next();
+});
+
 try {
   const routes = [
+    { path: '/api/admin', module: './routes/adminRoutes' }, // 🚀 TOP PRIORITY
     { path: '/api/auth', module: './routes/authRoutes' },
     { path: '/api/health', module: './routes/healthRoutes' },
     { path: '/api/metrics', module: './routes/metricRoutes' },
     { path: '/api/doctors', module: './routes/doctorRoutes' },
-    { path: '/api/admin', module: './routes/adminRoutes' },
     { path: '/api/wearables', module: './routes/wearableRoutes' },
     { path: '/api/wearable', module: './routes/wearableRoutes' },
     { path: '/api/nutrition', module: './routes/nutritionRoutes' },
     { path: '/api/diet-recommendations', module: './routes/dietRecommendationRoutes' },
     { path: '/api/users', module: './routes/userRoutes' },
     { path: '/api/notifications', module: './routes/notificationRoutes' },
-    { path: '/api', module: './routes/chatRoutes' },
     { path: '/api/chat', module: './routes/chatHistoryRoutes' },
     { path: '/api/translate', module: './routes/translateRoutes' },
-    { path: '/api/food-safety', module: './routes/foodSafetyRoutes' }
+    { path: '/api/food-safety', module: './routes/foodSafetyRoutes' },
+    { path: '/api', module: './routes/chatRoutes' } // 🔚 Generic catch-all goes last
   ];
 
   routes.forEach(route => {

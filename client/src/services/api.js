@@ -11,6 +11,10 @@ const getApiUrl = () => {
     if (!url.startsWith('http')) {
       url = `https://${url}`;
     }
+    // CRITICAL: Ensure URL ends with /api if it's the base URL for the backend
+    if (!url.endsWith('/api')) {
+      url = url.endsWith('/') ? `${url}api` : `${url}/api`;
+    }
     return url;
   }
 
