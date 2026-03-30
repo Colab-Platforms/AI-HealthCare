@@ -6,7 +6,12 @@ import cache from '../utils/cache';
 const getApiUrl = () => {
   // 1. If VITE_API_URL is explicitly set (BEST PRACTICE for cross-domain production)
   if (import.meta.env.VITE_API_URL) {
-    return import.meta.env.VITE_API_URL;
+    let url = import.meta.env.VITE_API_URL;
+    // CRITICAL: Ensure URL has a protocol (doesn't just start with ai-healthcare...)
+    if (!url.startsWith('http')) {
+      url = `https://${url}`;
+    }
+    return url;
   }
 
   const currentHost = window.location.hostname;
