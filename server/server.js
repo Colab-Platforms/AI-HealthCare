@@ -172,13 +172,15 @@ app.get('/api/health-check', async (req, res) => {
   });
 });
 
-// 🛠️ Request Logger for Debugging
+// 🛠️ Global Request Logger (For Debugging 404s)
 app.use((req, res, next) => {
-  if (req.path.includes('/api/admin')) {
-    console.log(`[Admin Request] ${req.method} ${req.originalUrl}`);
-  }
+  console.log(`[Incoming Request] ${req.method} ${req.path} | Host: ${req.headers.host}`);
   next();
 });
+
+// 🔍 Direct Debug Routes (Bypass all routers/auth)
+app.get('/api/ping', (req, res) => res.json({ status: 'pong', domain: req.headers.host }));
+app.get('/api/admin/ping', (req, res) => res.json({ status: 'admin-pong', msg: 'If you see this, /api/admin works' }));
 
 try {
   const routes = [
