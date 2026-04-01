@@ -61,46 +61,41 @@ class NutritionAI {
   }
 
   _getUnifiedPrompt(context = '') {
-    return `Analyze this food item and return ONLY a JSON object.
+    return `Analyze the provided image or text and return a JSON object.
     Context: "${context}"
     
-    SPECIAL INSTRUCTIONS:
-    1. If the food is considered "junk food" or "unhealthy" (high in processed sugar, trans fats, or sodium), explicitly list its disadvantages and common health risks in the "warnings" array.
-    2. In "enhancementTips", include specific steps on how to make this meal healthier (e.g., ingredients to swap, cooking methods to change).
-    3. Always provide 3-5 healthier alternatives in the "alternatives" array.
-    4. CRITICAL: Priority is given to the "Quantity" mentioned in the context. You MUST calculate all nutrition values (calories, protein, etc.) based EXACTLY on that quantity.
-    5. CRITICAL: NO FUZZY ESTIMATES. Values like 6.3 or 13.2 are UNACCEPTABLE for standard units. If 1 egg is 6g protein, 2 eggs MUST be EXACTLY 12g. 3 eggs MUST be EXACTLY 18g. Perform explicit multiplication (Quantity x BaseValue) for every single macro.
-    6. CRITICAL: Use rigid standard macro values for common foods:
-       - 1 Large Egg = 6g Protein, 5g Fat, 0g Carbs, 70 kcal.
-       - 100g Chicken breast = 31g Protein, 3g Fat, 0g Carbs, 165 kcal.
-       - 100g Paneer = 18g Protein, 20g Fat, 2g Carbs, 260 kcal.
-       - 1 Chapati/Roti = 3g Protein, 1g Fat, 15g Carbs, 70-80 kcal.
-    7. CRITICAL: Keep all "description", "benefit", and "analysis" strings extremely short (max 15 words each).
+    TASK:
+    1. Determine if the image/text contains actual FOOD or drink.
+    2. If NOT food (e.g., a person, a car, a document, or a completely empty plate), set "isFood" to false and provide a helpful "errorMessage".
+    3. If it IS food, perform high-precision nutritional analysis.
+    
+    SPECIAL INSTRUCTIONS FOR ACCURACY:
+    - IDENTIFICATION: Be specific. Instead of "Curry", identify if it is "Butter Chicken" or "Chana Masala" based on visual cues.
+    - PORTION SENSE: Use the context "${context}" for quantity. If context is missing, use visual estimation (e.g., "1 bowl", "2 slices").
+    - MACRO PRECISION: Use the following multipliers for total calculations:
+        * 1g Protein = 4 kcal
+        * 1g Carb = 4 kcal
+        * 1g Fat = 9 kcal
+      Ensure (Protein*4 + Carbs*4 + Fats*9) roughly equals total calories.
+    - Indian Cuisine Knowledge: Account for oils (Ghee/Butter) used in Indian cooking which significantly increase fat/calorie counts even in small portions.
     
     JSON STRUCTURE:
     {
+      "isFood": true/false,
+      "errorMessage": "Helpful message if not food (e.g., 'This looks like a medical report, not a meal. Please upload a food photo.')",
       "foodItem": {
-        "name": "Food name",
-        "quantity": "Portion size seen or described",
+        "name": "Specific food name",
+        "quantity": "Estimated portion (e.g., 250g, 1 bowl)",
         "nutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0 }
       },
       "totalNutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0 },
-      "healthScore": 0, (0-100 scale)
+      "healthScore": 0-100,
       "analysis": "Short 2-sentence summary of health impact",
-      "micronutrients": [
-        { "name": "Vitamin C", "amount": "12", "unit": "mg", "dailyRecommendation": "90mg", "percentage": 13 }
-      ],
-      "enhancementTips": [
-        { "name": "Cooking Method", "benefit": "Boil instead of fry to reduce fats by 40%" }
-      ],
-      "healthBenefitsSummary": "Key positive health impact summary",
-      "benefits": [
-        { "name": "Immunity", "benefit": "High Vitamin C content boosts immune function" }
-      ],
-      "warnings": ["Warning 1/Disadvantage for junk food"],
-      "alternatives": [
-        { "name": "Alternative Name", "description": "Why it is better", "nutrition": { "calories": 0, "protein": 0 } }
-      ]
+      "micronutrients": [{ "name": "Vitamin C", "amount": "12", "unit": "mg", "percentage": 13 }],
+      "enhancementTips": [{ "name": "Tip Title", "benefit": "Explanation" }],
+      "healthBenefitsSummary": "Positive impact summary",
+      "warnings": ["Disadvantages if unhealthy"],
+      "alternatives": [{ "name": "Name", "description": "Why better", "nutrition": { "calories": 0, "protein": 0 } }]
     }`;
   }
 
