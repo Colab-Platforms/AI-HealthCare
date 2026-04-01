@@ -22,6 +22,8 @@ const healthMetricSchema = new mongoose.Schema({
     readingContext: {
         type: String // fasting, after_meal, etc.
     },
+    systolic: Number,
+    diastolic: Number,
     recordedAt: {
         type: Date,
         default: Date.now

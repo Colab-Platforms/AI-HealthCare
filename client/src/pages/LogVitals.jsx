@@ -104,9 +104,18 @@ export default function LogVitals() {
     const [goalInput, setGoalInput] = useState('');
     const [loadingGoal, setLoadingGoal] = useState(false);
 
+    const isToday = useMemo(() => date === getLocalDateString(), [date]);
+
     useEffect(() => {
-        setGoalInput('');
-    }, [activeTab]);
+        if (activeTab === 'weight') {
+            setValue(selectedDateItem?.weight?.toString() || '');
+        } else if (activeTab === 'steps') {
+            setValue(''); // Don't pre-fill for additive mode
+        } else if (activeTab === 'sleep') {
+            setSleepHours(''); // Don't pre-fill for additive mode
+            setSleepMins('');
+        }
+    }, [date, activeTab, selectedDateItem]);
 
     const handleSaveGoal = async () => {
         if (!goalInput) {
@@ -147,20 +156,18 @@ export default function LogVitals() {
             if (activeTab === 'weight') {
                 if (!value) throw new Error('Weight is required');
                 await api.post('nutrition/log-weight', { weight: Number(value), notes: 'Manual log', date });
-            } else if (activeTab === 'steps') {
-                if (!value) throw new Error('Steps are required');
-                // Check if there is a wearable connected, if not use 'other'
-                await api.post('wearables/sync', {
+            } else {
+                const payload = activeTab === 'steps' ? {
                     deviceType: 'other',
+                    isAdditive: isToday,
                     metrics: { steps: Number(value), date }
-                });
-            } else if (activeTab === 'sleep') {
-                if (!sleepHours && !sleepMins) throw new Error('Sleep duration is required');
-                const totalMinutes = (parseInt(sleepHours || 0) * 60) + parseInt(sleepMins || 0);
-                await api.post('wearables/sleep', {
+                } : {
                     deviceType: 'other',
-                    sleepData: { date, totalSleepMinutes: totalMinutes, sleepScore: 85 }
-                });
+                    isAdditive: isToday,
+                    sleepData: { totalSleepMinutes: (Number(sleepHours) * 60) + Number(sleepMins), date }
+                };
+                
+                await api.post(activeTab === 'steps' ? 'wearables/sync' : 'wearables/sleep', payload);
             }
 
             toast.success(`${activeTab.charAt(0).toUpperCase() + activeTab.slice(1)} logged successfully`);
@@ -631,46 +638,58 @@ export default function LogVitals() {
 
                                         <div className="flex flex-col gap-6">
 
-                                            <div className="p-6 md:p-8 bg-[#F5F5F7]/50 rounded-[32px] border border-white border-dashed">
-                                                <div className="flex items-center gap-3 mb-4">
-                                                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm">
-                                                        <Plus className="w-4 h-4 text-[#1a1a1a]" />
-                                                    </div>
-                                                    <h4 className="font-medium text-[#1a1a1a]">Manual Entry</h4>
-                                                </div>
-                                                <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-4">
-                                                    <div className="flex-1 w-full space-y-2">
-                                                        <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider ml-2">Steps to add</label>
-                                                        <input
-                                                            type="number"
-                                                            value={value}
-                                                            onChange={(e) => setValue(e.target.value)}
-                                                            placeholder="E.g., 2000"
-                                                            className="w-full bg-white border border-slate-200 rounded-xl md:rounded-full px-5 py-3 shadow-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#D4F1A5] transition-all font-medium"
-                                                        />
-                                                    </div>
-                                                    <div className="flex-1 w-full space-y-2">
-                                                        <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider ml-2">Date</label>
-                                                        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl md:rounded-full px-4 py-3 shadow-sm">
-                                                            <Calendar className="w-4 h-4 text-slate-400" />
-                                                            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-transparent text-[#1a1a1a] outline-none text-sm font-medium" />
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <button
-                                                    onClick={handleSave}
-                                                    disabled={loading}
-                                                    className="w-full mt-6 py-4 bg-[#4A8C2B]/80 backdrop-blur-md border border-[#4A8C2B]/20 text-white rounded-full font-medium transition-all shadow-xl hover:bg-[#4A8C2B] flex items-center justify-center gap-2 group disabled:opacity-50"
-                                                >
-                                                    {loading ? (
-                                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                    ) : (
-                                                        <>
-                                                            <Save className="w-5 h-5 group-hover:scale-110 transition-transform" /> Save Steps
-                                                        </>
-                                                    )}
-                                                </button>
-                                            </div>
+                                            <div className={`p-6 md:p-8 rounded-[32px] border border-white border-dashed ${isToday ? 'bg-[#F5F5F7]/50' : 'bg-slate-50/50 grayscale-[0.5] opacity-80 cursor-not-allowed'}`}>
+                                                 <div className="flex items-center gap-3 mb-4">
+                                                     <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm">
+                                                         <Plus className={`w-4 h-4 ${isToday ? 'text-[#1a1a1a]' : 'text-slate-400'}`} />
+                                                     </div>
+                                                     <h4 className={`font-medium ${isToday ? 'text-[#1a1a1a]' : 'text-slate-500'}`}>{isToday ? 'Add Steps' : 'Log Steps'}</h4>
+                                                     {currentSteps > 0 && <span className="text-[10px] bg-white px-2 py-0.5 rounded-full border border-slate-200 text-slate-500 shrink-0 ml-1">Total: {currentSteps.toLocaleString()}</span>}
+                                                     {!isToday && <span className="text-[9px] font-black uppercase text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100 shrink-0">Read Only</span>}
+                                                 </div>
+                                                 <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-4">
+                                                     <div className="flex-1 w-full space-y-2">
+                                                         <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider ml-2">Steps to Add</label>
+                                                         <input
+                                                             type="number"
+                                                             value={value}
+                                                             disabled={!isToday}
+                                                             onChange={(e) => setValue(e.target.value)}
+                                                             placeholder={isToday ? "E.g., 500" : "N/A"}
+                                                             className="w-full bg-white border border-slate-200 rounded-xl md:rounded-full px-5 py-3 shadow-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#D4F1A5] transition-all font-medium disabled:bg-slate-100 disabled:text-slate-400"
+                                                         />
+                                                     </div>
+                                                     <div className="flex-1 w-full space-y-2">
+                                                         <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider ml-2">Date</label>
+                                                         <div className={`flex items-center gap-2 bg-white border border-slate-200 rounded-xl md:rounded-full px-4 py-3 shadow-sm ${!isToday ? 'bg-white/50' : ''}`}>
+                                                             <Calendar className="w-4 h-4 text-slate-400" />
+                                                             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-transparent text-[#1a1a1a] outline-none text-sm font-medium" />
+                                                         </div>
+                                                     </div>
+                                                 </div>
+                                                 
+                                                 {!isToday && (
+                                                     <p className="mt-4 text-[10px] font-bold text-slate-400 italic text-center">Note: Historical steps cannot be edited manually. Please select today to log.</p>
+                                                 )}
+
+                                                 <button
+                                                     onClick={handleSave}
+                                                     disabled={loading || !isToday}
+                                                     className={`w-full mt-6 py-4 rounded-full font-medium transition-all shadow-xl flex items-center justify-center gap-2 group ${
+                                                         !isToday 
+                                                         ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' 
+                                                         : 'bg-[#4A8C2B]/80 backdrop-blur-md border border-[#4A8C2B]/20 text-white hover:bg-[#4A8C2B]'
+                                                     }`}
+                                                 >
+                                                         {loading ? (
+                                                             <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                         ) : (
+                                                             <>
+                                                                 <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" /> Add Steps
+                                                             </>
+                                                         )}
+                                                     </button>
+                                             </div>
 
 
                                         </div>
@@ -806,59 +825,72 @@ export default function LogVitals() {
 
                                         <div className="flex flex-col gap-6">
 
-                                            <div className="p-6 md:p-8 bg-[#F5F5F7]/50 rounded-[32px] border border-white border-dashed">
+                                            <div className={`p-6 md:p-8 rounded-[32px] border border-white border-dashed ${isToday ? 'bg-[#F5F5F7]/50' : 'bg-slate-50/50 grayscale-[0.5] opacity-80 cursor-not-allowed'}`}>
                                                 <div className="flex items-center gap-3 mb-4">
-                                                    <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm">
-                                                        <Plus className="w-4 h-4 text-[#1a1a1a]" />
-                                                    </div>
-                                                    <h4 className="font-medium text-[#1a1a1a]">Log Sleep</h4>
-                                                </div>
-                                                <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-4">
-                                                    <div className="flex flex-1 gap-2 w-full sm:w-auto">
-                                                        <div className="flex-1 space-y-2">
-                                                            <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider ml-2">Hours</label>
-                                                            <input
-                                                                type="number"
-                                                                value={sleepHours}
-                                                                onChange={(e) => setSleepHours(e.target.value)}
-                                                                placeholder="Hrs"
-                                                                max="24" min="0"
-                                                                className="w-full bg-white border border-slate-200 rounded-xl md:rounded-full px-5 py-3 shadow-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#E2F0FD] transition-all font-medium"
-                                                            />
-                                                        </div>
-                                                        <div className="flex-1 space-y-2">
-                                                            <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider ml-2">Mins</label>
-                                                            <input
-                                                                type="number"
-                                                                value={sleepMins}
-                                                                onChange={(e) => setSleepMins(e.target.value)}
-                                                                placeholder="Min"
-                                                                max="59" min="0"
-                                                                className="w-full bg-white border border-slate-200 rounded-xl md:rounded-full px-5 py-3 shadow-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#E2F0FD] transition-all font-medium"
-                                                            />
-                                                        </div>
-                                                    </div>
+                                                     <div className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm">
+                                                         <Plus className={`w-4 h-4 ${isToday ? 'text-[#1a1a1a]' : 'text-slate-400'}`} />
+                                                     </div>
+                                                     <h4 className={`font-medium ${isToday ? 'text-[#1a1a1a]' : 'text-slate-500'}`}>{isToday ? 'Add Sleep' : 'Log Sleep'}</h4>
+                                                     {currentSleep > 0 && <span className="text-[10px] bg-white px-2 py-0.5 rounded-full border border-slate-200 text-slate-500 shrink-0 ml-1">Current: {currentSleep.toFixed(1)} hrs</span>}
+                                                     {!isToday && <span className="text-[9px] font-black uppercase text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full border border-amber-100 shrink-0">Read Only</span>}
+                                                 </div>
+                                                 <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-4">
+                                                     <div className="flex flex-1 gap-2 w-full sm:w-auto">
+                                                         <div className="flex-1 space-y-2">
+                                                             <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider ml-2">Hrs to Add</label>
+                                                             <input
+                                                                 type="number"
+                                                                 value={sleepHours}
+                                                                 disabled={!isToday}
+                                                                 onChange={(e) => setSleepHours(e.target.value)}
+                                                                 placeholder={isToday ? "Hrs" : "N/A"}
+                                                                 max="24" min="0"
+                                                                 className="w-full bg-white border border-slate-200 rounded-xl md:rounded-full px-5 py-3 shadow-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#E2F0FD] transition-all font-medium disabled:bg-slate-100 disabled:text-slate-400"
+                                                             />
+                                                         </div>
+                                                         <div className="flex-1 space-y-2">
+                                                             <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider ml-2">Mins to Add</label>
+                                                             <input
+                                                                 type="number"
+                                                                 value={sleepMins}
+                                                                 disabled={!isToday}
+                                                                 onChange={(e) => setSleepMins(e.target.value)}
+                                                                 placeholder={isToday ? "Min" : "N/A"}
+                                                                 max="59" min="0"
+                                                                 className="w-full bg-white border border-slate-200 rounded-xl md:rounded-full px-5 py-3 shadow-sm text-[#1a1a1a] outline-none focus:ring-2 focus:ring-[#E2F0FD] transition-all font-medium disabled:bg-slate-100 disabled:text-slate-400"
+                                                             />
+                                                         </div>
+                                                     </div>
                                                     <div className="flex-1 space-y-2 w-full sm:w-auto">
                                                         <label className="text-[10px] font-bold text-[#888888] uppercase tracking-wider ml-2">Date</label>
-                                                        <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-xl md:rounded-full px-4 py-3 shadow-sm">
+                                                        <div className={`flex items-center gap-2 bg-white border border-slate-200 rounded-xl md:rounded-full px-4 py-3 shadow-sm ${!isToday ? 'bg-white/50' : ''}`}>
                                                             <Calendar className="w-4 h-4 text-slate-400" />
                                                             <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="w-full bg-transparent text-[#1a1a1a] outline-none text-sm font-medium" />
                                                         </div>
                                                     </div>
                                                 </div>
-                                                <button
-                                                    onClick={handleSave}
-                                                    disabled={loading}
-                                                    className="w-full mt-6 py-4 bg-[#75AADB]/80 backdrop-blur-md border border-[#75AADB]/20 text-white rounded-full font-medium transition-all shadow-xl hover:bg-[#75AADB] flex items-center justify-center gap-2 group disabled:opacity-50"
-                                                >
-                                                    {loading ? (
-                                                        <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                                    ) : (
-                                                        <>
-                                                            <Save className="w-5 h-5 group-hover:scale-110 transition-transform" /> Save Sleep
-                                                        </>
-                                                    )}
-                                                </button>
+
+                                                {!isToday && (
+                                                     <p className="mt-4 text-[10px] font-bold text-slate-400 italic text-center">Note: Historical sleep data cannot be edited manually. Please select today to log.</p>
+                                                 )}
+
+                                                 <button
+                                                     onClick={handleSave}
+                                                     disabled={loading || !isToday}
+                                                     className={`w-full mt-6 py-4 rounded-full font-medium transition-all shadow-xl flex items-center justify-center gap-2 group ${
+                                                         !isToday 
+                                                         ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none' 
+                                                         : 'bg-[#75AADB]/80 backdrop-blur-md border border-[#75AADB]/20 text-white hover:bg-[#75AADB]'
+                                                     }`}
+                                                 >
+                                                     {loading ? (
+                                                         <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                                     ) : (
+                                                         <>
+                                                             <Plus className="w-5 h-5 group-hover:scale-110 transition-transform" /> Add Sleep
+                                                         </>
+                                                     )}
+                                                 </button>
                                             </div>
 
 

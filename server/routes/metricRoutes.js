@@ -189,6 +189,128 @@ router.get('/analysis/glucose', protect, async (req, res) => {
     }
 });
 
+
+// Get history for a specific type (generic handler for metrics and wearables)
+router.get('/history/:type', protect, async (req, res) => {
+    try {
+        const { type } = req.params;
+        const days = parseInt(req.query.days) || 30;
+        
+        let history = [];
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() - days);
+
+        if (type === 'steps' || type === 'sleep') {
+            const WearableData = require('../models/WearableData');
+            const wearables = await withTimeout(WearableData.find({ user: req.user._id }));
+            
+            // Format to match what frontend expects
+            for (let i = 0; i <= days; i++) {
+                const d = new Date(startDate);
+                d.setDate(d.getDate() + i);
+                const dStr = d.toISOString().split('T')[0];
+                
+                let value = 0;
+                for (const w of wearables) {
+                    if (type === 'steps') {
+                        const daily = w.dailyMetrics?.find(m => m.date && new Date(m.date).toISOString().split('T')[0] === dStr);
+                        if (daily) value += daily.steps || 0;
+                    } else if (type === 'sleep') {
+                        const sleepDay = w.sleepData?.find(s => s.date && new Date(s.date).toISOString().split('T')[0] === dStr);
+                        if (sleepDay) value += (sleepDay.totalSleepMinutes || 0) / 60;
+                    }
+                }
+                if (value > 0) {
+                    history.push({ 
+                        date: dStr, 
+                        value: parseFloat(value.toFixed(1)),
+                        steps: type === 'steps' ? value : undefined,
+                        sleep: type === 'sleep' ? value : undefined
+                    });
+                }
+            }
+        } else {
+            // Map types if needed (mobile uses 'glucose', server uses 'blood_sugar')
+            const mappedType = type === 'glucose' ? 'blood_sugar' : type;
+            
+            const data = await withTimeout(HealthMetric.find({
+                userId: req.user._id,
+                type: mappedType,
+                recordedAt: { $gte: startDate }
+            }).sort({ recordedAt: 1 }));
+            
+            history = data.map(m => ({
+                _id: m._id,
+                date: m.recordedAt,
+                value: m.value,
+                systolic: m.systolic,
+                diastolic: m.diastolic,
+                unit: m.unit
+            }));
+        }
+
+        res.json(history.reverse()); // Newest first
+    } catch (error) {
+        console.error(`Error fetching ${req.params.type} history:`, error.message);
+        res.status(500).json({ message: 'Server error fetching history', error: error.message });
+    }
+});
+
+// Specific logging routes for mobile apps that append /type to the URL
+router.post('/blood-pressure', protect, async (req, res) => {
+    try {
+        const { systolic, diastolic, recordedAt } = req.body;
+        const metric = new HealthMetric({
+            userId: req.user._id,
+            type: 'blood_pressure',
+            value: systolic, // Primary value
+            systolic,
+            diastolic,
+            unit: 'mmHg',
+            recordedAt: recordedAt ? new Date(recordedAt) : Date.now()
+        });
+        const saved = await metric.save();
+        res.status(201).json(saved);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+router.post('/glucose', protect, async (req, res) => {
+    try {
+        const { value, unit, type, recordedAt } = req.body;
+        const metric = new HealthMetric({
+            userId: req.user._id,
+            type: 'blood_sugar',
+            value: Number(value),
+            unit: unit || 'mg/dL',
+            readingContext: type || 'fasting',
+            recordedAt: recordedAt ? new Date(recordedAt) : Date.now()
+        });
+        const saved = await metric.save();
+        res.status(201).json(saved);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+router.post('/hba1c', protect, async (req, res) => {
+    try {
+        const { value, recordedAt } = req.body;
+        const metric = new HealthMetric({
+            userId: req.user._id,
+            type: 'hba1c',
+            value: Number(value),
+            unit: '%',
+            recordedAt: recordedAt ? new Date(recordedAt) : Date.now()
+        });
+        const saved = await metric.save();
+        res.status(201).json(saved);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
 // Get metrics by type - PARAMETERIZED ROUTE AFTER SPECIFIC ROUTES
 router.get('/:type', protect, async (req, res) => {
     try {

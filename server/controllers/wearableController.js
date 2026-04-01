@@ -101,9 +101,19 @@ exports.syncDailyMetrics = async (req, res) => {
 
     if (existingIndex >= 0) {
       // Merge metrics
+      const existing = wearable.dailyMetrics[existingIndex].toObject();
+      const updatedMetrics = { ...existing, ...metrics };
+
+      // If additive flag is present, add steps/calories instead of replacing
+      if (req.body.isAdditive) {
+        if (metrics.steps !== undefined) updatedMetrics.steps = (existing.steps || 0) + Number(metrics.steps);
+        if (metrics.caloriesBurned !== undefined) updatedMetrics.caloriesBurned = (existing.caloriesBurned || 0) + Number(metrics.caloriesBurned);
+        if (metrics.activeMinutes !== undefined) updatedMetrics.activeMinutes = (existing.activeMinutes || 0) + Number(metrics.activeMinutes);
+        if (metrics.distance !== undefined) updatedMetrics.distance = (existing.distance || 0) + Number(metrics.distance);
+      }
+
       wearable.dailyMetrics[existingIndex] = {
-        ...wearable.dailyMetrics[existingIndex].toObject(),
-        ...metrics,
+        ...updatedMetrics,
         date: targetDate
       };
       wearable.markModified('dailyMetrics');
@@ -186,9 +196,18 @@ exports.addSleepData = async (req, res) => {
     });
 
     if (existingIndex >= 0) {
+      const existing = wearable.sleepData[existingIndex].toObject();
+      const updatedSleep = { ...existing, ...sleepData };
+
+      // If additive flag is present, add totalSleepMinutes/remSleepMinutes etc instead of replacing
+      if (req.body.isAdditive) {
+        if (sleepData.totalSleepMinutes !== undefined) updatedSleep.totalSleepMinutes = (existing.totalSleepMinutes || 0) + Number(sleepData.totalSleepMinutes);
+        if (sleepData.remSleepMinutes !== undefined) updatedSleep.remSleepMinutes = (existing.remSleepMinutes || 0) + Number(sleepData.remSleepMinutes);
+        if (sleepData.deepSleepMinutes !== undefined) updatedSleep.deepSleepMinutes = (existing.deepSleepMinutes || 0) + Number(sleepData.deepSleepMinutes);
+      }
+
       wearable.sleepData[existingIndex] = {
-        ...wearable.sleepData[existingIndex].toObject(),
-        ...sleepData,
+        ...updatedSleep,
         date: targetDate
       };
       wearable.markModified('sleepData');
