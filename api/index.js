@@ -21,37 +21,43 @@ const app = require('../server/server');
 
 module.exports = (req, res) => {
   // Normalize the URL for Express
+  // Prioritize x-original-url or x-matched-path (Vercel specific)
   let url = req.url || '/';
-
+  
+  // Vercel rewrites often put the original path in req.url, 
+  // but if it's already /api/index, we might need to check x-original-url
+  const originalPath = req.headers['x-matched-path'] || req.headers['x-now-route-source'] || url;
+  
   // Log original incoming path for debugging
-  console.log(`[Vercel Handler] Method: ${req.method} | Original Path: ${url}`);
+  console.log(`[Vercel Handler] Method: ${req.method} | req.url: ${url} | x-matched: ${req.headers['x-matched-path']}`);
 
-  // Ensure leading slash
-  if (!url.startsWith('/')) {
-    url = '/' + url;
+  // Determine the true path we want to route in Express
+  let targetUrl = url;
+  
+  // If req.url is just the function file name, use the matched path instead
+  if (targetUrl.includes('api/index.js') || targetUrl.includes('api/index')) {
+    targetUrl = originalPath;
   }
 
-  // Force /api prefix if missing or if Vercel rewritten to /api/index
-  if (!url.startsWith('/api/')) {
-    if (url.startsWith('/admin')) {
-      url = '/api' + url;
-      console.log(`[Vercel Handler] Admin route detected, forcing /api prefix: ${url}`);
-    } else if (url === '/' || url === '/index' || url === '/api/index') {
-       // Catch root case
-       url = '/api';
-    } else if (url !== '/api') {
-      url = '/api' + url;
+  // Ensure targetUrl is cleaned up (remove /api/index if present in final path)
+  targetUrl = targetUrl.replace('/api/index.js', '/api').replace('/api/index', '/api');
+
+  // Fix: If it's still missing /api/ prefix, add it
+  if (!targetUrl.startsWith('/api/')) {
+    if (targetUrl.startsWith('/admin')) {
+        targetUrl = '/api' + targetUrl;
+    } else if (targetUrl === '/' || targetUrl === '') {
+        targetUrl = '/api';
+    } else if (targetUrl !== '/api') {
+        targetUrl = '/api' + targetUrl;
     }
-  } else if (url === '/api/index') {
-      // Specifically fix the case where rewriter sends to /api/index
-      url = '/api';
   }
 
   // Update request object for Express routing
-  req.url = url;
-  req.originalUrl = url;
+  req.url = targetUrl;
+  req.originalUrl = targetUrl;
 
-  console.log(`[Vercel Handler] Proxied Path: ${url}`);
+  console.log(`[Vercel Handler] FINAL Proxied Path: ${req.url}`);
 
   return app(req, res);
 };

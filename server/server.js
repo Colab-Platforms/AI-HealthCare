@@ -191,8 +191,16 @@ app.use('/api/admin', (req, res, next) => {
 });
 
 try {
+  // 🛡️ ADMIN ROUTER - Explicit Priority Mount
+  try {
+    const adminRouter = require('./routes/adminRoutes');
+    app.use('/api/admin', adminRouter);
+    console.log('[Server] ✅ Admin Router mounted at /api/admin');
+  } catch (adminErr) {
+    console.error('[Server] ❌ FAILED to load adminRouter:', adminErr.message);
+  }
+
   const routes = [
-    { path: '/api/admin', module: './routes/adminRoutes' }, // 🚀 TOP PRIORITY
     { path: '/api/auth', module: './routes/authRoutes' },
     { path: '/api/health', module: './routes/healthRoutes' },
     { path: '/api/metrics', module: './routes/metricRoutes' },
@@ -232,10 +240,21 @@ try {
 }
 
 app.use((err, req, res, next) => {
-  console.error('Error:', err.message);
+  console.error('[Server Error Handler]:', err.message);
   res.status(err.status || 500).json({
     message: err.message || 'Something went wrong!',
+    path: req.originalUrl,
     error: process.env.NODE_ENV === 'development' ? err.stack : undefined
+  });
+});
+
+// 🕵️ 404 FALLBACK TRAP
+app.use((req, res) => {
+  console.warn(`[404 NOT FOUND] ${req.method} ${req.originalUrl} | Host: ${req.headers.host} | UserAgent: ${req.headers['user-agent']}`);
+  res.status(404).json({
+    message: "Route not found in FitCure API",
+    requestedPath: req.originalUrl,
+    hint: "Check if the path starts with /api"
   });
 });
 
