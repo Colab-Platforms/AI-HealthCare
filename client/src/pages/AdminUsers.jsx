@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, Search, ChevronLeft, ChevronRight, UserCheck, 
-  UserX, Eye, X, Mail, Smartphone, Award, Shield, Activity, ExternalLink
+  UserX, Eye, X, Mail, Smartphone, Award, Shield, Activity, ExternalLink, Trash2
 } from 'lucide-react';
 import { adminService } from '../services/api';
 import toast from 'react-hot-toast';
@@ -85,6 +85,23 @@ export default function AdminUsers() {
         }
     };
 
+    const handleDeleteUser = async (userId, userName) => {
+        if (!window.confirm(`CRITICAL ACTION: Are you sure you want to PERMANENTLY delete user "${userName}"? This action is IRREVERSIBLE and will wipe all health records, reports, and associated data from the database.`)) {
+            return;
+        }
+
+        try {
+            await adminService.deleteUser(userId);
+            toast.success('User permanently purged from system');
+            if (userDetail?._id === userId) {
+                setUserDetail(null);
+            }
+            fetchUsers();
+        } catch (err) {
+            toast.error(err.response?.data?.message || 'Purge operation failed');
+        }
+    };
+
     const viewDetails = async (user) => {
         setDetailLoading(true);
         setUserDetail(user); // Quick show base info
@@ -99,7 +116,7 @@ export default function AdminUsers() {
     };
 
     return (
-        <div className="p-6 md:p-8 space-y-8 max-w-7xl mx-auto font-sans">
+        <div className="p-6 md:p-8 space-y-8 w-full max-w-[1600px] mx-auto font-sans">
             {/* Header */}
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
@@ -193,6 +210,9 @@ export default function AdminUsers() {
                                                     </button>
                                                     <button onClick={() => handleToggleStatus(u)} className={`p-2 rounded-lg transition-all ${u.isActive ? 'text-slate-400 hover:text-red-600 hover:bg-red-50' : 'text-emerald-400 hover:text-white hover:bg-emerald-500'}`}>
                                                         {u.isActive ? <UserX className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
+                                                    </button>
+                                                    <button onClick={() => handleDeleteUser(u._id, u.name)} className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all">
+                                                        <Trash2 className="w-4 h-4" />
                                                     </button>
                                                 </div>
                                             </td>
@@ -418,6 +438,13 @@ export default function AdminUsers() {
                                     className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all shadow-sm border ${userDetail.isActive ? 'bg-white text-red-600 border-red-50 hover:bg-red-50' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}
                                 >
                                     {userDetail.isActive ? 'Suspend Identity' : 'Restore Identity'}
+                                </button>
+                                <button 
+                                    onClick={() => handleDeleteUser(userDetail._id, userDetail.name)}
+                                    className="px-4 py-3 bg-red-600 text-white rounded-xl font-bold text-sm transition-all shadow-sm hover:bg-red-700"
+                                    title="Delete User Permanently"
+                                >
+                                    <Trash2 className="w-5 h-5" />
                                 </button>
                             </div>
                         </motion.div>

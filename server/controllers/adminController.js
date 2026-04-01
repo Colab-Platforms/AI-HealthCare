@@ -125,6 +125,36 @@ exports.impersonateUser = async (req, res) => {
   }
 };
 
+exports.deleteUser = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const user = await User.findById(id);
+
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+
+    // Protection for critical roles
+    if (user.role === 'admin' || user.role === 'superadmin') {
+      return res.status(403).json({ message: 'Cannot delete admin users via this dashboard' });
+    }
+
+    // Cascading deletion
+    await Promise.all([
+      User.findByIdAndDelete(id),
+      HealthReport.deleteMany({ user: id }),
+      require('../models/WearableData').deleteMany({ user: id }),
+      Doctor.findOneAndDelete({ user: id }),
+      require('../models/ChatHistory').deleteMany({ user: id }),
+      require('../models/Appointment').deleteMany({ patient: id })
+    ]);
+
+    res.json({ message: 'User and all related data deleted successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 
 // Report Oversight
 exports.getAllReports = async (req, res) => {

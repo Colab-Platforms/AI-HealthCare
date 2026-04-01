@@ -8,7 +8,8 @@ const {
   getSupplementMappings, createSupplementMapping, updateSupplementMapping, deleteSupplementMapping,
   getDietPlanTemplates, createDietPlanTemplate, updateDietPlanTemplate, approveDietPlanTemplate, deleteDietPlanTemplate,
   getAllDoctors, approveDoctor, rejectDoctor, createDoctor, updateDoctor, deleteDoctor, toggleDoctorVisibility,
-  getAllCachedFoods, createCachedFood, updateCachedFood, deleteCachedFood, bulkCreateCachedFood, clearAllCachedFoods
+  getAllCachedFoods, createCachedFood, updateCachedFood, deleteCachedFood, bulkCreateCachedFood, clearAllCachedFoods,
+  deleteUser
 } = require('../controllers/adminController');
 const { getDoctorScheduleOverview } = require('../controllers/doctorController');
 
@@ -34,6 +35,7 @@ router.get('/users/:id', getUserDetails);
 router.patch('/users/:id/status', updateUserStatus);
 router.patch('/users/:id/role', updateUserRole);
 router.post('/users/:id/impersonate', impersonateUser);
+router.delete('/users/:id', deleteUser);
 
 // Report Oversight
 router.get('/reports', getAllReports);

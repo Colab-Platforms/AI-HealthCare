@@ -212,6 +212,8 @@ export const adminService = {
   getUsers: (params) => api.get('admin/users', { params }),
   getUserDetails: (id) => api.get(`admin/users/${id}`),
   updateUserStatus: (id, isActive) => api.patch(`admin/users/${id}/status`, { isActive }),
+  updateUserRole: (id, role) => api.patch(`admin/users/${id}/role`, { role }),
+  deleteUser: (id) => api.delete(`admin/users/${id}`),
   impersonateUser: (id) => api.post(`admin/users/${id}/impersonate`),
 
   // Reports
