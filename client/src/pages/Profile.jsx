@@ -20,6 +20,7 @@ export default function Profile() {
   const [loading, setLoading] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const fileInputRef = useRef(null);
+  const cameraInputRef = useRef(null);
   const [healthGoal, setHealthGoal] = useState(null);
   const [goalLoading, setGoalLoading] = useState(false);
   const [extraData, setExtraData] = useState({
@@ -474,14 +475,32 @@ export default function Profile() {
                 </div>
               </div>
 
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={uploadingImage}
-                className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center cursor-pointer"
-              >
-                <Camera className="w-6 h-6 text-white" />
-              </button>
+              <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-3">
+                <button
+                  onClick={() => {
+                    if (cameraInputRef.current) cameraInputRef.current.value = '';
+                    cameraInputRef.current?.click();
+                  }}
+                  disabled={uploadingImage}
+                  className="p-2 bg-white/20 hover:bg-white/40 rounded-full transition-all"
+                  title="Take Photo"
+                >
+                  <Camera className="w-6 h-6 text-white" />
+                </button>
+                <button
+                  onClick={() => {
+                    if (fileInputRef.current) fileInputRef.current.value = '';
+                    fileInputRef.current?.click();
+                  }}
+                  disabled={uploadingImage}
+                  className="p-2 bg-white/20 hover:bg-white/40 rounded-full transition-all"
+                  title="Upload from Gallery"
+                >
+                  <Upload className="w-6 h-6 text-white" />
+                </button>
+              </div>
               <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
+              <input type="file" ref={cameraInputRef} onChange={handleImageUpload} accept="image/*" capture="environment" className="hidden" />
             </div>
 
             {/* User Info */}

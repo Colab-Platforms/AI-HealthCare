@@ -1,13 +1,13 @@
-import { useState, useEffect } from 'react';
-import api from '../services/api';
-import toast from 'react-hot-toast';
 import {
   Loader2, Trash2, AlertCircle, CheckCircle, Camera, X, ChefHat,
   Flame, Zap, Heart, Info, History, Brain, Sparkles, Activity, Plus, ShieldCheck,
-  ChevronRight, Lightbulb, Target, Droplets
+  ChevronRight, Lightbulb, Target, Droplets, Image as ImageIcon
 } from 'lucide-react';
+import { useRef } from 'react';
 
 export default function QuickFoodCheck() {
+  const cameraInputRef = useRef(null);
+  const galleryInputRef = useRef(null);
   const [foodInput, setFoodInput] = useState('');
   const [image, setImage] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
@@ -411,15 +411,29 @@ export default function QuickFoodCheck() {
               className="w-full px-5 py-4 pr-14 bg-slate-50 border-2 border-slate-100 rounded-2xl focus:outline-none focus:border-black focus:ring-2 focus:ring-slate-900/10 text-gray-900 placeholder-gray-400 font-bold transition-all"
             />
             {/* Camera Icon - Opens Modal */}
-            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-1">
               <button
-                onClick={() => setShowCameraModal(true)}
+                onClick={() => {
+                   if (cameraInputRef.current) cameraInputRef.current.value = '';
+                   cameraInputRef.current?.click();
+                }}
                 className="p-2 text-black hover:bg-slate-100 rounded-lg transition relative group"
               >
                 <Camera className="w-5 h-5" />
-                {/* Tooltip */}
-                <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-10">
-                  Upload or capture food
+                <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100]">
+                  Scan Food
+                </div>
+              </button>
+              <button
+                onClick={() => {
+                   if (galleryInputRef.current) galleryInputRef.current.value = '';
+                   galleryInputRef.current?.click();
+                }}
+                className="p-2 text-slate-400 hover:bg-slate-100 rounded-lg transition relative group"
+              >
+                <ImageIcon className="w-5 h-5" />
+                <div className="absolute bottom-full right-0 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100]">
+                  Upload Food
                 </div>
               </button>
               {foodInput && (
@@ -429,7 +443,7 @@ export default function QuickFoodCheck() {
                     setShowQuantitySuggestion(false);
                     setShowPrepMethod(false);
                   }}
-                  className="p-2 hover:bg-gray-100 rounded-lg transition"
+                  className="p-2 hover:bg-gray-100 rounded-lg transition ml-1"
                 >
                   <X className="w-5 h-5 text-gray-400" />
                 </button>
@@ -956,7 +970,24 @@ export default function QuickFoodCheck() {
         )}
       </div>
 
-      {/* Camera/Gallery Modal */}
+      {/* Hidden Inputs for Direct Action */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        onChange={handleImageSelect}
+        className="hidden"
+      />
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleImageSelect}
+        className="hidden"
+      />
+
+      {/* Camera/Gallery Modal (Used by legacy calls or specific flows) */}
       {showCameraModal && (
         <div
           data-modal="true"
