@@ -5,7 +5,8 @@ import {
   ChevronLeft, ChevronRight, Plus, Camera, Mic, Lightbulb,
   Sun, Utensils, Cookie, Moon, Minus, Search, Wand2, X,
   Edit3, Image as ImageIcon,
-  GlassWater, FileEdit, ScanLine, CheckCircle2, Loader2, Zap, Trash2, Clock, Sparkles, AlertCircle, FlaskConical
+  GlassWater, FileEdit, ScanLine, CheckCircle2, Loader2, Zap, Trash2, Clock, Sparkles, AlertCircle, FlaskConical,
+  MoreHorizontal, ArrowLeftRight
 } from 'lucide-react';
 import { ImageWithFallback } from '../components/ImageWithFallback';
 import { BarChart, Bar, Cell, ResponsiveContainer, XAxis, Tooltip } from 'recharts';
@@ -39,6 +40,7 @@ function Nutrition() {
   const [mealTab, setMealTab] = useState('Breakfast');
   const [inputMethod, setInputMethod] = useState('Predict'); // 'Predict', 'Type', 'Scan'
   const [recType, setRecType] = useState('Recommended');
+  const [viewingMeal, setViewingMeal] = useState(null);
 
   // Dynamic Data States
   const [dailySummary, setDailySummary] = useState({
@@ -641,22 +643,93 @@ function Nutrition() {
     }
   };
 
-  const deleteLog = async (id) => {
-    if (!confirm('Delete this food log?')) return;
+  const handleDeleteMeal = async (logId) => {
     try {
-      await api.delete(`nutrition/logs/${id}`);
-      toast.success('Deleted');
-      triggerRefresh();
-      await fetchData(true);
-    } catch (error) {
-      toast.error('Delete failed');
+      const confirmDelete = window.confirm('Are you sure you want to delete this meal log?');
+      if (!confirmDelete) return;
+
+      const { data } = await nutritionService.deleteNutritionLog(logId);
+      if (data.success) {
+        toast.success('Meal log deleted');
+        invalidateCache(['dashboard', `logs_${selectedDate}`, `nutrition_${selectedDate}`]);
+        triggerRefresh();
+      }
+    } catch (err) {
+      console.error('Delete error:', err);
+      toast.error('Failed to delete meal');
     }
   };
 
-  const changeDate = (days) => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() + days);
-    setSelectedDate(d.toISOString().split('T')[0]);
+  const handleMoveMeal = async (id, newType) => {
+    try {
+      // Find the moving log across all categories
+      let logToMove = null;
+      let oldKeyFound = null;
+
+      Object.keys(mealLogs).forEach(key => {
+        const found = mealLogs[key].find(m => m._id === id);
+        if (found) {
+          logToMove = { ...found, mealType: newType };
+          oldKeyFound = key;
+        }
+      });
+
+      if (!logToMove) return;
+
+      // Determine target key
+      const newKey = newType === 'breakfast' ? 'Breakfast' :
+                     newType === 'midMorningSnack' ? 'Mid-Morning' :
+                     newType === 'lunch' ? 'Lunch' :
+                     newType === 'eveningSnack' ? 'Evening' : 'Dinner';
+
+      // Optimistic update with NEW ARRAY REFERENCES
+      setMealLogs(prev => {
+        const newState = { ...prev };
+        if (oldKeyFound) {
+          newState[oldKeyFound] = prev[oldKeyFound].filter(m => m._id !== id);
+        }
+        newState[newKey] = [...(newState[newKey] || []), logToMove];
+        return newState;
+      });
+      
+      // Update recent meals list for "All" view consistency
+      setRecentMeals(prev => {
+        return prev.map(m => m._id === id ? logToMove : m);
+      });
+
+      toast.promise(
+        api.put(`nutrition/logs/${id}`, { mealType: newType }),
+        {
+          loading: 'Moving meal...',
+          success: 'Meal moved successfully!',
+          error: 'Failed to move meal.'
+        }
+      ).then(() => {
+        invalidateCache(['dashboard', `logs_${selectedDate}`, `nutrition_${selectedDate}`]);
+        triggerRefresh();
+      });
+
+    } catch (error) {
+      console.error('Move error:', error);
+      toast.error('Failed to move meal');
+      triggerRefresh();
+    }
+  };
+
+  const handleViewMeal = (meal) => {
+    setViewingMeal(meal);
+  };
+
+
+
+  const changeDate = (daysOrDate) => {
+    if (typeof daysOrDate === 'number') {
+      const d = new Date(selectedDate);
+      d.setDate(d.getDate() + daysOrDate);
+      setSelectedDate(d.toISOString().split('T')[0]);
+    } else {
+      setSelectedDate(daysOrDate);
+    }
   };
 
   const remainingCals = Math.max(0, dailySummary.calorieTarget - dailySummary.caloriesConsumed);
@@ -670,33 +743,31 @@ function Nutrition() {
        <div className="container mx-auto px-4 pt-2 pb-8">
           <NutritionTab 
             onLogFood={async (mode, mealType, file) => {
-              // Reset state for fresh modal
-              setAnalysisResult(null);
-              setFoodInput('');
-              setFoodQuantity('');
-              setPrepMethod('');
+              const inputMode = mode === 'photo' || mode === 'Add Food via Photo' ? 'Scan' :
+                               mode === 'voice' || mode === 'Voice Log' ? 'Predict' :
+                               mode === 'text' || mode === 'Type' ? 'Type' : 
+                               mode === 'Scan' ? 'Scan' : 'Scan';
               
-              if (mode === 'Scan') {
+              if (inputMode === 'Scan') {
                 setInputMethod('Scan');
                 if (file) {
-                  // Process image first, then open modal with auto-analyze
                   setImage(null);
                   setImagePreview(null);
                   if (mealType) setMealTab(mealType);
                   setIsModalOpen(true);
-                  // Await the image compression to complete, then auto-analyze
                   await handleImageSelect(file, true);
                   return;
-                } else {
-                  setImage(null);
-                  setImagePreview(null);
                 }
               }
-              else if (mode === 'Type') setInputMethod('Type');
-              else if (mode === 'Voice Log') setInputMethod('Predict');
+              
+              setInputMethod(inputMode);
               if (mealType) setMealTab(mealType);
               setIsModalOpen(true);
             }}
+            onDeleteFood={handleDeleteMeal}
+            onMoveFood={handleMoveMeal}
+            onViewFood={handleViewMeal}
+            triggerRefresh={triggerRefresh}
             loggedMeals={Object.values(mealLogs).flat()}
             dailySummary={dailySummary}
             waterIntake={waterIntake}
@@ -708,6 +779,16 @@ function Nutrition() {
             frequentFoods={frequentFoods}
             aiInsights={aiInsights}
           />
+
+          {/* View Meal Detail Modal */}
+          {viewingMeal && (
+            <MealAnalysisModal
+              isOpen={!!viewingMeal}
+              onClose={() => setViewingMeal(null)}
+              meal={viewingMeal}
+              source="view"
+            />
+          )}
        </div>
 
       {/* Add Meal Modal */}
@@ -771,7 +852,9 @@ function Nutrition() {
                         }
                       }}
                       className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-[9px] font-black rounded-xl transition-all uppercase tracking-widest ${
-                        (inputMethod === tab.name || (inputMethod === 'Scan' && tab.name === lastSource))
+                        (tab.name === 'Upload' || tab.name === 'Scan' 
+                          ? (inputMethod === 'Scan' && lastSource === tab.name)
+                          : (inputMethod === tab.name))
                         ? 'bg-white shadow-xl text-[#064e3b]' 
                         : 'text-slate-400 hover:text-[#064e3b]'
                       }`}

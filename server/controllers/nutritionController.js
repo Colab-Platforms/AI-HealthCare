@@ -750,6 +750,16 @@ exports.updateFoodLog = async (req, res) => {
       });
     }
 
+    if (updates.mealType) {
+      const type = String(updates.mealType).toLowerCase().trim();
+      if (type.includes('breakfast')) updates.mealType = 'breakfast';
+      else if (type.includes('lunch')) updates.mealType = 'lunch';
+      else if (type.includes('dinner')) updates.mealType = 'dinner';
+      else if (type.includes('mid') || type.includes('morning')) updates.mealType = 'midMorningSnack';
+      else if (type.includes('evening')) updates.mealType = 'eveningSnack';
+      else if (type.includes('snack')) updates.mealType = 'snack';
+    }
+
     Object.assign(foodLog, updates);
     await foodLog.save();
 

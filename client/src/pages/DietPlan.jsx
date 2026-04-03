@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import api, { nutritionService, dietRecommendationService } from '../services/api';
@@ -246,6 +246,7 @@ export default function DietPlan() {
     dataRefreshTrigger 
   } = useData();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState([]);
@@ -266,6 +267,18 @@ export default function DietPlan() {
   useEffect(() => {
     loadInitialData();
   }, [dataRefreshTrigger]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('autoGenerate') === 'true' && !generating && !location.state?.generated) {
+      const timer = setTimeout(() => {
+        generatePlan(true); // Auto-generate/update plan
+        // Clear param to prevent loop
+        navigate('/diet-plan', { replace: true, state: { generated: true } });
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, [location]);
 
   const loadInitialData = async () => {
     try {

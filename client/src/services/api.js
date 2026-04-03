@@ -269,7 +269,9 @@ export const nutritionService = {
   getDailySummary: (date) => api.get('nutrition/summary/daily', { params: { date } }),
   getWeeklySummary: () => api.get('nutrition/summary/weekly'),
   getGoals: () => api.get('nutrition/goals'),
-  updateGoals: (goals) => api.put('nutrition/goals', goals)
+  updateGoals: (goals) => api.put('nutrition/goals', goals),
+  deleteNutritionLog: (id) => api.delete(`nutrition/logs/${id}`),
+  updateNutritionLog: (id, data) => api.put(`nutrition/logs/${id}`, data)
 };
 
 export const dietRecommendationService = {

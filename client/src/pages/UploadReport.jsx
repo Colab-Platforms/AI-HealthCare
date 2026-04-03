@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
 import { healthService } from '../services/api';
@@ -6,13 +6,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Upload, FileText, X, Loader2, CheckCircle, Shield, AlertTriangle,
   ChevronDown, Trash2, Info, Lock, Eye, Calendar, History, BarChart2,
-  Activity, Zap, Sparkles, ChevronRight, Check, TrendingUp, TrendingDown, Search, Clock
+  Activity, Zap, Sparkles, ChevronRight, Check, TrendingUp, TrendingDown,
+  Search, Clock, ArrowLeft, FileUp, CheckCircle2, AlertCircle, Languages, Share2, Download, User, Coffee, Utensils, UtensilsCrossed, Apple
 } from 'lucide-react';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { useData } from '../context/DataContext';
 import toast from 'react-hot-toast';
+import { ImageWithFallback } from '../components/ImageWithFallback';
 
 const reportTypes = [
   { value: 'Blood Test', label: 'Blood Test', icon: '🩸' },
@@ -23,6 +25,24 @@ const reportTypes = [
   { value: 'Ultrasound', label: 'Ultrasound', icon: '🌊' },
   { value: 'General Checkup', label: 'General Checkup', icon: '📋' },
   { value: 'Other', label: 'Other', icon: '📁' }
+];
+
+const dietPlanDefaults = {
+  breakfast: [
+    { title: "Oats & Berries", desc: "320 kcal • High Fiber", image: "https://images.unsplash.com/photo-1591535102082-a3fe217ef1bd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080" },
+    { title: "Spinach Omelette", desc: "280 kcal • Protein Rich", image: "https://images.unsplash.com/photo-1631182661308-c2c81d4e08b4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080" }
+  ],
+  lunch: [
+    { title: "Chicken & Rice", desc: "450 kcal • Balanced", image: "https://images.unsplash.com/photo-1762631934518-f75e233413ca?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080" },
+    { title: "Fish & Quinoa", desc: "410 kcal • Omega-3", image: "https://images.unsplash.com/photo-1704007573697-6a516da421ec?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080" }
+  ]
+};
+
+const healthTips = [
+  { title: "Daily Exercise", desc: "Aim for 5 days a week of mixed cardio and strength training.", image: "https://images.unsplash.com/photo-1771586791190-97ed536c54af?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080" },
+  { title: "Prioritize Sleep", desc: "Get 7-8 hours nightly to reduce inflammation and boost recovery.", image: "https://images.unsplash.com/photo-1631312113214-8f2f03a6962f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080" },
+  { title: "Manage Stress", desc: "Practice daily yoga or meditation to keep cortisol levels in check.", image: "https://images.unsplash.com/photo-1621691223255-b89d5623df3a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080" },
+  { title: "Stay Hydrated", desc: "Drink at least 8 glasses of water to maintain metabolic balance.", image: "https://images.unsplash.com/photo-1555704574-a9cfdfab06e0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080" }
 ];
 
 export default function UploadReport() {
@@ -38,10 +58,12 @@ export default function UploadReport() {
   const [loadingReports, setLoadingReports] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingReportId, setProcessingReportId] = useState(null);
+  const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
+  const [metricTab, setMetricTab] = useState('All');
+  
   const { invalidateCache, addPendingAnalysis, dataRefreshTrigger, pendingAnalysisIds } = useData();
   const navigate = useNavigate();
-
-  const glassCard = "bg-white rounded-[24px] shadow-sm relative overflow-hidden";
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -54,20 +76,17 @@ export default function UploadReport() {
       const { data } = await healthService.getReports();
       setAllReports(data || []);
 
-      // Check for processing report
       if (data && data.length > 0) {
         const processing = data.find(r => r.status === 'processing');
         if (processing) {
           setIsProcessing(true);
           setProcessingReportId(processing._id);
-          navigate(`/reports/${processing._id}`); // Auto-redirect to the dedicated status screen as requested
         } else {
           setIsProcessing(false);
           setProcessingReportId(null);
         }
       }
 
-      // Auto-select latest 2 for comparison or latest 1 for analysis
       if (data && data.length >= 2) {
         setSelectedReports([data[0]._id, data[1]._id]);
       } else if (data && data.length === 1) {
@@ -80,43 +99,21 @@ export default function UploadReport() {
     }
   };
 
-  // Refresh reports when dataRefreshTrigger changes (from global polling)
   useEffect(() => {
     fetchAllReports();
   }, [dataRefreshTrigger]);
 
-  // Synchronize local processing state with global pending analyses
   useEffect(() => {
     if (pendingAnalysisIds.length > 0) {
       if (!isProcessing) setIsProcessing(true);
       if (!processingReportId) setProcessingReportId(pendingAnalysisIds[0]);
     } else if (isProcessing && !pendingAnalysisIds.some(id => allReports.find(r => r._id === id && r.status === 'processing'))) {
-      // Only set to false if No reports are in pending state globally
       setIsProcessing(false);
       setProcessingReportId(null);
       fetchAllReports();
     }
   }, [pendingAnalysisIds, processingReportId, allReports, isProcessing]);
 
-  const handleDeleteReport = async (reportId, e) => {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (!window.confirm('Are you sure you want to delete this report? This action cannot be undone.')) {
-      return;
-    }
-
-    try {
-      await healthService.deleteReport(reportId);
-      setAllReports(prev => prev.filter(r => r._id !== reportId));
-      setSelectedReports(prev => prev.filter(id => id !== reportId));
-      toast.success('Report deleted successfully');
-    } catch (error) {
-      toast.error('Failed to delete report');
-    }
-  };
-
-  // Register initial processing reports in global poll
   useEffect(() => {
     if (allReports.length > 0) {
       const processing = allReports.find(r => r.status === 'processing');
@@ -126,7 +123,6 @@ export default function UploadReport() {
     }
   }, [allReports, pendingAnalysisIds, addPendingAnalysis]);
 
-  // Build comparison data when selectedReports change
   useEffect(() => {
     if (selectedReports.length === 2) {
       const report1 = allReports.find(r => r._id === selectedReports[0]);
@@ -156,7 +152,6 @@ export default function UploadReport() {
 
     setComparisonData(chartData);
 
-    // Build rich AI comparison insight
     const improvements = [];
     const needsAttention = [];
     chartData.forEach(d => {
@@ -170,11 +165,8 @@ export default function UploadReport() {
       }
     });
 
-    // Health scores
     const recentScore = recentReport.aiAnalysis?.healthScore;
     const pastScore = pastReport.aiAnalysis?.healthScore;
-
-    // Deficiency analysis
     const recentDefs = (recentReport.aiAnalysis?.deficiencies || []).map(d => d.name).filter(Boolean);
     const pastDefs = (pastReport.aiAnalysis?.deficiencies || []).map(d => d.name).filter(Boolean);
     const resolvedDefs = pastDefs.filter(d => !recentDefs.includes(d));
@@ -183,18 +175,9 @@ export default function UploadReport() {
     setAiComparison({ improvements, needsAttention, recentScore, pastScore, resolvedDefs, newDefs });
   };
 
-  const filteredComparisonData = selectedMetric === 'All'
-    ? comparisonData
-    : comparisonData.filter(d => d.metric === selectedMetric);
-
   const onDrop = useCallback((acceptedFiles, fileRejections) => {
     if (fileRejections.length > 0) {
-      const isSizeError = fileRejections.some(rej => rej.errors.some(err => err.code === 'file-too-large'));
-      if (isSizeError) {
-        toast.error('File too large (Max size: 4MB). Please select a smaller file.');
-      } else {
-        toast.error('Invalid file type. Please upload PDF or Images.');
-      }
+      toast.error('Invalid file selection. Max size 4MB.');
     }
 
     const newFiles = acceptedFiles.map(file => ({
@@ -213,28 +196,10 @@ export default function UploadReport() {
     maxSize: 4 * 1024 * 1024
   });
 
-  const updateFileType = (id, reportType) => {
-    setFiles(prev => prev.map(f => f.id === id ? { ...f, reportType } : f));
-  };
-
-  const removeFile = (id) => {
-    setFiles(prev => prev.filter(f => f.id !== id));
-  };
-
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    if (files.length === 0) {
-      toast.error('Please select at least one file');
-      return;
-    }
-
+    if (files.length === 0) return;
     const fileToUpload = files[0];
-
-    if (fileToUpload.file.type === 'application/pdf' && fileToUpload.file.size > 4 * 1024 * 1024) {
-      toast.error('PDF file is too large (Max 4MB). Please compress it.');
-      return;
-    }
-
+    
     setLoading(true);
     setUploadProgress(0);
 
@@ -247,40 +212,6 @@ export default function UploadReport() {
 
     try {
       let finalFile = fileToUpload.file;
-
-      if (finalFile.type.startsWith('image/') && finalFile.size > 1 * 1024 * 1024) {
-        const compressImage = (file, quality = 0.8) => {
-          return new Promise((resolve) => {
-            const reader = new FileReader();
-            reader.readAsDataURL(file);
-            reader.onload = (event) => {
-              const img = new Image();
-              img.src = event.target.result;
-              img.onload = () => {
-                const canvas = document.createElement('canvas');
-                let width = img.width, height = img.height;
-                const MAX_DIM = 1600;
-                if (width > height) { if (width > MAX_DIM) { height *= MAX_DIM / width; width = MAX_DIM; } }
-                else { if (height > MAX_DIM) { width *= MAX_DIM / height; height = MAX_DIM; } }
-                canvas.width = width;
-                canvas.height = height;
-                canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-                canvas.toBlob((blob) => {
-                  resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
-                }, 'image/jpeg', quality);
-              };
-            };
-          });
-        };
-
-        toast.loading('Optimizing image...', { id: 'compressing' });
-        finalFile = await compressImage(finalFile, 0.6);
-        if (finalFile.size > 3.5 * 1024 * 1024) {
-          finalFile = await compressImage(fileToUpload.file, 0.4);
-        }
-        toast.dismiss('compressing');
-      }
-
       const formData = new FormData();
       formData.append('report', finalFile);
       formData.append('reportType', fileToUpload.reportType);
@@ -291,22 +222,33 @@ export default function UploadReport() {
       
       if (data.backgroundProcessing) {
         addPendingAnalysis(data.report._id);
-        toast.success('Report uploaded! Analysis in progress...');
+        toast.success('Report uploaded! Processing...');
       } else {
         toast.success('Report analyzed successfully!');
       }
 
-      invalidateCache(['diet_plan', 'dashboard']);
-      setTimeout(() => navigate(`/reports/${data.report._id}`), 500);
+      invalidateCache(['diet_plan', 'dashboard', 'reports']);
+      setFiles([]);
+      fetchAllReports();
     } catch (error) {
       clearInterval(progressInterval);
-      const errorMsg = error.response?.status === 413
-        ? 'File too large (Max 4MB).'
-        : (error.response?.data?.message || 'Failed to analyze report');
-      toast.error(errorMsg);
+      toast.error(error.response?.data?.message || 'Failed to analyze report');
       setUploadProgress(0);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDeleteReport = async (reportId, e) => {
+    e.preventDefault(); e.stopPropagation();
+    if (!window.confirm('Delete this report?')) return;
+    try {
+      await healthService.deleteReport(reportId);
+      setAllReports(prev => prev.filter(r => r._id !== reportId));
+      setSelectedReports(prev => prev.filter(id => id !== reportId));
+      toast.success('Report deleted');
+    } catch (error) {
+      toast.error('Failed to delete');
     }
   };
 
@@ -322,606 +264,390 @@ export default function UploadReport() {
     }
   };
 
-  const viewingReport = allReports.find(r => r._id === viewingReportId);
+  const viewingReport = allReports.find(r => r._id === selectedReports[0]);
 
-  return (
-    <div className="px-4 md:px-8 pt-0 md:pt-4 max-w-[1400px] mx-auto space-y-6 relative font-sans bg-transparent">
-      <div className="pt-2" />
-      
-      {/* Active Analysis Banner or Full Page Processing UI */}
-      {isProcessing ? null : allReports.find(r => r.status === 'processing') && (
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="bg-amber-50 border border-amber-100 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-4"
-        >
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center shadow-sm">
-              <Clock className="w-6 h-6 text-amber-500 animate-spin" />
+  const DetailedAnalysisView = () => {
+    const report = viewingReport;
+    if (!report || !report.aiAnalysis) return null;
+    
+    const analysis = report.aiAnalysis;
+    const metrics = Object.entries(analysis.metrics || {}).map(([name, data]) => ({
+      name,
+      value: typeof data === 'object' ? data.value : data,
+      unit: typeof data === 'object' ? data.unit : '',
+      status: (typeof data === 'object' ? data.status?.toUpperCase() : 'NORMAL') || 'NORMAL',
+      range: typeof data === 'object' ? data.range : ''
+    }));
+
+    const filteredMetrics = metrics.filter(m => {
+      if (metricTab === 'All') return true;
+      return m.status === metricTab.toUpperCase();
+    });
+
+    const normalCount = metrics.filter(m => m.status === 'NORMAL').length;
+    const borderlineCount = metrics.filter(m => m.status === 'BORDERLINE' || m.status === 'MODERATE' || m.status === 'LOW').length;
+    const highCount = metrics.filter(m => m.status === 'HIGH' || m.status === 'CRITICAL').length;
+
+    return (
+      <div className="w-full min-h-full flex flex-col bg-gradient-to-b from-[#F2F5EC] to-[#E5EBE0] dark:from-[#161719] dark:to-[#161719] animate-in fade-in duration-300 relative pb-24">
+        {/* Header */}
+        <div className="px-6 pt-12 pb-6 flex items-center justify-between sticky top-0 bg-[#F2F5EC]/80 dark:bg-[#161719]/80 backdrop-blur-md z-10 shrink-0 border-b border-white/50 dark:border-white/10">
+          <button 
+            onClick={() => setShowDetailedAnalysis(false)}
+            className="w-10 h-10 bg-white/80 dark:bg-white/10 shadow-sm border border-white dark:border-white/10 rounded-full flex items-center justify-center text-[#1a2138] dark:text-white hover:bg-white dark:hover:bg-white/20 active:scale-90 transition-all"
+          >
+            <ArrowLeft size={20} strokeWidth={2.5} />
+          </button>
+          <div className="flex flex-col items-center">
+            <h1 className="text-[20px] font-bold text-[#1a2138] dark:text-white tracking-tight leading-tight">Diagnostic Synthesis</h1>
+            <p className="text-[12px] text-[#69A38D] font-bold">Optimization-Powered Health Insights</p>
+          </div>
+          <div className="flex gap-2">
+            <button className="w-8 h-8 bg-white/80 dark:bg-white/10 shadow-sm border border-white rounded-full flex items-center justify-center text-[#1a2138] dark:text-white"><Languages size={15} /></button>
+            <button className="w-8 h-8 bg-white/80 dark:bg-white/10 shadow-sm border border-white rounded-full flex items-center justify-center text-[#1a2138] dark:text-white"><Share2 size={15} /></button>
+          </div>
+        </div>
+
+        <div className="px-5 flex flex-col gap-5">
+          {/* Info Card */}
+          <div className="bg-white/60 backdrop-blur-xl rounded-[32px] p-6 shadow-[0_4px_25px_rgba(0,0,0,0.04)] border border-white flex flex-col gap-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-full bg-[#E2EED2] flex items-center justify-center shadow-sm">
+                  <FileText size={20} className="text-[#69A38D]" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-extrabold text-[#64748b] uppercase tracking-wider mb-0.5">Report Type</span>
+                  <span className="text-[15px] font-extrabold text-[#1a2138]">{report.reportType || 'Blood Test'}</span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#69A38D]/10 text-[#69A38D] rounded-full border border-[#69A38D]/20 shadow-sm">
+                <span className="text-[10px] font-bold tracking-wider uppercase">Analyzed</span>
+              </div>
             </div>
-            <div>
-              <h4 className="text-amber-900 font-bold">Analysis in Progress</h4>
-              <p className="text-amber-700 text-sm">We are still analyzing your recently uploaded report. It will be ready in a moment.</p>
+            <div className="flex items-center justify-between border-t border-white/50 pt-6">
+              <div className="flex flex-col gap-1">
+                <span className="text-[11px] font-extrabold text-[#64748b] uppercase tracking-wider">Date</span>
+                <div className="flex items-center gap-2 text-[#1a2138]">
+                  <Calendar size={14} className="text-[#69A38D]" />
+                  <span className="text-[14px] font-bold">{new Date(report.reportDate || report.createdAt).toLocaleDateString()}</span>
+                </div>
+              </div>
             </div>
           </div>
-          <button 
-            onClick={() => navigate(`/reports/${allReports.find(r => r.status === 'processing')._id}`)}
-            className="w-full md:w-auto px-6 py-2.5 bg-amber-500 text-white font-bold rounded-xl shadow-lg border-b-4 border-amber-700 active:border-b-0 active:translate-y-1 transition-all"
-          >
-            Check Status
-          </button>
-        </motion.div>
-      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Upload & Comparison */}
-        <div className="lg:col-span-2 flex flex-col gap-8">
+          {/* Executive Summary */}
+          <div className="bg-white/60 backdrop-blur-xl rounded-[32px] p-6 shadow-[0_4px_25px_rgba(0,0,0,0.04)] border border-white">
+            <div className="flex items-center gap-4 mb-5">
+              <div className="w-12 h-12 rounded-full bg-white/80 flex items-center justify-center shadow-sm border border-white">
+                <Activity size={20} className="text-[#69A38D]" />
+              </div>
+              <div className="flex flex-col">
+                <h2 className="text-[18px] font-extrabold text-[#1a2138]">Executive Summary</h2>
+              </div>
+            </div>
+            <div className="bg-white/80 rounded-[20px] p-5 border border-white shadow-sm">
+              <p className="text-[14px] text-[#64748b] leading-relaxed font-medium">
+                {analysis.summary}
+              </p>
+            </div>
+          </div>
 
-          {/* Upload Card or Processing UI */}
-          <AnimatePresence mode="wait">
-            {loadingReports ? (
-              <motion.div
-                key="loading"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className={`${glassCard} p-10 flex items-center justify-center min-h-[300px]`}
-              >
-                <div className="flex flex-col items-center gap-4">
-                  <Loader2 className="w-10 h-10 text-[#A795C7] animate-spin" />
-                  <p className="text-slate-400 font-bold uppercase tracking-widest text-xs">Loading context...</p>
-                </div>
-              </motion.div>
-            ) : isProcessing ? (
-              <motion.div
-                key="processing"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0 }}
-                className={`${glassCard} p-8 md:p-12 text-center overflow-hidden relative shadow-2xl border-2 border-amber-100`}
-              >
-                <div className="absolute top-0 right-0 w-32 h-32 bg-amber-50/50 rounded-full blur-3xl -mr-16 -mt-16" />
-                
-                <div className="relative z-10 flex flex-col items-center">
-                  <div className="relative mb-8">
-                    <div className="w-20 h-20 md:w-28 md:h-28 rounded-3xl bg-amber-50 flex items-center justify-center ring-8 ring-amber-50/10">
-                      <Clock className="w-10 h-10 md:w-12 md:h-12 text-amber-500 animate-spin" />
-                    </div>
-                    <div className="absolute -top-2 -right-2 w-8 h-8 md:w-10 md:h-10 bg-white rounded-2xl shadow-md border border-amber-100 flex items-center justify-center">
-                      <Sparkles className="w-4 h-4 md:w-5 md:h-5 text-amber-500 animate-pulse" />
-                    </div>
-                  </div>
-
-                  <h3 className="text-2xl md:text-3xl font-black text-[#1a1a1a] mb-3">Analysis in Process</h3>
-                  <p className="text-[#92400e] text-sm md:text-base font-semibold leading-relaxed mb-8 max-w-sm">
-                    We are extracting medical insights from your report. This usually takes 1-2 minutes.
-                  </p>
-
-                  <div className="w-full max-w-md bg-amber-50 border border-amber-100 rounded-3xl p-5 mb-8">
-                    <div className="w-full bg-white h-2.5 rounded-full overflow-hidden mb-3 border border-amber-100/50 shadow-inner">
-                      <motion.div 
-                        initial={{ width: "0%" }}
-                        animate={{ width: "85%" }}
-                        transition={{ duration: 60, ease: "linear" }}
-                        className="bg-gradient-to-r from-amber-400 to-amber-600 h-full"
-                      />
-                    </div>
-                    <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest text-[#92400e]">
-                      <span>Deep Analysis</span>
-                      <span>85% (Optimistic)</span>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row gap-3 w-full max-w-sm">
-                    <Link 
-                      to="/dashboard"
-                      className="flex-1 py-4 bg-white border-2 border-amber-200 text-[#92400e] font-black rounded-2xl hover:bg-amber-50 transition-all uppercase tracking-widest text-xs shadow-sm"
-                    >
-                      Explore Platform
-                    </Link>
-                    <Link 
-                      to={`/reports/${processingReportId}`}
-                      className="flex-1 py-4 bg-amber-500 text-white font-black rounded-2xl hover:bg-amber-600 transition-all uppercase tracking-widest text-xs shadow-lg shadow-amber-200"
-                    >
-                      Check Details
-                    </Link>
-                  </div>
-                </div>
-              </motion.div>
-            ) : !loading ? (
-              <motion.div
-                key="upload"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                className={`${glassCard} p-6 md:p-10 min-h-[200px] md:min-h-[280px] flex flex-col`}
-              >
-                <div className="absolute inset-0 bg-gradient-to-b from-transparent to-[#F5F5F7]/50 pointer-events-none" />
-
-                {files.length === 0 ? (
-                  <div
-                    {...getRootProps()}
-                    className={`relative z-10 group flex-1 border-2 md:border-4 border-dashed rounded-3xl md:rounded-[2rem] p-6 md:p-10 text-center cursor-pointer transition-all duration-500 flex flex-col items-center justify-center ${isDragActive
-                      ? 'border-[#A795C7] bg-[#F8F6FA] scale-[1.01]'
-                      : 'border-slate-100 hover:border-[#A795C7]/50 bg-slate-50/50'
-                      }`}
+          {/* Metrics List */}
+          <div className="flex flex-col gap-5 pt-2">
+            <div className="flex flex-col gap-4">
+              <div className="flex items-center gap-3">
+                <h2 className="text-[20px] font-extrabold text-[#1a2138] leading-tight">Health Metrics</h2>
+                <span className="px-2.5 py-1 bg-white/80 border border-white text-[#64748b] shadow-sm rounded-full text-[10px] font-bold tracking-wider">{metrics.length} Items</span>
+              </div>
+              <div className="flex bg-white/60 backdrop-blur-md rounded-full p-1.5 border border-white overflow-x-auto no-scrollbar shadow-sm">
+                {['All', 'Normal', 'Borderline', 'High'].map(tab => (
+                  <button
+                    key={tab}
+                    onClick={() => setMetricTab(tab)}
+                    className={`px-4 py-2 rounded-full text-[12px] font-bold transition-all shrink-0 flex-1 text-center ${
+                      metricTab === tab 
+                        ? 'bg-[#69A38D] text-white shadow-md' 
+                        : 'text-[#64748b] hover:bg-white hover:text-[#69A38D]'
+                    }`}
                   >
-                    <input {...getInputProps()} />
-                    <div className="w-12 h-12 md:w-20 md:h-20 bg-[#F8F6FA] text-[#A795C7] border border-slate-100/50 rounded-full flex items-center justify-center mb-4 md:mb-6 group-hover:scale-110 transition-transform duration-300">
-                      <Upload className="w-5 h-5 md:w-8 md:h-8" />
+                    {tab}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              {[
+                { label: 'Normal', count: normalCount, color: 'text-[#69A38D]', icon: CheckCircle2, bg: 'bg-[#69A38D]/10' },
+                { label: 'Warning', count: borderlineCount, color: 'text-[#E88F4A]', icon: AlertCircle, bg: 'bg-[#E88F4A]/10' },
+                { label: 'High', count: highCount, color: 'text-[#5D5589]', icon: AlertTriangle, bg: 'bg-[#5D5589]/10' }
+              ].map((stat, i) => (
+                <div key={i} className="bg-white/60 rounded-[24px] p-5 flex flex-col items-center justify-center border border-white gap-3">
+                  <div className={`w-12 h-12 rounded-full ${stat.bg} ${stat.color} flex items-center justify-center shadow-sm`}>
+                    <stat.icon size={24} />
+                  </div>
+                  <div className="text-center flex flex-col">
+                    <span className="text-[24px] font-extrabold text-[#1a2138]">{stat.count}</span>
+                    <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">{stat.label}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              {filteredMetrics.map((metric, idx) => {
+                const isNormal = metric.status === 'NORMAL';
+                const isWarning = ['BORDERLINE', 'MODERATE', 'LOW'].includes(metric.status);
+                const colorClass = isNormal ? 'text-[#69A38D]' : isWarning ? 'text-[#E88F4A]' : 'text-[#5D5589]';
+                const bgClass = isNormal ? 'bg-[#69A38D]/10 border-[#69A38D]/20' : isWarning ? 'bg-[#E88F4A]/10 border-[#E88F4A]/20' : 'bg-[#5D5589]/10 border-[#5D5589]/20';
+                
+                return (
+                  <div key={idx} className="bg-white/60 rounded-[24px] p-4 shadow-sm border border-white flex flex-col min-h-[140px]">
+                    <div className="flex items-start justify-between">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${bgClass} ${colorClass}`}>
+                        {isNormal ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
+                      </div>
+                      <span className={`text-[8.5px] font-bold px-2 py-1 rounded-full uppercase border ${bgClass} ${colorClass}`}>{metric.status}</span>
                     </div>
-                    <h3 className="font-medium text-lg md:text-2xl text-[#1a1a1a] mb-1 md:mb-3">Upload Lab Report</h3>
-                    <p className="text-[#666666] text-xs md:text-sm mb-4 md:mb-6 max-w-md">PDF or image. Max size: 4MB.</p>
-                    <button className="px-8 py-3.5 bg-[#A795C7] text-white font-medium rounded-full hover:bg-[#9583B5] transition-all">
-                      Select File
+                    <div className="mt-3">
+                      <div className="text-[13px] font-extrabold text-[#1a2138] line-clamp-2">{metric.name.replace(/([A-Z])/g, ' $1')}</div>
+                      <div className="text-[9.5px] font-bold text-[#64748b]">Target: {metric.range}</div>
+                    </div>
+                    <div className="flex items-baseline gap-1 mt-auto">
+                      <span className={`text-[20px] font-black ${colorClass}`}>{metric.value}</span>
+                      <span className="text-[10px] font-bold text-[#64748b]">{metric.unit}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Personalized Diet Plan CTA */}
+          <div className="bg-white/60 backdrop-blur-xl rounded-[40px] p-8 shadow-[0_4px_25px_rgba(0,0,0,0.04)] border border-white flex flex-col gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-[#69A38D]/10 flex items-center justify-center border border-[#69A38D]/20 shadow-sm">
+                <UtensilsCrossed size={24} className="text-[#69A38D]" />
+              </div>
+              <h2 className="text-[20px] font-black text-[#1a2138] uppercase tracking-tight">Nutritional Protocol</h2>
+            </div>
+            <p className="text-[14px] text-[#64748b] font-bold leading-relaxed">
+              Based on your clinical synthesis, we've prepared an optimized nutritional strategy to address your bio-marker needs.
+            </p>
+            <button
+              onClick={() => navigate('/diet-plan?autoGenerate=true')}
+              className="w-full py-5 bg-[#69A38D] text-white rounded-[28px] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-[#528270] transition-all shadow-lg shadow-[#69A38D]/20 active:scale-[0.98]"
+            >
+              <Sparkles size={18} /> GENERATE PERSONALIZED DIET PLAN
+            </button>
+          </div>
+
+          {/* Actionable Next Steps (Redesigned) */}
+          <div className="bg-[#69A38D] rounded-[40px] p-8 text-white shadow-xl flex flex-col gap-8">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                <Zap size={24} strokeWidth={3} fill="currentColor" />
+              </div>
+              <h2 className="text-2xl font-bold tracking-tight">Actionable Next Steps</h2>
+            </div>
+            <div className="flex flex-col gap-4">
+              {[
+                "Exercise 5 days/week — mix cardio and strength training",
+                "Sleep 7-8 hours daily — poor sleep raises inflammation markers",
+                "Manage stress through yoga or meditation — reduces cortisol and inflammation",
+                "Avoid smoking and limit alcohol — both lower HDL and raise hsCRP"
+              ].map((step, idx) => (
+                <div key={idx} className="bg-white/10 rounded-[32px] p-6 flex items-center gap-6 group hover:bg-white/15 transition-all">
+                  <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-sm font-black shrink-0">
+                    {idx + 1}
+                  </div>
+                  <p className="text-[15px] font-bold leading-snug">{step}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="text-center px-4">
+            <p className="text-[11px] font-bold text-slate-400 leading-relaxed uppercase tracking-widest">
+              Disclaimer: This AI analysis is for informational wellness support only and should not replace professional medical advice. Always consult with a healthcare provider.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="w-full h-full bg-gradient-to-b from-[#F2F5EC] to-[#E5EBE0] dark:from-[#161719] dark:to-[#161719] relative overflow-y-auto flex flex-col animate-in fade-in duration-500 min-h-screen pb-32">
+      <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-br from-white/40 dark:from-white/5 to-transparent pointer-events-none" />
+      
+      {showDetailedAnalysis ? (
+        <DetailedAnalysisView />
+      ) : (
+        <div className="px-6 pt-12 flex flex-col max-w-5xl mx-auto w-full gap-8">
+          {/* Header */}
+          <div className="flex flex-col gap-2">
+            <h1 className="text-[28px] font-black text-[#1a2138] dark:text-white tracking-tight leading-none">Diagnostic Analysis</h1>
+            <p className="text-[15px] text-[#64748b] dark:text-white/70 font-medium">Upload reports to extract actionable health insights</p>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+            <div className="lg:col-span-8 flex flex-col gap-8">
+              
+              {/* Upload Card */}
+              <div 
+                {...getRootProps()}
+                className={`bg-white/60 backdrop-blur-xl rounded-[40px] p-10 shadow-[0_8px_32px_rgba(0,0,0,0.04)] border-2 border-dashed transition-all flex flex-col items-center justify-center min-h-[320px] text-center group ${
+                  isDragActive ? 'border-[#69A38D] bg-white/80' : 'border-[#69A38D]/20 hover:border-[#69A38D]/40'
+                }`}
+              >
+                <input {...getInputProps()} />
+                
+                {loading ? (
+                  <div className="flex flex-col items-center gap-6">
+                    <div className="w-20 h-20 rounded-full border-4 border-slate-100 border-t-[#69A38D] animate-spin" />
+                    <div className="flex flex-col gap-2">
+                      <h3 className="text-xl font-bold text-[#1a2138]">Analyzing Report...</h3>
+                      <p className="text-[#69A38D] font-black uppercase tracking-widest text-xs">{uploadProgress}% Complete</p>
+                    </div>
+                  </div>
+                ) : files.length > 0 ? (
+                  <div className="w-full flex flex-col gap-6" onClick={e => e.stopPropagation()}>
+                    <div className="flex items-center justify-between p-6 bg-white/80 rounded-3xl border border-[#69A38D]/10">
+                      <div className="flex items-center gap-4">
+                        <div className="w-14 h-14 rounded-2xl bg-[#E2EED2] flex items-center justify-center text-[#69A38D]">
+                          <FileText size={28} />
+                        </div>
+                        <div className="text-left">
+                          <p className="font-bold text-[#1a2138]">{files[0].name}</p>
+                          <p className="text-xs font-bold text-[#64748b]">{(files[0].size/1024/1024).toFixed(2)} MB • {files[0].reportType}</p>
+                        </div>
+                      </div>
+                      <button onClick={() => setFiles([])} className="p-3 bg-red-50 text-red-500 rounded-2xl hover:bg-red-100"><Trash2 size={20} /></button>
+                    </div>
+                    <button onClick={handleSubmit} className="w-full py-5 bg-[#69A38D] text-white font-black rounded-3xl shadow-lg hover:bg-[#528270] transition-all flex items-center justify-center gap-3 active:scale-95">
+                      <Zap size={20} fill="currentColor" /> ANALYZE NOW
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-6 relative z-10">
-                    <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100">
-                      {files.map((file) => (
-                        <div key={file.id} className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-6">
-                          <div className="flex items-center gap-4 min-w-0 flex-1">
-                            <div className="w-14 h-14 rounded-2xl bg-white shadow-md flex items-center justify-center flex-shrink-0">
-                              <FileText className="w-6 h-6 text-[#A795C7]" />
+                  <>
+                    <div className="w-24 h-24 rounded-full bg-white flex items-center justify-center mb-6 shadow-sm border border-white group-hover:scale-110 transition-transform duration-500">
+                      <FileUp size={40} className="text-[#69A38D]" />
+                    </div>
+                    <h3 className="text-2xl font-black text-[#1a2138] mb-2 uppercase tracking-tight">Upload Lab Report</h3>
+                    <p className="text-[#64748b] font-bold mb-8 max-w-sm">Drag & drop or tap to select PDF or image</p>
+                    <button className="bg-[#69A38D] text-white px-10 py-4 rounded-2xl font-black text-sm tracking-widest uppercase shadow-md pointer-events-none">Select File</button>
+                  </>
+                )}
+              </div>
+
+              {/* Comparison Section */}
+              <div className="bg-white/60 backdrop-blur-xl rounded-[40px] p-8 shadow-[0_8px_32px_rgba(0,0,0,0.04)] border border-white flex flex-col">
+                <div className="flex items-center justify-between mb-8">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-[#1a2138]/5 flex items-center justify-center shrink-0">
+                      <BarChart2 size={22} className="text-[#1a2138]" />
+                    </div>
+                    <div>
+                      <h3 className="text-[19px] font-black text-[#1a2138] tracking-tight uppercase">Comparative Analytics</h3>
+                      <p className="text-[13px] text-[#64748b] font-bold">Trend mapping between two labs</p>
+                    </div>
+                  </div>
+                </div>
+
+                {selectedReports.length === 2 && comparisonData.length > 0 ? (
+                  <div className="flex flex-col gap-6">
+                    <div className="flex items-center gap-4 justify-center">
+                      <span className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest"><div className="w-2 h-2 rounded-full bg-slate-300"></div> Past</span>
+                      <span className="text-slate-300 font-bold">vs</span>
+                      <span className="flex items-center gap-2 text-xs font-black text-[#69A38D] uppercase tracking-widest"><div className="w-2 h-2 rounded-full bg-[#69A38D]"></div> Recent</span>
+                    </div>
+                    <div className="h-[300px] w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={comparisonData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
+                          <XAxis dataKey="metric" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }} dy={10} />
+                          <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
+                          <Line type="monotone" dataKey="Past Report" stroke="#CBD5E1" strokeWidth={4} dot={{ r: 4, fill: '#CBD5E1' }} />
+                          <Line type="monotone" dataKey="Recent Report" stroke="#69A38D" strokeWidth={4} dot={{ r: 4, fill: '#69A38D' }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center py-16 gap-4 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
+                    <Activity size={32} className="text-slate-300" />
+                    <p className="text-slate-400 font-bold text-center">Select two reports from history <br />to visualize comparative trends</p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* History Column */}
+            <div className="lg:col-span-4 flex flex-col gap-6">
+              <div className="bg-white/60 backdrop-blur-xl rounded-[40px] p-6 shadow-[0_8px_32px_rgba(0,0,0,0.04)] border border-white flex flex-col">
+                <div className="flex items-center gap-3 mb-6 px-1">
+                  <div className="w-10 h-10 rounded-full bg-[#1a2138]/5 flex items-center justify-center">
+                    <History size={18} className="text-[#1a2138]" />
+                  </div>
+                  <h3 className="text-lg font-black text-[#1a2138] uppercase tracking-tight">Recent Archives</h3>
+                </div>
+
+                <div className="flex flex-col gap-3">
+                  {loadingReports ? (
+                    <div className="py-12 flex justify-center"><Loader2 className="animate-spin text-[#69A38D]" /></div>
+                  ) : allReports.length === 0 ? (
+                    <div className="py-12 text-center text-slate-400 font-bold">No records found</div>
+                  ) : (
+                    allReports.map(report => {
+                      const isSelected = selectedReports.includes(report._id);
+                      return (
+                        <div 
+                          key={report._id}
+                          onClick={() => toggleReportSelection(report._id)}
+                          className={`p-4 rounded-[28px] border-2 transition-all cursor-pointer group flex items-center justify-between ${
+                            isSelected ? 'bg-white border-[#69A38D] shadow-md' : 'bg-white/40 border-transparent hover:bg-white/80'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${isSelected ? 'bg-[#69A38D] text-white' : 'bg-white text-slate-400 shadow-sm'}`}>
+                              {isSelected ? <Check size={18} strokeWidth={3} /> : <FileText size={18} />}
                             </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="font-bold text-slate-800 truncate text-base">{file.name}</p>
-                              <p className="text-xs font-bold text-slate-400 uppercase">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                            <div className="min-w-0">
+                               <h4 className="text-[14px] font-black text-[#1a2138] truncate uppercase tracking-tight leading-none mb-1">{report.reportType}</h4>
+                               <p className="text-[11px] font-bold text-slate-400">{new Date(report.reportDate || report.createdAt).toLocaleDateString()}</p>
                             </div>
                           </div>
-                          <div className="w-full sm:w-auto flex items-center gap-2">
-                            <div className="relative flex-1 sm:w-48">
-                              <select
-                                value={file.reportType}
-                                onChange={(e) => updateFileType(file.id, e.target.value)}
-                                className="w-full appearance-none bg-white text-slate-800 text-sm font-bold pl-4 pr-10 py-3 rounded-xl border border-slate-200 focus:border-[#A795C7] focus:outline-none cursor-pointer"
-                              >
-                                {reportTypes.map((type) => (
-                                  <option key={type.value} value={type.value}>{type.icon} {type.label}</option>
-                                ))}
-                              </select>
-                              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                            </div>
-                            <button onClick={() => removeFile(file.id)} className="p-3 bg-red-50 text-red-500 hover:bg-red-100 rounded-xl transition-all flex-shrink-0">
-                              <Trash2 className="w-5 h-5" />
+                          <div className="flex flex-col items-end gap-2">
+                            <button 
+                              onClick={e => { e.stopPropagation(); setShowDetailedAnalysis(true); setSelectedReports([report._id, ...selectedReports.filter(id => id !== report._id)]); }}
+                              className="text-[9px] font-black text-[#69A38D] uppercase tracking-widest hover:underline"
+                            >
+                              Explore
+                            </button>
+                            <button 
+                              onClick={e => handleDeleteReport(report._id, e)}
+                              className="p-1.5 bg-red-50 text-red-500 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <Trash2 size={12} />
                             </button>
                           </div>
                         </div>
-                      ))}
-                    </div>
-
-                    <div className="flex gap-4">
-                      <button onClick={() => setFiles([])} className="px-6 py-4 bg-slate-100 text-slate-600 font-bold rounded-2xl hover:bg-slate-200 transition-all">
-                        Cancel
-                      </button>
-                      <button onClick={handleSubmit} className="flex-1 py-4 bg-[#A795C7] text-white font-bold rounded-2xl hover:bg-[#9583B5] transition-all shadow-lg flex items-center justify-center gap-3 uppercase tracking-widest text-sm">
-                        <CheckCircle className="w-5 h-5" /> Analyze Report
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </motion.div>
-            ) : (
-              <motion.div
-                key="analyzing"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className={`${glassCard} p-10`}
-              >
-                <div className="space-y-6 md:space-y-10 py-2 md:py-6 relative z-10 bg-white">
-                  <div className="flex flex-col items-center text-center space-y-3 md:space-y-4">
-                    <div className="relative mb-4">
-                      <div className="w-16 h-16 md:w-24 md:h-24 rounded-full border-2 md:border-4 border-slate-100 border-t-[#A795C7] animate-spin"></div>
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <FileText className="w-8 h-8 text-[#A795C7] animate-pulse" />
-                      </div>
-                    </div>
-                    <div className="flex flex-col items-center">
-                      <h3 className="text-2xl font-bold text-[#1a1a1a] mb-2">Analyzing Report</h3>
-                      <p className="text-[#A795C7] font-black uppercase tracking-widest text-sm mb-4">Hang tight, extracting insights...</p>
-                      <p className="text-red-400 font-bold text-[10px] uppercase tracking-widest text-center max-w-sm mx-auto leading-relaxed border border-red-100 bg-red-50 p-3 rounded-2xl">
-                        Please do not click the back button or refresh the page
-                      </p>
-                    </div>
-                  </div>
-                  <div className="space-y-3 mt-8">
-                    <div className="h-4 bg-slate-100 rounded-full overflow-hidden">
-                      <div className="h-full bg-gradient-to-r from-[#A795C7] to-[#9583BC] transition-all duration-500" style={{ width: `${uploadProgress}%` }} />
-                    </div>
-                    <div className="flex justify-between text-xs font-bold text-slate-400 uppercase tracking-widest">
-                      <span>Processing Data</span>
-                      <span>{uploadProgress}%</span>
-                    </div>
-                  </div>
+                      );
+                    })
+                  )}
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
 
-          {/* Comparison Graph */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            className={`${glassCard} p-6 lg:p-8 flex flex-col`}
-          >
-            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-8 gap-4">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-[#F5F5F7] flex items-center justify-center border border-white shadow-sm">
-                  <BarChart2 className="w-5 h-5 text-[#1a1a1a]" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-medium text-[#1a1a1a]">Report Comparison</h3>
-                  <p className="text-sm text-[#666666]">Select 2 reports from history to compare</p>
+                <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col gap-4">
+                   <p className="text-[11px] font-bold text-slate-400 text-center uppercase tracking-wider">Metrics Comparison ({selectedReports.length}/2)</p>
+                   <Link to="/reports" className="w-full py-4 bg-slate-50 text-slate-500 font-black text-xs uppercase tracking-widest rounded-2xl text-center border border-slate-100 hover:bg-[#69A38D] hover:text-white transition-all">Archive Repository</Link>
                 </div>
               </div>
-              {comparisonData.length > 0 && (
-                <div className="relative">
-                  <select
-                    value={selectedMetric}
-                    onChange={(e) => setSelectedMetric(e.target.value)}
-                    className="appearance-none bg-[#F5F5F7] border border-white shadow-sm text-sm font-bold text-[#1a1a1a] px-4 py-2 pr-10 rounded-full cursor-pointer focus:outline-none"
-                  >
-                    <option value="All">All Metrics</option>
-                    {comparisonData.map(d => (
-                      <option key={d.metric} value={d.metric}>{d.metric}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-                </div>
-              )}
-            </div>
-
-            {selectedReports.length === 2 && filteredComparisonData.length > 0 ? (
-              <>
-                <div className="flex items-center gap-2 mb-4 justify-center">
-                  <span className="flex items-center gap-1.5 text-xs font-bold text-[#d8cceb]">
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#d8cceb]"></div> Past Report
-                  </span>
-                  <span className="text-[#a0a0a0] mx-2">vs</span>
-                  <span className="flex items-center gap-1.5 text-xs font-bold text-[#A795C7]">
-                    <div className="w-2.5 h-2.5 rounded-full bg-[#A795C7]"></div> Recent Report
-                  </span>
-                </div>
-                <div className="h-[250px] md:h-[320px] w-full">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={filteredComparisonData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                      <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                      <XAxis dataKey="metric" axisLine={false} tickLine={false} tick={{ fill: '#666666', fontSize: 11, fontWeight: 500 }} dy={10} />
-                      <YAxis axisLine={false} tickLine={false} tick={{ fill: '#a0a0a0', fontSize: 12 }} />
-                      <Tooltip contentStyle={{ borderRadius: '16px', border: '1px solid #f1f5f9', boxShadow: '0 8px 30px rgba(0,0,0,0.04)', fontWeight: 500 }} />
-                      <Line name="Past Report" type="monotone" dataKey="Past Report" stroke="#d8cceb" strokeWidth={3} dot={{ r: 5, fill: '#d8cceb', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 7 }} connectNulls />
-                      <Line name="Recent Report" type="monotone" dataKey="Recent Report" stroke="#A795C7" strokeWidth={3} dot={{ r: 5, fill: '#A795C7', strokeWidth: 2, stroke: '#fff' }} activeDot={{ r: 7 }} connectNulls />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-
-                {/* AI Comparison Analysis */}
-                {aiComparison && (aiComparison.improvements.length > 0 || aiComparison.needsAttention.length > 0) && (
-                  <div className="mt-8 grid md:grid-cols-2 gap-4">
-                    {aiComparison.improvements.length > 0 && (
-                      <div className="bg-[#F0FDF4] border border-[#BBF7D0] rounded-[20px] p-5">
-                        <h4 className="font-bold text-[#1a1a1a] flex items-center gap-2 mb-3 text-sm">
-                          <CheckCircle className="w-4 h-4 text-[#16A34A]" /> Improved
-                        </h4>
-                        <ul className="space-y-2">
-                          {aiComparison.improvements.map((item, i) => (
-                            <li key={i} className="text-xs text-[#666666] flex gap-2">
-                              <span className="text-[#16A34A] mt-0.5">↓</span> {item}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                    {aiComparison.needsAttention.length > 0 && (
-                      <div className="bg-[#FFF8F5] border border-[#FFE8E0] rounded-[20px] p-5">
-                        <h4 className="font-bold text-[#1a1a1a] flex items-center gap-2 mb-3 text-sm">
-                          <AlertTriangle className="w-4 h-4 text-[#FF8A66]" /> Needs Attention
-                        </h4>
-                        <ul className="space-y-2">
-                          {aiComparison.needsAttention.map((item, i) => (
-                            <li key={i} className="text-xs text-[#666666] flex gap-2">
-                              <span className="text-[#FF8A66] mt-0.5">↑</span> {item}
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </>
-            ) : selectedReports.length === 1 && allReports.find(r => r._id === selectedReports[0])?.aiAnalysis ? (
-              <div className="space-y-6">
-                {(() => {
-                  const report = allReports.find(r => r._id === selectedReports[0]);
-                  const analysis = report.aiAnalysis;
-                  return (
-                    <>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-4">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-emerald-50 rounded-full flex items-center justify-center">
-                              <Sparkles className="w-5 h-5 text-emerald-500" />
-                            </div>
-                            <h4 className="font-bold text-[#1a1a1a]">Analysis Summary</h4>
-                          </div>
-                          <p className="text-sm text-[#666666] leading-relaxed line-clamp-6">
-                            {analysis.summary || 'Summary not available.'}
-                          </p>
-                          <div className="pt-4">
-                            <Link 
-                              to={`/reports/${report._id}`}
-                              className="inline-flex items-center gap-2 text-sm font-bold text-[#A795C7] hover:underline"
-                            >
-                              Explore Full Report <ChevronRight className="w-4 h-4" />
-                            </Link>
-                          </div>
-                        </div>
-
-                        <div className="bg-[#F8F8FC] rounded-[32px] p-6 text-center flex flex-col items-center justify-center border border-slate-100 shadow-inner">
-                          <span className="text-[10px] font-black text-[#A795C7] uppercase tracking-widest mb-4">Overall Vitality</span>
-                          <div className="relative w-32 h-32 flex items-center justify-center mb-4">
-                            <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                              <circle cx="50" cy="50" r="45" fill="none" stroke="#e2e8f0" strokeWidth="8" />
-                              <circle 
-                                cx="50" cy="50" r="45" fill="none" stroke="#A795C7" strokeWidth="8"
-                                strokeDasharray={283}
-                                strokeDashoffset={283 - (283 * (analysis.healthScore || 0)) / 100}
-                                strokeLinecap="round"
-                              />
-                            </svg>
-                            <span className="absolute text-3xl font-black text-[#1a1a1a]">{analysis.healthScore || '--'}</span>
-                          </div>
-                          <p className="text-[10px] font-bold text-[#a0a0a0]">HEALTH SCORE / 100</p>
-                        </div>
-                      </div>
-
-                      <div className="pt-8 border-t border-slate-100">
-                        <h4 className="text-xs font-black text-[#a0a0a0] uppercase tracking-widest mb-4">Top Biological Markers</h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          {Object.entries(analysis.metrics || {}).slice(0, 4).map(([name, data]) => (
-                            <div key={name} className="flex items-center justify-between p-4 bg-white border border-slate-100 rounded-2xl shadow-sm">
-                              <span className="text-xs font-bold text-slate-700 truncate mr-2">{name.replace(/([A-Z])/g, ' $1').trim()}</span>
-                              <div className="flex items-center gap-2">
-                                <span className="text-xs font-black text-[#1a1a1a]">
-                                  {typeof data === 'object' ? data.value : data} 
-                                  <span className="text-[9px] text-slate-400 ml-0.5">{typeof data === 'object' ? data.unit : ''}</span>
-                                </span>
-                                <div className={`w-2 h-2 rounded-full ${
-                                  (data.status === 'normal' || data.status === 'good') ? 'bg-emerald-500' : 
-                                  (data.status === 'borderline' || data.status === 'moderate') ? 'bg-amber-500' : 'bg-red-500'
-                                }`} />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </>
-                  );
-                })()}
-              </div>
-            ) : (
-              <div className="flex-1 flex flex-col items-center justify-center py-12 text-center border-2 border-dashed border-slate-200 rounded-[24px] bg-[#F5F5F7]/30">
-                <Activity className="w-8 h-8 text-[#a0a0a0] mb-3" />
-                <p className="text-[#666666] font-medium">Select a report from history to view insights,<br />or select 2 reports to view a detailed comparison.</p>
-              </div>
-            )}
-          </motion.div>
-
-          {/* AI Analysis Section */}
-          {selectedReports.length === 2 && aiComparison && (
-            <motion.div
-              initial={{ opacity: 0, y: 15 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
-            >
-              <div className="flex items-center gap-3 mb-5">
-                <div className="w-10 h-10 rounded-full bg-[#F5F5F7] flex items-center justify-center border border-white shadow-sm">
-                  <Sparkles className="w-5 h-5 text-[#A795C7]" />
-                </div>
-                <h3 className="text-lg font-medium text-[#1a1a1a]">AI Analysis</h3>
-              </div>
-
-              <div className="space-y-3">
-                {/* Health Score Card */}
-                {aiComparison.recentScore != null && (
-                  <div className={`${glassCard} p-5 flex items-center gap-4 hover:shadow-md transition-all`}>
-                    <div className="w-12 h-12 bg-[#F5F5F7] rounded-full flex items-center justify-center shrink-0">
-                      <BarChart2 className="w-5 h-5 text-[#A795C7]" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] font-bold text-[#A795C7] uppercase tracking-widest mb-1">Analysis 📊</p>
-                      <p className="text-sm text-[#1a1a1a] font-medium leading-relaxed">
-                        Your health score {aiComparison.pastScore != null
-                          ? (aiComparison.recentScore > aiComparison.pastScore
-                            ? `improved from ${aiComparison.pastScore} to ${aiComparison.recentScore}.`
-                            : aiComparison.recentScore < aiComparison.pastScore
-                              ? `decreased from ${aiComparison.pastScore} to ${aiComparison.recentScore}.`
-                              : `remains stable at ${aiComparison.recentScore}.`)
-                          : `is ${aiComparison.recentScore}/100.`}
-                      </p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-[#a0a0a0] shrink-0" />
-                  </div>
-                )}
-
-                {/* Improvements */}
-                {aiComparison.improvements.length > 0 && (
-                  <div className="bg-[#F0FDF4] border border-[#BBF7D0] rounded-[24px] p-5 flex items-start gap-4 hover:shadow-md transition-all">
-                    <div className="w-12 h-12 bg-[#DCFCE7] rounded-full flex items-center justify-center shrink-0">
-                      <TrendingUp className="w-5 h-5 text-[#16A34A]" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] font-bold text-[#16A34A] uppercase tracking-widest mb-1">Improvement ✅</p>
-                      <p className="text-sm text-[#1a1a1a] font-medium leading-relaxed">
-                        {aiComparison.improvements.length} biomarker(s) improved: {aiComparison.improvements.map(item => item.split(' improved')[0]).join(', ')}.
-                      </p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-[#a0a0a0] shrink-0 mt-1" />
-                  </div>
-                )}
-
-                {/* Needs Attention */}
-                {aiComparison.needsAttention.length > 0 && (
-                  <div className="bg-[#FFF8F5] border border-[#FFE8E0] rounded-[24px] p-5 flex items-start gap-4 hover:shadow-md transition-all">
-                    <div className="w-12 h-12 bg-[#FFEDD5] rounded-full flex items-center justify-center shrink-0">
-                      <TrendingDown className="w-5 h-5 text-[#FF8A66]" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] font-bold text-[#FF8A66] uppercase tracking-widest mb-1">Attention ⚠️</p>
-                      <p className="text-sm text-[#1a1a1a] font-medium leading-relaxed">
-                        {aiComparison.needsAttention.length} biomarker(s) need attention: {aiComparison.needsAttention.map(item => item.split(' increased')[0]).join(', ')}.
-                      </p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-[#a0a0a0] shrink-0 mt-1" />
-                  </div>
-                )}
-
-                {/* Resolved Deficiencies */}
-                {aiComparison.resolvedDefs?.length > 0 && (
-                  <div className="bg-[#F0FDF4] border border-[#BBF7D0] rounded-[24px] p-5 flex items-start gap-4 hover:shadow-md transition-all">
-                    <div className="w-12 h-12 bg-[#DCFCE7] rounded-full flex items-center justify-center shrink-0">
-                      <TrendingUp className="w-5 h-5 text-[#16A34A]" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] font-bold text-[#16A34A] uppercase tracking-widest mb-1">Improvement 🎉</p>
-                      <p className="text-sm text-[#1a1a1a] font-medium leading-relaxed">
-                        Resolved deficiencies: {aiComparison.resolvedDefs.join(', ')}. Great progress!
-                      </p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-[#a0a0a0] shrink-0 mt-1" />
-                  </div>
-                )}
-
-                {/* New Concerns */}
-                {aiComparison.newDefs?.length > 0 && (
-                  <div className="bg-[#FFF8F5] border border-[#FFE8E0] rounded-[24px] p-5 flex items-start gap-4 hover:shadow-md transition-all">
-                    <div className="w-12 h-12 bg-[#FFEDD5] rounded-full flex items-center justify-center shrink-0">
-                      <Search className="w-5 h-5 text-[#FF8A66]" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-[10px] font-bold text-[#FF8A66] uppercase tracking-widest mb-1">Attention 🔍</p>
-                      <p className="text-sm text-[#1a1a1a] font-medium leading-relaxed">
-                        New concerns detected: {aiComparison.newDefs.join(', ')}. Consider dietary adjustments.
-                      </p>
-                    </div>
-                    <ChevronRight className="w-4 h-4 text-[#a0a0a0] shrink-0 mt-1" />
-                  </div>
-                )}
-
-                {/* No changes */}
-                {aiComparison.improvements.length === 0 && aiComparison.needsAttention.length === 0 && !aiComparison.recentScore && (
-                  <div className={`${glassCard} p-5 flex items-center gap-4`}>
-                    <div className="w-12 h-12 bg-[#F5F5F7] rounded-full flex items-center justify-center shrink-0">
-                      <Activity className="w-5 h-5 text-[#888888]" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-[10px] font-bold text-[#888888] uppercase tracking-widest mb-1">Analysis</p>
-                      <p className="text-sm text-[#666666] font-medium">Both reports have similar metrics. Maintain your current health habits.</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </motion.div>
-          )}
-        </div>
-
-        {/* Right Column: Report History */}
-        <div className="lg:col-span-1">
-          <div className={`${glassCard} flex flex-col h-full max-h-[850px]`}>
-            <div className="p-6 border-b border-slate-100/50 flex items-center gap-3 shrink-0">
-              <History className="w-5 h-5 text-[#A795C7]" />
-              <h3 className="text-xl font-medium text-[#1a1a1a]">Report History</h3>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ scrollbarWidth: 'none' }}>
-              {loadingReports ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="w-6 h-6 animate-spin text-[#A795C7]" />
-                </div>
-              ) : allReports.length === 0 ? (
-                <div className="text-center py-12">
-                  <FileText className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                  <p className="text-sm text-[#888888]">No reports uploaded yet.</p>
-                </div>
-              ) : (
-                allReports.map((report) => {
-                  const isSelected = selectedReports.includes(report._id);
-                  return (
-                    <motion.div
-                      key={report._id}
-                      whileHover={{ scale: 1.01 }}
-                      onClick={() => toggleReportSelection(report._id)}
-                      className={`p-4 rounded-[20px] cursor-pointer border transition-all duration-200 ${isSelected
-                        ? 'bg-white border-[#A795C7] shadow-sm'
-                        : 'bg-[#F8F8FC] border-transparent hover:bg-white hover:border-slate-200 shadow-sm'
-                        }`}
-                    >
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${isSelected ? 'bg-[#A795C7] text-white' : 'bg-white text-[#666666] shadow-sm'}`}>
-                            {isSelected ? <Check className="w-4 h-4" /> : <FileText className="w-4 h-4" />}
-                          </div>
-                          <div>
-                            <h4 className={`text-sm font-bold truncate pr-2 ${isSelected ? 'text-[#A795C7]' : 'text-[#1a1a1a]'}`}>
-                              {report.reportType || 'Lab Report'}
-                            </h4>
-                            <p className="text-xs text-[#888888] font-medium">
-                              {new Date(report.reportDate || report.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                        <div className="flex items-center gap-1.5 mt-3 pl-10 h-7 overflow-hidden">
-                          <span className={`text-[8px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider ${report.status === 'completed' ? 'bg-[#F0FDF4] text-[#16A34A]' : 'bg-[#FFF8F5] text-[#FF8A66]'
-                            }`}>
-                            {report.status || 'Pending'}
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigate(`/reports/${report._id}`);
-                            }}
-                            className="text-[8px] font-bold text-[#A795C7] uppercase tracking-widest hover:underline flex items-center pr-2"
-                          >
-                            View
-                          </button>
-                          <button
-                            onClick={(e) => handleDeleteReport(report._id, e)}
-                            className="bg-red-50 text-red-400 p-1.5 rounded-lg hover:bg-red-500 hover:text-white transition-all ml-auto opacity-100 lg:opacity-0 lg:group-hover:opacity-100"
-                            title="Delete Report"
-                          >
-                            <Trash2 className="w-3 h-3" />
-                          </button>
-                        </div>
-                    </motion.div>
-                  );
-                })
-              )}
-            </div>
-
-            <div className="p-6 border-t border-slate-100/50 shrink-0 bg-white">
-              <p className="text-xs text-[#666666] text-center mb-4 font-medium">
-                Comparing {selectedReports.length} of 2 allowed reports
-              </p>
-              <Link
-                to="/reports"
-                className="w-full py-3.5 flex items-center justify-center gap-2 text-sm font-medium rounded-full transition-all bg-[#F5F5F7] text-[#666666] hover:bg-[#A795C7] hover:text-white border border-slate-100"
-              >
-                <Eye className="w-4 h-4" /> View All Reports
-              </Link>
             </div>
           </div>
         </div>
-      </div>
-
-      {/* Info Banner */}
-      <div className="bg-[#F8F6FA] rounded-2xl md:rounded-3xl p-4 md:p-6 border border-[#E8E0F5] flex gap-3 md:gap-4">
-        <Info className="w-5 h-5 md:w-6 md:h-6 text-[#A795C7] flex-shrink-0" />
-        <p className="text-xs md:text-sm text-[#666666] leading-relaxed font-medium">
-          Our AI analysis provides deep insights but is for educational purposes only. Always consult with a healthcare professional before making medical decisions.
-        </p>
-      </div>
+      )}
     </div>
   );
 }

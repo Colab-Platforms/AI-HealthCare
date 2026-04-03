@@ -1,26 +1,48 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { healthService } from '../services/api';
-import { ArrowLeft, Download, Share2, AlertTriangle, CheckCircle, TrendingDown, Apple, Pill, Heart, Activity, X, UtensilsCrossed, Filter, Languages } from 'lucide-react';
+import { 
+  ArrowLeft, Download, Share2, AlertTriangle, CheckCircle, TrendingDown, 
+  Apple, Pill, Heart, Activity, X, UtensilsCrossed, Filter, Languages,
+  Zap, Clock, Sparkles, ChevronRight, CheckCircle2, User2, Calendar, Coffee, Utensils
+} from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../services/api';
 import VitalDetailsPopup from '../components/VitalDetailsPopup';
-import GenericSkeleton from '../components/skeletons/GenericSkeleton';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
+import { ImageWithFallback } from '../components/ImageWithFallback';
+
+const dietPlanDefaults = {
+  breakfast: [
+    { title: "Oats & Berries", desc: "320 kcal • High Fiber", image: "https://images.unsplash.com/photo-1591535102082-a3fe217ef1bd?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080" },
+    { title: "Spinach Omelette", desc: "280 kcal • Protein Rich", image: "https://images.unsplash.com/photo-1631182661308-c2c81d4e08b4?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080" }
+  ],
+  lunch: [
+    { title: "Chicken & Rice", desc: "450 kcal • Balanced", image: "https://images.unsplash.com/photo-1762631934518-f75e233413ca?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080" },
+    { title: "Fish & Quinoa", desc: "410 kcal • Omega-3", image: "https://images.unsplash.com/photo-1704007573697-6a516da421ec?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080" }
+  ]
+};
+
+const healthTipsDefaults = [
+  { title: "Daily Exercise", desc: "Aim for 5 days a week of mixed cardio and strength training.", image: "https://images.unsplash.com/photo-1771586791190-97ed536c54af?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080" },
+  { title: "Prioritize Sleep", desc: "Get 7-8 hours nightly to reduce inflammation and boost recovery.", image: "https://images.unsplash.com/photo-1631312113214-8f2f03a6962f?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080" },
+  { title: "Manage Stress", desc: "Practice daily yoga or meditation to keep cortisol levels in check.", image: "https://images.unsplash.com/photo-1621691223255-b89d5623df3a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080" },
+  { title: "Stay Hydrated", desc: "Drink at least 8 glasses of water to maintain metabolic balance.", image: "https://images.unsplash.com/photo-1555704574-a9cfdfab06e0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080" }
+];
 
 export default function ReportSummary() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedMetric, setSelectedMetric] = useState(null);
   const [showMetricModal, setShowMetricModal] = useState(false);
-  const [metricFilter, setMetricFilter] = useState('all');
+  const [metricTab, setMetricTab] = useState('All');
   const [isHindi, setIsHindi] = useState(false);
   const [translating, setTranslating] = useState(false);
   const [hindiCache, setHindiCache] = useState({});
 
-  // Simple Hindi translation helper
   const t = (text) => {
     if (!isHindi || !text) return text;
     return hindiCache[text] || text;
@@ -35,16 +57,9 @@ export default function ReportSummary() {
     try {
       const aiAnalysis = report?.aiAnalysis;
       if (!aiAnalysis) return;
-
-      // Collect all translatable strings
       const textsToTranslate = [
         aiAnalysis.summary,
         ...(aiAnalysis.keyFindings || []),
-        ...(aiAnalysis.riskFactors || []),
-
-        ...(aiAnalysis.recommendations?.immediate || []),
-        ...(aiAnalysis.recommendations?.shortTerm || []),
-        ...(aiAnalysis.recommendations?.longTerm || []),
         ...(aiAnalysis.recommendations?.lifestyle || []),
         aiAnalysis.doctorConsultation?.reason,
         ...Object.values(aiAnalysis.metrics || {}).flatMap(m => [
@@ -55,26 +70,19 @@ export default function ReportSummary() {
         ])
       ].filter(Boolean);
 
-      // Batch translate
       const batchText = textsToTranslate.join('\n---SPLIT---\n');
-      const { data } = await api.post('translate', {
-        text: batchText,
-        targetLanguage: 'hi'
-      });
+      const { data } = await api.post('translate', { text: batchText, targetLanguage: 'hi' });
 
       if (data.translatedText) {
         const translations = data.translatedText.split('---SPLIT---').map(s => s.trim());
         const cache = {};
-        textsToTranslate.forEach((text, i) => {
-          if (translations[i]) cache[text] = translations[i];
-        });
+        textsToTranslate.forEach((text, i) => { if (translations[i]) cache[text] = translations[i]; });
         setHindiCache(cache);
         setIsHindi(true);
-        toast.success('Report translated to Hindi!');
+        toast.success('Translated to Hindi!');
       }
     } catch (error) {
-      console.error('Translation error:', error);
-      toast.error('Translation failed. Please try again.');
+      toast.error('Translation failed.');
     } finally {
       setTranslating(false);
     }
@@ -86,7 +94,7 @@ export default function ReportSummary() {
         const { data } = await healthService.getReport(id);
         setReport(data.report);
       } catch (error) {
-        toast.error('Failed to load report');
+        toast.error('Failed to load summary');
       } finally {
         setLoading(false);
       }
@@ -94,480 +102,218 @@ export default function ReportSummary() {
     fetchReport();
   }, [id]);
 
-  const handleMetricClick = (metricName, metricData) => {
-    setSelectedMetric({
-      name: metricName,
-      ...metricData
-    });
-    setShowMetricModal(true);
-  };
-
-  const closeMetricModal = () => {
-    setShowMetricModal(false);
-    setSelectedMetric(null);
-  };
-
   const handleDownload = async () => {
-    const reportElement = document.getElementById('report-content');
-    if (!reportElement) {
-      toast.error('Could not find report content');
-      return;
-    }
-
-    const toastId = toast.loading('Generating PDF...');
-
+    const reportElement = document.getElementById('report-summary-content');
+    if (!reportElement) return;
+    const toastId = toast.loading('Preparing Summary PDF...');
     try {
-      // Temporarily hide elements that shouldn't be in the PDF
-      const actionButtons = reportElement.querySelectorAll('.no-pdf');
-      actionButtons.forEach(btn => btn.style.display = 'none');
-
-      const canvas = await html2canvas(reportElement, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff'
-      });
-
-      // Restore hidden elements
-      actionButtons.forEach(btn => btn.style.display = '');
-
+      const canvas = await html2canvas(reportElement, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff', windowWidth: 375 });
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = pdf.internal.pageSize.getHeight();
-
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-
-      const ratio = pdfWidth / imgWidth;
-      let heightLeft = imgHeight * ratio;
-      let position = 0;
-
-      // Add first page
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight * ratio);
-      heightLeft -= pdfHeight;
-
-      // Add subsequent pages if content is longer than one page
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight * ratio;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, imgHeight * ratio);
-        heightLeft -= pdfHeight;
-      }
-
-      pdf.save(`Health_Report_${report.reportType}_${id.substring(0, 8)}.pdf`);
-      toast.success('Report downloaded successfully!', { id: toastId });
+      pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, canvas.height * (pdfWidth / canvas.width));
+      pdf.save(`Summary_${report.reportType}.pdf`);
+      toast.success('Summary downloaded!', { id: toastId });
     } catch (error) {
-      console.error('PDF Generation Error:', error);
-      toast.error('Failed to generate PDF. Falling back to print...', { id: toastId });
-      window.print();
+      toast.error('Failed to generate PDF.', { id: toastId });
     }
   };
 
-  if (loading) return <GenericSkeleton />;
-  if (!report) return <div className="text-center py-12 text-slate-400">Report not found</div>;
+  if (loading) return (
+    <div className="flex items-center justify-center min-h-screen bg-[#F2F5EC]">
+      <div className="text-center">
+        <div className="w-16 h-16 border-4 border-white border-t-[#69A38D] rounded-full animate-spin mx-auto mb-4" />
+        <p className="text-[#69A38D] font-black uppercase tracking-widest text-[10px]">Loading Summary Synthesis...</p>
+      </div>
+    </div>
+  );
+
+  if (!report) return <div className="text-center py-20 bg-[#F2F5EC] min-h-screen font-black text-[#1a2138] uppercase">Analysis not found</div>;
 
   const { aiAnalysis } = report;
-  const healthScore = aiAnalysis?.healthScore || 0;
+  const metrics = Object.entries(aiAnalysis?.metrics || {}).map(([name, data]) => ({
+    name,
+    value: typeof data === 'object' ? data.value : data,
+    unit: typeof data === 'object' ? data.unit : '',
+    status: (typeof data === 'object' ? data.status?.toUpperCase() : 'NORMAL') || 'NORMAL',
+    range: typeof data === 'object' ? data.normalRange || data.range : ''
+  }));
+
+  const filteredMetrics = metrics.filter(m => {
+    if (metricTab === 'All') return true;
+    return m.status === metricTab.toUpperCase() || (metricTab === 'Borderline' && m.status === 'MODERATE');
+  });
 
   return (
-    <div id="report-content" className="max-w-6xl mx-auto space-y-6 animate-fade-in p-4 bg-white">
-      <div className="flex items-center justify-between no-pdf">
-        <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-black font-black uppercase text-[10px] tracking-widest transition-all">
-          <ArrowLeft className="w-4 h-4" /> Back to Dashboard
-        </Link>
+    <div id="report-summary-content" className="w-full min-h-screen bg-gradient-to-b from-[#F2F5EC] to-[#E5EBE0] dark:from-[#161719] dark:to-[#161719] pb-32 relative overflow-x-hidden animate-in fade-in duration-500">
+      <div className="absolute top-0 left-0 w-full h-[400px] bg-gradient-to-br from-white/40 dark:from-white/5 to-transparent pointer-events-none" />
+      
+      {/* Dynamic Navigation Header */}
+      <div className="px-6 pt-12 pb-6 flex items-center justify-between sticky top-0 bg-[#F2F5EC]/80 dark:bg-[#161719]/80 backdrop-blur-md z-50 border-b border-white/50">
+          <button 
+            onClick={() => navigate('/dashboard')}
+            className="w-10 h-10 bg-white shadow-sm border border-white rounded-full flex items-center justify-center text-[#1a2138] hover:scale-105 transition-all no-pdf"
+          >
+              <ArrowLeft size={20} strokeWidth={2.5} />
+          </button>
+          <div className="flex flex-col items-center">
+              <h1 className="text-[20px] font-black text-[#1a2138] dark:text-white tracking-tight leading-none uppercase">{isHindi ? 'संक्षिप्त सारांश' : 'Synthesis Summary'}</h1>
+              <p className="text-[10px] text-[#69A38D] font-black uppercase tracking-widest mt-1">Diagnostic Abstract</p>
+          </div>
+          <div className="flex gap-2 no-pdf">
+              <button onClick={translateReport} className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${isHindi ? 'bg-[#69A38D] text-white' : 'bg-white shadow-sm text-[#69A38D]'}`}>
+                  <Languages size={15} />
+              </button>
+              <button onClick={handleShare} className="w-8 h-8 bg-white shadow-sm rounded-full flex items-center justify-center text-[#1a2138]"><Share2 size={15} /></button>
+              <button onClick={handleDownload} className="w-8 h-8 bg-white shadow-sm rounded-full flex items-center justify-center text-[#1a2138]"><Download size={15} /></button>
+          </div>
       </div>
 
-      {/* Header */}
-      <div className="bg-black rounded-2xl p-8 text-white">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div>
-            {/* Patient Name */}
-            {(report.patientName || aiAnalysis?.patientName) && (
-              <div className="mb-3">
-                <p className="text-sm text-white/60 uppercase tracking-wide">Patient Name</p>
-                <p className="text-xl font-semibold">{report.patientName || aiAnalysis?.patientName}</p>
-              </div>
-            )}
-            <h1 className="text-3xl font-bold mb-2">{report.reportType} Analysis</h1>
-            <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-4 text-white/70">
-              <p>Analyzed on {new Date(report.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
-              {(report.reportDate || aiAnalysis?.reportDate) && (
-                <>
-                  <span className="hidden sm:inline">•</span>
-                  <p>Report Date: {new Date(report.reportDate || aiAnalysis?.reportDate).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
-                </>
-              )}
-            </div>
-          </div>
-          <div className="text-center">
-            <div className="text-5xl font-bold mb-2">{healthScore}</div>
-            <div className="text-sm text-white/70">Health Score</div>
-          </div>
-          <div className="no-pdf flex flex-col gap-2">
-            <button
-              onClick={handleDownload}
-              className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-all flex items-center gap-2 text-sm font-medium border border-white/20"
-            >
-              <Download className="w-4 h-4" /> Download PDF
-            </button>
-            <button
-              onClick={translateReport}
-              disabled={translating}
-              className="px-4 py-2 bg-white/20 hover:bg-white/30 text-white rounded-lg transition-all flex items-center gap-2 text-sm font-medium border border-white/20 disabled:opacity-50"
-            >
-              <Languages className="w-4 h-4" />
-              {translating ? 'Translating...' : isHindi ? 'English' : 'हिंदी'}
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Summary Section */}
-      {aiAnalysis?.summary && (
-        <div className="bg-white rounded-2xl border-2 border-slate-100 p-8 shadow-sm">
-          <h2 className="text-2xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <Activity className="w-6 h-6 text-black" /> {isHindi ? 'रिपोर्ट सारांश' : 'Report Summary'}
-          </h2>
-          <div className="space-y-3">
-            {t(aiAnalysis.summary).split('\n').filter(line => line.trim()).map((line, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <div className="w-1.5 h-1.5 rounded-full bg-black mt-2.5 flex-shrink-0" />
-                <p className="text-slate-700 leading-relaxed text-lg">
-                  {line.replace(/^[•\-\*]\s*/, '').trim()}
-                </p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Key Findings */}
-      {aiAnalysis?.keyFindings?.length > 0 && (
-        <div className="bg-white rounded-2xl border-2 border-slate-200 p-8 shadow-sm">
-          <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <Heart className="w-6 h-6 text-black" /> {isHindi ? 'मुख्य निष्कर्ष' : 'Key Findings'}
-          </h2>
-          <div className="space-y-3">
-            {aiAnalysis.keyFindings.map((finding, i) => (
-              <div key={i} className="flex items-start gap-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <CheckCircle className="w-5 h-5 text-black flex-shrink-0 mt-1" />
-                <p className="text-slate-700 text-base">{t(finding)}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* All Metrics */}
-      {aiAnalysis?.metrics && Object.keys(aiAnalysis.metrics).length > 0 && (
-        <div className="bg-white rounded-2xl border-2 border-slate-200 p-4 md:p-8 shadow-sm">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-            <h2 className="text-xl md:text-2xl font-bold text-slate-800 flex items-center gap-2">
-              <Activity className="w-5 h-5 md:w-6 md:h-6 text-black" /> {isHindi ? 'स्वास्थ्य मेट्रिक्स' : 'Health Metrics'}
-            </h2>
-            {/* Filter Buttons */}
-            <div className="flex gap-1.5 flex-wrap">
-              {[
-                { id: 'all', label: isHindi ? 'सभी' : 'All', color: 'slate' },
-                { id: 'normal', label: isHindi ? 'सामान्य' : 'Normal', color: 'emerald' },
-                { id: 'high', label: isHindi ? 'अधिक' : 'High', color: 'red' },
-                { id: 'low', label: isHindi ? 'कम' : 'Low', color: 'amber' },
-                { id: 'borderline', label: isHindi ? 'सीमारेखा' : 'Borderline', color: 'orange' }
-              ].map(filter => {
-                const count = filter.id === 'all'
-                  ? Object.keys(aiAnalysis.metrics).length
-                  : Object.values(aiAnalysis.metrics).filter(m => (m.status || '').toLowerCase() === filter.id).length;
-                if (filter.id !== 'all' && count === 0) return null;
-
-                const colorClasses = {
-                  slate: metricFilter === filter.id ? 'bg-black text-white border-black shadow-md' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100',
-                  emerald: metricFilter === filter.id ? 'bg-black text-white border-black shadow-md' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100',
-                  red: metricFilter === filter.id ? 'bg-black text-white border-black shadow-md' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100',
-                  amber: metricFilter === filter.id ? 'bg-black text-white border-black shadow-md' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100',
-                  orange: metricFilter === filter.id ? 'bg-black text-white border-black shadow-md' : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100',
-                };
-
-                return (
-                  <button
-                    key={filter.id}
-                    onClick={() => setMetricFilter(filter.id)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-semibold transition-all border ${colorClasses[filter.color]}`}
-                  >
-                    {filter.label} ({count})
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4">
-            {Object.entries(aiAnalysis.metrics)
-              .filter(([, metric]) => metricFilter === 'all' || (metric.status || '').toLowerCase() === metricFilter)
-              .map(([key, metric]) => (
-                <button
-                  key={key}
-                  onClick={() => handleMetricClick(key, metric)}
-                  className={`p-3 md:p-5 rounded-xl border-2 text-left transition-all hover:scale-[1.02] hover:shadow-lg cursor-pointer ${metric.status === 'normal'
-                    ? 'bg-slate-50 border-slate-200 hover:border-slate-300'
-                    : 'bg-black text-white border-black hover:bg-slate-900'
-                    }`}
-                >
-                  <p className="text-xs md:text-sm text-slate-600 font-medium mb-1 md:mb-2 truncate">{key}</p>
-                  <p className="text-lg md:text-2xl font-bold text-slate-800 mb-1 md:mb-2">
-                    {metric.value} <span className="text-xs md:text-sm font-normal text-slate-500">{metric.unit}</span>
-                  </p>
-                  <p className="text-[10px] md:text-xs text-slate-600 mb-2 md:mb-3">Normal: {metric.normalRange}</p>
-                  <span
-                    className={`inline-block px-2 md:px-3 py-0.5 md:py-1 rounded-full text-[10px] md:text-xs font-semibold ${metric.status === 'normal'
-                      ? 'bg-slate-100 text-slate-700'
-                      : 'bg-white/20 text-white'
-                      }`}
-                  >
-                    {(metric.status || 'unknown').toUpperCase()}
-                  </span>
-                </button>
-              ))}
-          </div>
-          {Object.entries(aiAnalysis.metrics).filter(([, m]) => metricFilter === 'all' || (m.status || '').toLowerCase() === metricFilter).length === 0 && (
-            <p className="text-center text-slate-500 py-8">{isHindi ? 'इस फ़िल्टर के लिए कोई मेट्रिक्स नहीं मिला' : 'No metrics found for this filter'}</p>
-          )}
-        </div>
-      )}
-
-      {/* Deficiencies */}
-      {aiAnalysis?.deficiencies?.length > 0 && (
-        <div className="bg-white rounded-2xl border-l-4 border-black border-t-2 border-r-2 border-b-2 border-t-slate-200 border-r-slate-200 border-b-slate-200 p-8 shadow-sm">
-          <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <AlertTriangle className="w-6 h-6 text-black" /> {isHindi ? 'पता चली कमियां' : 'Detected Deficiencies'}
-          </h2>
-          <div className="space-y-4">
-            {aiAnalysis.deficiencies.map((def, i) => (
-              <div
-                key={i}
-                className={`p-5 rounded-xl border-2 ${def.severity === 'Severe'
-                  ? 'bg-slate-900 text-white border-black'
-                  : 'bg-slate-50 border-slate-200'
-                  }`}
-              >
-                <div className="flex items-start justify-between mb-3">
-                  <h3 className="text-lg font-bold text-slate-800">{t(def.name)}</h3>
-                  <span
-                    className={`px-3 py-1 rounded-full text-xs font-semibold ${def.severity === 'Severe'
-                      ? 'bg-white/20 text-white'
-                      : 'bg-slate-200 text-slate-700'
-                      }`}
-                  >
-                    {def.severity}
-                  </span>
-                </div>
-                {def.explanation && <p className="text-slate-700 mb-3">{t(def.explanation)}</p>}
-                {def.symptoms?.length > 0 && (
-                  <div className="mb-3">
-                    <p className="text-sm font-semibold text-slate-700 mb-2">{isHindi ? 'लक्षण:' : 'Symptoms:'}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {def.symptoms.map((symptom, j) => (
-                        <span key={j} className="text-xs bg-white px-2 py-1 rounded border border-slate-300">
-                          {t(symptom)}
-                        </span>
-                      ))}
+      <div className="px-6 flex flex-col gap-8 max-w-4xl mx-auto relative z-10 pt-4">
+          
+          {/* Executive Highlight Card */}
+          <div className="bg-white/60 backdrop-blur-xl rounded-[40px] p-8 shadow-[0_8px_32px_rgba(0,0,0,0.04)] border border-white flex flex-col gap-8 relative overflow-hidden group">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-[#69A38D]/10 rounded-full blur-3xl -mr-32 -mt-32"></div>
+              
+              <div className="flex items-center justify-between relative z-10">
+                 <div className="flex items-center gap-5">
+                    <div className="w-20 h-20 rounded-[28px] bg-white shadow-lg border border-white flex flex-col items-center justify-center">
+                        <span className="text-[32px] font-black text-[#1a2138] leading-none tracking-tighter">{aiAnalysis?.healthScore || 'N/A'}</span>
+                        <span className="text-[8px] font-black text-[#69A38D] uppercase tracking-widest mt-1">Score</span>
                     </div>
-                  </div>
-                )}
+                    <div className="flex flex-col">
+                       <h2 className="text-[24px] font-black text-[#1a2138] leading-tight uppercase tracking-tight">{report.reportType}</h2>
+                       <div className="flex items-center gap-3 text-slate-400 text-[11px] font-black uppercase tracking-widest mt-1">
+                          <User2 size={14} className="text-[#69A38D]" />
+                          <span>{report.patientName || 'Record Verified'}</span>
+                       </div>
+                    </div>
+                 </div>
+                 <div className="hidden sm:flex flex-col items-end">
+                    <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Synthesis Timeline</span>
+                    <span className="text-[16px] font-black text-[#1a2138]">{new Date(report.createdAt).toLocaleDateString()}</span>
+                 </div>
               </div>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {/* Food Recommendations */}
-      {aiAnalysis?.foodRecommendations && Object.keys(aiAnalysis.foodRecommendations).length > 0 && (
-        <div className="bg-white rounded-2xl border-2 border-slate-200 p-8 shadow-sm">
-          <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <Apple className="w-6 h-6 text-black" /> {isHindi ? 'अनुशंसित खाद्य श्रेणियां' : 'Recommended Food Categories'}
-          </h2>
-          <div className="grid md:grid-cols-2 gap-6">
-            {Object.entries(aiAnalysis.foodRecommendations).map(([category, rec]) => (
-              <div key={category} className="p-6 bg-slate-50 rounded-xl border-2 border-slate-200">
-                <h3 className="font-bold text-black mb-2 text-lg">{t(category)}</h3>
-                {rec.explanation && <p className="text-sm text-slate-600 mb-3">{t(rec.explanation)}</p>}
-                {rec.frequency && <p className="text-xs text-black font-medium mb-3">{isHindi ? 'आवृत्ति:' : 'Frequency:'} {t(rec.frequency)}</p>}
-                {rec.foods && (
-                  <div className="flex flex-wrap gap-2">
-                    {rec.foods.map((food, i) => (
-                      <span key={i} className="text-xs bg-black text-white px-3 py-1.5 rounded-full font-medium">
-                        {t(food)}
-                      </span>
-                    ))}
+              <div className="bg-white/80 rounded-[28px] p-6 border border-white shadow-inner relative z-10">
+                  <div className="flex items-center gap-2 mb-4">
+                     <Activity size={16} className="text-[#69A38D]" />
+                     <h3 className="text-[14px] font-black text-[#1a2138] uppercase tracking-widest">Executive Abstraction</h3>
                   </div>
-                )}
+                  <p className="text-[14.5px] text-[#2c3e50] font-bold leading-relaxed">{t(aiAnalysis?.summary)}</p>
               </div>
-            ))}
           </div>
-        </div>
-      )}
 
-      {/* Generate Diet Plan CTA */}
-      <div className="bg-white rounded-2xl border-l-[6px] border-emerald-500 border-2 border-slate-200 p-8 shadow-sm">
-        <h2 className="text-2xl font-bold text-slate-800 mb-3 flex items-center gap-2">
-          <UtensilsCrossed className="w-6 h-6 text-emerald-600" /> {isHindi ? 'व्यक्तिगत आहार योजना' : 'Personalized Diet Plan'}
-        </h2>
-        <p className="text-slate-600 mb-6 leading-relaxed">
-          {isHindi
-            ? 'अपनी रिपोर्ट के निष्कर्षों, फिटनेस लक्ष्यों और BMI के आधार पर एक व्यापक आहार योजना प्राप्त करें।'
-            : 'Get a comprehensive diet plan tailored to your report findings, fitness goals, and BMI. Our AI will analyze everything together.'}
-        </p>
-        <Link
-          to="/diet-plan"
-          className="inline-flex items-center gap-3 px-6 py-3 bg-black hover:bg-slate-800 text-white rounded-xl font-bold text-sm uppercase tracking-wider transition-all hover:shadow-lg"
-        >
-          <Apple className="w-5 h-5" />
-          {isHindi ? 'विशेष रूप से आपके लिए व्यक्तिगत आहार योजना देखें' : 'View personalized diet plan specially for you'}
-          <ArrowLeft className="w-4 h-4 rotate-180" />
-        </Link>
+          {/* Key Findings Multi-Grid */}
+          {aiAnalysis?.keyFindings?.length > 0 && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+               {aiAnalysis.keyFindings.map((finding, idx) => (
+                 <div key={idx} className="bg-white/60 rounded-[32px] p-5 border border-white flex items-start gap-4 shadow-sm hover:bg-white/80 transition-all">
+                    <div className="w-10 h-10 rounded-2xl bg-white shadow-sm flex items-center justify-center shrink-0 border border-slate-50"><CheckCircle2 size={20} className="text-[#69A38D]" strokeWidth={2.5} /></div>
+                    <p className="text-[13px] font-bold text-[#1a2138] leading-relaxed pt-1">{t(finding)}</p>
+                 </div>
+               ))}
+            </div>
+          )}
+
+          {/* Metrics Visualization Tabs */}
+          {metrics.length > 0 && (
+             <div className="flex flex-col gap-6">
+                 <div className="flex items-center justify-between px-2">
+                    <h2 className="text-[20px] font-black text-[#1a2138] leading-none uppercase tracking-tight">Core Bio-Markers</h2>
+                    <div className="flex bg-white/60 rounded-full p-1 border border-white shadow-sm">
+                       {['All', 'High'].map(tab => (
+                         <button 
+                           key={tab} 
+                           onClick={() => setMetricTab(tab)}
+                           className={`px-4 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest transition-all ${metricTab === tab ? 'bg-[#1a2138] text-white' : 'text-slate-400 hover:text-[#69A38D]'}`}
+                         >
+                           {tab}
+                         </button>
+                       ))}
+                    </div>
+                 </div>
+                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    {filteredMetrics.map((metric, idx) => {
+                       const isNormal = metric.status === 'NORMAL' || metric.status === 'GOOD';
+                       const isWarning = ['BORDERLINE', 'MODERATE', 'LOW'].includes(metric.status);
+                       const colorClass = isNormal ? 'text-[#69A38D]' : isWarning ? 'text-[#E88F4A]' : 'text-[#5D5589]';
+                       
+                       return (
+                         <div key={idx} className="bg-white/60 rounded-[32px] p-4 border border-white shadow-sm flex flex-col gap-4 group hover:shadow-md transition-all">
+                            <div className="flex items-center justify-between">
+                               <span className={`text-[11px] font-black ${colorClass} uppercase tracking-widest`}>{metric.status}</span>
+                               <div className="w-1.5 h-1.5 rounded-full bg-slate-200 group-hover:bg-[#69A38D] transition-colors"></div>
+                            </div>
+                            <h4 className="text-[13px] font-black text-[#1a2138] uppercase tracking-tight leading-snug line-clamp-2">{metric.name.replace(/([A-Z])/g, ' $1').trim()}</h4>
+                            <div className="flex items-baseline gap-1 mt-auto">
+                               <span className={`text-[20px] font-black tracking-tighter ${colorClass}`}>{metric.value}</span>
+                               <span className="text-[9px] font-black text-slate-400 uppercase">{metric.unit}</span>
+                            </div>
+                         </div>
+                       );
+                    })}
+                 </div>
+             </div>
+          )}
+
+          {/* Nutritional Protocol CTA */}
+          <div className="bg-white/60 backdrop-blur-xl rounded-[40px] p-8 shadow-[0_4px_25px_rgba(0,0,0,0.04)] border border-white flex flex-col gap-6">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-[#69A38D]/10 flex items-center justify-center border border-[#69A38D]/20 shadow-sm">
+                <UtensilsCrossed size={24} className="text-[#69A38D]" />
+              </div>
+              <h2 className="text-[20px] font-black text-[#1a2138] uppercase tracking-tight">{isHindi ? 'पोषण प्रोटोकॉल' : 'Nutritional Protocol'}</h2>
+            </div>
+            <p className="text-[14px] text-[#2c3e50] font-bold leading-relaxed">
+              {isHindi 
+                ? 'अपनी क्लीनिकल रिपोर्ट के आधार पर हम आपके स्वास्थ्य के लिए एक विशेष आहार योजना तैयार करेंगे।' 
+                : "Based on your clinical synthesis, we've prepared an optimized nutritional strategy to address your bio-marker needs."}
+            </p>
+            <Link
+              to="/diet-plan?autoGenerate=true"
+              className="w-full py-5 bg-[#69A38D] text-white rounded-[28px] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-[#528270] transition-all shadow-lg shadow-[#69A38D]/20 active:scale-[0.98]"
+            >
+              <Sparkles size={18} /> {isHindi ? 'व्यक्तिगत आहार योजना जनरेट करें' : 'GENERATE PERSONALIZED DIET PLAN'}
+            </Link>
+          </div>
+
+          {/* Actionable Next Steps (Redesigned) */}
+          <div className="bg-[#69A38D] rounded-[40px] p-8 text-white shadow-xl flex flex-col gap-8">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                <Zap size={24} strokeWidth={3} fill="currentColor" />
+              </div>
+              <h2 className="text-2xl font-bold tracking-tight">{isHindi ? 'अगले कदम' : 'Actionable Next Steps'}</h2>
+            </div>
+            <div className="flex flex-col gap-4">
+              {[
+                isHindi ? "सप्ताह में 5 दिन व्यायाम करें" : "Exercise 5 days/week — mix cardio and strength training",
+                isHindi ? "प्रतिदिन 7-8 घंटे सोएं" : "Sleep 7-8 hours daily — poor sleep raises inflammation markers",
+                isHindi ? "योग या ध्यान के माध्यम से तनाव प्रबंधन" : "Manage stress through yoga or meditation — reduces cortisol and inflammation",
+                isHindi ? "धूम्रपान से बचें और शराब सीमित करें" : "Avoid smoking and limit alcohol — both lower HDL and raise hsCRP"
+              ].map((step, idx) => (
+                <div key={idx} className="bg-white/10 rounded-[32px] p-6 flex items-center gap-6 group hover:bg-white/15 transition-all">
+                  <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-sm font-black shrink-0">
+                    {idx + 1}
+                  </div>
+                  <p className="text-[15px] font-bold leading-snug">{step}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Footer Disclaimer & Source Tracking */}
+          <div className="flex flex-col items-center gap-4 pb-20 text-center px-8">
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-relaxed">
+                 AI Summary is based on localized diagnostic synthesis. Results provided are for optimization support and verified bio-marker tracking. Record ID: {id.substring(0, 12)}
+              </p>
+              <div className="flex items-center gap-4">
+                 <div className="w-2 h-2 rounded-full bg-[#69A38D]"></div>
+                 <span className="text-[9px] font-black text-[#1a2138] uppercase tracking-[0.3em]">take.health AI Platform</span>
+              </div>
+          </div>
       </div>
-
-
-      {/* Supplement Recommendations */}
-      {aiAnalysis?.supplementRecommendations && Object.keys(aiAnalysis.supplementRecommendations).length > 0 && (
-        <div className="bg-white rounded-2xl border-2 border-slate-200 p-8 shadow-sm">
-          <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <Pill className="w-6 h-6 text-black" /> {isHindi ? 'अनुशंसित सप्लीमेंट' : 'Recommended Supplements'}
-          </h2>
-          <div className="space-y-6">
-            {Object.entries(aiAnalysis.supplementRecommendations).map(([category, supplements]) => (
-              <div key={category}>
-                <h3 className="font-bold text-black mb-4 text-[10px] uppercase tracking-widest">{t(category)}</h3>
-                {Array.isArray(supplements) ? (
-                  <div className="space-y-3">
-                    {supplements.map((supp, i) => (
-                      <div key={i} className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-                        <div className="flex items-start justify-between mb-2">
-                          <p className="font-semibold text-slate-800">{t(supp.name)}</p>
-                          {supp.frequency && <span className="text-[10px] bg-black text-white px-2 py-1 rounded font-black uppercase tracking-widest">{t(supp.frequency)}</span>}
-                        </div>
-                        {supp.dosage && <p className="text-sm text-slate-700 mb-1"><strong>{isHindi ? 'खुराक:' : 'Dosage:'}</strong> {t(supp.dosage)}</p>}
-                        {supp.timing && <p className="text-sm text-slate-700 mb-1"><strong>{isHindi ? 'समय:' : 'Timing:'}</strong> {t(supp.timing)}</p>}
-                        {supp.whyItHelps && <p className="text-sm text-slate-600 mb-1"><strong>{isHindi ? 'क्यों उपयोगी है:' : 'Why:'}</strong> {t(supp.whyItHelps)}</p>}
-                        {supp.note && <p className="text-xs text-slate-600 italic">💡 {t(supp.note)}</p>}
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Recommendations */}
-      {aiAnalysis?.recommendations && Object.keys(aiAnalysis.recommendations).length > 0 && (
-        <div className="bg-white rounded-2xl border-2 border-slate-200 p-8 shadow-sm">
-          <h2 className="text-2xl font-bold text-slate-800 mb-6 flex items-center gap-2">
-            <Heart className="w-6 h-6 text-black" /> {isHindi ? 'स्वास्थ्य अनुशंसाएं' : 'Health Recommendations'}
-          </h2>
-          <div className="grid md:grid-cols-2 gap-6">
-            {/* Immediate */}
-            {aiAnalysis.recommendations.immediate?.length > 0 && (
-              <div className="p-6 bg-black rounded-xl border-2 border-black text-white">
-                <h3 className="font-bold text-white mb-4 text-[10px] uppercase tracking-widest">🚨 {isHindi ? 'तत्काल कार्रवाई' : 'Immediate Actions'}</h3>
-                <ul className="space-y-2">
-                  {aiAnalysis.recommendations.immediate.map((action, i) => (
-                    <li key={i} className="text-sm text-white/80 flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 bg-white rounded-full mt-1.5 flex-shrink-0" />
-                      {t(action)}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Short-Term */}
-            {aiAnalysis.recommendations.shortTerm?.length > 0 && (
-              <div className="p-6 bg-slate-50 rounded-xl border-2 border-slate-200">
-                <h3 className="font-bold text-black mb-4 text-[10px] uppercase tracking-widest">⏱️ {isHindi ? 'अल्पकालिक (2-4 सप्ताह)' : 'Short-Term (2-4 weeks)'}</h3>
-                <ul className="space-y-2">
-                  {aiAnalysis.recommendations.shortTerm.map((action, i) => (
-                    <li key={i} className="text-sm text-slate-700 flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 bg-black rounded-full mt-1.5 flex-shrink-0" />
-                      {t(action)}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Long-Term */}
-            {aiAnalysis.recommendations.longTerm?.length > 0 && (
-              <div className="p-6 bg-slate-100 rounded-xl border-2 border-slate-300">
-                <h3 className="font-bold text-slate-800 mb-4 text-[10px] uppercase tracking-widest">📅 {isHindi ? 'दीर्घकालिक (चल रहा है)' : 'Long-Term (Ongoing)'}</h3>
-                <ul className="space-y-2">
-                  {aiAnalysis.recommendations.longTerm.map((action, i) => (
-                    <li key={i} className="text-sm text-slate-700 flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 bg-slate-800 rounded-full mt-1.5 flex-shrink-0" />
-                      {t(action)}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Diet */}
-            {aiAnalysis.recommendations.diet && (
-              <div className="p-6 bg-slate-50 rounded-xl border-2 border-slate-200">
-                <h3 className="font-bold text-black mb-4 text-[10px] uppercase tracking-widest">🍽️ {isHindi ? 'आहार अनुशंसाएं' : 'Diet Recommendations'}</h3>
-                <p className="text-sm text-slate-700">{t(aiAnalysis.recommendations.diet)}</p>
-              </div>
-            )}
-
-            {/* Lifestyle */}
-            {aiAnalysis.recommendations.lifestyle?.length > 0 && (
-              <div className="p-6 bg-slate-100 rounded-xl border-2 border-slate-200">
-                <h3 className="font-bold text-black mb-4 text-[10px] uppercase tracking-widest">🏃 {isHindi ? 'जीवन शैली में बदलाव' : 'Lifestyle Changes'}</h3>
-                <ul className="space-y-2">
-                  {aiAnalysis.recommendations.lifestyle.map((action, i) => (
-                    <li key={i} className="text-sm text-slate-700 flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 bg-black rounded-full mt-1.5 flex-shrink-0" />
-                      {t(action)}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-
-            {/* Follow-Up Tests */}
-            {aiAnalysis.recommendations.followUpTests?.length > 0 && (
-              <div className="p-6 bg-slate-50 rounded-xl border-2 border-slate-200">
-                <h3 className="font-bold text-black mb-4 text-[10px] uppercase tracking-widest">🔬 {isHindi ? 'फॉलो-अप परीक्षण' : 'Follow-Up Tests'}</h3>
-                <ul className="space-y-2">
-                  {aiAnalysis.recommendations.followUpTests.map((test, i) => (
-                    <li key={i} className="text-sm text-slate-700 flex items-start gap-2">
-                      <span className="w-1.5 h-1.5 bg-black rounded-full mt-1.5 flex-shrink-0" />
-                      {t(test)}
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Disclaimer */}
-      <div className="p-6 bg-slate-900 rounded-xl border-2 border-black">
-        <p className="text-sm text-white">
-          <strong>{isHindi ? 'अस्वीकरण:' : 'Disclaimer:'}</strong> {isHindi ? 'यह AI विश्लेषण केवल सूचनात्मक कल्याण सहायता के लिए है और इसे पेशेवर चिकित्सा सलाह की जगह नहीं लेना चाहिए। चिकित्सा निर्णयों के लिए हमेशा स्वास्थ्य सेवा प्रदाता से परामर्श लें।' : 'This AI analysis is for informational wellness support only and should not replace professional medical advice. Always consult with a healthcare provider for medical decisions.'}
-        </p>
-      </div>
-
-      {/* Metric Details Modal */}
-      {showMetricModal && selectedMetric && (
-        <VitalDetailsPopup
-          vital={selectedMetric}
-          onClose={closeMetricModal}
-          initialLanguage={isHindi ? 'hi' : 'en'}
-          t={t}
-        />
-      )}
     </div>
   );
 }

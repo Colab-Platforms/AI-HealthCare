@@ -1,5 +1,9 @@
 import React, { useState, useRef, useMemo } from 'react';
-import { ChevronLeft, ChevronRight, Plus, Camera, Mic, Utensils, Droplet, Minus, CheckCircle2, AlertTriangle, X, Coffee, Apple, Calendar as CalendarIcon, Image as ImageIcon, Type, History, ArrowLeft, Flame, UtensilsCrossed, Zap, Search } from 'lucide-react';
+import { 
+  ChevronLeft, ChevronRight, Plus, Camera, Mic, Utensils, Droplet, Minus, CheckCircle2, 
+  AlertTriangle, AlertCircle, X, Coffee, Apple, Calendar, Image as ImageIcon, 
+  Type, History, ArrowLeft, Flame, UtensilsCrossed, Zap, Search, Trash2, MoreHorizontal 
+} from 'lucide-react';
 import { ImageWithFallback } from './ImageWithFallback';
 import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -20,12 +24,16 @@ export function NutritionTab({
   dailySummary = {},
   waterIntake = { current: 0, target: 8 },
   onWaterUpdate,
+  triggerRefresh,
   selectedDate,
   onDateChange,
   weeklyTrendsData = [],
   recentMeals = [],
   frequentFoods = [],
-  aiInsights = ""
+  aiInsights = "",
+  onDeleteFood,
+  onMoveFood,
+  onViewFood
 }) {
   const [activeSuggestion, setActiveSuggestion] = useState('Recommended');
   const [showRecipe, setShowRecipe] = useState(false);
@@ -37,6 +45,7 @@ export function NutritionTab({
   const cameraInputRef = useRef(null);
   const headerCameraRef = useRef(null);
   const activeMealRef = useRef(null);
+  const dateInputRef = useRef(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
 
   const mealPool = {
@@ -158,56 +167,48 @@ export function NutritionTab({
   const diffFromLastWeek = Math.round(((avgKcal - 1900) / 1900) * 100);
 
   const progressPercent = Math.min(100, (totalTodayKcal / (dailySummary.calorieTarget || 1800)) * 100);
-
   return (
-    <div className="flex flex-col gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-8 max-w-5xl mx-auto w-full">
-      {/* Top Nutrition Tracker Header */}
-      <div className="flex flex-row items-center justify-between gap-2 mb-2 mt-1">
-        <div className="flex flex-col gap-0.5 w-[42%] min-w-0">
-          <h1 className="text-[16px] md:text-[32px] font-black text-[#1a2138] tracking-tight dark:text-white leading-none whitespace-nowrap">
+    <div className="flex flex-col gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-8 max-w-5xl mx-auto w-full pt-1">
+      {/* Primary Header - Compact & Refined */}
+      <div className="flex flex-row items-center justify-between gap-2 mb-2">
+        <div className="flex flex-col gap-0 min-w-0">
+          <h1 className="text-[20px] md:text-[24px] font-black text-[#1a2138] tracking-tight dark:text-white leading-tight whitespace-nowrap">
             Nutrition Tracker
           </h1>
-          <p className="text-[10px] md:text-[14px] font-medium text-slate-500/80 dark:text-slate-400">
+          <p className="text-[11px] md:text-[13px] font-bold text-slate-400 dark:text-slate-500">
             Achieve wellness goals..
           </p>
         </div>
         
-        <div className="flex items-center gap-2 w-[58%] justify-end shrink-0">
+        <div className="flex items-center gap-1.5 justify-end shrink-0">
           <button 
             onClick={() => onLogFood('Scan')} 
-            className="bg-[#6FAF95] hover:bg-[#5B9A80] text-white px-3 md:px-4 py-1.5 md:py-2.5 h-9 md:h-11 rounded-full text-[11px] md:text-[14px] font-bold flex items-center gap-1 shadow-lg active:scale-95 transition-all justify-center whitespace-nowrap"
+            className="bg-[#6FAF95] hover:bg-[#5B9A80] text-white px-3 py-1.5 h-9 md:h-10 rounded-full text-[12px] md:text-[13px] font-bold flex items-center gap-1 shadow-sm active:scale-95 transition-all justify-center whitespace-nowrap"
           >
-            <Plus size={14} md:size={18} strokeWidth={3} /> Log Meal
+            <Plus size={15} strokeWidth={3} /> Log Meal
           </button>
-          
           <button 
-            onClick={() => {
-              // Directly open native camera
-              if (headerCameraRef.current) headerCameraRef.current.value = '';
-              headerCameraRef.current?.click();
-            }}
-            className="w-9 h-9 md:w-11 md:h-11 shrink-0 rounded-full bg-white dark:bg-[#1A221E] flex items-center justify-center text-slate-500 border border-slate-100 dark:border-white/10 hover:bg-slate-50 transition-all shadow-sm active:scale-90"
+            onClick={() => onLogFood('photo')}
+            className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white dark:bg-[#1A221E] flex items-center justify-center text-slate-500 border border-slate-100 dark:border-white/10 hover:shadow-xs transition-all active:scale-90"
           >
-            <Camera className="w-4 h-4 md:w-5 md:h-5 text-slate-500" strokeWidth={2} />
+            <Camera size={17} strokeWidth={2} className="text-slate-400" />
           </button>
-          
           <button 
-            onClick={() => onLogFood('Voice Log')}
-            className="w-9 h-9 md:w-11 md:h-11 shrink-0 rounded-full bg-white dark:bg-[#1A221E] flex items-center justify-center text-slate-500 border border-slate-100 dark:border-white/10 hover:bg-slate-50 transition-all shadow-sm active:scale-90"
+            onClick={() => onLogFood('voice')}
+            className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white dark:bg-[#1A221E] flex items-center justify-center text-slate-500 border border-slate-100 dark:border-white/10 hover:shadow-xs transition-all active:scale-90"
           >
-            <Mic className="w-4 h-4 md:w-5 md:h-5 text-slate-500" strokeWidth={2} />
+            <Mic size={17} strokeWidth={2} className="text-slate-400" />
           </button>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-6">
+        {/* Left Column */}
         <div className="flex flex-col gap-6">
           {/* Daily Calorie Intake Card */}
           <div className="bg-white/60 backdrop-blur-xl rounded-[32px] p-6 shadow-sm border border-white relative overflow-hidden dark:bg-[#1A221E]/90 dark:border-white/10">
             <div className="absolute top-[-40px] right-[-40px] w-32 h-32 bg-[#558FE6]/20 rounded-full blur-2xl pointer-events-none"></div>
-            
             <h3 className="text-[13px] font-bold text-[#64748b] dark:text-slate-400 mb-2">Daily Calorie Intake</h3>
-            
             <div className="flex items-end justify-between mb-1.5">
               <div className="flex items-baseline gap-1">
                 <span className={`text-[32px] md:text-[40px] font-bold tracking-tight leading-none ${totalTodayKcal > (dailySummary.calorieTarget || 1800) ? 'text-red-500' : 'text-[#1a2138] dark:text-white'}`}>{totalTodayKcal}</span>
@@ -224,644 +225,337 @@ export function NutritionTab({
             ) : (
               <p className="text-[12px] font-bold text-[#558FE6] mb-5">{(dailySummary.calorieTarget || 1800) - totalTodayKcal} kcal remaining</p>
             )}
-            
-            {/* Progress Bar */}
             <div className="w-full h-3.5 bg-white/50 dark:bg-black/20 rounded-full overflow-hidden mb-8 shadow-inner border border-white/50 dark:border-white/5">
-              <motion.div 
-                initial={{ width: 0 }}
-                animate={{ width: `${Math.min(100, progressPercent)}%` }}
-                transition={{ duration: 1, ease: "easeOut" }}
-                className={`h-full rounded-full relative overflow-hidden ${totalTodayKcal > (dailySummary.calorieTarget || 1800) ? 'bg-red-500' : 'bg-[#69A38D]'}`} 
-              >
-                <div className="absolute inset-0 bg-white/10 w-full h-full"></div>
-              </motion.div>
+              <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(100, progressPercent)}%` }} transition={{ duration: 1, ease: "easeOut" }} className={`h-full rounded-full relative overflow-hidden ${totalTodayKcal > (dailySummary.calorieTarget || 1800) ? 'bg-red-500' : 'bg-[#69A38D]'}`}><div className="absolute inset-0 bg-white/10 w-full h-full"></div></motion.div>
             </div>
-            
-            {/* Macros */}
             <div className="flex gap-3 w-full">
-              {/* Protein */}
               <div className="flex-1 flex flex-col gap-1.5">
                 <span className="text-[9px] font-black text-[#64748b]/70 dark:text-slate-500 uppercase tracking-widest">Protein</span>
-                <div className="flex items-baseline gap-1">
-                  <span className={`text-[13px] font-bold tracking-tight ${dailySummary.protein > dailySummary.proteinTarget ? 'text-red-500' : 'text-[#1a2138] dark:text-white'}`}>{dailySummary.protein}g</span>
-                  <span className="text-[10px] font-bold text-[#64748b]/70 dark:text-slate-500">/ {dailySummary.proteinTarget}g</span>
-                </div>
-                <div className="w-full h-1.5 bg-white/50 dark:bg-black/20 border border-white/50 dark:border-white/5 rounded-full overflow-hidden">
-                  <motion.div className={`h-full rounded-full ${dailySummary.protein > dailySummary.proteinTarget ? 'bg-red-500' : 'bg-[#5D5589]'}`} initial={{ width: 0 }} animate={{ width: `${Math.min(100, (dailySummary.protein / dailySummary.proteinTarget) * 100)}%` }}></motion.div>
-                </div>
-                <span className={`text-[9px] font-bold ${dailySummary.protein > dailySummary.proteinTarget ? 'text-red-500' : 'text-[#64748b]/70 dark:text-slate-500'}`}>
-                  {dailySummary.protein > dailySummary.proteinTarget ? `${(dailySummary.protein - dailySummary.proteinTarget).toFixed(1)}g over` : `${(dailySummary.proteinTarget - dailySummary.protein).toFixed(1)}g left`}
-                </span>
+                <div className="flex items-baseline gap-1"><span className={`text-[13px] font-bold ${dailySummary.protein > dailySummary.proteinTarget ? 'text-red-500' : 'text-[#1a2138] dark:text-white'}`}>{dailySummary.protein}g</span><span className="text-[10px] font-bold text-[#64748b]/70">/ {dailySummary.proteinTarget}g</span></div>
+                <div className="w-full h-1.5 bg-white/50 dark:bg-black/20 rounded-full overflow-hidden self-stretch"><motion.div className={`h-full rounded-full ${dailySummary.protein > dailySummary.proteinTarget ? 'bg-red-500' : 'bg-[#5D5589]'}`} initial={{ width: 0 }} animate={{ width: `${Math.min(100, (dailySummary.protein / dailySummary.proteinTarget) * 100)}%` }}></motion.div></div>
               </div>
-              
-              {/* Carbs */}
               <div className="flex-1 flex flex-col gap-1.5">
-                <span className="text-[9px] font-black text-[#64748b]/70 dark:text-slate-500 uppercase tracking-widest">Carbs</span>
-                <div className="flex items-baseline gap-1">
-                  <span className={`text-[13px] font-bold tracking-tight ${dailySummary.carbs > dailySummary.carbsTarget ? 'text-red-500' : 'text-[#1a2138] dark:text-white'}`}>{dailySummary.carbs}g</span>
-                  <span className="text-[10px] font-bold text-[#64748b]/70 dark:text-slate-500">/ {dailySummary.carbsTarget}g</span>
-                </div>
-                <div className="w-full h-1.5 bg-white/50 dark:bg-black/20 border border-white/50 dark:border-white/5 rounded-full overflow-hidden">
-                  <motion.div className={`h-full rounded-full ${dailySummary.carbs > dailySummary.carbsTarget ? 'bg-red-500' : 'bg-[#558FE6]'}`} initial={{ width: 0 }} animate={{ width: `${Math.min(100, (dailySummary.carbs / dailySummary.carbsTarget) * 100)}%` }}></motion.div>
-                </div>
-                <span className={`text-[9px] font-bold ${dailySummary.carbs > dailySummary.carbsTarget ? 'text-red-500' : 'text-[#64748b]/70 dark:text-slate-500'}`}>
-                  {dailySummary.carbs > dailySummary.carbsTarget ? `${(dailySummary.carbs - dailySummary.carbsTarget).toFixed(1)}g over` : `${(dailySummary.carbsTarget - dailySummary.carbs).toFixed(1)}g left`}
-                </span>
+                <span className="text-[9px] font-black text-[#64748b]/70 uppercase tracking-widest">Carbs</span>
+                <div className="flex items-baseline gap-1"><span className={`text-[13px] font-bold ${dailySummary.carbs > dailySummary.carbsTarget ? 'text-red-500' : 'text-[#1a2138] dark:text-white'}`}>{dailySummary.carbs}g</span><span className="text-[10px] font-bold text-[#64748b]/70">/ {dailySummary.carbsTarget}g</span></div>
+                <div className="w-full h-1.5 bg-white/50 dark:bg-black/20 rounded-full overflow-hidden self-stretch"><motion.div className={`h-full rounded-full ${dailySummary.carbs > dailySummary.carbsTarget ? 'bg-red-500' : 'bg-[#558FE6]'}`} initial={{ width: 0 }} animate={{ width: `${Math.min(100, (dailySummary.carbs / dailySummary.carbsTarget) * 100)}%` }}></motion.div></div>
               </div>
-
-              {/* Fats */}
               <div className="flex-1 flex flex-col gap-1.5">
-                <span className="text-[9px] font-black text-[#64748b]/70 dark:text-slate-500 uppercase tracking-widest">Fats</span>
-                <div className="flex items-baseline gap-1">
-                  <span className={`text-[13px] font-bold tracking-tight ${dailySummary.fats > dailySummary.fatsTarget ? 'text-red-500' : 'text-[#1a2138] dark:text-white'}`}>{dailySummary.fats}g</span>
-                  <span className="text-[10px] font-bold text-[#64748b]/70 dark:text-slate-500">/ {dailySummary.fatsTarget}g</span>
-                </div>
-                <div className="w-full h-1.5 bg-white/50 dark:bg-black/20 border border-white/50 dark:border-white/5 rounded-full overflow-hidden">
-                  <motion.div className={`h-full rounded-full ${dailySummary.fats > dailySummary.fatsTarget ? 'bg-red-500' : 'bg-[#69A38D]'}`} initial={{ width: 0 }} animate={{ width: `${Math.min(100, (dailySummary.fats / dailySummary.fatsTarget) * 100)}%` }}></motion.div>
-                </div>
-                <span className={`text-[9px] font-bold ${dailySummary.fats > dailySummary.fatsTarget ? 'text-red-500' : 'text-[#64748b]/70 dark:text-slate-500'}`}>
-                  {dailySummary.fats > dailySummary.fatsTarget ? `${(dailySummary.fats - dailySummary.fatsTarget).toFixed(1)}g over` : `${(dailySummary.fatsTarget - dailySummary.fats).toFixed(1)}g left`}
-                </span>
+                <span className="text-[9px] font-black text-[#64748b]/70 uppercase tracking-widest">Fats</span>
+                <div className="flex items-baseline gap-1"><span className={`text-[13px] font-bold ${dailySummary.fats > dailySummary.fatsTarget ? 'text-red-500' : 'text-[#1a2138] dark:text-white'}`}>{dailySummary.fats}g</span><span className="text-[10px] font-bold text-[#64748b]/70">/ {dailySummary.fatsTarget}g</span></div>
+                <div className="w-full h-1.5 bg-white/50 dark:bg-black/20 rounded-full overflow-hidden self-stretch"><motion.div className={`h-full rounded-full ${dailySummary.fats > dailySummary.fatsTarget ? 'bg-red-500' : 'bg-[#69A38D]'}`} initial={{ width: 0 }} animate={{ width: `${Math.min(100, (dailySummary.fats / dailySummary.fatsTarget) * 100)}%` }}></motion.div></div>
               </div>
             </div>
           </div>
 
-          {/* Today's Insights with Dynamic Alerts */}
-          <div className="bg-[#E88F4A]/10 rounded-[24px] p-5 shadow-sm border border-[#E88F4A]/20 flex items-start gap-4 dark:bg-[#E88F4A]/5 dark:border-[#E88F4A]/10 transition-all duration-300">
-            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shrink-0 shadow-sm">
-              <AlertTriangle size={20} className={(totalTodayKcal > (dailySummary.calorieTarget || 1800) || dailySummary.protein > dailySummary.proteinTarget || dailySummary.carbs > dailySummary.carbsTarget || dailySummary.fats > dailySummary.fatsTarget) ? "text-red-500" : "text-[#E88F4A]"} strokeWidth={2.5} />
+          {/* Today's Insights */}
+          <div className="bg-[#FCEEE3] rounded-[32px] p-6 shadow-sm border border-[#F5D6C1] flex flex-col gap-5 dark:bg-[#1A221E]/10 dark:border-[#E88F4A]/20">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-md"><AlertTriangle size={20} className="text-[#E88F4A]" strokeWidth={2.5} /></div>
+                <h4 className="text-[16px] font-black text-[#1a2138] dark:text-white uppercase tracking-tight">Nutrition Insight</h4>
+              </div>
+              <span className="bg-[#E88F4A] text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest">AI ANALYSIS</span>
             </div>
-            <div className="flex flex-col justify-center py-0.5 w-full">
-              <h4 className="text-[14px] font-bold text-[#1a2138] mb-1 flex items-center gap-2 dark:text-white uppercase tracking-tight">
-                Nutrition Insight
-                <span className="bg-[#E88F4A] text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md uppercase tracking-wider">AI Analysis</span>
-              </h4>
-              <div className="text-[13px] text-[#1a2138]/80 font-medium leading-relaxed dark:text-slate-400">
-                {(() => {
-                  const alerts = [];
-                  const dailyCalorieTarget = dailySummary.calorieTarget || 1800;
-                  
-                  if (totalTodayKcal > dailyCalorieTarget) {
-                    const over = totalTodayKcal - dailyCalorieTarget;
-                    let suggest = "Consider a 30-minute swim or an hour of brisk walking to balance your total intake.";
-                    if (over > 500) suggest = "Try 45 minutes of HIIT or a 60-minute jog to manage this significant overflow.";
-                    else if (over < 150) suggest = "A short 15-minute jog or playing tennis for 20 minutes will help burn this off.";
-                    
-                    alerts.push({
-                      type: 'Calories',
-                      msg: `Exceeded by ${over} kcal. ${suggest}`
-                    });
-                  }
-                  if (dailySummary.protein > dailySummary.proteinTarget) {
-                    alerts.push({
-                      type: 'Protein',
-                      msg: `${dailySummary.protein}g / ${dailySummary.proteinTarget}g. You've exceeded your daily protein limit.`
-                    });
-                  }
-                  if (dailySummary.carbs > dailySummary.carbsTarget) {
-                    alerts.push({
-                      type: 'Carbs',
-                      msg: `${dailySummary.carbs}g / ${dailySummary.carbsTarget}g. Your carbohydrate intake is higher than the recommended limit.`
-                    });
-                  }
-                  if (dailySummary.fats > dailySummary.fatsTarget) {
-                    alerts.push({
-                      type: 'Fats',
-                      msg: `${dailySummary.fats}g / ${dailySummary.fatsTarget}g. You've gone over your fat quota for today.`
-                    });
-                  }
+            <div className="flex flex-col gap-3">
+              {(() => {
+                const alerts = [];
+                const target = dailySummary.calorieTarget || 1800;
+                if (totalTodayKcal > target) alerts.push({ type: 'CALORIES', msg: `Exceeded by ${totalTodayKcal - target} kcal. ${totalTodayKcal - target > 500 ? 'Try 45 mins of HIIT.' : 'A 20-min jog will help.'}` });
+                if (dailySummary.protein > dailySummary.proteinTarget) alerts.push({ type: 'PROTEIN', msg: `Exceeded target by ${(dailySummary.protein - dailySummary.proteinTarget).toFixed(1)}g.` });
+                if (alerts.length > 0) {
+                  return alerts.map((a, i) => (
+                    <div key={i} className="flex gap-4 items-start">
+                      <div className="flex items-center gap-1.5 font-black text-[#EF4444] uppercase text-[9px] px-2.5 py-1.5 rounded-full bg-[#FFE7E7] border border-[#FFCFCF]">{a.type}</div>
+                      <p className="text-[#991B1B] font-bold text-[14px] leading-tight flex-1 pt-1.5">{a.msg}</p>
+                    </div>
+                  ));
+                }
+                return <p className="text-[#1a2138]/80 text-[13px] font-medium leading-relaxed dark:text-slate-400">{aiInsights || "Your nutrition is perfectly balanced today. Keep it up!"}</p>;
+              })()}
+            </div>
+          </div>
 
-                  if (alerts.length > 0) {
-                    return (
-                      <div className="flex flex-col gap-2 mt-1">
-                        {alerts.map((alert, i) => (
-                          <div key={i} className="flex gap-2 items-start">
-                            <span className="font-black text-red-600 dark:text-red-400 uppercase text-[10px] mt-0.5 tracking-tight shrink-0 flex items-center gap-1 border border-red-200 dark:border-red-900/50 px-1.5 py-0.5 rounded-md bg-red-50 dark:bg-red-900/10">
-                              <AlertTriangle size={10} /> {alert.type}
-                            </span>
-                            <p className="text-red-600 dark:text-red-400 font-bold leading-snug">{alert.msg}</p>
+          {/* Meal Timeline Section */}
+          <div className="flex flex-col gap-5 mt-4">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <h2 className="text-[20px] font-black text-[#1a2138] dark:text-white leading-tight uppercase tracking-tight">
+                {(() => {
+                  const today = new Date().toISOString().split('T')[0];
+                  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+                  if (selectedDate === today) return "Today";
+                  if (selectedDate === yesterday) return "Yesterday";
+                  return new Date(selectedDate).toLocaleDateString('en-IN', { weekday: 'long' });
+                })()}, {new Date(selectedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+              </h2>
+              <div className="relative">
+                <button onClick={() => { if (dateInputRef.current?.showPicker) dateInputRef.current.showPicker(); else dateInputRef.current?.click(); }} className="w-11 h-11 rounded-full bg-white dark:bg-[#222B26] flex items-center justify-center text-[#64748b] shadow-sm border border-slate-100 dark:border-white/10"><Calendar size={18} /></button>
+                <input type="date" ref={dateInputRef} className="absolute inset-0 opacity-0 pointer-events-none" value={selectedDate} onChange={(e) => onDateChange && onDateChange(e.target.value)} max={new Date().toISOString().split('T')[0]} />
+              </div>
+            </div>
+
+            {[
+              { name: 'Breakfast', target: Math.round((dailySummary.calorieTarget || 1800) * 0.20), icon: Coffee, time: '09:00' },
+              { name: 'Mid-morning', target: Math.round((dailySummary.calorieTarget || 1800) * 0.10), icon: Apple, time: '11:30' },
+              { name: 'Lunch', target: Math.round((dailySummary.calorieTarget || 1800) * 0.35), icon: Utensils, time: '13:30' },
+              { name: 'Evening Snack', target: Math.round((dailySummary.calorieTarget || 1800) * 0.15), icon: Zap, time: '16:45' },
+              { name: 'Dinner', target: Math.round((dailySummary.calorieTarget || 1800) * 0.20), icon: UtensilsCrossed, time: '20:15' }
+            ].map((meal, idx) => {
+              const typeKey = 
+                meal.name === 'Breakfast' ? 'breakfast' :
+                meal.name === 'Mid-morning' ? 'midMorningSnack' :
+                meal.name === 'Lunch' ? 'lunch' :
+                meal.name === 'Evening Snack' ? 'eveningSnack' :
+                meal.name === 'Dinner' ? 'dinner' : 'other';
+
+              const meals = (loggedMeals || []).filter(m => {
+                if (!m.mealType) return false;
+                const mt = String(m.mealType).toLowerCase();
+                const target = typeKey.toLowerCase();
+                
+                // Direct match
+                if (mt === target) return true;
+                
+                // Flexible match for snacks and common names
+                if (target === 'breakfast' && (mt.includes('breakfast') || mt === 'morning')) return true;
+                if (target === 'lunch' && mt.includes('lunch')) return true;
+                if (target === 'dinner' && mt.includes('dinner')) return true;
+                if (target === 'midmorningsnack' && (mt.includes('mid') || mt.includes('morning'))) return true;
+                if (target === 'eveningsnack' && (mt.includes('evening') || mt === 'snack' || mt === 'afternoon')) return true;
+                
+                return false;
+              });
+
+              const consumed = meals.reduce((acc, curr) => {
+                const cal = curr.calories || curr.foodItems?.[0]?.nutrition?.calories || 0;
+                return acc + Number(cal);
+              }, 0);
+              
+              const isExceeded = consumed > meal.target;
+
+              return (
+                <div key={idx} className={`mb-4 relative ${logMethodSection === meal.name ? 'z-[60]' : 'z-10'}`}>
+                  <div className="w-full bg-white/70 dark:bg-[#1A221E]/90 backdrop-blur-xl rounded-[2.25rem] p-5 shadow-sm border border-white dark:border-white/10 transition-all hover:shadow-md">
+                    <div className="flex items-center justify-between mb-4 gap-2">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-11 h-11 rounded-2xl bg-[#FEF4EB] dark:bg-[#2D241E] flex items-center justify-center text-[#E88F4A] group-hover:scale-110 shrink-0"><meal.icon size={20} strokeWidth={2.5} /></div>
+                        <div>
+                          <span className="text-[15px] font-black text-[#1a2138] dark:text-white tracking-tight">{meal.name}</span>
+                          {consumed > 0 && <p className="text-[10px] font-bold text-[#6FAF95]/60 -mt-1 uppercase tracking-tight">Logged • {meals.length} items</p>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 ml-2">
+                        <div className="flex flex-col items-end">
+                          <div className="flex items-center gap-1.5">
+                            {isExceeded && <AlertTriangle size={14} className="text-red-500 animate-pulse" />}
+                            <span className={`text-[14px] font-black ${isExceeded ? 'text-red-500' : (consumed > 0 ? 'text-[#69A38D]' : 'text-slate-400')}`}>{consumed}</span>
+                          </div>
+                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">of {meal.target} kcal</span>
+                        </div>
+                        <div className="relative">
+                          <button onClick={() => setLogMethodSection(logMethodSection === meal.name ? null : meal.name)} className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#69A38D] border border-slate-100 shadow-sm"><Plus size={16} strokeWidth={3} /></button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {isExceeded && (
+                      <div className="mb-4 p-3.5 bg-red-50 dark:bg-red-900/20 rounded-2xl border border-red-100 dark:border-red-900/30 flex gap-3 items-start">
+                        <div className="w-8 h-8 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center shrink-0"><AlertCircle size={16} className="text-red-600" /></div>
+                        <div className="flex flex-col gap-0.5">
+                          <p className="text-[12px] font-black text-red-700 uppercase tracking-tight">Limit Exceeded</p>
+                          <p className="text-[11px] font-bold text-red-600/80 leading-snug">Target exceeded by {consumed - meal.target} kcal. A 30-min walk is recommended.</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {meals.length > 0 && (
+                      <div className="flex flex-col gap-3 mt-2 border-t border-slate-50 dark:border-white/5 pt-4">
+                        {meals.map((log, lIdx) => (
+                          <div key={lIdx} onClick={() => onViewFood && onViewFood(log)} className="group bg-slate-50/50 dark:bg-black/20 rounded-[1.75rem] p-4 flex items-center gap-4 hover:bg-white transition-all cursor-pointer border border-transparent hover:border-slate-100">
+                            <div className="w-12 h-12 rounded-2xl overflow-hidden shrink-0 border border-white">
+                              <ImageWithFallback 
+                                src={log.imageUrl || log.foodItems?.[0]?.imageUrl} 
+                                query={log.name || log.foodItems?.[0]?.name}
+                                alt={log.name} 
+                                className="w-full h-full object-cover" 
+                              />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <h4 className="text-[14px] font-black text-[#1a2138] dark:text-white uppercase truncate">{log.name || log.foodItems?.[0]?.name}</h4>
+                              <div className="flex items-center gap-2 mt-0.5"><span className="text-[11px] font-bold text-[#6FAF95] uppercase">{log.calories || log.foodItems?.[0]?.nutrition?.calories} kcal</span><span className="w-1 h-1 rounded-full bg-slate-200" /><span className="text-[10px] font-black text-slate-400">{new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
+                            </div>
+                            <div className="flex items-center gap-1.5 ml-auto">
+                              <div className="relative group/move">
+                                <button className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-[#6FAF95] hover:bg-[#6FAF95]/5 rounded-full transition-all border border-slate-100 bg-white shadow-sm">
+                                  <MoreHorizontal size={14} strokeWidth={2.5} />
+                                </button>
+                                <select 
+                                  onClick={(e) => e.stopPropagation()} 
+                                  onChange={(e) => onMoveFood && onMoveFood(log._id, e.target.value)} 
+                                  value={log.mealType} 
+                                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
+                                >
+                                  {[
+                                    { label: 'Breakfast', value: 'breakfast' },
+                                    { label: 'Mid-morning', value: 'midMorningSnack' },
+                                    { label: 'Lunch', value: 'lunch' },
+                                    { label: 'Evening Snack', value: 'eveningSnack' },
+                                    { label: 'Dinner', value: 'dinner' }
+                                  ].map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                </select>
+                              </div>
+                              <button onClick={(e) => { e.stopPropagation(); onDeleteFood && onDeleteFood(log._id); }} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all border border-slate-100 bg-white"><Trash2 size={13} /></button>
+                            </div>
                           </div>
                         ))}
                       </div>
-                    );
-                  }
-
-                  return <p>{aiInsights || "Your nutrition is perfectly balanced today. Keep it up!"}</p>;
-                })()}
-              </div>
-            </div>
-          </div>
-
-            {/* Meal Timeline Section */}
-            <div className="flex flex-col gap-5 mt-4">
-              {/* Meal Timeline Header: Date and Calendar */}
-              <div className="flex items-center justify-between gap-2 mb-2">
-                <div className="flex flex-col gap-0.5 mt-1">
-                  <h2 className="text-[20px] font-black text-[#1a2138] dark:text-white leading-tight tracking-tight uppercase tracking-[-0.02em]">
-                    Today, {new Date(selectedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                  </h2>
-                </div>
-                
-                <button 
-                  onClick={() => setIsCalendarOpen(!isCalendarOpen)}
-                  className="w-11 h-11 rounded-full bg-white dark:bg-[#222B26] flex items-center justify-center text-[#64748b] dark:text-slate-400 hover:bg-slate-50 transition-colors shadow-sm border border-slate-100 dark:border-white/10 shrink-0"
-                >
-                  <CalendarIcon size={18} />
-                </button>
-              </div>
-
-              {[
-                { name: 'Breakfast', target: Math.round((dailySummary.calorieTarget || 1800) * 0.20), icon: Coffee, time: '09:00' },
-                { name: 'Mid-morning', target: Math.round((dailySummary.calorieTarget || 1800) * 0.10), icon: Apple, time: '11:30' },
-                { name: 'Lunch', target: Math.round((dailySummary.calorieTarget || 1800) * 0.35), icon: Utensils, time: '13:30' },
-                { name: 'Evening Snack', target: Math.round((dailySummary.calorieTarget || 1800) * 0.15), icon: Zap, time: '16:45' },
-                { name: 'Dinner', target: Math.round((dailySummary.calorieTarget || 1800) * 0.20), icon: UtensilsCrossed, time: '20:15' }
-              ].map((meal, idx) => {
-                const mealTypeMatch = meal.name === 'Evening Snack' ? 'Snack' : (meal.name === 'Mid-morning' ? 'Mid-morning' : meal.name);
-                const mealsForThisType = loggedMeals.filter(m => 
-                  m.mealType?.toLowerCase() === mealTypeMatch.toLowerCase() || 
-                  m.mealType?.toLowerCase() === meal.name.toLowerCase()
-                );
-                const consumedKcal = mealsForThisType.reduce((acc, curr) => 
-                  acc + (curr.foodItems?.[0]?.nutrition?.calories || curr.calories || 0), 0
-                );
-                const isCompleted = consumedKcal > 0;
-                const isExceeded = consumedKcal > meal.target;
-                const excessKcal = consumedKcal - meal.target;
-                
-                // Exercise suggestion based on excess calories
-                const getExerciseSuggestion = (excess) => {
-                  if (excess <= 50) return "Take a 10-minute leisurely walk around the office or home.";
-                  if (excess <= 150) return "Try a 15-minute brisk walk to burn off the extra energy.";
-                  if (excess <= 300) return "Go for a 20-minute jog or try 10 minutes of jumping jacks.";
-                  return "A 30-minute brisk walk or 15 minutes of HIIT is recommended to balance this meal.";
-                };
-                
-                // Get dynamic time from first logged meal of this type
-                const loggedTime = mealsForThisType.length > 0 && mealsForThisType[0].createdAt
-                  ? new Date(mealsForThisType[0].createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: false })
-                  : meal.time;
-
-                return (
-                  <div key={idx} className={`mb-4 animate-in fade-in slide-in-from-bottom-2 relative ${logMethodSection === meal.name ? 'z-[60]' : 'z-10'}`}>
-                    {/* Meal Card */}
-                    <div className="w-full bg-white/70 dark:bg-[#1A221E]/90 backdrop-blur-xl rounded-[2.25rem] p-5 shadow-sm border border-white dark:border-white/10 transition-all hover:shadow-md relative">
-                      <div className="flex items-center justify-between mb-4 gap-2">
-                        <div className="flex items-center gap-3 min-w-0">
-                          <div className="w-11 h-11 rounded-2xl bg-[#FEF4EB] dark:bg-[#2D241E] flex items-center justify-center text-[#E88F4A] transition-all group-hover:scale-110 shrink-0">
-                            <meal.icon size={20} strokeWidth={2.5} />
-                          </div>
-                          <div>
-                            <span className="text-[15px] font-black text-[#1a2138] dark:text-white tracking-tight whitespace-nowrap">{meal.name}</span>
-                            {isCompleted && (
-                                <p className="text-[10px] font-bold text-[#6FAF95]/60 block -mt-1">
-                                  Logged at {loggedTime}
-                                </p>
-                              )}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3 shrink-0 ml-2">
-                          <div className="flex flex-col items-end">
-                            <div className="flex items-center gap-1.5">
-                              {isExceeded && <AlertTriangle size={14} className="text-red-500 animate-pulse" />}
-                              <span className={`text-[14px] font-black leading-none ${isExceeded ? 'text-red-500' : (consumedKcal > 0 ? 'text-[#69A38D]' : 'text-slate-400')} tracking-tight`}>
-                                {consumedKcal}
-                              </span>
-                            </div>
-                            <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider leading-tight">
-                              of {meal.target} kcal
-                            </span>
-                          </div>
-                          
-                          <div className="relative">
-                            <button 
-                              onClick={() => setLogMethodSection(logMethodSection === meal.name ? null : meal.name)}
-                              className="w-10 h-10 rounded-full bg-slate-50 dark:bg-[#222B26] flex items-center justify-center text-slate-400 hover:text-[#69A38D] transition-colors border border-slate-100 dark:border-white/5 active:scale-95 shadow-sm"
-                            >
-                              <Plus size={16} strokeWidth={3} />
+                    )}
+                    
+                    {logMethodSection === meal.name && (
+                      <div className="absolute right-0 top-12 w-[280px] p-5 rounded-[28px] border border-white/20 bg-gradient-to-b from-[#69A38D] to-[#2E5244] dark:from-[#2E5244] shadow-2xl z-[100] animate-in zoom-in-95 duration-200">
+                        <h3 className="text-[18px] font-bold text-white mb-1 tracking-tight">Add {meal.name}</h3>
+                        <p className="text-[12px] text-white/80 font-medium mb-5">Select a method</p>
+                        <div className="flex flex-col gap-3">
+                          {LOG_METHODS.map((method) => (
+                            <button key={method.id} onClick={() => { if (method.id === 'photo') { setActiveMealForImport(meal.name); activeMealRef.current = meal.name; setLogMethodSection(null); setTimeout(() => cameraInputRef.current?.click(), 100); } else { setLogMethodSection(null); onLogFood(method.label, meal.name); } }} className="w-full py-3.5 px-4 bg-white/10 hover:bg-white/20 rounded-[16px] flex items-center justify-between group transition-all active:scale-95 border border-white/10">
+                              <span className="text-white font-bold text-[14px]">{method.label}</span>
+                              <div className="w-8 h-8 rounded-[10px] bg-white/10 flex items-center justify-center text-white"><method.icon size={16} /></div>
                             </button>
-                            
-                            {logMethodSection === meal.name && (
-                              <div className="absolute right-0 top-12 w-[280px] p-0 rounded-[28px] border border-white/20 bg-gradient-to-b from-[#69A38D] to-[#2E5244] dark:from-[#2E5244] dark:to-[#111815] shadow-2xl overflow-hidden z-[100] outline-none animate-in zoom-in-95 duration-200">
-                                <div className="relative overflow-hidden flex flex-col p-5">
-                                    <motion.div 
-                                      key="methods"
-                                      initial={{ x: -20, opacity: 0 }}
-                                      animate={{ x: 0, opacity: 1 }}
-                                      exit={{ x: -20, opacity: 0 }}
-                                      className="flex flex-col relative z-10 w-full"
-                                    >
-                                      <h3 className="text-[18px] font-bold text-white mb-1 tracking-tight">Add {meal.name}</h3>
-                                      <p className="text-[12px] text-white/80 font-medium mb-5">Select a convenient method</p>
-                                      
-                                      <div className="flex flex-col gap-3">
-                                        {LOG_METHODS.map((method, mIdx) => {
-                                          const Icon = method.icon;
-                                          return (
-                                            <button
-                                              key={method.id}
-                                              onClick={() => {
-                                                if (method.id === 'voice') {
-                                                  setLogMethodSection(null);
-                                                  onLogFood('Voice Log', meal.name);
-                                                }
-                                                else if (method.id === 'photo') {
-                                                  setActiveMealForImport(meal.name);
-                                                  activeMealRef.current = meal.name;
-                                                  // Reset input so same file can be re-selected
-                                                  if (cameraInputRef.current) cameraInputRef.current.value = '';
-                                                  // Close popup BEFORE opening camera to avoid re-render conflicts
-                                                  setLogMethodSection(null);
-                                                  // Small delay to let popup close before opening camera
-                                                  setTimeout(() => cameraInputRef.current?.click(), 100);
-                                                  return; // Don't call setLogMethodSection again
-                                                }
-                                                else if (method.id === 'text') {
-                                                  setLogMethodSection(null);
-                                                  onLogFood('Type', meal.name);
-                                                }
-                                                else if (method.id === 'import') {
-                                                  setActiveMealForImport(meal.name);
-                                                  activeMealRef.current = meal.name;
-                                                  if (fileInputRef.current) fileInputRef.current.value = '';
-                                                  setLogMethodSection(null);
-                                                  setTimeout(() => fileInputRef.current?.click(), 100);
-                                                  return; // Don't call setLogMethodSection again
-                                                }
-                                              }}
-                                              className="w-full py-3.5 px-4 bg-white/10 hover:bg-white/20 rounded-[16px] flex items-center justify-between group transition-all active:scale-95 border border-white/10"
-                                            >
-                                              <span className="text-white font-bold text-[14px]">{method.label}</span>
-                                              <div className="w-8 h-8 rounded-[10px] bg-white/10 flex items-center justify-center text-white transition-all group-hover:scale-110">
-                                                <Icon size={16} strokeWidth={2.5} />
-                                              </div>
-                                            </button>
-                                          );
-                                        })}
-                                      </div>
-                                    </motion.div>
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Calorie Exceed Alert */}
-                      {isExceeded && (
-                        <motion.div 
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="mx-0 mb-4 p-3.5 bg-red-50 dark:bg-red-900/20 rounded-2xl border border-red-100 dark:border-red-900/30 flex gap-3 items-start"
-                        >
-                          <div className="w-8 h-8 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center shrink-0">
-                            <AlertTriangle size={16} className="text-red-600 dark:text-red-400" />
-                          </div>
-                          <div className="flex flex-col gap-0.5">
-                            <p className="text-[12px] font-black text-red-700 dark:text-red-400 uppercase tracking-tight">Calorie Limit Exceeded</p>
-                            <p className="text-[11px] font-bold text-red-600/80 dark:text-red-400/80 leading-snug">
-                              You've exceeded the {meal.name} target by {excessKcal} kcal. {getExerciseSuggestion(excessKcal)}
-                            </p>
-                          </div>
-                        </motion.div>
-                      )}
-
-                      {/* Logged Detail List */}
-                      {mealsForThisType.length > 0 && (
-                        <div className="flex flex-col gap-4 pl-2 mt-2">
-                          {mealsForThisType.map((m, mIdx) => (
-                            <div key={mIdx} className="flex items-center justify-between group">
-                              <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-white shadow-sm shrink-0">
-                                  <ImageWithFallback 
-                                    src={m.foodItems?.[0]?.image || m.image} 
-                                    query={m.foodItems?.[0]?.name || m.name}
-                                    className="w-full h-full object-cover group-hover:scale-110 transition-transform" 
-                                  />
-                                </div>
-                                <span className="text-[14px] font-bold text-[#5D6B82] dark:text-slate-300 tracking-tight line-clamp-1">{m.foodItems?.[0]?.name || m.name}</span>
-                              </div>
-                              <span className="text-[12px] font-black text-[#5D6B82]/70 dark:text-slate-500">{m.foodItems?.[0]?.nutrition?.calories || m.calories} kcal</span>
-                            </div>
                           ))}
                         </div>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
-                );
-              })}
-            </div>
+                </div>
+              );
+            })}
+          </div>
         </div>
 
+        {/* Right Column */}
         <div className="flex flex-col gap-6">
           {/* Smart Meal Suggestions */}
           <div className="bg-white/60 backdrop-blur-xl rounded-[32px] p-6 shadow-sm border border-white dark:bg-[#1A221E]/90 dark:border-white/10">
             <h3 className="text-[16px] font-black text-[#1a2138] mb-4 tracking-tight dark:text-white">Smart Meal Suggestions</h3>
-            
-            {/* Tabs */}
             <div className="flex gap-4 mb-5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
               {['Recommended', 'High Protein', 'Balanced', 'Low Carb'].map(tab => (
-                <button 
-                  key={tab}
-                  onClick={() => setActiveSuggestion(tab)}
-                  className={`text-[12px] font-bold whitespace-nowrap transition-colors relative pb-1.5 ${activeSuggestion === tab ? 'text-[#1a2138] dark:text-white' : 'text-[#64748b]/70 hover:text-[#64748b] dark:hover:text-slate-300'}`}
-                >
+                <button key={tab} onClick={() => setActiveSuggestion(tab)} className={`text-[12px] font-bold whitespace-nowrap relative pb-1.5 ${activeSuggestion === tab ? 'text-[#1a2138] dark:text-white' : 'text-[#64748b]/70'}`}>
                   {tab}
-                  {activeSuggestion === tab && (
-                    <motion.div layoutId="suggestion-underline" className="absolute bottom-0 left-0 w-full h-[2px] bg-[#69A38D] rounded-full"></motion.div>
-                  )}
+                  {activeSuggestion === tab && <motion.div layoutId="suggestion-underline" className="absolute bottom-0 left-0 w-full h-[2px] bg-[#69A38D] rounded-full" />}
                 </button>
               ))}
             </div>
-
-            {/* Suggestion Card */}
-            <div className="rounded-[24px] overflow-hidden border border-white/80 bg-white/50 shadow-sm dark:bg-[#111815] dark:border-white/10 transition-all duration-500 animate-in fade-in slide-in-from-right-4">
-              <div className="relative h-[160px] w-full group overflow-hidden">
-                <ImageWithFallback 
-                  src={currentSuggestion.image} 
-                  alt={currentSuggestion.title} 
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                />
-                <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm px-3 py-1.5 rounded-full shadow-sm">
-                  <span className="text-[9px] font-black text-[#1a2138] tracking-wide">Based on your goals today</span>
-                </div>
-              </div>
+            <div className="rounded-[24px] overflow-hidden border border-white/80 bg-white/50 shadow-sm dark:bg-[#111815] transition-all">
+              <div className="relative h-[160px] w-full group overflow-hidden"><ImageWithFallback src={currentSuggestion.image} alt={currentSuggestion.title} className="w-full h-full object-cover transition-transform group-hover:scale-110" /></div>
               <div className="p-5">
-                <h4 className="text-[16px] font-semibold text-[#1a2138] mb-2 tracking-tight dark:text-white line-clamp-1">{currentSuggestion.title}</h4>
+                <h4 className="text-[16px] font-semibold text-[#1a2138] mb-2 dark:text-white truncate">{currentSuggestion.title}</h4>
                 <div className="flex items-center gap-3 mb-4 text-[11px] font-bold text-[#64748b] dark:text-slate-400">
                   <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#5D5589]"></span> {currentSuggestion.protein} Protein</span>
                   <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#E88F4A]"></span> {currentSuggestion.calories}</span>
-                  <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#69A38D]"></span> {currentSuggestion.time}</span>
                 </div>
-                <button onClick={() => setShowRecipe(true)} className="w-full py-3 rounded-xl border border-[#6FAF95]/50 bg-[#6FAF95] font-bold text-[13px] text-white hover:bg-[#5B9A80] transition-all shadow-md active:scale-[0.98]">
-                  View Recipe
-                </button>
+                <button onClick={() => setShowRecipe(true)} className="w-full py-3 rounded-xl border border-[#6FAF95]/50 bg-[#6FAF95] font-bold text-[13px] text-white hover:bg-[#5B9A80] shadow-md transition-all">View Recipe</button>
               </div>
             </div>
           </div>
 
           {/* Quick Access */}
           <div className="grid grid-cols-2 gap-3">
-            {/* Recent Meals */}
-            <div className="bg-white/95 backdrop-blur-xl rounded-[28px] p-4 shadow-sm border border-white dark:bg-[#1A221E]/90 dark:border-white/10">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-[13px] font-black text-[#1a2138] dark:text-white tracking-tight">Recent</h3>
-                <button className="text-[9px] font-bold text-[#6FAF95] uppercase tracking-widest">View</button>
-              </div>
-              <div className="flex flex-col gap-2">
-                {recentMeals.slice(0, 2).map((m, i) => (
-                  <div key={i} className="bg-slate-50 dark:bg-black/20 rounded-xl p-2 border border-slate-100 dark:border-white/5">
-                    <p className="text-[11px] font-bold text-[#1a2138] dark:text-white truncate">{m.foodItems?.[0]?.name}</p>
-                    <p className="text-[9px] text-[#64748b]">{m.foodItems?.[0]?.nutrition?.calories} kcal</p>
-                  </div>
-                ))}
-              </div>
+            <div className="bg-white/95 rounded-[28px] p-4 border border-white dark:bg-[#1A221E]/90 dark:border-white/10">
+              <h3 className="text-[13px] font-black text-[#1a2138] dark:text-white mb-3">Recent</h3>
+              <div className="flex flex-col gap-2">{recentMeals.slice(0, 2).map((m, i) => <div key={i} className="bg-slate-50 dark:bg-black/20 rounded-xl p-2 border border-slate-100 dark:border-white/5"><p className="text-[11px] font-bold dark:text-white truncate">{m.foodItems?.[0]?.name}</p><p className="text-[9px] text-[#64748b]">{m.foodItems?.[0]?.nutrition?.calories} kcal</p></div>)}</div>
             </div>
-
-            {/* Frequent */}
-            <div className="bg-white/95 backdrop-blur-xl rounded-[28px] p-4 shadow-sm border border-white dark:bg-[#1A221E]/90 dark:border-white/10">
-              <div className="flex justify-between items-center mb-3">
-                <h3 className="text-[13px] font-black text-[#1a2138] dark:text-white tracking-tight">Frequent</h3>
-                <button className="text-[9px] font-bold text-[#6FAF95] uppercase tracking-widest">More</button>
-              </div>
-              <div className="flex flex-wrap gap-1.5 overflow-hidden max-h-[80px]">
-                {dynamicFrequentFoods.map(f => (
-                  <span key={f} className="text-[10px] font-bold bg-[#6FAF95]/10 text-[#6FAF95] px-2.5 py-1 rounded-lg border border-[#6FAF95]/20 animate-in fade-in zoom-in-75 duration-300">{f}</span>
-                ))}
-              </div>
+            <div className="bg-white/95 rounded-[28px] p-4 border border-white dark:bg-[#1A221E]/90 dark:border-white/10">
+              <h3 className="text-[13px] font-black text-[#1a2138] dark:text-white mb-3">Frequent</h3>
+              <div className="flex flex-wrap gap-1.5 overflow-hidden">{dynamicFrequentFoods.map(f => <span key={f} className="text-[10px] font-bold bg-[#6FAF95]/10 text-[#6FAF95] px-2.5 py-1 rounded-lg border border-[#6FAF95]/20">{f}</span>)}</div>
             </div>
           </div>
 
           {/* Water Intake */}
-          <div className="bg-gradient-to-br from-[#E8F1F9]/90 to-white/60 dark:from-[#1A221E] dark:to-[#111815] backdrop-blur-xl rounded-[32px] p-5 shadow-sm border border-white mt-4 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#558FE6]/10 rounded-full blur-2xl pointer-events-none"></div>
-            
-            <div className="flex items-center justify-between mb-4 relative z-10">
-              <div>
-                <h3 className="text-[16px] font-bold text-[#1a2138] dark:text-white tracking-tight">Hydration Tracker</h3>
-                <p className="text-[11px] font-black text-[#64748b] dark:text-slate-400 mt-0.5 uppercase tracking-wider">Daily Goal: {waterIntake.target} Glasses ({waterIntake.target * 250} ml)</p>
-              </div>
-              <div className="w-11 h-11 rounded-[16px] bg-white dark:bg-[#1A221E] flex items-center justify-center shadow-sm text-[#558FE6] relative border border-white dark:border-white/10">
-                <div className="relative flex items-center justify-center">
-                  <Droplet size={26} strokeWidth={2} className="fill-[#558FE6]/20" />
-                  <div className="absolute top-[11px] flex flex-col items-center">
-                    <div className="flex gap-[4px]">
-                      <div className="w-[3px] h-[4px] bg-[#558FE6] rounded-full"></div>
-                      <div className="w-[3px] h-[4px] bg-[#558FE6] rounded-full"></div>
-                    </div>
-                    <div className="w-[8px] h-[4px] border-b-[2px] border-[#558FE6] rounded-full mt-[1px]"></div>
-                  </div>
-                </div>
-              </div>
+          <div className="bg-gradient-to-br from-[#E8F1F9]/90 to-white/60 dark:from-[#1A221E] rounded-[32px] p-5 shadow-sm border border-white mt-4 relative">
+            <h3 className="text-[16px] font-bold text-[#1a2138] dark:text-white">Hydration Tracker</h3>
+            <p className="text-[11px] font-black text-[#64748b] mt-0.5 uppercase tracking-wider">Goal: {waterIntake.target} glasses</p>
+            <div className="flex items-center justify-between mt-4 bg-white/50 p-2 rounded-[24px] border border-white dark:bg-[#1A221E]/60 dark:border-white/10">
+              <button onClick={() => onWaterUpdate(-1)} className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#64748b] shadow-sm"><Minus size={16} /></button>
+              <div className="flex gap-1">{[...Array(waterIntake.target)].map((_, i) => <div key={i} className={`w-4 h-[30px] rounded-b-lg border-2 transition-all ${i < waterIntake.current ? 'border-[#558FE6] bg-[#558FE6]' : 'border-white bg-white/40'}`}></div>)}</div>
+              <button onClick={() => onWaterUpdate(1)} className="w-8 h-8 rounded-full bg-[#6FAF95] flex items-center justify-center text-white"><Plus size={16} /></button>
             </div>
-
-            <div className="flex items-center justify-between mb-3 relative z-10 bg-white/50 p-2 sm:p-3 rounded-[24px] border border-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)] dark:bg-[#1A221E]/60 dark:border-white/10 overflow-hidden">
-              <button 
-                onClick={() => onWaterUpdate(-1)}
-                className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#64748b] hover:text-[#6FAF95] active:scale-90 transition-all shadow-sm shrink-0 dark:bg-[#0F1412] dark:border dark:border-white/10 dark:text-white/80 z-20"
-              >
-                <Minus size={16} strokeWidth={3} />
-              </button>
-              
-              <div className="flex flex-1 justify-center gap-1 sm:gap-1.5 px-2">
-                {[...Array(waterIntake.target)].map((_, i) => {
-                  const isFilled = i < waterIntake.current;
-                  return (
-                    <button
-                      key={i}
-                      onClick={() => onWaterUpdate((i + 1) - waterIntake.current)}
-                      className="group relative pt-1 pb-1 transition-transform hover:-translate-y-1 active:scale-95 duration-300 w-[16px] sm:w-[20px] shrink-0"
-                    >
-                      <div className={`relative w-full h-[30px] rounded-b-[10px] rounded-t-[2px] border-[2px] transition-all duration-500 overflow-hidden ${
-                        isFilled 
-                          ? 'border-[#558FE6] bg-[#558FE6]/20 shadow-[0_4px_8px_rgba(85,143,230,0.2)] dark:bg-[#1A221E] dark:border-[#558FE6]' 
-                          : 'border-white/80 bg-white/60 shadow-sm dark:border-white/20 dark:bg-[#1A221E]'
-                      }`}>
-                        {/* The Water */}
-                        <div 
-                          className={`absolute bottom-0 left-0 right-0 bg-[#558FE6] transition-all duration-300 ease-in-out ${
-                            isFilled ? 'h-[100%] opacity-100' : 'h-0 opacity-0'
-                          }`}
-                        >
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              <button 
-                onClick={() => onWaterUpdate(1)}
-                className="w-8 h-8 rounded-full bg-[#6FAF95] flex items-center justify-center text-white active:scale-90 transition-all shadow-sm shadow-[#6FAF95]/30 shrink-0 z-20"
-              >
-                <Plus size={16} strokeWidth={3} />
-              </button>
-            </div>
-
-            <div className="flex justify-between items-center px-2 relative z-10">
-              <span className="text-[12px] font-black text-[#558FE6] tracking-tight">{waterIntake.current * 250} ml consumed</span>
-              <span className="text-[11px] font-black text-[#64748b] dark:text-slate-400 uppercase tracking-tight">{Math.max(0, (waterIntake.target - waterIntake.current) * 250)} ml left</span>
-            </div>
+            <div className="flex justify-between items-center mt-2 px-2"><span className="text-[12px] font-black text-[#558FE6]">{waterIntake.current * 250} ml</span><span className="text-[11px] font-black text-[#64748b]">{Math.max(0, (waterIntake.target - waterIntake.current) * 250)} ml left</span></div>
           </div>
 
-          {/* Weekly Trends */}
-          <div className="bg-white/60 backdrop-blur-xl rounded-[32px] p-6 shadow-sm border border-white dark:bg-[#1A221E]/90 dark:border-white/10">
+          <div className="bg-white/60 rounded-[32px] p-6 border border-white dark:bg-[#1A221E]/90 dark:border-white/10">
             <h3 className="text-[16px] font-semibold text-[#1a2138] dark:text-white mb-6">Weekly Trends</h3>
-            <div className="h-[120px] flex items-end justify-between gap-1.5 mb-4 px-1">
-              {weeklyData.map((data, i) => {
-                const heightPercent = Math.max(15, ((data.value || 0) / maxWeeklyKcal) * 100);
-                return (
-                  <div key={i} className="flex flex-col items-center gap-2 flex-1 h-full justify-end group relative">
-                    <div className="w-full bg-[#1a2138]/5 dark:bg-white/10 rounded-t-lg transition-all duration-500 hover:bg-[#6FAF95]/40" style={{ height: `${heightPercent}%` }}>
-                      {i === (weeklyData.length - 1) && <div className="w-full h-full bg-[#6FAF95] rounded-t-lg"></div>}
+            <div className="h-[100px] flex items-end justify-between gap-2 px-1">
+              {weeklyData.map((data, i) => (
+                <div 
+                  key={i} 
+                  onClick={() => toast.success(`${data.day}: ${Math.round(data.value)} kcal`, {
+                    icon: '🔥',
+                    style: { borderRadius: '16px', fontWeight: 'bold' }
+                  })}
+                  className="group relative flex-1 h-full flex flex-col justify-end"
+                >
+                  <div 
+                    className="w-full bg-[#6FAF95]/20 dark:bg-white/10 rounded-t-[6px] transition-all duration-300 group-hover:bg-[#6FAF95] cursor-pointer relative" 
+                    style={{ height: `${Math.max(4, (data.value / maxWeeklyKcal) * 100)}%` }}
+                  >
+                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-[#1a2138] text-white text-[10px] font-bold py-0.5 px-2 rounded-full pointer-events-none whitespace-nowrap z-10">
+                      {Math.round(data.value)} kcal
                     </div>
-                    <span className="text-[9px] font-bold text-[#64748b]">{data.day ? data.day[0] : ''}</span>
                   </div>
-                );
-              })}
+                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter text-center mt-2">
+                    {data.day}
+                  </span>
+                </div>
+              ))}
+            </div>
+            <div className="mt-8 pt-4 border-t border-slate-100 dark:border-white/5 flex gap-4 items-center">
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Average</span>
+                <span className="text-[15px] font-black text-[#1a2138] dark:text-white">{avgKcal} kcal</span>
+              </div>
+              <div className="flex flex-col">
+                <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Variation</span>
+                <span className={`text-[15px] font-black ${diffFromLastWeek > 0 ? 'text-red-500' : 'text-[#6FAF95]'}`}>
+                  {diffFromLastWeek > 0 ? '+' : ''}{diffFromLastWeek}%
+                </span>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Recipe Modal (High Fidelity) */}
+      {/* Recipe Modal */}
       <AnimatePresence>
         {showRecipe && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setShowRecipe(false)}></motion.div>
-            <motion.div 
-              initial={{ scale: 0.9, opacity: 0, y: 20 }} 
-              animate={{ scale: 1, opacity: 1, y: 0 }} 
-              exit={{ scale: 0.9, opacity: 0, y: 20 }} 
-              className="relative bg-white dark:bg-[#0F1412] w-full max-w-lg rounded-[40px] overflow-hidden shadow-2xl max-h-[90vh] flex flex-col"
-            >
-              <div className="relative h-[240px] shrink-0">
-                <div className="absolute top-0 left-0 right-0 p-4 flex justify-end z-20">
-                  <button 
-                    onClick={() => setShowRecipe(false)}
-                    className="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md text-white flex items-center justify-center hover:bg-black/60 transition-colors"
-                  >
-                    <X size={20} />
-                  </button>
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent z-10"></div>
-                <ImageWithFallback 
-                  src={currentSuggestion.image} 
-                  alt={currentSuggestion.title} 
-                  className="w-full h-full object-cover"
-                />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setShowRecipe(false)} />
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white dark:bg-[#0F1412] w-full max-w-lg rounded-[40px] overflow-hidden shadow-2xl max-h-[90vh] flex flex-col">
+              <div className="relative h-[200px] shrink-0">
+                <button onClick={() => setShowRecipe(false)} className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-black/40 text-white flex items-center justify-center"><X size={20} /></button>
+                <ImageWithFallback src={currentSuggestion.image} alt={currentSuggestion.title} className="w-full h-full object-cover" />
               </div>
-              
-              <div className="flex-1 overflow-y-auto p-8 pt-6">
-                <h2 className="text-[24px] font-black text-[#1a2138] dark:text-white leading-tight mb-3">{currentSuggestion.title}</h2>
-                <div className="flex gap-2 mb-8">
-                  <span className="bg-[#64748b]/10 text-[#64748b] dark:text-slate-400 text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-wider">HIGH PROTEIN ({currentSuggestion.protein})</span>
-                  <span className="bg-[#E88F4A]/10 text-[#E88F4A] text-[10px] font-black px-3 py-1.5 rounded-full uppercase tracking-wider">{currentSuggestion.calories}</span>
-                </div>
-
-                <div className="space-y-8">
+              <div className="flex-1 overflow-y-auto p-8">
+                <h2 className="text-[24px] font-black text-[#1a2138] dark:text-white mb-3">{currentSuggestion.title}</h2>
+                <div className="space-y-6">
                   <section>
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="w-8 h-8 rounded-xl bg-[#6FAF95]/10 flex items-center justify-center text-[#6FAF95]">
-                        <Utensils size={18} />
-                      </div>
-                      <h3 className="text-[18px] font-bold text-[#1a2138] dark:text-white">Ingredients</h3>
-                    </div>
-                    <ul className="space-y-3">
-                      {currentSuggestion.ingredients.map((ing, i) => (
-                        <li key={i} className="flex gap-3 text-[14px] text-[#5D6B82] dark:text-slate-400 items-start">
-                          <span className="w-1.5 h-1.5 rounded-full bg-[#6FAF95] mt-1.5 shrink-0 opacity-60"></span>
-                          {ing}
-                        </li>
-                      ))}
-                    </ul>
+                    <h3 className="text-[18px] font-bold mb-3 dark:text-white">Ingredients</h3>
+                    <ul className="space-y-2">{currentSuggestion.ingredients.map((ing, i) => <li key={i} className="text-[14px] text-[#5D6B82] dark:text-slate-400 flex gap-2"><span className="w-1.5 h-1.5 rounded-full bg-[#6FAF95] mt-1.5 shrink-0" />{ing}</li>)}</ul>
                   </section>
-
                   <section>
-                    <div className="flex items-center gap-2 mb-4">
-                      <div className="w-8 h-8 rounded-xl bg-[#5D5589]/10 flex items-center justify-center text-[#5D5589]">
-                        <CheckCircle2 size={18} />
-                      </div>
-                      <h3 className="text-[18px] font-bold text-[#1a2138] dark:text-white">Step-by-Step Instructions</h3>
-                    </div>
-                    <div className="space-y-6">
-                      {currentSuggestion.instructions.map((step, i) => (
-                        <div key={i} className="flex gap-4">
-                          <div className="w-7 h-7 rounded-full bg-slate-100 dark:bg-white/5 flex items-center justify-center shrink-0">
-                            <span className="text-[12px] font-black text-slate-500">{i + 1}</span>
-                          </div>
-                          <p className="text-[14px] text-[#5D6B82] dark:text-slate-400 leading-relaxed font-medium">
-                            {step}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
+                    <h3 className="text-[18px] font-bold mb-3 dark:text-white">Instructions</h3>
+                    <div className="space-y-4">{currentSuggestion.instructions.map((step, i) => <div key={i} className="flex gap-4"><div className="w-7 h-7 rounded-full bg-slate-100 flex items-center justify-center font-black text-[12px]">{i + 1}</div><p className="text-[14px] text-[#5D6B82] dark:text-slate-400 leading-relaxed">{step}</p></div>)}</div>
                   </section>
                 </div>
               </div>
-
-              <div className="p-6 pt-2 shrink-0">
-                <button 
-                  onClick={() => setShowRecipe(false)} 
-                  className="w-full h-14 bg-[#69A38D] hover:bg-[#5B9A80] text-white rounded-2xl font-black text-[15px] shadow-lg shadow-[#69A38D]/20 transition-all active:scale-[0.98]"
-                >
-                  Got it!
-                </button>
-              </div>
+              <div className="p-6 shrink-0"><button onClick={() => setShowRecipe(false)} className="w-full h-14 bg-[#69A38D] text-white rounded-2xl font-black shadow-lg">Got it!</button></div>
             </motion.div>
           </div>
         )}
       </AnimatePresence>
-      
-      {/* Hidden inputs for Image/Camera */}
-      <input
-        type="file"
-        ref={fileInputRef}
-        className="hidden"
-        accept="image/*"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) {
-            // Use ref for meal name since state may be stale after camera backgrounding
-            const mealName = activeMealRef.current || activeMealForImport;
-            onLogFood('Scan', mealName, file);
-          }
-          // Reset so same file can be selected again
-          if (e.target) e.target.value = '';
-        }}
-      />
-      <input
-        type="file"
-        ref={cameraInputRef}
-        className="hidden"
-        accept="image/*"
-        capture="environment"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) {
-            // Use ref for meal name since state may be stale after camera backgrounding
-            const mealName = activeMealRef.current || activeMealForImport;
-            onLogFood('Scan', mealName, file);
-          }
-          // Reset so same file can be selected again
-          if (e.target) e.target.value = '';
-        }}
-      />
-      {/* Hidden input for header camera - directly opens native camera */}
-      <input
-        type="file"
-        ref={headerCameraRef}
-        className="hidden"
-        accept="image/*"
-        capture="environment"
-        onChange={(e) => {
-          const file = e.target.files?.[0];
-          if (file) {
-            onLogFood('Scan', null, file);
-          }
-          if (e.target) e.target.value = '';
-        }}
-      />
+
+      {/* Hidden Inputs */}
+      <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={(e) => { const file = e.target.files?.[0]; if (file) onLogFood('Scan', activeMealRef.current || activeMealForImport, file); if (e.target) e.target.value = ''; }} />
+      <input type="file" ref={cameraInputRef} className="hidden" accept="image/*" capture="environment" onChange={(e) => { const file = e.target.files?.[0]; if (file) onLogFood('Scan', activeMealRef.current || activeMealForImport, file); if (e.target) e.target.value = ''; }} />
+      <input type="file" ref={headerCameraRef} className="hidden" accept="image/*" capture="environment" onChange={(e) => { const file = e.target.files?.[0]; if (file) onLogFood('Scan', null, file); if (e.target) e.target.value = ''; }} />
     </div>
   );
 }
