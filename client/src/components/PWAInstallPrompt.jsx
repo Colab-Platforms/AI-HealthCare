@@ -18,7 +18,11 @@ export default function PWAInstallPrompt() {
     setIsIOS(ios);
 
     // Check if already installed
-    if (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone) {
+    const isPWAInstalled = localStorage.getItem('pwa-installed') === 'true' || 
+                          window.matchMedia('(display-mode: standalone)').matches || 
+                          window.navigator.standalone;
+
+    if (isPWAInstalled) {
       setIsInstalled(true);
       return;
     }
@@ -45,7 +49,11 @@ export default function PWAInstallPrompt() {
     if (ios) {
       const showTimer = setTimeout(() => {
         const dismissedTime = localStorage.getItem('pwa-install-dismissed');
-        const cooldown = 2 * 60 * 1000; // 2 minutes for iOS manual prompt reappearance
+        const isActuallyInstalled = window.navigator.standalone || localStorage.getItem('pwa-installed') === 'true';
+        
+        if (isActuallyInstalled) return;
+
+        const cooldown = 7 * 24 * 60 * 60 * 1000; // 7 days for iOS manual prompt reappearance
         
         if (!dismissedTime || (Date.now() - parseInt(dismissedTime) > cooldown)) {
           setShowPrompt(true);
@@ -57,6 +65,7 @@ export default function PWAInstallPrompt() {
     // Listen for app installed event
     const handleAppInstalled = () => {
       console.log('✅ App installed successfully');
+      localStorage.setItem('pwa-installed', 'true');
       setIsInstalled(true);
       setShowPrompt(false);
       setDeferredPrompt(null);
@@ -69,12 +78,16 @@ export default function PWAInstallPrompt() {
     // Show the prompt after a short delay for best UX if not already dismissed
     const showTimer = setTimeout(() => {
       const dismissedTime = localStorage.getItem('pwa-install-dismissed');
-      const cooldown = 2 * 60 * 1000; // 2 minutes cool down for re-prompting (all devices)
+      const isActuallyInstalled = window.matchMedia('(display-mode: standalone)').matches || localStorage.getItem('pwa-installed') === 'true';
+      
+      if (isActuallyInstalled) return;
+
+      const cooldown = 24 * 60 * 60 * 1000; // 24 hours cool down for re-prompting
       
       if (!dismissedTime || (Date.now() - parseInt(dismissedTime) > cooldown)) {
         setShowPrompt(true);
       }
-    }, 800);
+    }, 2000);
 
     return () => {
       clearTimeout(showTimer);

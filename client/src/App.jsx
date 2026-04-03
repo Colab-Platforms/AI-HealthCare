@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from './context/AuthContext';
 import { PedometerProvider } from './context/PedometerContext';
 import Layout from './components/Layout';
@@ -73,7 +73,7 @@ const AdminRoute = ({ children }) => {
 };
 
 export default function App() {
-  const { user, isAdmin } = useAuth();
+  const { user, isAdmin, isDoctor } = useAuth();
 
   const getLoginRedirect = () => {
     if (!user) return <Login />;
@@ -82,6 +82,26 @@ export default function App() {
   };
 
   const location = useLocation();
+  const navigate = useNavigate();
+
+  // PWA Standalone Redirect Logic
+  useEffect(() => {
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
+                        window.navigator.standalone || 
+                        document.referrer.includes('android-app://');
+    
+    if (isStandalone && location.pathname === '/') {
+      console.log('📱 PWA Standalone detected, redirecting...');
+      if (isAdmin()) {
+        navigate('/admin', { replace: true });
+      } else if (isDoctor()) {
+        navigate('/doctor/dashboard', { replace: true });
+      } else {
+        navigate('/dashboard', { replace: true });
+      }
+    }
+  }, [location.pathname, navigate]);
+
   console.log('Rendering App', { userEmail: user?.email, isAuth: !!user, path: location.pathname });
   
   useEffect(() => {
