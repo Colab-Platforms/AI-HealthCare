@@ -6,7 +6,7 @@ import {
   Sun, Utensils, Cookie, Moon, Minus, Search, Wand2, X,
   Edit3, Image as ImageIcon,
   GlassWater, FileEdit, ScanLine, CheckCircle2, Loader2, Zap, Trash2, Clock, Sparkles, AlertCircle, FlaskConical,
-  MoreHorizontal, ArrowLeftRight
+  MoreHorizontal, ArrowLeftRight, Sunrise, FileText
 } from 'lucide-react';
 import { ImageWithFallback } from '../components/ImageWithFallback';
 import { BarChart, Bar, Cell, ResponsiveContainer, XAxis, Tooltip } from 'recharts';
@@ -38,7 +38,7 @@ function Nutrition() {
   const navigate = useNavigate();
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [mealTab, setMealTab] = useState('Breakfast');
-  const [inputMethod, setInputMethod] = useState('Predict'); // 'Predict', 'Type', 'Scan'
+  const [inputMethod, setInputMethod] = useState('Scan'); // 'Scan', 'Type', 'Predict'
   const [recType, setRecType] = useState('Recommended');
   const [viewingMeal, setViewingMeal] = useState(null);
 
@@ -797,88 +797,87 @@ function Nutrition() {
           <motion.div
             initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             data-modal="true"
-            className="fixed inset-0 z-[999] flex items-center justify-center p-0 md:p-4 bg-slate-900/40 backdrop-blur-md"
+            className="fixed inset-0 z-[999] flex items-end md:items-center justify-center p-0 md:p-4 bg-slate-900/40 backdrop-blur-md"
           >
             <motion.div
-              initial={{ scale: 0.95, y: 20, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 20, opacity: 0 }}
-              className="bg-white w-full max-w-md rounded-t-[2.5rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col h-[90vh] md:max-h-[90vh] border border-slate-100"
+              initial={{ scale: 0.95, y: 100, opacity: 0 }} animate={{ scale: 1, y: 0, opacity: 1 }} exit={{ scale: 0.95, y: 100, opacity: 0 }}
+              className="bg-white w-full max-w-md rounded-t-[2.5rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col h-[90vh] md:h-auto md:max-h-[90vh] border border-slate-100 mt-auto md:mt-0"
             >
               {/* Header */}
-              <div className="p-6 md:p-8 pb-4 border-b border-slate-50">
-                <div className="flex justify-between items-start mb-5">
-                  <div className="flex flex-col">
-                    <div className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest w-fit mb-2 ${user?.isDiabetic ? 'bg-[#064e3b] text-emerald-50 shadow-md border border-[#064e3b]/20' : 'bg-slate-100 text-slate-400'}`}>
-                      <Sparkles className="w-3 h-3" />
-                      {user?.isDiabetic ? 'Active Diabetic Care Protocol' : 'Standard Health Protocol'}
-                    </div>
-                    <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Add to {mealTab}</h3>
-                  </div>
-                  <button onClick={() => setIsModalOpen(false)} className="w-10 h-10 bg-slate-50 hover:bg-slate-100 rounded-full flex items-center justify-center transition-all border border-slate-100 shrink-0">
+              <div className="p-6 md:p-8 pb-4">
+                <div className="flex justify-between items-center mb-6">
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Add to {mealTab === 'Evening' ? 'Snack' : mealTab}</h3>
+                  <button onClick={() => setIsModalOpen(false)} className="w-10 h-10 bg-white hover:bg-slate-50 rounded-full flex items-center justify-center transition-all border border-slate-200 shadow-sm shrink-0">
                     <X className="w-5 h-5 text-slate-400" />
                   </button>
                 </div>
-                <div className="flex gap-2 mb-8 overflow-x-auto pb-1 scrollbar-hide">
-                  {['Breakfast', 'Mid-Morning', 'Lunch', 'Evening', 'Dinner'].map(tab => (
+                
+                {/* Meal Type Selector */}
+                <div className="flex gap-2 mb-6 overflow-x-auto pb-1 scrollbar-hide -mx-2 px-2">
+                  {[
+                    { id: 'Breakfast', label: 'BREAKFAST', icon: null },
+                    { id: 'Mid-Morning', label: 'MID-MORN', icon: Sun },
+                    { id: 'Lunch', label: 'LUNCH', icon: Sun },
+                    { id: 'Evening', label: 'SNACK', icon: Cookie },
+                    { id: 'Dinner', label: 'DINNER', icon: Moon }
+                  ].map(tab => (
                     <button
-                      key={tab} onClick={() => setMealTab(tab)}
-                      className={`text-[10px] font-black px-5 py-2 rounded-full transition-all uppercase tracking-widest whitespace-nowrap ${mealTab === tab ? 'bg-[#064e3b] text-emerald-50 shadow-lg' : 'text-slate-400 hover:text-[#064e3b] hover:bg-emerald-50/50'}`}
+                      key={tab.id} onClick={() => setMealTab(tab.id)}
+                      className={`flex items-center gap-1.5 px-4 py-2.5 rounded-full transition-all flex-[0_0_auto] min-w-fit justify-center ${
+                        mealTab === tab.id
+                          ? 'bg-[#69A38D] text-white shadow-md' 
+                          : 'bg-white text-slate-500 border border-slate-100 font-bold hover:bg-slate-50'
+                      }`}
                     >
-                      {tab}
+                      {tab.icon && <tab.icon size={14} className={mealTab === tab.id ? 'text-white' : 'text-slate-400'} />}
+                      <span className="text-[11px] font-black uppercase tracking-wider">{tab.label}</span>
                     </button>
                   ))}
                 </div>
 
-                <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-100">
+                {/* Input Method Tabs */}
+                <div className="flex bg-white border border-slate-100 p-1.5 rounded-2xl mb-4 shadow-sm">
                   {[
-                    { name: 'Upload', icon: ImageIcon },
-                    { name: 'Scan', icon: Camera },
-                    { name: 'Type', icon: FileEdit },
-                    { name: 'Predict', icon: Mic }
+                    { id: 'Scan', label: 'SCAN', icon: ScanLine },
+                    { id: 'Type', label: 'TYPE', icon: FileText },
+                    { id: 'Predict', label: 'VOICE LOG', icon: Mic }
                   ].map(tab => (
                     <button
-                      key={tab.name} 
+                      key={tab.id} 
                       onClick={() => {
-                        if (tab.name === 'Upload' || tab.name === 'Scan') {
-                          setInputMethod('Scan');
-                          setLastSource(tab.name);
-                          if (tab.name === 'Upload') {
-                            setTimeout(() => document.getElementById('food-img-upload')?.click(), 50);
-                          } else {
-                            if (cameraModalInputRef.current) cameraModalInputRef.current.value = '';
-                            setTimeout(() => cameraModalInputRef.current?.click(), 50);
-                          }
+                        setInputMethod(tab.id);
+                        if (tab.id === 'Predict') {
+                          setTimeout(() => startVoiceCapture(), 100);
                         } else {
-                          setInputMethod(tab.name);
+                          stopVoiceCapture();
                         }
                       }}
-                      className={`flex-1 flex items-center justify-center gap-1.5 py-3 text-[9px] font-black rounded-xl transition-all uppercase tracking-widest ${
-                        (tab.name === 'Upload' || tab.name === 'Scan' 
-                          ? (inputMethod === 'Scan' && lastSource === tab.name)
-                          : (inputMethod === tab.name))
-                        ? 'bg-white shadow-xl text-[#064e3b]' 
-                        : 'text-slate-400 hover:text-[#064e3b]'
+                      className={`flex-1 flex items-center justify-center gap-2 py-3 rounded-xl transition-all ${
+                        inputMethod === tab.id
+                          ? 'bg-white shadow-sm text-[#1a2138]' 
+                          : 'text-slate-400 hover:text-slate-600'
                       }`}
                     >
-                      <tab.icon className="w-3.5 h-3.5" /> 
-                      {tab.name === 'Predict' ? 'Voice' : tab.name}
+                      <tab.icon size={16} className={inputMethod === tab.id ? 'text-[#69A38D]' : 'text-slate-400'} /> 
+                      <span className="text-[12px] font-bold uppercase tracking-wider">{tab.label}</span>
                     </button>
                   ))}
                 </div>
               </div>
 
               {/* Body */}
-              <div className="p-5 md:p-8 overflow-y-auto flex-1 scrollbar-hide">
+              <div className="px-6 md:px-8 pb-10 md:pb-8 overflow-y-auto flex-1 scrollbar-hide flex flex-col">
 
                 {isAnalyzing ? (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center space-y-6 h-full py-12">
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center space-y-6 h-full py-12 flex-1">
                     <div className="relative w-24 h-24">
                       <div className="absolute inset-0 border-4 border-slate-100 rounded-full" />
                       <motion.div
-                        className="absolute inset-0 border-4 border-slate-900 rounded-full border-t-transparent"
+                        className="absolute inset-0 border-4 border-[#69A38D] rounded-full border-t-transparent"
                         animate={{ rotate: 360 }}
                         transition={{ repeat: Infinity, duration: 1, ease: 'linear' }}
                       />
-                      <Wand2 className="w-8 h-8 text-slate-900 absolute inset-0 m-auto animate-pulse" />
+                      <Search className="w-8 h-8 text-[#69A38D] absolute inset-0 m-auto animate-pulse" />
                     </div>
                     <div className="text-center space-y-3">
                       <motion.p
@@ -890,27 +889,160 @@ function Nutrition() {
                       >
                         {analyzingMessage}
                       </motion.p>
-                      <div className="flex items-center justify-center gap-1.5 mt-2">
-                        {[0, 1, 2].map(i => (
-                          <motion.div
-                            key={i}
-                            className="w-2 h-2 bg-slate-400 rounded-full"
-                            animate={{ scale: [1, 1.5, 1], opacity: [0.4, 1, 0.4] }}
-                            transition={{ repeat: Infinity, duration: 1.2, delay: i * 0.3 }}
-                          />
-                        ))}
-                      </div>
                     </div>
                   </motion.div>
 
+                ) : inputMethod === 'Scan' ? (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col h-full flex-1">
+                    
+                    <div className="bg-[#5c7a6e] rounded-[2rem] p-6 lg:p-8 flex flex-col items-center justify-center relative shadow-inner w-full border-2 border-dashed border-white/20 flex-1 min-h-[250px] overflow-hidden">
+                      {imagePreview ? (
+                        <>
+                          <img src={imagePreview} className="absolute inset-0 w-full h-full object-cover" alt="Food preview" />
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
+                            <button 
+                              onClick={() => { setImagePreview(null); setImage(null); }}
+                              className="bg-white/20 backdrop-blur-md border border-white/30 text-white px-6 py-2 rounded-full text-[12px] font-bold uppercase tracking-wider transition-all"
+                            >
+                              Retake Photo
+                            </button>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-16 h-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center backdrop-blur-sm mb-6 shadow-lg">
+                              <ScanLine size={32} className="text-white" />
+                          </div>
+                          
+                          <button 
+                              onClick={() => {
+                                if (cameraModalInputRef.current) cameraModalInputRef.current.value = '';
+                                cameraModalInputRef.current?.click();
+                              }}
+                              className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-6 py-3.5 rounded-full text-[13px] font-black uppercase tracking-wider transition-all mb-4 w-full max-w-[220px] shadow-sm backdrop-blur-sm"
+                          >
+                              TAP TO SCAN MEAL
+                          </button>
+                          
+                          <span className="text-white/60 text-[10px] font-black uppercase mb-4 tracking-[0.2em]">OR</span>
+                          
+                          <button 
+                              onClick={() => document.getElementById('food-img-upload')?.click()}
+                              className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-6 py-3.5 rounded-full text-[13px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 w-full max-w-[220px] shadow-sm backdrop-blur-sm"
+                          >
+                              <ImageIcon size={16} /> UPLOAD PHOTO
+                          </button>
+                        </>
+                      )}
+                      <input id="food-img-upload" type="file" accept="image/*" className="hidden" onChange={(e) => handleImageSelect(e)} />
+                      <input
+                        ref={cameraModalInputRef}
+                        type="file"
+                        accept="image/*"
+                        capture="environment"
+                        className="hidden"
+                        onChange={(e) => handleImageSelect(e, true)}
+                      />
+                    </div>
+
+                    <p className="text-center text-[#1a2138] font-bold text-[13px] px-6 mt-6 mb-6 leading-relaxed">
+                        Our engine will optimize the portion size and nutritional content directly from the photo.
+                    </p>
+
+                    <button
+                      onClick={handleAnalyzeAndLog}
+                      disabled={isAnalyzing || !image}
+                      className="w-full bg-[#69A38D] hover:bg-[#5B9A80] text-white py-4 rounded-[1.25rem] flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] mt-auto mb-2 disabled:opacity-50"
+                    >
+                      <Search size={18} className="text-white" />
+                      <span className="text-[14px] font-black uppercase tracking-wider">ANALYZE PHOTO</span>
+                    </button>
+                  </motion.div>
+                ) : inputMethod === 'Type' ? (
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col flex-1 h-full">
+                    
+                    {/* Main Search Input */}
+                    <div className="relative mb-6">
+                      <Search className="w-5 h-5 text-[#86a798] absolute left-5 top-1/2 -translate-y-1/2" />
+                      <input
+                        type="text"
+                        value={foodInput}
+                        onChange={(e) => setFoodInput(e.target.value)}
+                        placeholder="Search for food or describe..."
+                        className="w-full bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] rounded-[1.5rem] py-4.5 pl-14 pr-14 focus:outline-none focus:ring-2 focus:ring-[#69A38D]/20 focus:border-[#69A38D] text-[14px] text-slate-600 font-medium placeholder:text-slate-400"
+                        style={{ paddingBottom: '1.1rem', paddingTop: '1.1rem' }}
+                      />
+                      <button 
+                        onClick={() => { setInputMethod('Predict'); setTimeout(startVoiceCapture, 100); }} 
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 w-10 h-10 bg-[#eef5f2] text-[#69A38D] hover:bg-[#dfece7] rounded-full flex items-center justify-center transition-colors"
+                      >
+                        <Mic className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {/* Quantity and Preparation */}
+                    <div className="grid grid-cols-2 gap-4 mb-8">
+                      <div className="space-y-2.5">
+                        <label className="text-[10px] font-black text-[#5c806d] uppercase tracking-widest pl-1">Quantity</label>
+                        <input
+                          type="text"
+                          value={foodQuantity}
+                          onChange={(e) => setFoodQuantity(e.target.value)}
+                          placeholder="e.g., 2 bowls"
+                          className="w-full bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] rounded-[1.25rem] py-4 px-5 focus:outline-none focus:ring-2 focus:ring-[#69A38D]/20 focus:border-[#69A38D] text-[13px] font-medium text-slate-600 placeholder:text-[#86a798]"
+                        />
+                      </div>
+                      <div className="space-y-2.5">
+                        <label className="text-[10px] font-black text-[#5c806d] uppercase tracking-widest pl-1">Preparation</label>
+                        <select
+                          value={prepMethod}
+                          onChange={(e) => setPrepMethod(e.target.value)}
+                          className="w-full bg-white border border-slate-100 shadow-[0_4px_20px_rgba(0,0,0,0.03)] rounded-[1.25rem] py-4 px-5 focus:outline-none focus:ring-2 focus:ring-[#69A38D]/20 focus:border-[#69A38D] text-[13px] font-bold text-[#1f4031] outline-none appearance-none cursor-pointer text-center"
+                        >
+                          <option value="">Select Method</option>
+                          <option value="homemade">Homemade</option>
+                          <option value="fried">Deep Fried</option>
+                          <option value="package">Packaged</option>
+                          <option value="street">Street Food</option>
+                          <option value="boiled">Boiled/Steamed</option>
+                          <option value="roasted">Roasted/Grilled</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Quick Search Tags */}
+                    <div className="mb-8 w-full text-left">
+                      <p className="text-[10px] font-black text-[#5c806d] uppercase tracking-widest pl-1 mb-3.5">Quick Search Tags</p>
+                      <div className="flex flex-wrap gap-2.5 justify-start">
+                        {['Apple', 'Rice & Dal', 'Paneer Sabzi', 'Oats', 'Coffee'].map(tag => (
+                          <button 
+                            key={tag} 
+                            onClick={() => setFoodInput(tag)} 
+                            className="px-[18px] py-[10px] bg-white border border-slate-200 rounded-[1.25rem] text-[10px] font-black text-[#4f6c5f] hover:bg-[#69A38D] hover:text-white hover:border-[#69A38D] transition-all uppercase tracking-widest shadow-sm"
+                          >
+                            {tag}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleAnalyzeAndLog}
+                      disabled={isAnalyzing || !foodInput}
+                      className="w-full mt-auto mb-2 bg-[#69A38D] hover:bg-[#5B9A80] text-white py-4.5 rounded-[1.25rem] flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50"
+                      style={{ paddingBottom: '1.1rem', paddingTop: '1.1rem' }}
+                    >
+                      {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Search className="w-[18px] h-[18px]" />}
+                      <span className="text-[14px] font-black uppercase tracking-wider">{isAnalyzing ? analyzingMessage : 'Analyze & Log Meal'}</span>
+                    </button>
+                  </motion.div>
                 ) : inputMethod === 'Predict' ? (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center space-y-6 py-4">
-                    {/* Mic Button */}
-                    <div className="relative">
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center justify-center space-y-6 flex-1 py-4">
+                    <div className="relative mb-4">
                       {isListening && (
                         <>
-                          <div className="absolute inset-0 rounded-full bg-red-400 opacity-20 animate-ping" />
-                          <div className="absolute -inset-4 rounded-full bg-red-400 opacity-10 animate-ping" style={{ animationDelay: '0.2s' }} />
+                          <div className="absolute inset-0 rounded-full bg-[#69A38D] opacity-20 animate-ping" />
+                          <div className="absolute -inset-4 rounded-full bg-[#69A38D] opacity-10 animate-ping" style={{ animationDelay: '0.2s' }} />
                         </>
                       )}
                       <button
@@ -921,22 +1053,21 @@ function Nutrition() {
                             startVoiceCapture();
                           }
                         }}
-                        className={`relative w-24 h-24 md:w-28 md:h-28 rounded-full flex items-center justify-center transition-all shadow-xl ${isListening
-                          ? 'bg-red-500 text-white scale-110'
-                          : 'bg-[#064e3b] text-emerald-50 hover:bg-[#042f2e] hover:scale-105'
+                        className={`relative w-28 h-28 rounded-full flex items-center justify-center transition-all shadow-xl ${isListening
+                          ? 'bg-[#5B9A80] text-white scale-110'
+                          : 'bg-[#69A38D] text-emerald-50 hover:bg-[#5B9A80] hover:scale-105'
                           }`}
                       >
-                        <Mic className={`w-10 h-10 md:w-12 md:h-12 ${isListening ? 'animate-pulse' : ''}`} />
+                        <Mic className={`w-12 h-12 ${isListening ? 'animate-pulse' : ''}`} />
                       </button>
                     </div>
 
-                    {/* Status Text */}
                     {!foodInput && (
                       <div className="text-center space-y-2 px-4">
-                        <h4 className="text-lg font-black text-[#064e3b] uppercase tracking-tight">
-                          {isListening ? 'Listening...' : 'Tap to speak'}
+                        <h4 className="text-xl font-black text-[#1a2138] uppercase tracking-tight">
+                          {isListening ? 'Listening...' : 'Voice Log'}
                         </h4>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest max-w-[250px] mx-auto leading-relaxed">
+                        <p className="text-sm font-medium text-slate-500 max-w-[250px] mx-auto leading-relaxed">
                           {isListening
                             ? 'Say what you ate, e.g. "I had two chapati with dal"'
                             : 'Describe your meal naturally and let AI do the rest'}
@@ -944,226 +1075,30 @@ function Nutrition() {
                       </div>
                     )}
 
-                    {/* Real-time Speech Text */}
                     {foodInput && (
-                      <div className="w-full space-y-5">
-                        <div className="bg-slate-50 p-5 rounded-2xl border border-slate-200 min-h-[80px] flex items-center justify-center relative">
-                          <p className="text-sm font-semibold text-slate-800 leading-relaxed text-center w-full">{foodInput}</p>
-                          {isListening && <div className="w-2 h-2 bg-red-500 rounded-full absolute bottom-3 right-3 animate-pulse" />}
+                      <div className="w-full space-y-5 flex-1 flex flex-col">
+                        <div className="bg-slate-50 p-6 rounded-3xl border border-slate-200 min-h-[120px] flex items-center justify-center relative shadow-inner">
+                          <p className="text-base font-bold text-slate-800 leading-relaxed text-center w-full">{foodInput}</p>
+                          {isListening && <div className="w-3 h-3 bg-red-500 rounded-full absolute bottom-4 right-4 animate-pulse shadow-sm" />}
                         </div>
 
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-2">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Optional: Quantity</p>
-                            <input
-                              type="text"
-                              value={foodQuantity}
-                              onChange={(e) => setFoodQuantity(e.target.value)}
-                              placeholder="e.g., 2 bowls"
-                              className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-xs font-bold"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Prep Method</p>
-                            <select
-                              value={prepMethod}
-                              onChange={(e) => setPrepMethod(e.target.value)}
-                              className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-xs font-bold text-slate-900 outline-none focus:bg-white focus:border-slate-300 transition-all appearance-none cursor-pointer"
-                            >
-                              <option value="">Select Method</option>
-                              <option value="homemade">Homemade</option>
-                              <option value="fried">Deep Fried</option>
-                              <option value="package">Packaged</option>
-                              <option value="street">Street Food</option>
-                              <option value="boiled">Boiled/Steamed</option>
-                              <option value="roasted">Roasted/Grilled</option>
-                            </select>
-                          </div>
-                        </div>
-
-                        {/* Analyze Button */}
                         <button
                           onClick={handleAnalyzeAndLog}
                           disabled={isAnalyzing}
-                          className="w-full py-5 bg-[#064e3b] text-emerald-50 rounded-2xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#042f2e] transition-all shadow-xl active:scale-[0.98] disabled:opacity-50"
+                          className="w-full py-4 mt-auto mb-2 bg-[#69A38D] text-white rounded-[1.25rem] text-[14px] font-black uppercase tracking-wider flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] disabled:opacity-50"
                         >
                           {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5" />}
                           {isAnalyzing ? analyzingMessage : 'Analyze My Meal'}
                         </button>
 
-                        {/* Restart Voice - small link */}
                         <button
                           onClick={() => { stopVoiceCapture(); setFoodInput(''); setTimeout(startVoiceCapture, 200); }}
-                          className="w-full text-center text-[10px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-all py-2"
+                          className="w-full text-center text-[11px] font-black text-slate-400 uppercase tracking-widest hover:text-slate-900 transition-all py-2"
                         >
                           ↻ Restart Voice
                         </button>
                       </div>
                     )}
-                  </motion.div>
-                ) : inputMethod === 'Type' ? (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-8">
-                    <div className="relative">
-                      <Search className="w-5 h-5 text-slate-300 absolute left-5 top-1/2 -translate-y-1/2" />
-                      <input
-                        type="text"
-                        value={foodInput}
-                        onChange={(e) => setFoodInput(e.target.value)}
-                        placeholder="Search for food or describe..."
-                        className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-12 pr-12 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold"
-                      />
-                      <button onClick={startVoiceCapture} className={`p-2 absolute right-4 top-1/2 -translate-y-1/2 rounded-xl transition-all ${isListening ? 'bg-red-50 text-red-500 animate-pulse' : 'text-slate-300 hover:text-slate-900 hover:bg-slate-100'}`}>
-                        <Mic className="w-5 h-5" />
-                      </button>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Optional: Quantity</p>
-                        <input
-                          type="text"
-                          value={foodQuantity}
-                          onChange={(e) => setFoodQuantity(e.target.value)}
-                          placeholder="e.g., 2 bowls, 500g"
-                          className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 pl-12 pr-12 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-black font-bold placeholder:text-slate-400"
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">How was it made?</p>
-                        <select
-                          value={prepMethod}
-                          onChange={(e) => setPrepMethod(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-100 rounded-2xl py-4 px-5 text-[11px] font-bold text-slate-900 outline-none focus:bg-white focus:border-slate-300 transition-all appearance-none cursor-pointer"
-                        >
-                          <option value="">Select Method</option>
-                          <option value="homemade">Homemade</option>
-                          <option value="fried">Deep Fried</option>
-                          <option value="package">Packaged/Processed</option>
-                          <option value="street">Street Food</option>
-                          <option value="boiled">Boiled/Steamed</option>
-                          <option value="roasted">Roasted/Grilled</option>
-                        </select>
-                      </div>
-                    </div>
-
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Quick search tags</p>
-                    <div className="flex flex-wrap gap-2.5">
-                      {['Apple', 'Rice & Dal', 'Paneer Sabzi', 'Oats', 'Coffee'].map(tag => (
-                        <button key={tag} onClick={() => setFoodInput(tag)} className="px-4 py-2 border border-slate-100 rounded-xl text-[10px] font-black text-slate-400 hover:text-slate-900 hover:bg-slate-50 transition-all uppercase tracking-widest">
-                          {tag}
-                        </button>
-                      ))}
-                    </div>
-
-                    <button
-                      onClick={handleAnalyzeAndLog}
-                      disabled={isAnalyzing || !foodInput}
-                      className="w-full py-5 bg-[#064e3b] text-emerald-50 rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#042f2e] transition-all shadow-xl active:scale-95 disabled:opacity-50"
-                    >
-                      {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Zap className="w-5 h-5 text-white" />}
-                      {isAnalyzing ? analyzingMessage : 'Analyze & Log Meal'}
-                    </button>
-                  </motion.div>
-                ) : inputMethod === 'Scan' ? (
-                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="flex flex-col items-center space-y-6">
-                    {/* Image Preview / Upload Area */}
-                    <div className="w-full h-48 md:h-72 bg-slate-50 rounded-[2rem] md:rounded-[3rem] flex items-center justify-center relative overflow-hidden border-4 border-dashed border-slate-200 group transition-all hover:border-slate-300 cursor-pointer"
-                      onClick={() => {
-                        if (lastSource === 'Scan') {
-                          if (cameraModalInputRef.current) cameraModalInputRef.current.value = '';
-                          cameraModalInputRef.current?.click();
-                        } else {
-                          document.getElementById('food-img-upload')?.click();
-                        }
-                      }}>
-
-                      {imagePreview ? (
-                        <>
-                          <img src={imagePreview} className="w-full h-full object-cover" alt="Food preview" />
-                          {/* Re-capture overlay */}
-                          <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-all flex items-center justify-center">
-                            <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 backdrop-blur-sm rounded-2xl px-4 py-2 shadow-lg">
-                              <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest leading-none">Tap to change {lastSource.toLowerCase()}</p>
-                            </div>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="absolute top-6 left-6 w-8 h-8 border-t-4 border-l-4 border-slate-200 rounded-tl-xl group-hover:border-slate-400 transition-colors" />
-                          <div className="absolute top-6 right-6 w-8 h-8 border-t-4 border-r-4 border-slate-200 rounded-tr-xl group-hover:border-slate-400 transition-colors" />
-                          <div className="absolute bottom-6 left-6 w-8 h-8 border-b-4 border-l-4 border-slate-200 rounded-bl-xl group-hover:border-slate-400 transition-colors" />
-                          <div className="absolute bottom-6 right-6 w-8 h-8 border-b-4 border-r-4 border-slate-200 rounded-br-xl group-hover:border-slate-400 transition-colors" />
-
-                          <div className="text-center space-y-3">
-                            <div className="w-16 h-16 bg-white rounded-2xl shadow-xl flex items-center justify-center mx-auto transition-transform duration-500 group-hover:rotate-12">
-                              {lastSource === 'Scan' ? <Camera className="w-8 h-8 text-[#064e3b]" /> : <ImageIcon className="w-8 h-8 text-[#064e3b]" />}
-                            </div>
-                            <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest leading-none">
-                              Tap to {lastSource === 'Scan' ? 'open camera' : 'choose from gallery'}
-                            </p>
-                            <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest opacity-60">AI will automatically analyze your meal</p>
-                          </div>
-                        </>
-                      )}
-                      <input id="food-img-upload" type="file" accept="image/*" className="hidden" onChange={(e) => handleImageSelect(e)} />
-                    </div>
-
-
-                    {/* Hidden camera input that forces native camera */}
-                    <input
-                      ref={cameraModalInputRef}
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      className="hidden"
-                      onChange={(e) => handleImageSelect(e)}
-                    />
-
-                    {imagePreview && (
-                      <>
-                        <div className="grid grid-cols-2 gap-4 w-full">
-                          <div className="space-y-2">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Optional: Quantity</p>
-                            <input
-                              type="text"
-                              value={foodQuantity}
-                              onChange={(e) => setFoodQuantity(e.target.value)}
-                              placeholder="e.g., 2 bowls, 3 eggs"
-                              className="w-full bg-slate-50 border border-slate-100 rounded-xl py-4 px-5 focus:outline-none focus:ring-2 focus:ring-slate-900/10 focus:border-black text-sm font-bold placeholder:text-slate-400"
-                            />
-                          </div>
-                          <div className="space-y-2">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-4">Prep Method</p>
-                            <select
-                              value={prepMethod}
-                              onChange={(e) => setPrepMethod(e.target.value)}
-                              className="w-full bg-slate-50 border border-slate-100 rounded-xl py-4 px-5 text-sm font-bold text-[#064e3b] outline-none focus:bg-white focus:border-slate-300 transition-all appearance-none cursor-pointer"
-                            >
-                              <option value="">Select Method</option>
-                              <option value="homemade">Homemade</option>
-                              <option value="fried">Deep Fried</option>
-                              <option value="package">Packaged</option>
-                              <option value="street">Street Food</option>
-                              <option value="boiled">Boiled/Steamed</option>
-                              <option value="roasted">Roasted/Grilled</option>
-                            </select>
-                          </div>
-                        </div>
-
-                        <button
-                          onClick={handleAnalyzeAndLog}
-                          disabled={isAnalyzing || !image}
-                          className="w-full py-5 bg-[#064e3b] text-emerald-50 rounded-[1.5rem] text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-[#042f2e] transition-all shadow-xl active:scale-95 disabled:opacity-50"
-                        >
-                          {isAnalyzing ? <Loader2 className="w-5 h-5 animate-spin" /> : <Camera className="w-5 h-5 text-white" />}
-                          {isAnalyzing ? analyzingMessage : 'Analyze Photo'}
-                        </button>
-                      </>
-                    )}
-
-                    <p className="text-[10px] text-slate-400 text-center font-bold px-8 leading-relaxed uppercase tracking-tight">
-                      Take a photo or choose from gallery. AI will detect the dish and calculate macros.
-                    </p>
                   </motion.div>
                 ) : null}
 
