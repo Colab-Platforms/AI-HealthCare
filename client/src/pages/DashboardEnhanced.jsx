@@ -767,14 +767,14 @@ export default function DashboardEnhanced() {
   }
 
   // Step 1: Trigger the tour for authenticated new users ONLY
-  useEffect(() => {
-    if (!user?._id || isTourCompleted) return;
-    setRunTour(true);
-  }, [user?._id, isTourCompleted]);
+  // useEffect(() => {
+  //   if (!user?._id || isTourCompleted) return;
+  //   setRunTour(true);
+  // }, [user?._id, isTourCompleted]);
 
   // Step 2: Mark tour as completed in local storage AND database
   const handleJoyrideCallback = (data) => {
-    const { status, type } = data;
+    const { status, type, step } = data;
 
     if (status === "finished" || status === "skipped" || type === "tour:end") {
       if (user?._id) {
@@ -1124,6 +1124,8 @@ export default function DashboardEnhanced() {
             options: {
               primaryColor: '#064e3b',
               zIndex: 10000,
+              beaconSize: 0,
+              disableBeacon: true
             }
           }}
         />
@@ -1778,7 +1780,7 @@ export default function DashboardEnhanced() {
             <h2 className="text-xl font-medium text-[#064e3b]">AI Health Insights</h2>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-black text-emerald-800/40 uppercase tracking-widest">REAL-TIME</span>
-              <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <div className="w-2 h-2 rounded-full bg-emerald-500" />
             </div>
           </div>
 
@@ -2327,7 +2329,7 @@ export default function DashboardEnhanced() {
                          <div className="bg-white border border-[#E8F3EE] shadow-[0_1px_3px_rgba(0,0,0,0.1)] rounded-[32px] p-8 relative overflow-hidden group">
                            {/* Live Badge */}
                            <div className="absolute top-6 right-6 px-3 py-1 bg-[#EEF2FF]/50 rounded-full flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-[#3B82F6] animate-pulse" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]" />
                               <span className="text-[9px] font-black text-[#3B82F6] uppercase tracking-widest">Live</span>
                            </div>
 
@@ -2480,7 +2482,7 @@ export default function DashboardEnhanced() {
                          <div className="bg-white border border-[#E8F3EE] shadow-[0_1px_3px_rgba(0,0,0,0.1)] rounded-[32px] p-8 relative overflow-hidden group">
                            {/* Live Badge */}
                            <div className="absolute top-6 right-6 px-3 py-1 bg-orange-50 rounded-full flex items-center gap-1.5">
-                              <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
                               <span className="text-[9px] font-black text-orange-600 uppercase tracking-widest">Live</span>
                            </div>
 

@@ -531,7 +531,7 @@ textarea:focus {
   justify-content: center;
   color: white;
   text-decoration: none;
-  animation: pulse-emerald 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  /* animation: pulse-emerald 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; */
   transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
   z-index: 10;
   border: 4px solid #EBF0E6;
