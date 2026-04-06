@@ -122,6 +122,7 @@ export default function App() {
           <Route path="/upload" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><UploadReport /></Layout></ProtectedRoute>} />
           <Route path="/reports" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><AllReports /></Layout></ProtectedRoute>} />
           <Route path="/reports/:id" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><ReportAnalysisMobile /></Layout></ProtectedRoute>} />
+          <Route path="/report/:id" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><ReportAnalysisMobile /></Layout></ProtectedRoute>} />
           <Route path="/reports/:id/summary" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><ReportSummary /></Layout></ProtectedRoute>} />
           <Route path="/challenge" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><Challenge30Days /></Layout></ProtectedRoute>} />
           <Route path="/diabetes" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><DiabetesCare /></Layout></ProtectedRoute>} />

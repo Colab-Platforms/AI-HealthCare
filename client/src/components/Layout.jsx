@@ -308,8 +308,17 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
 
       {/* Global AI Generation Status Banner */}
       {(pendingAnalysisIds?.length > 0 || pendingDietPlanIds?.length > 0) && (
-        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-md pointer-events-none">
-          <div className="bg-black/80 backdrop-blur-xl border border-white/10 p-4 rounded-[2rem] shadow-2xl flex items-center gap-4 pointer-events-auto">
+        <div 
+          onClick={() => {
+            if (pendingAnalysisIds?.length > 0) {
+              navigate(`/reports/${pendingAnalysisIds[pendingAnalysisIds.length - 1]}`);
+            } else if (pendingDietPlanIds?.length > 0) {
+              navigate('/diet-plan');
+            }
+          }}
+          className="fixed bottom-24 left-1/2 -translate-x-1/2 z-[100] w-[90%] max-w-md pointer-events-none"
+        >
+          <div className="bg-black/80 backdrop-blur-xl border border-white/10 p-4 rounded-[2rem] shadow-2xl flex items-center gap-4 cursor-pointer hover:bg-black/90 hover:scale-[1.02] active:scale-95 transition-all pointer-events-auto group">
             <div className="relative shrink-0">
               <div className="w-10 h-10 rounded-2xl bg-emerald-500/20 flex items-center justify-center">
                 <Sparkles className="w-5 h-5 text-emerald-400 animate-pulse" />

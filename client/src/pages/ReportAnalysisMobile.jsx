@@ -6,7 +6,7 @@ import {
     ArrowLeft, Share2, Download, FileText, Activity,
     CheckCircle, AlertCircle, AlertTriangle, Apple,
     Zap, Sun, Clock, XCircle, Dumbbell, Calendar, Building2, User2, UtensilsCrossed,
-    Mail, Languages, Filter, Layers, Sparkles, ChevronRight, CheckCircle2, Apple as AppleIcon, Coffee, Utensils
+    Mail, Languages, Filter, Layers, Sparkles, ChevronRight, CheckCircle2, Apple as AppleIcon, Coffee, Utensils, RefreshCw
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import html2canvas from 'html2canvas';
@@ -71,6 +71,8 @@ export default function ReportAnalysisMobile() {
 
             const textsToTranslate = [
                 aiAnalysis.summary,
+                aiAnalysis.doctorSummary,
+                ...(aiAnalysis.doctorAdvice || []),
                 ...(aiAnalysis.keyFindings || []),
                 ...(aiAnalysis.dietPlan?.foodsToIncrease || []),
                 ...(aiAnalysis.dietPlan?.foodsToLimit || []),
@@ -174,7 +176,34 @@ export default function ReportAnalysisMobile() {
         }
     };
 
-    const closeMetricModal = () => { setShowMetricModal(false); setSelectedMetric(null); };
+    const closeMetricModal = () => {
+        setShowMetricModal(false);
+        setSelectedMetric(null);
+    };
+
+    // Simple Markdown Bold Parser
+    const renderMarkdown = (text) => {
+        if (!text) return null;
+        const parts = text.split(/(\*\*.*?\*\*)/g);
+        return parts.map((part, i) => {
+            if (part.startsWith('**') && part.endsWith('**')) {
+                return <span key={i} className="text-emerald-400 font-black">{part.slice(2, -2)}</span>;
+            }
+            return part;
+        });
+    };
+
+    const handleReanalyze = async () => {
+        const toastId = toast.loading('Initiating Expert Recalibration...');
+        try {
+            await api.post(`/health/reports/${id}/reanalyze`);
+            toast.success('AI Recalibration Started!', { id: toastId });
+            // Navigate or refresh is handled by the redirect in upload or banner
+            setTimeout(() => window.location.reload(), 2000);
+        } catch (error) {
+            toast.error('Re-analysis initiation failed.', { id: toastId });
+        }
+    };
 
     if (loading) return (
         <div className="flex items-center justify-center h-screen bg-[#F2F5EC]">
@@ -195,12 +224,87 @@ export default function ReportAnalysisMobile() {
 
     const { aiAnalysis } = report;
     const isProcessing = report.status === 'processing';
+
+    // Processing Page (Dedicated full-screen analysis state)
+    if (isProcessing) {
+        return (
+            <div className="min-h-screen bg-[#F2F5EC] flex flex-col pt-16 px-6 relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-40">
+                    <div className="absolute top-[10%] right-[-10%] w-64 h-64 bg-[#69A38D]/20 rounded-full blur-[100px]" />
+                    <div className="absolute bottom-[20%] left-[-10%] w-80 h-80 bg-[#FFD1BA]/30 rounded-full blur-[120px]" />
+                </div>
+
+                <div className="flex flex-col items-center gap-8 relative z-10 text-center">
+                    <div className="relative">
+                        <div className="w-24 h-24 rounded-[32px] bg-white shadow-2xl flex items-center justify-center border border-white relative z-20">
+                            <Clock size={40} className="text-[#69A38D] animate-[spin_5s_linear_infinite]" />
+                        </div>
+                        <div className="absolute -inset-4 bg-[#69A38D]/10 rounded-[40px] animate-pulse z-10" />
+                    </div>
+
+                    <div className="flex flex-col gap-3">
+                        <h1 className="text-3xl font-black text-[#1a2138] uppercase tracking-tight leading-tight">
+                            Analyzing Your<br />Report...
+                        </h1>
+                        <p className="text-[15px] font-bold text-slate-500 leading-relaxed max-w-[280px] mx-auto">
+                            Our medical AI is currently reading your bio-markers. This usually takes <span className="text-[#69A38D]">1-2 minutes</span>.
+                        </p>
+                    </div>
+
+                    <div className="w-full max-w-[300px] h-3 bg-white rounded-full p-1 border border-white shadow-inner">
+                        <div className="h-full bg-gradient-to-r from-[#69A38D] to-[#8BC34A] rounded-full animate-[progress_15s_ease-in-out_infinite]" style={{ width: '45%' }}></div>
+                    </div>
+
+                    {/* Platform Tour Suggestion */}
+                    <div className="bg-white/60 backdrop-blur-xl rounded-[40px] p-8 border border-white shadow-xl mt-8 w-full group">
+                        <div className="w-12 h-12 bg-[#69A38D]/10 rounded-2xl flex items-center justify-center mb-5 mx-auto">
+                            <Sparkles size={24} className="text-[#69A38D]" />
+                        </div>
+                        <h2 className="text-lg font-black text-[#1a2138] mb-3 uppercase tracking-tight">While you wait...</h2>
+                        <p className="text-sm font-bold text-slate-600 mb-8 leading-relaxed">
+                            Take a quick platform tour to see how our AI can help you transform your health journey.
+                        </p>
+                        
+                        <div className="flex flex-col gap-4">
+                            <button 
+                                onClick={() => navigate('/dashboard')}
+                                className="w-full py-4 bg-[#1a2138] text-white rounded-[24px] font-bold text-sm tracking-widest uppercase shadow-lg hover:scale-[1.02] active:scale-95 transition-all"
+                            >
+                                Take a Tour
+                            </button>
+                            <button 
+                                onClick={() => navigate('/diet-plan')}
+                                className="w-full py-4 bg-white text-[#1a2138] border border-slate-200 rounded-[24px] font-bold text-sm tracking-widest uppercase hover:bg-slate-50 active:scale-95 transition-all"
+                            >
+                                Explore Diet Plan
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <style>{`
+                    @keyframes progress {
+                        0% { width: 10%; }
+                        50% { width: 65%; }
+                        100% { width: 90%; }
+                    }
+                `}</style>
+            </div>
+        );
+    }
+
     const metrics = Object.entries(aiAnalysis?.metrics || {}).map(([name, data]) => ({
       name,
       value: typeof data === 'object' ? data.value : data,
       unit: typeof data === 'object' ? data.unit : '',
       status: (typeof data === 'object' ? data.status?.toUpperCase() : 'NORMAL') || 'NORMAL',
-      range: typeof data === 'object' ? data.normalRange || data.range : ''
+      normalRange: typeof data === 'object' ? data.normalRange || data.range : '',
+      range: typeof data === 'object' ? data.normalRange || data.range : '',
+      whatIsThis: typeof data === 'object' ? data.whatIsThis : '',
+      whatItDoes: typeof data === 'object' ? data.whatItDoes : '',
+      lowHighImpact: typeof data === 'object' ? data.lowHighImpact : '',
+      topFoods: typeof data === 'object' ? data.topFoods || [] : [],
+      symptoms: typeof data === 'object' ? data.symptoms || [] : []
     }));
 
     const filteredMetrics = metrics.filter(m => {
@@ -229,6 +333,13 @@ export default function ReportAnalysisMobile() {
                     <p className="text-[10px] text-[#69A38D] font-black uppercase tracking-widest mt-1">AI-Powered Insights</p>
                 </div>
                 <div className="flex gap-2 no-pdf">
+                    <button 
+                        onClick={handleReanalyze} 
+                        title="Regenerate Analysis"
+                        className="w-8 h-8 rounded-full flex items-center justify-center bg-white shadow-sm text-emerald-500 hover:rotate-180 transition-all duration-500 active:scale-90"
+                    >
+                        <RefreshCw size={15} />
+                    </button>
                     <button onClick={translateReport} className={`w-8 h-8 rounded-full flex items-center justify-center transition-all ${isHindi ? 'bg-[#69A38D] text-white' : 'bg-white shadow-sm text-[#69A38D]'}`}>
                         <Languages size={15} />
                     </button>
@@ -275,28 +386,82 @@ export default function ReportAnalysisMobile() {
                     </div>
                 </div>
 
-                {/* Processing or Executive Summary */}
+                {/* Processing or Doctor's Analysis */}
                 <div className="bg-white/60 backdrop-blur-xl rounded-[40px] p-6 shadow-[0_4px_25px_rgba(0,0,0,0.04)] border border-white">
                     <div className="flex items-center gap-4 mb-6">
                         <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-white flex items-center justify-center">
                             {isProcessing ? <Clock size={20} className="text-amber-500 animate-spin" /> : <Activity size={20} className="text-[#69A38D]" />}
                         </div>
-                        <h2 className="text-[20px] font-black text-[#1a2138] uppercase tracking-tight">{isProcessing ? 'Extracting Data' : (isHindi ? 'कार्यकारी सारांश' : 'Executive Summary')}</h2>
+                        <div className="flex flex-col">
+                            <h2 className="text-[20px] font-black text-[#1a2138] uppercase tracking-tight">{isProcessing ? 'Extracting Data' : (isHindi ? 'डॉक्टर का विश्लेषण' : "Doctor's Analysis")}</h2>
+                            {!isProcessing && <p className="text-[10px] font-black text-[#69A38D] uppercase tracking-widest">AI-Powered Clinical Assessment</p>}
+                        </div>
                     </div>
                     
-                    {isProcessing ? (
-                        <div className="bg-white/80 rounded-[24px] p-6 border border-[#69A38D]/10">
-                            <p className="text-[#64748b] font-bold leading-relaxed mb-6">Our optimization engine is reading your report values. This usually takes 1-2 minutes.</p>
-                            <div className="w-full bg-slate-100 h-2 rounded-full overflow-hidden mb-2">
-                                <div className="bg-[#69A38D] h-full animate-pulse" style={{ width: '45%' }}></div>
+                    <div className="flex flex-col gap-4">
+                        {/* Doctor's Summary Card */}
+                        <div className="bg-gradient-to-br from-[#f0f7f4] to-white dark:from-white/5 dark:to-white/10 rounded-[35px] p-8 border border-[#69A38D]/20 shadow-sm relative overflow-hidden">
+                            <div className="absolute -right-6 -top-6 w-32 h-32 bg-[#69A38D]/5 rounded-full blur-3xl"></div>
+                            <div className="flex items-center gap-4 mb-6">
+                                <div className="w-12 h-12 rounded-2xl bg-[#69A38D]/10 flex items-center justify-center border border-[#69A38D]/20 shadow-inner">
+                                    <span className="text-xl">🩺</span>
+                                </div>
+                                <div>
+                                    <p className="text-[14px] font-black text-[#69A38D] uppercase tracking-widest leading-none mb-1.5">{isHindi ? 'डॉक्टर की रिपोर्ट' : "Doctor's Synthesis"}</p>
+                                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-tight">AI Clinical Profile</p>
+                                </div>
                             </div>
-                            <span className="text-[10px] font-black text-[#69A38D] uppercase tracking-widest">Processing Bio-Markers...</span>
+                            <div className="text-[15px] text-[#2c3e50] dark:text-white/90 font-medium leading-[1.8] whitespace-pre-line">
+                                {(aiAnalysis?.doctorSummary || aiAnalysis?.summary || "").split('\n').filter(Boolean).map((para, i) => (
+                                    <p key={i} className="mb-4">{renderMarkdown(para)}</p>
+                                ))}
+                            </div>
                         </div>
-                    ) : (
-                        <div className="bg-white/80 rounded-[24px] p-6 border border-white shadow-inner">
-                            <p className="text-[14px] text-[#2c3e50] font-bold leading-relaxed">{t(aiAnalysis?.summary)}</p>
-                        </div>
-                    )}
+
+                        {/* Re-analyze CTA for old reports */}
+                        {!aiAnalysis?.doctorSummary && (
+                            <div className="bg-[#1a2138] rounded-[32px] p-6 shadow-xl relative overflow-hidden group">
+                                <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl -mr-16 -mt-16" />
+                                <div className="relative z-10 flex flex-col gap-4">
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center border border-white/20">
+                                            <Sparkles size={20} className="text-emerald-400" />
+                                        </div>
+                                        <div className="flex flex-col">
+                                            <span className="text-[12px] font-black text-emerald-400 uppercase tracking-widest">{isHindi ? 'नया अपडेट उपलब्ध' : 'New AI Upgrade'}</span>
+                                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Expert Clinical recalibration</p>
+                                        </div>
+                                    </div>
+                                    <p className="text-[13px] font-bold text-white/90 leading-relaxed">
+                                        Get a more professional, empathetic, and doctor-like clinical synthesis of your report.
+                                    </p>
+                                    <button 
+                                        onClick={handleReanalyze}
+                                        className="w-full py-4 bg-emerald-500 text-[#1a2138] rounded-[22px] font-black text-[11px] uppercase tracking-widest hover:bg-emerald-400 transition-all shadow-lg active:scale-95"
+                                    >
+                                        Upgrade to Expert Note 🩺
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Quick Summary Points */}
+                        {aiAnalysis?.keyFindings?.length > 0 && (
+                            <div className="bg-white/80 rounded-[24px] p-5 border border-white">
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{isHindi ? 'मुख्य निष्कर्ष' : 'Key Findings'}</p>
+                                <div className="flex flex-col gap-2.5">
+                                    {aiAnalysis.keyFindings.slice(0, 4).map((finding, i) => (
+                                        <div key={i} className="flex items-start gap-3">
+                                            <div className="w-5 h-5 rounded-full bg-[#69A38D]/10 flex items-center justify-center shrink-0 mt-0.5">
+                                                <CheckCircle2 size={12} className="text-[#69A38D]" />
+                                            </div>
+                                            <p className="text-[13px] text-[#2c3e50] font-bold leading-snug">{t(finding)}</p>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
                 </div>
 
                 {/* Metrics */}
@@ -426,22 +591,28 @@ export default function ReportAnalysisMobile() {
                     </div>
                 )}
 
-                {/* Actionable Next Steps (Redesigned) */}
+                {/* Doctor's Personalized Advice */}
                 {!isProcessing && (
                     <div className="bg-[#69A38D] rounded-[40px] p-8 text-white shadow-xl flex flex-col gap-8">
                         <div className="flex items-center gap-4">
                             <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
                                 <Zap size={24} strokeWidth={3} fill="currentColor" />
                             </div>
-                            <h2 className="text-2xl font-bold tracking-tight">{isHindi ? 'अगले कदम' : 'Actionable Next Steps'}</h2>
+                            <div>
+                                <h2 className="text-2xl font-bold tracking-tight">{isHindi ? 'डॉक्टर की सलाह' : "Doctor's Recommendations"}</h2>
+                                <p className="text-white/60 text-[10px] font-black uppercase tracking-widest">Based on your report findings</p>
+                            </div>
                         </div>
                         <div className="flex flex-col gap-4">
-                            {[
-                                isHindi ? "सप्ताह में 5 दिन व्यायाम करें" : "Exercise 5 days/week — mix cardio and strength training",
-                                isHindi ? "प्रतिदिन 7-8 घंटे सोएं" : "Sleep 7-8 hours daily — poor sleep raises inflammation markers",
-                                isHindi ? "योग या ध्यान के माध्यम से तनाव प्रबंधन" : "Manage stress through yoga or meditation — reduces cortisol and inflammation",
-                                isHindi ? "धूम्रपान से बचें और शराब सीमित करें" : "Avoid smoking and limit alcohol — both lower HDL and raise hsCRP"
-                            ].map((step, idx) => (
+                            {(aiAnalysis?.doctorAdvice && aiAnalysis.doctorAdvice.length > 0 ? 
+                                aiAnalysis.doctorAdvice.map(advice => t(advice)) :
+                                [
+                                    isHindi ? "सप्ताह में 5 दिन व्यायाम करें" : "Exercise 5 days/week — mix cardio and strength training",
+                                    isHindi ? "प्रतिदिन 7-8 घंटे सोएं" : "Sleep 7-8 hours daily — poor sleep raises inflammation markers",
+                                    isHindi ? "योग या ध्यान के माध्यम से तनाव प्रबंधन" : "Manage stress through yoga or meditation — reduces cortisol and inflammation",
+                                    isHindi ? "धूम्रपान से बचें और शराब सीमित करें" : "Avoid smoking and limit alcohol — both lower HDL and raise hsCRP"
+                                ]
+                            ).map((step, idx) => (
                                 <div key={idx} className="bg-white/10 rounded-[32px] p-6 flex items-center gap-6 group hover:bg-white/15 transition-all">
                                     <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-sm font-black shrink-0">
                                         {idx + 1}
@@ -461,11 +632,14 @@ export default function ReportAnalysisMobile() {
             </div>
 
             {showMetricModal && selectedMetric && (
-                <VitalDetailsPopup
-                    metric={selectedMetric}
-                    onClose={closeMetricModal}
-                    initialLanguage={isHindi ? 'Hindi' : 'English'}
-                />
+                <div className="fixed inset-0 z-[9999]">
+                    <VitalDetailsPopup
+                        vital={selectedMetric}
+                        onClose={closeMetricModal}
+                        initialLanguage={isHindi ? 'hi' : 'en'}
+                        t={t}
+                    />
+                </div>
             )}
         </div>
     );

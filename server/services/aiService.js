@@ -64,6 +64,8 @@ STRUCTURE:
   "reportDate": "YYYY-MM-DD",
   "healthScore": 75,
   "summary": "Short 3-5 bullet points (•).",
+  "doctorSummary": "A detailed 200-300 word professional doctor's note written in a warm, empathetic but medically authoritative tone — as if a senior physician is sitting across from the patient and explaining their results face-to-face. Use paragraph breaks for readability. Use **Markdown bolding** for any specific bio-markers or critical values mentioned. The doctor should: (1) Start by acknowledging the patient by name (if known) and greeting warmly, (2) Highlight what looks GOOD first to reassure the patient, (3) Then gently explain areas of concern with clear context — avoid scary medical jargon, use simple analogies where helpful (e.g. 'Your HDL is like a vacuum cleaner for your heart'), (4) Explain WHY certain values matter in plain language, (5) Give 2-3 specific, actionable lifestyle recommendations, (6) End with encouragement. Write in second person ('your', 'you'). Do NOT use bullet points — write flowing, conversational paragraphs. Make the patient feel understood, supported, and professionaly cared for.",
+  "doctorAdvice": ["Specific advice 1 with reason", "Specific advice 2 with reason", "Specific advice 3 with reason"],
   "summaryPoints": ["Brief findings"],
   "keyFindings": ["finding1"],
   "metrics": {
@@ -79,12 +81,13 @@ STRUCTURE:
       "symptoms": ["Symptom1", "Symptom2"]
     }
   },
-  "deficiencies": [{"name": "Vit D", "severity": "mild/moderate/severe"}],
+  "deficiencies": [{"name": "Vit D", "severity": "mild/moderate/severe", "currentValue": "value", "normalRange": "range", "explanation": "Why this matters in simple terms"}],
   "recommendations": {"immediate": [], "lifestyle": []},
   "doctorConsultation": {"recommended": true, "urgency": "low", "specializations": ["Specialist"]}
 }
 CRITICAL: Extraction is your priority. Scan the entire report text and populate the "metrics" object with ALL found markers. For EACH metric, you MUST fill in whatIsThis, whatItDoes, lowHighImpact, topFoods, and symptoms.
-IMPORTANT: Deficiency "severity" MUST be one of: "mild", "moderate", "severe".`;
+IMPORTANT: Deficiency "severity" MUST be one of: "mild", "moderate", "severe".
+IMPORTANT: The "doctorSummary" MUST be written like a real doctor talking to the patient. Do NOT write bullet points — write flowing, conversational paragraphs with Markdown bolding for emphasis. Be warm, professional, and thorough.`;
 
 exports.analyzeHealthReport = async (reportText, user = {}, imageData = null, reportType = 'general') => {
   try {

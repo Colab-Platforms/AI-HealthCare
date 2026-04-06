@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
 const HealthMetric = require('../models/HealthMetric');
+const cache = require('../utils/cache');
 
 // Helper function to add timeout to all queries for Vercel compatibility
 const withTimeout = (query, timeoutMs = 30000) => {
@@ -63,6 +64,9 @@ router.post('/', protect, async (req, res) => {
         console.log('Saving metric to database...');
         const savedMetric = await metric.save({ maxTimeMS: 30000 });
         console.log('Metric saved successfully:', savedMetric._id);
+
+        // Clear dashboard cache to show latest values
+        await cache.delete(`dashboard:${req.user._id}`);
 
         res.status(201).json(savedMetric);
     } catch (error) {
@@ -270,6 +274,7 @@ router.post('/blood-pressure', protect, async (req, res) => {
             recordedAt: recordedAt ? new Date(recordedAt) : Date.now()
         });
         const saved = await metric.save();
+        await cache.delete(`dashboard:${req.user._id}`);
         res.status(201).json(saved);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -288,6 +293,7 @@ router.post('/glucose', protect, async (req, res) => {
             recordedAt: recordedAt ? new Date(recordedAt) : Date.now()
         });
         const saved = await metric.save();
+        await cache.delete(`dashboard:${req.user._id}`);
         res.status(201).json(saved);
     } catch (error) {
         res.status(500).json({ message: error.message });
@@ -305,6 +311,7 @@ router.post('/hba1c', protect, async (req, res) => {
             recordedAt: recordedAt ? new Date(recordedAt) : Date.now()
         });
         const saved = await metric.save();
+        await cache.delete(`dashboard:${req.user._id}`);
         res.status(201).json(saved);
     } catch (error) {
         res.status(500).json({ message: error.message });

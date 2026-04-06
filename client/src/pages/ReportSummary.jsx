@@ -59,6 +59,8 @@ export default function ReportSummary() {
       if (!aiAnalysis) return;
       const textsToTranslate = [
         aiAnalysis.summary,
+        aiAnalysis.doctorSummary,
+        ...(aiAnalysis.doctorAdvice || []),
         ...(aiAnalysis.keyFindings || []),
         ...(aiAnalysis.recommendations?.lifestyle || []),
         aiAnalysis.doctorConsultation?.reason,
@@ -139,6 +141,88 @@ export default function ReportSummary() {
     range: typeof data === 'object' ? data.normalRange || data.range : ''
   }));
 
+  const isProcessing = report.status === 'processing';
+
+  const handleReanalyze = async () => {
+    const toastId = toast.loading('Initiating Expert Recalibration...');
+    try {
+        await api.post(`/health/reports/${id}/reanalyze`);
+        toast.success('AI Recalibration Started!', { id: toastId });
+        // Refresh after a delay
+        setTimeout(() => window.location.reload(), 2000);
+    } catch (error) {
+        toast.error('Re-analysis initiation failed.', { id: toastId });
+    }
+  };
+
+  // Processing Page (Dedicated full-screen analysis state)
+  if (isProcessing) {
+    return (
+        <div className="min-h-screen bg-[#F2F5EC] flex flex-col pt-16 px-6 relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-40">
+                <div className="absolute top-[10%] right-[-10%] w-64 h-64 bg-[#69A38D]/20 rounded-full blur-[100px]" />
+                <div className="absolute bottom-[20%] left-[-10%] w-80 h-80 bg-[#FFD1BA]/30 rounded-full blur-[120px]" />
+            </div>
+
+            <div className="flex flex-col items-center gap-8 relative z-10 text-center">
+                <div className="relative">
+                    <div className="w-24 h-24 rounded-[32px] bg-white shadow-2xl flex items-center justify-center border border-white relative z-20">
+                        <Clock size={40} className="text-[#69A38D] animate-[spin_5s_linear_infinite]" />
+                    </div>
+                    <div className="absolute -inset-4 bg-[#69A38D]/10 rounded-[40px] animate-pulse z-10" />
+                </div>
+
+                <div className="flex flex-col gap-3">
+                    <h2 className="text-3xl font-black text-[#1a2138] uppercase tracking-tight leading-tight">
+                        Analyzing Your<br />Report...
+                    </h2>
+                    <p className="text-[15px] font-bold text-slate-500 leading-relaxed max-w-[280px] mx-auto">
+                        Our medical AI is currently reading your bio-markers. This usually takes <span className="text-[#69A38D]">1-2 minutes</span>.
+                    </p>
+                </div>
+
+                <div className="w-full max-w-[300px] h-3 bg-white rounded-full p-1 border border-white shadow-inner">
+                    <div className="h-full bg-gradient-to-r from-[#69A38D] to-[#8BC34A] rounded-full animate-[progress_15s_ease-in-out_infinite]" style={{ width: '45%' }}></div>
+                </div>
+
+                {/* Platform Tour Suggestion */}
+                <div className="bg-white/60 backdrop-blur-xl rounded-[40px] p-8 border border-white shadow-xl mt-8 w-full">
+                    <div className="w-12 h-12 bg-[#69A38D]/10 rounded-2xl flex items-center justify-center mb-5 mx-auto">
+                        <Sparkles size={24} className="text-[#69A38D]" />
+                    </div>
+                    <h3 className="text-lg font-black text-[#1a2138] mb-3 uppercase tracking-tight">While you wait...</h3>
+                    <p className="text-sm font-bold text-slate-600 mb-8 leading-relaxed">
+                        Take a quick platform tour to see how our AI can help you transform your health journey.
+                    </p>
+                    
+                    <div className="flex flex-col gap-4">
+                        <button 
+                            onClick={() => navigate('/dashboard')}
+                            className="w-full py-4 bg-[#1a2138] text-white rounded-[24px] font-bold text-sm tracking-widest uppercase shadow-lg hover:scale-[1.02] active:scale-95 transition-all"
+                        >
+                            Take a Tour
+                        </button>
+                        <button 
+                            onClick={() => navigate('/diet-plan')}
+                            className="w-full py-4 bg-white text-[#1a2138] border border-slate-200 rounded-[24px] font-bold text-sm tracking-widest uppercase hover:bg-slate-50 active:scale-95 transition-all"
+                        >
+                            Explore Diet Plan
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <style>{`
+                @keyframes progress {
+                    0% { width: 10%; }
+                    50% { width: 65%; }
+                    100% { width: 90%; }
+                }
+            `}</style>
+        </div>
+    );
+  }
+
   const filteredMetrics = metrics.filter(m => {
     if (metricTab === 'All') return true;
     return m.status === metricTab.toUpperCase() || (metricTab === 'Borderline' && m.status === 'MODERATE');
@@ -195,12 +279,41 @@ export default function ReportSummary() {
                  </div>
               </div>
 
-              <div className="bg-white/80 rounded-[28px] p-6 border border-white shadow-inner relative z-10">
-                  <div className="flex items-center gap-2 mb-4">
-                     <Activity size={16} className="text-[#69A38D]" />
-                     <h3 className="text-[14px] font-black text-[#1a2138] uppercase tracking-widest">Executive Abstraction</h3>
+              <div className="flex flex-col gap-5 relative z-10">
+                  <div className="flex items-center gap-3 mb-2">
+                     <div className="w-10 h-10 rounded-full bg-[#69A38D]/10 flex items-center justify-center border border-[#69A38D]/20">
+                        <span className="text-lg">🩺</span>
+                     </div>
+                     <div>
+                        <h3 className="text-[14px] font-black text-[#1a2138] uppercase tracking-widest">{isHindi ? 'डॉक्टर का विश्लेषण' : "Doctor's Analysis"}</h3>
+                        {!isProcessing && <p className="text-[9px] font-black text-[#69A38D] uppercase tracking-widest">AI-Powered Clinical assessment</p>}
+                     </div>
                   </div>
-                  <p className="text-[14.5px] text-[#2c3e50] font-bold leading-relaxed">{t(aiAnalysis?.summary)}</p>
+
+                  {/* Doctor's Summary Card */}
+                  <div className="bg-gradient-to-br from-[#f0f7f4]/80 to-white/90 rounded-[32px] p-7 border border-[#69A38D]/15 shadow-inner relative overflow-hidden group">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-[#69A38D]/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-125 transition-transform" />
+                      <div className="text-[14.5px] text-[#2c3e50] font-medium leading-[1.8] whitespace-pre-line relative z-10 transition-all duration-500">
+                          {t(aiAnalysis?.doctorSummary || aiAnalysis?.summary)}
+                      </div>
+                  </div>
+
+                  {/* Quick Findings inside Summary for better readability */}
+                  {aiAnalysis?.keyFindings?.length > 0 && (
+                      <div className="bg-white/40 rounded-[28px] p-5 border border-white/60">
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">{isHindi ? 'मुख्य निष्कर्ष' : 'Key Findings'}</p>
+                          <div className="flex flex-col gap-3">
+                              {aiAnalysis.keyFindings.slice(0, 3).map((finding, idx) => (
+                                  <div key={idx} className="flex items-start gap-3">
+                                      <div className="w-5 h-5 rounded-full bg-[#69A38D]/10 flex items-center justify-center shrink-0 mt-0.5">
+                                          <CheckCircle2 size={12} className="text-[#69A38D]" />
+                                      </div>
+                                      <p className="text-[13px] text-[#2c3e50] font-bold leading-snug">{t(finding)}</p>
+                                  </div>
+                              ))}
+                          </div>
+                      </div>
+                  )}
               </div>
           </div>
 
@@ -239,8 +352,27 @@ export default function ReportSummary() {
                        const isWarning = ['BORDERLINE', 'MODERATE', 'LOW'].includes(metric.status);
                        const colorClass = isNormal ? 'text-[#69A38D]' : isWarning ? 'text-[#E88F4A]' : 'text-[#5D5589]';
                        
+                       const handleMetricClick = () => {
+                           // Find the full metric data from aiAnalysis
+                           const fullMetric = aiAnalysis?.metrics?.[metric.name] || {};
+                           setSelectedMetric({
+                               ...metric,
+                               normalRange: metric.range,
+                               whatIsThis: fullMetric.whatIsThis,
+                               whatItDoes: fullMetric.whatItDoes,
+                               lowHighImpact: fullMetric.lowHighImpact,
+                               topFoods: fullMetric.topFoods,
+                               symptoms: fullMetric.symptoms
+                           });
+                           setShowMetricModal(true);
+                       };
+
                        return (
-                         <div key={idx} className="bg-white/60 rounded-[32px] p-4 border border-white shadow-sm flex flex-col gap-4 group hover:shadow-md transition-all">
+                         <div 
+                           key={idx} 
+                           onClick={handleMetricClick}
+                           className="bg-white/60 rounded-[32px] p-4 border border-white shadow-sm flex flex-col gap-4 group hover:shadow-md transition-all cursor-pointer hover:bg-white active:scale-95"
+                         >
                             <div className="flex items-center justify-between">
                                <span className={`text-[11px] font-black ${colorClass} uppercase tracking-widest`}>{metric.status}</span>
                                <div className="w-1.5 h-1.5 rounded-full bg-slate-200 group-hover:bg-[#69A38D] transition-colors"></div>
@@ -278,21 +410,26 @@ export default function ReportSummary() {
             </Link>
           </div>
 
-          {/* Actionable Next Steps (Redesigned) */}
           <div className="bg-[#69A38D] rounded-[40px] p-8 text-white shadow-xl flex flex-col gap-8">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
                 <Zap size={24} strokeWidth={3} fill="currentColor" />
               </div>
-              <h2 className="text-2xl font-bold tracking-tight">{isHindi ? 'अगले कदम' : 'Actionable Next Steps'}</h2>
+              <div>
+                <h2 className="text-2xl font-bold tracking-tight">{isHindi ? 'डॉक्टर की सलाह' : "Doctor's Recommendations"}</h2>
+                <p className="text-white/60 text-[10px] font-black uppercase tracking-widest">Based on your report findings</p>
+              </div>
             </div>
             <div className="flex flex-col gap-4">
-              {[
-                isHindi ? "सप्ताह में 5 दिन व्यायाम करें" : "Exercise 5 days/week — mix cardio and strength training",
-                isHindi ? "प्रतिदिन 7-8 घंटे सोएं" : "Sleep 7-8 hours daily — poor sleep raises inflammation markers",
-                isHindi ? "योग या ध्यान के माध्यम से तनाव प्रबंधन" : "Manage stress through yoga or meditation — reduces cortisol and inflammation",
-                isHindi ? "धूम्रपान से बचें और शराब सीमित करें" : "Avoid smoking and limit alcohol — both lower HDL and raise hsCRP"
-              ].map((step, idx) => (
+              {(aiAnalysis?.doctorAdvice && aiAnalysis.doctorAdvice.length > 0 ? 
+                aiAnalysis.doctorAdvice.map(advice => t(advice)) :
+                [
+                  isHindi ? "सप्ताह में 5 दिन व्यायाम करें" : "Exercise 5 days/week — mix cardio and strength training",
+                  isHindi ? "प्रतिदिन 7-8 घंटे सोएं" : "Sleep 7-8 hours daily — poor sleep raises inflammation markers",
+                  isHindi ? "योग या ध्यान के माध्यम से तनाव प्रबंधन" : "Manage stress through yoga or meditation — reduces cortisol and inflammation",
+                  isHindi ? "धूम्रपान से बचें और शराब सीमित करें" : "Avoid smoking and limit alcohol — both lower HDL and raise hsCRP"
+                ]
+              ).map((step, idx) => (
                 <div key={idx} className="bg-white/10 rounded-[32px] p-6 flex items-center gap-6 group hover:bg-white/15 transition-all">
                   <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-sm font-black shrink-0">
                     {idx + 1}
@@ -314,6 +451,18 @@ export default function ReportSummary() {
               </div>
           </div>
       </div>
+
+      {showMetricModal && selectedMetric && (
+        <VitalDetailsPopup
+            vital={selectedMetric}
+            onClose={() => {
+                setShowMetricModal(false);
+                setSelectedMetric(null);
+            }}
+            initialLanguage={isHindi ? 'hi' : 'en'}
+            t={t}
+        />
+      )}
     </div>
   );
 }

@@ -173,15 +173,21 @@ class NutritionAI {
 
     Return ONLY a JSON object with this exact structure:
     {
-      "status": "Short status string (e.g. Stable, Volatile, Improving)",
-      "statusColor": "green, yellow, orange, or red",
-      "analysis": "2-3 sentence technical overview of patterns and food interaction",
-      "spikeCause": "Identified dietary causes of spikes (e.g., High-carb lunch at 1pm)",
-      "immediateAction": "One clear instruction for the user to follow now",
-      "recommendations": ["Tip 1", "Tip 2", "Tip 3"]
+      "status": "Short status string (e.g. Critical Spike, Stable, Warning Trend)",
+      "statusColor": "green (stable), yellow (warning), orange (high), or red (critical)",
+      "analysis": "1 concise sentence explaining the current metabolic state.",
+      "spikeCause": "Direct cause of recent spike (e.g., 'White rice at 1:30 PM')",
+      "emergencySignal": "true/false (if level is dangerously high)",
+      "immediateAction": "The single most important step to take RIGHT NOW.",
+      "recommendations": [
+        "Pointer 1: Why this happened (concise)",
+        "Pointer 2: Immediate corrective action (concise)",
+        "Pointer 3: Next meal adjustment (concise)",
+        "Pointer 4: Lifestyle/Activity tip (concise)"
+      ]
     }
     
-    If data is insufficient, provide a placeholder analysis asking for more logs.`;
+    CRITICAL: Keep recommendations limited to exactly 3-4 high-impact pointers. Avoid long paragraphs. If data is insufficient, provide a placeholder analysis asking for more logs.`;
     
     const payload = {
       system: 'You are an expert Endocrinologist AI. Provide clinical-grade analysis of glucose data and its relationship with food logs. Return ONLY valid JSON.',

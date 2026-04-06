@@ -165,12 +165,64 @@ export default function ComprehensiveReportAnalysis() {
     fetchReport();
   }, [id]);
 
-  <div className="flex items-center justify-center h-[60vh]">
-    <div className="text-center">
-      <div className="w-16 h-16 border-4 border-slate-200 border-t-black rounded-full animate-spin mx-auto mb-4" />
-      <p className="text-slate-400">Analyzing your report...</p>
-    </div>
-  </div>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-[80vh]">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-slate-200 border-t-black rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-400 font-black uppercase tracking-[0.2em] text-[10px]">Retrieving synthesis...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (report?.status === 'processing') {
+    return (
+      <div className="max-w-4xl mx-auto py-20 px-6">
+        <div className="bg-gradient-to-br from-slate-50 to-white rounded-[3rem] p-12 md:p-20 shadow-2xl border border-slate-100 text-center relative overflow-hidden">
+          <div className="absolute -right-20 -top-20 w-80 h-80 bg-emerald-50 rounded-full blur-3xl opacity-50" />
+          <div className="absolute -left-20 -bottom-20 w-80 h-80 bg-blue-50 rounded-full blur-3xl opacity-50" />
+          
+          <div className="relative z-10 flex flex-col items-center">
+            <div className="w-24 h-24 bg-white rounded-[2rem] shadow-xl flex items-center justify-center mb-10 border border-slate-50">
+               <Activity className="w-10 h-10 text-emerald-500 animate-pulse" />
+            </div>
+            
+            <h1 className="text-4xl md:text-5xl font-black text-slate-800 mb-6 tracking-tight">ANALYIS IN PROGRESS</h1>
+            <p className="text-slate-500 text-lg md:text-xl font-medium max-w-2xl mb-12 leading-relaxed">
+              Our clinical AI is currently mapping your bio-markers. This usually takes <span className="text-emerald-600 font-bold">1-2 minutes</span>. Please relax while we synthesize your results.
+            </p>
+
+            <div className="w-full max-w-md h-2 bg-slate-100 rounded-full mb-16 overflow-hidden">
+               <div className="h-full bg-slate-900 rounded-full animate-[progress_10s_ease-in-out_infinite]" />
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-6 w-full">
+               <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-all">
+                  <Heart className="w-8 h-8 text-red-500 mb-4 mx-auto" />
+                  <h3 className="font-black text-slate-800 uppercase tracking-widest text-xs mb-3">While you wait...</h3>
+                  <p className="text-sm text-slate-500 mb-6 font-bold">Take a platform tour to see how our AI helps you master your health.</p>
+                  <Link to="/dashboard" className="inline-block px-8 py-3 bg-slate-900 text-white rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-slate-800 transition-all">Take a Tour</Link>
+               </div>
+               <div className="bg-white p-8 rounded-[2rem] border border-slate-100 shadow-sm hover:shadow-md transition-all">
+                  <Apple className="w-8 h-8 text-emerald-500 mb-4 mx-auto" />
+                  <h3 className="font-black text-slate-800 uppercase tracking-widest text-xs mb-3">Need a Diet?</h3>
+                  <p className="text-sm text-slate-500 mb-6 font-bold">Explore our personalized diet section and plan your healthy meals early.</p>
+                  <Link to="/diet-plan" className="inline-block px-8 py-3 border border-slate-200 text-slate-800 rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all">Go to Diet Plan</Link>
+               </div>
+            </div>
+          </div>
+        </div>
+        <style>{`
+           @keyframes progress {
+             0% { width: 10%; }
+             50% { width: 70%; }
+             100% { width: 95%; }
+           }
+        `}</style>
+      </div>
+    );
+  }
 
   if (!report) return <div className="text-center py-12 text-slate-400">Report not found</div>;
 
@@ -237,22 +289,51 @@ export default function ComprehensiveReportAnalysis() {
         </div>
       </div>
 
-      {/* Executive Summary */}
-      {aiAnalysis?.summary && (
+      {/* Doctor's Analysis */}
+      {(aiAnalysis?.doctorSummary || aiAnalysis?.summary) && (
         <div className="bg-white rounded-2xl border-2 border-slate-100 p-6 md:p-8 shadow-sm">
-          <h2 className="text-xl md:text-2xl font-bold text-slate-800 mb-4 flex items-center gap-2">
-            <Activity className="w-5 h-5 md:w-6 md:h-6 text-black" /> {isHindi ? 'रिपोर्ट सारांश' : 'Report Summary'}
-          </h2>
-          <div className="space-y-3">
-            {t(aiAnalysis.summary).split('\n').filter(line => line.trim()).map((line, i) => (
-              <div key={i} className="flex items-start gap-3">
-                <div className="w-1.5 h-1.5 rounded-full bg-black mt-2.5 flex-shrink-0" />
-                <p className="text-slate-700 leading-relaxed text-base md:text-lg">
-                  {line.replace(/^[•\-\*]\s*/, '').trim()}
+          <div className="flex items-center gap-4 mb-6">
+            <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center border border-emerald-100">
+              <span className="text-2xl">🩺</span>
+            </div>
+            <div>
+              <h2 className="text-xl md:text-2xl font-bold text-slate-800">
+                {isHindi ? 'डॉक्टर का विश्लेषण' : "Doctor's Analysis"}
+              </h2>
+              <p className="text-xs text-emerald-600 font-semibold">{isHindi ? 'एआई-संचालित नैदानिक मूल्यांकन' : 'AI-Powered Clinical Assessment'}</p>
+            </div>
+          </div>
+          
+          {aiAnalysis?.doctorSummary ? (
+            <div className="bg-gradient-to-br from-emerald-50/50 to-slate-50 rounded-2xl p-6 md:p-8 border border-emerald-100/50 relative overflow-hidden">
+              <div className="absolute -right-8 -top-8 w-32 h-32 bg-emerald-100/30 rounded-full blur-3xl"></div>
+              <div className="relative z-10">
+                <div className="flex items-center gap-3 mb-5 pb-4 border-b border-emerald-100/50">
+                  <div className="w-9 h-9 bg-emerald-100 rounded-xl flex items-center justify-center">
+                    <Heart className="w-4 h-4 text-emerald-600" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-emerald-700 uppercase tracking-wider">{isHindi ? 'डॉक्टर की रिपोर्ट' : "Doctor's Note"}</p>
+                    <p className="text-[10px] text-slate-400">Based on your lab results</p>
+                  </div>
+                </div>
+                <p className="text-slate-700 leading-[1.9] text-base md:text-lg whitespace-pre-line">
+                  {t(aiAnalysis.doctorSummary)}
                 </p>
               </div>
-            ))}
-          </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {t(aiAnalysis.summary).split('\n').filter(line => line.trim()).map((line, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <div className="w-1.5 h-1.5 rounded-full bg-black mt-2.5 flex-shrink-0" />
+                  <p className="text-slate-700 leading-relaxed text-base md:text-lg">
+                    {line.replace(/^[•\-\*]\s*/, '').trim()}
+                  </p>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 

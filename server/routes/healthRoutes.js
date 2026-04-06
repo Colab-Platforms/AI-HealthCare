@@ -5,6 +5,7 @@ const {
   getReports,
   getReportById,
   getReportStatus,
+  reanalyzeReport,
   getDashboardData,
   compareWithPrevious,
   chatAboutReport,
@@ -32,6 +33,7 @@ router.get('/dashboard', protect, getDashboardData);
 router.get('/report-comparison', protect, getReportComparison);
 router.get('/reports/:id/status', protect, getReportStatus);
 router.get('/reports/:id', protect, getReportById);
+router.post('/reports/:id/reanalyze', protect, reanalyzeReport);
 router.delete('/reports/:id', protect, deleteReport);
 router.get('/reports/:id/compare', protect, compareWithPrevious);
 router.post('/reports/:id/chat', protect, chatAboutReport);

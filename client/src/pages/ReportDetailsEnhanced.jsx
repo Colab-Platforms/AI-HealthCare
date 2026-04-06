@@ -97,6 +97,72 @@ export default function ReportDetailsEnhanced() {
     }));
   };
 
+  const [isHindi, setIsHindi] = useState(false);
+  const [translating, setTranslating] = useState(false);
+  const [hindiCache, setHindiCache] = useState({});
+
+  const t = (text) => {
+    if (!isHindi || !text) return text;
+    return hindiCache[text] || text;
+  };
+
+  const translateReport = async () => {
+    if (isHindi) {
+      setIsHindi(false);
+      return;
+    }
+    setTranslating(true);
+    try {
+      const aiAnalysis = report?.aiAnalysis;
+      if (!aiAnalysis) return;
+
+      const textsToTranslate = [
+        aiAnalysis.summary,
+        aiAnalysis.doctorSummary,
+        ...(aiAnalysis.doctorAdvice || []),
+        ...(aiAnalysis.keyFindings || []),
+        ...(aiAnalysis.riskFactors || []),
+        ...Object.values(aiAnalysis.metrics || {}).flatMap(m => [
+          m.description,
+          m.whyAbnormal,
+          ...(Array.isArray(m.recommendations) ? m.recommendations : [m.recommendations]),
+          ...(Array.isArray(m.foodsToConsume) ? m.foodsToConsume : [m.foodsToConsume])
+        ]),
+        ...(aiAnalysis.deficiencies?.map(d => d.name) || []),
+        ...(aiAnalysis.deficiencies?.map(d => d.explanation) || []),
+        ...(aiAnalysis.deficiencies?.flatMap(d => d.symptoms) || []),
+        aiAnalysis.fitnessPlan?.overview,
+        ...(aiAnalysis.fitnessPlan?.tips || []),
+        ...(aiAnalysis.fitnessPlan?.exercises?.flatMap(e => [e.name, e.description]) || []),
+        ...(aiAnalysis.recommendations?.immediate || []),
+        ...(aiAnalysis.recommendations?.shortTerm || []),
+        ...(aiAnalysis.recommendations?.longTerm || [])
+      ].filter(Boolean);
+
+      const batchText = textsToTranslate.join('\n---SPLIT---\n');
+      const { data } = await api.post('translate', {
+        text: batchText,
+        targetLanguage: 'hi'
+      });
+
+      if (data.translatedText) {
+        const translations = data.translatedText.split('---SPLIT---').map(s => s.trim());
+        const cache = {};
+        textsToTranslate.forEach((text, i) => {
+          if (translations[i]) cache[text] = translations[i];
+        });
+        setHindiCache(cache);
+        setIsHindi(true);
+        toast.success('Translated to Hindi!');
+      }
+    } catch (error) {
+      console.error('Translation error:', error);
+      toast.error('Translation failed.');
+    } finally {
+      setTranslating(false);
+    }
+  };
+
   // Check if aiAnalysis exists
   if (!aiAnalysis) {
     // Show fallback for old reports with extracted text
@@ -205,6 +271,15 @@ export default function ReportDetailsEnhanced() {
                 <span className="text-[9px] uppercase tracking-[0.2em] text-slate-500 font-black mb-1">Gender</span>
                 <span className="text-sm font-black text-slate-800 capitalize">{report.patientGender || 'N/A'}</span>
               </div>
+              <div className="w-px h-8 bg-slate-200 hidden sm:block"></div>
+              <button 
+                onClick={translateReport} 
+                disabled={translating}
+                className={`flex items-center gap-2 px-4 rounded-xl border transition-all ${isHindi ? 'bg-purple-600 text-white border-purple-600' : 'bg-white/40 text-slate-600 border-white/60 hover:bg-white/60'}`}
+              >
+                <Languages className={`w-3 h-3 ${translating ? 'animate-spin' : ''}`} />
+                <span className="text-[9px] font-black uppercase tracking-widest">{translating ? 'Translating...' : (isHindi ? 'English' : 'Hindi')}</span>
+              </button>
             </div>
           </div>
 
@@ -279,19 +354,45 @@ export default function ReportDetailsEnhanced() {
         </div>
       </div>
 
-      {/* Summary */}
-      {aiAnalysis?.summary && (
-        <div className="card p-8 relative overflow-hidden group">
-          <div className="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-purple-500 to-orange-600"></div>
-          <h2 className="text-xl font-black text-slate-800 mb-4 flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center shadow-inner">
-              <Activity className="w-5 h-5 text-purple-600" />
+      {/* Doctor's Analysis Summary */}
+      {(aiAnalysis?.doctorSummary || aiAnalysis?.summary) && (
+        <div className="card p-8 md:p-10 relative overflow-hidden group border-none ring-1 ring-emerald-100 shadow-xl shadow-emerald-50/50">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-50 rounded-full blur-3xl -mr-32 -mt-32 group-hover:scale-110 transition-transform duration-700"></div>
+          
+          <div className="relative z-10">
+            <div className="flex items-center gap-4 mb-8">
+              <div className="w-14 h-14 bg-emerald-100 rounded-2xl flex items-center justify-center border border-emerald-200 shadow-sm">
+                <span className="text-3xl">🩺</span>
+              </div>
+              <div>
+                <h2 className="text-2xl font-black text-slate-800 tracking-tight">
+                  {isHindi ? 'डॉक्टर का नैदानिक विश्लेषण' : "Doctor's Clinical Analysis"}
+                </h2>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></span>
+                  <p className="text-[10px] text-emerald-600 font-black uppercase tracking-[0.2em]">Personalized Health Insight</p>
+                </div>
+              </div>
             </div>
-            REPORT SUMMARY
-          </h2>
-          <p className="text-slate-700 leading-relaxed text-base font-bold italic">
-            "{aiAnalysis.summary}"
-          </p>
+
+            <div className="bg-gradient-to-br from-emerald-50/40 to-slate-50 rounded-[2.5rem] p-8 md:p-10 border border-emerald-100/50 shadow-inner">
+               <p className="text-slate-700 text-lg md:text-xl leading-[1.9] font-medium whitespace-pre-line">
+                 {t(aiAnalysis.doctorSummary || aiAnalysis.summary)}
+               </p>
+            </div>
+
+            {/* Micro-Advice Badges */}
+            {aiAnalysis?.doctorAdvice && (
+              <div className="flex flex-wrap gap-3 mt-8">
+                {aiAnalysis.doctorAdvice.slice(0, 3).map((advice, i) => (
+                  <div key={i} className="flex items-center gap-2 px-4 py-2 bg-white rounded-full border border-slate-200 shadow-sm">
+                     <CheckCircle2 className="w-3 h-3 text-emerald-500" />
+                     <span className="text-[10px] font-black text-slate-600 uppercase tracking-widest">{t(advice).split('. ')[0]}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -437,13 +538,13 @@ export default function ReportDetailsEnhanced() {
               <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
                 <Heart className="w-5 h-5 text-blue-600" />
               </div>
-              KEY FINDINGS
+              {isHindi ? 'मुख्य निष्कर्ष' : 'KEY FINDINGS'}
             </h2>
             <ul className="space-y-4">
               {aiAnalysis.keyFindings.map((finding, i) => (
                 <li key={i} className="flex items-start gap-3 text-sm text-slate-700 font-bold">
                   <div className="w-2 h-2 bg-blue-500 rounded-full mt-2 flex-shrink-0 animate-pulse" />
-                  {finding}
+                  {t(finding)}
                 </li>
               ))}
             </ul>
@@ -499,10 +600,10 @@ export default function ReportDetailsEnhanced() {
                     </div>
                     <div>
                       <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest mb-1">
-                        {key.replace(/([A-Z])/g, ' $1')}
+                        {t(key.replace(/([A-Z])/g, ' $1'))}
                       </p>
                       <p className="text-2xl font-black text-slate-800">
-                        {metric.value} <span className="text-xs font-bold text-slate-400 ml-1">{metric.unit}</span>
+                        {metric.value} <span className="text-xs font-bold text-slate-400 ml-1">{t(metric.unit)}</span>
                       </p>
                     </div>
                   </div>
@@ -534,7 +635,7 @@ export default function ReportDetailsEnhanced() {
                       {metric.description && (
                         <div className="p-4 bg-white/40 rounded-2xl border border-white/60">
                           <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">What is it?</p>
-                          <p className="text-slate-700 text-sm font-medium leading-relaxed">{metric.description}</p>
+                          <p className="text-slate-700 text-sm font-medium leading-relaxed">{t(metric.description)}</p>
                         </div>
                       )}
                     </div>
@@ -544,7 +645,7 @@ export default function ReportDetailsEnhanced() {
                         <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-2 flex items-center gap-2">
                           <AlertTriangle className="w-3 h-3" /> Analysis
                         </p>
-                        <p className="text-slate-700 text-sm font-bold">{metric.whyAbnormal}</p>
+                        <p className="text-slate-700 text-sm font-bold">{t(metric.whyAbnormal)}</p>
                       </div>
                     )}
 
@@ -557,11 +658,11 @@ export default function ReportDetailsEnhanced() {
                               metric.recommendations.map((rec, i) => (
                                 <li key={i} className="text-xs text-slate-700 font-bold flex items-start gap-3">
                                   <div className="w-1.5 h-1.5 bg-blue-400 rounded-full mt-1.5 shrink-0" />
-                                  {rec}
+                                  {t(rec)}
                                 </li>
                               ))
                             ) : (
-                              <li className="text-xs text-slate-700 font-bold">{metric.recommendations}</li>
+                              <li className="text-xs text-slate-700 font-bold">{t(metric.recommendations)}</li>
                             )}
                           </ul>
                         </div>
@@ -574,11 +675,11 @@ export default function ReportDetailsEnhanced() {
                             {Array.isArray(metric.foodsToConsume) ? (
                               metric.foodsToConsume.map((food, i) => (
                                 <span key={i} className="text-[10px] bg-white/80 text-emerald-700 px-3 py-1.5 rounded-xl font-bold border border-emerald-100 shadow-sm">
-                                  {food}
+                                  {t(food)}
                                 </span>
                               ))
                             ) : (
-                              <span className="text-xs text-slate-700 font-bold">{metric.foodsToConsume}</span>
+                              <span className="text-xs text-slate-700 font-bold">{t(metric.foodsToConsume)}</span>
                             )}
                           </div>
                         </div>
@@ -687,60 +788,36 @@ export default function ReportDetailsEnhanced() {
       </div>
 
 
-      {/* Fitness Plan */}
-      {aiAnalysis?.fitnessPlan && (
-        <div className="card p-8">
-          <h2 className="text-xl font-black text-slate-800 mb-8 flex items-center gap-3">
-            <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-              <Dumbbell className="w-5 h-5 text-blue-600" />
+      {/* Doctor's Recommended Action Plan (Advice) */}
+      {aiAnalysis?.doctorAdvice && aiAnalysis.doctorAdvice.length > 0 && (
+        <div className="card p-10 bg-gradient-to-br from-slate-900 to-[#1a2138] text-white border-none shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-96 h-96 bg-purple-600/10 rounded-full blur-[100px] -mr-48 -mt-48"></div>
+          <div className="absolute bottom-0 left-0 w-96 h-96 bg-emerald-600/10 rounded-full blur-[100px] -ml-48 -mb-48"></div>
+          
+          <div className="relative z-10">
+            <div className="flex items-center gap-5 mb-10">
+              <div className="w-16 h-16 bg-white/10 backdrop-blur-xl rounded-[2rem] flex items-center justify-center border border-white/20">
+                <Zap className="w-8 h-8 text-amber-400" fill="currentColor" />
+              </div>
+              <div>
+                <h2 className="text-3xl font-black tracking-tight">{isHindi ? 'डॉक्टर की सलाह' : "Doctor's Prescription"}</h2>
+                <p className="text-slate-400 text-xs font-black uppercase tracking-[0.3em] mt-1">Personalized Lifestyle Protocol</p>
+              </div>
             </div>
-            FITNESS REGIMEN
-          </h2>
-          {aiAnalysis.fitnessPlan.overview && (
-            <p className="text-slate-700 mb-8 text-sm font-bold leading-relaxed bg-blue-50/30 p-5 rounded-[2rem] border border-blue-100 shadow-inner">
-              {aiAnalysis.fitnessPlan.overview}
-            </p>
-          )}
 
-          {/* Exercise Recommendations */}
-          {aiAnalysis.fitnessPlan.exercises?.length > 0 && (
-            <div className="grid md:grid-cols-2 gap-6 mb-8">
-              {aiAnalysis.fitnessPlan.exercises.map((exercise, i) => (
-                <div key={i} className="p-6 bg-white/60 rounded-3xl border border-blue-100 shadow-sm relative overflow-hidden group hover:shadow-md transition-all">
-                  <div className="absolute top-0 right-0 w-24 h-24 bg-blue-50 rounded-full -mr-12 -mt-12 opacity-50 group-hover:scale-110 transition-transform"></div>
-                  <p className="text-base font-black text-blue-800 mb-4 relative z-1">{exercise.name}</p>
-                  <div className="flex gap-4 mb-4 relative z-1">
-                    {exercise.duration && (
-                      <div className="bg-blue-50 px-3 py-1 rounded-lg">
-                        <span className="text-[10px] text-blue-600 font-black uppercase">{exercise.duration}</span>
+            <div className="grid md:grid-cols-2 gap-6">
+              {aiAnalysis.doctorAdvice.map((advice, idx) => (
+                <div key={idx} className="group bg-white/5 hover:bg-white/10 backdrop-blur-lg rounded-[2.5rem] p-8 border border-white/10 transition-all duration-300 hover:-translate-y-1">
+                   <div className="flex items-start gap-6">
+                      <div className="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-lg font-black shrink-0 border border-white/10">
+                        {idx + 1}
                       </div>
-                    )}
-                    {exercise.frequency && (
-                      <div className="bg-indigo-50 px-3 py-1 rounded-lg">
-                        <span className="text-[10px] text-indigo-600 font-black uppercase">{exercise.frequency}</span>
-                      </div>
-                    )}
-                  </div>
-                  {exercise.description && <p className="text-[11px] text-slate-600 font-bold leading-relaxed relative z-1">{exercise.description}</p>}
+                      <p className="text-lg font-bold leading-relaxed">{t(advice)}</p>
+                   </div>
                 </div>
               ))}
             </div>
-          )}
-
-          {/* Fitness Tips */}
-          {aiAnalysis.fitnessPlan.tips?.length > 0 && (
-            <div className="p-6 bg-slate-50 border-none rounded-3xl shadow-inner">
-              <h3 className="text-[10px] font-black text-slate-800 mb-4 uppercase tracking-widest">Fitness Strategy</h3>
-              <div className="space-y-3">
-                {aiAnalysis.fitnessPlan.tips.map((tip, i) => (
-                  <div key={i} className="bg-white/60 p-4 rounded-2xl border border-white flex gap-3 italic">
-                    <span className="text-blue-500 font-black">#</span>
-                    <p className="text-xs text-slate-700 font-bold">{tip}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          </div>
         </div>
       )}
 

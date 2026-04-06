@@ -58,8 +58,6 @@ export default function UploadReport() {
   const [loadingReports, setLoadingReports] = useState(true);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingReportId, setProcessingReportId] = useState(null);
-  const [showDetailedAnalysis, setShowDetailedAnalysis] = useState(false);
-  const [metricTab, setMetricTab] = useState('All');
   
   const { invalidateCache, addPendingAnalysis, dataRefreshTrigger, pendingAnalysisIds } = useData();
   const navigate = useNavigate();
@@ -222,9 +220,13 @@ export default function UploadReport() {
       
       if (data.backgroundProcessing) {
         addPendingAnalysis(data.report._id);
-        toast.success('Report uploaded! Processing...');
+        toast.success('Report uploaded! Initiating Clinical AI...');
+        setTimeout(() => {
+          navigate(`/reports/${data.report._id}`);
+        }, 1000);
       } else {
         toast.success('Report analyzed successfully!');
+        navigate(`/reports/${data.report._id}`);
       }
 
       invalidateCache(['diet_plan', 'dashboard', 'reports']);
@@ -266,229 +268,15 @@ export default function UploadReport() {
 
   const viewingReport = allReports.find(r => r._id === selectedReports[0]);
 
-  const DetailedAnalysisView = () => {
-    const report = viewingReport;
-    if (!report || !report.aiAnalysis) return null;
-    
-    const analysis = report.aiAnalysis;
-    const metrics = Object.entries(analysis.metrics || {}).map(([name, data]) => ({
-      name,
-      value: typeof data === 'object' ? data.value : data,
-      unit: typeof data === 'object' ? data.unit : '',
-      status: (typeof data === 'object' ? data.status?.toUpperCase() : 'NORMAL') || 'NORMAL',
-      range: typeof data === 'object' ? data.range : ''
-    }));
-
-    const filteredMetrics = metrics.filter(m => {
-      if (metricTab === 'All') return true;
-      return m.status === metricTab.toUpperCase();
-    });
-
-    const normalCount = metrics.filter(m => m.status === 'NORMAL').length;
-    const borderlineCount = metrics.filter(m => m.status === 'BORDERLINE' || m.status === 'MODERATE' || m.status === 'LOW').length;
-    const highCount = metrics.filter(m => m.status === 'HIGH' || m.status === 'CRITICAL').length;
-
-    return (
-      <div className="w-full min-h-full flex flex-col bg-gradient-to-b from-[#F2F5EC] to-[#E5EBE0] dark:from-[#161719] dark:to-[#161719] animate-in fade-in duration-300 relative pb-24">
-        {/* Header */}
-        <div className="px-6 pt-12 pb-6 flex items-center justify-between sticky top-0 bg-[#F2F5EC]/80 dark:bg-[#161719]/80 backdrop-blur-md z-10 shrink-0 border-b border-white/50 dark:border-white/10">
-          <button 
-            onClick={() => setShowDetailedAnalysis(false)}
-            className="w-10 h-10 bg-white/80 dark:bg-white/10 shadow-sm border border-white dark:border-white/10 rounded-full flex items-center justify-center text-[#1a2138] dark:text-white hover:bg-white dark:hover:bg-white/20 active:scale-90 transition-all"
-          >
-            <ArrowLeft size={20} strokeWidth={2.5} />
-          </button>
-          <div className="flex flex-col items-center">
-            <h1 className="text-[20px] font-bold text-[#1a2138] dark:text-white tracking-tight leading-tight">Diagnostic Synthesis</h1>
-            <p className="text-[12px] text-[#69A38D] font-bold">Optimization-Powered Health Insights</p>
-          </div>
-          <div className="flex gap-2">
-            <button className="w-8 h-8 bg-white/80 dark:bg-white/10 shadow-sm border border-white rounded-full flex items-center justify-center text-[#1a2138] dark:text-white"><Languages size={15} /></button>
-            <button className="w-8 h-8 bg-white/80 dark:bg-white/10 shadow-sm border border-white rounded-full flex items-center justify-center text-[#1a2138] dark:text-white"><Share2 size={15} /></button>
-          </div>
-        </div>
-
-        <div className="px-5 flex flex-col gap-5">
-          {/* Info Card */}
-          <div className="bg-white/60 backdrop-blur-xl rounded-[32px] p-6 shadow-[0_4px_25px_rgba(0,0,0,0.04)] border border-white flex flex-col gap-6">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-[#E2EED2] flex items-center justify-center shadow-sm">
-                  <FileText size={20} className="text-[#69A38D]" />
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[11px] font-extrabold text-[#64748b] uppercase tracking-wider mb-0.5">Report Type</span>
-                  <span className="text-[15px] font-extrabold text-[#1a2138]">{report.reportType || 'Blood Test'}</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-1.5 px-3 py-1.5 bg-[#69A38D]/10 text-[#69A38D] rounded-full border border-[#69A38D]/20 shadow-sm">
-                <span className="text-[10px] font-bold tracking-wider uppercase">Analyzed</span>
-              </div>
-            </div>
-            <div className="flex items-center justify-between border-t border-white/50 pt-6">
-              <div className="flex flex-col gap-1">
-                <span className="text-[11px] font-extrabold text-[#64748b] uppercase tracking-wider">Date</span>
-                <div className="flex items-center gap-2 text-[#1a2138]">
-                  <Calendar size={14} className="text-[#69A38D]" />
-                  <span className="text-[14px] font-bold">{new Date(report.reportDate || report.createdAt).toLocaleDateString()}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Executive Summary */}
-          <div className="bg-white/60 backdrop-blur-xl rounded-[32px] p-6 shadow-[0_4px_25px_rgba(0,0,0,0.04)] border border-white">
-            <div className="flex items-center gap-4 mb-5">
-              <div className="w-12 h-12 rounded-full bg-white/80 flex items-center justify-center shadow-sm border border-white">
-                <Activity size={20} className="text-[#69A38D]" />
-              </div>
-              <div className="flex flex-col">
-                <h2 className="text-[18px] font-extrabold text-[#1a2138]">Executive Summary</h2>
-              </div>
-            </div>
-            <div className="bg-white/80 rounded-[20px] p-5 border border-white shadow-sm">
-              <p className="text-[14px] text-[#64748b] leading-relaxed font-medium">
-                {analysis.summary}
-              </p>
-            </div>
-          </div>
-
-          {/* Metrics List */}
-          <div className="flex flex-col gap-5 pt-2">
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-3">
-                <h2 className="text-[20px] font-extrabold text-[#1a2138] leading-tight">Health Metrics</h2>
-                <span className="px-2.5 py-1 bg-white/80 border border-white text-[#64748b] shadow-sm rounded-full text-[10px] font-bold tracking-wider">{metrics.length} Items</span>
-              </div>
-              <div className="flex bg-white/60 backdrop-blur-md rounded-full p-1.5 border border-white overflow-x-auto no-scrollbar shadow-sm">
-                {['All', 'Normal', 'Borderline', 'High'].map(tab => (
-                  <button
-                    key={tab}
-                    onClick={() => setMetricTab(tab)}
-                    className={`px-4 py-2 rounded-full text-[12px] font-bold transition-all shrink-0 flex-1 text-center ${
-                      metricTab === tab 
-                        ? 'bg-[#69A38D] text-white shadow-md' 
-                        : 'text-[#64748b] hover:bg-white hover:text-[#69A38D]'
-                    }`}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { label: 'Normal', count: normalCount, color: 'text-[#69A38D]', icon: CheckCircle2, bg: 'bg-[#69A38D]/10' },
-                { label: 'Warning', count: borderlineCount, color: 'text-[#E88F4A]', icon: AlertCircle, bg: 'bg-[#E88F4A]/10' },
-                { label: 'High', count: highCount, color: 'text-[#5D5589]', icon: AlertTriangle, bg: 'bg-[#5D5589]/10' }
-              ].map((stat, i) => (
-                <div key={i} className="bg-white/60 rounded-[24px] p-5 flex flex-col items-center justify-center border border-white gap-3">
-                  <div className={`w-12 h-12 rounded-full ${stat.bg} ${stat.color} flex items-center justify-center shadow-sm`}>
-                    <stat.icon size={24} />
-                  </div>
-                  <div className="text-center flex flex-col">
-                    <span className="text-[24px] font-extrabold text-[#1a2138]">{stat.count}</span>
-                    <span className="text-[10px] font-bold text-[#64748b] uppercase tracking-wider">{stat.label}</span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              {filteredMetrics.map((metric, idx) => {
-                const isNormal = metric.status === 'NORMAL';
-                const isWarning = ['BORDERLINE', 'MODERATE', 'LOW'].includes(metric.status);
-                const colorClass = isNormal ? 'text-[#69A38D]' : isWarning ? 'text-[#E88F4A]' : 'text-[#5D5589]';
-                const bgClass = isNormal ? 'bg-[#69A38D]/10 border-[#69A38D]/20' : isWarning ? 'bg-[#E88F4A]/10 border-[#E88F4A]/20' : 'bg-[#5D5589]/10 border-[#5D5589]/20';
-                
-                return (
-                  <div key={idx} className="bg-white/60 rounded-[24px] p-4 shadow-sm border border-white flex flex-col min-h-[140px]">
-                    <div className="flex items-start justify-between">
-                      <div className={`w-8 h-8 rounded-full flex items-center justify-center border ${bgClass} ${colorClass}`}>
-                        {isNormal ? <CheckCircle2 size={14} /> : <AlertCircle size={14} />}
-                      </div>
-                      <span className={`text-[8.5px] font-bold px-2 py-1 rounded-full uppercase border ${bgClass} ${colorClass}`}>{metric.status}</span>
-                    </div>
-                    <div className="mt-3">
-                      <div className="text-[13px] font-extrabold text-[#1a2138] line-clamp-2">{metric.name.replace(/([A-Z])/g, ' $1')}</div>
-                      <div className="text-[9.5px] font-bold text-[#64748b]">Target: {metric.range}</div>
-                    </div>
-                    <div className="flex items-baseline gap-1 mt-auto">
-                      <span className={`text-[20px] font-black ${colorClass}`}>{metric.value}</span>
-                      <span className="text-[10px] font-bold text-[#64748b]">{metric.unit}</span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Personalized Diet Plan CTA */}
-          <div className="bg-white/60 backdrop-blur-xl rounded-[40px] p-8 shadow-[0_4px_25px_rgba(0,0,0,0.04)] border border-white flex flex-col gap-6">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-[#69A38D]/10 flex items-center justify-center border border-[#69A38D]/20 shadow-sm">
-                <UtensilsCrossed size={24} className="text-[#69A38D]" />
-              </div>
-              <h2 className="text-[20px] font-black text-[#1a2138] uppercase tracking-tight">Nutritional Protocol</h2>
-            </div>
-            <p className="text-[14px] text-[#64748b] font-bold leading-relaxed">
-              Based on your clinical synthesis, we've prepared an optimized nutritional strategy to address your bio-marker needs.
-            </p>
-            <button
-              onClick={() => navigate('/diet-plan?autoGenerate=true')}
-              className="w-full py-5 bg-[#69A38D] text-white rounded-[28px] font-black text-xs uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:bg-[#528270] transition-all shadow-lg shadow-[#69A38D]/20 active:scale-[0.98]"
-            >
-              <Sparkles size={18} /> GENERATE PERSONALIZED DIET PLAN
-            </button>
-          </div>
-
-          {/* Actionable Next Steps (Redesigned) */}
-          <div className="bg-[#69A38D] rounded-[40px] p-8 text-white shadow-xl flex flex-col gap-8">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-                <Zap size={24} strokeWidth={3} fill="currentColor" />
-              </div>
-              <h2 className="text-2xl font-bold tracking-tight">Actionable Next Steps</h2>
-            </div>
-            <div className="flex flex-col gap-4">
-              {[
-                "Exercise 5 days/week — mix cardio and strength training",
-                "Sleep 7-8 hours daily — poor sleep raises inflammation markers",
-                "Manage stress through yoga or meditation — reduces cortisol and inflammation",
-                "Avoid smoking and limit alcohol — both lower HDL and raise hsCRP"
-              ].map((step, idx) => (
-                <div key={idx} className="bg-white/10 rounded-[32px] p-6 flex items-center gap-6 group hover:bg-white/15 transition-all">
-                  <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-sm font-black shrink-0">
-                    {idx + 1}
-                  </div>
-                  <p className="text-[15px] font-bold leading-snug">{step}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="text-center px-4">
-            <p className="text-[11px] font-bold text-slate-400 leading-relaxed uppercase tracking-widest">
-              Disclaimer: This AI analysis is for informational wellness support only and should not replace professional medical advice. Always consult with a healthcare provider.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  };
 
   return (
     <div className="w-full h-full bg-gradient-to-b from-[#F2F5EC] to-[#E5EBE0] dark:from-[#161719] dark:to-[#161719] relative overflow-y-auto flex flex-col animate-in fade-in duration-500 min-h-screen pb-32">
       <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-br from-white/40 dark:from-white/5 to-transparent pointer-events-none" />
       
-      {showDetailedAnalysis ? (
-        <DetailedAnalysisView />
-      ) : (
-        <div className="px-6 pt-12 flex flex-col max-w-5xl mx-auto w-full gap-8">
-          {/* Header */}
-          <div className="flex flex-col gap-2">
-            <h1 className="text-[28px] font-black text-[#1a2138] dark:text-white tracking-tight leading-none">Diagnostic Analysis</h1>
+      <div className="px-6 pt-12 flex flex-col max-w-5xl mx-auto w-full gap-8">
+        {/* Header */}
+        <div className="flex flex-col gap-2">
+          <h1 className="text-[28px] font-black text-[#1a2138] dark:text-white tracking-tight leading-none">Diagnostic Analysis</h1>
             <p className="text-[15px] text-[#64748b] dark:text-white/70 font-medium">Upload reports to extract actionable health insights</p>
           </div>
 
@@ -621,7 +409,7 @@ export default function UploadReport() {
                           </div>
                           <div className="flex flex-col items-end gap-2">
                             <button 
-                              onClick={e => { e.stopPropagation(); setShowDetailedAnalysis(true); setSelectedReports([report._id, ...selectedReports.filter(id => id !== report._id)]); }}
+                              onClick={e => { e.stopPropagation(); navigate(`/reports/${report._id}`); }}
                               className="text-[9px] font-black text-[#69A38D] uppercase tracking-widest hover:underline"
                             >
                               Explore
@@ -638,16 +426,10 @@ export default function UploadReport() {
                     })
                   )}
                 </div>
-
-                <div className="mt-8 pt-6 border-t border-slate-100 flex flex-col gap-4">
-                   <p className="text-[11px] font-bold text-slate-400 text-center uppercase tracking-wider">Metrics Comparison ({selectedReports.length}/2)</p>
-                   <Link to="/reports" className="w-full py-4 bg-slate-50 text-slate-500 font-black text-xs uppercase tracking-widest rounded-2xl text-center border border-slate-100 hover:bg-[#69A38D] hover:text-white transition-all">Archive Repository</Link>
-                </div>
               </div>
             </div>
           </div>
         </div>
-      )}
     </div>
   );
 }

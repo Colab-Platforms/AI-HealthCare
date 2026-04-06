@@ -149,6 +149,28 @@ exports.processReportBG = async (req, res) => {
   }
 };
 
+exports.reanalyzeReport = async (req, res) => {
+  try {
+    const report = await HealthReport.findOne({ _id: req.params.id, user: req.user._id });
+    if (!report) return res.status(404).json({ message: 'Report not found' });
+
+    report.status = 'processing';
+    await report.save();
+
+    // Trigger analysis in background
+    setImmediate(() => processReportInternal(
+      req.user._id, 
+      report._id, 
+      report.originalFile?.mimetype || 'application/pdf', 
+      report.extractedText
+    ));
+
+    res.json({ message: 'Re-analysis started', status: 'processing' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 exports.uploadReport = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
@@ -408,6 +430,9 @@ exports.getDashboardData = async (req, res) => {
         history.push({ date: dStr, calories: dStr === todayStr ? realTimeTotals.calories : (nutrition?.totalCalories || 0), steps, sleep, weight: dayWeight, water: dStr === todayStr ? (finalNutrition.waterIntake || 0) : (nutrition?.waterIntake || 0) });
     }
 
+    const latestGlucose = await HealthMetric.findOne({ userId: req.user._id, type: 'blood_sugar' }).sort({ recordedAt: -1 });
+    const latestHbA1c = await HealthMetric.findOne({ userId: req.user._id, type: 'hba1c' }).sort({ recordedAt: -1 });
+
     const calorieGoal = req.user.nutritionGoal?.calorieGoal || 2100;
     const dashboardData = {
       user: { ...req.user.toObject(), password: undefined },
@@ -416,7 +441,10 @@ exports.getDashboardData = async (req, res) => {
       stepsToday: history[history.length-1]?.steps || 0, sleepToday: history[history.length-1]?.sleep || 0,
       goals: { steps: 10000, sleep: 8, weight: req.user.nutritionGoal?.targetWeight || 70, calories: calorieGoal, protein: req.user.nutritionGoal?.proteinGoal || 150, carbs: req.user.nutritionGoal?.carbsGoal || 200, fats: req.user.nutritionGoal?.fatGoal || 65 },
       streakDays: req.user.streakDays || 0,
-      vitals: { glucose: null, hba1c: null },
+      vitals: { 
+        glucose: latestGlucose ? { value: latestGlucose.value, recordedAt: latestGlucose.recordedAt } : null, 
+        hba1c: latestHbA1c ? { value: latestHbA1c.value, recordedAt: latestHbA1c.recordedAt } : null 
+      },
       nutritionData: { totalCalories: finalNutrition.totalCalories || 0, calorieGoal, protein: finalNutrition.totalProtein || 0, carbs: finalNutrition.totalCarbs || 0, totalFats: finalNutrition.totalFats || 0, todayLogs: todayLogsArr || [] }
     };
 
