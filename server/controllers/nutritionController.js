@@ -1170,6 +1170,9 @@ exports.logWater = async (req, res) => {
       { upsert: true, new: true }
     );
 
+    // Invalidate dashboard cache so next fetch returns fresh data
+    cache.delete(`dashboard:${req.user._id}`);
+
     res.json({
       success: true,
       waterIntake: summary.waterIntake,

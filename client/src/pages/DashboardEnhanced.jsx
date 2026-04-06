@@ -7,16 +7,17 @@ import {
   Search, Sun, Clock, Heart, Apple, Info, Target, Calendar,
   ArrowUpRight, Upload, Coffee, Dumbbell, MessageCircle, BarChart3,
   Circle, Smile, FlaskConical, Leaf, Pill, CheckCircle2, Zap, Eye,
-  UtensilsCrossed, UploadCloud, ShieldCheck, AlertTriangle, Check, Dna
+  UtensilsCrossed, UploadCloud, ShieldCheck, AlertTriangle, Check, Dna,
+  Scale, Footprints, X, Minus, GlassWater, Save
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Joyride, STATUS } from 'react-joyride';
 import DashboardSkeleton from '../components/skeletons/DashboardSkeleton';
 import {
   ResponsiveContainer, AreaChart, Area, XAxis, YAxis,
   Tooltip, CartesianGrid, PieChart, Pie, Cell, LineChart, Line,
-  ReferenceLine, Label
+  ReferenceLine, Label, BarChart, Bar
 } from 'recharts';
 import { motion, AnimatePresence } from 'framer-motion';
 import { getFoodImage } from '../services/imageService';
@@ -265,7 +266,7 @@ const DiabetesMonitor = ({ onLog }) => {
   );
 };
 
-const DailyMetricsCard = () => {
+const DailyMetricsCard = ({ onOpenLog }) => {
   const { user } = useAuth();
   const { dashboardData, nutritionData, wearableData } = useData();
 
@@ -285,7 +286,10 @@ const DailyMetricsCard = () => {
       </div>
 
       <div className="flex flex-row lg:flex-col gap-2 lg:space-y-4 flex-1 mb-6 lg:mb-0">
-        <div className="bg-white lg:bg-emerald-50/20 p-2 lg:p-5 rounded-3xl lg:rounded-[24px] border border-emerald-100/30 flex flex-col lg:flex-row flex-1 items-center lg:justify-between group hover:shadow-md lg:hover:bg-white lg:hover:shadow-sm transition-all overflow-hidden shadow-sm lg:shadow-none">
+        <div 
+          onClick={() => onOpenLog('Weight')}
+          className="bg-white lg:bg-emerald-50/20 p-2 lg:p-5 rounded-3xl lg:rounded-[24px] border border-emerald-100/30 flex flex-col lg:flex-row flex-1 items-center lg:justify-between group hover:shadow-md lg:hover:bg-white lg:hover:shadow-sm transition-all overflow-hidden shadow-sm lg:shadow-none cursor-pointer"
+        >
           <div className="flex flex-col lg:flex-row items-center gap-1 lg:gap-4 text-center lg:text-left">
             <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-2xl bg-emerald-50 lg:bg-white flex items-center justify-center shadow-sm">
               <Target className="w-4 h-4 lg:w-5 lg:h-5 text-[#064e3b]" />
@@ -295,12 +299,15 @@ const DailyMetricsCard = () => {
               <p className="text-[15px] lg:text-2xl font-black text-[#064e3b]">{weight} <span className="text-[10px] lg:text-sm font-bold text-emerald-800/20">kg</span></p>
             </div>
           </div>
-          <button onClick={() => navigate('/log-vitals/weight')} className="mt-2 lg:mt-0 w-6 h-6 lg:w-8 lg:h-8 rounded-full border border-emerald-100/30 flex items-center justify-center hover:bg-emerald-50 transition-colors bg-emerald-50 lg:bg-transparent">
+          <div className="mt-2 lg:mt-0 w-6 h-6 lg:w-8 lg:h-8 rounded-full border border-emerald-100/30 flex items-center justify-center hover:bg-emerald-50 transition-colors bg-emerald-50 lg:bg-transparent">
             <Plus className="w-3 h-3 lg:w-4 lg:h-4 text-[#064e3b]" />
-          </button>
+          </div>
         </div>
 
-        <div className="bg-white lg:bg-emerald-50/20 p-2 lg:p-5 rounded-3xl lg:rounded-[24px] border border-emerald-100/30 flex flex-col lg:flex-row flex-1 items-center lg:justify-between group hover:shadow-md lg:hover:bg-white lg:hover:shadow-sm transition-all overflow-hidden shadow-sm lg:shadow-none">
+        <div 
+          onClick={() => onOpenLog('Steps')}
+          className="bg-white lg:bg-emerald-50/20 p-2 lg:p-5 rounded-3xl lg:rounded-[24px] border border-emerald-100/30 flex flex-col lg:flex-row flex-1 items-center lg:justify-between group hover:shadow-md lg:hover:bg-white lg:hover:shadow-sm transition-all overflow-hidden shadow-sm lg:shadow-none cursor-pointer"
+        >
           <div className="flex flex-col lg:flex-row items-center gap-1 lg:gap-4 text-center lg:text-left">
             <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-2xl bg-emerald-50 lg:bg-white flex items-center justify-center shadow-sm">
               <Activity className="w-4 h-4 lg:w-5 lg:h-5 text-[#064e3b]" />
@@ -310,12 +317,15 @@ const DailyMetricsCard = () => {
               <p className="text-[15px] lg:text-2xl font-black text-[#064e3b]">{Number(steps).toLocaleString()} <span className="text-[10px] lg:text-sm font-bold text-emerald-800/20">st</span></p>
             </div>
           </div>
-          <button onClick={() => navigate('/log-vitals/steps')} className="mt-2 lg:mt-0 w-6 h-6 lg:w-8 lg:h-8 rounded-full border border-emerald-100/30 flex items-center justify-center hover:bg-emerald-50 transition-colors bg-emerald-50 lg:bg-transparent">
+          <div className="mt-2 lg:mt-0 w-6 h-6 lg:w-8 lg:h-8 rounded-full border border-emerald-100/30 flex items-center justify-center hover:bg-emerald-50 transition-colors bg-emerald-50 lg:bg-transparent">
             <Plus className="w-3 h-3 lg:w-4 lg:h-4 text-[#064e3b]" />
-          </button>
+          </div>
         </div>
 
-        <div className="bg-white lg:bg-emerald-50/20 p-2 lg:p-5 rounded-3xl lg:rounded-[24px] border border-emerald-100/30 flex flex-col lg:flex-row flex-1 items-center lg:justify-between group hover:shadow-md lg:hover:bg-white lg:hover:shadow-sm transition-all overflow-hidden shadow-sm lg:shadow-none">
+        <div 
+          onClick={() => onOpenLog('Water')}
+          className="bg-white lg:bg-emerald-50/20 p-2 lg:p-5 rounded-3xl lg:rounded-[24px] border border-emerald-100/30 flex flex-col lg:flex-row flex-1 items-center lg:justify-between group hover:shadow-md lg:hover:bg-white lg:hover:shadow-sm transition-all overflow-hidden shadow-sm lg:shadow-none cursor-pointer"
+        >
           <div className="flex flex-col lg:flex-row items-center gap-1 lg:gap-4 text-center lg:text-left">
             <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-2xl bg-emerald-50 lg:bg-white flex items-center justify-center shadow-sm">
               <Droplet className="w-4 h-4 lg:w-5 lg:h-5 text-emerald-500" />
@@ -325,9 +335,9 @@ const DailyMetricsCard = () => {
               <p className="text-[15px] lg:text-2xl font-black text-[#064e3b]">{water} <span className="text-[10px] lg:text-sm font-bold text-emerald-800/20">glasses</span></p>
             </div>
           </div>
-          <button onClick={() => navigate('/nutrition')} className="mt-2 lg:mt-0 w-6 h-6 lg:w-8 lg:h-8 rounded-full border border-emerald-100/30 flex items-center justify-center hover:bg-emerald-50 transition-colors bg-emerald-50 lg:bg-transparent">
+          <div className="mt-2 lg:mt-0 w-6 h-6 lg:w-8 lg:h-8 rounded-full border border-emerald-100/30 flex items-center justify-center hover:bg-emerald-50 transition-colors bg-emerald-50 lg:bg-transparent">
             <Plus className="w-3 h-3 lg:w-4 lg:h-4 text-[#064e3b]" />
-          </button>
+          </div>
         </div>
       </div>
     </div>
@@ -529,8 +539,8 @@ const MealDetailModal = ({ meal, onClose, onAdd }) => {
 // --- Main Component ---
 
 export default function DashboardEnhanced() {
-  const { user } = useAuth();
-  const { dashboardData, nutritionData, wearableData, fetchDashboard, fetchNutrition, fetchNutritionLogs, fetchDietPlan, fetchWearable, loading, dataRefreshTrigger } = useData();
+  const { user, refreshUser } = useAuth();
+  const { dashboardData, nutritionData, wearableData, weeklyTrends, fetchDashboard, fetchNutrition, fetchNutritionLogs, fetchDietPlan, fetchWearable, fetchWeeklyTrends, loading, dataRefreshTrigger, invalidateCache } = useData();
   const navigate = useNavigate();
 
   const [dietPlan, setDietPlan] = useState(null);
@@ -544,6 +554,150 @@ export default function DashboardEnhanced() {
   const [activeDiabetesTab, setActiveDiabetesTab] = useState('Fasting');
   const [activeTrendTab, setActiveTrendTab] = useState('Calories');
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [isLogVitalsOpen, setIsLogVitalsOpen] = useState(false);
+  const [activeLogTab, setActiveLogTab] = useState('Weight'); // Weight, Steps, Sleep, Water
+  const [waterLog, setWaterLog] = useState(0);
+  const [vitalsLoading, setVitalsLoading] = useState(false);
+  const [vitalsInput, setVitalsInput] = useState({ weight: '', steps: '', sleepHours: '8', sleepMins: '30', date: new Date().toISOString().split('T')[0] });
+  const location = useLocation();
+
+  // Initialize and Sync Water Log (field is 'waterIntake' in NutritionSummary)
+  useEffect(() => {
+    const water = nutritionData?.totalWater ?? nutritionData?.waterIntake;
+    if (water !== undefined && water !== null) {
+      setWaterLog(Number(water));
+    }
+  }, [nutritionData?.totalWater, nutritionData?.waterIntake]);
+
+  // Sync Log Modal with Navigation State
+  useEffect(() => {
+    if (location.state?.openLogVitals) {
+      setActiveLogTab(location.state.openLogVitals);
+      setIsLogVitalsOpen(true);
+      // Clean up state to prevent re-opening on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
+
+  // Fetch all required data on mount
+  useEffect(() => {
+    const loadAllData = async () => {
+      const today = new Date().toISOString().split('T')[0];
+      await Promise.all([
+        fetchDashboard(),
+        fetchNutrition(today),
+        fetchWearable(),
+        fetchWeeklyTrends()
+      ]);
+    };
+    loadAllData();
+  }, [fetchDashboard, fetchNutrition, fetchWearable, fetchWeeklyTrends]);
+
+  // Sync Sleep Inputs with Real Data (always sync, not just when modal is open)
+  useEffect(() => {
+    if (wearableData?.todayMetrics?.sleep !== undefined) {
+      const totalMins = Number(wearableData.todayMetrics.sleep);
+      if (totalMins > 0) {
+        setVitalsInput(prev => ({
+          ...prev,
+          sleepHours: Math.floor(totalMins / 60).toString(),
+          sleepMins: (totalMins % 60).toString()
+        }));
+      }
+    }
+  }, [wearableData?.todayMetrics?.sleep]);
+
+  // Robust Graph Data Processing (Last 7 Days)
+  const formattedHistory = useMemo(() => {
+    const days = [];
+    const today = new Date();
+    
+    // Generate last 7 days (including today)
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const dateStr = d.toISOString().split('T')[0];
+      const dayName = d.toLocaleDateString('en-US', { weekday: 'short' }).toUpperCase();
+      days.push({ date: dateStr, day: dayName });
+    }
+
+    // Map data from various sources (dashboardData.history is the primary source of truth for 90-day history)
+    const historySource = dashboardData?.history || [];
+
+    return {
+      weight: days.map(d => {
+        const entry = historySource.find(h => h.date === d.date);
+        return { day: d.day, value: entry?.weight || user?.profile?.weight || 70 };
+      }),
+      water: days.map(d => {
+        const entry = historySource.find(h => h.date === d.date);
+        return { day: d.day, value: entry?.water || 0 };
+      }),
+      steps: days.map(d => {
+        const entry = historySource.find(h => h.date === d.date);
+        return { day: d.day, value: entry?.steps || 0 };
+      }),
+      sleep: days.map(d => {
+        const entry = historySource.find(h => h.date === d.date);
+        return { day: d.day, value: entry?.sleep || 0 };
+      })
+    };
+  }, [dashboardData?.history, user?.profile?.weight]);
+
+  const handleLogVitals = async (type, change = null) => {
+    setVitalsLoading(true);
+    try {
+      const logDate = vitalsInput.date || new Date().toISOString().split('T')[0];
+      
+      if (type === 'Weight') {
+        if (!vitalsInput.weight) throw new Error('Weight is required');
+        await api.post('nutrition/log-weight', { weight: Number(vitalsInput.weight), notes: 'Mobile dashboard log', date: logDate });
+        toast.success('Weight logged successfully');
+        setIsLogVitalsOpen(false);
+      } else if (type === 'Steps') {
+        if (!vitalsInput.steps) throw new Error('Steps required');
+        await api.post('wearables/sync', { deviceType: 'other', isAdditive: true, metrics: { steps: Number(vitalsInput.steps), date: logDate } });
+        toast.success('Steps added successfully');
+        setIsLogVitalsOpen(false);
+      } else if (type === 'Sleep') {
+        const totalMins = (Number(vitalsInput.sleepHours) * 60) + Number(vitalsInput.sleepMins);
+        await api.post('wearables/sleep', { deviceType: 'other', isAdditive: true, sleepData: { totalSleepMinutes: totalMins, date: logDate } });
+        toast.success('Sleep logged successfully');
+        setIsLogVitalsOpen(false);
+      } else if (type === 'Water') {
+        // Use either the change (for +/- buttons) or the diff from current state (for Save button)
+        const currentWater = nutritionData?.totalWater ?? nutritionData?.waterIntake ?? 0;
+        const newWater = Math.max(0, Number(currentWater) + change);
+        await api.post('nutrition/log-water', { date: logDate, waterIntake: newWater });
+        // Local update for immediate feedback
+        setWaterLog(newWater);
+      }
+
+      // Sync all data sources
+      invalidateCache(['dashboard', 'wearable', `nutrition_${logDate}`]);
+      await Promise.all([
+        fetchDashboard(true),
+        fetchNutrition(logDate, true),
+        fetchWearable(true),
+        // Refresh user profile so weight gauge reads the updated user.profile.weight
+        type === 'Weight' ? refreshUser() : Promise.resolve()
+      ]);
+
+      if (type !== 'Water') {
+        // Only reset the fields that were just logged; preserve sleep values from server
+        setVitalsInput(prev => ({
+          ...prev,
+          weight: type === 'Weight' ? '' : prev.weight,
+          steps: type === 'Steps' ? '' : prev.steps,
+          date: new Date().toISOString().split('T')[0]
+        }));
+      }
+    } catch (err) {
+      toast.error(err.message || `Failed to log ${type}`);
+    } finally {
+      setVitalsLoading(false);
+    }
+  };
 
   // Simple Joyride Tour State
   const [runTour, setRunTour] = useState(false);
@@ -552,41 +706,49 @@ export default function DashboardEnhanced() {
       target: '.tour-profile',
       content: 'Tap your profile here anytime to set your fitness Goal.',
       placement: 'bottom',
+      disableBeacon: true,
     },
     {
       target: '.tour-nutrient-info',
       content: 'Track your daily macros, micros, and live diet goals here. Swipe left to see more cards!',
       placement: 'bottom',
+      disableBeacon: true,
     },
     {
       target: '.tour-diet-plan',
       content: 'Your AI-generated daily meal schedule appears here based on your fitness goals.',
       placement: 'bottom',
+      disableBeacon: true,
     },
     {
       target: '.tour-ai-insights',
       content: 'Upload your medical reports here to get deep AI Lab Insights instantly.',
       placement: 'bottom',
+      disableBeacon: true,
     },
     {
       target: '.tour-health-profile',
       content: 'Tap here to unlock your full AI-generated Health Archetype and medical summary.',
       placement: 'top',
+      disableBeacon: true,
     },
     {
       target: '.tour-logged-meals',
       content: 'All your tracked meals appear here. Keep eating healthy to hit your targets!',
       placement: 'top',
+      disableBeacon: true,
     },
     {
       target: '.nav-center-fab',
       content: 'The action hub! Tap this bold button to quick-log your meals, sleep, steps, and water intake.',
       placement: 'top',
+      disableBeacon: true,
     },
     {
       target: '.mobile-bottom-nav-container',
       content: 'Navigate between your Dashboard, Nutrition, and Medical Reports swiftly using these tabs.',
       placement: 'top',
+      disableBeacon: true,
     }
   ]);
 
@@ -953,6 +1115,7 @@ export default function DashboardEnhanced() {
           showProgress={true}
           scrollToFirstStep={false}
           disableScrolling={true}
+          disableBeacon={true}
           callback={handleJoyrideCallback}
           floaterProps={{
             disableAnimation: false,
@@ -985,7 +1148,7 @@ export default function DashboardEnhanced() {
           <button onClick={() => navigate('/nutrition', { state: { openLogMeal: true, mealType: 'Breakfast' } })} className="flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-1 py-3 lg:px-6 bg-white/60 backdrop-blur-md rounded-[20px] lg:rounded-full text-[9px] lg:text-sm font-black text-[#1a1a1a] hover:bg-white transition-all border border-white/60 shadow-sm">
             <UtensilsCrossed className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-slate-500" /> <span>Log Meal</span>
           </button>
-          <button onClick={() => navigate('/log-vitals/sleep')} className="flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-1 py-3 lg:px-6 bg-white/60 backdrop-blur-md rounded-[20px] lg:rounded-full text-[9px] lg:text-sm font-black text-[#1a1a1a] hover:bg-white transition-all border border-white/60 shadow-sm">
+          <button onClick={() => { setActiveLogTab('Sleep'); setIsLogVitalsOpen(true); }} className="flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-1 py-3 lg:px-6 bg-white/60 backdrop-blur-md rounded-[20px] lg:rounded-full text-[9px] lg:text-sm font-black text-[#1a1a1a] hover:bg-white transition-all border border-white/60 shadow-sm">
             <Moon className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-slate-500" /> <span>Log Sleep</span>
           </button>
           <button
@@ -1395,16 +1558,18 @@ export default function DashboardEnhanced() {
             )}
           </div>
 
-          <div className="mt-4 p-3 lg:p-6 bg-white rounded-2xl lg:rounded-[2rem] border border-[#F1F1F4] relative group shadow-sm">
-            <div className="flex items-center gap-2 mb-2">
-              <Sparkles className="w-3 h-3 lg:w-4 lg:h-4 text-[#064e3b]" />
-              <span className="text-[8px] lg:text-[10px] font-black text-emerald-800/40 uppercase tracking-widest">AI Rec</span>
+          <div className="mt-auto px-1 pt-6 border-t border-slate-50">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-6 h-6 rounded-lg bg-emerald-50 flex items-center justify-center">
+                <Sparkles className="w-3 h-3 text-[#064e3b]" />
+              </div>
+              <span className="text-[10px] font-black text-[#064e3b]/40 uppercase tracking-[0.15em]">Health Recommendation</span>
             </div>
-            <p className="text-[9px] lg:text-[12px] font-medium text-[#064e3b] leading-relaxed">
+            <p className="text-[11px] lg:text-[13px] font-medium text-[#064e3b] leading-relaxed">
               {dashboardData?.latestAnalysis?.recommendations?.lifestyle?.[0] ? (
                 `"${dashboardData.latestAnalysis.recommendations.lifestyle[0]}"`
               ) : (
-                "Personalized health analysis will appear here."
+                "Personalized health analysis will appear here after your next report upload."
               )}
             </p>
           </div>
@@ -1418,7 +1583,10 @@ export default function DashboardEnhanced() {
             <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${Math.abs(activeIndex - i) < 0.5 ? 'w-6 bg-black' : 'w-2 bg-slate-200'}`} />
           ))}
         </div>
-        <DailyMetricsCard />
+        <DailyMetricsCard onOpenLog={(tab) => {
+          setActiveLogTab(tab);
+          setIsLogVitalsOpen(true);
+        }} />
       </div>
 
       {/* Diabetes Monitor Block */}
@@ -1944,170 +2112,673 @@ export default function DashboardEnhanced() {
         </motion.div>
       </div>
 
-      {/* Health Trends */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.85 }}
-        className="bg-white/80 backdrop-blur-xl border border-white/50 rounded-[32px] p-6 lg:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] relative overflow-hidden mb-8 mx-4 md:mx-0"
-      >
-        <div className="flex flex-col md:flex-row items-center justify-between mb-8 gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center border border-white shadow-sm">
-              <TrendingUp className="w-5 h-5 text-[#064e3b]" />
-            </div>
-            <div>
-              <h3 className="text-xl font-medium text-[#064e3b]">Health Trends</h3>
-              <p className="text-[#666666] text-sm">Monitor your progress over time</p>
-            </div>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-4 w-full md:w-auto">
-            <div className="bg-[#F5F5F7] p-1.5 rounded-2xl md:rounded-full grid grid-cols-3 sm:flex gap-1 border border-white shadow-sm w-full md:w-auto">
-              {['1W', '1M', '3M'].map(range => (
-                <button
-                  key={range}
-                  onClick={() => setTrendTimeRange(range)}
-                  className={`px-4 py-2 rounded-xl md:rounded-full text-xs font-bold transition-all whitespace-nowrap text-center ${trendTimeRange === range
-                    ? 'bg-[#1a1a1a] text-white shadow-sm'
-                    : 'text-[#666666] hover:text-[#1a1a1a]'
-                    }`}
-                >
-                  {range}
-                </button>
-              ))}
-            </div>
-            <div className="bg-[#F5F5F7] p-1.5 rounded-2xl md:rounded-full grid grid-cols-4 sm:flex gap-1 border border-white shadow-sm w-full md:w-auto">
-              {['Calories', 'Sleep', 'Steps', 'Weight'].map(tab => (
-                <button
-                  key={tab}
-                  onClick={() => setActiveTrendTab(tab)}
-                  className={`px-1 sm:px-6 py-2 rounded-xl md:rounded-full text-[10px] sm:text-sm font-medium transition-all whitespace-nowrap text-center ${activeTrendTab === tab
-                    ? 'bg-white text-[#1a1a1a] shadow-sm'
-                    : 'text-[#666666] hover:text-[#1a1a1a]'
-                    }`}
-                >
-                  {tab}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        <div className="h-[300px] w-full">
-          {(() => {
-            const chartData = (dashboardData?.history || []).filter(h => {
-              if (!h.date) return false;
-              const date = new Date(h.date);
-              date.setHours(0, 0, 0, 0);
-              const now = new Date();
-              now.setHours(23, 59, 59, 999);
-              const diffMs = now.getTime() - date.getTime();
-              const diffDays = diffMs / (1000 * 60 * 60 * 24);
-
-              if (trendTimeRange === '1W') return diffDays < 7 && diffDays >= 0;
-              if (trendTimeRange === '1M') return diffDays < 30 && diffDays >= 0;
-              if (trendTimeRange === '3M') return diffDays < 90 && diffDays >= 0;
-              return diffDays >= 0;
-            }).map(h => ({
-              date: new Date(h.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-              value: activeTrendTab === 'Calories' ? h.calories : activeTrendTab === 'Steps' ? h.steps : activeTrendTab === 'Sleep' ? h.sleep : h.weight
-            }));
-
-            const target = activeTrendTab === 'Calories' ? (user?.nutritionGoal?.calorieGoal || 2000)
-              : activeTrendTab === 'Steps' ? (dashboardData?.goals?.steps || 10000)
-              : activeTrendTab === 'Sleep' ? (user?.profile?.lifestyle?.sleepHours || 8)
-              : (user?.nutritionGoal?.targetWeight || user?.profile?.weight || 70);
-
-            return (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={chartData}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                  <XAxis
-                    dataKey="date"
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#888888', fontSize: 12 }}
-                    dy={10}
-                  />
-                  <YAxis
-                    axisLine={false}
-                    tickLine={false}
-                    tick={{ fill: '#888888', fontSize: 12 }}
-                    dx={-10}
-                    domain={[0, (dataMax) => Math.max(dataMax, target * 1.1)]}
-                  />
-                  <Tooltip
-                    contentStyle={{ borderRadius: '16px', border: '1px solid #f1f5f9', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}
-                    formatter={(value) => [`${value}`, activeTrendTab]}
-                    labelStyle={{ color: '#888888', marginBottom: '4px' }}
-                  />
-                  <defs>
-                    <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#000000" stopOpacity={0.1} />
-                      <stop offset="95%" stopColor="#000000" stopOpacity={0} />
-                    </linearGradient>
-                  </defs>
-                  <Area
-                    type="monotone"
-                    dataKey="value"
-                    stroke="#000000"
-                    strokeWidth={4}
-                    fillOpacity={1}
-                    fill="url(#colorValue)"
-                    activeDot={{ r: 6, fill: '#1a1a1a', strokeWidth: 2, stroke: '#fff' }}
-                  />
-                  <ReferenceLine
-                    y={target}
-                    stroke="#000000"
-                    strokeDasharray="5 5"
-                    strokeWidth={1.5}
-                    label={{
-                      value: `Target: ${target}`,
-                      position: 'insideBottomRight',
-                      fill: '#000000',
-                      fontSize: 10,
-                      fontWeight: 'bold',
-                      offset: 10
-                    }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            );
-          })()}
-        </div>
-      </motion.div>
+      {/* Vitals Log Modal - Unified Bottom Sheet for Weight, Steps, Sleep, Water */}
       <AnimatePresence>
-        {showMealModal && (
-          <MealDetailModal
-            meal={selectedMealForModal}
-            onClose={() => setShowMealModal(false)}
-            onAdd={async (foodData) => {
-              try {
-                const foodItem = foodData.foodItem || foodData;
-                await api.post('nutrition/log-meal', {
-                  mealType: activeMealTab === 'snacks' ? 'snack' : activeMealTab,
-                  foodItems: [{
-                    name: foodItem.name,
-                    quantity: foodItem.quantity,
-                    nutrition: foodItem.nutrition
-                  }],
-                  healthScore: foodData.healthScore,
-                  healthScore10: foodData.healthScore10,
-                  micronutrients: foodData.micronutrients,
-                  source: 'dashboard_gallery',
-                  timestamp: new Date()
-                });
-                toast.success('Meal added to your logs!');
-                setShowMealModal(false);
-                fetchDashboard(true);
-                fetchNutrition(new Date().toISOString().split('T')[0], true);
-                // Refresh logged meals
-                nutritionService.getTodayLogs().then(res => setLoggedMeals(res.data?.foodLogs || res.data?.logs || []));
-              } catch (err) {
-                toast.error('Failed to log meal');
-              }
-            }}
-          />
+        {isLogVitalsOpen && (
+          <>
+            {/* Dark Overlay */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[70]"
+              onClick={() => setIsLogVitalsOpen(false)}
+            />
+
+            {/* Bottom Sheet */}
+            <motion.div
+              initial={{ y: "100%" }}
+              animate={{ y: 0 }}
+              exit={{ y: "100%" }}
+              transition={{ type: "spring", damping: 30, stiffness: 300 }}
+              className="fixed bottom-0 left-0 w-full h-[90vh] bg-[#FAFAFA] rounded-t-[40px] shadow-[0_-20px_60px_rgba(15,23,42,0.15)] z-[71] flex flex-col border-t border-white overflow-hidden"
+            >
+              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-white/20 rounded-full z-20" />
+
+              {/* Seamless Dark Header Section - Flush with top/sides */}
+              <div className="bg-[#0F172A] pt-8 px-6 pb-10 rounded-b-[40px] relative text-white shadow-xl overflow-hidden border-b border-white/5">
+                {/* Visual Glows */}
+                <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 blur-[100px] rounded-full" />
+                
+                {/* Close Button - Compact Circular Styled */}
+                <button
+                  onClick={() => setIsLogVitalsOpen(false)}
+                  className="absolute top-6 right-6 w-8 h-8 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-all z-30"
+                >
+                  <Plus className="w-4 h-4 rotate-45 text-white" />
+                </button>
+
+                <div className="relative z-20 flex flex-col gap-3">
+                  {/* Dynamic Badge */}
+                  <div className="flex justify-start">
+                    <div className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full border border-white/10 flex items-center gap-2">
+                       {activeLogTab === 'Weight' && <Scale className="w-3 h-3 text-white/50" />}
+                       {activeLogTab === 'Water' && <Droplet className="w-3 h-3 text-white/50" />}
+                       {activeLogTab === 'Steps' && <Footprints className="w-3 h-3 text-white/50" />}
+                       {activeLogTab === 'Sleep' && <Moon className="w-3 h-3 text-white/50" />}
+                       <span className="text-[9px] font-black text-white/60 uppercase tracking-[0.1em]">Activity Log</span>
+                    </div>
+                  </div>
+                  
+                  <h3 className="text-xl font-black uppercase leading-tight tracking-tight">Track {activeLogTab}</h3>
+                </div>
+              </div>
+
+              {/* Navigation Tabs - Cleaner Spacing */}
+              <div className="px-6 relative z-30 mt-4 mb-4">
+                <div className="bg-white p-1 rounded-[22px] shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-slate-100 flex gap-1 items-stretch">
+                  {[
+                    { id: 'Weight', icon: Scale },
+                    { id: 'Water', icon: Droplet },
+                    { id: 'Steps', icon: Footprints },
+                    { id: 'Sleep', icon: Moon }
+                  ].map(({ id, icon: Icon }) => {
+                    const isActive = activeLogTab === id;
+                    return (
+                      <button
+                        key={id}
+                        onClick={() => setActiveLogTab(id)}
+                        className={`flex-1 flex flex-col items-center justify-center py-2.5 rounded-[18px] transition-all duration-300 ${
+                          isActive 
+                            ? 'bg-[#F8FAFC] shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] border border-[#F1F5F9] text-[#1D293D]' 
+                            : 'text-[#94A3B8] hover:bg-slate-50'
+                        }`}
+                      >
+                        <Icon className={`w-4 h-4 mb-1 ${isActive ? 'text-[#1F5C49]' : 'text-[#94A3B8]'}`} />
+                        <span className={`text-[8.5px] uppercase tracking-wider ${isActive ? 'font-black' : 'font-bold'}`}>{id}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Dynamic Content Mapping */}
+              <div className="flex-1 overflow-y-auto px-6 pb-12">
+                <AnimatePresence mode="wait">
+                  <motion.div
+                    key={activeLogTab}
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -20 }}
+                    className="py-4"
+                  >
+                    {activeLogTab === 'Weight' && (
+                      <div className="space-y-6">
+                        {/* Summary Card - High Fidelity */}
+                        <div className="bg-white border border-[#E8F3EE] shadow-[0_1px_3px_rgba(0,0,0,0.1)] rounded-[32px] p-8 relative group">
+                           <div className="flex items-center justify-between mb-10">
+                             <h4 className="text-lg font-bold text-[#90A1B9]">Current <span className="text-[#1D293D] font-black">{(Number(vitalsInput.weight) || Number(user?.profile?.weight) || 72.5).toFixed(1)} kg</span></h4>
+                             <div className="px-3 py-1 bg-[#E8F3EE] rounded-full flex items-center gap-1.5 ">
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#1F5C49]" />
+                                <span className="text-[9px] font-black text-[#1F5C49] uppercase tracking-widest">Live</span>
+                             </div>
+                           </div>
+
+                           {/* Semi-Circle Gauge */}
+                           <div className="flex flex-col items-center justify-center my-10 relative">
+                              <div className="relative w-[220px] h-[130px]">
+                                <svg width="220" height="130" viewBox="0 0 220 130">
+                                  <path d="M 20 120 A 80 80 0 0 1 200 120" fill="none" stroke="#F1F5F9" strokeWidth="12" strokeLinecap="round" />
+                                  <motion.path 
+                                    initial={{ pathLength: 0 }}
+                                    animate={{ pathLength: (Math.min(100, (Number(vitalsInput.weight) || Number(user?.profile?.weight) || 0)) / 100) }}
+                                    d="M 20 120 A 80 80 0 0 1 200 120" 
+                                    fill="none" stroke="#10B981" strokeWidth="12" strokeLinecap="round" 
+                                  />
+                                </svg>
+                                <div className="absolute top-[18px] left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white border-2 border-[#10B981] flex items-center justify-center shadow-sm">
+                                  <Scale className="w-3.5 h-3.5 text-[#10B981]" />
+                                </div>
+                              </div>
+                              <div className="text-center -mt-8">
+                                <span className="text-4xl font-black text-[#1D293D]">{(Number(vitalsInput.weight) || Number(user?.profile?.weight) || 0).toFixed(1)}</span>
+                                <p className="text-[9px] font-black text-[#90A1B9] uppercase tracking-[0.1em] mt-1">Kilograms Today</p>
+                              </div>
+                           </div>
+
+                           <div className="bg-[#F8FAFC] rounded-[24px] p-6 flex justify-between items-center border border-[#F1F5F9]">
+                              <div className="flex-1 flex flex-col items-center border-r border-slate-200">
+                                 <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Goal</span>
+                                 <p className="text-lg font-black text-[#1D293D]">{dashboardData?.goals?.weight || 70}<span className="text-xs ml-1">kg</span></p>
+                              </div>
+                              <div className="flex-1 flex flex-col items-center border-r border-slate-200">
+                                 <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Progress</span>
+                                 <p className="text-lg font-black text-[#1F5C49]">
+                                    {(() => {
+                                      const current = Number(vitalsInput.weight) || Number(user?.profile?.weight) || 0;
+                                      const target = Number(dashboardData?.goals?.weight || user?.nutritionGoal?.weightGoal || 70);
+                                      const diff = (current - target).toFixed(1);
+                                      return (diff > 0 ? `+${diff}` : diff) + 'kg';
+                                    })()}
+                                 </p>
+                              </div>
+                              <div className="flex-1 flex flex-col items-center">
+                                 <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">BMI</span>
+                                 <p className="text-lg font-black text-[#1D293D]">
+                                    {(() => {
+                                      const w = Number(vitalsInput.weight || user?.profile?.weight || 72.5);
+                                      const h = Number(user?.profile?.height || 170) / 100;
+                                      return (w / (h * h)).toFixed(1);
+                                    })()}
+                                 </p>
+                              </div>
+                           </div>
+                        </div>
+
+                        <div className="bg-white/60 backdrop-blur-md rounded-[32px] p-8 border border-white shadow-sm overflow-hidden group">
+                           <div className="flex items-center justify-between mb-8">
+                              <div className="flex items-center gap-3">
+                                 <Activity className="w-5 h-5 text-[#1F5C49]" />
+                                 <h4 className="text-lg font-black text-[#1D293D]">Trend</h4>
+                              </div>
+                              <div className="px-3 py-1.5 bg-[#F3F9F6] rounded-full"><span className="text-[9px] font-black text-[#1F5C49] uppercase">Last 7 Days</span></div>
+                           </div>
+                           <div className="h-32 w-full">
+                              <ResponsiveContainer width="100%" height="100%">
+                                 <LineChart data={formattedHistory.weight}>
+                                    <Line type="monotone" dataKey="value" stroke="#1F5C49" strokeWidth={3} dot={{ fill: '#1F5C49', stroke: '#fff', strokeWidth: 2, r: 4 }} />
+                                    <XAxis dataKey="day" hide /><YAxis hide domain={['dataMin - 1', 'dataMax + 1']} />
+                                 </LineChart>
+                              </ResponsiveContainer>
+                              <div className="flex justify-between px-2 mt-2">
+                                {formattedHistory.weight.map(item => (<span key={item.day} className="text-[9px] font-black text-[#CAD5E2]">{item.day}</span>))}
+                              </div>
+                           </div>
+                        </div>
+
+                        <div className="bg-white border border-[#E8F3EE] shadow-sm rounded-[24px] p-6 flex items-center gap-6">
+                           <div className="flex-[4] space-y-3">
+                              <span className="text-[9px] font-black text-[#1F5C49]/70 uppercase ml-2">Weight (kg)</span>
+                              <div className="bg-white px-4 py-3.5 rounded-2xl border border-[#E8F3EE]">
+                                 <input type="number" step="0.1" placeholder="72.5" value={vitalsInput.weight} onChange={(e) => setVitalsInput(prev => ({ ...prev, weight: e.target.value }))} className="bg-transparent text-sm font-bold text-[#1D293D] w-full focus:outline-none" />
+                              </div>
+                           </div>
+                           <div className="flex-[6] space-y-3">
+                              <span className="text-[9px] font-black text-[#1F5C49]/70 uppercase ml-2">Date</span>
+                              <div className="flex items-center gap-2 bg-white px-4 py-3.5 rounded-2xl border border-[#E8F3EE]">
+                                 <Calendar className="w-3.5 h-3.5 text-[#90A1B9]" />
+                                 <input type="date" value={vitalsInput.date} onChange={(e) => setVitalsInput(prev => ({ ...prev, date: e.target.value }))} className="bg-transparent text-sm font-bold text-[#1D293D] w-full focus:outline-none" />
+                              </div>
+                           </div>
+                        </div>
+
+                        {/* Primary Save Action */}
+                        <div className="mt-8">
+                           <button 
+                              onClick={() => handleLogVitals('Weight')}
+                              disabled={vitalsLoading}
+                              className="w-full h-16 bg-[#1F5C49] rounded-full shadow-[0_20px_40px_rgba(31,92,73,0.3)] flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50"
+                           >
+                              {vitalsLoading ? (
+                                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                              ) : (
+                                <>
+                                  <Save className="w-5 h-5 text-white" />
+                                  <span className="text-base font-black text-white tracking-tight uppercase">Save weight</span>
+                                </>
+                              )}
+                           </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {activeLogTab === 'Water' && (
+                       <div className="space-y-6 pb-24">
+                         <div className="bg-white border border-[#E8F3EE] shadow-[0_1px_3px_rgba(0,0,0,0.1)] rounded-[32px] p-8 relative overflow-hidden group">
+                           {/* Live Badge */}
+                           <div className="absolute top-6 right-6 px-3 py-1 bg-[#EEF2FF]/50 rounded-full flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#3B82F6] animate-pulse" />
+                              <span className="text-[9px] font-black text-[#3B82F6] uppercase tracking-widest">Live</span>
+                           </div>
+
+                           <div className="text-center mt-4">
+                             <h4 className="text-lg font-bold text-slate-400">You have drank <span className="text-[#1D293D] font-black">{waterLog} glasses</span></h4>
+                             <p className="text-sm font-bold text-slate-300 mt-1">today</p>
+                           </div>
+                           {/* Semi-Circle Gauge */}
+                           <div className="flex flex-col items-center justify-center my-10 relative">
+                              <div className="relative w-[220px] h-[130px]">
+                                <svg width="220" height="130" viewBox="0 0 220 130">
+                                  <path d="M 20 120 A 80 80 0 0 1 200 120" fill="none" stroke="#F1F5F9" strokeWidth="12" strokeLinecap="round" />
+                                  <motion.path 
+                                    initial={{ pathLength: 0 }}
+                                    animate={{ pathLength: (Math.min(8, waterLog) / 8) }}
+                                    d="M 20 120 A 80 80 0 0 1 200 120" 
+                                    fill="none" stroke="#3B82F6" strokeWidth="12" strokeLinecap="round" 
+                                  />
+                                </svg>
+                                <div className="absolute top-[18px] left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white border-2 border-[#3B82F6] flex items-center justify-center shadow-sm">
+                                  <GlassWater className="w-3.5 h-3.5 text-[#3B82F6]" />
+                                </div>
+                              </div>
+                              <div className="text-center -mt-8">
+                                <span className="text-4xl font-black text-[#1D293D]">{waterLog}</span>
+                                <p className="text-[9px] font-black text-[#90A1B9] uppercase tracking-[0.1em] mt-1">Glasses Today</p>
+                              </div>
+                           </div>
+
+                           <div className="bg-[#F8FAFC] rounded-[24px] p-6 flex justify-between items-center border border-[#F1F5F9] mt-4">
+                              <div className="flex-1 flex flex-col items-center border-r border-slate-200">
+                                 <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Volume</span>
+                                 <p className="text-lg font-black text-[#1D293D]">{waterLog * 250}<span className="text-xs ml-1 text-slate-300">ml</span></p>
+                              </div>
+                              <div className="flex-1 flex flex-col items-center border-r border-slate-200">
+                                 <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Remaining</span>
+                                 <p className="text-lg font-black text-[#3B82F6]">{Math.max(0, 8 - waterLog)}<span className="text-xs ml-1 font-bold">glasses</span></p>
+                              </div>
+                              <div className="flex-1 flex flex-col items-center">
+                                 <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Goal</span>
+                                 <p className="text-lg font-black text-[#1D293D]">8</p>
+                              </div>
+                           </div>
+                         </div>
+
+                         {/* Weekly Hydration Chart Card */}
+                         <div className="bg-white border border-[#E8F3EE] shadow-sm rounded-[32px] p-6">
+                            <div className="flex justify-between items-center mb-10">
+                               <h4 className="text-base font-black text-[#1D293D] tracking-tight">Weekly Hydration</h4>
+                               <div className="px-3 py-1 bg-slate-50 border border-slate-100 rounded-lg">
+                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Last 7 Days</span>
+                               </div>
+                            </div>
+                            
+                            <div className="h-[180px] w-full">
+                               <ResponsiveContainer width="100%" height="100%">
+                                  <BarChart data={formattedHistory.water}>
+
+                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                                     <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight: 900, fill: '#94A3B8'}} dy={10} />
+                                     <YAxis hide />
+                                     <Tooltip cursor={{fill: '#F8FAFC'}} content={({ active, payload }) => {
+                                        if (active && payload && payload.length) {
+                                          return (
+                                            <div className="bg-white p-3 rounded-xl shadow-lg border border-slate-100">
+                                              <p className="text-xs font-black text-slate-400 uppercase">{payload[0].payload.day}</p>
+                                              <p className="text-sm font-black text-[#3B82F6]">{payload[0].value} Glasses</p>
+                                            </div>
+                                          );
+                                        }
+                                        return null;
+                                     }} />
+                                     <Bar dataKey="value" radius={[8, 8, 8, 8]} barSize={28}>
+                                        {formattedHistory.water.map((entry, index) => (
+                                          <Cell key={index} fill={entry.value >= 8 ? '#3B82F6' : '#E0E7FF'} />
+                                        ))}
+                                     </Bar>
+                                     <ReferenceLine y={8} stroke="#3B82F6" strokeDasharray="3 3" opacity={0.3} />
+                                  </BarChart>
+                               </ResponsiveContainer>
+                            </div>
+
+                            {/* Legend */}
+                            <div className="flex items-center justify-center gap-6 mt-6">
+                               <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 rounded-full bg-[#3B82F6]" />
+                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Goal Met</span>
+                               </div>
+                               <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 rounded-full bg-[#E0E7FF]" />
+                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">In Progress</span>
+                               </div>
+                            </div>
+                         </div>
+
+                         {/* Quick Log Card - High Fidelity */}
+                         <div className="bg-white border border-[#E8F3EE] shadow-sm rounded-[32px] p-8 space-y-8">
+                            <div className="flex items-center gap-3">
+                               <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center"><Plus className="w-4 h-4 text-[#3B82F6]" /></div>
+                               <h4 className="text-base font-black text-[#1D293D]">Quick Log</h4>
+                            </div>
+
+                            <div className="flex items-center justify-center gap-10">
+                               <button 
+                                 onClick={() => setWaterLog(prev => Math.max(0, prev - 1))}
+                                 className="w-16 h-16 rounded-full bg-white shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-slate-100 flex items-center justify-center text-slate-400 active:scale-95 transition-all"
+                               >
+                                 <Minus className="w-6 h-6" />
+                               </button>
+
+                               <div className="relative flex items-center justify-center">
+                                  <div className="w-28 h-28 rounded-full border-[6px] border-[#3B82F6]/5 flex items-center justify-center">
+                                     <div className="w-22 h-22 rounded-full bg-[#EFF6FF] flex items-center justify-center shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+                                        <span className="text-4xl font-black text-[#3B82F6]">{waterLog}</span>
+                                     </div>
+                                  </div>
+                               </div>
+
+                               <button 
+                                 onClick={() => setWaterLog(prev => prev + 1)}
+                                 className="w-16 h-16 rounded-full bg-[#3B82F6] shadow-[0_8px_30px_rgba(59,130,246,0.25)] flex items-center justify-center text-white active:scale-95 transition-all"
+                               >
+                                 <Plus className="w-6 h-6" />
+                               </button>
+                            </div>
+                         </div>
+
+                         {/* Primary Save Action */}
+                         <div className="mt-8">
+                            <button 
+                               onClick={() => handleLogVitals('Water', waterLog - (nutritionData?.totalWater ?? nutritionData?.waterIntake ?? 0))}
+                               disabled={vitalsLoading}
+                               className="w-full h-16 bg-[#3B82F6] rounded-full shadow-[0_20px_40px_rgba(59,130,246,0.3)] flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50"
+                            >
+                               {vitalsLoading ? (
+                                 <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                               ) : (
+                                 <>
+                                   <Save className="w-5 h-5 text-white" />
+                                   <span className="text-base font-black text-white tracking-tight uppercase">Save water</span>
+                                 </>
+                               )}
+                            </button>
+                         </div>
+                       </div>
+                    )}
+
+                    {activeLogTab === 'Steps' && (
+                       <div className="space-y-6 pb-24">
+                         <div className="bg-white border border-[#E8F3EE] shadow-[0_1px_3px_rgba(0,0,0,0.1)] rounded-[32px] p-8 relative overflow-hidden group">
+                           {/* Live Badge */}
+                           <div className="absolute top-6 right-6 px-3 py-1 bg-orange-50 rounded-full flex items-center gap-1.5">
+                              <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                              <span className="text-[9px] font-black text-orange-600 uppercase tracking-widest">Live</span>
+                           </div>
+
+                           <div className="text-center mt-4">
+                             <h4 className="text-lg font-bold text-slate-400">You have walked <span className="text-[#1D293D] font-black">{(Number(vitalsInput.steps) || Number(wearableData?.todayMetrics?.steps) || 0).toLocaleString()} steps</span></h4>
+                             <p className="text-sm font-bold text-slate-300 mt-1">today</p>
+                           </div>
+
+                           {/* Semi-Circle Gauge - Increased height to prevent clipping */}
+                           <div className="flex flex-col items-center justify-center my-10 relative">
+                              <div className="relative w-[220px] h-[130px]">
+                                <svg width="220" height="130" viewBox="0 0 220 130">
+                                  <path d="M 20 120 A 80 80 0 0 1 200 120" fill="none" stroke="#F1F5F9" strokeWidth="12" strokeLinecap="round" />
+                                  <motion.path 
+                                    initial={{ pathLength: 0 }}
+                                    animate={{ pathLength: (Math.min(10000, (Number(vitalsInput.steps) || Number(wearableData?.todayMetrics?.steps) || 0)) / 10000) }}
+                                    d="M 20 120 A 80 80 0 0 1 200 120" 
+                                    fill="none" stroke="#F97316" strokeWidth="12" strokeLinecap="round" 
+                                  />
+                                </svg>
+                                <div className="absolute top-[18px] left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white border-2 border-orange-500 flex items-center justify-center shadow-sm">
+                                  <Footprints className="w-3.5 h-3.5 text-orange-500" />
+                                </div>
+                              </div>
+                              <div className="text-center -mt-8">
+                                <span className="text-4xl font-black text-[#1D293D]">{(Number(vitalsInput.steps) || Number(wearableData?.todayMetrics?.steps) || 0).toLocaleString()}</span>
+                                <p className="text-[9px] font-black text-[#90A1B9] uppercase tracking-[0.1em] mt-1">Of 10,000 steps</p>
+                              </div>
+                           </div>
+
+                           <div className="bg-[#F8FAFC] rounded-[24px] p-6 flex justify-between items-center border border-[#F1F5F9] mt-4">
+                              <div className="flex-1 flex flex-col items-center border-r border-slate-200">
+                                 <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Calories</span>
+                                 <p className="text-lg font-black text-[#1D293D]">{(Number(vitalsInput.steps || wearableData?.todayMetrics?.steps || 0) * 0.04).toFixed(0)}<span className="text-xs ml-1 text-slate-300">kcal</span></p>
+                              </div>
+                              <div className="flex-1 flex flex-col items-center border-r border-slate-200">
+                                 <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Distance</span>
+                                 <p className="text-lg font-black text-[#1D293D]">{(Number(vitalsInput.steps || wearableData?.todayMetrics?.steps || 0) * 0.0008).toFixed(1)}<span className="text-xs ml-1 text-slate-300 font-bold">km</span></p>
+                              </div>
+                              <div className="flex-1 flex flex-col items-center">
+                                 <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Goal</span>
+                                 <p className="text-lg font-black text-[#1D293D]">10k</p>
+                              </div>
+                           </div>
+                         </div>
+
+                         {/* Weekly Progress Chart Card */}
+                         <div className="bg-white border border-[#E8F3EE] shadow-sm rounded-[32px] p-6">
+                            <div className="flex justify-between items-center mb-10">
+                               <h4 className="text-base font-black text-[#1D293D] tracking-tight">Weekly Progress</h4>
+                               <div className="px-3 py-1 bg-slate-50 border border-slate-100 rounded-lg">
+                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Last 7 Days</span>
+                               </div>
+                            </div>
+                            
+                            <div className="h-[180px] w-full">
+                               <ResponsiveContainer width="100%" height="100%">
+                                  <BarChart data={formattedHistory.steps}>
+
+                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                                     <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight: 900, fill: '#94A3B8'}} dy={10} />
+                                     <YAxis hide />
+                                     <Tooltip cursor={{fill: '#FFF7ED'}} content={({ active, payload }) => {
+                                        if (active && payload && payload.length) {
+                                          return (
+                                            <div className="bg-white p-3 rounded-xl shadow-lg border border-orange-100">
+                                              <p className="text-xs font-black text-slate-400 uppercase">{payload[0].payload.day}</p>
+                                              <p className="text-sm font-black text-[#F97316]">{payload[0].value.toLocaleString()} Steps</p>
+                                            </div>
+                                          );
+                                        }
+                                        return null;
+                                     }} />
+                                     <Bar dataKey="value" radius={[8, 8, 8, 8]} barSize={28}>
+                                        {formattedHistory.steps.map((entry, index) => (
+                                          <Cell key={index} fill={entry.value >= 10000 ? '#F97316' : '#FFEDD5'} />
+                                        ))}
+                                     </Bar>
+                                     <ReferenceLine y={10000} stroke="#F97316" strokeDasharray="3 3" opacity={0.3} />
+                                  </BarChart>
+                               </ResponsiveContainer>
+                            </div>
+
+                            {/* Legend */}
+                            <div className="flex items-center justify-center gap-6 mt-6">
+                               <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 rounded-full bg-[#F97316]" />
+                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Goal Met</span>
+                               </div>
+                               <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 rounded-full bg-[#FFEDD5]" />
+                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">In Progress</span>
+                               </div>
+                            </div>
+                         </div>
+
+                         {/* Manual Entry Card */}
+                         <div className="bg-white border border-[#E8F3EE] shadow-sm rounded-[32px] p-8 space-y-8">
+                            <div className="flex items-center gap-3">
+                               <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center"><Plus className="w-4 h-4 text-[#F97316]" /></div>
+                               <h4 className="text-base font-black text-[#1D293D]">Manual Entry</h4>
+                            </div>
+
+                            <div className="flex gap-4">
+                               <div className="flex-1 space-y-3">
+                                  <span className="text-[9px] font-black text-[#90A1B9] uppercase ml-1">Steps to Add</span>
+                                  <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                     <input type="number" placeholder="2000" value={vitalsInput.steps} onChange={(e) => setVitalsInput(prev => ({ ...prev, steps: e.target.value }))} className="bg-transparent text-sm font-black text-[#1D293D] placeholder:text-slate-200 w-full focus:outline-none" />
+                                  </div>
+                               </div>
+                               <div className="flex-1 space-y-3">
+                                  <span className="text-[9px] font-black text-[#90A1B9] uppercase ml-1">Date</span>
+                                  <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-2">
+                                     <Calendar className="w-4 h-4 text-slate-200" />
+                                     <input type="date" value={vitalsInput.date} onChange={(e) => setVitalsInput(prev => ({ ...prev, date: e.target.value }))} className="bg-transparent text-xs font-black text-[#1D293D] w-full focus:outline-none" />
+                                  </div>
+                               </div>
+                            </div>
+                         </div>
+
+                         {/* Primary Save Action */}
+                         <div className="mt-4">
+                            <button 
+                               onClick={() => handleLogVitals('Steps')}
+                               disabled={vitalsLoading}
+                               className="w-full h-16 bg-[#F97316] rounded-full shadow-[0_20px_40px_rgba(249,115,22,0.3)] flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50"
+                            >
+                               {vitalsLoading ? (
+                                 <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                               ) : (
+                                 <>
+                                   <Save className="w-5 h-5 text-white" />
+                                   <span className="text-base font-black text-white tracking-tight uppercase">Save steps</span>
+                                 </>
+                               )}
+                            </button>
+                         </div>
+                       </div>
+                    )}
+
+                    {activeLogTab === 'Sleep' && (
+                       <div className="space-y-6 pb-24">
+                         <div className="bg-white border border-[#E8F3EE] shadow-[0_1px_3px_rgba(0,0,0,0.1)] rounded-[32px] p-8 relative overflow-hidden group">
+                           <div className="absolute top-6 right-6 px-3 py-1 bg-purple-50 rounded-full flex items-center gap-1.5 ">
+                              <span className="text-[9px] font-black text-purple-600 uppercase tracking-widest">Last Night</span>
+                           </div>
+
+                           <div className="text-center mt-4">
+                             <h4 className="text-lg font-bold text-slate-400">You slept <span className="text-[#1D293D] font-black">{vitalsInput.sleepHours}h {vitalsInput.sleepMins}m</span></h4>
+                           </div>
+
+                           {/* Semi-Circle Gauge - Increased height to prevent clipping */}
+                           <div className="flex flex-col items-center justify-center my-10 relative">
+                              <div className="relative w-[220px] h-[130px]">
+                                <svg width="220" height="130" viewBox="0 0 220 130">
+                                  <path d="M 20 120 A 80 80 0 0 1 200 120" fill="none" stroke="#F1F5F9" strokeWidth="12" strokeLinecap="round" />
+                                  <motion.path 
+                                    initial={{ pathLength: 0 }}
+                                    animate={{ pathLength: (Math.min(8, (Number(vitalsInput.sleepHours) + Number(vitalsInput.sleepMins)/60)) / 8) }}
+                                    d="M 20 120 A 80 80 0 0 1 200 120" 
+                                    fill="none" stroke="#A855F7" strokeWidth="12" strokeLinecap="round" 
+                                  />
+                                </svg>
+                                <div className="absolute top-[18px] left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white border-2 border-purple-500 flex items-center justify-center shadow-sm">
+                                  <Moon className="w-3.5 h-3.5 text-purple-500" />
+                                </div>
+                              </div>
+                              <div className="text-center -mt-8">
+                                <span className="text-4xl font-black text-[#1D293D]">{(Number(vitalsInput.sleepHours) + (Number(vitalsInput.sleepMins)/60)).toFixed(1)}</span>
+                                <p className="text-[9px] font-black text-[#90A1B9] uppercase tracking-[0.1em] mt-1">Hours Logged</p>
+                              </div>
+                           </div>
+
+                           <div className="bg-[#F8FAFC] rounded-[24px] p-6 flex justify-between items-center border border-[#F1F5F9] mt-4">
+                              <div className="flex-1 flex flex-col items-center border-r border-slate-200">
+                                 <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Deep</span>
+                                 <p className="text-lg font-black text-[#1D293D]">{(Number(vitalsInput.sleepHours) * 0.3).toFixed(1)}<span className="text-xs ml-1 text-slate-300">h</span></p>
+                              </div>
+                              <div className="flex-1 flex flex-col items-center border-r border-slate-200">
+                                 <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Quality</span>
+                                 <p className="text-lg font-black text-purple-600">85%</p>
+                              </div>
+                              <div className="flex-1 flex flex-col items-center">
+                                 <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Goal</span>
+                                 <p className="text-lg font-black text-[#1D293D]">8h</p>
+                              </div>
+                           </div>
+                         </div>
+
+                         {/* Weekly Sleep Analysis Chart */}
+                         <div className="bg-white border border-[#E8F3EE] shadow-sm rounded-[32px] p-6">
+                            <div className="flex justify-between items-center mb-10">
+                               <h4 className="text-base font-black text-[#1D293D] tracking-tight">Weekly Sleep</h4>
+                               <div className="px-3 py-1 bg-slate-50 border border-slate-100 rounded-lg">
+                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Last 7 Days</span>
+                               </div>
+                            </div>
+                            
+                            <div className="h-[180px] w-full">
+                               <ResponsiveContainer width="100%" height="100%">
+                                  <BarChart data={formattedHistory.sleep}>
+
+                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                                     <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight: 900, fill: '#94A3B8'}} dy={10} />
+                                     <YAxis hide />
+                                     <Tooltip cursor={{fill: '#F5F3FF'}} content={({ active, payload }) => {
+                                        if (active && payload && payload.length) {
+                                          return (
+                                            <div className="bg-white p-3 rounded-xl shadow-lg border border-purple-100">
+                                              <p className="text-xs font-black text-slate-400 uppercase">{payload[0].payload.day}</p>
+                                              <p className="text-sm font-black text-[#A855F7]">{payload[0].value} Hours</p>
+                                            </div>
+                                          );
+                                        }
+                                        return null;
+                                     }} />
+                                     <Bar dataKey="value" radius={[8, 8, 8, 8]} barSize={28}>
+                                        {formattedHistory.sleep.map((entry, index) => (
+                                          <Cell key={index} fill={entry.value >= 8 ? '#A855F7' : '#E9D5FF'} />
+                                        ))}
+                                     </Bar>
+                                     <ReferenceLine y={8} stroke="#A855F7" strokeDasharray="3 3" opacity={0.3} />
+                                  </BarChart>
+                               </ResponsiveContainer>
+                            </div>
+
+                            {/* Legend */}
+                            <div className="flex items-center justify-center gap-6 mt-6">
+                               <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 rounded-full bg-[#A855F7]" />
+                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Goal Met</span>
+                               </div>
+                               <div className="flex items-center gap-2">
+                                  <div className="w-2 h-2 rounded-full bg-[#E9D5FF]" />
+                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Below Goal</span>
+                               </div>
+                               <div className="flex items-center gap-2">
+                                  <div className="w-4 border-t-2 border-dashed border-[#A855F7]/30" />
+                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Goal (8h)</span>
+                               </div>
+                            </div>
+                         </div>
+
+                         {/* Log Sleep Manual Entry Card */}
+                         <div className="bg-white border border-[#F1F5F9] shadow-[0_10px_40px_rgba(0,0,0,0.03)] rounded-[32px] p-8 space-y-8">
+                            <div className="flex items-center gap-4">
+                               <div className="w-9 h-9 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.08)] flex items-center justify-center border border-slate-50"><Plus className="w-4 h-4 text-slate-400" /></div>
+                               <h4 className="text-xl font-bold text-[#1D293D] tracking-tight">Log Sleep</h4>
+                            </div>
+
+                            <div className="grid grid-cols-12 gap-4">
+                               <div className="col-span-3 space-y-3">
+                                  <span className="text-[10px] font-black text-[#94A3B8] uppercase tracking-[0.15em] ml-2">Hours</span>
+                                  <div className="bg-white px-2 py-4.5 rounded-[22px] border border-[#E2E8F0] flex items-center justify-center h-[72px]">
+                                     <input type="number" placeholder="7" value={vitalsInput.sleepHours || ''} onChange={(e) => setVitalsInput(prev => ({ ...prev, sleepHours: e.target.value }))} className="bg-transparent text-xl font-black text-[#A0AEC0] placeholder:text-[#CBD5E0] text-center w-full focus:outline-none" />
+                                  </div>
+                               </div>
+                               <div className="col-span-3 space-y-3">
+                                  <span className="text-[10px] font-black text-[#94A3B8] uppercase tracking-[0.15em] ml-2">Mins</span>
+                                  <div className="bg-white px-2 py-4.5 rounded-[22px] border border-[#E2E8F0] flex items-center justify-center h-[72px]">
+                                     <input type="number" placeholder="15" value={vitalsInput.sleepMins || ''} onChange={(e) => setVitalsInput(prev => ({ ...prev, sleepMins: e.target.value }))} className="bg-transparent text-xl font-black text-[#A0AEC0] placeholder:text-[#CBD5E0] text-center w-full focus:outline-none" />
+                                  </div>
+                               </div>
+                               <div className="col-span-6 space-y-3">
+                                  <span className="text-[10px] font-black text-[#94A3B8] uppercase tracking-[0.15em] ml-2">Date</span>
+                                  <div className="bg-white px-6 py-4.5 rounded-[22px] border border-[#E2E8F0] flex items-center gap-4 h-[72px]">
+                                     <Calendar className="w-5.5 h-5.5 text-[#94A3B8]" />
+                                     <input type="date" value={vitalsInput.date} onChange={(e) => setVitalsInput(prev => ({ ...prev, date: e.target.value }))} className="bg-transparent text-[16px] font-black text-[#1D293D] w-full focus:outline-none" />
+                                  </div>
+                               </div>
+                            </div>
+                         </div>
+
+                         {/* Primary Save Action */}
+                         <div className="mt-4">
+                            <button 
+                               onClick={() => handleLogVitals('Sleep')}
+                               disabled={vitalsLoading}
+                               className="w-full h-16 bg-[#8B5CF6] rounded-full shadow-[0_20px_40px_rgba(139,92,246,0.3)] flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50"
+                            >
+                               {vitalsLoading ? (
+                                 <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                               ) : (
+                                 <>
+                                   <Save className="w-5 h-5 text-white" />
+                                   <span className="text-base font-black text-white tracking-tight uppercase">Save sleep</span>
+                                 </>
+                               )}
+                            </button>
+                         </div>
+                       </div>
+                    )}
+
+                  </motion.div>
+                </AnimatePresence>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
       </div>

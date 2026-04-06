@@ -83,10 +83,10 @@ export default function MobileBottomNav() {
       : { label: 'Analysis', icon: BarChart3, path: '/complete-analysis', color: 'text-purple-600', borderColor: 'border-purple-100', iconBg: 'bg-purple-50' },
     { label: 'Ask Coach', icon: Sparkles, path: '/ai-chat', color: 'text-emerald-600', borderColor: 'border-emerald-100', iconBg: 'bg-emerald-50' },
     { label: 'Challenge', icon: Trophy, path: '/challenge', color: 'text-amber-500', borderColor: 'border-amber-100', iconBg: 'bg-amber-50' },
-    { label: 'Steps', icon: Footprints, path: '/log-vitals/steps', color: 'text-indigo-500', borderColor: 'border-indigo-100', iconBg: 'bg-indigo-50' },
-    { label: 'Sleep', icon: Moon, path: '/log-vitals/sleep', color: 'text-blue-500', borderColor: 'border-blue-100', iconBg: 'bg-blue-50' },
-    { label: 'Weight', icon: Scale, path: '/log-vitals/weight', color: 'text-emerald-500', borderColor: 'border-emerald-100', iconBg: 'bg-emerald-50' },
-    { label: 'Water', icon: Droplets, path: '/nutrition', color: 'text-cyan-500', borderColor: 'border-cyan-100', iconBg: 'bg-cyan-50', state: { scrollToWater: true } }
+    { label: 'Steps', icon: Footprints, path: '/dashboard', color: 'text-indigo-500', borderColor: 'border-indigo-100', iconBg: 'bg-indigo-50', state: { openLogVitals: 'Steps' } },
+    { label: 'Sleep', icon: Moon, path: '/dashboard', color: 'text-blue-500', borderColor: 'border-blue-100', iconBg: 'bg-blue-50', state: { openLogVitals: 'Sleep' } },
+    { label: 'Weight', icon: Scale, path: '/dashboard', color: 'text-emerald-500', borderColor: 'border-emerald-100', iconBg: 'bg-emerald-50', state: { openLogVitals: 'Weight' } },
+    { label: 'Water', icon: Droplets, path: '/dashboard', color: 'text-cyan-500', borderColor: 'border-cyan-100', iconBg: 'bg-cyan-50', state: { openLogVitals: 'Water' } }
   ];
 
   const moreMenuItems = [
