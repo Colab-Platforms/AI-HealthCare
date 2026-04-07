@@ -71,9 +71,9 @@ export default function MobileBottomNav() {
     { path: '/dashboard', icon: LayoutDashboard, label: 'Home' },
     isDiabetic
       ? { path: '/complete-analysis', icon: BarChart3, label: 'Analysis' }
-      : { path: '/nutrition', icon: Activity, label: 'Nutrition' },
+      : { path: '/nutrition', icon: Activity, label: 'Nutrition', image: 'https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_3.svg?v=1775560186' },
     { path: '#log', icon: Plus, label: 'Log', isCenter: true },
-    { path: reportsPath, icon: FileText, label: 'Reports' }
+    { path: reportsPath, icon: FileText, label: 'Reports' },
   ];
 
   const logActivities = [
@@ -387,7 +387,15 @@ export default function MobileBottomNav() {
                 aria-label={item.label}
                 title={item.label}
               >
-                <Icon className="w-5 h-5" />
+                {item.image ? (
+                  <img 
+                    src={item.image} 
+                    alt={item.label} 
+                    className={`w-5 h-5 object-contain transition-all duration-300 ${active ? 'scale-110' : 'opacity-40 grayscale group-hover:opacity-80 group-hover:grayscale-0'}`} 
+                  />
+                ) : (
+                  <Icon className="w-5 h-5 transition-transform group-hover:scale-110" />
+                )}
                 <span className="text-[10px] font-black uppercase tracking-tighter mt-0.5">{item.label}</span>
               </Link>
             );
