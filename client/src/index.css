@@ -435,7 +435,7 @@ textarea:focus {
   bottom: 0;
   left: 0;
   right: 0;
-  z-index: 50;
+  z-index: 250;
   display: none;
   padding: 0;
   padding-bottom: env(safe-area-inset-bottom, 0px);
@@ -762,4 +762,13 @@ textarea:focus {
 
 [data-tour-finished="true"] .onboarding-pulse {
   display: none !important;
+}
+
+/* Scrollbar Hide Utility */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
 }

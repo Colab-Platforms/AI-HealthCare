@@ -189,137 +189,144 @@ export default function MobileBottomNav() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowLogModal(false)}
-              className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[90] md:hidden"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] md:hidden"
             />
             <motion.div
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 32, stiffness: 320 }}
-              className="fixed bottom-[104px] left-4 right-4 bg-[#EBF1E5] rounded-[40px] z-[101] md:hidden shadow-[0_-15px_40px_rgba(0,0,0,0.12)] select-none border border-white/20"
+              className="fixed bottom-0 left-0 right-0 h-[90vh] bg-[#EBF1E5] rounded-t-[40px] z-[101] md:hidden shadow-[0_-10px_40px_rgba(0,0,0,0.12)] select-none border-t border-white/40 overflow-hidden"
             >
-              <div className="p-6 pt-8 pb-8 max-h-[80vh] overflow-y-auto">
+              <div className="p-5 pt-3 pb-[140px] max-h-[90vh] overflow-y-auto scrollbar-hide">
                 {/* Grab Handle */}
-                <div className="w-12 h-1.5 bg-gray-300/40 rounded-full mx-auto mb-6"></div>
+                <div className="w-10 h-1 bg-gray-400/10 rounded-full mx-auto mb-5"></div>
 
                 {/* Header */}
-                <div className="flex items-center justify-between mb-8">
-                  <h3 className="text-[20px] font-black text-[#1A2138] tracking-tight">Quick Log</h3>
-                  <span className="text-[10px] font-black uppercase tracking-widest text-[#064e3b] bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/10">Primary</span>
+                <div className="flex items-center justify-between mb-6">
+                  <h3 className="text-[19px] font-black text-[#1A2138] tracking-tight">Quick Log</h3>
+                  <span className="text-[9px] font-black uppercase tracking-widest text-[#064e3b] bg-emerald-500/10 px-2.5 py-1.5 rounded-full border border-emerald-500/10">Primary</span>
                 </div>
                 
-                {/* Primary Action Row */}
-                <div className="grid grid-cols-2 gap-4 mb-4">
+                <div className="grid grid-cols-2 gap-3.5 mb-3.5">
                   {/* Add Meal */}
                   <button 
                     onClick={() => { setShowLogModal(false); navigate('/nutrition', { state: { openLogMeal: true } }); }}
-                    className="bg-white p-5 rounded-[28px] shadow-[0_8px_25px_rgba(0,0,0,0.03)] border border-white hover:scale-[1.02] active:scale-95 transition-all duration-300 flex flex-col items-center justify-center gap-3"
+                    className="bg-white p-4 rounded-[24px] shadow-[0_4px_15px_rgba(0,0,0,0.02)] border border-white hover:scale-[1.02] active:scale-95 transition-all duration-300 flex flex-col items-center justify-center gap-2"
                   >
-                    <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center">
-                      <Utensils size={28} className="text-[#69A38D]" strokeWidth={2.5} />
+                    <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center">
+                      <Utensils size={24} className="text-[#69A38D]" strokeWidth={2.5} />
                     </div>
                     <div className="text-center">
-                      <div className="text-[15px] font-extrabold text-[#1A2138] mb-0.5">Add Meal</div>
-                      <div className="text-[11px] text-slate-400 font-semibold">Track daily intake</div>
+                      <div className="text-[14px] font-extrabold text-[#1A2138] mb-0">Add Meal</div>
+                      <div className="text-[10px] text-slate-400 font-semibold">Daily intake</div>
                     </div>
                   </button>
 
                   {/* Lab Insights */}
                   <button 
                     onClick={() => { setShowLogModal(false); navigate('/upload'); }}
-                    className="bg-white p-5 rounded-[28px] shadow-[0_8px_25px_rgba(0,0,0,0.03)] border border-white hover:scale-[1.02] active:scale-95 transition-all duration-300 flex flex-col items-center justify-center gap-3"
+                    className="bg-white p-4 rounded-[24px] shadow-[0_4px_15px_rgba(0,0,0,0.02)] border border-white hover:scale-[1.02] active:scale-95 transition-all duration-300 flex flex-col items-center justify-center gap-2"
                   >
-                    <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center">
-                      <FileText size={28} className="text-[#5D5589]" strokeWidth={2.5} />
+                    <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center">
+                      <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_1.svg?v=1775559212" alt="Lab Insights" className="w-7 h-7 object-contain" />
                     </div>
                     <div className="text-center">
-                      <div className="text-[15px] font-extrabold text-[#1A2138] mb-0.5">Lab Insights</div>
-                      <div className="text-[11px] text-slate-400 font-semibold">Clarity, at a glance.</div>
+                      <div className="text-[14px] font-extrabold text-[#1A2138] mb-0">Lab Insights</div>
+                      <div className="text-[10px] text-slate-400 font-semibold">Direct clarity</div>
                     </div>
                   </button>
                 </div>
 
-                {/* Dynamic Insight Card - nutrition/analysis vice-versa */}
-                {isDiabetic ? (
-                  <button 
-                    onClick={() => { setShowLogModal(false); navigate('/nutrition'); }}
-                    className="w-full mb-8 bg-white/60 p-5 rounded-[30px] border border-[#A4B0C9]/30 hover:bg-white/80 active:scale-[0.98] transition-all duration-300 flex items-center justify-between group px-6"
-                  >
-                    <div className="flex items-center gap-5">
-                      <div className="w-12 h-12 bg-white rounded-[18px] flex items-center justify-center shadow-sm border border-[#A4B0C9]/10">
-                        <Activity size={24} className="text-[#7C8BA8]" strokeWidth={2.5} />
+                {/* Dynamic Insight Card - Logic based on Navbar Tab */}
+                <div className="mb-5">
+                  {isDiabetic ? (
+                    <button 
+                      onClick={() => { setShowLogModal(false); navigate('/nutrition'); }}
+                      className="w-full bg-white/60 p-4 rounded-[26px] border border-[#A4B0C9]/30 hover:bg-white/80 active:scale-[0.98] transition-all duration-300 flex items-center justify-between group px-5 shadow-sm"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-11 h-11 bg-white rounded-[16px] flex items-center justify-center shadow-sm border border-[#A4B0C9]/10">
+                          <Utensils size={22} className="text-[#7C8BA8]" strokeWidth={2.5} />
+                        </div>
+                        <div className="text-left">
+                          <div className="text-[16px] font-extrabold text-[#445577] mb-0.5 tracking-tight px-0.5">Nutrition Insights</div>
+                          <div className="text-[11px] text-[#7C8BA8] font-bold px-0.5">Review daily intake</div>
+                        </div>
                       </div>
-                      <div className="text-left">
-                        <div className="text-[17px] font-extrabold text-[#445577] mb-0.5 tracking-tight px-1">Nutrition Insights</div>
-                        <div className="text-[13px] text-[#7C8BA8] font-bold px-1">Track nutrition metrics</div>
+                      <div className="text-[#7C8BA8]/50 group-hover:text-[#7C8BA8] group-hover:translate-x-1 transition-all duration-300">
+                        <ArrowRight size={20} strokeWidth={2.5} />
                       </div>
-                    </div>
-                    <div className="text-[#7C8BA8]/50 group-hover:text-[#7C8BA8] group-hover:translate-x-1 transition-all duration-300">
-                      <ArrowRight size={22} strokeWidth={2.5} />
-                    </div>
-                  </button>
-                ) : (
-                  <button 
-                    onClick={() => { setShowLogModal(false); navigate('/complete-analysis'); }}
-                    className="w-full mb-8 bg-white/60 p-5 rounded-[30px] border border-[#A4B0C9]/30 hover:bg-white/80 active:scale-[0.98] transition-all duration-300 flex items-center justify-between group px-6"
-                  >
-                    <div className="flex items-center gap-5">
-                      <div className="w-12 h-12 bg-white rounded-[18px] flex items-center justify-center shadow-sm border border-[#A4B0C9]/10">
-                        <BarChart3 size={24} className="text-[#7C8BA8]" strokeWidth={2.5} />
+                    </button>
+                  ) : (
+                    <button 
+                      onClick={() => { setShowLogModal(false); navigate('/complete-analysis'); }}
+                      className="w-full bg-white/60 p-4 rounded-[26px] border border-[#A4B0C9]/30 hover:bg-white/80 active:scale-[0.98] transition-all duration-300 flex items-center justify-between group px-5 shadow-sm"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-11 h-11 bg-white rounded-[16px] flex items-center justify-center shadow-sm border border-[#A4B0C9]/10">
+                          <BarChart3 size={22} className="text-[#7C8BA8]" strokeWidth={2.5} />
+                        </div>
+                        <div className="text-left">
+                          <div className="text-[16px] font-extrabold text-[#445577] mb-0.5 tracking-tight px-0.5">Progress Insights</div>
+                          <div className="text-[11px] text-[#7C8BA8] font-bold px-0.5">Review vitality metrics</div>
+                        </div>
                       </div>
-                      <div className="text-left">
-                        <div className="text-[17px] font-extrabold text-[#445577] mb-0.5 tracking-tight px-1">Progress Insights</div>
-                        <div className="text-[13px] text-[#7C8BA8] font-bold px-1">Review vitality metrics</div>
+                      <div className="text-[#7C8BA8]/50 group-hover:text-[#7C8BA8] group-hover:translate-x-1 transition-all duration-300">
+                        <ArrowRight size={20} strokeWidth={2.5} />
                       </div>
-                    </div>
-                    <div className="text-[#7C8BA8]/50 group-hover:text-[#7C8BA8] group-hover:translate-x-1 transition-all duration-300">
-                      <ArrowRight size={22} strokeWidth={2.5} />
-                    </div>
-                  </button>
-                )}
+                    </button>
+                  )}
+                </div>
 
                 {/* Tracking Section */}
-                <div className="bg-[#f8faf7]/60 p-6 rounded-[32px] border border-white/50 backdrop-blur-sm shadow-sm mb-6">
-                  <h3 className="text-[14px] font-black text-[#1A2138]/60 uppercase tracking-widest mb-5 flex items-center gap-2">
-                    <Activity size={14} /> Track Your Daily Activities
+                <div className="bg-white/40 p-5 rounded-[32px] border border-white/40 shadow-sm mb-4">
+                  <h3 
+                    style={{ color: '#1A2138', fontSize: '13.62px', fontFamily: 'Poppins', fontWeight: '700', lineHeight: '20.43px', wordWrap: 'break-word' }}
+                    className="uppercase tracking-[0.08em] mb-5 flex items-center gap-2"
+                  >
+                    Track Your Daily Activities
                   </h3>
                   <div className="grid grid-cols-2 gap-3">
                     <button onClick={() => { setShowLogModal(false); navigate('/dashboard', { state: { openLogVitals: 'Weight' } }); }} className="flex items-center gap-3.5 bg-white p-3.5 rounded-[22px] shadow-sm border border-white/80 hover:bg-slate-50 active:scale-95 transition-all group">
                       <div className="bg-emerald-50 w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                         <Scale size={18} className="text-emerald-500" />
                       </div>
-                      <span className="text-[14px] font-black text-[#1A2138]">Weight</span>
+                      <span style={{ color: '#1A2138', fontSize: '12.71px', fontFamily: 'Poppins', fontWeight: '700', lineHeight: '19.06px', wordWrap: 'break-word' }}>Weight</span>
                     </button>
+
                     <button onClick={() => { setShowLogModal(false); navigate('/dashboard', { state: { openLogVitals: 'Water' } }); }} className="flex items-center gap-3.5 bg-white p-3.5 rounded-[22px] shadow-sm border border-white/80 hover:bg-slate-50 active:scale-95 transition-all group">
                       <div className="bg-blue-50 w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
-                        <Droplets size={18} className="text-blue-500" />
+                        <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon.svg?v=1775559081" alt="Water" className="w-5 h-5 object-contain" />
                       </div>
-                      <span className="text-[14px] font-black text-[#1A2138]">Water</span>
+                      <span style={{ color: '#1A2138', fontSize: '12.71px', fontFamily: 'Poppins', fontWeight: '700', lineHeight: '19.06px', wordWrap: 'break-word' }}>Water</span>
                     </button>
+
                     <button onClick={() => { setShowLogModal(false); navigate('/dashboard', { state: { openLogVitals: 'Sleep' } }); }} className="flex items-center gap-3.5 bg-white p-3.5 rounded-[22px] shadow-sm border border-white/80 hover:bg-slate-50 active:scale-95 transition-all group">
                       <div className="bg-purple-50 w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                         <Moon size={18} className="text-purple-500" />
                       </div>
-                      <span className="text-[14px] font-black text-[#1A2138]">Sleep</span>
+                      <span style={{ color: '#1A2138', fontSize: '12.71px', fontFamily: 'Poppins', fontWeight: '700', lineHeight: '19.06px', wordWrap: 'break-word' }}>Sleep</span>
                     </button>
+
                     <button onClick={() => { setShowLogModal(false); navigate('/dashboard', { state: { openLogVitals: 'Steps' } }); }} className="flex items-center gap-3.5 bg-white p-3.5 rounded-[22px] shadow-sm border border-white/80 hover:bg-slate-50 active:scale-95 transition-all group">
                       <div className="bg-orange-50 w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                         <Footprints size={18} className="text-orange-500" />
                       </div>
-                      <span className="text-[14px] font-black text-[#1A2138]">Steps</span>
+                      <span style={{ color: '#1A2138', fontSize: '12.71px', fontFamily: 'Poppins', fontWeight: '700', lineHeight: '19.06px', wordWrap: 'break-word' }}>Steps</span>
                     </button>
                   </div>
                 </div>
 
                 {/* Additional Features Row */}
-                <div className="grid grid-cols-2 gap-4">
-                  <button onClick={() => { setShowLogModal(false); navigate('/ai-chat'); }} className="flex items-center gap-3 p-4 bg-white/40 rounded-[24px] border border-white hover:bg-white active:scale-95 transition-all justify-center">
-                    <Sparkles className="text-emerald-600" size={18} />
-                    <span className="text-[11px] font-black text-[#1A2138] uppercase tracking-tighter">Ask Coach</span>
+                <div className="grid grid-cols-2 gap-3 mt-auto">
+                  <button onClick={() => { setShowLogModal(false); navigate('/ai-chat'); }} className="flex items-center gap-3 p-3.5 bg-white/40 rounded-[22px] border border-white hover:bg-white active:scale-95 transition-all justify-center">
+                    <Sparkles className="text-emerald-600" size={16} />
+                    <span className="text-[10px] font-black text-[#1A2138] uppercase tracking-tighter">Ask Coach</span>
                   </button>
-                  <button onClick={() => { setShowLogModal(false); navigate('/challenge'); }} className="flex items-center gap-3 p-4 bg-white/40 rounded-[24px] border border-white hover:bg-white active:scale-95 transition-all justify-center">
-                    <Trophy className="text-amber-500" size={18} />
-                    <span className="text-[11px] font-black text-[#1A2138] uppercase tracking-tighter">Challenge</span>
+                  <button onClick={() => { setShowLogModal(false); navigate('/challenge'); }} className="flex items-center gap-3 p-3.5 bg-white/40 rounded-[22px] border border-white hover:bg-white active:scale-95 transition-all justify-center">
+                    <Trophy className="text-amber-500" size={16} />
+                    <span className="text-[10px] font-black text-[#1A2138] uppercase tracking-tighter">Challenge</span>
                   </button>
                 </div>
 
@@ -329,7 +336,10 @@ export default function MobileBottomNav() {
         )}
       </AnimatePresence>
 
-      <nav className={`mobile-bottom-nav-container ${hideNavbarUI ? 'hidden' : ''} !bg-[#EBF0E6] border-t border-emerald-100/30 shadow-[0_-5px_20px_rgba(0,0,0,0.03)] ${showLogModal ? 'z-[200] relative' : 'relative'}`}>
+      <nav 
+        className={`mobile-bottom-nav-container ${hideNavbarUI ? 'hidden' : ''} !bg-[#EBF0E6] border-t border-emerald-100/30 shadow-[0_-5px_20px_rgba(0,0,0,0.03)] z-[250] !fixed bottom-0 left-0 right-0`}
+        style={{ zIndex: 250 }}
+      >
         <div className="mobile-bottom-nav">
           {navItems.map((item, index) => {
             const Icon = item.icon;
@@ -341,7 +351,11 @@ export default function MobileBottomNav() {
                 <button
                   key={key}
                   onClick={() => setShowLogModal(!showLogModal)}
-                  className={`nav-center-fab flex flex-col items-center justify-center transition-all duration-300 ${showLogModal ? 'bg-[#FF2D55] rotate-0 shadow-[0_8px_25px_rgba(255,45,85,0.4)]' : '!shadow-slate-200/50'} ${hasSeenTour ? 'no-pulse' : ''}`}
+                  className={`nav-center-fab flex flex-col items-center justify-center transition-all duration-400 ${
+                    showLogModal 
+                      ? 'bg-[#FF2D55] rotate-0 shadow-[0_0_30px_rgba(255,45,85,0.5)] border-[6px] border-[#EBF1E5] ring-4 ring-[#FF2D55]/5 scale-110' 
+                      : '!shadow-slate-200/50'
+                  } ${hasSeenTour ? 'no-pulse' : ''}`}
                   aria-label={item.label}
                   title={item.label}
                 >
