@@ -189,7 +189,7 @@ export default function MobileBottomNav() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowLogModal(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] md:hidden"
+              className="fixed inset-0 bg-black/40 backdrop-blur-[2px] z-[90] md:hidden"
             />
             <motion.div
               initial={{ y: '100%' }}
@@ -239,24 +239,44 @@ export default function MobileBottomNav() {
                   </button>
                 </div>
 
-                {/* Progress Insights Card - Image Style */}
-                <button 
-                  onClick={() => { setShowLogModal(false); navigate('/complete-analysis'); }}
-                  className="w-full mb-8 bg-white/60 p-5 rounded-[30px] border border-[#A4B0C9]/30 hover:bg-white/80 active:scale-[0.98] transition-all duration-300 flex items-center justify-between group px-6"
-                >
-                  <div className="flex items-center gap-5">
-                    <div className="w-12 h-12 bg-white rounded-[18px] flex items-center justify-center shadow-sm border border-[#A4B0C9]/10">
-                      <BarChart3 size={24} className="text-[#7C8BA8]" strokeWidth={2.5} />
+                {/* Dynamic Insight Card - nutrition/analysis vice-versa */}
+                {isDiabetic ? (
+                  <button 
+                    onClick={() => { setShowLogModal(false); navigate('/nutrition'); }}
+                    className="w-full mb-8 bg-white/60 p-5 rounded-[30px] border border-[#A4B0C9]/30 hover:bg-white/80 active:scale-[0.98] transition-all duration-300 flex items-center justify-between group px-6"
+                  >
+                    <div className="flex items-center gap-5">
+                      <div className="w-12 h-12 bg-white rounded-[18px] flex items-center justify-center shadow-sm border border-[#A4B0C9]/10">
+                        <Activity size={24} className="text-[#7C8BA8]" strokeWidth={2.5} />
+                      </div>
+                      <div className="text-left">
+                        <div className="text-[17px] font-extrabold text-[#445577] mb-0.5 tracking-tight px-1">Nutrition Insights</div>
+                        <div className="text-[13px] text-[#7C8BA8] font-bold px-1">Track nutrition metrics</div>
+                      </div>
                     </div>
-                    <div className="text-left">
-                      <div className="text-[17px] font-extrabold text-[#445577] mb-0.5 tracking-tight px-1">Progress Insights</div>
-                      <div className="text-[13px] text-[#7C8BA8] font-bold px-1">Review vitality metrics</div>
+                    <div className="text-[#7C8BA8]/50 group-hover:text-[#7C8BA8] group-hover:translate-x-1 transition-all duration-300">
+                      <ArrowRight size={22} strokeWidth={2.5} />
                     </div>
-                  </div>
-                  <div className="text-[#7C8BA8]/50 group-hover:text-[#7C8BA8] group-hover:translate-x-1 transition-all duration-300">
-                    <ArrowRight size={22} strokeWidth={2.5} />
-                  </div>
-                </button>
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => { setShowLogModal(false); navigate('/complete-analysis'); }}
+                    className="w-full mb-8 bg-white/60 p-5 rounded-[30px] border border-[#A4B0C9]/30 hover:bg-white/80 active:scale-[0.98] transition-all duration-300 flex items-center justify-between group px-6"
+                  >
+                    <div className="flex items-center gap-5">
+                      <div className="w-12 h-12 bg-white rounded-[18px] flex items-center justify-center shadow-sm border border-[#A4B0C9]/10">
+                        <BarChart3 size={24} className="text-[#7C8BA8]" strokeWidth={2.5} />
+                      </div>
+                      <div className="text-left">
+                        <div className="text-[17px] font-extrabold text-[#445577] mb-0.5 tracking-tight px-1">Progress Insights</div>
+                        <div className="text-[13px] text-[#7C8BA8] font-bold px-1">Review vitality metrics</div>
+                      </div>
+                    </div>
+                    <div className="text-[#7C8BA8]/50 group-hover:text-[#7C8BA8] group-hover:translate-x-1 transition-all duration-300">
+                      <ArrowRight size={22} strokeWidth={2.5} />
+                    </div>
+                  </button>
+                )}
 
                 {/* Tracking Section */}
                 <div className="bg-[#f8faf7]/60 p-6 rounded-[32px] border border-white/50 backdrop-blur-sm shadow-sm mb-6">
