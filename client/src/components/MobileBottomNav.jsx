@@ -396,7 +396,7 @@ export default function MobileBottomNav() {
                 ) : (
                   <Icon className="w-5 h-5 transition-transform group-hover:scale-110" />
                 )}
-                <span className="text-[10px] font-black uppercase tracking-tighter mt-0.5">{item.label}</span>
+                <span className="text-[10px] font-black tracking-tight mt-0.5">{item.label}</span>
               </Link>
             );
           })}
@@ -408,7 +408,7 @@ export default function MobileBottomNav() {
             title="Diet Plan"
           >
             <Apple className="w-5 h-5" />
-            <span className="text-[10px] font-black uppercase tracking-tighter mt-0.5">Diet Plan</span>
+            <span className="text-[10px] font-black tracking-tight mt-0.5">Diet Plan</span>
           </Link>
         </div>
       </nav>
