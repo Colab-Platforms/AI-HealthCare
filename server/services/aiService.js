@@ -81,13 +81,21 @@ STRUCTURE:
       "symptoms": ["Symptom1", "Symptom2"]
     }
   },
+<<<<<<< HEAD
+  "deficiencies": [{"name": "Vit D", "severity": "mild/moderate/severe"}],
+=======
   "deficiencies": [{"name": "Vit D", "severity": "mild/moderate/severe", "currentValue": "value", "normalRange": "range", "explanation": "Why this matters in simple terms"}],
+>>>>>>> 3b4b025e0dd07e969b27879e47e90e6678a4857a
   "recommendations": {"immediate": [], "lifestyle": []},
   "doctorConsultation": {"recommended": true, "urgency": "low", "specializations": ["Specialist"]}
 }
 CRITICAL: Extraction is your priority. Scan the entire report text and populate the "metrics" object with ALL found markers. For EACH metric, you MUST fill in whatIsThis, whatItDoes, lowHighImpact, topFoods, and symptoms.
+<<<<<<< HEAD
+IMPORTANT: Deficiency "severity" MUST be one of: "mild", "moderate", "severe".`;
+=======
 IMPORTANT: Deficiency "severity" MUST be one of: "mild", "moderate", "severe".
 IMPORTANT: The "doctorSummary" MUST be written like a real doctor talking to the patient. Do NOT write bullet points — write flowing, conversational paragraphs with Markdown bolding for emphasis. Be warm, professional, and thorough.`;
+>>>>>>> 3b4b025e0dd07e969b27879e47e90e6678a4857a
 
 exports.analyzeHealthReport = async (reportText, user = {}, imageData = null, reportType = 'general') => {
   try {

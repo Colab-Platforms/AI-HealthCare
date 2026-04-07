@@ -100,6 +100,15 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
     // 🚀 Auto-trigger diet plan generation after successful report analysis
     try {
       const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
+<<<<<<< HEAD
+      const existingPlan = await PersonalizedDietPlan.findOne({ userId, isActive: true });
+      if (!existingPlan) {
+        console.log('[BG] No active diet plan found. Auto-generating based on new report...');
+        // Trigger diet generation in background (non-blocking)
+        const { generateDietAfterReport } = require('./dietRecommendationController');
+        if (generateDietAfterReport) {
+          setImmediate(() => generateDietAfterReport(userId).catch(e => console.warn('[BG] Auto-diet failed:', e.message)));
+=======
       const existingPlan = await PersonalizedDietPlan.findOne({ userId, isActive: true, status: 'completed' });
       if (!existingPlan) {
         console.log('[BG] No active diet plan found. Auto-generating based on new report...');
@@ -119,6 +128,7 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
           if (generateDietAfterReport) {
             setImmediate(() => generateDietAfterReport(userId).catch(e => console.warn('[BG] Auto-diet failed:', e.message)));
           }
+>>>>>>> 3b4b025e0dd07e969b27879e47e90e6678a4857a
         }
       }
     } catch (dietErr) {

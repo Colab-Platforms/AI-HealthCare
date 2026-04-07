@@ -33,7 +33,11 @@ class DietRecommendationAI {
         temperature: payload.temperature || 0.3
       }, { 
         headers, 
+<<<<<<< HEAD
+        timeout: 300000 
+=======
         timeout: 280000 
+>>>>>>> 3b4b025e0dd07e969b27879e47e90e6678a4857a
       });
 
       if (response.data && response.data.content && response.data.content[0]) {
@@ -55,6 +59,16 @@ STRUCTURE:
 {
   "dailyCalorieTarget": ${nutritionGoals?.dailyCalories || 2000},
   "mealPlan": {
+<<<<<<< HEAD
+    "breakfast": [{"name": "Poha", "portionSize": "1 cup (150g)", "calories": 250, "protein": 5, "carbs": 40, "fats": 7}],
+    "midMorningSnack": [{"name": "Mixed Fruit", "portionSize": "1 small bowl (100g)", "calories": 100, "protein": 1, "carbs": 25, "fats": 0}],
+    "lunch": [{"name": "Dal & 2 Roti", "portionSize": "1 bowl dal, 2 medium roti", "calories": 450, "protein": 15, "carbs": 60, "fats": 10}],
+    "eveningSnack": [{"name": "Roasted Makhana", "portionSize": "1 small cup (30g)", "calories": 110, "protein": 3, "carbs": 15, "fats": 4}],
+    "dinner": [{"name": "Grilled Paneer & Veggies", "portionSize": "150g paneer, 1 bowl stir-fry", "calories": 350, "protein": 25, "carbs": 10, "fats": 15}]
+  }
+}
+USER: ${age}y ${gender}, BMI ${currentBMI}, Goal: ${bmiGoal}. Focus on Indian split based on preferences. Output 1-2 options per meal. IMPORTANT: You MUST provide descriptive measurements for each meal (e.g., 100g, 1 bowl, 2 pieces, 1 cup) in the "portionSize" field. ${promptExtension}`;
+=======
     "breakfast": [{"name": "Meal Name", "portionSize": "descriptive size (e.g. 1 bowl, 2 pieces)", "calories": 0, "protein": 0, "carbs": 0, "fats": 0}],
     "midMorningSnack": [...],
     "lunch": [...],
@@ -80,6 +94,7 @@ REQUIREMENTS:
 6. ${promptExtension}
 
 JSON output ONLY. High variety requested.`;
+>>>>>>> 3b4b025e0dd07e969b27879e47e90e6678a4857a
 
     try {
       const aiResponse = await this.makeAIRequest({

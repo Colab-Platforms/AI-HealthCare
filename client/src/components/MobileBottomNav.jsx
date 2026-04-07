@@ -6,7 +6,7 @@ import {
   LayoutDashboard, MessageSquare, Utensils, FileText, MoreVertical,
   Settings, LogOut, Heart, Watch, X, Calendar, ScanLine,
   Activity, Bell, Plus, Scale, Droplets, Moon, Footprints,
-  Apple, Sparkles, Trophy, BarChart3
+  Apple, Sparkles, Trophy, BarChart3, ArrowRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -60,7 +60,7 @@ export default function MobileBottomNav() {
   const isExcludedPage = location.pathname === '/ai-chat' || location.pathname === '/profile';
 
   // Logic to hide the navbar UI but keep the component mounted (to allow the log modal to open)
-  const hideNavbarUI = isModalOpen || showMoreMenu || showLogModal;
+  const hideNavbarUI = isModalOpen || showMoreMenu;
 
   const isDiabetic = user?.profile?.isDiabetic === 'yes';
   const hasSeenTour = user?.profile?.hasSeenMobileTour || 
@@ -195,55 +195,121 @@ export default function MobileBottomNav() {
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 30, stiffness: 300 }}
-              className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[3.5rem] z-[101] md:hidden p-6 pb-8 shadow-[0_-20px_80px_rgba(0,0,0,0.2)] border-t border-slate-100 max-h-[90vh] overflow-y-auto"
+              transition={{ type: 'spring', damping: 32, stiffness: 320 }}
+              className="fixed bottom-[104px] left-4 right-4 bg-[#EBF1E5] rounded-[40px] z-[101] md:hidden shadow-[0_-15px_40px_rgba(0,0,0,0.12)] select-none border border-white/20"
             >
-              <div className="w-16 h-1.5 bg-slate-100 rounded-full mx-auto mb-6" />
+              <div className="p-6 pt-8 pb-8 max-h-[80vh] overflow-y-auto">
+                {/* Grab Handle */}
+                <div className="w-12 h-1.5 bg-gray-300/40 rounded-full mx-auto mb-6"></div>
 
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="text-2xl font-black text-[#064e3b] tracking-tight uppercase">Quick Log</h3>
-                <button
-                  onClick={() => setShowLogModal(false)}
-                  className="w-11 h-11 rounded-full bg-slate-50 flex items-center justify-center text-black active:bg-slate-100 transition-colors"
+                {/* Header */}
+                <div className="flex items-center justify-between mb-8">
+                  <h3 className="text-[20px] font-black text-[#1A2138] tracking-tight">Quick Log</h3>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-[#064e3b] bg-emerald-500/10 px-3 py-1.5 rounded-full border border-emerald-500/10">Primary</span>
+                </div>
+                
+                {/* Primary Action Row */}
+                <div className="grid grid-cols-2 gap-4 mb-4">
+                  {/* Add Meal */}
+                  <button 
+                    onClick={() => { setShowLogModal(false); navigate('/nutrition', { state: { openLogMeal: true } }); }}
+                    className="bg-white p-5 rounded-[28px] shadow-[0_8px_25px_rgba(0,0,0,0.03)] border border-white hover:scale-[1.02] active:scale-95 transition-all duration-300 flex flex-col items-center justify-center gap-3"
+                  >
+                    <div className="w-14 h-14 bg-emerald-50 rounded-2xl flex items-center justify-center">
+                      <Utensils size={28} className="text-[#69A38D]" strokeWidth={2.5} />
+                    </div>
+                    <div className="text-center">
+                      <div className="text-[15px] font-extrabold text-[#1A2138] mb-0.5">Add Meal</div>
+                      <div className="text-[11px] text-slate-400 font-semibold">Track daily intake</div>
+                    </div>
+                  </button>
+
+                  {/* Lab Insights */}
+                  <button 
+                    onClick={() => { setShowLogModal(false); navigate('/upload'); }}
+                    className="bg-white p-5 rounded-[28px] shadow-[0_8px_25px_rgba(0,0,0,0.03)] border border-white hover:scale-[1.02] active:scale-95 transition-all duration-300 flex flex-col items-center justify-center gap-3"
+                  >
+                    <div className="w-14 h-14 bg-indigo-50 rounded-2xl flex items-center justify-center">
+                      <FileText size={28} className="text-[#5D5589]" strokeWidth={2.5} />
+                    </div>
+                    <div className="text-center">
+                      <div className="text-[15px] font-extrabold text-[#1A2138] mb-0.5">Lab Insights</div>
+                      <div className="text-[11px] text-slate-400 font-semibold">Clarity, at a glance.</div>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Progress Insights Card - Image Style */}
+                <button 
+                  onClick={() => { setShowLogModal(false); navigate('/complete-analysis'); }}
+                  className="w-full mb-8 bg-white/60 p-5 rounded-[30px] border border-[#A4B0C9]/30 hover:bg-white/80 active:scale-[0.98] transition-all duration-300 flex items-center justify-between group px-6"
                 >
-                  <X className="w-5 h-5" />
+                  <div className="flex items-center gap-5">
+                    <div className="w-12 h-12 bg-white rounded-[18px] flex items-center justify-center shadow-sm border border-[#A4B0C9]/10">
+                      <BarChart3 size={24} className="text-[#7C8BA8]" strokeWidth={2.5} />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-[17px] font-extrabold text-[#445577] mb-0.5 tracking-tight px-1">Progress Insights</div>
+                      <div className="text-[13px] text-[#7C8BA8] font-bold px-1">Review vitality metrics</div>
+                    </div>
+                  </div>
+                  <div className="text-[#7C8BA8]/50 group-hover:text-[#7C8BA8] group-hover:translate-x-1 transition-all duration-300">
+                    <ArrowRight size={22} strokeWidth={2.5} />
+                  </div>
                 </button>
-              </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {logActivities.map((act) => {
-                  const Icon = act.icon;
-                  return (
-                    <Link
-                      key={act.label}
-                      to={act.path}
-                      state={act.state}
-                      onClick={() => setShowLogModal(false)}
-                      className={`flex flex-col items-center justify-center gap-1.5 p-3.5 rounded-[2rem] border ${act.borderColor} bg-white shadow-sm active:scale-95 transition-all group hover:shadow-md`}
-                    >
-                      <div className={`w-10 h-10 rounded-full ${act.iconBg} flex items-center justify-center shrink-0 transition-transform group-hover:scale-110`}>
-                        <Icon className={`w-5 h-5 ${act.color}`} />
+                {/* Tracking Section */}
+                <div className="bg-[#f8faf7]/60 p-6 rounded-[32px] border border-white/50 backdrop-blur-sm shadow-sm mb-6">
+                  <h3 className="text-[14px] font-black text-[#1A2138]/60 uppercase tracking-widest mb-5 flex items-center gap-2">
+                    <Activity size={14} /> Track Your Daily Activities
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button onClick={() => { setShowLogModal(false); navigate('/dashboard', { state: { openLogVitals: 'Weight' } }); }} className="flex items-center gap-3.5 bg-white p-3.5 rounded-[22px] shadow-sm border border-white/80 hover:bg-slate-50 active:scale-95 transition-all group">
+                      <div className="bg-emerald-50 w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Scale size={18} className="text-emerald-500" />
                       </div>
-                      <span className="text-[10px] font-semibold text-slate-700 tracking-tight uppercase">{act.label}</span>
-                    </Link>
-                  );
-                })}
-              </div>
+                      <span className="text-[14px] font-black text-[#1A2138]">Weight</span>
+                    </button>
+                    <button onClick={() => { setShowLogModal(false); navigate('/dashboard', { state: { openLogVitals: 'Water' } }); }} className="flex items-center gap-3.5 bg-white p-3.5 rounded-[22px] shadow-sm border border-white/80 hover:bg-slate-50 active:scale-95 transition-all group">
+                      <div className="bg-blue-50 w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Droplets size={18} className="text-blue-500" />
+                      </div>
+                      <span className="text-[14px] font-black text-[#1A2138]">Water</span>
+                    </button>
+                    <button onClick={() => { setShowLogModal(false); navigate('/dashboard', { state: { openLogVitals: 'Sleep' } }); }} className="flex items-center gap-3.5 bg-white p-3.5 rounded-[22px] shadow-sm border border-white/80 hover:bg-slate-50 active:scale-95 transition-all group">
+                      <div className="bg-purple-50 w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Moon size={18} className="text-purple-500" />
+                      </div>
+                      <span className="text-[14px] font-black text-[#1A2138]">Sleep</span>
+                    </button>
+                    <button onClick={() => { setShowLogModal(false); navigate('/dashboard', { state: { openLogVitals: 'Steps' } }); }} className="flex items-center gap-3.5 bg-white p-3.5 rounded-[22px] shadow-sm border border-white/80 hover:bg-slate-50 active:scale-95 transition-all group">
+                      <div className="bg-orange-50 w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Footprints size={18} className="text-orange-500" />
+                      </div>
+                      <span className="text-[14px] font-black text-[#1A2138]">Steps</span>
+                    </button>
+                  </div>
+                </div>
 
-              <div className="mt-8 flex justify-center">
-                <button
-                  onClick={() => setShowLogModal(false)}
-                  className="w-12 h-12 rounded-full bg-black text-white flex items-center justify-center shadow-xl active:scale-90 transition-transform"
-                >
-                  <X className="w-6 h-6" />
-                </button>
+                {/* Additional Features Row */}
+                <div className="grid grid-cols-2 gap-4">
+                  <button onClick={() => { setShowLogModal(false); navigate('/ai-chat'); }} className="flex items-center gap-3 p-4 bg-white/40 rounded-[24px] border border-white hover:bg-white active:scale-95 transition-all justify-center">
+                    <Sparkles className="text-emerald-600" size={18} />
+                    <span className="text-[11px] font-black text-[#1A2138] uppercase tracking-tighter">Ask Coach</span>
+                  </button>
+                  <button onClick={() => { setShowLogModal(false); navigate('/challenge'); }} className="flex items-center gap-3 p-4 bg-white/40 rounded-[24px] border border-white hover:bg-white active:scale-95 transition-all justify-center">
+                    <Trophy className="text-amber-500" size={18} />
+                    <span className="text-[11px] font-black text-[#1A2138] uppercase tracking-tighter">Challenge</span>
+                  </button>
+                </div>
+
               </div>
             </motion.div>
           </>
         )}
       </AnimatePresence>
 
-      <nav className={`mobile-bottom-nav-container ${hideNavbarUI ? 'hidden' : ''} !bg-[#EBF0E6] border-t border-emerald-100/30 shadow-[0_-5px_20px_rgba(0,0,0,0.03)]`}>
+      <nav className={`mobile-bottom-nav-container ${hideNavbarUI ? 'hidden' : ''} !bg-[#EBF0E6] border-t border-emerald-100/30 shadow-[0_-5px_20px_rgba(0,0,0,0.03)] ${showLogModal ? 'z-[200] relative' : 'relative'}`}>
         <div className="mobile-bottom-nav">
           {navItems.map((item, index) => {
             const Icon = item.icon;
@@ -254,12 +320,16 @@ export default function MobileBottomNav() {
               return (
                 <button
                   key={key}
-                  onClick={() => setShowLogModal(true)}
-                  className={`nav-center-fab flex flex-col items-center justify-center !shadow-slate-200/50 ${hasSeenTour ? 'no-pulse' : ''}`}
+                  onClick={() => setShowLogModal(!showLogModal)}
+                  className={`nav-center-fab flex flex-col items-center justify-center transition-all duration-300 ${showLogModal ? 'bg-[#FF2D55] rotate-0 shadow-[0_8px_25px_rgba(255,45,85,0.4)]' : '!shadow-slate-200/50'} ${hasSeenTour ? 'no-pulse' : ''}`}
                   aria-label={item.label}
                   title={item.label}
                 >
-                  <Icon className="w-6 h-6 text-white" />
+                  {showLogModal ? (
+                    <X className="w-6 h-6 text-white" strokeWidth={3} />
+                  ) : (
+                    <Plus className="w-6 h-6 text-white" strokeWidth={3} />
+                  )}
                 </button>
               );
             }
