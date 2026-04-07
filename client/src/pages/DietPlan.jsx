@@ -7,7 +7,7 @@ import {
   Heart, Clock, ArrowLeft, Flame, Target,
   AlertCircle, Sparkles, CheckCircle, Lightbulb, X, UtensilsCrossed, Utensils,
   ChevronLeft, ChevronRight, Calendar, Search, Filter, RefreshCw, Eye, ChefHat,
-  ArrowRight, Check, Zap, Info, Coffee, Sun, Activity, Mail
+  ArrowRight, Check, Zap, Info, Coffee, Sun, Activity, Mail, Plus, ArrowUpRight
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -163,71 +163,165 @@ function getMealCalories(m) {
 
 // --- UI Components ---
 
-const MealCard = ({ meal, mealType, onLog, isLogged, idx, isLoading, onClick }) => {
-  const name = getMealName(meal);
-  const calories = getMealCalories(meal);
+const MealSectionCard = ({ section, meals, loggedMeals, onOpenOptions, mealType }) => {
+  const { label, time } = section;
+  const totalCalories = meals.reduce((acc, m) => acc + (getMealCalories(m) || 0), 0);
+  const itemCount = meals.length;
+  const mainImage = meals[0]?.imageUrl;
+  
+  // Check if all items in this section are logged (or if one is logged to show completion)
+  const isAnyLogged = meals.some(m => !!loggedMeals[`${mealType}-${getMealName(m)}`]);
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="bg-white rounded-[1.5rem] md:rounded-[2.5rem] p-3 md:p-5 border border-emerald-100/30 shadow-[0_4px_20px_rgb(0,0,0,0.02)] group hover:shadow-xl hover:shadow-emerald-200/50 transition-all flex flex-col h-full min-w-[170px] md:min-w-[320px] snap-start cursor-pointer"
-      onClick={onClick}
+      whileHover={{ y: -5, transition: { duration: 0.2 } }}
+      whileTap={{ scale: 0.98 }}
+      onClick={onOpenOptions}
+      className="bg-white rounded-[2.5rem] p-6 md:p-8 flex items-center justify-between shadow-[0_15px_45px_rgba(0,0,0,0.03)] cursor-pointer group relative overflow-hidden h-[180px] md:h-[220px] active:shadow-sm transition-all border border-transparent hover:border-emerald-100"
     >
-      <div className="relative h-28 md:h-48 mb-3 md:mb-5 overflow-hidden rounded-[1rem] md:rounded-[2rem] bg-emerald-50/20">
-        <ImageWithFallback
-          src={meal.imageUrl}
-          query={name}
-          alt={name}
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-        <div className="absolute top-2 left-2 md:top-4 md:left-4">
-          <span className="bg-white/90 backdrop-blur-md px-2 py-1 rounded-full text-[8px] md:text-[10px] font-black uppercase tracking-widest text-[#064e3b] shadow-sm border border-emerald-50/50">
-            Option {idx + 1}
-          </span>
-        </div>
-      </div>
-
-      <div className="flex-1">
-        <h3 className="text-sm md:text-lg font-bold text-[#064e3b] mb-1.5 leading-tight line-clamp-2 min-h-[1.5rem] md:min-h-0">{name}</h3>
-        <p className="text-[10px] md:text-[12px] font-medium text-emerald-800/60 line-clamp-2 mb-4 md:mb-6 leading-relaxed">
-          {meal.description || meal.benefits || "Nutrient-rich choice designed for your goals."}
-        </p>
-      </div>
-      <div className="flex items-center gap-1.5 mb-3 md:mb-6 overflow-hidden">
-        <div className="flex items-center gap-1 px-2 py-1 bg-orange-50/50 text-orange-600 rounded-full shrink-0">
-          <Flame className="w-2.5 h-2.5" />
-          <span className="text-[9px] md:text-[11px] font-black">{calories} Cal</span>
-        </div>
-        {meal.portionSize && (
-          <div className="flex items-center gap-1 px-2 py-1 bg-blue-50/50 text-blue-600 rounded-full shrink-0">
-            <UtensilsCrossed className="w-2.5 h-2.5" />
-            <span className="text-[9px] md:text-[11px] font-black">{meal.portionSize}</span>
+      <div className="flex-1 pr-8 z-10 flex flex-col justify-between h-full">
+        <div>
+          <h3 className="text-xl md:text-2xl font-black text-[#1a2e35] mb-2 md:mb-3 tracking-tight">{label}</h3>
+          
+          <div className="flex items-center gap-3 mb-3 md:mb-5">
+            <div className="flex -space-x-3">
+              {meals.slice(0, 3).map((m, i) => (
+                <div key={i} className="w-8 h-8 md:w-9 md:h-9 rounded-full border-2 border-white overflow-hidden shadow-sm">
+                  <ImageWithFallback src={m.imageUrl} query={getMealName(m)} alt={getMealName(m)} className="w-full h-full object-cover" />
+                </div>
+              ))}
+            </div>
+            <span className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">{itemCount} items</span>
           </div>
-        )}
+
+          <div className="flex items-center gap-5 md:gap-6">
+            <div className="flex items-center gap-1.5 text-slate-500">
+              <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-500" />
+              <span className="text-[10px] md:text-xs font-black uppercase tracking-widest leading-none mt-0.5">{time}</span>
+            </div>
+            <div className="flex items-center gap-1.5 text-slate-500">
+              <Flame className="w-3.5 h-3.5 md:w-4 md:h-4 text-orange-500" />
+              <span className="text-[10px] md:text-xs font-black uppercase tracking-widest leading-none mt-0.5 text-orange-600/70">{totalCalories} Kcal</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-3 md:mt-4">
+          {isAnyLogged ? (
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 border border-emerald-100 shadow-inner">
+              <Check className="w-5 h-5 md:w-6 md:h-6" />
+            </div>
+          ) : (
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-[#5d8d7d] flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-all">
+              <ArrowUpRight className="w-5 h-5 md:w-6 md:h-6" />
+            </div>
+          )}
+        </div>
       </div>
 
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onLog(meal, mealType);
-        }}
-        disabled={isLogged || isLoading}
-        className={`w-full py-2.5 md:py-4 rounded-xl md:rounded-2xl text-[9px] md:text-[11px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 shadow-sm ${isLogged
-          ? 'bg-emerald-600 text-white shadow-emerald-200'
-          : 'bg-[#064e3b] text-white hover:bg-[#042f2e] shadow-[#064e3b]/10'
-          } ${isLoading ? 'opacity-70 cursor-wait' : ''}`}
-      >
-        {isLoading ? (
-          <RefreshCw className="w-3 h-3 md:w-4 md:h-4 animate-spin" />
-        ) : isLogged ? (
-          <><Check className="w-3 h-3 md:w-4 md:h-4" /> Eaten</>
-        ) : (
-          'Log Meal'
-        )}
-      </button>
+      <div className="absolute right-0 top-0 bottom-0 w-2/5 md:w-5/12 pointer-events-none">
+        <div className="w-full h-full relative">
+          <ImageWithFallback 
+            src={mainImage} 
+            query={getMealName(meals[0])}
+            className="w-full h-full object-cover rounded-l-[50px] md:rounded-l-[80px]" 
+          />
+          <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white via-white/10 to-transparent" />
+        </div>
+      </div>
     </motion.div>
+  );
+};
+
+const MealOptionsModal = ({ label, meals, loggedMeals, mealType, onClose, onLog, loggingMealId }) => {
+  return (
+    <div className="fixed inset-0 z-[160] flex items-center justify-center p-4">
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        onClick={onClose}
+        className="absolute inset-0 bg-black/40 backdrop-blur-md"
+      />
+      <motion.div
+        initial={{ scale: 0.95, opacity: 0, y: 30 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+        exit={{ scale: 0.95, opacity: 0, y: 30 }}
+        className="relative w-full max-w-lg bg-[#F8F9F5] rounded-[2.5rem] shadow-2xl flex flex-col max-h-[85vh] overflow-hidden border border-white/50"
+      >
+        <div className="p-8 pb-4 flex items-center justify-between">
+          <h2 className="text-2xl font-black text-[#1a2e35] tracking-tight">{label} Options</h2>
+          <button 
+            onClick={onClose}
+            className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-slate-400 hover:text-black transition-all border border-slate-100"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        <div className="p-6 pt-2 overflow-y-auto space-y-5 scrollbar-hide">
+          {meals.map((meal, idx) => {
+            const name = getMealName(meal);
+            const isLogged = !!loggedMeals[`${mealType}-${name}`];
+            const isLoading = loggingMealId === `${mealType}-${name}`;
+
+            return (
+              <motion.div 
+                key={idx} 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.05 }}
+                onClick={() => {
+                  setSelectedFood(meal);
+                  setSelectedFoodType(mealType);
+                }}
+                className="bg-white rounded-[2rem] p-5 shadow-[0_8px_30px_rgba(0,0,0,0.02)] flex flex-col gap-6 cursor-pointer hover:shadow-md transition-shadow border border-transparent hover:border-emerald-50"
+              >
+                <div className="flex gap-5">
+                  <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden shrink-0 bg-slate-50 shadow-inner">
+                    <ImageWithFallback src={meal.imageUrl} query={name} className="w-full h-full object-cover" />
+                  </div>
+                  <div className="flex-1 py-1">
+                    <h3 className="text-base md:text-lg font-bold text-[#1a2e35] mb-2 leading-tight">{name}</h3>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-1.5 text-slate-400">
+                        <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-orange-400" />
+                        <span className="text-[10px] md:text-xs font-black uppercase tracking-widest">{meal.prepTime || '15 Min'}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-slate-400">
+                        <Flame className="w-3.5 h-3.5 md:w-4 md:h-4 text-orange-400" />
+                        <span className="text-[10px] md:text-xs font-black uppercase tracking-widest">{getMealCalories(meal)} Cal</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onLog(meal, mealType);
+                  }}
+                  disabled={isLogged || isLoading}
+                  className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 text-xs font-black uppercase tracking-[0.1em] transition-all ${
+                    isLogged 
+                      ? 'bg-emerald-600 text-white shadow-emerald-100' 
+                      : 'bg-[#719685] text-white hover:bg-[#5f8171] shadow-lg shadow-[#719685]/10'
+                  } ${isLoading ? 'opacity-70 cursor-wait' : ''}`}
+                >
+                  {isLoading ? (
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                  ) : isLogged ? (
+                    <><Check className="w-4 h-4" /> Logged as Eaten</>
+                  ) : (
+                    <><Plus className="w-4 h-4" /> Log Meal</>
+                  )}
+                </button>
+              </motion.div>
+            );
+          })}
+        </div>
+      </motion.div>
+    </div>
   );
 };
 
@@ -260,6 +354,7 @@ export default function DietPlan() {
   const [loggingMealId, setLoggingMealId] = useState(null);
   const [selectedFood, setSelectedFood] = useState(null);
   const [selectedFoodType, setSelectedFoodType] = useState(null);
+  const [activeMealSection, setActiveMealSection] = useState(null);
 
   const rowRefs = useRef({});
   const insightsRef = useRef(null);
@@ -499,7 +594,7 @@ export default function DietPlan() {
 
 
   return (
-    <div className="min-h-screen bg-transparent pb-32 px-4 md:px-6 lg:px-12 pt-2 md:pt-8">
+    <div className="min-h-screen bg-[#E9ECE4] pb-32 px-4 md:px-6 lg:px-12 pt-2 md:pt-8 relative">
       {/* Background elements */}
       <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-purple-100/20 rounded-full blur-[120px] pointer-events-none" />
 
@@ -567,139 +662,46 @@ export default function DietPlan() {
       ) : (
         <div className="space-y-8 md:space-y-24">
 
-          {/* Intelligence Context Message */}
-          <section className="mt-2 p-3 md:p-6 bg-emerald-50/40 backdrop-blur-md rounded-[1.5rem] md:rounded-[2rem] border border-emerald-100/30 shadow-sm">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 md:gap-6">
-              <div>
-                <div className="hidden md:flex items-center gap-2 mb-1.5">
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-500" />
-                </div>
-                <h3 className="text-xs md:text-lg font-bold text-[#064e3b] tracking-tight leading-snug">
-                  <Sparkles className="inline-block md:hidden w-3 h-3 text-emerald-500 mr-2" />
-                  This diet plan is specially designed by considering your health parameters, fitness goals and BMI for optimal results.
-                </h3>
-              </div>
+          <div className="mt-8 space-y-6 md:space-y-10">
+            <h2 className="text-2xl md:text-3xl font-black text-[#1a2e35] px-2 mb-2 tracking-tight">Today's Plan</h2>
+            <div className="grid grid-cols-1 gap-6 md:gap-8">
+              {MEAL_ORDER.map((sectionId) => {
+                const section = SECTION_INFO[sectionId];
+                const meals = dietPlan.mealPlan?.[sectionId] || [];
+                if (meals.length === 0) return null;
 
-              <div className="flex flex-wrap items-center gap-2">
-                <button 
-                  onClick={() => insightsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' })}
-                  className="flex items-center gap-2 px-4 py-1.5 md:px-5 md:py-2.5 bg-emerald-50 border border-emerald-100/50 text-[#064e3b] rounded-full text-[9px] md:text-[10px] font-black uppercase tracking-widest hover:bg-[#064e3b] hover:text-white transition-all shadow-sm active:scale-95"
-                >
-                  <Sparkles className="w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-500" />
-                  View AI Insights
-                </button>
-              </div>
+                return (
+                  <MealSectionCard
+                    key={sectionId}
+                    section={section}
+                    meals={meals}
+                    mealType={sectionId}
+                    loggedMeals={loggedMeals}
+                    onOpenOptions={() => setActiveMealSection(sectionId)}
+                  />
+                );
+              })}
             </div>
-          </section>
-
-          {/* Meal Rows - Vertical sections with horizontal scroll */}
-          {MEAL_ORDER.map((sectionId, sIdx) => {
-            const section = SECTION_INFO[sectionId];
-            const meals = dietPlan.mealPlan?.[sectionId] || [];
-            if (meals.length === 0) return null;
-
-            return (
-              <section key={sectionId} className="relative group">
-                <div className="flex items-center justify-between mb-4 md:mb-8 px-2">
-                  <div className="flex items-center gap-4">
-                    <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-[1.25rem] bg-emerald-50/30 flex items-center justify-center border border-emerald-50 shadow-sm overflow-hidden text-lg md:text-2xl">
-                      {section.emoji}
-                    </div>
-                    <div>
-                      <h2 className="text-base md:text-2xl font-bold md:font-light tracking-tight text-[#064e3b] uppercase leading-none mb-1">{section.label}</h2>
-                      <p className="text-[8px] md:text-[10px] font-black text-emerald-800/30 uppercase tracking-[0.2em]">{section.time}</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-1.5 md:gap-2">
-                    <button
-                      onClick={() => rowRefs.current[sectionId]?.scrollBy({ left: -250, behavior: 'smooth' })}
-                      className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white border border-emerald-100 flex items-center justify-center hover:bg-emerald-50 transition-all shadow-sm"
-                    >
-                      <ChevronLeft className="w-4 h-4 md:w-5 md:h-5 text-[#064e3b]" />
-                    </button>
-                    <button
-                      onClick={() => rowRefs.current[sectionId]?.scrollBy({ left: 250, behavior: 'smooth' })}
-                      className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white border border-emerald-100 flex items-center justify-center hover:bg-emerald-50 transition-all shadow-sm"
-                    >
-                      <ChevronRight className="w-4 h-4 md:w-5 md:h-5 text-[#064e3b]" />
-                    </button>
-                  </div>
-                </div>
-
-                <div
-                  ref={el => rowRefs.current[sectionId] = el}
-                  className="flex gap-6 overflow-x-auto pb-8 scrollbar-hide snap-x px-2"
-                >
-                  {meals.map((meal, i) => (
-                    <MealCard
-                      key={`${sectionId}-${i}`}
-                      meal={meal}
-                      mealType={sectionId}
-                      idx={i}
-                      isLogged={!!loggedMeals[`${sectionId}-${getMealName(meal)}`]}
-                      onLog={handleLogMeal}
-                      isLoading={loggingMealId === `${sectionId}-${getMealName(meal)}`}
-                      onClick={() => {
-                        setSelectedFood(meal);
-                        setSelectedFoodType(sectionId);
-                      }}
-                    />
-                  ))}
-                </div>
-              </section>
-            );
-          })}
-
-          {/* AI Insights Bar */}
-          <section ref={insightsRef} className="bg-black rounded-[2.5rem] md:rounded-[3rem] p-6 md:p-12 lg:p-16 text-white overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-[400px] h-[400px] bg-indigo-500/10 rounded-full blur-[100px]" />
-            <div className="relative z-10 flex flex-col lg:flex-row gap-8 lg:gap-16">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-4 md:mb-6">
-                  <Sparkles className="w-5 h-5 md:w-8 md:h-8 text-emerald-400" />
-                  <span className="text-[9px] md:text-[10px] font-black uppercase tracking-[0.2em] md:tracking-[0.3em] text-slate-400">Dietary Intelligence</span>
-                </div>
-                <h2 className="text-2xl md:text-3xl lg:text-4xl font-light mb-6 md:mb-8 leading-tight tracking-tight">AI Insights based on your health profile</h2>
-                <div className="grid grid-cols-1 gap-3 md:gap-4">
-                  {(dietPlan.lifestyleRecommendations || ["Balance carbs with fiber.", "Hydrate 30m before breakfast.", "Avoid caffeine after 4pm."]).slice(0, 3).map((rec, i) => (
-                    <div key={i} className="flex items-start gap-4 py-1 group transition-colors">
-                      <div className="w-6 h-6 rounded-full bg-emerald-500/10 flex items-center justify-center shrink-0 border border-emerald-500/20">
-                        <CheckCircle className="w-3 h-3 text-emerald-400" />
-                      </div>
-                      <p className="text-slate-300 font-medium leading-relaxed text-sm md:text-base">{rec}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="lg:w-1/3 w-full pt-8 lg:pt-0 border-t lg:border-t-0 lg:border-l border-white/10 lg:pl-12">
-                <div className="flex flex-col gap-6">
-                  <div>
-                    <div className="flex items-center gap-3 mb-4">
-                      <AlertCircle className="w-5 h-5 text-rose-500" />
-                      <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest text-slate-400">Restricted Foods</span>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {(dietPlan.avoidSuggestions || ["Refined Sugar", "Processed Meats", "Soda", "High Sodium Snacks"]).map((food, i) => (
-                        <span key={i} className="px-3 py-1.5 bg-rose-500/10 text-rose-400 rounded-full text-[9px] font-black uppercase tracking-widest border border-rose-500/20">
-                          {food}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-
-                  <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
-                    Based on your latest records, avoiding these will improve your {user?.nutritionGoal?.goal?.replace('_', ' ') || 'metabolic health'}.
-                  </p>
-                </div>
-              </div>
-            </div>
-          </section>
+          </div>
 
         </div>
       )}
 
-      {/* Modals */}
+      {/* Meal Options Modal */}
+      <AnimatePresence>
+        {activeMealSection && (
+          <MealOptionsModal
+            label={SECTION_INFO[activeMealSection].label}
+            meals={dietPlan.mealPlan?.[activeMealSection] || []}
+            mealType={activeMealSection}
+            loggedMeals={loggedMeals}
+            onClose={() => setActiveMealSection(null)}
+            onLog={handleLogMeal}
+            loggingMealId={loggingMealId}
+          />
+        )}
+      </AnimatePresence>
+
       {showPreferences && (
         <FoodPreferences 
           onClose={() => setShowPreferences(false)} 
@@ -730,14 +732,14 @@ export default function DietPlan() {
                 <button
                   onClick={() => {
                     setShowRegenOptions(false);
-                    generatePlan(true); // Default regeneration (usually more variety)
+                    generatePlan(false);
                   }}
-                  className="w-full flex flex-col items-start p-4 rounded-2xl border border-slate-100 hover:bg-slate-50 transition-all text-left"
+                  className="w-full flex flex-col items-start p-5 rounded-[2rem] border border-slate-100 hover:bg-emerald-50/50 hover:border-emerald-200 transition-all text-left group"
                 >
-                  <span className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                    <Sparkles className="w-4 h-4 text-purple-500" /> Different Food
+                  <span className="text-sm font-bold text-[#1a2e35] flex items-center gap-2 group-hover:text-[#69A38D]">
+                    <Sparkles className="w-4 h-4 text-[#69A38D]" /> Different Food
                   </span>
-                  <span className="text-xs text-slate-500 mt-1">Generate completely new variety of healthy Indian meals</span>
+                  <span className="text-xs text-slate-500 mt-2 font-medium">Generate completely new variety of healthy Indian meals</span>
                 </button>
 
                 <button
@@ -746,12 +748,12 @@ export default function DietPlan() {
                     setPrefMode('regenerate');
                     setShowPreferences(true);
                   }}
-                  className="w-full flex flex-col items-start p-4 rounded-2xl border border-slate-100 hover:bg-slate-50 transition-all text-left"
+                  className="w-full flex flex-col items-start p-5 rounded-[2rem] border border-slate-100 hover:bg-emerald-50/50 hover:border-emerald-200 transition-all text-left group"
                 >
-                  <span className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                    <Utensils className="w-4 h-4 text-emerald-500" /> Based on Preferred Food
+                  <span className="text-sm font-bold text-[#1a2e35] flex items-center gap-2 group-hover:text-[#69A38D]">
+                    <Utensils className="w-4 h-4 text-[#69A38D]" /> Based on Preferred Food
                   </span>
-                  <span className="text-xs text-slate-500 mt-1">Update your favorites first, then generate a tailored plan</span>
+                  <span className="text-xs text-slate-500 mt-2 font-medium">Update your favorites first, then generate a tailored plan</span>
                 </button>
               </div>
             </motion.div>
@@ -786,13 +788,13 @@ export default function DietPlan() {
                 </button>
               </div>
 
-              <div className="p-8 max-h-[60vh] overflow-y-auto space-y-4 scrollbar-hide">
+              <div className="p-8 max-h-[60vh] overflow-y-auto space-y-4 scrollbar-hide bg-[#F8F9F5]/30">
                 {history.length > 0 ? (
                   history.map((plan) => (
                     <button
                       key={plan._id}
                       onClick={() => loadSelectedPlan(plan._id)}
-                      className={`w-full p-6 rounded-3xl border text-left transition-all flex items-center justify-between group ${dietPlan?._id === plan._id ? 'bg-black border-black shadow-xl ring-4 ring-black/5' : 'bg-slate-50 border-transparent hover:border-slate-200'}`}
+                      className={`w-full p-6 rounded-[2rem] border text-left transition-all flex items-center justify-between group shadow-sm ${dietPlan?._id === plan._id ? 'bg-[#69A38D] border-[#69A38D] shadow-emerald-200/50 ring-4 ring-emerald-500/10' : 'bg-white border-slate-100 hover:border-emerald-100 hover:bg-emerald-50/20'}`}
                     >
                       <div>
                         <div className="flex items-center gap-2 mb-2">
@@ -800,13 +802,13 @@ export default function DietPlan() {
                             {plan.inputData?.bmiGoal?.replace('_', ' ') || plan.fitnessGoal || 'General Health'}
                           </div>
                           {dietPlan?._id === plan._id && (
-                            <div className="flex items-center gap-1 text-emerald-400 text-[9px] font-black uppercase tracking-widest">
-                              <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                            <div className="flex items-center gap-1.5 text-white/90 text-[9px] font-black uppercase tracking-widest bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-md">
+                              <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                               Active Now
                             </div>
                           )}
                         </div>
-                        <p className={`text-sm font-black ${dietPlan?._id === plan._id ? 'text-white' : 'text-slate-800'}`}>
+                        <p className={`text-base font-black ${dietPlan?._id === plan._id ? 'text-white' : 'text-[#1a2e35]'}`}>
                           {new Date(plan.generatedAt || plan.createdAt).toLocaleDateString('en-US', {
                             weekday: 'short',
                             day: 'numeric',
