@@ -452,9 +452,9 @@ textarea:focus {
   display: flex;
   align-items: center;
   justify-content: space-around;
-  background: #ffffff;
-  height: 70px;
-  border-radius: 28px 28px 0 0;
+  background: #E2EED2;
+  height: 91.1px;
+  border-radius: 29.3px 29.3px 0 0;
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.05);
   overflow: visible;
   padding: 0 10px;

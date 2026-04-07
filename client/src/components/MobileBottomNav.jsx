@@ -265,7 +265,7 @@ export default function MobileBottomNav() {
                     >
                       <div className="flex items-center gap-4">
                         <div className="w-11 h-11 bg-white rounded-[16px] flex items-center justify-center shadow-sm border border-[#A4B0C9]/10">
-                          <BarChart3 size={22} className="text-[#7C8BA8]" strokeWidth={2.5} />
+                          <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_4.svg?v=1775560574" alt="Progress" className="w-6 h-6 object-contain" />
                         </div>
                         <div className="text-left">
                           <div className="text-[16px] font-extrabold text-[#445577] mb-0.5 tracking-tight px-0.5">Progress Insights</div>
@@ -337,7 +337,7 @@ export default function MobileBottomNav() {
       </AnimatePresence>
 
       <nav 
-        className={`mobile-bottom-nav-container ${hideNavbarUI ? 'hidden' : ''} !bg-[#EBF0E6] border-t border-emerald-100/30 shadow-[0_-5px_20px_rgba(0,0,0,0.03)] z-[250] !fixed bottom-0 left-0 right-0`}
+        className={`mobile-bottom-nav-container ${hideNavbarUI ? 'hidden' : ''} !bg-[#E2EED2] border-t border-emerald-100/30 shadow-[0_-5px_20px_rgba(0,0,0,0.03)] z-[250] !fixed bottom-0 left-0 right-0`}
         style={{ zIndex: 250 }}
       >
         <div className="mobile-bottom-nav">
