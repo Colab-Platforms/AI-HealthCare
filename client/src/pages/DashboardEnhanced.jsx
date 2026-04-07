@@ -558,7 +558,7 @@ export default function DashboardEnhanced() {
   const [activeLogTab, setActiveLogTab] = useState('Weight'); // Weight, Steps, Sleep, Water
   const [waterLog, setWaterLog] = useState(0);
   const [vitalsLoading, setVitalsLoading] = useState(false);
-  const [vitalsInput, setVitalsInput] = useState({ weight: '', steps: '', sleepHours: '8', sleepMins: '30', date: new Date().toISOString().split('T')[0] });
+  const [vitalsInput, setVitalsInput] = useState({ weight: '', steps: '', sleepHours: '', sleepMins: '', date: new Date().toISOString().split('T')[0] });
   const location = useLocation();
 
   // Initialize and Sync Water Log (field is 'waterIntake' in NutritionSummary)
@@ -652,25 +652,23 @@ export default function DashboardEnhanced() {
       if (type === 'Weight') {
         if (!vitalsInput.weight) throw new Error('Weight is required');
         await api.post('nutrition/log-weight', { weight: Number(vitalsInput.weight), notes: 'Mobile dashboard log', date: logDate });
-        toast.success('Weight logged successfully');
-        setIsLogVitalsOpen(false);
+        toast.success(type + ' logged successfully');
       } else if (type === 'Steps') {
         if (!vitalsInput.steps) throw new Error('Steps required');
-        await api.post('wearables/sync', { deviceType: 'other', isAdditive: true, metrics: { steps: Number(vitalsInput.steps), date: logDate } });
+        const stepsToAdd = Number(vitalsInput.steps);
+        await api.post('wearables/sync', { deviceType: 'other', isAdditive: true, metrics: { steps: stepsToAdd, date: logDate } });
         toast.success('Steps added successfully');
-        setIsLogVitalsOpen(false);
       } else if (type === 'Sleep') {
-        const totalMins = (Number(vitalsInput.sleepHours) * 60) + Number(vitalsInput.sleepMins);
-        await api.post('wearables/sleep', { deviceType: 'other', isAdditive: true, sleepData: { totalSleepMinutes: totalMins, date: logDate } });
+        if (!vitalsInput.sleepHours && !vitalsInput.sleepMins) throw new Error('Sleep duration required');
+        const totalMins = (Number(vitalsInput.sleepHours || 0) * 60) + Number(vitalsInput.sleepMins || 0);
+        await api.post('wearables/sleep', { deviceType: 'other', isAdditive: false, sleepData: { totalSleepMinutes: totalMins, date: logDate } });
         toast.success('Sleep logged successfully');
-        setIsLogVitalsOpen(false);
       } else if (type === 'Water') {
-        // Use either the change (for +/- buttons) or the diff from current state (for Save button)
         const currentWater = nutritionData?.totalWater ?? nutritionData?.waterIntake ?? 0;
-        const newWater = Math.max(0, Number(currentWater) + change);
+        const newWater = Math.max(0, Number(currentWater) + (change || 0));
         await api.post('nutrition/log-water', { date: logDate, waterIntake: newWater });
-        // Local update for immediate feedback
         setWaterLog(newWater);
+        toast.success('Water logged successfully');
       }
 
       // Sync all data sources
@@ -684,12 +682,14 @@ export default function DashboardEnhanced() {
       ]);
 
       if (type !== 'Water') {
-        // Only reset the fields that were just logged; preserve sleep values from server
+        // Only reset the fields that were just logged; preserve sleep values from server if not logging sleep
         setVitalsInput(prev => ({
           ...prev,
           weight: type === 'Weight' ? '' : prev.weight,
           steps: type === 'Steps' ? '' : prev.steps,
-          date: new Date().toISOString().split('T')[0]
+          sleepHours: type === 'Sleep' ? '' : prev.sleepHours,
+          sleepMins: type === 'Sleep' ? '' : prev.sleepMins,
+          date: logDate
         }));
       }
     } catch (err) {
@@ -2216,27 +2216,30 @@ export default function DashboardEnhanced() {
                              </div>
                            </div>
 
-                           {/* Semi-Circle Gauge */}
-                           <div className="flex flex-col items-center justify-center my-10 relative">
-                              <div className="relative w-[220px] h-[130px]">
-                                <svg width="220" height="130" viewBox="0 0 220 130">
-                                  <path d="M 20 120 A 80 80 0 0 1 200 120" fill="none" stroke="#F1F5F9" strokeWidth="12" strokeLinecap="round" />
-                                  <motion.path 
-                                    initial={{ pathLength: 0 }}
-                                    animate={{ pathLength: (Math.min(100, (Number(vitalsInput.weight) || Number(user?.profile?.weight) || 0)) / 100) }}
-                                    d="M 20 120 A 80 80 0 0 1 200 120" 
-                                    fill="none" stroke="#10B981" strokeWidth="12" strokeLinecap="round" 
-                                  />
-                                </svg>
-                                <div className="absolute top-[18px] left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white border-2 border-[#10B981] flex items-center justify-center shadow-sm">
-                                  <Scale className="w-3.5 h-3.5 text-[#10B981]" />
-                                </div>
-                              </div>
-                              <div className="text-center -mt-8">
-                                <span className="text-4xl font-black text-[#1D293D]">{(Number(vitalsInput.weight) || Number(user?.profile?.weight) || 0).toFixed(1)}</span>
-                                <p className="text-[9px] font-black text-[#90A1B9] uppercase tracking-[0.1em] mt-1">Kilograms Today</p>
-                              </div>
-                           </div>
+                            {/* Semi-Circle Gauge */}
+                            <div className="flex flex-col items-center justify-center my-10 relative">
+                               <div className="relative w-[220px] h-[130px]">
+                                 <svg width="220" height="130" viewBox="0 0 220 130">
+                                   <path d="M 20 120 A 80 80 0 0 1 200 120" fill="none" stroke="#F1F5F9" strokeWidth="8" strokeLinecap="butt" />
+                                   <circle cx="20" cy="120" r="4" fill="#10B981" />
+                                   <motion.path 
+                                     key={vitalsInput.weight} 
+                                     initial={{ pathLength: 0 }}
+                                     animate={{ pathLength: (Math.min(100, (Number(vitalsInput.weight) || Number(user?.profile?.weight) || 0)) / 100) }}
+                                     transition={{ type: "tween", duration: 0.5, ease: "easeOut" }}
+                                     d="M 20 120 A 80 80 0 0 1 200 120" 
+                                     fill="none" stroke="#10B981" strokeWidth="12" strokeLinecap="round" 
+                                   />
+                                 </svg>
+                                 <div className="absolute top-[18px] left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white border-2 border-[#10B981] flex items-center justify-center shadow-sm">
+                                   <Scale className="w-3.5 h-3.5 text-[#10B981]" />
+                                 </div>
+                               </div>
+                               <div className="text-center -mt-8">
+                                 <span className="text-4xl font-black text-[#1D293D]">{(Number(vitalsInput.weight) || Number(user?.profile?.weight) || 0).toFixed(1)}</span>
+                                 <p className="text-[9px] font-black text-[#90A1B9] uppercase tracking-[0.1em] mt-1">Kilograms Today</p>
+                               </div>
+                            </div>
 
                            <div className="bg-[#F8FAFC] rounded-[24px] p-6 flex justify-between items-center border border-[#F1F5F9]">
                               <div className="flex-1 flex flex-col items-center border-r border-slate-200">
@@ -2297,9 +2300,14 @@ export default function DashboardEnhanced() {
                            </div>
                            <div className="flex-[6] space-y-3">
                               <span className="text-[9px] font-black text-[#1F5C49]/70 uppercase ml-2">Date</span>
-                              <div className="flex items-center gap-2 bg-white px-4 py-3.5 rounded-2xl border border-[#E8F3EE]">
-                                 <Calendar className="w-3.5 h-3.5 text-[#90A1B9]" />
-                                 <input type="date" value={vitalsInput.date} onChange={(e) => setVitalsInput(prev => ({ ...prev, date: e.target.value }))} className="bg-transparent text-sm font-bold text-[#1D293D] w-full focus:outline-none" />
+                              <div className="flex flex-col gap-2 bg-white px-4 py-3.5 rounded-2xl border border-[#E8F3EE] w-full">
+                                 <div className="flex items-center gap-2 w-full">
+                                    <Calendar className="w-3.5 h-3.5 text-[#90A1B9]" />
+                                    <input type="date" value={vitalsInput.date} onChange={(e) => setVitalsInput(prev => ({ ...prev, date: e.target.value }))} className="bg-transparent text-sm font-bold text-[#1D293D] w-full focus:outline-none" />
+                                 </div>
+                                 <p className="text-[9px] font-black text-[#1F5C49] uppercase tracking-widest pl-5.5">
+                                    Logging for: {vitalsInput.date ? vitalsInput.date.split('-').reverse().join('/') : '--/--/--'}
+                                 </p>
                               </div>
                            </div>
                         </div>
@@ -2341,11 +2349,14 @@ export default function DashboardEnhanced() {
                            <div className="flex flex-col items-center justify-center my-10 relative">
                               <div className="relative w-[220px] h-[130px]">
                                 <svg width="220" height="130" viewBox="0 0 220 130">
-                                  <path d="M 20 120 A 80 80 0 0 1 200 120" fill="none" stroke="#F1F5F9" strokeWidth="12" strokeLinecap="round" />
+                                  <path d="M 20 120 A 80 80 0 0 1 200 120" fill="none" stroke="#F1F5F9" strokeWidth="8" strokeLinecap="butt" />
+                                  <circle cx="20" cy="120" r="4" fill="#3B82F6" />
                                   <motion.path 
+                                    key={waterLog} 
                                     initial={{ pathLength: 0 }}
                                     animate={{ pathLength: (Math.min(8, waterLog) / 8) }}
-                                    d="M 20 120 A 80 80 0 0 1 200 120" 
+                                    transition={{ type: "tween", duration: 0.5, ease: "easeOut" }}
+                                    d="M 20 120 A 80 80 0 0 1 200 120"
                                     fill="none" stroke="#3B82F6" strokeWidth="12" strokeLinecap="round" 
                                   />
                                 </svg>
@@ -2495,10 +2506,13 @@ export default function DashboardEnhanced() {
                            <div className="flex flex-col items-center justify-center my-10 relative">
                               <div className="relative w-[220px] h-[130px]">
                                 <svg width="220" height="130" viewBox="0 0 220 130">
-                                  <path d="M 20 120 A 80 80 0 0 1 200 120" fill="none" stroke="#F1F5F9" strokeWidth="12" strokeLinecap="round" />
+                                  <path d="M 20 120 A 80 80 0 0 1 200 120" fill="none" stroke="#F1F5F9" strokeWidth="8" strokeLinecap="butt" />
+                                  <circle cx="20" cy="120" r="4" fill="#F97316" />
                                   <motion.path 
+                                    key={vitalsInput.steps} 
                                     initial={{ pathLength: 0 }}
                                     animate={{ pathLength: (Math.min(10000, (Number(vitalsInput.steps) || Number(wearableData?.todayMetrics?.steps) || 0)) / 10000) }}
+                                    transition={{ type: "tween", duration: 0.5, ease: "easeOut" }}
                                     d="M 20 120 A 80 80 0 0 1 200 120" 
                                     fill="none" stroke="#F97316" strokeWidth="12" strokeLinecap="round" 
                                   />
@@ -2599,6 +2613,9 @@ export default function DashboardEnhanced() {
                                      <Calendar className="w-4 h-4 text-slate-200" />
                                      <input type="date" value={vitalsInput.date} onChange={(e) => setVitalsInput(prev => ({ ...prev, date: e.target.value }))} className="bg-transparent text-xs font-black text-[#1D293D] w-full focus:outline-none" />
                                   </div>
+                                  <p className="text-[8px] font-black text-orange-600 uppercase tracking-widest ml-1 mt-1">
+                                     Date: {vitalsInput.date ? vitalsInput.date.split('-').reverse().join('/') : '--/--/--'}
+                                  </p>
                                </div>
                             </div>
                          </div>
@@ -2631,30 +2648,65 @@ export default function DashboardEnhanced() {
                            </div>
 
                            <div className="text-center mt-4">
-                             <h4 className="text-lg font-bold text-slate-400">You slept <span className="text-[#1D293D] font-black">{vitalsInput.sleepHours}h {vitalsInput.sleepMins}m</span></h4>
+                             <h4 className="text-lg font-bold text-slate-400">You slept <span className="text-[#1D293D] font-black">{vitalsInput.sleepHours || (Math.floor(Number(wearableData?.todayMetrics?.sleep || 0)/60))}h {vitalsInput.sleepMins || (Number(wearableData?.todayMetrics?.sleep || 0)%60)}m</span></h4>
                            </div>
 
-                           {/* Semi-Circle Gauge - Increased height to prevent clipping */}
-                           <div className="flex flex-col items-center justify-center my-10 relative">
-                              <div className="relative w-[220px] h-[130px]">
-                                <svg width="220" height="130" viewBox="0 0 220 130">
-                                  <path d="M 20 120 A 80 80 0 0 1 200 120" fill="none" stroke="#F1F5F9" strokeWidth="12" strokeLinecap="round" />
-                                  <motion.path 
-                                    initial={{ pathLength: 0 }}
-                                    animate={{ pathLength: (Math.min(8, (Number(vitalsInput.sleepHours) + Number(vitalsInput.sleepMins)/60)) / 8) }}
-                                    d="M 20 120 A 80 80 0 0 1 200 120" 
-                                    fill="none" stroke="#A855F7" strokeWidth="12" strokeLinecap="round" 
-                                  />
-                                </svg>
-                                <div className="absolute top-[18px] left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white border-2 border-purple-500 flex items-center justify-center shadow-sm">
-                                  <Moon className="w-3.5 h-3.5 text-purple-500" />
+                             {/* Semi-Circle Gauge - Increased height to prevent clipping */}
+                             <div className="flex flex-col items-center justify-center my-10 relative">
+                                <div className="relative w-[220px] h-[130px]">
+                                  <svg width="220" height="130" viewBox="0 0 220 130">
+                                    <path d="M 20 120 A 80 80 0 0 1 200 120" fill="none" stroke="#F1F5F9" strokeWidth="8" strokeLinecap="butt" />
+                                    <circle cx="20" cy="120" r="4" fill="#8A7BB6" />
+                                    {(() => {
+                                       const hasInput = vitalsInput.sleepHours !== '' || vitalsInput.sleepMins !== '';
+                                       const selectedDateStr = vitalsInput.date || new Date().toISOString().split('T')[0];
+                                       
+                                       // Find existing sleep record for selected date in recentSleep array
+                                       const existingSleep = wearableData?.recentSleep?.find(s => 
+                                          new Date(s.date).toISOString().split('T')[0] === selectedDateStr
+                                       );
+                                       const existingMins = existingSleep?.totalSleepMinutes || 0;
+
+                                       const currentSleepVal = hasInput 
+                                          ? (parseFloat(vitalsInput.sleepHours || 0) + (parseFloat(vitalsInput.sleepMins || 0)/60)) 
+                                          : (existingMins / 60);
+                                       
+                                       return (
+                                          <>
+                                             <motion.path 
+                                               key={`${vitalsInput.sleepHours}-${vitalsInput.sleepMins}-${existingMins}-${vitalsInput.date}`} 
+                                               initial={{ pathLength: 0 }}
+                                               animate={{ pathLength: Math.min(8, currentSleepVal) / 8 }}
+                                               transition={{ type: "tween", duration: 0.5, ease: "easeOut" }}
+                                               d="M 20 120 A 80 80 0 0 1 200 120" 
+                                               fill="none" stroke="#8A7BB6" strokeWidth="12" strokeLinecap="round" 
+                                             />
+                                          </>
+                                       );
+                                    })()}
+                                  </svg>
+                                  <div className="absolute top-[18px] left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white border-2 border-[#8A7BB6] flex items-center justify-center shadow-sm">
+                                    <Moon className="w-3.5 h-3.5 text-[#8A7BB6]" />
+                                  </div>
                                 </div>
-                              </div>
-                              <div className="text-center -mt-8">
-                                <span className="text-4xl font-black text-[#1D293D]">{(Number(vitalsInput.sleepHours) + (Number(vitalsInput.sleepMins)/60)).toFixed(1)}</span>
-                                <p className="text-[9px] font-black text-[#90A1B9] uppercase tracking-[0.1em] mt-1">Hours Logged</p>
-                              </div>
-                           </div>
+                                <div className="text-center -mt-8">
+                                  <span className="text-4xl font-black text-[#1D293D]">
+                                     {(() => {
+                                        const hasInput = vitalsInput.sleepHours !== '' || vitalsInput.sleepMins !== '';
+                                        const selectedDateStr = vitalsInput.date || new Date().toISOString().split('T')[0];
+                                        const existingSleep = wearableData?.recentSleep?.find(s => 
+                                           new Date(s.date).toISOString().split('T')[0] === selectedDateStr
+                                        );
+                                        const existingMins = existingSleep?.totalSleepMinutes || 0;
+                                        
+                                        return (hasInput 
+                                           ? (parseFloat(vitalsInput.sleepHours || 0) + (parseFloat(vitalsInput.sleepMins || 0)/60)) 
+                                           : (existingMins / 60)).toFixed(1);
+                                     })()}
+                                  </span>
+                                  <p className="text-[9px] font-black text-[#90A1B9] uppercase tracking-[0.1em] mt-1">Hours Logged</p>
+                                </div>
+                             </div>
 
                            <div className="bg-[#F8FAFC] rounded-[24px] p-6 flex justify-between items-center border border-[#F1F5F9] mt-4">
                               <div className="flex-1 flex flex-col items-center border-r border-slate-200">
@@ -2693,7 +2745,7 @@ export default function DashboardEnhanced() {
                                           return (
                                             <div className="bg-white p-3 rounded-xl shadow-lg border border-purple-100">
                                               <p className="text-xs font-black text-slate-400 uppercase">{payload[0].payload.day}</p>
-                                              <p className="text-sm font-black text-[#A855F7]">{payload[0].value} Hours</p>
+                                              <p className="text-sm font-black text-[#8A7BB6]">{payload[0].value} Hours</p>
                                             </div>
                                           );
                                         }
@@ -2701,10 +2753,10 @@ export default function DashboardEnhanced() {
                                      }} />
                                      <Bar dataKey="value" radius={[8, 8, 8, 8]} barSize={28}>
                                         {formattedHistory.sleep.map((entry, index) => (
-                                          <Cell key={index} fill={entry.value >= 8 ? '#A855F7' : '#E9D5FF'} />
+                                          <Cell key={index} fill={entry.value >= 8 ? '#8A7BB6' : '#D1CBE9'} />
                                         ))}
                                      </Bar>
-                                     <ReferenceLine y={8} stroke="#A855F7" strokeDasharray="3 3" opacity={0.3} />
+                                     <ReferenceLine y={8} stroke="#8A7BB6" strokeDasharray="3 3" opacity={0.3} />
                                   </BarChart>
                                </ResponsiveContainer>
                             </div>
@@ -2712,15 +2764,15 @@ export default function DashboardEnhanced() {
                             {/* Legend */}
                             <div className="flex items-center justify-center gap-6 mt-6">
                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 rounded-full bg-[#A855F7]" />
+                                  <div className="w-2 h-2 rounded-full bg-[#8A7BB6]" />
                                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Goal Met</span>
                                </div>
                                <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 rounded-full bg-[#E9D5FF]" />
+                                  <div className="w-2 h-2 rounded-full bg-[#D1CBE9]" />
                                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Below Goal</span>
                                </div>
                                <div className="flex items-center gap-2">
-                                  <div className="w-4 border-t-2 border-dashed border-[#A855F7]/30" />
+                                  <div className="w-4 border-t-2 border-dashed border-[#8A7BB6]/30" />
                                   <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Goal (8h)</span>
                                </div>
                             </div>
@@ -2748,9 +2800,14 @@ export default function DashboardEnhanced() {
                                </div>
                                <div className="col-span-6 space-y-3">
                                   <span className="text-[10px] font-black text-[#94A3B8] uppercase tracking-[0.15em] ml-2">Date</span>
-                                  <div className="bg-white px-6 py-4.5 rounded-[22px] border border-[#E2E8F0] flex items-center gap-4 h-[72px]">
-                                     <Calendar className="w-5.5 h-5.5 text-[#94A3B8]" />
-                                     <input type="date" value={vitalsInput.date} onChange={(e) => setVitalsInput(prev => ({ ...prev, date: e.target.value }))} className="bg-transparent text-[16px] font-black text-[#1D293D] w-full focus:outline-none" />
+                                  <div className="bg-white px-6 py-4.5 rounded-[22px] border border-[#E2E8F0] flex flex-col justify-center h-[72px]">
+                                     <div className="flex items-center gap-4 w-full">
+                                        <Calendar className="w-5.5 h-5.5 text-[#94A3B8]" />
+                                        <input type="date" value={vitalsInput.date} onChange={(e) => setVitalsInput(prev => ({ ...prev, date: e.target.value }))} className="bg-transparent text-[16px] font-black text-[#1D293D] w-full focus:outline-none" />
+                                     </div>
+                                     <p className="text-[9px] font-black text-[#8A7BB6] uppercase tracking-widest ml-9.5">
+                                        {vitalsInput.date ? vitalsInput.date.split('-').reverse().join('/') : '--/--/--'}
+                                     </p>
                                   </div>
                                </div>
                             </div>
@@ -2761,7 +2818,7 @@ export default function DashboardEnhanced() {
                             <button 
                                onClick={() => handleLogVitals('Sleep')}
                                disabled={vitalsLoading}
-                               className="w-full h-16 bg-[#8B5CF6] rounded-full shadow-[0_20px_40px_rgba(139,92,246,0.3)] flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50"
+                               className="w-full h-16 bg-[#8A7BB6] rounded-full shadow-[0_20px_40px_rgba(138,123,182,0.3)] flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50"
                             >
                                {vitalsLoading ? (
                                  <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
