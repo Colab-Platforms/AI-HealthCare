@@ -351,16 +351,26 @@ export default function MobileBottomNav() {
                 <button
                   key={key}
                   onClick={() => setShowLogModal(!showLogModal)}
-                  className={`nav-center-fab flex flex-col items-center justify-center transition-all duration-400 ${
-                    showLogModal 
-                      ? 'bg-[#FF2D55] rotate-0 shadow-[0_0_30px_rgba(255,45,85,0.5)] border-[6px] border-[#EBF1E5] ring-4 ring-[#FF2D55]/5 scale-110' 
-                      : '!shadow-slate-200/50'
-                  } ${hasSeenTour ? 'no-pulse' : ''}`}
+                  className={`nav-center-fab flex items-center justify-center transition-all duration-400 ${hasSeenTour ? 'no-pulse' : ''}`}
+                  style={showLogModal ? {
+                    width: '64px',
+                    height: '64px',
+                    transform: 'translateX(-50%) rotate(45deg)',
+                    background: '#FF2056',
+                    boxShadow: '0px 8px 20px rgba(244, 63, 94, 0.35)',
+                    borderRadius: '50%',
+                    outline: '2.45px #E2EED2 solid',
+                    outlineOffset: '-2.45px',
+                    display: 'flex',
+                    justifyContent: 'center',
+                    alignItems: 'center',
+                    border: 'none'
+                  } : {}}
                   aria-label={item.label}
                   title={item.label}
                 >
                   {showLogModal ? (
-                    <X className="w-6 h-6 text-white" strokeWidth={3} />
+                    <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_2.svg?v=1775559853" alt="Close" className="w-10 h-10 rotate-[-45deg]" />
                   ) : (
                     <Plus className="w-6 h-6 text-white" strokeWidth={3} />
                   )}
