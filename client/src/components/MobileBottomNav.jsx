@@ -337,10 +337,10 @@ export default function MobileBottomNav() {
       </AnimatePresence>
 
       <nav 
-        className={`mobile-bottom-nav-container ${hideNavbarUI ? 'hidden' : ''} !bg-[#E2EED2] border-t border-emerald-100/30 shadow-[0_-5px_20px_rgba(0,0,0,0.03)] z-[250] !fixed bottom-0 left-0 right-0`}
+        className={`mobile-bottom-nav-container ${hideNavbarUI ? 'hidden' : ''} bg-transparent z-[250] !fixed bottom-0 left-0 right-0`}
         style={{ zIndex: 250 }}
       >
-        <div className="mobile-bottom-nav">
+        <div className="mobile-bottom-nav border-t border-emerald-100/30 shadow-[0_-5px_20px_rgba(0,0,0,0.03)]">
           {navItems.map((item, index) => {
             const Icon = item.icon;
             const active = isActive(item.path);

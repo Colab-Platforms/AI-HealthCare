@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -452,9 +453,11 @@ textarea:focus {
   display: flex;
   align-items: center;
   justify-content: space-around;
-  background: #E2EED2;
+  background: rgba(226, 238, 210, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   height: 91.1px;
-  border-radius: 29.3px 29.3px 0 0;
+  border-radius: 29.8px 29.8px 0 0;
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.05);
   overflow: visible;
   padding: 0 10px;
