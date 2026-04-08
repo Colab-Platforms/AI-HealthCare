@@ -2,13 +2,13 @@ import { useState, useEffect, useMemo, useRef } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useData } from '../context/DataContext';
 import {
-  Flame, Moon, Utensils, Activity, Sparkles, TrendingUp, TrendingDown,
+  Flame, Moon, Utensils, Activity, Sparkles, TrendingUp, TrendingDown, Bell,
   ChevronRight, ChevronLeft, Plus, FileText, AlertCircle, Droplet,
   Search, Sun, Clock, Heart, Apple, Info, Target, Calendar,
   ArrowUpRight, Upload, Coffee, Dumbbell, MessageCircle, BarChart3,
   Circle, Smile, FlaskConical, Leaf, Pill, CheckCircle2, Zap, Eye,
   UtensilsCrossed, UploadCloud, ShieldCheck, AlertTriangle, Check, Dna,
-  Scale, Footprints, X, Minus, GlassWater, Save
+  Scale, Footprints, X, Minus, GlassWater, Save, ArrowRight, Lightbulb
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
@@ -29,6 +29,16 @@ const DashedGauge = ({ value, max = 2400, mode = 'Macro' }) => {
   const totalDashes = 18;
   const activeDashes = Math.floor((percentage / 100) * totalDashes);
 
+  const getSripColor = (index, isActive) => {
+    if (!isActive) return '#F5F5F7';
+    // 1st 7 strips: dd5432 67% and c82d06
+    if (index < 7) return index % 2 === 0 ? '#dd5432' : '#c82d06';
+    // next 6 strips: f6efde and b8964e
+    if (index < 13) return index % 2 === 0 ? '#f6efde' : '#b8964e';
+    // last 5 strips: 83c3ae and 567c6f
+    return index % 2 === 0 ? '#83c3ae' : '#567c6f';
+  };
+
   return (
     <div className="relative flex flex-col items-center justify-center pt-1 pb-1">
       <svg width="180" height="90" viewBox="0 0 240 120" className="overflow-visible lg:w-[220px] lg:h-[110px]">
@@ -40,11 +50,12 @@ const DashedGauge = ({ value, max = 2400, mode = 'Macro' }) => {
               key={i}
               x1="20" y1="120"
               x2="52" y2="120"
-              stroke={isActive ? '#10b981' : '#F5F5F7'}
+              stroke={getSripColor(i, isActive)}
               strokeWidth="10"
               strokeLinecap="round"
               className="transition-colors duration-700"
               transform={`rotate(${angle} 120 120)`}
+              strokeOpacity={isActive ? 1 : 0.4}
             />
           );
         })}
@@ -194,25 +205,25 @@ const DiabetesMonitor = ({ onLog }) => {
   };
 
   return (
-    <div className="bg-white rounded-[3rem] p-10 border border-slate-100 shadow-sm mb-12">
-      <div className="flex items-center justify-between mb-2">
+    <div className="bg-white rounded-[32px] p-6 lg:p-10 border border-[#f0f0ea] shadow-sm mb-12 relative overflow-hidden">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
         <div>
-          <h2 className="text-2xl font-black text-black uppercase tracking-tight">Diabetes Monitor</h2>
-          <p className="text-sm font-bold text-slate-400">Track glucose, blood sugar & HbA1c</p>
+          <h2 className="text-2xl font-bold text-[#1a1a1a]">Diabetes Monitor</h2>
+          <p className="text-sm font-medium text-[#a0a0a0]">Biological markers tracking</p>
         </div>
-        <button className="flex items-center gap-2 bg-white px-6 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest border border-slate-100 shadow-sm hover:shadow-md transition-all">
+        <button className="flex items-center gap-2 bg-[#FAFBF8] px-6 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-widest border border-[#f0f0ea] shadow-sm hover:shadow-md transition-all">
           <Plus className="w-4 h-4" />
           Log Reading
         </button>
       </div>
 
-      <div className="mt-8 flex flex-col lg:flex-row items-center gap-4 bg-slate-50 p-4 rounded-full border border-slate-100 mb-10">
-        <div className="flex items-center gap-2 flex-1">
+      <div className="flex flex-col lg:flex-row items-center gap-4 bg-[#FAFBF8] p-4 rounded-[24px] border border-[#f0f0ea] mb-8">
+        <div className="flex items-center gap-2 flex-1 overflow-x-auto scrollbar-hide w-full">
           {['Fasting', 'Post-Meal', 'Random'].map(t => (
             <button
               key={t}
               onClick={() => setType(t)}
-              className={`px-8 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest transition-all ${type === t ? 'bg-white text-black shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
+              className={`px-8 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-wider transition-all whitespace-nowrap ${type === t ? 'bg-[#1a1a1a] text-white shadow-md' : 'text-[#8a8a8a] hover:text-[#1a1a1a]'}`}
             >
               {t}
             </button>
@@ -221,127 +232,43 @@ const DiabetesMonitor = ({ onLog }) => {
         <div className="flex items-center gap-3 w-full lg:w-auto">
           <input
             type="number"
-            placeholder="Glucose (mg/dL)"
+            placeholder="mg/dL"
             value={reading}
             onChange={(e) => setReading(e.target.value)}
-            className="flex-1 lg:w-48 bg-transparent px-6 py-2 content-center text-sm font-bold focus:outline-none placeholder:text-slate-300"
+            className="flex-1 lg:w-40 bg-white border border-[#f0f0ea] px-6 py-2.5 rounded-full text-sm font-bold focus:outline-none placeholder:text-[#d1d1d1]"
           />
           <button
             onClick={handleSave}
             disabled={loading}
-            className="bg-slate-900 text-white px-10 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest hover:bg-black transition-all disabled:opacity-50"
+            className="bg-[#5B8C6F] text-white px-8 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-widest hover:bg-[#4a7b5e] transition-all disabled:opacity-50 shadow-md shadow-[#5B8C6F]/20"
           >
             {loading ? '...' : 'Save'}
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-slate-50 rounded-[2rem] p-8 text-center border border-slate-100">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">Glucose</p>
-          <div className="flex items-baseline justify-center gap-2 mb-2">
-            <span className="text-3xl font-black text-black">110</span>
-            <span className="text-[10px] font-bold text-slate-400">mg/dL</span>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 lg:gap-6">
+        {[
+          { label: 'Glucose', val: '110', unit: 'mg/dL', status: 'Normal', color: '#5B8C6F' },
+          { label: 'Avg Sugar', val: '126', unit: 'mg/dL', status: '-3%', color: '#F59E0B' },
+          { label: 'HbA1c', val: '5.8', unit: '%', status: 'Good', color: '#5B8C6F' }
+        ].map((item, i) => (
+          <div key={i} className="bg-[#FAFBF8] rounded-[24px] p-6 lg:p-8 text-center border border-[#f0f0ea] hover:shadow-md transition-shadow">
+            <p className="text-[10px] font-bold text-[#a0a0a0] uppercase tracking-wider mb-4">{item.label}</p>
+            <div className="flex items-baseline justify-center gap-1 mb-2">
+              <span className="text-3xl lg:text-4xl font-black text-[#1a1a1a]">{item.val}</span>
+              <span className="text-[10px] font-bold text-[#b0b0b0] uppercase">{item.unit}</span>
+            </div>
+            <span className={`px-4 py-1.5 bg-white text-[10px] font-bold rounded-full border border-[#f0f0ea] uppercase tracking-wider`} style={{ color: item.color }}>{item.status}</span>
           </div>
-          <span className="px-5 py-1.5 bg-white text-black rounded-full text-[9px] font-black border border-slate-100 uppercase tracking-widest">Normal</span>
-        </div>
-        <div className="bg-slate-50 rounded-[2rem] p-8 text-center border border-slate-100">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">Avg Sugar</p>
-          <div className="flex items-baseline justify-center gap-2 mb-2">
-            <span className="text-3xl font-black text-black">126</span>
-            <span className="text-[10px] font-bold text-slate-400">mg/dL</span>
-          </div>
-          <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">-3%</span>
-        </div>
-        <div className="bg-slate-50 rounded-[2rem] p-8 text-center border border-slate-100">
-          <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-4">HbA1c</p>
-          <div className="flex items-baseline justify-center gap-2 mb-2">
-            <span className="text-3xl font-black text-black">5.8</span>
-            <span className="text-[10px] font-bold text-slate-400">%</span>
-          </div>
-          <span className="px-5 py-1.5 bg-white text-black rounded-full text-[9px] font-black border border-slate-100 uppercase tracking-widest">Good</span>
-        </div>
+        ))}
       </div>
     </div>
   );
 };
 
 const DailyMetricsCard = ({ onOpenLog }) => {
-  const { user } = useAuth();
-  const { dashboardData, nutritionData, wearableData } = useData();
-
-  // Real data with fallback to 0 or --
-  const weight = dashboardData?.user?.profile?.weight || dashboardData?.history?.slice(-1)?.[0]?.weight || user?.profile?.weight || '--';
-  const steps = wearableData?.todayMetrics?.steps || dashboardData?.stepsToday || '0';
-  const water = nutritionData?.totalWater || nutritionData?.waterIntake || '0';
-  const navigate = useNavigate();
-
-  return (
-    <div className="lg:bg-white lg:rounded-[28px] p-0 lg:p-5 lg:shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col h-full lg:border border-slate-100/50">
-      <div className="hidden lg:flex mb-2 lg:mb-8 justify-between items-center">
-        <div>
-          <h3 className="text-sm lg:text-xl font-medium text-[#064e3b]">Daily Vitals</h3>
-          <p className="text-[7px] lg:text-[9px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">QUICK LOG</p>
-        </div>
-      </div>
-
-      <div className="flex flex-row lg:flex-col gap-2 lg:space-y-4 flex-1 mb-6 lg:mb-0">
-        <div 
-          onClick={() => onOpenLog('Weight')}
-          className="bg-white lg:bg-emerald-50/20 p-2 lg:p-5 rounded-3xl lg:rounded-[24px] border border-emerald-100/30 flex flex-col lg:flex-row flex-1 items-center lg:justify-between group hover:shadow-md lg:hover:bg-white lg:hover:shadow-sm transition-all overflow-hidden shadow-sm lg:shadow-none cursor-pointer"
-        >
-          <div className="flex flex-col lg:flex-row items-center gap-1 lg:gap-4 text-center lg:text-left">
-            <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-2xl bg-emerald-50 lg:bg-white flex items-center justify-center shadow-sm">
-              <Target className="w-4 h-4 lg:w-5 lg:h-5 text-[#064e3b]" />
-            </div>
-            <div>
-              <p className="text-[9px] lg:text-[11px] font-black text-emerald-800/40 uppercase tracking-tighter leading-none mb-1">WEIGHT</p>
-              <p className="text-[15px] lg:text-2xl font-black text-[#064e3b]">{weight} <span className="text-[10px] lg:text-sm font-bold text-emerald-800/20">kg</span></p>
-            </div>
-          </div>
-          <div className="mt-2 lg:mt-0 w-6 h-6 lg:w-8 lg:h-8 rounded-full border border-emerald-100/30 flex items-center justify-center hover:bg-emerald-50 transition-colors bg-emerald-50 lg:bg-transparent">
-            <Plus className="w-3 h-3 lg:w-4 lg:h-4 text-[#064e3b]" />
-          </div>
-        </div>
-
-        <div 
-          onClick={() => onOpenLog('Steps')}
-          className="bg-white lg:bg-emerald-50/20 p-2 lg:p-5 rounded-3xl lg:rounded-[24px] border border-emerald-100/30 flex flex-col lg:flex-row flex-1 items-center lg:justify-between group hover:shadow-md lg:hover:bg-white lg:hover:shadow-sm transition-all overflow-hidden shadow-sm lg:shadow-none cursor-pointer"
-        >
-          <div className="flex flex-col lg:flex-row items-center gap-1 lg:gap-4 text-center lg:text-left">
-            <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-2xl bg-emerald-50 lg:bg-white flex items-center justify-center shadow-sm">
-              <Activity className="w-4 h-4 lg:w-5 lg:h-5 text-[#064e3b]" />
-            </div>
-            <div>
-              <p className="text-[9px] lg:text-[11px] font-black text-emerald-800/40 uppercase tracking-tighter leading-none mb-1">STEPS</p>
-              <p className="text-[15px] lg:text-2xl font-black text-[#064e3b]">{Number(steps).toLocaleString()} <span className="text-[10px] lg:text-sm font-bold text-emerald-800/20">st</span></p>
-            </div>
-          </div>
-          <div className="mt-2 lg:mt-0 w-6 h-6 lg:w-8 lg:h-8 rounded-full border border-emerald-100/30 flex items-center justify-center hover:bg-emerald-50 transition-colors bg-emerald-50 lg:bg-transparent">
-            <Plus className="w-3 h-3 lg:w-4 lg:h-4 text-[#064e3b]" />
-          </div>
-        </div>
-
-        <div 
-          onClick={() => onOpenLog('Water')}
-          className="bg-white lg:bg-emerald-50/20 p-2 lg:p-5 rounded-3xl lg:rounded-[24px] border border-emerald-100/30 flex flex-col lg:flex-row flex-1 items-center lg:justify-between group hover:shadow-md lg:hover:bg-white lg:hover:shadow-sm transition-all overflow-hidden shadow-sm lg:shadow-none cursor-pointer"
-        >
-          <div className="flex flex-col lg:flex-row items-center gap-1 lg:gap-4 text-center lg:text-left">
-            <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-2xl bg-emerald-50 lg:bg-white flex items-center justify-center shadow-sm">
-              <Droplet className="w-4 h-4 lg:w-5 lg:h-5 text-emerald-500" />
-            </div>
-            <div>
-              <p className="text-[9px] lg:text-[11px] font-black text-emerald-800/40 uppercase tracking-tighter leading-none mb-1">WATER</p>
-              <p className="text-[15px] lg:text-2xl font-black text-[#064e3b]">{water} <span className="text-[10px] lg:text-sm font-bold text-emerald-800/20">glasses</span></p>
-            </div>
-          </div>
-          <div className="mt-2 lg:mt-0 w-6 h-6 lg:w-8 lg:h-8 rounded-full border border-emerald-100/30 flex items-center justify-center hover:bg-emerald-50 transition-colors bg-emerald-50 lg:bg-transparent">
-            <Plus className="w-3 h-3 lg:w-4 lg:h-4 text-[#064e3b]" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
+  return null; // Temporarily hidden as requested
 };
 
 const MealDetailModal = ({ meal, onClose, onAdd }) => {
@@ -550,6 +477,8 @@ export default function DashboardEnhanced() {
   const [selectedMealForModal, setSelectedMealForModal] = useState(null);
   const [showMealModal, setShowMealModal] = useState(false);
   const [nutrientMode, setNutrientMode] = useState('Macro');
+  const [showNutrientDetails, setShowNutrientDetails] = useState(false);
+  const [activeDietSlide, setActiveDietSlide] = useState(0);
   const [activeMealTab, setActiveMealTab] = useState('breakfast');
   const [activeDiabetesTab, setActiveDiabetesTab] = useState('Fasting');
   const [activeTrendTab, setActiveTrendTab] = useState('Calories');
@@ -559,6 +488,16 @@ export default function DashboardEnhanced() {
   const [waterLog, setWaterLog] = useState(0);
   const [vitalsLoading, setVitalsLoading] = useState(false);
   const [vitalsInput, setVitalsInput] = useState({ weight: '', steps: '', sleepHours: '', sleepMins: '', date: new Date().toISOString().split('T')[0] });
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const placeholders = ["How often should i do HbA1c...", "What should I eat for dinner?", "Am I reaching my goals?"];
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setPlaceholderIndex((prev) => (prev + 1) % placeholders.length);
+    }, 2000);
+    return () => clearInterval(timer);
+  }, []);
+
   const location = useLocation();
 
   // Initialize and Sync Water Log (field is 'waterIntake' in NutritionSummary)
@@ -611,7 +550,7 @@ export default function DashboardEnhanced() {
   const formattedHistory = useMemo(() => {
     const days = [];
     const today = new Date();
-    
+
     // Generate last 7 days (including today)
     for (let i = 6; i >= 0; i--) {
       const d = new Date(today);
@@ -648,7 +587,7 @@ export default function DashboardEnhanced() {
     setVitalsLoading(true);
     try {
       const logDate = vitalsInput.date || new Date().toISOString().split('T')[0];
-      
+
       if (type === 'Weight') {
         if (!vitalsInput.weight) throw new Error('Weight is required');
         await api.post('nutrition/log-weight', { weight: Number(vitalsInput.weight), notes: 'Mobile dashboard log', date: logDate });
@@ -780,8 +719,8 @@ export default function DashboardEnhanced() {
       if (user?._id) {
         // Double-lock persistence
         localStorage.setItem(`joyride-completed-${user._id}`, "true");
-        localStorage.setItem("joyride-completed-any", "true"); 
-        
+        localStorage.setItem("joyride-completed-any", "true");
+
         const updatedProfile = { ...user.profile, hasSeenMobileTour: true };
         api.put('auth/profile', { profile: { hasSeenMobileTour: true } })
           .then(() => updateUser && updateUser({ ...user, profile: updatedProfile }))
@@ -790,9 +729,9 @@ export default function DashboardEnhanced() {
       setRunTour(false);
       document.body.classList.add('onboarding-tour-finished');
     }
-    
+
     // Smooth scroll logic maintained below...
-    
+
     // Maintain the smooth scrolling logic for tour steps
     if (type === 'step:before' || type === 'tooltip') {
       setTimeout(() => {
@@ -971,7 +910,7 @@ export default function DashboardEnhanced() {
   // Separate effect for diabetic status to ensure it shows immediately regardless of other data loads
   useEffect(() => {
     if (user?.profile) {
-      const diabeticStatus = user.profile.isDiabetic === 'yes' || 
+      const diabeticStatus = user.profile.isDiabetic === 'yes' ||
         user.profile.isDiabetic === true ||
         (user.profile.medicalHistory?.conditions?.some(c => c.toLowerCase().includes('diabetes')) && user.profile.isDiabetic !== 'no');
       setIsDiabetic(!!diabeticStatus);
@@ -1132,538 +1071,770 @@ export default function DashboardEnhanced() {
       )}
       <div className="max-w-7xl mx-auto px-0 md:px-8">
 
-      {/* Header */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-6 md:mb-16 pt-0 md:pt-4"
-      >
-        <div className="flex items-center justify-between gap-4 w-full md:w-auto px-4 md:px-0">
-          <div>
-            <h1 className="text-2xl md:text-5xl font-light tracking-tight text-[#064e3b] whitespace-nowrap">
-              {getGreeting()}, <span className="font-medium">{user?.name?.split(' ')[0] || 'Mike'}!</span>
-            </h1>
-            <p className="text-[#065f46] mt-0.5 md:mt-2 text-[13px] md:text-lg">Let's make this day productive.</p>
-          </div>
-        </div>
-        <div className="hidden lg:flex items-center gap-2 lg:gap-3 pb-2 lg:pb-0 w-full lg:w-auto">
-          <button onClick={() => navigate('/nutrition', { state: { openLogMeal: true, mealType: 'Breakfast' } })} className="flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-1 py-3 lg:px-6 bg-white/60 backdrop-blur-md rounded-[20px] lg:rounded-full text-[9px] lg:text-sm font-black text-[#1a1a1a] hover:bg-white transition-all border border-white/60 shadow-sm">
-            <UtensilsCrossed className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-slate-500" /> <span>Log Meal</span>
-          </button>
-          <button onClick={() => { setActiveLogTab('Sleep'); setIsLogVitalsOpen(true); }} className="flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-1 py-3 lg:px-6 bg-white/60 backdrop-blur-md rounded-[20px] lg:rounded-full text-[9px] lg:text-sm font-black text-[#1a1a1a] hover:bg-white transition-all border border-white/60 shadow-sm">
-            <Moon className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-slate-500" /> <span>Log Sleep</span>
-          </button>
-          <button
-            onClick={() => navigate('/upload')}
-            className="flex flex-col lg:flex-row items-center justify-center gap-1 lg:gap-2 px-1 py-3 lg:px-6 bg-[#1a1a1a] text-white rounded-[20px] lg:rounded-full text-[8px] lg:text-sm font-black hover:bg-black transition-all shadow-md"
-          >
-            <Upload className="w-3 h-3 lg:w-4 lg:h-4" /> <span>Upload Reports</span>
-          </button>
-        </div>
-      </motion.div>
+        {/* Header moved to Layout.jsx */}
 
-
-
-      {/* 3 Column Grid - Scrollable on mobile with Stack Effect */}
-      <div
-        ref={scrollContainerRef}
-        onScroll={handleScroll}
-        className="flex overflow-x-auto lg:grid lg:grid-cols-3 gap-6 md:gap-8 pb-4 md:pb-12 lg:pb-0 scrollbar-hide snap-x snap-mandatory h-full items-stretch lg:items-start w-full mt-2 mb-2 px-[7.5vw] md:px-0"
-      >
-        {/* Card 1: Nutrient Info (Reordered to be first) */}
+        {/* AI Search Bar */}
         <motion.div
-          style={{
-            scale: typeof window !== 'undefined' && window.innerWidth < 1024 ? 1 - (Math.abs(0 - activeIndex) * 0.05) : 1,
-            filter: typeof window !== 'undefined' && window.innerWidth < 1024 ? `blur(${Math.abs(0 - activeIndex) * 3}px)` : 'none',
-            zIndex: 10 - Math.round(Math.abs(0 - activeIndex)),
-            opacity: typeof window !== 'undefined' && window.innerWidth < 1024 ? 1 - (Math.abs(0 - activeIndex) * 0.2) : 1
-          }}
-          className="tour-nutrient-info min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2rem] pt-5 px-5 pb-2 lg:p-8 border border-slate-100 shadow-[0_20px_60px_rgba(0,0,0,0.02)] flex flex-col h-auto min-h-[280px] lg:h-full relative overflow-hidden group"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="px-4 md:px-0 mb-4"
+          style={{ marginTop: '15px' }}
         >
-          <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-50/30 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-
-          <div className="flex items-center justify-between mb-0.5 relative z-10">
-            <h2 className="text-lg lg:text-xl font-black text-[#064e3b]">Nutrient Info</h2>
-            <button
-              onClick={() => navigate('/nutrition')}
-              className="w-7 h-7 lg:w-8 lg:h-8 rounded-full bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:text-black shadow-sm group"
+          <div
+            onClick={() => navigate('/ai-chat')}
+            className="w-full flex items-center gap-3 bg-gradient-to-r from-white/70 to-white/40 backdrop-blur-[2px] rounded-full px-4 border border-white/50 shadow-sm cursor-pointer hover:shadow-md transition-all relative"
+            style={{ height: '51.26px', opacity: 1 }}
+          >
+            <div
+              className="absolute bg-[#588975] flex items-center justify-center shrink-0 border border-[#588975]/10"
+              style={{
+                width: '38.4451789855957px',
+                height: '38.4451789855957px',
+                top: '6.41px',
+                left: '6.41px',
+                borderRadius: '30714396px',
+                opacity: 1
+              }}
             >
-              <ArrowUpRight className="w-3.5 h-3.5 lg:w-4 lg:h-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-            </button>
-          </div>
-          <p className="text-[8px] lg:text-[10px] font-black text-[#A1A1A1] uppercase tracking-[0.1em] mb-2 lg:mb-4 relative z-10 uppercase">Targets</p>
-
-          <div className="relative z-10">
-            {(() => {
-              const driTargets = {
-                fiber: 30,
-                sugar: 50,
-                sodium: 2300,
-                vitaminA: 900,
-                vitaminC: 90,
-                vitaminD: 20,
-                vitaminB12: 2.4,
-                iron: 18,
-                calcium: 1000
-              };
-
-              const microScores = [
-                ((nutritionData?.totalFiber || dashboardData?.nutritionData?.totalFiber || 0) / driTargets.fiber) * 100,
-                ((nutritionData?.totalSugar || dashboardData?.nutritionData?.totalSugar || 0) / driTargets.sugar) * 100,
-                ((nutritionData?.totalSodium || dashboardData?.nutritionData?.totalSodium || 0) / driTargets.sodium) * 100,
-                ((nutritionData?.totalVitaminA || dashboardData?.nutritionData?.totalVitaminA || 0) / driTargets.vitaminA) * 100,
-                ((nutritionData?.totalVitaminC || dashboardData?.nutritionData?.totalVitaminC || 0) / driTargets.vitaminC) * 100,
-                ((nutritionData?.totalIron || dashboardData?.nutritionData?.totalIron || 0) / driTargets.iron) * 100
-              ];
-              const avgMicro = Math.min(Math.round(microScores.reduce((a, b) => a + b, 0) / microScores.length), 100);
-
-              return (
-                <DashedGauge
-                  value={nutrientMode === 'Macro' ? (nutritionData?.totalCalories || dashboardData?.nutritionData?.totalCalories || 0) : avgMicro}
-                  max={nutrientMode === 'Macro' ? (user?.nutritionGoal?.calorieGoal || nutritionData?.calorieGoal || 2000) : 100}
-                  mode={nutrientMode}
-                  className="w-[180px] h-[180px] lg:w-[200px] lg:h-[200px]"
-                />
-              );
-            })()}
-          </div>
-
-          <div className="flex justify-center gap-4 lg:gap-8 border-b border-slate-50 mb-4 lg:mb-8 pb-0.5 relative z-10">
-            <button
-              onClick={() => setNutrientMode('Macro')}
-              className={`text-xs font-black uppercase tracking-widest pb-2.5 px-2 transition-all relative ${nutrientMode === 'Macro' ? 'text-black' : 'text-slate-300 hover:text-slate-400'
-                }`}
-            >
-              Macro
-              {nutrientMode === 'Macro' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-black" />}
-            </button>
-            <button
-              onClick={() => setNutrientMode('Micro')}
-              className={`text-xs font-black uppercase tracking-widest pb-2.5 px-2 transition-all relative ${nutrientMode === 'Micro' ? 'text-black' : 'text-slate-300 hover:text-slate-400'
-                }`}
-            >
-              Micro
-              {nutrientMode === 'Micro' && <div className="absolute bottom-0 left-0 w-full h-0.5 bg-black" />}
-            </button>
-          </div>
-
-          <div className="space-y-2 lg:space-y-4 pt-2 relative z-10">            {nutrientMode === 'Macro' ? (
-            <div className="grid grid-cols-3 gap-2 lg:flex lg:flex-col lg:space-y-4">
-              {/* Mobile: Compact Row, Desktop: Full Row */}
-              <div className="lg:hidden">
-                <NutrientMacroCompact
-                  label="Protein"
-                  value={(() => {
-                    const goal = user?.nutritionGoal?.proteinGoal || nutritionData?.proteinGoal || 150;
-                    const val = nutritionData?.totalProtein || dashboardData?.nutritionData?.totalProtein || 0;
-                    return goal > 0 ? (val / goal) * 100 : 0;
-                  })()}
-                  targetLabel={`${user?.nutritionGoal?.proteinGoal || nutritionData?.proteinGoal || 150}g`}
-                  icon={Flame} color="bg-black"
-                />
-              </div>
-              <div className="hidden lg:block">
-                <NutrientProgressRow
-                  label="Protein"
-                  value={(() => {
-                    const goal = user?.nutritionGoal?.proteinGoal || nutritionData?.proteinGoal || 150;
-                    const val = nutritionData?.totalProtein || dashboardData?.nutritionData?.totalProtein || 0;
-                    return goal > 0 ? (val / goal) * 100 : 0;
-                  })()}
-                  targetLabel={`${user?.nutritionGoal?.proteinGoal || nutritionData?.proteinGoal || 150}g target`}
-                  icon={Flame} color="bg-black" iconBg="bg-slate-50" iconColor="text-[#064e3b]"
-                />
-              </div>
-
-              <div className="lg:hidden">
-                <NutrientMacroCompact
-                  label="Fats"
-                  value={(() => {
-                    const goal = user?.nutritionGoal?.fatGoal || nutritionData?.fatGoal || 65;
-                    const val = nutritionData?.totalFats || dashboardData?.nutritionData?.totalFats || 0;
-                    return goal > 0 ? (val / goal) * 100 : 0;
-                  })()}
-                  targetLabel={`${user?.nutritionGoal?.fatGoal || nutritionData?.fatGoal || 65}g`}
-                  icon={Smile} color="bg-slate-600"
-                />
-              </div>
-              <div className="hidden lg:block">
-                <NutrientProgressRow
-                  label="Fats"
-                  value={(() => {
-                    const goal = user?.nutritionGoal?.fatGoal || nutritionData?.fatGoal || 65;
-                    const val = nutritionData?.totalFats || dashboardData?.nutritionData?.totalFats || 0;
-                    return goal > 0 ? (val / goal) * 100 : 0;
-                  })()}
-                  targetLabel={`${user?.nutritionGoal?.fatGoal || nutritionData?.fatGoal || 65}g max`}
-                  icon={Smile} color="bg-slate-600" iconBg="bg-slate-50" iconColor="text-slate-600"
-                />
-              </div>
-
-              <div className="lg:hidden">
-                <NutrientMacroCompact
-                  label="Carbs"
-                  value={(() => {
-                    const goal = user?.nutritionGoal?.carbsGoal || nutritionData?.carbsGoal || 200;
-                    const val = nutritionData?.totalCarbs || dashboardData?.nutritionData?.totalCarbs || 0;
-                    return goal > 0 ? (val / goal) * 100 : 0;
-                  })()}
-                  targetLabel={`${user?.nutritionGoal?.carbsGoal || nutritionData?.carbsGoal || 200}g`}
-                  icon={Heart} color="bg-slate-400"
-                />
-              </div>
-              <div className="hidden lg:block">
-                <NutrientProgressRow
-                  label="Carbs"
-                  value={(() => {
-                    const goal = user?.nutritionGoal?.carbsGoal || nutritionData?.carbsGoal || 200;
-                    const val = nutritionData?.totalCarbs || dashboardData?.nutritionData?.totalCarbs || 0;
-                    return goal > 0 ? (val / goal) * 100 : 0;
-                  })()}
-                  targetLabel={`${user?.nutritionGoal?.carbsGoal || nutritionData?.carbsGoal || 200}g target`}
-                  icon={Heart} color="bg-slate-400" iconBg="bg-slate-50" iconColor="text-slate-400"
-                />
-              </div>
+              <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_1.png?v=1775566724" alt="" className="w-5 h-5 object-contain" />
             </div>
-
-          ) : (
-            <div className="space-y-3 lg:space-y-4 overflow-y-auto max-h-[135px] lg:max-h-[300px] pr-2 scrollbar-hide py-1">
-              <NutrientProgressRow
-                label="Fiber"
-                value={((nutritionData?.totalFiber || dashboardData?.nutritionData?.totalFiber || 0) / 30) * 100}
-                targetLabel="30g recommended"
-                icon={Sparkles} color="bg-emerald-500" iconBg="bg-emerald-50" iconColor="text-emerald-500"
-              />
-              <NutrientProgressRow
-                label="Iron"
-                value={((nutritionData?.totalIron || dashboardData?.nutritionData?.totalIron || 0) / 18) * 100}
-                targetLabel="18mg target"
-                icon={Zap} color="bg-orange-500" iconBg="bg-orange-50" iconColor="text-orange-500"
-              />
-              <NutrientProgressRow
-                label="Vitamin C"
-                value={((nutritionData?.totalVitaminC || dashboardData?.nutritionData?.totalVitaminC || 0) / 90) * 100}
-                targetLabel="90mg target"
-                icon={Sun} color="bg-yellow-500" iconBg="bg-yellow-50" iconColor="text-yellow-500"
-              />
-              <NutrientProgressRow
-                label="Vitamin A"
-                value={((nutritionData?.totalVitaminA || dashboardData?.nutritionData?.totalVitaminA || 0) / 900) * 100}
-                targetLabel="900mcg target"
-                icon={Eye} color="bg-purple-500" iconBg="bg-purple-50" iconColor="text-purple-500"
-              />
-              <NutrientProgressRow
-                label="Calcium"
-                value={((nutritionData?.totalCalcium || dashboardData?.nutritionData?.totalCalcium || 0) / 1000) * 100}
-                targetLabel="1000mg target"
-                icon={Target} color="bg-blue-500" iconBg="bg-blue-50" iconColor="text-blue-500"
-              />
-              <NutrientProgressRow
-                label="Vitamin D"
-                value={((nutritionData?.totalVitaminD || dashboardData?.nutritionData?.totalVitaminD || 0) / 20) * 100}
-                targetLabel="20mcg target"
-                icon={Sun} color="bg-amber-500" iconBg="bg-amber-50" iconColor="text-amber-500"
-              />
-              <NutrientProgressRow
-                label="B12"
-                value={((nutritionData?.totalVitaminB12 || dashboardData?.nutritionData?.totalVitaminB12 || 0) / 2.4) * 100}
-                targetLabel="2.4mcg target"
-                icon={FlaskConical} color="bg-red-500" iconBg="bg-red-50" iconColor="text-red-500"
-              />
-              <NutrientProgressRow
-                label="Sodium"
-                value={((nutritionData?.totalSodium || dashboardData?.nutritionData?.totalSodium || 0) / 2300) * 100}
-                targetLabel="2300mg max"
-                icon={AlertCircle} color="bg-slate-400" iconBg="bg-slate-50" iconColor="text-slate-400"
-              />
-              <NutrientProgressRow
-                label="Sugar"
-                value={((nutritionData?.totalSugar || dashboardData?.nutritionData?.totalSugar || 0) / 50) * 100}
-                targetLabel="50g max"
-                icon={Droplet} color="bg-slate-600" iconBg="bg-slate-50" iconColor="text-slate-600"
-              />
+            <div className="flex-1 overflow-hidden h-5 relative ml-12">
+              <AnimatePresence mode="wait">
+                <motion.span
+                  key={placeholderIndex}
+                  initial={{ y: 5, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: -5, opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="absolute inset-0 text-sm text-[#1a1a1a]/60 font-medium truncate"
+                >
+                  {placeholders[placeholderIndex]}
+                </motion.span>
+              </AnimatePresence>
             </div>
-          )}
           </div>
         </motion.div>
 
-        {/* Card 2: Today's Diet Plan */}
+        {/* Optimize Your Health Banner */}
         <motion.div
-          style={{
-            scale: typeof window !== 'undefined' && window.innerWidth < 1024 ? 1 - (Math.abs(1 - activeIndex) * 0.05) : 1,
-            filter: typeof window !== 'undefined' && window.innerWidth < 1024 ? `blur(${Math.abs(1 - activeIndex) * 3}px)` : 'none',
-            zIndex: 10 - Math.round(Math.abs(1 - activeIndex)),
-            opacity: typeof window !== 'undefined' && window.innerWidth < 1024 ? 1 - (Math.abs(1 - activeIndex) * 0.2) : 1
-          }}
-          className="tour-diet-plan min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2rem] p-4 lg:p-8 border border-slate-100 shadow-sm flex flex-col h-[340px] lg:h-full overflow-hidden"
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="px-4 md:px-0 relative"
+          style={{ width: '356px', height: '139px', top: '-5.62px', left: '0.69px', opacity: 1, marginBottom: '8px' }}
         >
-          <div className="flex items-center justify-between gap-2 mb-5 flex-nowrap overflow-hidden">
-            <h2 className="text-base sm:text-xl font-black text-[#064e3b] whitespace-nowrap truncate">Today's Diet Plan</h2>
-            <div className="flex items-center gap-1 bg-[#F8F9FB] px-1.5 py-1 rounded-lg border border-slate-50 shrink-0">
-              <Calendar className="w-2.5 h-2.5 text-emerald-800/60" />
-              <span className="text-[8px] font-black text-slate-500 uppercase tracking-tighter">
-                {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
-              </span>
+          <div className="relative overflow-hidden w-full h-full" style={{ borderRadius: '25.59px', borderWidth: '0.76px', borderColor: 'rgba(255,255,255,0.3)', borderStyle: 'solid' }}>
+            <img
+              src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/6de313b1e5c8e1bb654eedecdc54a6f84116947a.jpg?v=1775563817"
+              alt=""
+              className="absolute inset-0 w-full h-full object-cover"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-[#2d3d32]/85 via-[#2d3d32]/70 to-[#2d3d32]/40" />
+            <div
+              className="relative z-10"
+              style={{ width: '318.37579345703125px', height: '53.38792419433594px', top: '19.04px', left: '19.04px', position: 'absolute' }}
+            >
+              <div className="flex items-start">
+                <div
+                  className="bg-white/15 backdrop-blur-md flex items-center justify-center shrink-0"
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    top: '-0.04px',
+                    left: '-0.04px',
+                    borderRadius: '12px',
+                    borderWidth: '1px',
+                    borderColor: 'rgba(255,255,255,0.2)',
+                    borderStyle: 'solid'
+                  }}
+                >
+                  <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Bacteria.svg?v=1775563872" alt="" className="w-5 h-5 brightness-0 invert" />
+                </div>
+                <div className="ml-4 flex flex-col">
+                  <div className="flex items-center gap-2" style={{ top: '0.61px', left: '0px' }}>
+                    <h3
+                      className="text-white"
+                      style={{
+                        fontFamily: 'Poppins, sans-serif',
+                        fontWeight: '600',
+                        fontSize: '14px',
+                        lineHeight: '14.62px',
+                        letterSpacing: '-0.37px',
+                        width: '143px',
+                        height: '15px'
+                      }}
+                    >
+                      Optimize Your Health
+                    </h3>
+                    <span className="px-2 py-0.5 bg-white/20 backdrop-blur-sm rounded-md text-[8px] font-black text-white uppercase tracking-wider">NEW</span>
+                  </div>
+                  <p
+                    className="text-white/70 mt-2"
+                    style={{
+                      fontFamily: 'Poppins, sans-serif',
+                      fontWeight: '500',
+                      fontSize: '12px',
+                      lineHeight: '15.45px',
+                      letterSpacing: '0px',
+                      width: '258.0614929199219px',
+                      height: '30.8712158203125px'
+                    }}
+                  >
+                    Add details and lab reports to unlock tailored wellness insights.
+                  </p>
+                </div>
+              </div>
             </div>
-          </div>
 
-          <div className="flex p-1 bg-[#F8F9FB] rounded-2xl mb-6 overflow-x-auto scrollbar-hide">
-            {[
-              { id: 'breakfast', label: 'Breakfast' },
-              { id: 'midMorningSnack', label: 'Mid-Morning' },
-              { id: 'lunch', label: 'Lunch' },
-              { id: 'eveningSnack', label: 'Evening' },
-              { id: 'dinner', label: 'Dinner' }
-            ].map((tab) => (
+            <div
+              className="flex items-center z-20"
+              style={{
+                width: '280.95849609375px',
+                height: '36.411598205566406px',
+                gap: '19px',
+                top: '90.7px',
+                left: '25px',
+                position: 'absolute'
+              }}
+            >
               <button
-                key={tab.id}
-                onClick={() => setActiveMealTab(tab.id)}
-                className={`flex-1 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-tight transition-all px-4 min-w-max ${activeMealTab === tab.id ? 'bg-[#064e3b] text-white shadow-md' : 'text-emerald-800/60 hover:text-[#064e3b]'
-                  }`}
+                onClick={() => navigate('/profile')}
+                className="bg-white/15 backdrop-blur-md text-white font-bold border border-white/20 hover:bg-white/25 transition-all flex items-center justify-center lowercase relative"
+                style={{
+                  width: '130.97418212890625px',
+                  height: '36.411598205566406px',
+                  borderRadius: '12.91px',
+                  borderWidth: '0.67px'
+                }}
               >
-                {tab.label}
+                <span
+                  style={{
+                    width: '92px',
+                    height: '16px',
+                    fontFamily: 'Poppins, sans-serif',
+                    fontWeight: '500',
+                    fontSize: '11px',
+                    lineHeight: '15.73px',
+                    letterSpacing: '0px',
+                    textAlign: 'center'
+                  }}
+                >
+                  complete profile
+                </span>
               </button>
-            ))}
+              <button
+                onClick={() => navigate('/upload')}
+                className="bg-[#5B8C6F] text-white font-bold hover:bg-[#4a7b5e] transition-all shadow-lg shadow-[#5B8C6F]/30 relative lowercase"
+                style={{
+                  width: '130.98431396484375px',
+                  height: '36.411598205566406px',
+                  borderRadius: '12.91px',
+                  borderWidth: '0.67px'
+                }}
+              >
+                <img
+                  src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_2.png?v=1775628438"
+                  alt=""
+                  className="object-contain absolute"
+                  style={{
+                    width: '12.896868705749512px',
+                    height: '12.896868705749512px',
+                    top: '10.75px',
+                    left: '16.03px'
+                  }}
+                />
+                <span
+                  className="absolute"
+                  style={{
+                    width: '80px',
+                    height: '16px',
+                    top: '10.3px',
+                    left: '34.55px',
+                    fontFamily: 'Poppins, sans-serif',
+                    fontWeight: '500',
+                    fontSize: '11px',
+                    lineHeight: '15.73px',
+                    letterSpacing: '0px',
+                    textAlign: 'center'
+                  }}
+                >
+                  upload report
+                </span>
+              </button>
+            </div>
           </div>
-
-          {(!dietPlan || !dietPlan.mealPlan) ? (
-            <div className="flex-1 flex flex-col items-center justify-center text-center p-4 lg:p-6 bg-emerald-50/20 rounded-[2rem] mb-6 border border-emerald-100/30">
-              {dietPlan?.status === 'generating' ? (
-                <>
-                  <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
-                    <Clock className="w-7 h-7 text-emerald-400 animate-spin" />
-                  </div>
-                  <p className="text-sm font-black text-[#064e3b] uppercase tracking-widest mb-1">Generating Plan</p>
-                  <p className="text-[10px] font-bold text-emerald-800/40 mb-4 max-w-[200px] leading-relaxed uppercase tracking-widest">AI is crafting your personalized meals for the day...</p>
-                </>
-              ) : !user?.nutritionGoal?.calorieGoal ? (
-                <>
-                  <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
-                    <Target className="w-7 h-7 text-emerald-400" />
-                  </div>
-                  <p className="text-sm font-black text-[#064e3b] uppercase tracking-widest mb-1">Goal Required</p>
-                  <p className="text-[10px] font-bold text-emerald-800/40 mb-4 max-w-[200px] leading-relaxed uppercase tracking-widest">Set your fitness goal to unlock your personalized plan</p>
-                  <button
-                    onClick={() => navigate('/profile?tab=goals')}
-                    className="w-full sm:w-auto px-10 py-3.5 bg-[#064e3b] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-emerald-900/20 hover:scale-[1.02] transition-all border-b-4 border-[#042f24] active:border-b-0 active:translate-y-1"
-                  >
-                    Set Fitness Goal
-                  </button>
-                </>
-              ) : (
-                <>
-                  <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-sm mb-4">
-                    <Target className="w-7 h-7 text-emerald-400" />
-                  </div>
-                  <p className="text-sm font-black text-[#064e3b] uppercase tracking-widest mb-1">Plan Ready</p>
-                  <p className="text-[10px] font-bold text-emerald-800/40 mb-4 max-w-[200px] leading-relaxed uppercase tracking-widest">Your goal is set! Now generate your personalized diet plan</p>
-                  <button
-                    onClick={() => navigate('/diet-plan')}
-                    className="w-full sm:w-auto px-10 py-3.5 bg-[#064e3b] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-emerald-900/20 hover:scale-[1.02] transition-all border-b-4 border-[#042f24] active:border-b-0 active:translate-y-1"
-                  >
-                    Create Diet Plan
-                  </button>
-                </>
-              )}
-            </div>
-          ) : (
-            <div className="flex-1 space-y-3 mb-6 overflow-y-auto pr-1">
-              {(dietPlan?.mealPlan?.[activeMealTab] || []).map((item, idx) => {
-                const isLogged = isMealLogged(activeMealTab, item);
-                return (
-                  <div key={idx} className={`p-2 lg:p-4 rounded-xl lg:rounded-2xl flex items-center justify-between gap-2 transition-all ${isLogged ? 'bg-emerald-50/50 border border-emerald-100/50' : 'bg-slate-50'}`}>
-                    <div className="flex items-center gap-2 lg:gap-3">
-                      <div className={`w-1.5 h-1.5 rounded-full ${isLogged ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-[#1A1A1A]'}`} />
-                      <span className={`text-[10px] lg:text-sm font-medium lg:font-semibold ${isLogged ? 'text-emerald-900' : 'text-black'}`}>
-                        {item?.name || item?.foodItems?.[0]?.name}
-                        {item?.portionSize && <span className="ml-2 text-slate-400 font-normal">({item.portionSize})</span>}
-                      </span>
-                    </div>
-                    {isLogged && (
-                      <div className="flex items-center gap-1 bg-emerald-500 text-white px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-tight">
-                        <Check className="w-2.5 h-2.5" /> LOGGED
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-              {(!(dietPlan?.mealPlan?.[activeMealTab])?.length) && (
-                <div className="p-4 bg-slate-50/50 rounded-2xl text-center">
-                  <p className="text-xs text-slate-400">No meals planned for this time</p>
-                </div>
-              )}
-            </div>
-          )}
-
-          <button 
-            onClick={() => navigate('/diet-plan')}
-            className="w-full bg-[#064e3b] text-emerald-50 py-4 rounded-2xl text-[13px] font-black uppercase tracking-tight hover:bg-[#042f2e] transition-all flex items-center justify-center gap-2 shadow-sm"
-          >
-            View Full Plan <ArrowUpRight className="w-4 h-4 ml-1" />
-          </button>
         </motion.div>
 
-        {/* Card 3: AI Lab Insights */}
-        <motion.div
-          style={{
-            scale: typeof window !== 'undefined' && window.innerWidth < 1024 ? 1 - (Math.abs(2 - activeIndex) * 0.05) : 1,
-            filter: typeof window !== 'undefined' && window.innerWidth < 1024 ? `blur(${Math.abs(2 - activeIndex) * 3}px)` : 'none',
-            zIndex: 10 - Math.round(Math.abs(2 - activeIndex)),
-            opacity: typeof window !== 'undefined' && window.innerWidth < 1024 ? 1 - (Math.abs(2 - activeIndex) * 0.2) : 1
-          }}
-          className="tour-ai-insights min-w-[85vw] lg:min-w-0 snap-center bg-white rounded-[2rem] p-4 lg:p-8 border border-slate-100 shadow-sm flex flex-col h-[340px] lg:h-full overflow-hidden"
-        >
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-sm md:text-base font-black text-[#064e3b]">AI Lab Insights</h2>
-            <Link to="/upload" className="text-[9px] font-black text-slate-400 uppercase tracking-[0.1em] flex items-center gap-1 hover:text-black group">
-              UPLOAD REPORT <ArrowUpRight className="w-3 h-3 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
-            </Link>
-          </div>
+        {/* Desktop Action Buttons */}
+        <div className="hidden lg:flex items-center gap-3 mb-6">
+          <button onClick={() => navigate('/nutrition', { state: { openLogMeal: true, mealType: 'Breakfast' } })} className="flex items-center gap-2 px-6 py-2.5 bg-white/60 backdrop-blur-md rounded-full text-sm font-semibold text-[#1a1a1a] hover:bg-white transition-all border border-[#E5EBE0] shadow-sm">
+            <UtensilsCrossed className="w-4 h-4 text-[#5B8C6F]" /> Log Meal
+          </button>
+          <button onClick={() => { setActiveLogTab('Sleep'); setIsLogVitalsOpen(true); }} className="flex items-center gap-2 px-6 py-2.5 bg-white/60 backdrop-blur-md rounded-full text-sm font-semibold text-[#1a1a1a] hover:bg-white transition-all border border-[#E5EBE0] shadow-sm">
+            <Moon className="w-4 h-4 text-[#5B8C6F]" /> Log Sleep
+          </button>
+          <button onClick={() => navigate('/upload')} className="flex items-center gap-2 px-6 py-2.5 bg-[#1a1a1a] text-white rounded-full text-sm font-semibold hover:bg-black transition-all shadow-md">
+            <Upload className="w-4 h-4" /> Upload Reports
+          </button>
+        </div>
 
-          <div className="space-y-3 flex-1 overflow-y-auto max-h-[300px] pr-2 scrollbar-thin scrollbar-thumb-black scrollbar-track-transparent">
-            {dashboardData?.processingReport ? (
-              <div className="flex flex-col items-center justify-center h-full p-6 sm:p-10 bg-amber-50/20 rounded-[2rem] text-center border border-amber-100/30">
-                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-4 ring-8 ring-amber-50/10">
-                  <Clock className="w-8 h-8 text-amber-500 animate-spin" />
+        {/* Main Content - Vertical stack on mobile, 3-column grid on desktop */}
+        <div
+          ref={scrollContainerRef}
+          onScroll={handleScroll}
+          className="flex flex-col lg:grid lg:grid-cols-3 gap-6 md:gap-8 pb-4 md:pb-12 lg:pb-0 h-full items-stretch lg:items-start w-full mt-0 mb-2 px-4 md:px-0"
+        >
+          {/* Card 1: Calories & Daily Tracking */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="tour-nutrient-info w-full lg:min-w-0 bg-white px-5 pb-5 pt-0 lg:px-8 lg:pb-8 lg:pt-0 border border-slate-100/80 shadow-[0_4px_24px_rgba(0,0,0,0.03)] flex flex-col relative overflow-hidden mx-auto"
+            style={{ width: '330px', minHeight: '216px', borderRadius: '29.29px', top: '8px' }}
+          >
+            {/* Calories Header - Absolute Top Left to save space */}
+            <div className="absolute top-5 left-5 z-20">
+              <h2 className="text-lg lg:text-xl font-bold text-[#1a1a1a] leading-tight">Calories</h2>
+              <p className="text-[9px] text-[#a0a0a0] font-bold uppercase tracking-widest leading-none mt-0.5">Daily tracking</p>
+            </div>
+
+            {/* Dashed Gauge at the very top */}
+            <div className="flex justify-center mb-0 -mt-2 relative z-10">
+              <DashedGauge
+                value={nutritionData?.totalCalories || dashboardData?.nutritionData?.totalCalories || 0}
+                max={user?.nutritionGoal?.calorieGoal || nutritionData?.calorieGoal || 2000}
+                mode={nutrientMode}
+              />
+            </div>
+
+            {/* Protein / Carbs / Fats Row - Unified Card - Balanced */}
+            <div className="mt-2 mb-5 bg-[#FCF9EE] rounded-[18px] py-3 px-3 flex items-center justify-around gap-1 border border-[#f0f0ea]/30 shadow-sm overflow-hidden">
+              <div className="flex items-center gap-2">
+                <Target className="w-4 h-4 text-[#FF6B6B]" />
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-black text-[#1a1a1a] leading-none">{Math.round(nutritionData?.totalProtein || 0)}g</span>
+                  <span className="text-[7px] font-bold text-[#a0a0a0] uppercase tracking-tighter">Protein</span>
                 </div>
-                <p className="text-[10px] font-black text-amber-800/60 uppercase tracking-[0.2em] mb-4 leading-loose text-center">Your report analysis<br />is in progress</p>
-                <button
-                  onClick={() => navigate(`/reports/${dashboardData.processingReport._id}`)}
-                  className="w-full sm:w-auto px-10 py-3.5 bg-amber-500 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-amber-900/20 hover:scale-[1.02] transition-all border-b-4 border-amber-700 active:border-b-0 active:translate-y-1"
-                >
-                  View Status
-                </button>
               </div>
-            ) : dashboardData?.totalReports > 0 && dashboardData?.latestAnalysis?.metrics && Object.keys(dashboardData.latestAnalysis.metrics).length > 0 ? (
-              Object.entries(dashboardData.latestAnalysis.metrics).map(([key, val]) => (
-                <LabMetricsItem
-                  key={key}
-                  label={key}
-                  value={typeof val === 'object' ? `${val.value} ${val.unit || ''}` : val}
-                  status={(typeof val === 'object' && val.status) ? val.status : "Normal"}
-                  icon={key.toLowerCase().includes('glucose') ? Droplet : key.toLowerCase().includes('hb') ? Circle : Activity}
-                />
-              ))
-            ) : (
-              <div className="flex flex-col items-center justify-center p-6 sm:p-10 bg-emerald-50/20 rounded-[2rem] text-center border border-emerald-100/30">
-                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-4 ring-8 ring-emerald-50/10">
-                  <UploadCloud className="w-8 h-8 text-emerald-400" />
+
+              <div className="h-5 w-px bg-[#f0f0ea]/50" />
+
+              <div className="flex items-center gap-2 text-center">
+                <Flame className="w-4 h-4 text-[#F59E0B]" />
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-black text-[#1a1a1a] leading-none">{Math.round(nutritionData?.totalCarbs || 0)}g</span>
+                  <span className="text-[7px] font-bold text-[#a0a0a0] uppercase tracking-tighter">Carbs</span>
                 </div>
-                <p className="text-[10px] font-black text-emerald-800/40 uppercase tracking-[0.2em] mb-4 leading-loose">No Health Reports Found</p>
-                <button
-                  onClick={() => navigate('/upload')}
-                  className="w-full sm:w-auto px-10 py-3.5 bg-[#064e3b] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-xl shadow-emerald-900/20 hover:scale-[1.02] transition-all border-b-4 border-[#042f24] active:border-b-0 active:translate-y-1"
+              </div>
+
+              <div className="h-5 w-px bg-[#f0f0ea]/50" />
+
+              <div className="flex items-center gap-2">
+                <Scale className="w-4 h-4 text-[#5B8C6F]" />
+                <div className="flex flex-col">
+                  <span className="text-[11px] font-black text-[#1a1a1a] leading-none">{Math.round(nutritionData?.totalFats || 0)}g</span>
+                  <span className="text-[7px] font-bold text-[#a0a0a0] uppercase tracking-tighter">Fats</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Nutrient Info Toggle */}
+            <div className="w-full" style={{ height: '24.71px', marginTop: '4px' }}>
+              <button
+                onClick={() => setShowNutrientDetails(!showNutrientDetails)}
+                className="flex items-center justify-between w-full h-full border-t border-[#f0f0ea] pt-2"
+              >
+                <span className="text-sm font-bold text-[#1a1a1a]">Nutrient Info</span>
+                <span className="text-xs text-[#5B8C6F] font-medium flex items-center gap-1">
+                  View Details <ChevronRight className={`w-3.5 h-3.5 transition-transform duration-300 ${showNutrientDetails ? 'rotate-90' : ''}`} />
+                </span>
+              </button>
+            </div>
+
+            {/* Expandable Micro Details - Top 3 */}
+            <AnimatePresence>
+              {showNutrientDetails && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: 'auto', opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="overflow-hidden"
                 >
-                  Upload Report
-                </button>
+                  <div className="space-y-3 pt-3 pb-2">
+                    {(() => {
+                      const micros = [
+                        { label: 'Fiber', value: nutritionData?.totalFiber || 0, target: 30, unit: 'g', color: '#10b981' },
+                        { label: 'Iron', value: nutritionData?.totalIron || 0, target: 18, unit: 'mg', color: '#F59E0B' },
+                        { label: 'Vitamin C', value: nutritionData?.totalVitaminC || 0, target: 90, unit: 'mg', color: '#FF6B6B' },
+                        { label: 'Vitamin A', value: nutritionData?.totalVitaminA || 0, target: 900, unit: 'mcg', color: '#8B5CF6' },
+                        { label: 'Calcium', value: nutritionData?.totalCalcium || 0, target: 1000, unit: 'mg', color: '#3B82F6' },
+                        { label: 'Vitamin D', value: nutritionData?.totalVitaminD || 0, target: 20, unit: 'mcg', color: '#F59E0B' },
+                        { label: 'B12', value: nutritionData?.totalVitaminB12 || 0, target: 2.4, unit: 'mcg', color: '#EF4444' }
+                      ];
+                      return micros
+                        .map(m => ({ ...m, percent: Math.min((m.value / m.target) * 100, 100) }))
+                        .sort((a, b) => a.percent - b.percent)
+                        .slice(0, 3)
+                        .map((micro) => (
+                          <div key={micro.label} className="group">
+                            <div className="flex justify-between items-center mb-1.5">
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: micro.color }} />
+                                <span className="text-xs font-semibold text-[#1a1a1a]">{micro.label}</span>
+                              </div>
+                              <span className="text-[10px] font-bold text-[#8a8a8a]">{micro.value.toFixed(1)} / {micro.target}{micro.unit}</span>
+                            </div>
+                            <div className="h-1.5 bg-[#f0f0ea] rounded-full overflow-hidden">
+                              <motion.div
+                                initial={{ width: 0 }}
+                                animate={{ width: `${micro.percent}%` }}
+                                transition={{ duration: 0.8 }}
+                                className="h-full rounded-full"
+                                style={{ backgroundColor: micro.color }}
+                              />
+                            </div>
+                          </div>
+                        ));
+                    })()}
+                  </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+
+
+
+          {/* Card 2: Today's Diet Plan */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="tour-diet-plan w-full lg:min-w-0 bg-white border border-[#f0f0ea] shadow-sm flex flex-col relative overflow-hidden"
+            style={{ width: '330px', height: '366px', borderRadius: '29.29px', position: 'relative', top: '8px', left: '-0.11px', opacity: 1 }}
+          >
+            {/* Header Row - Today's Diet + Date Picker */}
+            <div
+              className="flex items-center absolute z-10"
+              style={{
+                width: '293.38px',
+                height: '27.92px',
+                justifyContent: 'space-between',
+                top: '18.31px',
+                left: '18.31px',
+                opacity: 1
+              }}
+            >
+              <h2
+                className="text-[#1a1a1a]"
+                style={{
+                  width: '94px',
+                  height: '27px',
+                  fontFamily: 'Poppins, sans-serif',
+                  fontWeight: '600',
+                  fontSize: '16px',
+                  lineHeight: '26.09px',
+                  letterSpacing: '-0.43px',
+                  margin: 0
+                }}
+              >
+                Today's Diet
+              </h2>
+              <div className="bg-[#FAFBF8] rounded-full border border-[#f0f0ea] flex items-center gap-1.5 shadow-sm px-3 py-1.5">
+                <Calendar className="w-3.5 h-3.5 text-[#5B8C6F]" />
+                <span
+                  style={{
+                    fontFamily: 'Poppins, sans-serif',
+                    fontWeight: '600',
+                    fontSize: '11px',
+                    lineHeight: '17.85px',
+                    letterSpacing: '0px',
+                    color: '#5B8C6F'
+                  }}
+                >
+                  {new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}
+                </span>
+              </div>
+            </div>
+
+            {/* Meal Tabs Row - Breakfast / Mid-Morning / Lunch / Evening / Dinner */}
+            <div
+              className="flex items-center absolute z-10 overflow-x-auto scrollbar-hide"
+              style={{
+                width: '293.38px',
+                height: '32.5px',
+                top: '64.53px',
+                left: '18.31px',
+                opacity: 1
+              }}
+            >
+              <div className="flex items-center" style={{ gap: '7.32px' }}>
+                {[
+                  { id: 'breakfast', label: 'Breakfast' },
+                  { id: 'midMorningSnack', label: 'Mid-Morning' },
+                  { id: 'lunch', label: 'Lunch' },
+                  { id: 'eveningSnack', label: 'Evening' },
+                  { id: 'dinner', label: 'Dinner' }
+                ].map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveMealTab(tab.id)}
+                    className={`transition-all whitespace-nowrap flex-none ${activeMealTab === tab.id
+                      ? 'bg-[#76B39D] text-white shadow-lg shadow-[#76B39D]/30'
+                      : 'bg-[#FAFBF8] text-[#8a8a8a] border border-[#f0f0ea] hover:bg-[#E8F3EE]'
+                      }`}
+                    style={{
+                      height: '32.5px',
+                      borderRadius: '30714396px',
+                      paddingTop: '7.32px',
+                      paddingBottom: '7.32px',
+                      paddingLeft: '16px',
+                      paddingRight: '16px',
+                      fontFamily: 'Poppins, sans-serif',
+                      fontWeight: '600',
+                      fontSize: '12px',
+                      lineHeight: '17.85px',
+                      letterSpacing: '0px',
+                      textAlign: 'center'
+                    }}
+                  >
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Meal Content Area - positioned below absolute header + tabs */}
+
+            {(!dietPlan || !dietPlan.mealPlan) ? (
+              <div className="flex flex-col items-center justify-center text-center bg-[#F9FAF5] rounded-[24px] border border-[#f0f0ea] absolute" style={{ top: '108px', left: '18.31px', width: '320.38px', height: '180px' }}>
+                <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-md mb-4 border border-[#E8F3EE]">
+                  <Utensils className="w-7 h-7 text-[#76B39D]" />
+                </div>
+                <p className="text-base font-bold text-[#1a1a1a] uppercase tracking-wide">No Plan Today</p>
+              </div>
+            ) : (
+              <div className="absolute" style={{ top: '105px', left: '0px', right: '0px' }}>
+                {(() => {
+                  const meals = dietPlan?.mealPlan?.[activeMealTab] || [];
+                  if (meals.length === 0) {
+                    return (
+                      <div style={{ margin: '0 18.31px', padding: '30px 16px', background: '#F9FAF5', borderRadius: '24px', textAlign: 'center', border: '1px solid #f0f0ea' }}>
+                        <p style={{ fontSize: '12px', fontWeight: '700', color: '#a0a0a0', textTransform: 'uppercase', letterSpacing: '0.5px', fontFamily: 'Poppins, sans-serif' }}>No meals for {activeMealTab}</p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div>
+                      {/* Horizontally scrollable meal cards */}
+                      <div
+                        className="overflow-x-auto scrollbar-hide snap-x snap-mandatory"
+                        style={{ 
+                          paddingLeft: '18.31px',
+                          paddingRight: '18.31px',
+                          scrollPaddingLeft: '18.31px',
+                          paddingTop: '4px',
+                          paddingBottom: '8px'
+                        }}
+                        onScroll={(e) => {
+                          const scrollLeft = e.target.scrollLeft;
+                          const cardWidth = 222;
+                          const index = Math.round(scrollLeft / cardWidth);
+                          setActiveDietSlide(Math.min(index, meals.length - 1));
+                        }}
+                      >
+                        <div className="flex" style={{ gap: '14px' }}>
+                          {meals.map((item, idx) => {
+                            const foodName = item?.name || item?.foodItems?.[0]?.name || 'food';
+                            const bingThumb = `https://tse1.mm.bing.net/th?q=${encodeURIComponent(foodName + ' indian food')}&w=400&h=400&c=7&o=5&pid=Api&mkt=en-IN`;
+                            
+                            return (
+                              <div 
+                                key={idx} 
+                                className="relative flex-none group snap-start" 
+                                style={{ width: '208.7px', height: '172px' }}
+                              >
+                                {/* Meal Image - Floating circular, half overlapping the card top */}
+                                <div 
+                                  className="absolute overflow-hidden z-20 rounded-full bg-white group-hover:scale-105 transition-transform duration-500"
+                                  style={{ 
+                                    width: '102.52px', 
+                                    height: '99.77px', 
+                                    top: '0px',
+                                    left: '50%',
+                                    transform: 'translateX(-50%)',
+                                    boxShadow: '0 6px 20px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.06)',
+                                    border: '3px solid #fff'
+                                  }}
+                                >
+                                  <img
+                                    src={item?.imageUrl || bingThumb}
+                                    alt={foodName}
+                                    className="w-full h-full object-cover"
+                                    onError={(e) => {
+                                      if (!e.target.dataset.retried) {
+                                        e.target.dataset.retried = 'true';
+                                        e.target.src = bingThumb;
+                                      }
+                                    }}
+                                  />
+                                </div>
+
+                                {/* Meal Content Card - positioned so image overlaps top half */}
+                                <div 
+                                  className="absolute bg-[#F6F7F2] text-left z-10"
+                                  style={{ 
+                                    width: '208.7px', 
+                                    height: '121.74px', 
+                                    bottom: '0px',
+                                    left: '0px',
+                                    borderRadius: '21.97px', 
+                                    border: '0.92px solid #ededdf',
+                                    paddingTop: '55px',
+                                    paddingLeft: '14px',
+                                    paddingRight: '14px',
+                                    paddingBottom: '12px'
+                                  }}
+                                >
+                                  <h4 
+                                    className="truncate"
+                                    style={{
+                                      fontFamily: 'Poppins, sans-serif',
+                                      fontWeight: '700',
+                                      fontSize: '13px',
+                                      lineHeight: '18px',
+                                      letterSpacing: '-0.2px',
+                                      color: '#1a1a1a',
+                                      marginBottom: '6px'
+                                    }}
+                                  >
+                                    {foodName}
+                                  </h4>
+                                  <div className="flex items-center gap-2.5">
+                                    <div className="flex items-center gap-1">
+                                      <Clock className="w-3 h-3 text-[#FF7E5F]" />
+                                      <span style={{ fontFamily: 'Poppins, sans-serif', fontWeight: '500', fontSize: '10px', color: '#6B7280' }}>12 Minutes</span>
+                                    </div>
+                                    <div className="flex items-center gap-1">
+                                      <Flame className="w-3 h-3 text-[#FF7E5F]" />
+                                      <span style={{ fontFamily: 'Poppins, sans-serif', fontWeight: '500', fontSize: '10px', color: '#6B7280' }}>{item?.calories || '280'} Cal</span>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Pagination Dots */}
+                      <div className="flex justify-center items-center gap-1.5" style={{ marginTop: '6px', paddingBottom: '4px' }}>
+                        {meals.map((_, i) => (
+                          <div
+                            key={i}
+                            className="transition-all duration-300"
+                            style={{
+                              height: '7px',
+                              width: activeDietSlide === i ? '18px' : '7px',
+                              borderRadius: '100px',
+                              backgroundColor: activeDietSlide === i ? '#76B39D' : '#d4d4d4'
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
               </div>
             )}
-          </div>
 
-          <div className="mt-auto px-1 pt-6 border-t border-slate-50">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="w-6 h-6 rounded-lg bg-emerald-50 flex items-center justify-center">
-                <Sparkles className="w-3 h-3 text-[#064e3b]" />
-              </div>
-              <span className="text-[10px] font-black text-[#064e3b]/40 uppercase tracking-[0.15em]">Health Recommendation</span>
-            </div>
-            <p className="text-[11px] lg:text-[13px] font-medium text-[#064e3b] leading-relaxed">
-              {dashboardData?.latestAnalysis?.recommendations?.lifestyle?.[0] ? (
-                `"${dashboardData.latestAnalysis.recommendations.lifestyle[0]}"`
-              ) : (
-                "Personalized health analysis will appear here after your next report upload."
-              )}
-            </p>
-          </div>
-        </motion.div>
-      </div>
+            {/* View Full Plan Button - Absolute positioned */}
+            <button
+              onClick={() => navigate('/diet-plan')}
+              className="bg-[#76B39D] text-white font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#76B39D]/30 hover:bg-[#65a18b] group active:scale-95 absolute"
+              style={{
+                width: '293.38px',
+                height: '44.85px',
+                top: '310px',
+                left: '18.31px',
+                borderRadius: '18.31px',
+                fontFamily: 'Poppins, sans-serif',
+                fontWeight: '600',
+                fontSize: '14px',
+                lineHeight: '17.85px',
+                letterSpacing: '0px'
+              }}
+            >
+              View Full Plan <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+            </button>
+          </motion.div>
 
-      {/* Mobile Slider Indicators & Daily Vitals (New Position) */}
-      <div className="lg:hidden px-4 mb-4">
-        <div className="flex justify-center gap-2 mb-8 mt-2">
-          {[0, 1, 2].map((i) => (
-            <div key={i} className={`h-1.5 rounded-full transition-all duration-300 ${Math.abs(activeIndex - i) < 0.5 ? 'w-6 bg-black' : 'w-2 bg-slate-200'}`} />
-          ))}
-        </div>
-        <DailyMetricsCard onOpenLog={(tab) => {
-          setActiveLogTab(tab);
-          setIsLogVitalsOpen(true);
-        }} />
-      </div>
-
-      {/* Diabetes Monitor Block */}
-      {
-        isDiabetic && (
+          {/* Card 3: AI Lab Insights */}
           <motion.div
-            initial={{ opacity: 0, y: 15 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4 }}
-            className="mx-4 lg:mx-0 bg-white/80 backdrop-blur-2xl border border-emerald-100/30 rounded-[28px] md:rounded-[32px] p-4 md:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] relative overflow-hidden mt-8 mb-8"
+            transition={{ delay: 0.15 }}
+            className="tour-ai-insights w-full lg:min-w-0 bg-white rounded-[24px] p-5 lg:p-8 border border-slate-100/80 shadow-[0_4px_24px_rgba(0,0,0,0.03)] flex flex-col relative overflow-hidden"
           >
-            {/* Subtle inside gradient */}
-            <div className="absolute inset-0 bg-gradient-to-r from-emerald-50/20 to-white/30 pointer-events-none" />
-
-            <div className="relative z-10">
-              <div className="flex flex-row items-center justify-between mb-4 md:mb-8">
-                <div>
-                  <h2 className="text-lg md:text-xl font-bold text-[#064e3b]">Diabetes Monitor</h2>
-                  <p className="text-emerald-800/40 text-[10px] md:text-xs font-medium">Track glucose & HbA1c</p>
-                </div>
-                <button 
-                  onClick={() => navigate('/diabetes')} 
-                  className="px-3 py-1.5 md:px-6 md:py-2.5 bg-emerald-50/50 border border-emerald-100 hover:bg-emerald-100/50 text-[#064e3b] rounded-full text-[10px] md:text-sm font-black md:font-medium transition-all flex items-center gap-1.5 shrink-0 shadow-sm"
-                >
-                  <Plus className="w-3 h-3 md:w-4 md:h-4" /> Log Reading
-                </button>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl lg:text-2xl font-bold text-[#1a1a1a]">Lab Insights</h2>
+                <p className="text-xs text-[#a0a0a0] font-medium">Biological markers</p>
               </div>
+              <button
+                onClick={() => navigate('/upload')}
+                className="text-[10px] font-bold text-[#5B8C6F] uppercase tracking-wider flex items-center gap-1 hover:text-[#4a7b5e] transition-colors"
+              >
+                Upload <Plus className="w-3 h-3" />
+              </button>
+            </div>
 
-              <div className="grid grid-cols-2 gap-3 md:gap-5">
-                {(!dashboardData?.latestAnalysis && !dashboardData?.vitals?.glucose && !dashboardData?.vitals?.hba1c) ? (
-                  <div className="col-span-2 bg-emerald-50/20 border border-emerald-100/30 rounded-[24px] p-6 text-center flex flex-col items-center justify-center">
-                    <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm mb-3">
-                      <Sparkles className="w-5 h-5 text-emerald-400" />
-                    </div>
-                    <p className="text-[#064e3b] text-xs font-bold mb-1">Monitoring ready</p>
-                    <p className="text-emerald-800/40 text-[10px] max-w-sm">
-                      Upload report or log glucose to see insights.
-                    </p>
+            <div className="flex-1 space-y-3 min-h-[180px]">
+              {dashboardData?.processingReport ? (
+                <div className="flex flex-col items-center justify-center p-6 bg-[#FAFBF8] rounded-[24px] text-center border border-[#f0f0ea]">
+                  <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 border border-[#E8F3EE]">
+                    <Clock className="w-6 h-6 text-[#5B8C6F] animate-spin" />
                   </div>
-                ) : (
-                  <>
-                    {[
-                      { 
-                        label: 'Glucose', 
-                        val: dashboardData?.vitals?.glucose?.value || dashboardData?.latestAnalysis?.metrics?.Glucose?.value || '--', 
-                        unit: 'mg/dL', 
-                        status: dashboardData?.latestAnalysis?.metrics?.Glucose?.status || (dashboardData?.vitals?.glucose ? 'Recent Log' : 'Normal')
-                      },
-                      { 
-                        label: 'HbA1c', 
-                        val: dashboardData?.vitals?.hba1c?.value || dashboardData?.latestAnalysis?.metrics?.HbA1c?.value || '--', 
-                        unit: '%', 
-                        status: dashboardData?.latestAnalysis?.metrics?.HbA1c?.status || (dashboardData?.vitals?.hba1c ? 'Recent Log' : 'Good')
-                      }
-                    ].map((stat) => (
-                      <div key={stat.label} className="bg-white/90 border border-emerald-50 shadow-sm rounded-2xl md:rounded-[24px] p-3 md:p-6 flex flex-col items-center justify-center relative group hover:bg-white transition-all">
-                        <span className="text-emerald-800/40 text-[9px] md:text-[11px] font-black uppercase tracking-widest mb-1 md:mb-2">{stat.label}</span>
-                        <div className="flex items-baseline gap-0.5 md:gap-1 mb-1 md:mb-3">
-                          <span className="text-2xl md:text-4xl font-light text-[#064e3b] tracking-tight">{stat.val}</span>
-                          {stat.val !== '--' && <span className="text-[10px] md:text-sm font-medium text-emerald-800/20">{stat.unit}</span>}
+                  <p className="text-xs font-bold text-[#1a1a1a] uppercase tracking-wider mb-1">Analyzing Report</p>
+                  <p className="text-[9px] font-medium text-[#a0a0a0] max-w-[150px] leading-relaxed uppercase tracking-wider">Our AI is processing your health data...</p>
+                </div>
+              ) : dashboardData?.totalReports > 0 && dashboardData?.latestAnalysis?.metrics && Object.keys(dashboardData.latestAnalysis.metrics).length > 0 ? (
+                <div className="space-y-3">
+                  {Object.entries(dashboardData.latestAnalysis.metrics).slice(0, 3).map(([key, val]) => (
+                    <div key={key} className="p-3 bg-[#FAFBF8] rounded-2xl border border-[#f0f0ea] flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-white border border-[#E8F3EE] flex items-center justify-center">
+                          {key.toLowerCase().includes('glucose') ? <Droplet className="w-4 h-4 text-[#FF6B6B]" /> : <Activity className="w-4 h-4 text-[#5B8C6F]" />}
                         </div>
-                        <span className={`text-[8px] md:text-[10px] font-bold px-2 py-0.5 md:px-3 md:py-1 rounded-full uppercase tracking-wider ${stat.val === '--' ? 'bg-emerald-50/10 text-emerald-800/40' : 'bg-emerald-50 text-[#064e3b]'}`}>
-                          {stat.status}
-                        </span>
+                        <div>
+                          <p className="text-[10px] font-bold text-[#8a8a8a] uppercase leading-none mb-1">{key}</p>
+                          <p className="text-sm font-black text-[#1a1a1a]">{typeof val === 'object' ? `${val.value} ${val.unit || ''}` : val}</p>
+                        </div>
                       </div>
-                    ))}
-                  </>
-                )}
+                      <span className={`text-[8px] font-black px-2 py-1 rounded-md uppercase tracking-wider ${(typeof val === 'object' && val.status?.toLowerCase().includes('normal')) ? 'bg-[#E8F3EE] text-[#5B8C6F]' : 'bg-[#FFF5F5] text-[#FF6B6B]'
+                        }`}>
+                        {(typeof val === 'object' && val.status) ? val.status : "Normal"}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center p-6 bg-[#FAFBF8] rounded-[24px] text-center border border-[#f0f0ea] h-full">
+                  <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 border border-[#E8F3EE]">
+                    <Upload className="w-6 h-6 text-[#5B8C6F]" />
+                  </div>
+                  <p className="text-xs font-bold text-[#1a1a1a] uppercase tracking-wider mb-1">No Reports</p>
+                  <p className="text-[9px] font-medium text-[#a0a0a0] mb-4 max-w-[150px] leading-relaxed uppercase tracking-wider text-center">Add lab reports to get biological insights</p>
+                  <button
+                    onClick={() => navigate('/upload')}
+                    className="px-5 py-2 bg-[#5B8C6F] text-white rounded-full text-[9px] font-bold uppercase tracking-widest shadow-lg shadow-[#5B8C6F]/10 hover:scale-[1.02] transition-all"
+                  >
+                    Upload Now
+                  </button>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 pt-4 border-t border-slate-50">
+              <div className="flex items-center gap-2 mb-2">
+                <Sparkles className="w-3.5 h-3.5 text-[#5B8C6F]" />
+                <span className="text-[9px] font-bold text-[#5B8C6F] uppercase tracking-widest">Recommendation</span>
               </div>
+              <p className="text-[11px] font-medium text-[#1a1a1a] leading-relaxed line-clamp-2 italic">
+                {dashboardData?.latestAnalysis?.recommendations?.lifestyle?.[0] ?
+                  `"${dashboardData.latestAnalysis.recommendations.lifestyle[0]}"` :
+                  "Add details to unlock tailored insights."
+                }
+              </p>
             </div>
           </motion.div>
-        )}
+        </div>
 
-      {/* Health DNA Entry Card - Disabled as requested */}
-      {/* 
+        {/* Mobile Daily Vitals (New Position - Simple list) */}
+        <div className="lg:hidden px-4 mb-2">
+          <DailyMetricsCard onOpenLog={(tab) => {
+            setActiveLogTab(tab);
+            setIsLogVitalsOpen(true);
+          }} />
+        </div>
+
+        {/* Diabetes Monitor Block */}
+        {
+          isDiabetic && (
+            <motion.div
+              initial={{ opacity: 0, y: 15 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="mx-4 lg:mx-0 bg-white border border-[#f0f0ea] rounded-[32px] p-5 lg:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] relative overflow-hidden mt-8 mb-8"
+            >
+              <div className="relative z-10">
+                <div className="flex flex-row items-center justify-between mb-6">
+                  <div>
+                    <h2 className="text-xl lg:text-2xl font-bold text-[#1a1a1a]">Diabetes Monitor</h2>
+                    <p className="text-xs text-[#a0a0a0] font-medium">Track glucose & HbA1c</p>
+                  </div>
+                  <button
+                    onClick={() => navigate('/diabetes')}
+                    className="px-4 py-2 bg-[#FAFBF8] border border-[#f0f0ea] hover:bg-[#E8F3EE] text-[#5B8C6F] rounded-full text-xs font-bold transition-all flex items-center gap-2 shadow-sm"
+                  >
+                    <Plus className="w-4 h-4" /> Log Reading
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4 lg:gap-6">
+                  {(!dashboardData?.latestAnalysis && !dashboardData?.vitals?.glucose && !dashboardData?.vitals?.hba1c) ? (
+                    <div className="col-span-2 bg-[#FAFBF8] border border-[#f0f0ea] rounded-[24px] p-8 text-center flex flex-col items-center justify-center">
+                      <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-3 border border-[#E8F3EE]">
+                        <Sparkles className="w-6 h-6 text-[#5B8C6F]" />
+                      </div>
+                      <p className="text-[#1a1a1a] text-sm font-bold mb-1 uppercase tracking-wider">Ready to Monitor</p>
+                      <p className="text-[#a0a0a0] text-[10px] max-w-[200px] leading-relaxed uppercase tracking-widest font-medium">
+                        Upload report or log glucose to see insights.
+                      </p>
+                    </div>
+                  ) : (
+                    <>
+                      {[
+                        {
+                          label: 'Glucose',
+                          val: dashboardData?.vitals?.glucose?.value || dashboardData?.latestAnalysis?.metrics?.Glucose?.value || '--',
+                          unit: 'mg/dL',
+                          status: dashboardData?.latestAnalysis?.metrics?.Glucose?.status || (dashboardData?.vitals?.glucose ? 'Recent' : 'Normal'),
+                          color: '#5B8C6F',
+                          bg: 'bg-[#E8F3EE]'
+                        },
+                        {
+                          label: 'HbA1c',
+                          val: dashboardData?.vitals?.hba1c?.value || dashboardData?.latestAnalysis?.metrics?.HbA1c?.value || '--',
+                          unit: '%',
+                          status: dashboardData?.latestAnalysis?.metrics?.HbA1c?.status || (dashboardData?.vitals?.hba1c ? 'Recent' : 'Good'),
+                          color: '#F59E0B',
+                          bg: 'bg-[#FFF8ED]'
+                        }
+                      ].map((stat) => (
+                        <div key={stat.label} className="bg-[#FAFBF8] border border-[#f0f0ea] shadow-sm rounded-[24px] p-5 lg:p-7 flex flex-col items-center justify-center group hover:bg-white hover:shadow-md transition-all">
+                          <span className="text-[#a0a0a0] text-[10px] font-bold uppercase tracking-widest mb-2">{stat.label}</span>
+                          <div className="flex items-baseline gap-1 mb-3">
+                            <span className="text-3xl lg:text-4xl font-black text-[#1a1a1a] tracking-tighter">{stat.val}</span>
+                            {stat.val !== '--' && <span className="text-[10px] lg:text-xs font-bold text-[#d1d1d1] uppercase">{stat.unit}</span>}
+                          </div>
+                          <span className={`text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${stat.val === '--' ? 'bg-[#f5f5f5] text-[#b0b0b0]' : `${stat.bg} text-[#1a1a1a]`}`}>
+                            {stat.status}
+                          </span>
+                        </div>
+                      ))}
+                    </>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          )}
+
+
+
+        {/* Health DNA Entry Card - Disabled as requested */}
+        {/* 
       <motion.div
         initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
@@ -1683,389 +1854,281 @@ export default function DashboardEnhanced() {
               <p className="text-emerald-400/60 text-[10px] font-black uppercase tracking-widest leading-none">Complete Personalized Profile</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="hidden lg:block text-[10px] font-black text-white/40 uppercase tracking-widest">View Analysis</span>
-            <ChevronRight className="w-6 h-6 text-white/40 group-hover:text-white transition-colors" />
           </div>
         </div>
       </motion.div>
       */}
 
-      {/* Your Logged Meals */}
-      <motion.div
-        initial={{ opacity: 0, y: 15 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.5 }}
-        className="tour-logged-meals mb-8 px-4 md:px-0"
-      >
-        <div className="flex items-center justify-between mb-4 px-2">
-          <h2 className="text-xl font-medium text-[#064e3b]">Your Logged Meals</h2>
-          <button onClick={() => navigate('/nutrition')} className="text-xs font-medium text-emerald-800/60 hover:text-[#064e3b]">View Menu</button>
-        </div>
-        <div className="flex overflow-x-auto md:grid md:grid-cols-3 gap-4 md:gap-8 pb-4 md:pb-0 scrollbar-hide snap-x snap-mandatory -mx-4 px-4 md:mx-0 md:px-0">
-          {loggedMeals.length > 0 ? (
-            <>
-              {[...loggedMeals].sort((a,b) => new Date(b.timestamp) - new Date(a.timestamp)).slice(0, 3).map((meal, i) => (
-                <div key={i} className="min-w-[60vw] md:min-w-0 snap-center bg-white border border-emerald-50 rounded-[24px] md:rounded-[32px] overflow-hidden shadow-sm transition-all flex flex-col">
-                  <div className="h-20 md:h-52 relative overflow-hidden">
-                    <ImageWithFallback src={meal.imageUrl} query={meal.name || meal.foodItems?.[0]?.name || 'Delicious food'} alt={meal.name || meal.foodItems?.[0]?.name || 'Meal'} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent pointer-events-none" />
-                    <div className="absolute top-2 left-2 flex flex-wrap gap-1">
-                      {[(meal.totalNutrition?.calories || meal.calories) > 300 ? 'High Energy' : null].filter(Boolean).map(tag => (
-                        <span key={tag} className="px-2 py-0.5 bg-white/20 backdrop-blur-md text-white border border-white/30 text-[8px] font-black uppercase tracking-wider rounded-full">
-                          {tag}
-                        </span>
-                      ))}
-                    </div>
-                    <div className="absolute bottom-2 left-2 flex gap-1.5">
-                      <span className="flex items-center gap-1 px-2 py-1 bg-white/90 backdrop-blur-md text-[#064e3b] text-[8px] font-black rounded-full shadow-sm uppercase tracking-widest">
-                        <Flame className="w-2.5 h-2.5 text-[#064e3b]" /> {meal.totalNutrition?.calories || meal.calories || 0} cal
-                      </span>
-                      <span className="flex items-center gap-1 px-2 py-1 bg-white/90 backdrop-blur-md text-[#064e3b] text-[8px] font-black rounded-full shadow-sm uppercase tracking-widest">
-                        <Clock className="w-2.5 h-2.5 text-emerald-800/40" /> {meal.mealType || 'Meal'}
-                      </span>
-                    </div>
-                  </div>
-                  <div className="p-3 lg:p-8 flex-1 flex flex-col">
-                    <h3 className="font-black text-[#064e3b] text-xs md:text-xl mb-2 md:mb-5 truncate">{meal.name || meal.foodItems?.[0]?.name || 'Logged Meal'}</h3>
-                    <div className="flex gap-2 md:gap-3 mt-auto">
-                      <button onClick={() => navigate('/nutrition', { state: { prefillData: meal } })} className="flex-1 py-2.5 md:py-3 bg-[#064e3b] hover:bg-[#042f2e] text-emerald-50 text-xs md:text-sm font-medium rounded-full transition-all shadow-md">
-                        + Add Again
-                      </button>
-                      <button onClick={() => navigate('/nutrition')} className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center bg-emerald-50 hover:bg-emerald-100 text-[#064e3b] text-sm font-bold rounded-full transition-colors border border-white shrink-0">
-                        <Eye className="w-4 h-4 md:w-5 md:h-5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {loggedMeals.length > 3 && (
-                <div className="min-w-[40vw] md:hidden snap-center flex items-center justify-center p-4">
-                  <button onClick={() => navigate('/nutrition')} className="flex flex-col items-center gap-3 text-slate-500 hover:text-[#1a1a1a]">
-                    <div className="w-14 h-14 rounded-full bg-white shadow-sm border border-slate-100 flex items-center justify-center transition-transform hover:scale-105">
-                      <ArrowUpRight className="w-6 h-6" />
-                    </div>
-                    <span className="text-xs font-black uppercase tracking-widest">View All</span>
-                  </button>
-                </div>
-              )}
-            </>
-          ) : (
-            <div className="w-full md:col-span-3 flex flex-col items-center justify-center p-6 lg:p-12 bg-white/80 backdrop-blur-md rounded-[2.5rem] border border-emerald-100/50 shadow-sm text-center">
-              <div className="w-14 h-14 bg-emerald-50/50 rounded-2xl flex items-center justify-center shadow-sm mb-4 ring-8 ring-emerald-50/20">
-                <Utensils className="w-8 h-8 text-emerald-400" />
-              </div>
-              <div className="space-y-2">
-                <h3 className="text-sm md:text-xl font-black text-[#064e3b] uppercase tracking-tighter">No Meals Logged</h3>
-                <p className="text-[10px] md:text-sm text-emerald-800/40 font-bold max-w-[220px] leading-relaxed uppercase tracking-widest text-center mx-auto">Log your first meal to start tracking progress</p>
-              </div>
-              <button
-                onClick={() => navigate('/nutrition')}
-                className="mt-6 w-full sm:w-auto px-12 py-3.5 bg-[#064e3b] text-emerald-50 rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-widest shadow-xl shadow-emerald-900/20 hover:scale-[1.02] transition-all border-b-4 border-[#042f24] active:border-b-0 active:translate-y-1"
-              >
-                Log First Meal
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* AI Health Insights Section Moved Here */}
+        {/* Your Logged Meals */}
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.45 }}
-          className="mb-6 w-full px-4 md:px-0"
+          transition={{ delay: 0.5 }}
+          className="tour-logged-meals mb-8 mx-auto"
+          style={{ width: '330px' }}
         >
-          <div className="flex items-center justify-between mb-4 px-2">
-            <h2 className="text-xl font-medium text-[#064e3b]">AI Health Insights</h2>
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-black text-emerald-800/40 uppercase tracking-widest">REAL-TIME</span>
-              <div className="w-2 h-2 rounded-full bg-emerald-500" />
-            </div>
+          <div className="flex items-center justify-between mb-5 px-1">
+            <h2 className="text-lg font-bold text-[#1a1a1a]">Logged Meals</h2>
+            <button onClick={() => navigate('/nutrition')} className="text-xs font-bold text-[#5B8C6F] hover:text-[#4a7b5e] uppercase tracking-wider">View Menu</button>
           </div>
-
-          <div className="bg-emerald-50/40 backdrop-blur-md rounded-[2rem] p-6 lg:p-8 relative overflow-hidden group shadow-lg border border-white">
-            {/* Background Glows */}
-            <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 rounded-full blur-[80px] -translate-y-1/2 translate-x-1/2" />
-
-            <div className="relative z-10 flex items-center gap-6">
-              <div className="flex-1 min-w-0 overflow-hidden">
-                <div className="relative min-h-[40px] md:min-h-[48px] flex items-center">
-                  <AnimatePresence mode="wait">
-                    <motion.div
-                      key={insightIndex}
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0, y: -10 }}
-                      transition={{ duration: 0.5, ease: "easeInOut" }}
-                      className="flex items-start gap-4 py-1 w-full"
-                    >
-                      {overallPerformanceInsight[insightIndex] && (
-                        <>
-                          <div className="flex-shrink-0 mt-1">
-                            <div className={`${overallPerformanceInsight[insightIndex].color} opacity-90`}>
-                              {(() => {
-                                const Icon = overallPerformanceInsight[insightIndex].icon;
-                                return <Icon className="w-4 h-4 md:w-5 md:h-5" />;
-                              })()}
-                            </div>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-[10px] sm:text-xs font-black uppercase tracking-widest text-[#065f46]/40 leading-none mb-1.5 grayscale opacity-70">
-                              {overallPerformanceInsight[insightIndex].label}
-                            </p>
-                            <p className="text-[11px] md:text-sm font-medium text-[#064e3b] leading-snug">
-                              {overallPerformanceInsight[insightIndex].text}
-                            </p>
-                          </div>
-                        </>
-                      )}
-                    </motion.div>
-                  </AnimatePresence>
-                </div>
-              </div>
-
-              <div className="hidden sm:flex items-center gap-1.5">
-                {overallPerformanceInsight.map((_, i) => (
-                  <div key={i} className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${i === insightIndex ? 'bg-white w-4' : 'bg-white/20'}`} />
-                ))}
-              </div>
-            </div>
-          </div>
-        </motion.div>
-
-      </motion.div>
-
-      {/* Bottom Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 px-4 md:px-0">
-
-
-        {/* Daily Vitals (Weight, Steps, Sleep) - Visible only on Desktop here */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="hidden lg:flex flex-col h-full"
-        >
-          <DailyMetricsCard />
-
-          {/* 30 Day Challenge Mini Card */}
-          <motion.div
-            whileHover={{ scale: 1.02 }}
-            onClick={() => navigate('/challenge')}
-            className="mt-4 bg-gradient-to-br from-[#064e3b] to-[#042f2e] rounded-[24px] p-5 text-emerald-50 shadow-lg cursor-pointer relative overflow-hidden group"
+          
+          <div 
+            className="flex overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-6" 
+            style={{ 
+              width: '330px',
+              height: '220px',
+              gap: '11px',
+            }}
           >
-            <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
-            <div className="flex items-center justify-between relative z-10">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-emerald-50/10 flex items-center justify-center">
-                  <Flame className="w-5 h-5 text-emerald-400 fill-emerald-400" />
-                </div>
-                <div>
-                  <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-200/50">Challenge</h4>
-                  <p className="text-base font-bold text-emerald-50">{dashboardData?.streakDays || 0} Day Streak</p>
-                </div>
-              </div>
-              <ChevronRight className="w-5 h-5 text-emerald-300/50 group-hover:translate-x-1 transition-transform" />
-            </div>
-            <div className="mt-4 h-1.5 bg-emerald-950/20 rounded-full overflow-hidden">
-              <div className="h-full bg-emerald-400 rounded-full w-[40%]" />
-            </div>
-          </motion.div>
-        </motion.div>
-
-        {/* Nutrition Deficiency Tracker */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.7 }}
-          className="bg-white rounded-[28px] p-4 lg:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden flex flex-col h-full border border-slate-100/50"
-        >
-          <div className="flex items-center justify-between mb-6 shrink-0">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-[#1A1A1A]/5 flex items-center justify-center">
-                <FlaskConical className="w-4 h-4 text-[#1a1a1a]" />
-              </div>
-              <h3 className="text-sm font-semibold text-[#064e3b]">Nutrition Deficiency</h3>
-            </div>
-            <button className="text-[10px] font-bold text-[#888888] hover:text-[#1a1a1a] uppercase tracking-wide">Detailed &rarr;</button>
-          </div>
-          <div className="space-y-6 flex-1 overflow-y-auto pr-2 pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
-            {dynamicDeficiencies?.length > 0 ? (
-              dynamicDeficiencies.map((item, i) => {
-                const isRisk = item.status?.toLowerCase().includes('risk') || item.status?.toLowerCase().includes('deficient');
-                const statusColor = isRisk ? 'text-white bg-black' : 'text-black bg-slate-100';
-                const barColor = isRisk ? 'bg-black' : 'bg-slate-400';
-
+            {loggedMeals.length > 0 ? (
+              [...loggedMeals].sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)).map((meal, idx) => {
+                const foodName = meal.name || meal.foodItems?.[0]?.name || 'Meal';
+                const bingThumb = `https://tse1.mm.bing.net/th?q=${encodeURIComponent(foodName + ' indian food')}&w=400&h=300&c=7&o=5&pid=Api`;
+                
                 return (
-                  <div key={i} className="flex flex-col gap-2">
-                    <div className="flex justify-between items-center">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-[#1a1a1a]">{item.name}</span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor}`}>
-                          {item.status}
+                  <div 
+                    key={idx}
+                    className="bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)] flex flex-col relative overflow-hidden flex-none snap-start group cursor-pointer"
+                    style={{ 
+                      width: '159.5px', 
+                      height: '208.24px', 
+                      borderRadius: '21.97px' 
+                    }}
+                    onClick={() => navigate('/nutrition', { state: { prefillData: meal } })}
+                  >
+                    {/* Image Area with 8px space */}
+                    <div 
+                      className="relative overflow-hidden" 
+                      style={{ 
+                        width: '159.5px', 
+                        height: '100.69px',
+                        padding: '8px' 
+                      }}
+                    >
+                      <img 
+                        src={meal.imageUrl || bingThumb} 
+                        alt={foodName} 
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                        style={{ borderRadius: '21px' }}
+                        onError={(e) => { e.target.src = bingThumb; }}
+                      />
+                      {/* Badge - Adjusted Positioning & Transparency */}
+                      <div 
+                        className="absolute bg-white/65 backdrop-blur-md shadow-sm flex items-center justify-center overflow-hidden"
+                        style={{
+                          width: '73.31px',
+                          height: '19.68px',
+                          top: '11.32px',
+                          left: '7.32px',
+                          borderRadius: '30714396px',
+                          padding: '3.66px 9.15px'
+                        }}
+                      >
+                        <span style={{
+                          fontFamily: 'Poppins, sans-serif',
+                          fontWeight: '900',
+                          fontSize: '8.24px',
+                          lineHeight: '12.36px',
+                          letterSpacing: '0.82px',
+                          textTransform: 'uppercase',
+                          color: '#5B8C6F',
+                          textAlign: 'center'
+                        }}>
+                          {meal.mealType || 'Meal'}
                         </span>
                       </div>
-                      <div className="text-xs text-[#888888]">
-                        <span className="font-bold text-[#1a1a1a] text-sm">{item.currentValue || item.current}</span>/{item.normalRange || item.target} {item.unit}
-                      </div>
                     </div>
 
-                    <div className="h-2 w-full bg-[#F5F5F7] rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{ width: `${item.percent || 0}%` }}
-                        transition={{ duration: 1, delay: 0.8 + (i * 0.1) }}
-                        className={`h-full ${barColor} rounded-full`}
-                      />
-                    </div>
-
-                    <div className="flex flex-col gap-1 mt-1 p-2 bg-white/40 rounded-xl border border-white">
-                      <div className="flex items-start gap-2 text-[10px] text-[#666666]">
-                        <Leaf className="w-3 h-3 text-[#1a1a1a] flex-shrink-0 mt-0.5" />
-                        <span><span className="font-semibold text-[#1a1a1a]">Eat more:</span> {item.food}</span>
+                    {/* Text & Button Content Area */}
+                    <div 
+                      className="flex flex-col"
+                      style={{ 
+                        width: '159.5px', 
+                        height: '85px', 
+                        position: 'absolute',
+                        top: '112px',
+                        paddingLeft: '12px',
+                        paddingRight: '12px'
+                      }}
+                    >
+                      <h4 className="text-[11px] font-black text-[#1D293D] truncate mb-0.5" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                        {foodName}
+                      </h4>
+                      <div className="text-[8px] font-bold text-[#90A1B9] mb-3" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                        {meal.totalNutrition?.calories || meal.calories || 200} kcal • {meal.totalNutrition?.protein || meal.protein || 0}g Pro
                       </div>
-                      <div className="flex items-start gap-2 text-[10px] text-[#666666]">
-                        <Pill className="w-3 h-3 text-[#1a1a1a] flex-shrink-0 mt-0.5" />
-                        <span><span className="font-semibold text-[#1a1a1a]">Supplement:</span> {item.supplement}</span>
-                      </div>
+                      
+                      {/* View Button */}
+                      <button 
+                        className="w-full h-[32px] bg-[#76B39D] rounded-xl flex items-center justify-center active:scale-95 transition-all shadow-sm group-hover:bg-[#65a18b]"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate('/nutrition');
+                        }}
+                      >
+                        <span className="text-[10px] font-black text-white uppercase tracking-wider">VIEW</span>
+                      </button>
                     </div>
                   </div>
-                )
+                );
               })
             ) : (
-              <div className="flex flex-col items-center justify-center p-10 bg-emerald-50/20 rounded-[2rem] border border-emerald-100/30 text-center">
-                {loggedMeals.length > 0 || dashboardData?.latestAnalysis?.deficiencies?.length > 0 ? (
-                  <>
-                    <CheckCircle2 className="w-10 h-10 text-emerald-500 mb-4" />
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-loose">
-                      Great job! You've met <br /> all nutritional targets
-                    </p>
-                  </>
-                ) : (
-                  <>
-                    <Activity className="w-10 h-10 text-slate-300 mb-4" />
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-loose">
-                      Log your meals to see <br /> nutritional insights
-                    </p>
-                  </>
-                )}
+              <div 
+                className="w-full flex-none flex flex-col items-center justify-center p-8 bg-[#FAFBF8] rounded-[32px] border border-[#f0f0ea] text-center"
+                style={{ width: '330px', height: '208.24px' }}
+              >
+                <Utensils className="w-8 h-8 text-[#5B8C6F] mb-3" />
+                <h3 className="text-md font-bold text-[#1a1a1a] uppercase tracking-tight mb-2">No Meals Logged</h3>
+                <button
+                  onClick={() => navigate('/nutrition')}
+                  className="px-6 py-2 bg-[#5B8C6F] text-white rounded-xl text-[9px] font-bold uppercase tracking-widest shadow-md transition-all"
+                >
+                  Log First Meal
+                </button>
               </div>
             )}
           </div>
+
+
+
         </motion.div>
 
-        {/* Care Plan */}
-        <motion.div
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.8 }}
-          className="bg-white rounded-[28px] p-4 lg:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100/50 flex flex-col"
-        >
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-[#1A1A1A]/5 flex items-center justify-center border border-white/40 shadow-sm">
-                <FileText className="w-4 h-4 text-[#064e3b]" />
-              </div>
-              <h3 className="text-sm font-semibold text-[#064e3b]">Care Plan</h3>
-            </div>
-            <span className="text-xl font-light text-[#1a1a1a]">
-              {completedTasks.length}
-              <span className="text-sm text-[#888888]">/{ (() => {
-                const defaultTasks = ['Drink 3L Water', 'Morning walk 20 mins', 'Take Multivitamins', '8 Hours Sleep'];
-                const metrics = dashboardData?.latestAnalysis?.metrics || {};
-                const conditions = user?.profile?.medicalHistory?.conditions || [];
-                const hasCondition = (name) => conditions.some(c => c.toLowerCase().includes(name.toLowerCase()));
-                const isHigh = (name) => {
-                  const metric = Object.values(metrics).find(m => m.name?.toLowerCase().includes(name.toLowerCase()) || m.label?.toLowerCase().includes(name.toLowerCase()));
-                  return metric?.status?.toLowerCase().includes('high') || metric?.status?.toLowerCase().includes('risk');
-                };
-                if (isDiabetic || hasCondition('diabetes')) {
-                  defaultTasks[0] = 'Check Glucose Level';
-                  defaultTasks[2] = 'Sugar-free Breakfast';
-                }
-                if (hasCondition('hypertension') || isHigh('pressure')) { defaultTasks.push('Check Blood Pressure'); defaultTasks[0] = 'Low Sodium Meals'; }
-                if (hasCondition('anemia') || isHigh('hemoglobin')) { defaultTasks.push('Iron-rich Foods'); defaultTasks[2] = 'Take Iron Supplement'; }
-                if (isHigh('cholesterol')) { defaultTasks.push('Omega-3 Supplement'); defaultTasks[3] = 'Fiber-rich Dinner'; }
-                if (isOverLimit) { defaultTasks[1] = 'Extra 15m Cardio'; if (defaultTasks.length < 5) defaultTasks.push('Log Extra Calories'); }
-                return (dashboardData?.latestAnalysis?.recommendations?.lifestyle || defaultTasks.slice(0, 5)).length;
-              })() }</span>
-            </span>
-          </div>
-          <div className="space-y-5 flex-1 min-h-0 overflow-y-auto pr-1">
-            {(() => {
-              const defaultTasks = [
-                'Drink 3L Water',
-                'Morning walk 20 mins',
-                'Take Multivitamins',
-                '8 Hours Sleep'
-              ];
+        {/* Bottom Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 px-4 md:px-0">
 
-              // Check for various health conditions from profile and analysis metrics
-              const metrics = dashboardData?.latestAnalysis?.metrics || {};
-              const conditions = user?.profile?.medicalHistory?.conditions || [];
 
-              const hasCondition = (name) => conditions.some(c => c.toLowerCase().includes(name.toLowerCase()));
-              const isHigh = (name) => {
-                const metric = Object.values(metrics).find(m => m.name?.toLowerCase().includes(name.toLowerCase()) || m.label?.toLowerCase().includes(name.toLowerCase()));
-                return metric?.status?.toLowerCase().includes('high') || metric?.status?.toLowerCase().includes('risk');
-              };
+          {/* Daily Vitals (Weight, Steps, Sleep) - Visible only on Desktop here */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="hidden lg:flex flex-col h-full"
+          >
+            <DailyMetricsCard />
 
-              if (isDiabetic || hasCondition('diabetes')) {
-                defaultTasks[0] = 'Check Glucose Level';
-                defaultTasks[2] = 'Sugar-free Breakfast';
-              }
-
-              if (hasCondition('hypertension') || isHigh('pressure')) {
-                defaultTasks.push('Check Blood Pressure');
-                defaultTasks[0] = 'Low Sodium Meals';
-              }
-
-              if (hasCondition('anemia') || isHigh('hemoglobin')) {
-                defaultTasks.push('Iron-rich Foods');
-                defaultTasks[2] = 'Take Iron Supplement';
-              }
-
-              if (isHigh('cholesterol')) {
-                defaultTasks.push('Omega-3 Supplement');
-                defaultTasks[3] = 'Fiber-rich Dinner';
-              }
-
-              if (isOverLimit) {
-                defaultTasks[1] = 'Extra 15m Cardio';
-                if (defaultTasks.length < 5) defaultTasks.push('Log Extra Calories');
-              }
-
-              const tasksToRender = (dashboardData?.latestAnalysis?.recommendations?.lifestyle || defaultTasks.slice(0, 5));
-
-              return tasksToRender.map((task, i) => {
-                const isCompleted = completedTasks.includes(i);
-                return (
-                  <div
-                    key={i}
-                    className="flex items-center gap-4 group cursor-pointer"
-                    onClick={() => {
-                      setCompletedTasks(prev =>
-                        prev.includes(i) ? prev.filter(t => t !== i) : [...prev, i]
-                      );
-                    }}
-                  >
-                    <div className={`w-5 h-5 rounded-full flex items-center justify-center border transition-colors flex-shrink-0 ${isCompleted ? 'border-[#1a1a1a] bg-[#1a1a1a]' : 'border-slate-300 group-hover:border-slate-400'}`}>
-                      {isCompleted && <CheckCircle2 className="w-3 h-3 text-white" />}
-                    </div>
-                    <span className={`text-[11px] font-semibold transition-colors uppercase tracking-tight ${isCompleted ? 'text-[#a0a0a0] line-through decoration-[#a0a0a0]' : 'text-[#1a1a1a] group-hover:text-slate-600'}`}>
-                      {task}
-                    </span>
+            {/* 30 Day Challenge Mini Card */}
+            <motion.div
+              whileHover={{ scale: 1.02 }}
+              onClick={() => navigate('/challenge')}
+              className="mt-4 bg-gradient-to-br from-[#064e3b] to-[#042f2e] rounded-[24px] p-5 text-emerald-50 shadow-lg cursor-pointer relative overflow-hidden group"
+            >
+              <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
+              <div className="flex items-center justify-between relative z-10">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-emerald-50/10 flex items-center justify-center">
+                    <Flame className="w-5 h-5 text-emerald-400 fill-emerald-400" />
                   </div>
-                );
-              });
-            })()}
-          </div>
-          <div className="mt-8 pt-6 border-t border-slate-100">
-            <div className="h-1.5 bg-[#F5F5F7] rounded-full overflow-hidden mb-3">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${(completedTasks.length / (() => {
+                  <div>
+                    <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-200/50">Challenge</h4>
+                    <p className="text-base font-bold text-emerald-50">{dashboardData?.streakDays || 0} Day Streak</p>
+                  </div>
+                </div>
+                <ChevronRight className="w-5 h-5 text-emerald-300/50 group-hover:translate-x-1 transition-transform" />
+              </div>
+              <div className="mt-4 h-1.5 bg-emerald-950/20 rounded-full overflow-hidden">
+                <div className="h-full bg-emerald-400 rounded-full w-[40%]" />
+              </div>
+            </motion.div>
+          </motion.div>
+
+          {/* Nutrition Deficiency Tracker */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+            className="bg-white rounded-[28px] p-4 lg:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden flex flex-col h-full border border-slate-100/50"
+          >
+            <div className="flex items-center justify-between mb-6 shrink-0">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-full bg-[#1A1A1A]/5 flex items-center justify-center">
+                  <FlaskConical className="w-4 h-4 text-[#1a1a1a]" />
+                </div>
+                <h3 className="text-sm font-semibold text-[#064e3b]">Nutrition Deficiency</h3>
+              </div>
+              <button className="text-[10px] font-bold text-[#888888] hover:text-[#1a1a1a] uppercase tracking-wide">Detailed &rarr;</button>
+            </div>
+            <div className="space-y-6 flex-1 overflow-y-auto pr-2 pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+              {dynamicDeficiencies?.length > 0 ? (
+                dynamicDeficiencies.map((item, i) => {
+                  const isRisk = item.status?.toLowerCase().includes('risk') || item.status?.toLowerCase().includes('deficient');
+                  const statusColor = isRisk ? 'text-white bg-black' : 'text-black bg-slate-100';
+                  const barColor = isRisk ? 'bg-black' : 'bg-slate-400';
+
+                  return (
+                    <div key={i} className="flex flex-col gap-2">
+                      <div className="flex justify-between items-center">
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-medium text-[#1a1a1a]">{item.name}</span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor}`}>
+                            {item.status}
+                          </span>
+                        </div>
+                        <div className="text-xs text-[#888888]">
+                          <span className="font-bold text-[#1a1a1a] text-sm">{item.currentValue || item.current}</span>/{item.normalRange || item.target} {item.unit}
+                        </div>
+                      </div>
+
+                      <div className="h-2 w-full bg-[#F5F5F7] rounded-full overflow-hidden">
+                        <motion.div
+                          initial={{ width: 0 }}
+                          animate={{ width: `${item.percent || 0}%` }}
+                          transition={{ duration: 1, delay: 0.8 + (i * 0.1) }}
+                          className={`h-full ${barColor} rounded-full`}
+                        />
+                      </div>
+
+                      <div className="flex flex-col gap-1 mt-1 p-2 bg-white/40 rounded-xl border border-white">
+                        <div className="flex items-start gap-2 text-[10px] text-[#666666]">
+                          <Leaf className="w-3 h-3 text-[#1a1a1a] flex-shrink-0 mt-0.5" />
+                          <span><span className="font-semibold text-[#1a1a1a]">Eat more:</span> {item.food}</span>
+                        </div>
+                        <div className="flex items-start gap-2 text-[10px] text-[#666666]">
+                          <Pill className="w-3 h-3 text-[#1a1a1a] flex-shrink-0 mt-0.5" />
+                          <span><span className="font-semibold text-[#1a1a1a]">Supplement:</span> {item.supplement}</span>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })
+              ) : (
+                <div className="flex flex-col items-center justify-center p-10 bg-emerald-50/20 rounded-[2rem] border border-emerald-100/30 text-center">
+                  {loggedMeals.length > 0 || dashboardData?.latestAnalysis?.deficiencies?.length > 0 ? (
+                    <>
+                      <CheckCircle2 className="w-10 h-10 text-emerald-500 mb-4" />
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-loose">
+                        Great job! You've met <br /> all nutritional targets
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <Activity className="w-10 h-10 text-slate-300 mb-4" />
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-loose">
+                        Log your meals to see <br /> nutritional insights
+                      </p>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Care Plan */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
+            className="bg-white rounded-[28px] p-4 lg:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100/50 flex flex-col"
+          >
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-[#1A1A1A]/5 flex items-center justify-center border border-white/40 shadow-sm">
+                  <FileText className="w-4 h-4 text-[#064e3b]" />
+                </div>
+                <h3 className="text-sm font-semibold text-[#064e3b]">Care Plan</h3>
+              </div>
+              <span className="text-xl font-light text-[#1a1a1a]">
+                {completedTasks.length}
+                <span className="text-sm text-[#888888]">/{(() => {
                   const defaultTasks = ['Drink 3L Water', 'Morning walk 20 mins', 'Take Multivitamins', '8 Hours Sleep'];
                   const metrics = dashboardData?.latestAnalysis?.metrics || {};
                   const conditions = user?.profile?.medicalHistory?.conditions || [];
@@ -2083,242 +2146,337 @@ export default function DashboardEnhanced() {
                   if (isHigh('cholesterol')) { defaultTasks.push('Omega-3 Supplement'); defaultTasks[3] = 'Fiber-rich Dinner'; }
                   if (isOverLimit) { defaultTasks[1] = 'Extra 15m Cardio'; if (defaultTasks.length < 5) defaultTasks.push('Log Extra Calories'); }
                   return (dashboardData?.latestAnalysis?.recommendations?.lifestyle || defaultTasks.slice(0, 5)).length;
-                })()) * 100}%` }}
-                transition={{ duration: 1, delay: 1 }}
-                className="h-full bg-[#1a1a1a] rounded-full"
-              />
+                })()}</span>
+              </span>
             </div>
-            <p className="text-xs text-center text-[#888888] font-bold uppercase tracking-wider">
+            <div className="space-y-5 flex-1 min-h-0 overflow-y-auto pr-1">
               {(() => {
-                const defaultTasks = ['Drink 3L Water', 'Morning walk 20 mins', 'Take Multivitamins', '8 Hours Sleep'];
+                const defaultTasks = [
+                  'Drink 3L Water',
+                  'Morning walk 20 mins',
+                  'Take Multivitamins',
+                  '8 Hours Sleep'
+                ];
+
+                // Check for various health conditions from profile and analysis metrics
                 const metrics = dashboardData?.latestAnalysis?.metrics || {};
                 const conditions = user?.profile?.medicalHistory?.conditions || [];
+
                 const hasCondition = (name) => conditions.some(c => c.toLowerCase().includes(name.toLowerCase()));
                 const isHigh = (name) => {
                   const metric = Object.values(metrics).find(m => m.name?.toLowerCase().includes(name.toLowerCase()) || m.label?.toLowerCase().includes(name.toLowerCase()));
                   return metric?.status?.toLowerCase().includes('high') || metric?.status?.toLowerCase().includes('risk');
                 };
+
                 if (isDiabetic || hasCondition('diabetes')) {
                   defaultTasks[0] = 'Check Glucose Level';
                   defaultTasks[2] = 'Sugar-free Breakfast';
                 }
-                if (hasCondition('hypertension') || isHigh('pressure')) { defaultTasks.push('Check Blood Pressure'); defaultTasks[0] = 'Low Sodium Meals'; }
-                if (hasCondition('anemia') || isHigh('hemoglobin')) { defaultTasks.push('Iron-rich Foods'); defaultTasks[2] = 'Take Iron Supplement'; }
-                if (isHigh('cholesterol')) { defaultTasks.push('Omega-3 Supplement'); defaultTasks[3] = 'Fiber-rich Dinner'; }
-                if (isOverLimit) { defaultTasks[1] = 'Extra 15m Cardio'; if (defaultTasks.length < 5) defaultTasks.push('Log Extra Calories'); }
-                const list = (dashboardData?.latestAnalysis?.recommendations?.lifestyle || defaultTasks.slice(0, 5));
-                return Math.max(0, list.length - completedTasks.length);
-              })()} tasks remaining
-            </p>
-          </div>
-        </motion.div>
-      </div>
 
-      {/* Vitals Log Modal - Unified Bottom Sheet for Weight, Steps, Sleep, Water */}
-      <AnimatePresence>
-        {isLogVitalsOpen && (
-          <>
-            {/* Dark Overlay */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[70]"
-              onClick={() => setIsLogVitalsOpen(false)}
-            />
+                if (hasCondition('hypertension') || isHigh('pressure')) {
+                  defaultTasks.push('Check Blood Pressure');
+                  defaultTasks[0] = 'Low Sodium Meals';
+                }
 
-            {/* Bottom Sheet */}
-            <motion.div
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              transition={{ type: "spring", damping: 30, stiffness: 300 }}
-              className="fixed bottom-0 left-0 w-full h-[90vh] bg-[#FAFAFA] rounded-t-[40px] shadow-[0_-20px_60px_rgba(15,23,42,0.15)] z-[71] flex flex-col border-t border-white overflow-hidden"
-            >
-              <div className="absolute top-2 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-white/20 rounded-full z-20" />
+                if (hasCondition('anemia') || isHigh('hemoglobin')) {
+                  defaultTasks.push('Iron-rich Foods');
+                  defaultTasks[2] = 'Take Iron Supplement';
+                }
 
-              {/* Seamless Dark Header Section - Flush with top/sides */}
-              <div className="bg-[#0F172A] pt-8 px-6 pb-10 rounded-b-[40px] relative text-white shadow-xl overflow-hidden border-b border-white/5">
-                {/* Visual Glows */}
-                <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 blur-[100px] rounded-full" />
-                
-                {/* Close Button - Compact Circular Styled */}
-                <button
-                  onClick={() => setIsLogVitalsOpen(false)}
-                  className="absolute top-6 right-6 w-8 h-8 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-all z-30"
-                >
-                  <Plus className="w-4 h-4 rotate-45 text-white" />
-                </button>
+                if (isHigh('cholesterol')) {
+                  defaultTasks.push('Omega-3 Supplement');
+                  defaultTasks[3] = 'Fiber-rich Dinner';
+                }
 
-                <div className="relative z-20 flex flex-col gap-3">
-                  {/* Dynamic Badge */}
-                  <div className="flex justify-start">
-                    <div className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full border border-white/10 flex items-center gap-2">
-                       {activeLogTab === 'Weight' && <Scale className="w-3 h-3 text-white/50" />}
-                       {activeLogTab === 'Water' && <Droplet className="w-3 h-3 text-white/50" />}
-                       {activeLogTab === 'Steps' && <Footprints className="w-3 h-3 text-white/50" />}
-                       {activeLogTab === 'Sleep' && <Moon className="w-3 h-3 text-white/50" />}
-                       <span className="text-[9px] font-black text-white/60 uppercase tracking-[0.1em]">Activity Log</span>
+                if (isOverLimit) {
+                  defaultTasks[1] = 'Extra 15m Cardio';
+                  if (defaultTasks.length < 5) defaultTasks.push('Log Extra Calories');
+                }
+
+                const tasksToRender = (dashboardData?.latestAnalysis?.recommendations?.lifestyle || defaultTasks.slice(0, 5));
+
+                return tasksToRender.map((task, i) => {
+                  const isCompleted = completedTasks.includes(i);
+                  return (
+                    <div
+                      key={i}
+                      className="flex items-center gap-4 group cursor-pointer"
+                      onClick={() => {
+                        setCompletedTasks(prev =>
+                          prev.includes(i) ? prev.filter(t => t !== i) : [...prev, i]
+                        );
+                      }}
+                    >
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center border transition-colors flex-shrink-0 ${isCompleted ? 'border-[#1a1a1a] bg-[#1a1a1a]' : 'border-slate-300 group-hover:border-slate-400'}`}>
+                        {isCompleted && <CheckCircle2 className="w-3 h-3 text-white" />}
+                      </div>
+                      <span className={`text-[11px] font-semibold transition-colors uppercase tracking-tight ${isCompleted ? 'text-[#a0a0a0] line-through decoration-[#a0a0a0]' : 'text-[#1a1a1a] group-hover:text-slate-600'}`}>
+                        {task}
+                      </span>
                     </div>
-                  </div>
-                  
-                  <h3 className="text-xl font-black uppercase leading-tight tracking-tight">Track {activeLogTab}</h3>
-                </div>
+                  );
+                });
+              })()}
+            </div>
+            <div className="mt-8 pt-6 border-t border-slate-100">
+              <div className="h-1.5 bg-[#F5F5F7] rounded-full overflow-hidden mb-3">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{
+                    width: `${(completedTasks.length / (() => {
+                      const defaultTasks = ['Drink 3L Water', 'Morning walk 20 mins', 'Take Multivitamins', '8 Hours Sleep'];
+                      const metrics = dashboardData?.latestAnalysis?.metrics || {};
+                      const conditions = user?.profile?.medicalHistory?.conditions || [];
+                      const hasCondition = (name) => conditions.some(c => c.toLowerCase().includes(name.toLowerCase()));
+                      const isHigh = (name) => {
+                        const metric = Object.values(metrics).find(m => m.name?.toLowerCase().includes(name.toLowerCase()) || m.label?.toLowerCase().includes(name.toLowerCase()));
+                        return metric?.status?.toLowerCase().includes('high') || metric?.status?.toLowerCase().includes('risk');
+                      };
+                      if (isDiabetic || hasCondition('diabetes')) {
+                        defaultTasks[0] = 'Check Glucose Level';
+                        defaultTasks[2] = 'Sugar-free Breakfast';
+                      }
+                      if (hasCondition('hypertension') || isHigh('pressure')) { defaultTasks.push('Check Blood Pressure'); defaultTasks[0] = 'Low Sodium Meals'; }
+                      if (hasCondition('anemia') || isHigh('hemoglobin')) { defaultTasks.push('Iron-rich Foods'); defaultTasks[2] = 'Take Iron Supplement'; }
+                      if (isHigh('cholesterol')) { defaultTasks.push('Omega-3 Supplement'); defaultTasks[3] = 'Fiber-rich Dinner'; }
+                      if (isOverLimit) { defaultTasks[1] = 'Extra 15m Cardio'; if (defaultTasks.length < 5) defaultTasks.push('Log Extra Calories'); }
+                      return (dashboardData?.latestAnalysis?.recommendations?.lifestyle || defaultTasks.slice(0, 5)).length;
+                    })()) * 100}%`
+                  }}
+                  transition={{ duration: 1, delay: 1 }}
+                  className="h-full bg-[#1a1a1a] rounded-full"
+                />
               </div>
+              <p className="text-xs text-center text-[#888888] font-bold uppercase tracking-wider">
+                {(() => {
+                  const defaultTasks = ['Drink 3L Water', 'Morning walk 20 mins', 'Take Multivitamins', '8 Hours Sleep'];
+                  const metrics = dashboardData?.latestAnalysis?.metrics || {};
+                  const conditions = user?.profile?.medicalHistory?.conditions || [];
+                  const hasCondition = (name) => conditions.some(c => c.toLowerCase().includes(name.toLowerCase()));
+                  const isHigh = (name) => {
+                    const metric = Object.values(metrics).find(m => m.name?.toLowerCase().includes(name.toLowerCase()) || m.label?.toLowerCase().includes(name.toLowerCase()));
+                    return metric?.status?.toLowerCase().includes('high') || metric?.status?.toLowerCase().includes('risk');
+                  };
+                  if (isDiabetic || hasCondition('diabetes')) {
+                    defaultTasks[0] = 'Check Glucose Level';
+                    defaultTasks[2] = 'Sugar-free Breakfast';
+                  }
+                  if (hasCondition('hypertension') || isHigh('pressure')) { defaultTasks.push('Check Blood Pressure'); defaultTasks[0] = 'Low Sodium Meals'; }
+                  if (hasCondition('anemia') || isHigh('hemoglobin')) { defaultTasks.push('Iron-rich Foods'); defaultTasks[2] = 'Take Iron Supplement'; }
+                  if (isHigh('cholesterol')) { defaultTasks.push('Omega-3 Supplement'); defaultTasks[3] = 'Fiber-rich Dinner'; }
+                  if (isOverLimit) { defaultTasks[1] = 'Extra 15m Cardio'; if (defaultTasks.length < 5) defaultTasks.push('Log Extra Calories'); }
+                  const list = (dashboardData?.latestAnalysis?.recommendations?.lifestyle || defaultTasks.slice(0, 5));
+                  return Math.max(0, list.length - completedTasks.length);
+                })()} tasks remaining
+              </p>
+            </div>
+          </motion.div>
+        </div>
 
-              {/* Navigation Tabs - Cleaner Spacing */}
-              <div className="px-6 relative z-30 mt-4 mb-4">
-                <div className="bg-white p-1 rounded-[22px] shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-slate-100 flex gap-1 items-stretch">
-                  {[
-                    { id: 'Weight', icon: Scale },
-                    { id: 'Water', icon: Droplet },
-                    { id: 'Steps', icon: Footprints },
-                    { id: 'Sleep', icon: Moon }
-                  ].map(({ id, icon: Icon }) => {
-                    const isActive = activeLogTab === id;
-                    return (
-                      <button
-                        key={id}
-                        onClick={() => setActiveLogTab(id)}
-                        className={`flex-1 flex flex-col items-center justify-center py-2.5 rounded-[18px] transition-all duration-300 ${
-                          isActive 
-                            ? 'bg-[#F8FAFC] shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] border border-[#F1F5F9] text-[#1D293D]' 
-                            : 'text-[#94A3B8] hover:bg-slate-50'
-                        }`}
-                      >
-                        <Icon className={`w-4 h-4 mb-1 ${isActive ? 'text-[#1F5C49]' : 'text-[#94A3B8]'}`} />
-                        <span className={`text-[8.5px] uppercase tracking-wider ${isActive ? 'font-black' : 'font-bold'}`}>{id}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+        {/* Vitals Log Modal - Unified Bottom Sheet for Weight, Steps, Sleep, Water */}
+        <AnimatePresence>
+          {isLogVitalsOpen && (
+            <>
+              {/* Dark Overlay */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[70]"
+                onClick={() => setIsLogVitalsOpen(false)}
+              />
 
-              {/* Dynamic Content Mapping */}
-              <div className="flex-1 overflow-y-auto px-6 pb-12">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={activeLogTab}
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: -20 }}
-                    className="py-4"
+              {/* Bottom Sheet */}
+              <motion.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 30, stiffness: 300 }}
+                className="fixed bottom-0 left-0 w-full h-[90vh] bg-[#FAFAFA] rounded-t-[40px] shadow-[0_-20px_60px_rgba(15,23,42,0.15)] z-[71] flex flex-col border-t border-white overflow-hidden"
+              >
+                <div className="absolute top-2 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-white/20 rounded-full z-20" />
+
+                {/* Seamless Dark Header Section - Flush with top/sides */}
+                <div className="bg-[#0F172A] pt-8 px-6 pb-10 rounded-b-[40px] relative text-white shadow-xl overflow-hidden border-b border-white/5">
+                  {/* Visual Glows */}
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-emerald-500/5 blur-[100px] rounded-full" />
+
+                  {/* Close Button - Compact Circular Styled */}
+                  <button
+                    onClick={() => setIsLogVitalsOpen(false)}
+                    className="absolute top-6 right-6 w-8 h-8 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center hover:bg-white/20 transition-all z-30"
                   >
-                    {activeLogTab === 'Weight' && (
-                      <div className="space-y-6">
-                        {/* Summary Card - High Fidelity */}
-                        <div className="bg-white border border-[#E8F3EE] shadow-[0_1px_3px_rgba(0,0,0,0.1)] rounded-[32px] p-8 relative group">
-                           <div className="flex items-center justify-between mb-10">
-                             <h4 className="text-lg font-bold text-[#90A1B9]">Current <span className="text-[#1D293D] font-black">{(Number(vitalsInput.weight) || Number(user?.profile?.weight) || 72.5).toFixed(1)} kg</span></h4>
-                             <div className="px-3 py-1 bg-[#E8F3EE] rounded-full flex items-center gap-1.5 ">
+                    <Plus className="w-4 h-4 rotate-45 text-white" />
+                  </button>
+
+                  <div className="relative z-20 flex flex-col gap-3">
+                    {/* Dynamic Badge */}
+                    <div className="flex justify-start">
+                      <div className="px-3 py-1 bg-white/10 backdrop-blur-md rounded-full border border-white/10 flex items-center gap-2">
+                        {activeLogTab === 'Weight' && <Scale className="w-3 h-3 text-white/50" />}
+                        {activeLogTab === 'Water' && <Droplet className="w-3 h-3 text-white/50" />}
+                        {activeLogTab === 'Steps' && <Footprints className="w-3 h-3 text-white/50" />}
+                        {activeLogTab === 'Sleep' && <Moon className="w-3 h-3 text-white/50" />}
+                        <span className="text-[9px] font-black text-white/60 uppercase tracking-[0.1em]">Activity Log</span>
+                      </div>
+                    </div>
+
+                    <h3 className="text-xl font-black uppercase leading-tight tracking-tight">Track {activeLogTab}</h3>
+                  </div>
+                </div>
+
+                {/* Navigation Tabs - Cleaner Spacing */}
+                <div className="px-6 relative z-30 mt-4 mb-4">
+                  <div className="bg-white p-1 rounded-[22px] shadow-[0_4px_20px_rgba(0,0,0,0.05)] border border-slate-100 flex gap-1 items-stretch">
+                    {[
+                      { id: 'Weight', icon: Scale },
+                      { id: 'Water', icon: Droplet },
+                      { id: 'Steps', icon: Footprints },
+                      { id: 'Sleep', icon: Moon }
+                    ].map(({ id, icon: Icon }) => {
+                      const isActive = activeLogTab === id;
+                      return (
+                        <button
+                          key={id}
+                          onClick={() => setActiveLogTab(id)}
+                          className={`flex-1 flex flex-col items-center justify-center py-2.5 rounded-[18px] transition-all duration-300 ${isActive
+                            ? 'bg-[#F8FAFC] shadow-[inset_0_1px_2px_rgba(0,0,0,0.02)] border border-[#F1F5F9] text-[#1D293D]'
+                            : 'text-[#94A3B8] hover:bg-slate-50'
+                            }`}
+                        >
+                          <Icon className={`w-4 h-4 mb-1 ${isActive ? 'text-[#1F5C49]' : 'text-[#94A3B8]'}`} />
+                          <span className={`text-[8.5px] uppercase tracking-wider ${isActive ? 'font-black' : 'font-bold'}`}>{id}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Dynamic Content Mapping */}
+                <div className="flex-1 overflow-y-auto px-6 pb-12">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={activeLogTab}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      className="py-4"
+                    >
+                      {activeLogTab === 'Weight' && (
+                        <div className="space-y-6">
+                          {/* Summary Card - High Fidelity */}
+                          <div className="bg-white border border-[#E8F3EE] shadow-[0_1px_3px_rgba(0,0,0,0.1)] rounded-[32px] p-8 relative group">
+                            <div className="flex items-center justify-between mb-10">
+                              <h4 className="text-lg font-bold text-[#90A1B9]">Current <span className="text-[#1D293D] font-black">{(Number(vitalsInput.weight) || Number(user?.profile?.weight) || 72.5).toFixed(1)} kg</span></h4>
+                              <div className="px-3 py-1 bg-[#E8F3EE] rounded-full flex items-center gap-1.5 ">
                                 <span className="w-1.5 h-1.5 rounded-full bg-[#1F5C49]" />
                                 <span className="text-[9px] font-black text-[#1F5C49] uppercase tracking-widest">Live</span>
-                             </div>
-                           </div>
+                              </div>
+                            </div>
 
                             {/* Semi-Circle Gauge */}
                             <div className="flex flex-col items-center justify-center my-10 relative">
-                               <div className="relative w-[220px] h-[130px]">
-                                 <svg width="220" height="130" viewBox="0 0 220 130">
-                                   <path d="M 20 120 A 80 80 0 0 1 200 120" fill="none" stroke="#F1F5F9" strokeWidth="8" strokeLinecap="butt" />
-                                   <circle cx="20" cy="120" r="4" fill="#10B981" />
-                                   <motion.path 
-                                     key={vitalsInput.weight} 
-                                     initial={{ pathLength: 0 }}
-                                     animate={{ pathLength: (Math.min(100, (Number(vitalsInput.weight) || Number(user?.profile?.weight) || 0)) / 100) }}
-                                     transition={{ type: "tween", duration: 0.5, ease: "easeOut" }}
-                                     d="M 20 120 A 80 80 0 0 1 200 120" 
-                                     fill="none" stroke="#10B981" strokeWidth="12" strokeLinecap="round" 
-                                   />
-                                 </svg>
-                                 <div className="absolute top-[18px] left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white border-2 border-[#10B981] flex items-center justify-center shadow-sm">
-                                   <Scale className="w-3.5 h-3.5 text-[#10B981]" />
-                                 </div>
-                               </div>
-                               <div className="text-center -mt-8">
-                                 <span className="text-4xl font-black text-[#1D293D]">{(Number(vitalsInput.weight) || Number(user?.profile?.weight) || 0).toFixed(1)}</span>
-                                 <p className="text-[9px] font-black text-[#90A1B9] uppercase tracking-[0.1em] mt-1">Kilograms Today</p>
-                               </div>
+                              <div className="relative w-[220px] h-[130px]">
+                                <svg width="220" height="130" viewBox="0 0 220 130">
+                                  <path d="M 20 120 A 80 80 0 0 1 200 120" fill="none" stroke="#F1F5F9" strokeWidth="8" strokeLinecap="butt" />
+                                  <circle cx="20" cy="120" r="4" fill="#10B981" />
+                                  <motion.path
+                                    key={vitalsInput.weight}
+                                    initial={{ pathLength: 0 }}
+                                    animate={{ pathLength: (Math.min(100, (Number(vitalsInput.weight) || Number(user?.profile?.weight) || 0)) / 100) }}
+                                    transition={{ type: "tween", duration: 0.5, ease: "easeOut" }}
+                                    d="M 20 120 A 80 80 0 0 1 200 120"
+                                    fill="none" stroke="#10B981" strokeWidth="12" strokeLinecap="round"
+                                  />
+                                </svg>
+                                <div className="absolute top-[18px] left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white border-2 border-[#10B981] flex items-center justify-center shadow-sm">
+                                  <Scale className="w-3.5 h-3.5 text-[#10B981]" />
+                                </div>
+                              </div>
+                              <div className="text-center -mt-8">
+                                <span className="text-4xl font-black text-[#1D293D]">{(Number(vitalsInput.weight) || Number(user?.profile?.weight) || 0).toFixed(1)}</span>
+                                <p className="text-[9px] font-black text-[#90A1B9] uppercase tracking-[0.1em] mt-1">Kilograms Today</p>
+                              </div>
                             </div>
 
-                           <div className="bg-[#F8FAFC] rounded-[24px] p-6 flex justify-between items-center border border-[#F1F5F9]">
+                            <div className="bg-[#F8FAFC] rounded-[24px] p-6 flex justify-between items-center border border-[#F1F5F9]">
                               <div className="flex-1 flex flex-col items-center border-r border-slate-200">
-                                 <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Goal</span>
-                                 <p className="text-lg font-black text-[#1D293D]">{dashboardData?.goals?.weight || 70}<span className="text-xs ml-1">kg</span></p>
+                                <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Goal</span>
+                                <p className="text-lg font-black text-[#1D293D]">{dashboardData?.goals?.weight || 70}<span className="text-xs ml-1">kg</span></p>
                               </div>
                               <div className="flex-1 flex flex-col items-center border-r border-slate-200">
-                                 <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Progress</span>
-                                 <p className="text-lg font-black text-[#1F5C49]">
-                                    {(() => {
-                                      const current = Number(vitalsInput.weight) || Number(user?.profile?.weight) || 0;
-                                      const target = Number(dashboardData?.goals?.weight || user?.nutritionGoal?.weightGoal || 70);
-                                      const diff = (current - target).toFixed(1);
-                                      return (diff > 0 ? `+${diff}` : diff) + 'kg';
-                                    })()}
-                                 </p>
+                                <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Progress</span>
+                                <p className="text-lg font-black text-[#1F5C49]">
+                                  {(() => {
+                                    const current = Number(vitalsInput.weight) || Number(user?.profile?.weight) || 0;
+                                    const target = Number(dashboardData?.goals?.weight || user?.nutritionGoal?.weightGoal || 70);
+                                    const diff = (current - target).toFixed(1);
+                                    return (diff > 0 ? `+${diff}` : diff) + 'kg';
+                                  })()}
+                                </p>
                               </div>
                               <div className="flex-1 flex flex-col items-center">
-                                 <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">BMI</span>
-                                 <p className="text-lg font-black text-[#1D293D]">
-                                    {(() => {
-                                      const w = Number(vitalsInput.weight || user?.profile?.weight || 72.5);
-                                      const h = Number(user?.profile?.height || 170) / 100;
-                                      return (w / (h * h)).toFixed(1);
-                                    })()}
-                                 </p>
+                                <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">BMI</span>
+                                <p className="text-lg font-black text-[#1D293D]">
+                                  {(() => {
+                                    const w = Number(vitalsInput.weight || user?.profile?.weight || 72.5);
+                                    const h = Number(user?.profile?.height || 170) / 100;
+                                    return (w / (h * h)).toFixed(1);
+                                  })()}
+                                </p>
                               </div>
-                           </div>
-                        </div>
+                            </div>
+                          </div>
 
-                        <div className="bg-white/60 backdrop-blur-md rounded-[32px] p-8 border border-white shadow-sm overflow-hidden group">
-                           <div className="flex items-center justify-between mb-8">
+                          <div className="bg-white/60 backdrop-blur-md rounded-[32px] p-8 border border-white shadow-sm overflow-hidden group">
+                            <div className="flex items-center justify-between mb-8">
                               <div className="flex items-center gap-3">
-                                 <Activity className="w-5 h-5 text-[#1F5C49]" />
-                                 <h4 className="text-lg font-black text-[#1D293D]">Trend</h4>
+                                <Activity className="w-5 h-5 text-[#1F5C49]" />
+                                <h4 className="text-lg font-black text-[#1D293D]">Trend</h4>
                               </div>
                               <div className="px-3 py-1.5 bg-[#F3F9F6] rounded-full"><span className="text-[9px] font-black text-[#1F5C49] uppercase">Last 7 Days</span></div>
-                           </div>
-                           <div className="h-32 w-full">
+                            </div>
+                            <div className="h-32 w-full">
                               <ResponsiveContainer width="100%" height="100%">
-                                 <LineChart data={formattedHistory.weight}>
-                                    <Line type="monotone" dataKey="value" stroke="#1F5C49" strokeWidth={3} dot={{ fill: '#1F5C49', stroke: '#fff', strokeWidth: 2, r: 4 }} />
-                                    <XAxis dataKey="day" hide /><YAxis hide domain={['dataMin - 1', 'dataMax + 1']} />
-                                 </LineChart>
+                                <LineChart data={formattedHistory.weight}>
+                                  <Line type="monotone" dataKey="value" stroke="#1F5C49" strokeWidth={3} dot={{ fill: '#1F5C49', stroke: '#fff', strokeWidth: 2, r: 4 }} />
+                                  <XAxis dataKey="day" hide /><YAxis hide domain={['dataMin - 1', 'dataMax + 1']} />
+                                </LineChart>
                               </ResponsiveContainer>
                               <div className="flex justify-between px-2 mt-2">
                                 {formattedHistory.weight.map(item => (<span key={item.day} className="text-[9px] font-black text-[#CAD5E2]">{item.day}</span>))}
                               </div>
-                           </div>
-                        </div>
+                            </div>
+                          </div>
 
-                        <div className="bg-white border border-[#E8F3EE] shadow-sm rounded-[24px] p-6 flex items-center gap-6">
-                           <div className="flex-[4] space-y-3">
+                          <div className="bg-white border border-[#E8F3EE] shadow-sm rounded-[24px] p-6 flex items-center gap-6">
+                            <div className="flex-[4] space-y-3">
                               <span className="text-[9px] font-black text-[#1F5C49]/70 uppercase ml-2">Weight (kg)</span>
                               <div className="bg-white px-4 py-3.5 rounded-2xl border border-[#E8F3EE]">
-                                 <input type="number" step="0.1" placeholder="72.5" value={vitalsInput.weight} onChange={(e) => setVitalsInput(prev => ({ ...prev, weight: e.target.value }))} className="bg-transparent text-sm font-bold text-[#1D293D] w-full focus:outline-none" />
+                                <input type="number" step="0.1" placeholder="72.5" value={vitalsInput.weight} onChange={(e) => setVitalsInput(prev => ({ ...prev, weight: e.target.value }))} className="bg-transparent text-sm font-bold text-[#1D293D] w-full focus:outline-none" />
                               </div>
-                           </div>
-                           <div className="flex-[6] space-y-3">
+                            </div>
+                            <div className="flex-[6] space-y-3">
                               <span className="text-[9px] font-black text-[#1F5C49]/70 uppercase ml-2">Date</span>
                               <div className="flex flex-col gap-2 bg-white px-4 py-3.5 rounded-2xl border border-[#E8F3EE] w-full">
-                                 <div className="flex items-center gap-2 w-full">
-                                    <Calendar className="w-3.5 h-3.5 text-[#90A1B9]" />
-                                    <input type="date" value={vitalsInput.date} onChange={(e) => setVitalsInput(prev => ({ ...prev, date: e.target.value }))} className="bg-transparent text-sm font-bold text-[#1D293D] w-full focus:outline-none" />
-                                 </div>
-                                 <p className="text-[9px] font-black text-[#1F5C49] uppercase tracking-widest pl-5.5">
-                                    Logging for: {vitalsInput.date ? vitalsInput.date.split('-').reverse().join('/') : '--/--/--'}
-                                 </p>
+                                <div className="flex items-center gap-2 w-full">
+                                  <Calendar className="w-3.5 h-3.5 text-[#90A1B9]" />
+                                  <input type="date" value={vitalsInput.date} onChange={(e) => setVitalsInput(prev => ({ ...prev, date: e.target.value }))} className="bg-transparent text-sm font-bold text-[#1D293D] w-full focus:outline-none" />
+                                </div>
+                                <p className="text-[9px] font-black text-[#1F5C49] uppercase tracking-widest pl-5.5">
+                                  Logging for: {vitalsInput.date ? vitalsInput.date.split('-').reverse().join('/') : '--/--/--'}
+                                </p>
                               </div>
-                           </div>
-                        </div>
+                            </div>
+                          </div>
 
-                        {/* Primary Save Action */}
-                        <div className="mt-8">
-                           <button 
+                          {/* Primary Save Action */}
+                          <div className="mt-8">
+                            <button
                               onClick={() => handleLogVitals('Weight')}
                               disabled={vitalsLoading}
                               className="w-full h-16 bg-[#1F5C49] rounded-full shadow-[0_20px_40px_rgba(31,92,73,0.3)] flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50"
-                           >
+                            >
                               {vitalsLoading ? (
                                 <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
                               ) : (
@@ -2327,37 +2485,37 @@ export default function DashboardEnhanced() {
                                   <span className="text-base font-black text-white tracking-tight uppercase">Save weight</span>
                                 </>
                               )}
-                           </button>
+                            </button>
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      )}
 
-                    {activeLogTab === 'Water' && (
-                       <div className="space-y-6 pb-24">
-                         <div className="bg-white border border-[#E8F3EE] shadow-[0_1px_3px_rgba(0,0,0,0.1)] rounded-[32px] p-8 relative overflow-hidden group">
-                           {/* Live Badge */}
-                           <div className="absolute top-6 right-6 px-3 py-1 bg-[#EEF2FF]/50 rounded-full flex items-center gap-1.5">
+                      {activeLogTab === 'Water' && (
+                        <div className="space-y-6 pb-24">
+                          <div className="bg-white border border-[#E8F3EE] shadow-[0_1px_3px_rgba(0,0,0,0.1)] rounded-[32px] p-8 relative overflow-hidden group">
+                            {/* Live Badge */}
+                            <div className="absolute top-6 right-6 px-3 py-1 bg-[#EEF2FF]/50 rounded-full flex items-center gap-1.5">
                               <span className="w-1.5 h-1.5 rounded-full bg-[#3B82F6]" />
                               <span className="text-[9px] font-black text-[#3B82F6] uppercase tracking-widest">Live</span>
-                           </div>
+                            </div>
 
-                           <div className="text-center mt-4">
-                             <h4 className="text-lg font-bold text-slate-400">You have drank <span className="text-[#1D293D] font-black">{waterLog} glasses</span></h4>
-                             <p className="text-sm font-bold text-slate-300 mt-1">today</p>
-                           </div>
-                           {/* Semi-Circle Gauge */}
-                           <div className="flex flex-col items-center justify-center my-10 relative">
+                            <div className="text-center mt-4">
+                              <h4 className="text-lg font-bold text-slate-400">You have drank <span className="text-[#1D293D] font-black">{waterLog} glasses</span></h4>
+                              <p className="text-sm font-bold text-slate-300 mt-1">today</p>
+                            </div>
+                            {/* Semi-Circle Gauge */}
+                            <div className="flex flex-col items-center justify-center my-10 relative">
                               <div className="relative w-[220px] h-[130px]">
                                 <svg width="220" height="130" viewBox="0 0 220 130">
                                   <path d="M 20 120 A 80 80 0 0 1 200 120" fill="none" stroke="#F1F5F9" strokeWidth="8" strokeLinecap="butt" />
                                   <circle cx="20" cy="120" r="4" fill="#3B82F6" />
-                                  <motion.path 
-                                    key={waterLog} 
+                                  <motion.path
+                                    key={waterLog}
                                     initial={{ pathLength: 0 }}
                                     animate={{ pathLength: (Math.min(8, waterLog) / 8) }}
                                     transition={{ type: "tween", duration: 0.5, ease: "easeOut" }}
                                     d="M 20 120 A 80 80 0 0 1 200 120"
-                                    fill="none" stroke="#3B82F6" strokeWidth="12" strokeLinecap="round" 
+                                    fill="none" stroke="#3B82F6" strokeWidth="12" strokeLinecap="round"
                                   />
                                 </svg>
                                 <div className="absolute top-[18px] left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white border-2 border-[#3B82F6] flex items-center justify-center shadow-sm">
@@ -2368,153 +2526,153 @@ export default function DashboardEnhanced() {
                                 <span className="text-4xl font-black text-[#1D293D]">{waterLog}</span>
                                 <p className="text-[9px] font-black text-[#90A1B9] uppercase tracking-[0.1em] mt-1">Glasses Today</p>
                               </div>
-                           </div>
+                            </div>
 
-                           <div className="bg-[#F8FAFC] rounded-[24px] p-6 flex justify-between items-center border border-[#F1F5F9] mt-4">
+                            <div className="bg-[#F8FAFC] rounded-[24px] p-6 flex justify-between items-center border border-[#F1F5F9] mt-4">
                               <div className="flex-1 flex flex-col items-center border-r border-slate-200">
-                                 <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Volume</span>
-                                 <p className="text-lg font-black text-[#1D293D]">{waterLog * 250}<span className="text-xs ml-1 text-slate-300">ml</span></p>
+                                <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Volume</span>
+                                <p className="text-lg font-black text-[#1D293D]">{waterLog * 250}<span className="text-xs ml-1 text-slate-300">ml</span></p>
                               </div>
                               <div className="flex-1 flex flex-col items-center border-r border-slate-200">
-                                 <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Remaining</span>
-                                 <p className="text-lg font-black text-[#3B82F6]">{Math.max(0, 8 - waterLog)}<span className="text-xs ml-1 font-bold">glasses</span></p>
+                                <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Remaining</span>
+                                <p className="text-lg font-black text-[#3B82F6]">{Math.max(0, 8 - waterLog)}<span className="text-xs ml-1 font-bold">glasses</span></p>
                               </div>
                               <div className="flex-1 flex flex-col items-center">
-                                 <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Goal</span>
-                                 <p className="text-lg font-black text-[#1D293D]">8</p>
+                                <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Goal</span>
+                                <p className="text-lg font-black text-[#1D293D]">8</p>
                               </div>
-                           </div>
-                         </div>
-
-                         {/* Weekly Hydration Chart Card */}
-                         <div className="bg-white border border-[#E8F3EE] shadow-sm rounded-[32px] p-6">
-                            <div className="flex justify-between items-center mb-10">
-                               <h4 className="text-base font-black text-[#1D293D] tracking-tight">Weekly Hydration</h4>
-                               <div className="px-3 py-1 bg-slate-50 border border-slate-100 rounded-lg">
-                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Last 7 Days</span>
-                               </div>
                             </div>
-                            
-                            <div className="h-[180px] w-full">
-                               <ResponsiveContainer width="100%" height="100%">
-                                  <BarChart data={formattedHistory.water}>
+                          </div>
 
-                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                                     <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight: 900, fill: '#94A3B8'}} dy={10} />
-                                     <YAxis hide />
-                                     <Tooltip cursor={{fill: '#F8FAFC'}} content={({ active, payload }) => {
-                                        if (active && payload && payload.length) {
-                                          return (
-                                            <div className="bg-white p-3 rounded-xl shadow-lg border border-slate-100">
-                                              <p className="text-xs font-black text-slate-400 uppercase">{payload[0].payload.day}</p>
-                                              <p className="text-sm font-black text-[#3B82F6]">{payload[0].value} Glasses</p>
-                                            </div>
-                                          );
-                                        }
-                                        return null;
-                                     }} />
-                                     <Bar dataKey="value" radius={[8, 8, 8, 8]} barSize={28}>
-                                        {formattedHistory.water.map((entry, index) => (
-                                          <Cell key={index} fill={entry.value >= 8 ? '#3B82F6' : '#E0E7FF'} />
-                                        ))}
-                                     </Bar>
-                                     <ReferenceLine y={8} stroke="#3B82F6" strokeDasharray="3 3" opacity={0.3} />
-                                  </BarChart>
-                               </ResponsiveContainer>
+                          {/* Weekly Hydration Chart Card */}
+                          <div className="bg-white border border-[#E8F3EE] shadow-sm rounded-[32px] p-6">
+                            <div className="flex justify-between items-center mb-10">
+                              <h4 className="text-base font-black text-[#1D293D] tracking-tight">Weekly Hydration</h4>
+                              <div className="px-3 py-1 bg-slate-50 border border-slate-100 rounded-lg">
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Last 7 Days</span>
+                              </div>
+                            </div>
+
+                            <div className="h-[180px] w-full">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={formattedHistory.water}>
+
+                                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 900, fill: '#94A3B8' }} dy={10} />
+                                  <YAxis hide />
+                                  <Tooltip cursor={{ fill: '#F8FAFC' }} content={({ active, payload }) => {
+                                    if (active && payload && payload.length) {
+                                      return (
+                                        <div className="bg-white p-3 rounded-xl shadow-lg border border-slate-100">
+                                          <p className="text-xs font-black text-slate-400 uppercase">{payload[0].payload.day}</p>
+                                          <p className="text-sm font-black text-[#3B82F6]">{payload[0].value} Glasses</p>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  }} />
+                                  <Bar dataKey="value" radius={[8, 8, 8, 8]} barSize={28}>
+                                    {formattedHistory.water.map((entry, index) => (
+                                      <Cell key={index} fill={entry.value >= 8 ? '#3B82F6' : '#E0E7FF'} />
+                                    ))}
+                                  </Bar>
+                                  <ReferenceLine y={8} stroke="#3B82F6" strokeDasharray="3 3" opacity={0.3} />
+                                </BarChart>
+                              </ResponsiveContainer>
                             </div>
 
                             {/* Legend */}
                             <div className="flex items-center justify-center gap-6 mt-6">
-                               <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 rounded-full bg-[#3B82F6]" />
-                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Goal Met</span>
-                               </div>
-                               <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 rounded-full bg-[#E0E7FF]" />
-                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">In Progress</span>
-                               </div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-[#3B82F6]" />
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Goal Met</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-[#E0E7FF]" />
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">In Progress</span>
+                              </div>
                             </div>
-                         </div>
+                          </div>
 
-                         {/* Quick Log Card - High Fidelity */}
-                         <div className="bg-white border border-[#E8F3EE] shadow-sm rounded-[32px] p-8 space-y-8">
+                          {/* Quick Log Card - High Fidelity */}
+                          <div className="bg-white border border-[#E8F3EE] shadow-sm rounded-[32px] p-8 space-y-8">
                             <div className="flex items-center gap-3">
-                               <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center"><Plus className="w-4 h-4 text-[#3B82F6]" /></div>
-                               <h4 className="text-base font-black text-[#1D293D]">Quick Log</h4>
+                              <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center"><Plus className="w-4 h-4 text-[#3B82F6]" /></div>
+                              <h4 className="text-base font-black text-[#1D293D]">Quick Log</h4>
                             </div>
 
                             <div className="flex items-center justify-center gap-10">
-                               <button 
-                                 onClick={() => setWaterLog(prev => Math.max(0, prev - 1))}
-                                 className="w-16 h-16 rounded-full bg-white shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-slate-100 flex items-center justify-center text-slate-400 active:scale-95 transition-all"
-                               >
-                                 <Minus className="w-6 h-6" />
-                               </button>
+                              <button
+                                onClick={() => setWaterLog(prev => Math.max(0, prev - 1))}
+                                className="w-16 h-16 rounded-full bg-white shadow-[0_8px_30px_rgba(0,0,0,0.06)] border border-slate-100 flex items-center justify-center text-slate-400 active:scale-95 transition-all"
+                              >
+                                <Minus className="w-6 h-6" />
+                              </button>
 
-                               <div className="relative flex items-center justify-center">
-                                  <div className="w-28 h-28 rounded-full border-[6px] border-[#3B82F6]/5 flex items-center justify-center">
-                                     <div className="w-22 h-22 rounded-full bg-[#EFF6FF] flex items-center justify-center shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
-                                        <span className="text-4xl font-black text-[#3B82F6]">{waterLog}</span>
-                                     </div>
+                              <div className="relative flex items-center justify-center">
+                                <div className="w-28 h-28 rounded-full border-[6px] border-[#3B82F6]/5 flex items-center justify-center">
+                                  <div className="w-22 h-22 rounded-full bg-[#EFF6FF] flex items-center justify-center shadow-[inset_0_2px_4px_rgba(0,0,0,0.02)]">
+                                    <span className="text-4xl font-black text-[#3B82F6]">{waterLog}</span>
                                   </div>
-                               </div>
+                                </div>
+                              </div>
 
-                               <button 
-                                 onClick={() => setWaterLog(prev => prev + 1)}
-                                 className="w-16 h-16 rounded-full bg-[#3B82F6] shadow-[0_8px_30px_rgba(59,130,246,0.25)] flex items-center justify-center text-white active:scale-95 transition-all"
-                               >
-                                 <Plus className="w-6 h-6" />
-                               </button>
+                              <button
+                                onClick={() => setWaterLog(prev => prev + 1)}
+                                className="w-16 h-16 rounded-full bg-[#3B82F6] shadow-[0_8px_30px_rgba(59,130,246,0.25)] flex items-center justify-center text-white active:scale-95 transition-all"
+                              >
+                                <Plus className="w-6 h-6" />
+                              </button>
                             </div>
-                         </div>
+                          </div>
 
-                         {/* Primary Save Action */}
-                         <div className="mt-8">
-                            <button 
-                               onClick={() => handleLogVitals('Water', waterLog - (nutritionData?.totalWater ?? nutritionData?.waterIntake ?? 0))}
-                               disabled={vitalsLoading}
-                               className="w-full h-16 bg-[#3B82F6] rounded-full shadow-[0_20px_40px_rgba(59,130,246,0.3)] flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50"
+                          {/* Primary Save Action */}
+                          <div className="mt-8">
+                            <button
+                              onClick={() => handleLogVitals('Water', waterLog - (nutritionData?.totalWater ?? nutritionData?.waterIntake ?? 0))}
+                              disabled={vitalsLoading}
+                              className="w-full h-16 bg-[#3B82F6] rounded-full shadow-[0_20px_40px_rgba(59,130,246,0.3)] flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50"
                             >
-                               {vitalsLoading ? (
-                                 <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                               ) : (
-                                 <>
-                                   <Save className="w-5 h-5 text-white" />
-                                   <span className="text-base font-black text-white tracking-tight uppercase">Save water</span>
-                                 </>
-                               )}
+                              {vitalsLoading ? (
+                                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                              ) : (
+                                <>
+                                  <Save className="w-5 h-5 text-white" />
+                                  <span className="text-base font-black text-white tracking-tight uppercase">Save water</span>
+                                </>
+                              )}
                             </button>
-                         </div>
-                       </div>
-                    )}
+                          </div>
+                        </div>
+                      )}
 
-                    {activeLogTab === 'Steps' && (
-                       <div className="space-y-6 pb-24">
-                         <div className="bg-white border border-[#E8F3EE] shadow-[0_1px_3px_rgba(0,0,0,0.1)] rounded-[32px] p-8 relative overflow-hidden group">
-                           {/* Live Badge */}
-                           <div className="absolute top-6 right-6 px-3 py-1 bg-orange-50 rounded-full flex items-center gap-1.5">
+                      {activeLogTab === 'Steps' && (
+                        <div className="space-y-6 pb-24">
+                          <div className="bg-white border border-[#E8F3EE] shadow-[0_1px_3px_rgba(0,0,0,0.1)] rounded-[32px] p-8 relative overflow-hidden group">
+                            {/* Live Badge */}
+                            <div className="absolute top-6 right-6 px-3 py-1 bg-orange-50 rounded-full flex items-center gap-1.5">
                               <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
                               <span className="text-[9px] font-black text-orange-600 uppercase tracking-widest">Live</span>
-                           </div>
+                            </div>
 
-                           <div className="text-center mt-4">
-                             <h4 className="text-lg font-bold text-slate-400">You have walked <span className="text-[#1D293D] font-black">{(Number(vitalsInput.steps) || Number(wearableData?.todayMetrics?.steps) || 0).toLocaleString()} steps</span></h4>
-                             <p className="text-sm font-bold text-slate-300 mt-1">today</p>
-                           </div>
+                            <div className="text-center mt-4">
+                              <h4 className="text-lg font-bold text-slate-400">You have walked <span className="text-[#1D293D] font-black">{(Number(vitalsInput.steps) || Number(wearableData?.todayMetrics?.steps) || 0).toLocaleString()} steps</span></h4>
+                              <p className="text-sm font-bold text-slate-300 mt-1">today</p>
+                            </div>
 
-                           {/* Semi-Circle Gauge - Increased height to prevent clipping */}
-                           <div className="flex flex-col items-center justify-center my-10 relative">
+                            {/* Semi-Circle Gauge - Increased height to prevent clipping */}
+                            <div className="flex flex-col items-center justify-center my-10 relative">
                               <div className="relative w-[220px] h-[130px]">
                                 <svg width="220" height="130" viewBox="0 0 220 130">
                                   <path d="M 20 120 A 80 80 0 0 1 200 120" fill="none" stroke="#F1F5F9" strokeWidth="8" strokeLinecap="butt" />
                                   <circle cx="20" cy="120" r="4" fill="#F97316" />
-                                  <motion.path 
-                                    key={vitalsInput.steps} 
+                                  <motion.path
+                                    key={vitalsInput.steps}
                                     initial={{ pathLength: 0 }}
                                     animate={{ pathLength: (Math.min(10000, (Number(vitalsInput.steps) || Number(wearableData?.todayMetrics?.steps) || 0)) / 10000) }}
                                     transition={{ type: "tween", duration: 0.5, ease: "easeOut" }}
-                                    d="M 20 120 A 80 80 0 0 1 200 120" 
-                                    fill="none" stroke="#F97316" strokeWidth="12" strokeLinecap="round" 
+                                    d="M 20 120 A 80 80 0 0 1 200 120"
+                                    fill="none" stroke="#F97316" strokeWidth="12" strokeLinecap="round"
                                   />
                                 </svg>
                                 <div className="absolute top-[18px] left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white border-2 border-orange-500 flex items-center justify-center shadow-sm">
@@ -2525,321 +2683,321 @@ export default function DashboardEnhanced() {
                                 <span className="text-4xl font-black text-[#1D293D]">{(Number(vitalsInput.steps) || Number(wearableData?.todayMetrics?.steps) || 0).toLocaleString()}</span>
                                 <p className="text-[9px] font-black text-[#90A1B9] uppercase tracking-[0.1em] mt-1">Of 10,000 steps</p>
                               </div>
-                           </div>
+                            </div>
 
-                           <div className="bg-[#F8FAFC] rounded-[24px] p-6 flex justify-between items-center border border-[#F1F5F9] mt-4">
+                            <div className="bg-[#F8FAFC] rounded-[24px] p-6 flex justify-between items-center border border-[#F1F5F9] mt-4">
                               <div className="flex-1 flex flex-col items-center border-r border-slate-200">
-                                 <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Calories</span>
-                                 <p className="text-lg font-black text-[#1D293D]">{(Number(vitalsInput.steps || wearableData?.todayMetrics?.steps || 0) * 0.04).toFixed(0)}<span className="text-xs ml-1 text-slate-300">kcal</span></p>
+                                <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Calories</span>
+                                <p className="text-lg font-black text-[#1D293D]">{(Number(vitalsInput.steps || wearableData?.todayMetrics?.steps || 0) * 0.04).toFixed(0)}<span className="text-xs ml-1 text-slate-300">kcal</span></p>
                               </div>
                               <div className="flex-1 flex flex-col items-center border-r border-slate-200">
-                                 <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Distance</span>
-                                 <p className="text-lg font-black text-[#1D293D]">{(Number(vitalsInput.steps || wearableData?.todayMetrics?.steps || 0) * 0.0008).toFixed(1)}<span className="text-xs ml-1 text-slate-300 font-bold">km</span></p>
+                                <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Distance</span>
+                                <p className="text-lg font-black text-[#1D293D]">{(Number(vitalsInput.steps || wearableData?.todayMetrics?.steps || 0) * 0.0008).toFixed(1)}<span className="text-xs ml-1 text-slate-300 font-bold">km</span></p>
                               </div>
                               <div className="flex-1 flex flex-col items-center">
-                                 <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Goal</span>
-                                 <p className="text-lg font-black text-[#1D293D]">10k</p>
+                                <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Goal</span>
+                                <p className="text-lg font-black text-[#1D293D]">10k</p>
                               </div>
-                           </div>
-                         </div>
-
-                         {/* Weekly Progress Chart Card */}
-                         <div className="bg-white border border-[#E8F3EE] shadow-sm rounded-[32px] p-6">
-                            <div className="flex justify-between items-center mb-10">
-                               <h4 className="text-base font-black text-[#1D293D] tracking-tight">Weekly Progress</h4>
-                               <div className="px-3 py-1 bg-slate-50 border border-slate-100 rounded-lg">
-                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Last 7 Days</span>
-                               </div>
                             </div>
-                            
-                            <div className="h-[180px] w-full">
-                               <ResponsiveContainer width="100%" height="100%">
-                                  <BarChart data={formattedHistory.steps}>
+                          </div>
 
-                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                                     <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight: 900, fill: '#94A3B8'}} dy={10} />
-                                     <YAxis hide />
-                                     <Tooltip cursor={{fill: '#FFF7ED'}} content={({ active, payload }) => {
-                                        if (active && payload && payload.length) {
-                                          return (
-                                            <div className="bg-white p-3 rounded-xl shadow-lg border border-orange-100">
-                                              <p className="text-xs font-black text-slate-400 uppercase">{payload[0].payload.day}</p>
-                                              <p className="text-sm font-black text-[#F97316]">{payload[0].value.toLocaleString()} Steps</p>
-                                            </div>
-                                          );
-                                        }
-                                        return null;
-                                     }} />
-                                     <Bar dataKey="value" radius={[8, 8, 8, 8]} barSize={28}>
-                                        {formattedHistory.steps.map((entry, index) => (
-                                          <Cell key={index} fill={entry.value >= 10000 ? '#F97316' : '#FFEDD5'} />
-                                        ))}
-                                     </Bar>
-                                     <ReferenceLine y={10000} stroke="#F97316" strokeDasharray="3 3" opacity={0.3} />
-                                  </BarChart>
-                               </ResponsiveContainer>
+                          {/* Weekly Progress Chart Card */}
+                          <div className="bg-white border border-[#E8F3EE] shadow-sm rounded-[32px] p-6">
+                            <div className="flex justify-between items-center mb-10">
+                              <h4 className="text-base font-black text-[#1D293D] tracking-tight">Weekly Progress</h4>
+                              <div className="px-3 py-1 bg-slate-50 border border-slate-100 rounded-lg">
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Last 7 Days</span>
+                              </div>
+                            </div>
+
+                            <div className="h-[180px] w-full">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={formattedHistory.steps}>
+
+                                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 900, fill: '#94A3B8' }} dy={10} />
+                                  <YAxis hide />
+                                  <Tooltip cursor={{ fill: '#FFF7ED' }} content={({ active, payload }) => {
+                                    if (active && payload && payload.length) {
+                                      return (
+                                        <div className="bg-white p-3 rounded-xl shadow-lg border border-orange-100">
+                                          <p className="text-xs font-black text-slate-400 uppercase">{payload[0].payload.day}</p>
+                                          <p className="text-sm font-black text-[#F97316]">{payload[0].value.toLocaleString()} Steps</p>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  }} />
+                                  <Bar dataKey="value" radius={[8, 8, 8, 8]} barSize={28}>
+                                    {formattedHistory.steps.map((entry, index) => (
+                                      <Cell key={index} fill={entry.value >= 10000 ? '#F97316' : '#FFEDD5'} />
+                                    ))}
+                                  </Bar>
+                                  <ReferenceLine y={10000} stroke="#F97316" strokeDasharray="3 3" opacity={0.3} />
+                                </BarChart>
+                              </ResponsiveContainer>
                             </div>
 
                             {/* Legend */}
                             <div className="flex items-center justify-center gap-6 mt-6">
-                               <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 rounded-full bg-[#F97316]" />
-                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Goal Met</span>
-                               </div>
-                               <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 rounded-full bg-[#FFEDD5]" />
-                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">In Progress</span>
-                               </div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-[#F97316]" />
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Goal Met</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-[#FFEDD5]" />
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">In Progress</span>
+                              </div>
                             </div>
-                         </div>
+                          </div>
 
-                         {/* Manual Entry Card */}
-                         <div className="bg-white border border-[#E8F3EE] shadow-sm rounded-[32px] p-8 space-y-8">
+                          {/* Manual Entry Card */}
+                          <div className="bg-white border border-[#E8F3EE] shadow-sm rounded-[32px] p-8 space-y-8">
                             <div className="flex items-center gap-3">
-                               <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center"><Plus className="w-4 h-4 text-[#F97316]" /></div>
-                               <h4 className="text-base font-black text-[#1D293D]">Manual Entry</h4>
+                              <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center"><Plus className="w-4 h-4 text-[#F97316]" /></div>
+                              <h4 className="text-base font-black text-[#1D293D]">Manual Entry</h4>
                             </div>
 
                             <div className="flex gap-4">
-                               <div className="flex-1 space-y-3">
-                                  <span className="text-[9px] font-black text-[#90A1B9] uppercase ml-1">Steps to Add</span>
-                                  <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                                     <input type="number" placeholder="2000" value={vitalsInput.steps} onChange={(e) => setVitalsInput(prev => ({ ...prev, steps: e.target.value }))} className="bg-transparent text-sm font-black text-[#1D293D] placeholder:text-slate-200 w-full focus:outline-none" />
-                                  </div>
-                               </div>
-                               <div className="flex-1 space-y-3">
-                                  <span className="text-[9px] font-black text-[#90A1B9] uppercase ml-1">Date</span>
-                                  <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-2">
-                                     <Calendar className="w-4 h-4 text-slate-200" />
-                                     <input type="date" value={vitalsInput.date} onChange={(e) => setVitalsInput(prev => ({ ...prev, date: e.target.value }))} className="bg-transparent text-xs font-black text-[#1D293D] w-full focus:outline-none" />
-                                  </div>
-                                  <p className="text-[8px] font-black text-orange-600 uppercase tracking-widest ml-1 mt-1">
-                                     Date: {vitalsInput.date ? vitalsInput.date.split('-').reverse().join('/') : '--/--/--'}
-                                  </p>
-                               </div>
+                              <div className="flex-1 space-y-3">
+                                <span className="text-[9px] font-black text-[#90A1B9] uppercase ml-1">Steps to Add</span>
+                                <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
+                                  <input type="number" placeholder="2000" value={vitalsInput.steps} onChange={(e) => setVitalsInput(prev => ({ ...prev, steps: e.target.value }))} className="bg-transparent text-sm font-black text-[#1D293D] placeholder:text-slate-200 w-full focus:outline-none" />
+                                </div>
+                              </div>
+                              <div className="flex-1 space-y-3">
+                                <span className="text-[9px] font-black text-[#90A1B9] uppercase ml-1">Date</span>
+                                <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-2">
+                                  <Calendar className="w-4 h-4 text-slate-200" />
+                                  <input type="date" value={vitalsInput.date} onChange={(e) => setVitalsInput(prev => ({ ...prev, date: e.target.value }))} className="bg-transparent text-xs font-black text-[#1D293D] w-full focus:outline-none" />
+                                </div>
+                                <p className="text-[8px] font-black text-orange-600 uppercase tracking-widest ml-1 mt-1">
+                                  Date: {vitalsInput.date ? vitalsInput.date.split('-').reverse().join('/') : '--/--/--'}
+                                </p>
+                              </div>
                             </div>
-                         </div>
+                          </div>
 
-                         {/* Primary Save Action */}
-                         <div className="mt-4">
-                            <button 
-                               onClick={() => handleLogVitals('Steps')}
-                               disabled={vitalsLoading}
-                               className="w-full h-16 bg-[#F97316] rounded-full shadow-[0_20px_40px_rgba(249,115,22,0.3)] flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50"
+                          {/* Primary Save Action */}
+                          <div className="mt-4">
+                            <button
+                              onClick={() => handleLogVitals('Steps')}
+                              disabled={vitalsLoading}
+                              className="w-full h-16 bg-[#F97316] rounded-full shadow-[0_20px_40px_rgba(249,115,22,0.3)] flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50"
                             >
-                               {vitalsLoading ? (
-                                 <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                               ) : (
-                                 <>
-                                   <Save className="w-5 h-5 text-white" />
-                                   <span className="text-base font-black text-white tracking-tight uppercase">Save steps</span>
-                                 </>
-                               )}
+                              {vitalsLoading ? (
+                                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                              ) : (
+                                <>
+                                  <Save className="w-5 h-5 text-white" />
+                                  <span className="text-base font-black text-white tracking-tight uppercase">Save steps</span>
+                                </>
+                              )}
                             </button>
-                         </div>
-                       </div>
-                    )}
+                          </div>
+                        </div>
+                      )}
 
-                    {activeLogTab === 'Sleep' && (
-                       <div className="space-y-6 pb-24">
-                         <div className="bg-white border border-[#E8F3EE] shadow-[0_1px_3px_rgba(0,0,0,0.1)] rounded-[32px] p-8 relative overflow-hidden group">
-                           <div className="absolute top-6 right-6 px-3 py-1 bg-purple-50 rounded-full flex items-center gap-1.5 ">
+                      {activeLogTab === 'Sleep' && (
+                        <div className="space-y-6 pb-24">
+                          <div className="bg-white border border-[#E8F3EE] shadow-[0_1px_3px_rgba(0,0,0,0.1)] rounded-[32px] p-8 relative overflow-hidden group">
+                            <div className="absolute top-6 right-6 px-3 py-1 bg-purple-50 rounded-full flex items-center gap-1.5 ">
                               <span className="text-[9px] font-black text-purple-600 uppercase tracking-widest">Last Night</span>
-                           </div>
+                            </div>
 
-                           <div className="text-center mt-4">
-                             <h4 className="text-lg font-bold text-slate-400">You slept <span className="text-[#1D293D] font-black">{vitalsInput.sleepHours || (Math.floor(Number(wearableData?.todayMetrics?.sleep || 0)/60))}h {vitalsInput.sleepMins || (Number(wearableData?.todayMetrics?.sleep || 0)%60)}m</span></h4>
-                           </div>
+                            <div className="text-center mt-4">
+                              <h4 className="text-lg font-bold text-slate-400">You slept <span className="text-[#1D293D] font-black">{vitalsInput.sleepHours || (Math.floor(Number(wearableData?.todayMetrics?.sleep || 0) / 60))}h {vitalsInput.sleepMins || (Number(wearableData?.todayMetrics?.sleep || 0) % 60)}m</span></h4>
+                            </div>
 
-                             {/* Semi-Circle Gauge - Increased height to prevent clipping */}
-                             <div className="flex flex-col items-center justify-center my-10 relative">
-                                <div className="relative w-[220px] h-[130px]">
-                                  <svg width="220" height="130" viewBox="0 0 220 130">
-                                    <path d="M 20 120 A 80 80 0 0 1 200 120" fill="none" stroke="#F1F5F9" strokeWidth="8" strokeLinecap="butt" />
-                                    <circle cx="20" cy="120" r="4" fill="#8A7BB6" />
-                                    {(() => {
-                                       const hasInput = vitalsInput.sleepHours !== '' || vitalsInput.sleepMins !== '';
-                                       const selectedDateStr = vitalsInput.date || new Date().toISOString().split('T')[0];
-                                       
-                                       // Find existing sleep record for selected date in recentSleep array
-                                       const existingSleep = wearableData?.recentSleep?.find(s => 
-                                          new Date(s.date).toISOString().split('T')[0] === selectedDateStr
-                                       );
-                                       const existingMins = existingSleep?.totalSleepMinutes || 0;
+                            {/* Semi-Circle Gauge - Increased height to prevent clipping */}
+                            <div className="flex flex-col items-center justify-center my-10 relative">
+                              <div className="relative w-[220px] h-[130px]">
+                                <svg width="220" height="130" viewBox="0 0 220 130">
+                                  <path d="M 20 120 A 80 80 0 0 1 200 120" fill="none" stroke="#F1F5F9" strokeWidth="8" strokeLinecap="butt" />
+                                  <circle cx="20" cy="120" r="4" fill="#8A7BB6" />
+                                  {(() => {
+                                    const hasInput = vitalsInput.sleepHours !== '' || vitalsInput.sleepMins !== '';
+                                    const selectedDateStr = vitalsInput.date || new Date().toISOString().split('T')[0];
 
-                                       const currentSleepVal = hasInput 
-                                          ? (parseFloat(vitalsInput.sleepHours || 0) + (parseFloat(vitalsInput.sleepMins || 0)/60)) 
-                                          : (existingMins / 60);
-                                       
-                                       return (
-                                          <>
-                                             <motion.path 
-                                               key={`${vitalsInput.sleepHours}-${vitalsInput.sleepMins}-${existingMins}-${vitalsInput.date}`} 
-                                               initial={{ pathLength: 0 }}
-                                               animate={{ pathLength: Math.min(8, currentSleepVal) / 8 }}
-                                               transition={{ type: "tween", duration: 0.5, ease: "easeOut" }}
-                                               d="M 20 120 A 80 80 0 0 1 200 120" 
-                                               fill="none" stroke="#8A7BB6" strokeWidth="12" strokeLinecap="round" 
-                                             />
-                                          </>
-                                       );
-                                    })()}
-                                  </svg>
-                                  <div className="absolute top-[18px] left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white border-2 border-[#8A7BB6] flex items-center justify-center shadow-sm">
-                                    <Moon className="w-3.5 h-3.5 text-[#8A7BB6]" />
-                                  </div>
+                                    // Find existing sleep record for selected date in recentSleep array
+                                    const existingSleep = wearableData?.recentSleep?.find(s =>
+                                      new Date(s.date).toISOString().split('T')[0] === selectedDateStr
+                                    );
+                                    const existingMins = existingSleep?.totalSleepMinutes || 0;
+
+                                    const currentSleepVal = hasInput
+                                      ? (parseFloat(vitalsInput.sleepHours || 0) + (parseFloat(vitalsInput.sleepMins || 0) / 60))
+                                      : (existingMins / 60);
+
+                                    return (
+                                      <>
+                                        <motion.path
+                                          key={`${vitalsInput.sleepHours}-${vitalsInput.sleepMins}-${existingMins}-${vitalsInput.date}`}
+                                          initial={{ pathLength: 0 }}
+                                          animate={{ pathLength: Math.min(8, currentSleepVal) / 8 }}
+                                          transition={{ type: "tween", duration: 0.5, ease: "easeOut" }}
+                                          d="M 20 120 A 80 80 0 0 1 200 120"
+                                          fill="none" stroke="#8A7BB6" strokeWidth="12" strokeLinecap="round"
+                                        />
+                                      </>
+                                    );
+                                  })()}
+                                </svg>
+                                <div className="absolute top-[18px] left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-white border-2 border-[#8A7BB6] flex items-center justify-center shadow-sm">
+                                  <Moon className="w-3.5 h-3.5 text-[#8A7BB6]" />
                                 </div>
-                                <div className="text-center -mt-8">
-                                  <span className="text-4xl font-black text-[#1D293D]">
-                                     {(() => {
-                                        const hasInput = vitalsInput.sleepHours !== '' || vitalsInput.sleepMins !== '';
-                                        const selectedDateStr = vitalsInput.date || new Date().toISOString().split('T')[0];
-                                        const existingSleep = wearableData?.recentSleep?.find(s => 
-                                           new Date(s.date).toISOString().split('T')[0] === selectedDateStr
-                                        );
-                                        const existingMins = existingSleep?.totalSleepMinutes || 0;
-                                        
-                                        return (hasInput 
-                                           ? (parseFloat(vitalsInput.sleepHours || 0) + (parseFloat(vitalsInput.sleepMins || 0)/60)) 
-                                           : (existingMins / 60)).toFixed(1);
-                                     })()}
-                                  </span>
-                                  <p className="text-[9px] font-black text-[#90A1B9] uppercase tracking-[0.1em] mt-1">Hours Logged</p>
-                                </div>
-                             </div>
+                              </div>
+                              <div className="text-center -mt-8">
+                                <span className="text-4xl font-black text-[#1D293D]">
+                                  {(() => {
+                                    const hasInput = vitalsInput.sleepHours !== '' || vitalsInput.sleepMins !== '';
+                                    const selectedDateStr = vitalsInput.date || new Date().toISOString().split('T')[0];
+                                    const existingSleep = wearableData?.recentSleep?.find(s =>
+                                      new Date(s.date).toISOString().split('T')[0] === selectedDateStr
+                                    );
+                                    const existingMins = existingSleep?.totalSleepMinutes || 0;
 
-                           <div className="bg-[#F8FAFC] rounded-[24px] p-6 flex justify-between items-center border border-[#F1F5F9] mt-4">
+                                    return (hasInput
+                                      ? (parseFloat(vitalsInput.sleepHours || 0) + (parseFloat(vitalsInput.sleepMins || 0) / 60))
+                                      : (existingMins / 60)).toFixed(1);
+                                  })()}
+                                </span>
+                                <p className="text-[9px] font-black text-[#90A1B9] uppercase tracking-[0.1em] mt-1">Hours Logged</p>
+                              </div>
+                            </div>
+
+                            <div className="bg-[#F8FAFC] rounded-[24px] p-6 flex justify-between items-center border border-[#F1F5F9] mt-4">
                               <div className="flex-1 flex flex-col items-center border-r border-slate-200">
-                                 <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Deep</span>
-                                 <p className="text-lg font-black text-[#1D293D]">{(Number(vitalsInput.sleepHours) * 0.3).toFixed(1)}<span className="text-xs ml-1 text-slate-300">h</span></p>
+                                <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Deep</span>
+                                <p className="text-lg font-black text-[#1D293D]">{(Number(vitalsInput.sleepHours) * 0.3).toFixed(1)}<span className="text-xs ml-1 text-slate-300">h</span></p>
                               </div>
                               <div className="flex-1 flex flex-col items-center border-r border-slate-200">
-                                 <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Quality</span>
-                                 <p className="text-lg font-black text-purple-600">85%</p>
+                                <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Quality</span>
+                                <p className="text-lg font-black text-purple-600">85%</p>
                               </div>
                               <div className="flex-1 flex flex-col items-center">
-                                 <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Goal</span>
-                                 <p className="text-lg font-black text-[#1D293D]">8h</p>
+                                <span className="text-[9px] font-black text-[#90A1B9] uppercase mb-1">Goal</span>
+                                <p className="text-lg font-black text-[#1D293D]">8h</p>
                               </div>
-                           </div>
-                         </div>
-
-                         {/* Weekly Sleep Analysis Chart */}
-                         <div className="bg-white border border-[#E8F3EE] shadow-sm rounded-[32px] p-6">
-                            <div className="flex justify-between items-center mb-10">
-                               <h4 className="text-base font-black text-[#1D293D] tracking-tight">Weekly Sleep</h4>
-                               <div className="px-3 py-1 bg-slate-50 border border-slate-100 rounded-lg">
-                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Last 7 Days</span>
-                               </div>
                             </div>
-                            
-                            <div className="h-[180px] w-full">
-                               <ResponsiveContainer width="100%" height="100%">
-                                  <BarChart data={formattedHistory.sleep}>
+                          </div>
 
-                                     <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                                     <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{fontSize: 9, fontWeight: 900, fill: '#94A3B8'}} dy={10} />
-                                     <YAxis hide />
-                                     <Tooltip cursor={{fill: '#F5F3FF'}} content={({ active, payload }) => {
-                                        if (active && payload && payload.length) {
-                                          return (
-                                            <div className="bg-white p-3 rounded-xl shadow-lg border border-purple-100">
-                                              <p className="text-xs font-black text-slate-400 uppercase">{payload[0].payload.day}</p>
-                                              <p className="text-sm font-black text-[#8A7BB6]">{payload[0].value} Hours</p>
-                                            </div>
-                                          );
-                                        }
-                                        return null;
-                                     }} />
-                                     <Bar dataKey="value" radius={[8, 8, 8, 8]} barSize={28}>
-                                        {formattedHistory.sleep.map((entry, index) => (
-                                          <Cell key={index} fill={entry.value >= 8 ? '#8A7BB6' : '#D1CBE9'} />
-                                        ))}
-                                     </Bar>
-                                     <ReferenceLine y={8} stroke="#8A7BB6" strokeDasharray="3 3" opacity={0.3} />
-                                  </BarChart>
-                               </ResponsiveContainer>
+                          {/* Weekly Sleep Analysis Chart */}
+                          <div className="bg-white border border-[#E8F3EE] shadow-sm rounded-[32px] p-6">
+                            <div className="flex justify-between items-center mb-10">
+                              <h4 className="text-base font-black text-[#1D293D] tracking-tight">Weekly Sleep</h4>
+                              <div className="px-3 py-1 bg-slate-50 border border-slate-100 rounded-lg">
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider">Last 7 Days</span>
+                              </div>
+                            </div>
+
+                            <div className="h-[180px] w-full">
+                              <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={formattedHistory.sleep}>
+
+                                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                                  <XAxis dataKey="day" axisLine={false} tickLine={false} tick={{ fontSize: 9, fontWeight: 900, fill: '#94A3B8' }} dy={10} />
+                                  <YAxis hide />
+                                  <Tooltip cursor={{ fill: '#F5F3FF' }} content={({ active, payload }) => {
+                                    if (active && payload && payload.length) {
+                                      return (
+                                        <div className="bg-white p-3 rounded-xl shadow-lg border border-purple-100">
+                                          <p className="text-xs font-black text-slate-400 uppercase">{payload[0].payload.day}</p>
+                                          <p className="text-sm font-black text-[#8A7BB6]">{payload[0].value} Hours</p>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  }} />
+                                  <Bar dataKey="value" radius={[8, 8, 8, 8]} barSize={28}>
+                                    {formattedHistory.sleep.map((entry, index) => (
+                                      <Cell key={index} fill={entry.value >= 8 ? '#8A7BB6' : '#D1CBE9'} />
+                                    ))}
+                                  </Bar>
+                                  <ReferenceLine y={8} stroke="#8A7BB6" strokeDasharray="3 3" opacity={0.3} />
+                                </BarChart>
+                              </ResponsiveContainer>
                             </div>
 
                             {/* Legend */}
                             <div className="flex items-center justify-center gap-6 mt-6">
-                               <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 rounded-full bg-[#8A7BB6]" />
-                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Goal Met</span>
-                               </div>
-                               <div className="flex items-center gap-2">
-                                  <div className="w-2 h-2 rounded-full bg-[#D1CBE9]" />
-                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Below Goal</span>
-                               </div>
-                               <div className="flex items-center gap-2">
-                                  <div className="w-4 border-t-2 border-dashed border-[#8A7BB6]/30" />
-                                  <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Goal (8h)</span>
-                               </div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-[#8A7BB6]" />
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Goal Met</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-2 h-2 rounded-full bg-[#D1CBE9]" />
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Below Goal</span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <div className="w-4 border-t-2 border-dashed border-[#8A7BB6]/30" />
+                                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Goal (8h)</span>
+                              </div>
                             </div>
-                         </div>
+                          </div>
 
-                         {/* Log Sleep Manual Entry Card */}
-                         <div className="bg-white border border-[#F1F5F9] shadow-[0_10px_40px_rgba(0,0,0,0.03)] rounded-[32px] p-8 space-y-8">
+                          {/* Log Sleep Manual Entry Card */}
+                          <div className="bg-white border border-[#F1F5F9] shadow-[0_10px_40px_rgba(0,0,0,0.03)] rounded-[32px] p-8 space-y-8">
                             <div className="flex items-center gap-4">
-                               <div className="w-9 h-9 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.08)] flex items-center justify-center border border-slate-50"><Plus className="w-4 h-4 text-slate-400" /></div>
-                               <h4 className="text-xl font-bold text-[#1D293D] tracking-tight">Log Sleep</h4>
+                              <div className="w-9 h-9 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.08)] flex items-center justify-center border border-slate-50"><Plus className="w-4 h-4 text-slate-400" /></div>
+                              <h4 className="text-xl font-bold text-[#1D293D] tracking-tight">Log Sleep</h4>
                             </div>
 
                             <div className="grid grid-cols-12 gap-4">
-                               <div className="col-span-3 space-y-3">
-                                  <span className="text-[10px] font-black text-[#94A3B8] uppercase tracking-[0.15em] ml-2">Hours</span>
-                                  <div className="bg-white px-2 py-4.5 rounded-[22px] border border-[#E2E8F0] flex items-center justify-center h-[72px]">
-                                     <input type="number" placeholder="7" value={vitalsInput.sleepHours || ''} onChange={(e) => setVitalsInput(prev => ({ ...prev, sleepHours: e.target.value }))} className="bg-transparent text-xl font-black text-[#A0AEC0] placeholder:text-[#CBD5E0] text-center w-full focus:outline-none" />
+                              <div className="col-span-3 space-y-3">
+                                <span className="text-[10px] font-black text-[#94A3B8] uppercase tracking-[0.15em] ml-2">Hours</span>
+                                <div className="bg-white px-2 py-4.5 rounded-[22px] border border-[#E2E8F0] flex items-center justify-center h-[72px]">
+                                  <input type="number" placeholder="7" value={vitalsInput.sleepHours || ''} onChange={(e) => setVitalsInput(prev => ({ ...prev, sleepHours: e.target.value }))} className="bg-transparent text-xl font-black text-[#A0AEC0] placeholder:text-[#CBD5E0] text-center w-full focus:outline-none" />
+                                </div>
+                              </div>
+                              <div className="col-span-3 space-y-3">
+                                <span className="text-[10px] font-black text-[#94A3B8] uppercase tracking-[0.15em] ml-2">Mins</span>
+                                <div className="bg-white px-2 py-4.5 rounded-[22px] border border-[#E2E8F0] flex items-center justify-center h-[72px]">
+                                  <input type="number" placeholder="15" value={vitalsInput.sleepMins || ''} onChange={(e) => setVitalsInput(prev => ({ ...prev, sleepMins: e.target.value }))} className="bg-transparent text-xl font-black text-[#A0AEC0] placeholder:text-[#CBD5E0] text-center w-full focus:outline-none" />
+                                </div>
+                              </div>
+                              <div className="col-span-6 space-y-3">
+                                <span className="text-[10px] font-black text-[#94A3B8] uppercase tracking-[0.15em] ml-2">Date</span>
+                                <div className="bg-white px-6 py-4.5 rounded-[22px] border border-[#E2E8F0] flex flex-col justify-center h-[72px]">
+                                  <div className="flex items-center gap-4 w-full">
+                                    <Calendar className="w-5.5 h-5.5 text-[#94A3B8]" />
+                                    <input type="date" value={vitalsInput.date} onChange={(e) => setVitalsInput(prev => ({ ...prev, date: e.target.value }))} className="bg-transparent text-[16px] font-black text-[#1D293D] w-full focus:outline-none" />
                                   </div>
-                               </div>
-                               <div className="col-span-3 space-y-3">
-                                  <span className="text-[10px] font-black text-[#94A3B8] uppercase tracking-[0.15em] ml-2">Mins</span>
-                                  <div className="bg-white px-2 py-4.5 rounded-[22px] border border-[#E2E8F0] flex items-center justify-center h-[72px]">
-                                     <input type="number" placeholder="15" value={vitalsInput.sleepMins || ''} onChange={(e) => setVitalsInput(prev => ({ ...prev, sleepMins: e.target.value }))} className="bg-transparent text-xl font-black text-[#A0AEC0] placeholder:text-[#CBD5E0] text-center w-full focus:outline-none" />
-                                  </div>
-                               </div>
-                               <div className="col-span-6 space-y-3">
-                                  <span className="text-[10px] font-black text-[#94A3B8] uppercase tracking-[0.15em] ml-2">Date</span>
-                                  <div className="bg-white px-6 py-4.5 rounded-[22px] border border-[#E2E8F0] flex flex-col justify-center h-[72px]">
-                                     <div className="flex items-center gap-4 w-full">
-                                        <Calendar className="w-5.5 h-5.5 text-[#94A3B8]" />
-                                        <input type="date" value={vitalsInput.date} onChange={(e) => setVitalsInput(prev => ({ ...prev, date: e.target.value }))} className="bg-transparent text-[16px] font-black text-[#1D293D] w-full focus:outline-none" />
-                                     </div>
-                                     <p className="text-[9px] font-black text-[#8A7BB6] uppercase tracking-widest ml-9.5">
-                                        {vitalsInput.date ? vitalsInput.date.split('-').reverse().join('/') : '--/--/--'}
-                                     </p>
-                                  </div>
-                               </div>
+                                  <p className="text-[9px] font-black text-[#8A7BB6] uppercase tracking-widest ml-9.5">
+                                    {vitalsInput.date ? vitalsInput.date.split('-').reverse().join('/') : '--/--/--'}
+                                  </p>
+                                </div>
+                              </div>
                             </div>
-                         </div>
+                          </div>
 
-                         {/* Primary Save Action */}
-                         <div className="mt-4">
-                            <button 
-                               onClick={() => handleLogVitals('Sleep')}
-                               disabled={vitalsLoading}
-                               className="w-full h-16 bg-[#8A7BB6] rounded-full shadow-[0_20px_40px_rgba(138,123,182,0.3)] flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50"
+                          {/* Primary Save Action */}
+                          <div className="mt-4">
+                            <button
+                              onClick={() => handleLogVitals('Sleep')}
+                              disabled={vitalsLoading}
+                              className="w-full h-16 bg-[#8A7BB6] rounded-full shadow-[0_20px_40px_rgba(138,123,182,0.3)] flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50"
                             >
-                               {vitalsLoading ? (
-                                 <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                               ) : (
-                                 <>
-                                   <Save className="w-5 h-5 text-white" />
-                                   <span className="text-base font-black text-white tracking-tight uppercase">Save sleep</span>
-                                 </>
-                               )}
+                              {vitalsLoading ? (
+                                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                              ) : (
+                                <>
+                                  <Save className="w-5 h-5 text-white" />
+                                  <span className="text-base font-black text-white tracking-tight uppercase">Save sleep</span>
+                                </>
+                              )}
                             </button>
-                         </div>
-                       </div>
-                    )}
+                          </div>
+                        </div>
+                      )}
 
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );

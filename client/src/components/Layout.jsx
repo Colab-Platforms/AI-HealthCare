@@ -39,6 +39,12 @@ const adminExtraNavItems = [
 
 export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isDoctorLayout }) {
   const { user, logout, isAdmin, isDoctor, refreshUser } = useAuth();
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return "Good morning";
+    if (hour < 17) return "Good afternoon";
+    return "Good evening";
+  };
   const { pendingAnalysisIds, pendingDietPlanIds } = useData();
   const location = useLocation();
   const navigate = useNavigate();
@@ -256,23 +262,17 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
 
         {/* Global Header - Fixed on mobile, Sticky on desktop */}
         <header className="fixed top-0 inset-x-0 z-50 lg:sticky lg:inset-auto lg:top-0 bg-[#EBF0E6]/60 backdrop-blur-xl border-b border-emerald-100/30 shadow-sm transition-all duration-300">
-          <div className="flex items-center justify-between lg:justify-end px-6 md:px-12 py-0 md:py-2 gap-6">
-            {/* Logo for mobile */}
-            <div className="flex lg:hidden items-center gap-3">
-              <Link to={homeLink} className="flex items-center">
-                <img 
-                  src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
-                  alt="take.health AI Platform" 
-                  className="h-16 w-auto object-contain"
-                />
-              </Link>
-            </div>
-
+          <div className="flex items-center px-6 md:px-12 py-3 md:py-4 gap-4">
+            {/* Profile Image - Now on Left */}
             <div className="flex items-center gap-4">
-              {/* Profile Image - Large and Round as per image */}
               <button
                 onClick={() => navigate('/profile')}
-                className="tour-profile w-10 h-10 rounded-full overflow-hidden border border-slate-100 shadow-sm hover:ring-4 hover:ring-slate-100 transition-all pointer-events-auto"
+                className="tour-profile rounded-full overflow-hidden border border-slate-100 shadow-sm hover:ring-4 hover:ring-slate-100 transition-all pointer-events-auto"
+                style={{ 
+                  width: '43.93733596801758px', 
+                  height: '43.93733596801758px',
+                  marginTop: '0px' // Offset handled by container padding or flex
+                }}
               >
                 {user?.profilePicture ? (
                   <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" />
@@ -282,9 +282,49 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
                   </div>
                 )}
               </button>
+              
+            {/* Welcome Message - Now in Header */}
+            <div className="flex flex-col">
+              <span 
+                style={{
+                  fontFamily: 'Poppins, sans-serif',
+                  fontWeight: '700',
+                  fontSize: '16px',
+                  lineHeight: '20.6px',
+                  letterSpacing: '-0.41px',
+                  color: '#1a1a1a'
+                }}
+              >
+                Hello {user?.name?.split(' ')[0] || 'User'}!
+              </span>
+              <span 
+                style={{
+                  fontFamily: 'Poppins, sans-serif',
+                  fontWeight: '600',
+                  fontSize: '14px',
+                  lineHeight: '21.97px',
+                  letterSpacing: '0px',
+                  color: '#69A38D',
+                  width: '160.7889404296875px',
+                  height: '22px'
+                }}
+              >
+                {getGreeting()}
+              </span>
             </div>
           </div>
-        </header>
+
+          <div className="flex-1" />
+
+          {/* Bell icon on extreme right */}
+          <button
+            onClick={() => navigate('/notifications')}
+            className="w-10 h-10 rounded-full bg-white/40 border border-white/20 flex items-center justify-center shadow-sm hover:bg-white/60 transition-all"
+          >
+            <Bell className="w-5 h-5 text-[#5B8C6F]" />
+          </button>
+        </div>
+      </header>
 
         {/* Spacer for fixed header on mobile */}
         <div className="h-16 shrink-0 lg:hidden" />
