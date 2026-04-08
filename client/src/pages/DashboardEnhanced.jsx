@@ -1116,152 +1116,54 @@ export default function DashboardEnhanced() {
           </div>
         </motion.div>
 
-        {/* Optimize Your Health Banner */}
+        {/* Optimize Your Health Banner - Fully Responsive */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="px-4 md:px-0 relative"
-          style={{ width: '356px', height: '139px', top: '-5.62px', left: '0.69px', opacity: 1, marginBottom: '8px' }}
+          className="px-4 md:px-0 mb-4 w-full"
         >
-          <div className="relative overflow-hidden w-full h-full" style={{ borderRadius: '25.59px', borderWidth: '0.76px', borderColor: 'rgba(255,255,255,0.3)', borderStyle: 'solid' }}>
+          <div className="relative overflow-hidden w-full min-h-[140px] rounded-[26px] border border-white/30">
             <img
               src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/6de313b1e5c8e1bb654eedecdc54a6f84116947a.jpg?v=1775563817"
               alt=""
               className="absolute inset-0 w-full h-full object-cover"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#2d3d32]/85 via-[#2d3d32]/70 to-[#2d3d32]/40" />
-            <div
-              className="relative z-10"
-              style={{ width: '318.37579345703125px', height: '53.38792419433594px', top: '19.04px', left: '19.04px', position: 'absolute' }}
-            >
-              <div className="flex items-start">
-                <div
-                  className="bg-white/15 backdrop-blur-md flex items-center justify-center shrink-0"
-                  style={{
-                    width: '38px',
-                    height: '38px',
-                    top: '-0.04px',
-                    left: '-0.04px',
-                    borderRadius: '12px',
-                    borderWidth: '1px',
-                    borderColor: 'rgba(255,255,255,0.2)',
-                    borderStyle: 'solid'
-                  }}
-                >
+            <div className="absolute inset-0 bg-gradient-to-r from-[#2d3d32]/90 via-[#2d3d32]/75 to-[#2d3d32]/40" />
+            
+            <div className="relative z-10 p-5 flex flex-col h-full justify-between">
+              <div className="flex gap-4">
+                <div className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center shrink-0 border border-white/20">
                   <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Bacteria.svg?v=1775563872" alt="" className="w-5 h-5 brightness-0 invert" />
                 </div>
-                <div className="ml-4 flex flex-col">
-                  <div className="flex items-center gap-2" style={{ top: '0.61px', left: '0px' }}>
-                    <h3
-                      className="text-white"
-                      style={{
-                        fontFamily: 'Poppins, sans-serif',
-                        fontWeight: '600',
-                        fontSize: '14px',
-                        lineHeight: '14.62px',
-                        letterSpacing: '-0.37px',
-                        width: '143px',
-                        height: '15px'
-                      }}
-                    >
+                <div className="flex flex-col">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-white font-semibold text-sm" style={{ fontFamily: 'Poppins, sans-serif' }}>
                       Optimize Your Health
                     </h3>
                     <span className="px-2 py-0.5 bg-white/20 backdrop-blur-sm rounded-md text-[8px] font-black text-white uppercase tracking-wider">NEW</span>
                   </div>
-                  <p
-                    className="text-white/70 mt-2"
-                    style={{
-                      fontFamily: 'Poppins, sans-serif',
-                      fontWeight: '500',
-                      fontSize: '12px',
-                      lineHeight: '15.45px',
-                      letterSpacing: '0px',
-                      width: '258.0614929199219px',
-                      height: '30.8712158203125px'
-                    }}
-                  >
+                  <p className="text-white/70 text-[11px] font-medium leading-tight mt-1 max-w-[240px]" style={{ fontFamily: 'Poppins, sans-serif' }}>
                     Add details and lab reports to unlock tailored wellness insights.
                   </p>
                 </div>
               </div>
-            </div>
 
-            <div
-              className="flex items-center z-20"
-              style={{
-                width: '280.95849609375px',
-                height: '36.411598205566406px',
-                gap: '19px',
-                top: '90.7px',
-                left: '25px',
-                position: 'absolute'
-              }}
-            >
-              <button
-                onClick={() => navigate('/profile')}
-                className="bg-white/15 backdrop-blur-md text-white font-bold border border-white/20 hover:bg-white/25 transition-all flex items-center justify-center lowercase relative"
-                style={{
-                  width: '130.97418212890625px',
-                  height: '36.411598205566406px',
-                  borderRadius: '12.91px',
-                  borderWidth: '0.67px'
-                }}
-              >
-                <span
-                  style={{
-                    width: '92px',
-                    height: '16px',
-                    fontFamily: 'Poppins, sans-serif',
-                    fontWeight: '500',
-                    fontSize: '11px',
-                    lineHeight: '15.73px',
-                    letterSpacing: '0px',
-                    textAlign: 'center'
-                  }}
+              <div className="flex items-center justify-center gap-3 mt-4 w-full">
+                <button
+                  onClick={() => navigate('/profile')}
+                  className="px-4 h-9 bg-white/10 backdrop-blur-md text-white font-medium border border-white/20 rounded-xl text-[10px] hover:bg-white/20 transition-all lowercase whitespace-nowrap"
                 >
                   complete profile
-                </span>
-              </button>
-              <button
-                onClick={() => navigate('/upload')}
-                className="bg-[#5B8C6F] text-white font-bold hover:bg-[#4a7b5e] transition-all shadow-lg shadow-[#5B8C6F]/30 relative lowercase"
-                style={{
-                  width: '130.98431396484375px',
-                  height: '36.411598205566406px',
-                  borderRadius: '12.91px',
-                  borderWidth: '0.67px'
-                }}
-              >
-                <img
-                  src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_2.png?v=1775628438"
-                  alt=""
-                  className="object-contain absolute"
-                  style={{
-                    width: '12.896868705749512px',
-                    height: '12.896868705749512px',
-                    top: '10.75px',
-                    left: '16.03px'
-                  }}
-                />
-                <span
-                  className="absolute"
-                  style={{
-                    width: '80px',
-                    height: '16px',
-                    top: '10.3px',
-                    left: '34.55px',
-                    fontFamily: 'Poppins, sans-serif',
-                    fontWeight: '500',
-                    fontSize: '11px',
-                    lineHeight: '15.73px',
-                    letterSpacing: '0px',
-                    textAlign: 'center'
-                  }}
+                </button>
+                <button
+                  onClick={() => navigate('/upload')}
+                  className="px-4 h-9 bg-[#5B8C6F] text-white font-medium rounded-xl text-[10px] shadow-lg shadow-[#5B8C6F]/30 hover:bg-[#4a7b5e] transition-all lowercase flex items-center gap-2 whitespace-nowrap"
                 >
+                  <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_2.png?v=1775628438" alt="" className="w-3 h-3 invert brightness-0" />
                   upload report
-                </span>
-              </button>
+                </button>
+              </div>
             </div>
           </div>
         </motion.div>
@@ -1279,27 +1181,30 @@ export default function DashboardEnhanced() {
           </button>
         </div>
 
-        {/* Main Content - Vertical stack on mobile, 3-column grid on desktop */}
+        {/* Main Content - Dynamic Grid */}
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="flex flex-col lg:grid lg:grid-cols-3 gap-6 md:gap-8 pb-4 md:pb-12 lg:pb-0 h-full items-stretch lg:items-start w-full mt-0 mb-2 px-4 md:px-0"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 pb-12 w-full mt-2 px-4 md:px-0"
         >
           {/* Card 1: Calories & Daily Tracking */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="tour-nutrient-info w-full lg:min-w-0 bg-white px-5 pb-5 pt-0 lg:px-8 lg:pb-8 lg:pt-0 border border-slate-100/80 shadow-[0_4px_24px_rgba(0,0,0,0.03)] flex flex-col relative overflow-hidden mx-auto"
-            style={{ width: '330px', minHeight: '216px', borderRadius: '29.29px', top: '8px' }}
+            className="tour-nutrient-info w-full bg-white px-5 pb-5 pt-6 lg:px-8 lg:pb-8 lg:pt-8 border border-slate-100/80 shadow-[0_4px_24px_rgba(0,0,0,0.03)] flex flex-col relative overflow-hidden"
+            style={{ 
+              borderRadius: '29.29px', 
+              marginTop: '8px'
+            }}
           >
-            {/* Calories Header - Absolute Top Left to save space */}
-            <div className="absolute top-5 left-5 z-20">
+            {/* Calories Header */}
+            <div className="mb-4">
               <h2 className="text-lg lg:text-xl font-bold text-[#1a1a1a] leading-tight">Calories</h2>
               <p className="text-[9px] text-[#a0a0a0] font-bold uppercase tracking-widest leading-none mt-0.5">Daily tracking</p>
             </div>
 
-            {/* Dashed Gauge at the very top */}
-            <div className="flex justify-center mb-0 -mt-2 relative z-10">
+            {/* Dashed Gauge */}
+            <div className="flex justify-center mb-0 relative z-10 w-full overflow-visible">
               <DashedGauge
                 value={nutritionData?.totalCalories || dashboardData?.nutritionData?.totalCalories || 0}
                 max={user?.nutritionGoal?.calorieGoal || nutritionData?.calorieGoal || 2000}
@@ -1403,37 +1308,24 @@ export default function DashboardEnhanced() {
             </AnimatePresence>
           </motion.div>
 
-
-
           {/* Card 2: Today's Diet Plan */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="tour-diet-plan w-full lg:min-w-0 bg-white border border-[#f0f0ea] shadow-sm flex flex-col relative overflow-hidden"
-            style={{ width: '330px', height: '366px', borderRadius: '29.29px', position: 'relative', top: '8px', left: '-0.11px', opacity: 1 }}
+            className="tour-diet-plan w-full bg-white border border-[#f0f0ea] shadow-sm flex flex-col relative overflow-hidden"
+            style={{ 
+              minHeight: '400px', 
+              borderRadius: '29.29px', 
+              marginTop: '8px'
+            }}
           >
-            {/* Header Row - Today's Diet + Date Picker */}
-            <div
-              className="flex items-center absolute z-10"
-              style={{
-                width: '293.38px',
-                height: '27.92px',
-                justifyContent: 'space-between',
-                top: '18.31px',
-                left: '18.31px',
-                opacity: 1
-              }}
-            >
+            {/* Header Row */}
+            <div className="flex items-center justify-between px-5 pt-6 pb-4 w-full">
               <h2
-                className="text-[#1a1a1a]"
+                className="text-[#1a1a1a] font-semibold text-base"
                 style={{
-                  width: '94px',
-                  height: '27px',
                   fontFamily: 'Poppins, sans-serif',
-                  fontWeight: '600',
-                  fontSize: '16px',
-                  lineHeight: '26.09px',
                   letterSpacing: '-0.43px',
                   margin: 0
                 }}
@@ -1442,33 +1334,15 @@ export default function DashboardEnhanced() {
               </h2>
               <div className="bg-[#FAFBF8] rounded-full border border-[#f0f0ea] flex items-center gap-1.5 shadow-sm px-3 py-1.5">
                 <Calendar className="w-3.5 h-3.5 text-[#5B8C6F]" />
-                <span
-                  style={{
-                    fontFamily: 'Poppins, sans-serif',
-                    fontWeight: '600',
-                    fontSize: '11px',
-                    lineHeight: '17.85px',
-                    letterSpacing: '0px',
-                    color: '#5B8C6F'
-                  }}
-                >
+                <span style={{ fontFamily: 'Poppins, sans-serif', fontWeight: '600', fontSize: '11px', color: '#5B8C6F' }}>
                   {new Date().toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'long', year: 'numeric' })}
                 </span>
               </div>
             </div>
 
-            {/* Meal Tabs Row - Breakfast / Mid-Morning / Lunch / Evening / Dinner */}
-            <div
-              className="flex items-center absolute z-10 overflow-x-auto scrollbar-hide"
-              style={{
-                width: '293.38px',
-                height: '32.5px',
-                top: '64.53px',
-                left: '18.31px',
-                opacity: 1
-              }}
-            >
-              <div className="flex items-center" style={{ gap: '7.32px' }}>
+            {/* Meal Tabs Row */}
+            <div className="px-5 mb-4 w-full overflow-x-auto scrollbar-hide">
+              <div className="flex items-center gap-2">
                 {[
                   { id: 'breakfast', label: 'Breakfast' },
                   { id: 'midMorningSnack', label: 'Mid-Morning' },
@@ -1479,24 +1353,12 @@ export default function DashboardEnhanced() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveMealTab(tab.id)}
-                    className={`transition-all whitespace-nowrap flex-none ${activeMealTab === tab.id
-                      ? 'bg-[#76B39D] text-white shadow-lg shadow-[#76B39D]/30'
-                      : 'bg-[#FAFBF8] text-[#8a8a8a] border border-[#f0f0ea] hover:bg-[#E8F3EE]'
-                      }`}
-                    style={{
-                      height: '32.5px',
-                      borderRadius: '30714396px',
-                      paddingTop: '7.32px',
-                      paddingBottom: '7.32px',
-                      paddingLeft: '16px',
-                      paddingRight: '16px',
-                      fontFamily: 'Poppins, sans-serif',
-                      fontWeight: '600',
-                      fontSize: '12px',
-                      lineHeight: '17.85px',
-                      letterSpacing: '0px',
-                      textAlign: 'center'
-                    }}
+                    className={`transition-all whitespace-nowrap flex-none h-[32.5px] px-4 rounded-full font-semibold text-xs transition-all ${
+                      activeMealTab === tab.id
+                        ? 'bg-[#76B39D] text-white shadow-lg shadow-[#76B39D]/30'
+                        : 'bg-[#FAFBF8] text-[#8a8a8a] border border-[#f0f0ea] hover:bg-[#E8F3EE]'
+                    }`}
+                    style={{ fontFamily: 'Poppins, sans-serif' }}
                   >
                     {tab.label}
                   </button>
@@ -1504,121 +1366,62 @@ export default function DashboardEnhanced() {
               </div>
             </div>
 
-            {/* Meal Content Area - positioned below absolute header + tabs */}
-
-            {(!dietPlan || !dietPlan.mealPlan) ? (
-              <div className="flex flex-col items-center justify-center text-center bg-[#F9FAF5] rounded-[24px] border border-[#f0f0ea] absolute" style={{ top: '108px', left: '18.31px', width: '320.38px', height: '180px' }}>
-                <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-md mb-4 border border-[#E8F3EE]">
-                  <Utensils className="w-7 h-7 text-[#76B39D]" />
+            {/* Meal Content Area */}
+            <div className="flex-1 flex flex-col min-h-[220px] w-full">
+              {(!dietPlan || !dietPlan.mealPlan) ? (
+                <div className="mx-5 my-4 flex flex-col items-center justify-center text-center bg-[#F9FAF5] rounded-[24px] border border-[#f0f0ea] py-10">
+                  <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-md mb-4 border border-[#E8F3EE]">
+                    <Utensils className="w-7 h-7 text-[#76B39D]" />
+                  </div>
+                  <p className="text-sm font-bold text-[#1a1a1a] uppercase tracking-wide">No Plan Today</p>
                 </div>
-                <p className="text-base font-bold text-[#1a1a1a] uppercase tracking-wide">No Plan Today</p>
-              </div>
-            ) : (
-              <div className="absolute" style={{ top: '105px', left: '0px', right: '0px' }}>
-                {(() => {
-                  const meals = dietPlan?.mealPlan?.[activeMealTab] || [];
-                  if (meals.length === 0) {
+              ) : (
+                <div className="w-full">
+                  {(() => {
+                    const meals = dietPlan.mealPlan[activeMealTab] || [];
+                    if (meals.length === 0) {
+                      return (
+                        <div className="mx-5 my-2 p-8 bg-[#F9FAF5] rounded-[24px] text-center border border-[#f0f0ea]">
+                          <p className="text-[11px] font-bold text-[#a0a0a0] uppercase tracking-wider">No meals logged for {activeMealTab}</p>
+                        </div>
+                      );
+                    }
                     return (
-                      <div style={{ margin: '0 18.31px', padding: '30px 16px', background: '#F9FAF5', borderRadius: '24px', textAlign: 'center', border: '1px solid #f0f0ea' }}>
-                        <p style={{ fontSize: '12px', fontWeight: '700', color: '#a0a0a0', textTransform: 'uppercase', letterSpacing: '0.5px', fontFamily: 'Poppins, sans-serif' }}>No meals for {activeMealTab}</p>
-                      </div>
-                    );
-                  }
-
-                  return (
-                    <div>
-                      {/* Horizontally scrollable meal cards */}
-                      <div
-                        className="overflow-x-auto scrollbar-hide snap-x snap-mandatory"
-                        style={{ 
-                          paddingLeft: '18.31px',
-                          paddingRight: '18.31px',
-                          scrollPaddingLeft: '18.31px',
-                          paddingTop: '4px',
-                          paddingBottom: '8px'
-                        }}
-                        onScroll={(e) => {
-                          const scrollLeft = e.target.scrollLeft;
-                          const cardWidth = 222;
-                          const index = Math.round(scrollLeft / cardWidth);
-                          setActiveDietSlide(Math.min(index, meals.length - 1));
-                        }}
-                      >
-                        <div className="flex" style={{ gap: '14px' }}>
+                      <div className="w-full">
+                        <div
+                          className="flex overflow-x-auto scrollbar-hide snap-x snap-mandatory w-full px-5 gap-4 pb-4"
+                          onScroll={(e) => {
+                            const scrollLeft = e.target.scrollLeft;
+                            const cardWidth = 222;
+                            const index = Math.round(scrollLeft / cardWidth);
+                            setActiveDietSlide(Math.min(index, meals.length - 1));
+                          }}
+                        >
                           {meals.map((item, idx) => {
                             const foodName = item?.name || item?.foodItems?.[0]?.name || 'food';
                             const bingThumb = `https://tse1.mm.bing.net/th?q=${encodeURIComponent(foodName + ' indian food')}&w=400&h=400&c=7&o=5&pid=Api&mkt=en-IN`;
-                            
                             return (
-                              <div 
-                                key={idx} 
-                                className="relative flex-none group snap-start" 
-                                style={{ width: '208.7px', height: '172px' }}
-                              >
-                                {/* Meal Image - Floating circular, half overlapping the card top */}
-                                <div 
-                                  className="absolute overflow-hidden z-20 rounded-full bg-white group-hover:scale-105 transition-transform duration-500"
-                                  style={{ 
-                                    width: '102.52px', 
-                                    height: '99.77px', 
-                                    top: '0px',
-                                    left: '50%',
-                                    transform: 'translateX(-50%)',
-                                    boxShadow: '0 6px 20px rgba(0,0,0,0.10), 0 2px 6px rgba(0,0,0,0.06)',
-                                    border: '3px solid #fff'
-                                  }}
-                                >
-                                  <img
-                                    src={item?.imageUrl || bingThumb}
-                                    alt={foodName}
+                              <div key={idx} className="relative flex-none w-[208px] h-[172px] group snap-start">
+                                {/* Meal Image Floating */}
+                                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[102px] h-[100px] z-20 rounded-full border-[3px] border-white shadow-xl overflow-hidden bg-white group-hover:scale-105 transition-transform duration-500">
+                                  <img 
+                                    src={item?.imageUrl || bingThumb} 
+                                    alt={foodName} 
                                     className="w-full h-full object-cover"
-                                    onError={(e) => {
-                                      if (!e.target.dataset.retried) {
-                                        e.target.dataset.retried = 'true';
-                                        e.target.src = bingThumb;
-                                      }
-                                    }}
+                                    onError={(e) => { e.target.src = bingThumb; }}
                                   />
                                 </div>
-
-                                {/* Meal Content Card - positioned so image overlaps top half */}
-                                <div 
-                                  className="absolute bg-[#F6F7F2] text-left z-10"
-                                  style={{ 
-                                    width: '208.7px', 
-                                    height: '121.74px', 
-                                    bottom: '0px',
-                                    left: '0px',
-                                    borderRadius: '21.97px', 
-                                    border: '0.92px solid #ededdf',
-                                    paddingTop: '55px',
-                                    paddingLeft: '14px',
-                                    paddingRight: '14px',
-                                    paddingBottom: '12px'
-                                  }}
-                                >
-                                  <h4 
-                                    className="truncate"
-                                    style={{
-                                      fontFamily: 'Poppins, sans-serif',
-                                      fontWeight: '700',
-                                      fontSize: '13px',
-                                      lineHeight: '18px',
-                                      letterSpacing: '-0.2px',
-                                      color: '#1a1a1a',
-                                      marginBottom: '6px'
-                                    }}
-                                  >
-                                    {foodName}
-                                  </h4>
-                                  <div className="flex items-center gap-2.5">
-                                    <div className="flex items-center gap-1">
+                                {/* Content Card */}
+                                <div className="absolute bottom-0 left-0 w-full h-[122px] bg-[#F6F7F2] rounded-[22px] border border-[#ededdf] pt-[55px] px-4 pb-3 z-10 text-left">
+                                  <h4 className="truncate font-bold text-[13px] text-[#1a1a1a] mb-1.5" style={{ fontFamily: 'Poppins, sans-serif' }}>{foodName}</h4>
+                                  <div className="flex items-center gap-3">
+                                    <div className="flex items-center gap-1 text-[#6B7280]">
                                       <Clock className="w-3 h-3 text-[#FF7E5F]" />
-                                      <span style={{ fontFamily: 'Poppins, sans-serif', fontWeight: '500', fontSize: '10px', color: '#6B7280' }}>12 Minutes</span>
+                                      <span className="text-[10px] font-medium">12 Min</span>
                                     </div>
-                                    <div className="flex items-center gap-1">
+                                    <div className="flex items-center gap-1 text-[#6B7280]">
                                       <Flame className="w-3 h-3 text-[#FF7E5F]" />
-                                      <span style={{ fontFamily: 'Poppins, sans-serif', fontWeight: '500', fontSize: '10px', color: '#6B7280' }}>{item?.calories || '280'} Cal</span>
+                                      <span className="text-[10px] font-medium">{item?.calories || '280'} Cal</span>
                                     </div>
                                   </div>
                                 </div>
@@ -1626,48 +1429,32 @@ export default function DashboardEnhanced() {
                             );
                           })}
                         </div>
+                        {/* Pagination */}
+                        <div className="flex justify-center items-center gap-1.5 py-1">
+                          {meals.map((_, i) => (
+                            <div
+                              key={i}
+                              className={`transition-all duration-300 h-[7px] rounded-full ${activeDietSlide === i ? 'w-4 bg-[#76B39D]' : 'w-[7px] bg-[#d4d4d4]'}`}
+                            />
+                          ))}
+                        </div>
                       </div>
+                    );
+                  })()}
+                </div>
+              )}
+            </div>
 
-                      {/* Pagination Dots */}
-                      <div className="flex justify-center items-center gap-1.5" style={{ marginTop: '6px', paddingBottom: '4px' }}>
-                        {meals.map((_, i) => (
-                          <div
-                            key={i}
-                            className="transition-all duration-300"
-                            style={{
-                              height: '7px',
-                              width: activeDietSlide === i ? '18px' : '7px',
-                              borderRadius: '100px',
-                              backgroundColor: activeDietSlide === i ? '#76B39D' : '#d4d4d4'
-                            }}
-                          />
-                        ))}
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-            )}
-
-            {/* View Full Plan Button - Absolute positioned */}
-            <button
-              onClick={() => navigate('/diet-plan')}
-              className="bg-[#76B39D] text-white font-bold transition-all flex items-center justify-center gap-2 shadow-lg shadow-[#76B39D]/30 hover:bg-[#65a18b] group active:scale-95 absolute"
-              style={{
-                width: '293.38px',
-                height: '44.85px',
-                top: '310px',
-                left: '18.31px',
-                borderRadius: '18.31px',
-                fontFamily: 'Poppins, sans-serif',
-                fontWeight: '600',
-                fontSize: '14px',
-                lineHeight: '17.85px',
-                letterSpacing: '0px'
-              }}
-            >
-              View Full Plan <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
-            </button>
+            {/* Bottom Button */}
+            <div className="px-5 pb-6 mt-auto">
+              <button
+                onClick={() => navigate('/diet-plan')}
+                className="w-full h-[46px] bg-[#76B39D] text-white font-bold rounded-[18px] shadow-lg shadow-[#76B39D]/30 flex items-center justify-center gap-2 hover:bg-[#65a18b] active:scale-95 transition-all"
+                style={{ fontFamily: 'Poppins, sans-serif', fontSize: '14px' }}
+              >
+                View Full Plan <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+              </button>
+            </div>
           </motion.div>
 
           {/* Card 3: AI Lab Insights */}
@@ -1675,7 +1462,10 @@ export default function DashboardEnhanced() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="tour-ai-insights w-full lg:min-w-0 bg-white rounded-[24px] p-5 lg:p-8 border border-slate-100/80 shadow-[0_4px_24px_rgba(0,0,0,0.03)] flex flex-col relative overflow-hidden"
+            className="tour-ai-insights w-full bg-white rounded-[24px] p-5 lg:p-8 border border-slate-100/80 shadow-[0_4px_24px_rgba(0,0,0,0.03)] flex flex-col relative overflow-hidden"
+            style={{
+              marginTop: '8px'
+            }}
           >
             <div className="flex items-center justify-between mb-6">
               <div>
@@ -1864,20 +1654,17 @@ export default function DashboardEnhanced() {
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="tour-logged-meals mb-8 mx-auto"
-          style={{ width: '330px' }}
+          className="tour-logged-meals mb-8 w-full px-4 md:px-0"
         >
-          <div className="flex items-center justify-between mb-5 px-1">
+          <div className="flex items-center justify-between mb-5">
             <h2 className="text-lg font-bold text-[#1a1a1a]">Logged Meals</h2>
             <button onClick={() => navigate('/nutrition')} className="text-xs font-bold text-[#5B8C6F] hover:text-[#4a7b5e] uppercase tracking-wider">View Menu</button>
           </div>
           
           <div 
-            className="flex overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-6" 
+            className="flex overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-6 gap-[11px] w-full" 
             style={{ 
-              width: '330px',
-              height: '220px',
-              gap: '11px',
+              height: '220px'
             }}
           >
             {loggedMeals.length > 0 ? (
@@ -1888,85 +1675,46 @@ export default function DashboardEnhanced() {
                 return (
                   <div 
                     key={idx}
-                    className="bg-white shadow-[0_2px_12px_rgba(0,0,0,0.05)] flex flex-col relative overflow-hidden flex-none snap-start group cursor-pointer"
+                    className="bg-white shadow-sm flex flex-col flex-none snap-start group cursor-pointer border border-[#f0f0ea]/50"
                     style={{ 
-                      width: '159.5px', 
-                      height: '208.24px', 
-                      borderRadius: '21.97px' 
+                      width: 'calc(50% - 6px)', 
+                      height: '210px', 
+                      borderRadius: '24px' 
                     }}
                     onClick={() => navigate('/nutrition', { state: { prefillData: meal } })}
                   >
-                    {/* Image Area with 8px space */}
-                    <div 
-                      className="relative overflow-hidden" 
-                      style={{ 
-                        width: '159.5px', 
-                        height: '100.69px',
-                        padding: '8px' 
-                      }}
-                    >
-                      <img 
-                        src={meal.imageUrl || bingThumb} 
-                        alt={foodName} 
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-                        style={{ borderRadius: '21px' }}
-                        onError={(e) => { e.target.src = bingThumb; }}
-                      />
-                      {/* Badge - Adjusted Positioning & Transparency */}
-                      <div 
-                        className="absolute bg-white/65 backdrop-blur-md shadow-sm flex items-center justify-center overflow-hidden"
-                        style={{
-                          width: '73.31px',
-                          height: '19.68px',
-                          top: '11.32px',
-                          left: '7.32px',
-                          borderRadius: '30714396px',
-                          padding: '3.66px 9.15px'
-                        }}
-                      >
-                        <span style={{
-                          fontFamily: 'Poppins, sans-serif',
-                          fontWeight: '900',
-                          fontSize: '8.24px',
-                          lineHeight: '12.36px',
-                          letterSpacing: '0.82px',
-                          textTransform: 'uppercase',
-                          color: '#5B8C6F',
-                          textAlign: 'center'
-                        }}>
-                          {meal.mealType || 'Meal'}
-                        </span>
+                    {/* Image Area */}
+                    <div className="p-2 w-full h-[105px]">
+                      <div className="w-full h-full relative overflow-hidden rounded-[20px]">
+                        <img 
+                          src={meal.imageUrl || bingThumb} 
+                          alt={foodName} 
+                          className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                          onError={(e) => { e.target.src = bingThumb; }}
+                        />
+                        <div className="absolute top-2 left-2 px-2 py-0.5 bg-white/70 backdrop-blur-md rounded-full border border-white/20">
+                          <span className="text-[8px] font-black text-[#5B8C6F] uppercase tracking-wider">{meal.mealType || 'Meal'}</span>
+                        </div>
                       </div>
                     </div>
 
-                    {/* Text & Button Content Area */}
-                    <div 
-                      className="flex flex-col"
-                      style={{ 
-                        width: '159.5px', 
-                        height: '85px', 
-                        position: 'absolute',
-                        top: '112px',
-                        paddingLeft: '12px',
-                        paddingRight: '12px'
-                      }}
-                    >
-                      <h4 className="text-[11px] font-black text-[#1D293D] truncate mb-0.5" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                    {/* Content Area */}
+                    <div className="px-3 py-2 flex flex-col flex-1">
+                      <h4 className="text-[11px] font-bold text-[#1a1a1a] truncate mb-0.5" style={{ fontFamily: 'Poppins, sans-serif' }}>
                         {foodName}
                       </h4>
-                      <div className="text-[8px] font-bold text-[#90A1B9] mb-3" style={{ fontFamily: 'Poppins, sans-serif' }}>
+                      <p className="text-[9px] font-medium text-[#90A1B9] mb-auto">
                         {meal.totalNutrition?.calories || meal.calories || 200} kcal • {meal.totalNutrition?.protein || meal.protein || 0}g Pro
-                      </div>
+                      </p>
                       
-                      {/* View Button */}
                       <button 
-                        className="w-full h-[32px] bg-[#76B39D] rounded-xl flex items-center justify-center active:scale-95 transition-all shadow-sm group-hover:bg-[#65a18b]"
+                        className="w-full h-[32px] bg-[#76B39D] rounded-xl flex items-center justify-center active:scale-95 transition-all shadow-sm group-hover:bg-[#65a18b] mt-2"
                         onClick={(e) => {
                           e.stopPropagation();
                           navigate('/nutrition');
                         }}
                       >
-                        <span className="text-[10px] font-black text-white uppercase tracking-wider">VIEW</span>
+                        <span className="text-[9px] font-black text-white uppercase tracking-wider">VIEW</span>
                       </button>
                     </div>
                   </div>
@@ -1975,7 +1723,7 @@ export default function DashboardEnhanced() {
             ) : (
               <div 
                 className="w-full flex-none flex flex-col items-center justify-center p-8 bg-[#FAFBF8] rounded-[32px] border border-[#f0f0ea] text-center"
-                style={{ width: '330px', height: '208.24px' }}
+                style={{ height: '208.24px' }}
               >
                 <Utensils className="w-8 h-8 text-[#5B8C6F] mb-3" />
                 <h3 className="text-md font-bold text-[#1a1a1a] uppercase tracking-tight mb-2">No Meals Logged</h3>
@@ -1993,8 +1741,8 @@ export default function DashboardEnhanced() {
 
         </motion.div>
 
-        {/* Bottom Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8 px-4 md:px-0">
+        {/* Bottom Grid - Consistent with Main Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 lg:mb-12 px-4 md:px-0">
 
 
           {/* Daily Vitals (Weight, Steps, Sleep) - Visible only on Desktop here */}
@@ -2353,7 +2101,7 @@ export default function DashboardEnhanced() {
                 </div>
 
                 {/* Dynamic Content Mapping */}
-                <div className="flex-1 overflow-y-auto px-6 pb-12">
+                <div className="flex-1 overflow-y-auto lg:overflow-visible pb-24 lg:pb-12 pt-0 md:pt-4 px-0 md:px-0 max-w-7xl mx-auto w-full">
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={activeLogTab}
