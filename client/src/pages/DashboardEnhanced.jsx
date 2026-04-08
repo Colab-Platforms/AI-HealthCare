@@ -1215,7 +1215,7 @@ export default function DashboardEnhanced() {
             {/* Protein / Carbs / Fats Row - Unified Card - Balanced */}
             <div className="mt-2 mb-5 bg-[#FCF9EE] rounded-[18px] py-3 px-3 flex items-center justify-around gap-1 border border-[#f0f0ea]/30 shadow-sm overflow-hidden">
               <div className="flex items-center gap-2">
-                <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_5.png?v=1775645326" alt="Protein" className="w-4 h-4 object-contain" />
+                <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_8.png?v=1775645708" alt="Protein" className="w-4 h-4 object-contain" />
                 <div className="flex flex-col">
                   <span className="text-[11px] font-black text-[#1a1a1a] leading-none">{Math.round(nutritionData?.totalProtein || 0)}g</span>
                   <span className="text-[7px] font-bold text-[#a0a0a0] uppercase tracking-tighter">Protein</span>
@@ -1225,7 +1225,7 @@ export default function DashboardEnhanced() {
               <div className="h-5 w-px bg-[#f0f0ea]/50" />
 
               <div className="flex items-center gap-2 text-center">
-                <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_4.png?v=1775645294" alt="Carbs" className="w-4 h-4 object-contain" />
+                <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_7.png?v=1775645656" alt="Carbs" className="w-4 h-4 object-contain" />
                 <div className="flex flex-col">
                   <span className="text-[11px] font-black text-[#1a1a1a] leading-none">{Math.round(nutritionData?.totalCarbs || 0)}g</span>
                   <span className="text-[7px] font-bold text-[#a0a0a0] uppercase tracking-tighter">Carbs</span>
@@ -1235,7 +1235,7 @@ export default function DashboardEnhanced() {
               <div className="h-5 w-px bg-[#f0f0ea]/50" />
 
               <div className="flex items-center gap-2">
-                <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_3.png?v=1775645326" alt="Fats" className="w-4 h-4 object-contain" />
+                <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_9.png?v=1775645708" alt="Fats" className="w-4 h-4 object-contain" />
                 <div className="flex flex-col">
                   <span className="text-[11px] font-black text-[#1a1a1a] leading-none">{Math.round(nutritionData?.totalFats || 0)}g</span>
                   <span className="text-[7px] font-bold text-[#a0a0a0] uppercase tracking-tighter">Fats</span>
