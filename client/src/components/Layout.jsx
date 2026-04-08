@@ -263,6 +263,16 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
         {/* Global Header - Fixed on mobile, Sticky on desktop */}
         <header className="fixed top-0 inset-x-0 z-50 lg:sticky lg:inset-auto lg:top-0 bg-[#EBF0E6]/60 backdrop-blur-xl border-b border-emerald-100/30 shadow-sm transition-all duration-300">
           <div className="flex items-center px-6 md:px-12 py-3 md:py-4 gap-4">
+            {/* Back Button for Profile & AI Chat */}
+            {(location.pathname === '/profile' || location.pathname === '/ai-chat') && (
+              <button
+                onClick={() => navigate('/dashboard')}
+                className="w-10 h-10 rounded-full bg-white/40 border border-white/20 flex items-center justify-center shadow-sm hover:bg-white/60 transition-all mr-2"
+              >
+                <ArrowLeft size={20} className="text-[#1a2138]" strokeWidth={2.5} />
+              </button>
+            )}
+
             {/* Profile Image - Now on Left */}
             <div className="flex items-center gap-4">
               <button
@@ -318,7 +328,7 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
 
           {/* Bell icon on extreme right */}
           <button
-            onClick={() => navigate('/notifications')}
+            onClick={() => {}}
             className="w-10 h-10 rounded-full bg-white/40 border border-white/20 flex items-center justify-center shadow-sm hover:bg-white/60 transition-all"
           >
             <Bell className="w-5 h-5 text-[#5B8C6F]" />
