@@ -967,29 +967,42 @@ export default function DashboardEnhanced() {
 
   // --- SYNC: DYNAMIC DEFICIENCY CALCULATION ---
   const dynamicDeficiencies = useMemo(() => {
-    // Priority 1: Use medical report deficiencies if they exist
-    let list = dashboardData?.latestAnalysis?.deficiencies || [];
+    const nutrientMeta = {
+      fiber: { name: 'Fiber', unit: 'g', food: 'Whole grains, Legumes', supplement: 'Psyllium Husk' },
+      iron: { name: 'Iron', unit: 'mg', food: 'Spinach, Beetroot, Red Meat', supplement: 'Iron Supplements' },
+      hemoglobin: { name: 'Iron', unit: 'mg', food: 'Spinach, Beetroot, Red Meat', supplement: 'Iron Supplements' },
+      vitaminc: { name: 'Vitamin C', unit: 'mg', food: 'Oranges, Lemon, Amla', supplement: 'C-Vitamin' },
+      vitamina: { name: 'Vitamin A', unit: 'mcg', food: 'Carrots, Sweet Potato', supplement: 'Beta Carotene' },
+      vitamind: { name: 'Vitamin D', unit: 'mcg', food: 'Fatty Fish, Eggs, Sun', supplement: 'Vitamin D3' },
+      calcium: { name: 'Calcium', unit: 'mg', food: 'Milk, Tofu, Almonds', supplement: 'Calcium + D3' },
+      vitaminb12: { name: 'Vitamin B12', unit: 'mcg', food: 'Dairy, Eggs, Fortified foods', supplement: 'B12 Complex' },
+      protein: { name: 'Protein', unit: 'g', food: 'Paneer, Eggs, Lentils', supplement: 'Whey Protein' }
+    };
 
-    // Priority 2: If no report findings, calculate real-time nutritional gaps from daily intake
-    if (list.length === 0 && nutritionData) {
+    // Priority 1: Use medical report deficiencies if they exist
+    let reportList = (dashboardData?.latestAnalysis?.deficiencies || []).map(item => {
+      const key = item.name.toLowerCase().replace(/\s+/g, '');
+      const meta = nutrientMeta[key] || {};
+      return {
+        ...item,
+        food: item.food || meta.food || 'Green leafy vegetables',
+        supplement: item.supplement || meta.supplement || 'Consult a specialist',
+        percent: item.percent || (item.current && item.target ? Math.min((item.current/item.target)*100, 100) : 0)
+      };
+    });
+
+    if (reportList.length > 0) return reportList.slice(0, 3);
+
+    // Priority 2: Calculate from daily intake
+    if (nutritionData) {
       const driTargets = {
         fiber: 30,
         iron: 18,
-        vitaminC: 90,
-        vitaminA: 900,
-        vitaminD: 20,
+        vitaminc: 90,
+        vitamina: 900,
+        vitamind: 20,
         calcium: 1000,
-        vitaminB12: 2.4
-      };
-
-      const nutrientMeta = {
-        fiber: { name: 'Fiber', unit: 'g', food: 'Whole grains, Legumes', supplement: 'Psyllium Husk' },
-        iron: { name: 'Iron', unit: 'mg', food: 'Spinach, Beetroot, Red Meat', supplement: 'Iron Supplements' },
-        vitaminC: { name: 'Vitamin C', unit: 'mg', food: 'Oranges, Lemon, Amla', supplement: 'C-Vitamin' },
-        vitaminA: { name: 'Vitamin A', unit: 'mcg', food: 'Carrots, Sweet Potato', supplement: 'Beta Carotene' },
-        vitaminD: { name: 'Vitamin D', unit: 'mcg', food: 'Fatty Fish, Eggs, Sun', supplement: 'Vitamin D3' },
-        calcium: { name: 'Calcium', unit: 'mg', food: 'Milk, Tofu, Almonds', supplement: 'Calcium + D3' },
-        vitaminB12: { name: 'Vitamin B12', unit: 'mcg', food: 'Dairy, Eggs, Fortified foods', supplement: 'B12 Complex' }
+        vitaminb12: 2.4
       };
 
       const dailyGaps = [];
@@ -998,26 +1011,24 @@ export default function DashboardEnhanced() {
         const val = nutritionData[dataKey] || 0;
         const percent = Math.min(Math.round((val / target) * 100), 100);
 
-        // If nutrient intake is low relative to target, mark as a gap
         if (percent < 80) {
+          const meta = nutrientMeta[key];
           dailyGaps.push({
-            name: nutrientMeta[key].name,
+            name: meta.name,
             status: percent < 30 ? 'High Risk' : percent < 60 ? 'Deficient' : 'Low',
             currentValue: val.toFixed(1),
             normalRange: target,
-            unit: nutrientMeta[key].unit,
+            unit: meta.unit,
             percent: percent,
-            food: nutrientMeta[key].food,
-            supplement: nutrientMeta[key].supplement,
+            food: meta.food,
+            supplement: meta.supplement,
             type: 'daily_gap'
           });
         }
       });
-
-      // Sort by risk (lowest percentage first) and take top 3
-      list = dailyGaps.sort((a, b) => a.percent - b.percent).slice(0, 3);
+      return dailyGaps.sort((a, b) => a.percent - b.percent).slice(0, 3);
     }
-    return list;
+    return [];
   }, [dashboardData, nutritionData]);
 
   const cardCount = 3;
