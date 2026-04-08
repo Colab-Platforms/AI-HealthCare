@@ -1097,7 +1097,7 @@ export default function DashboardEnhanced() {
                 opacity: 1
               }}
             >
-              <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_1.png?v=1775566724" alt="" className="w-5 h-5 object-contain" />
+              <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_11.png?v=1775649527" alt="" className="w-5 h-5 object-contain" />
             </div>
             <div className="flex-1 overflow-hidden h-5 relative ml-12">
               <AnimatePresence mode="wait">
@@ -1160,7 +1160,7 @@ export default function DashboardEnhanced() {
                   onClick={() => navigate('/upload')}
                   className="px-4 h-9 bg-[#5B8C6F] text-white font-medium rounded-xl text-[10px] shadow-lg shadow-[#5B8C6F]/30 hover:bg-[#4a7b5e] transition-all lowercase flex items-center gap-2 whitespace-nowrap"
                 >
-                  <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_2.png?v=1775628438" alt="" className="w-3 h-3 invert brightness-0" />
+                  <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_10.png?v=1775649527" alt="" className="w-3 h-3 invert brightness-0" />
                   upload report
                 </button>
               </div>
