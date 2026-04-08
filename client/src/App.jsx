@@ -34,6 +34,7 @@ import AdminFoodCache from './pages/AdminFoodCache';
 import StepTracker from './pages/StepTracker';
 import FoodSafety from './pages/FoodSafety';
 import CompleteAnalysis from './pages/CompleteAnalysis';
+import LandingPage from './components/landing/LandingPage';
 // import HealthDNA from './pages/HealthDNA';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -112,6 +113,7 @@ export default function App() {
     <PedometerProvider>
       <div className="min-h-screen bg-[#F9FCF3]">
         <Routes>
+          <Route path='/landing' element={<LandingPage />} />
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={getLoginRedirect()} />
           <Route path="/register" element={<Register />} />

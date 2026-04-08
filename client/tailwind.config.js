@@ -5,6 +5,11 @@ export default {
   theme: {
   	extend: {
   		colors: {
+			'landing-primary': '#014343',
+			'landing-primary-hover': '#2f6464',
+			'landing-accent-bg': '#D5E6DF',
+			'landing-light-bg': '#FAF9F8',
+			'landing-text': '#2C2A28',
   			primary: {
   				'50': '#ecfdf5',
   				'100': '#d1fae5',
@@ -67,6 +72,22 @@ export default {
   			}
   		},
   		fontFamily: {
+			'landing-title': [
+				'Libre Caslon Text',
+				'serif'
+			],
+			'landing-body': [
+				'DM Sans',
+				'sans-serif'
+			],
+			'landing-accent': [
+				'Outfit',
+				'sans-serif'
+			],
+			'landing-accent-2': [
+				'Libre Caslon Display',
+				'serif'
+			],
   			sans: [
   				'Inter',
   				'system-ui',
@@ -116,7 +137,10 @@ export default {
   			lg: 'var(--radius)',
   			md: 'calc(var(--radius) - 2px)',
   			sm: 'calc(var(--radius) - 4px)'
-  		}
+  		},
+		backgroundImage: {
+        'hero': "url('/landing/hero.webp')",
+      }
   	}
   },
   plugins: [require("tailwindcss-animate")],
