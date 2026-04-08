@@ -391,7 +391,7 @@ export default function UploadReport() {
                   <h3 className="text-lg font-black text-[#1a2138] uppercase tracking-tight">Recent Archives</h3>
                 </div>
 
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-3 max-h-[320px] overflow-y-auto scrollbar-hide pr-1">
                   {loadingReports ? (
                     <div className="py-12 flex justify-center"><Loader2 className="animate-spin text-[#69A38D]" /></div>
                   ) : allReports.length === 0 ? (

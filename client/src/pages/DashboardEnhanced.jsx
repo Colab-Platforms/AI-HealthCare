@@ -1400,10 +1400,10 @@ export default function DashboardEnhanced() {
                     return (
                       <div className="w-full">
                         <div
-                          className="flex overflow-x-auto scrollbar-hide snap-x snap-mandatory w-full px-[21.96px] gap-6 pb-6"
+                          className="flex overflow-x-auto scrollbar-hide snap-x snap-mandatory w-full px-8 scroll-px-8 gap-6 pb-6"
                           onScroll={(e) => {
                             const scrollLeft = e.target.scrollLeft;
-                            const cardWidth = 230; 
+                            const cardWidth = 232; 
                             const index = Math.round(scrollLeft / cardWidth);
                             setActiveDietSlide(Math.min(index, meals.length - 1));
                           }}
