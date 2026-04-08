@@ -64,7 +64,7 @@ export default function AllReports() {
       <div className="absolute top-0 left-0 w-full h-[400px] bg-gradient-to-br from-white/40 dark:from-white/5 to-transparent pointer-events-none" />
       
       {/* Header Area */}
-      <div className="px-6 pt-12 flex flex-col gap-8 max-w-5xl mx-auto relative z-10">
+      <div className="px-[21.96px] pt-4 flex flex-col gap-8 max-w-5xl mx-auto relative z-10">
         
         {/* Navigation & Title */}
         <div className="flex flex-col gap-6">
@@ -81,10 +81,10 @@ export default function AllReports() {
         </div>
 
         {/* Action Header Card */}
-        <div className="bg-white/60 backdrop-blur-xl rounded-[40px] p-8 shadow-[0_8px_32px_rgba(0,0,0,0.04)] border border-white flex flex-col md:flex-row md:items-center justify-between gap-8 relative overflow-hidden group">
+        <div className="bg-white/60 backdrop-blur-xl rounded-[29.28px] p-8 shadow-[0_8px_32px_rgba(0,0,0,0.04)] border-[0.92px] border-white flex flex-col md:flex-row md:items-center justify-between gap-8 relative overflow-hidden group w-full max-w-[335.84px] md:max-w-none min-h-[301.29px] md:min-h-0 mx-auto md:mx-0">
           <div className="absolute top-0 right-0 w-64 h-64 bg-[#69A38D]/5 rounded-full blur-3xl -mr-32 -mt-32 transition-transform group-hover:scale-110"></div>
           
-          <div className="flex flex-col gap-6 relative z-10">
+          <div className="flex flex-col gap-6 relative z-10 w-full">
              <div className="flex items-center gap-4">
                 <div className="w-16 h-16 rounded-[24px] bg-[#69A38D]/10 flex items-center justify-center border border-[#69A38D]/20 shadow-inner">
                    <Activity size={32} className="text-[#69A38D]" />
@@ -95,9 +95,9 @@ export default function AllReports() {
                 </div>
              </div>
              
-             <div className="flex bg-white/40 rounded-[24px] p-1.5 border border-white shadow-sm max-w-md">
+             <div className="flex bg-white/40 rounded-[24px] p-1.5 border border-white shadow-sm w-full md:max-w-md">
                 <div className="flex items-center gap-3 px-4 w-full">
-                   <Search size={16} className="text-slate-400" />
+                   <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_11.png?v=1775649527" alt="" className="w-5 h-5 object-contain" />
                    <input 
                      type="text" 
                      placeholder="SEARCH DIAGNOSTICS..." 
@@ -111,7 +111,7 @@ export default function AllReports() {
 
           <Link
             to="/upload"
-            className="px-10 py-5 bg-[#69A38D] text-white rounded-[28px] font-black hover:bg-[#528270] transition-all flex items-center justify-center gap-4 text-sm uppercase tracking-widest shadow-lg shadow-[#69A38D]/20 active:scale-95 group relative z-10 shrink-0"
+            className="px-10 py-5 bg-[#69A38D] text-white rounded-[28px] font-black hover:bg-[#528270] transition-all flex items-center justify-center gap-4 text-sm uppercase tracking-widest shadow-lg shadow-[#69A38D]/20 active:scale-95 group relative z-10 shrink-0 w-full md:w-auto"
           >
             <Upload size={20} strokeWidth={3} className="group-hover:-translate-y-1 transition-transform" />
             Upload Report

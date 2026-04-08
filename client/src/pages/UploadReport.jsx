@@ -273,12 +273,21 @@ export default function UploadReport() {
     <div className="w-full h-full bg-gradient-to-b from-[#F2F5EC] to-[#E5EBE0] dark:from-[#161719] dark:to-[#161719] relative overflow-y-auto flex flex-col animate-in fade-in duration-500 min-h-screen pb-32">
       <div className="absolute top-0 left-0 w-full h-[300px] bg-gradient-to-br from-white/40 dark:from-white/5 to-transparent pointer-events-none" />
       
-      <div className="px-6 pt-12 flex flex-col max-w-5xl mx-auto w-full gap-8">
-        {/* Header */}
+      <div className="px-[21.96px] pt-4 flex flex-col gap-8 max-w-5xl mx-auto relative z-10">
+        {/* Header Section as per design */}
         <div className="flex flex-col gap-2">
-          <h1 className="text-[28px] font-black text-[#1a2138] dark:text-white tracking-tight leading-none">Diagnostic Analysis</h1>
-            <p className="text-[15px] text-[#64748b] dark:text-white/70 font-medium">Upload reports to extract actionable health insights</p>
-          </div>
+           <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-[#69A38D]/10 flex items-center justify-center border border-[#69A38D]/20">
+                 <Activity size={18} className="text-[#69A38D]" />
+              </div>
+              <h2 className="font-['Poppins'] font-semibold text-[18px] leading-[22.88px] tracking-[-0.46px] text-[#1a1a1a]">
+                Smart Lab Insights
+              </h2>
+           </div>
+           <p className="font-['Poppins'] font-medium text-[13.73px] leading-[22.31px] text-[#64748b] max-w-[330.35px]">
+             Upload your medical reports and let our AI translate complex jargon into actionable health insights and visualize your progress over time.
+           </p>
+        </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
             <div className="lg:col-span-8 flex flex-col gap-8">
@@ -286,7 +295,7 @@ export default function UploadReport() {
               {/* Upload Card */}
               <div 
                 {...getRootProps()}
-                className={`bg-white/60 backdrop-blur-xl rounded-[40px] p-10 shadow-[0_8px_32px_rgba(0,0,0,0.04)] border-2 border-dashed transition-all flex flex-col items-center justify-center min-h-[320px] text-center group ${
+                className={`bg-white/60 backdrop-blur-xl rounded-[29.28px] p-10 shadow-[0_8px_32px_rgba(0,0,0,0.04)] border-[0.92px] border-dashed transition-all flex flex-col items-center justify-center w-full max-w-[335.84px] min-h-[301.29px] text-center group mx-auto lg:mx-0 ${
                   isDragActive ? 'border-[#69A38D] bg-white/80' : 'border-[#69A38D]/20 hover:border-[#69A38D]/40'
                 }`}
               >
