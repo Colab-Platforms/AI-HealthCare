@@ -1204,7 +1204,7 @@ export default function DashboardEnhanced() {
             </div>
 
             {/* Dashed Gauge */}
-            <div className="flex justify-center mb-0 -mt-8 lg:-mt-10 relative z-10 w-full overflow-visible">
+            <div className="flex justify-center mb-0 -mt-14 lg:-mt-16 relative z-10 w-full overflow-visible">
               <DashedGauge
                 value={nutritionData?.totalCalories || dashboardData?.nutritionData?.totalCalories || 0}
                 max={user?.nutritionGoal?.calorieGoal || nutritionData?.calorieGoal || 2000}
@@ -1389,7 +1389,7 @@ export default function DashboardEnhanced() {
                     return (
                       <div className="w-full">
                         <div
-                          className="flex overflow-x-auto scrollbar-hide snap-x snap-mandatory w-full px-5 gap-4 pb-4"
+                          className="flex overflow-x-auto scrollbar-hide snap-x snap-mandatory w-full px-10 gap-6 pb-6"
                           onScroll={(e) => {
                             const scrollLeft = e.target.scrollLeft;
                             const cardWidth = 222;
@@ -1654,7 +1654,7 @@ export default function DashboardEnhanced() {
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="tour-logged-meals mb-8 w-full px-4 md:px-0"
+          className="tour-logged-meals mb-8 w-full px-6 md:px-0"
         >
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-lg font-bold text-[#1a1a1a]">Logged Meals</h2>
