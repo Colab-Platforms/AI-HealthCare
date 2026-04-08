@@ -1191,20 +1191,20 @@ export default function DashboardEnhanced() {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="tour-nutrient-info w-full bg-white px-5 pb-5 pt-6 lg:px-8 lg:pb-8 lg:pt-8 border border-slate-100/80 shadow-[0_4px_24px_rgba(0,0,0,0.03)] flex flex-col relative overflow-hidden"
+            className="tour-nutrient-info w-full bg-white px-5 pb-5 pt-5 lg:px-8 lg:pb-8 lg:pt-8 border border-slate-100/80 shadow-[0_4px_24px_rgba(0,0,0,0.03)] flex flex-col relative overflow-hidden"
             style={{ 
               borderRadius: '29.29px', 
               marginTop: '8px'
             }}
           >
             {/* Calories Header */}
-            <div className="mb-4">
+            <div className="mb-0">
               <h2 className="text-lg lg:text-xl font-bold text-[#1a1a1a] leading-tight">Calories</h2>
               <p className="text-[9px] text-[#a0a0a0] font-bold uppercase tracking-widest leading-none mt-0.5">Daily tracking</p>
             </div>
 
             {/* Dashed Gauge */}
-            <div className="flex justify-center mb-0 relative z-10 w-full overflow-visible">
+            <div className="flex justify-center mb-0 -mt-8 lg:-mt-10 relative z-10 w-full overflow-visible">
               <DashedGauge
                 value={nutritionData?.totalCalories || dashboardData?.nutritionData?.totalCalories || 0}
                 max={user?.nutritionGoal?.calorieGoal || nutritionData?.calorieGoal || 2000}
