@@ -2,6 +2,28 @@ import React, { useCallback, useRef } from "react";
 import useEmblaCarousel from "embla-carousel-react";
 import Autoplay from "embla-carousel-autoplay";
 import TestimonialItem from "./TestimonialItem";
+import { motion } from "framer-motion";
+
+const fadeUp = {
+  initial: { opacity: 0, y: 32 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: "-100px" },
+  transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] },
+};
+
+const fadeLeft = {
+  initial: { opacity: 0, x: -32 },
+  whileInView: { opacity: 1, x: 0 },
+  viewport: { once: true, margin: "-100px" },
+  transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] },
+};
+
+const fadeRight = {
+  initial: { opacity: 0, x: 32 },
+  whileInView: { opacity: 1, x: 0 },
+  viewport: { once: true, margin: "-100px" },
+  transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] },
+};
 
 const testimonials = [
   {
@@ -81,8 +103,14 @@ const Testimonials = () => {
   }, [emblaApi]);
 
   return (
-    <section className="container mx-auto py-24 px-5 flex flex-col lg:flex-row justify-between gap-10">
-      <div className="w-full lg:w-1/2 flex flex-col justify-between py-2 lg:py-8">
+    <motion.section
+      {...fadeUp}
+      className="container mx-auto pt-24 px-5 flex flex-col lg:flex-row justify-between gap-10"
+    >
+      <motion.div
+        {...fadeLeft}
+        className="w-full lg:w-1/2 flex flex-col justify-between py-2 lg:py-8"
+      >
         <div>
           <h2 className=" font-landing-title text-3xl md:text-4xl/[3rem] text-balance mb-2">
             You trust what ranks high. It’s time your{" "}
@@ -102,19 +130,23 @@ const Testimonials = () => {
             </div>
           </div>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="w-full lg:w-1/2 flex justify-end">
+      <motion.div {...fadeRight} className="w-full lg:w-1/2 flex justify-end">
         <div className="w-full max-w-xl">
           <div className="overflow-hidden" ref={emblaRef}>
             <div className="flex -ml-4">
               {testimonials.map((testimonial, index) => (
-                <div
+                <motion.div
                   key={`${testimonial.name}-${index}`}
                   className="pl-4 flex-[0_0_100%] min-w-0"
+                  initial={{ opacity: 0 }}
+                  whileInView={{ opacity: 1 }}
+                  viewport={{ once: true, margin: "-100px" }}
+                  transition={{ duration: 0.55, delay: index * 0.04, ease: [0.16, 1, 0.3, 1] }}
                 >
                   <TestimonialItem {...testimonial} />
-                </div>
+                </motion.div>
               ))}
             </div>
           </div>
@@ -143,8 +175,8 @@ const Testimonials = () => {
             </div>
           </div>
         </div>
-      </div>
-    </section>
+      </motion.div>
+    </motion.section>
   );
 };
 

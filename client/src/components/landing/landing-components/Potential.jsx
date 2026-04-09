@@ -1,5 +1,20 @@
 import PotentialItem from "./PotentialItem"
 import React, { useState } from "react"
+import { motion } from "framer-motion"
+
+const fadeUp = {
+  initial: { opacity: 0, y: 32 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: "-100px" },
+  transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] },
+};
+
+const fadeIn = {
+  initial: { opacity: 0 },
+  whileInView: { opacity: 1 },
+  viewport: { once: true, margin: "-100px" },
+  transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
+};
 
 const Potential = () => {
 
@@ -57,7 +72,7 @@ const Potential = () => {
   const [isHovered, setIsHovered] = useState(false);
 
   return (
-    <section className="mx-auto py-24 overflow-hidden relative">
+    <motion.section {...fadeIn} className="mx-auto py-24 overflow-hidden relative">
       <style>
         {`
           @keyframes arc-marquee {
@@ -67,14 +82,14 @@ const Potential = () => {
         `}
       </style>
       
-      <div className="flex justify-center text-center items-center relative z-10 pb-8">
+      <motion.div {...fadeUp} className="flex justify-center text-center items-center relative z-10 pb-8">
         <h2 className=" font-landing-title text-3xl md:text-4xl">
           Unlocking Human {" "}
           <span className='text-landing-primary-hover italic'>Potential</span>
         </h2>
-      </div>
+      </motion.div>
 
-      <div className="relative w-full h-[450px] md:h-[550px] mt-10 pointer-events-none">
+      <motion.div {...fadeIn} className="relative w-full h-[450px] md:h-[550px] mt-10 pointer-events-none">
         
         {/* The structural Wheel Anchor offset below the screen */}
         <div 
@@ -127,8 +142,8 @@ const Potential = () => {
         {/* <div className="absolute left-0 top-0 w-20 md:w-56 h-full bg-gradient-to-r from-white to-transparent pointer-events-none z-20"></div>
         <div className="absolute right-0 top-0 w-20 md:w-56 h-full bg-gradient-to-l from-white to-transparent pointer-events-none z-20"></div> */}
 
-      </div>
-    </section>
+      </motion.div>
+    </motion.section>
   )
 }
 

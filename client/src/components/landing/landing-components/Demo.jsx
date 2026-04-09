@@ -168,7 +168,7 @@ const Demo = () => {
               transition={{ duration: 0.6, delay: 0.4 }}
               src="/landing/demo/innovation.svg"
               alt="innovation"
-              className="absolute -left-[70%] top-10 backdrop-blur-[2px]"
+              className="absolute lg:-left-[70%] md:-left-80 md:top-0 lg:top-10 backdrop-blur-[2px]"
             />
             <motion.img
               initial={{ opacity: 0, scale: 0.8 }}

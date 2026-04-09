@@ -1,10 +1,25 @@
 import React from "react";
 import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+
+const fadeUp = {
+  initial: { opacity: 0, y: 32 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: "-100px" },
+  transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] },
+};
+
+const fadeIn = {
+  initial: { opacity: 0 },
+  whileInView: { opacity: 1 },
+  viewport: { once: true, margin: "-100px" },
+  transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
+};
 
 const CTA = () => {
   return (
     <section>
-      <div className="relative mt-24 z-0">
+      <motion.div {...fadeIn} className="relative mt-24 z-0">
         <img src="/landing/CTA/bg.webp" className="w-full h-full z-0" alt="" />
         <div className="absolute inset-0 bg-black/60 z-0"></div>
         <img
@@ -42,11 +57,15 @@ const CTA = () => {
             </Link>
           </button>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="bg-landing-primary pt-24 z-50">
+      <motion.div {...fadeIn} className="bg-landing-primary pt-24 z-50">
         <div className="container mx-auto flex text-center items-center px-5">
-          <div className="w-[35%] flex flex-col gap-8">
+          <motion.div
+            {...fadeUp}
+            transition={{ ...fadeUp.transition, delay: 0.05 }}
+            className="w-[35%] flex flex-col gap-8"
+          >
             <h3 className="text-landing-light-bg font-landing-title text-4xl text-balance">
               We Tell You What Your Body’s Been Trying To Say
             </h3>
@@ -54,11 +73,19 @@ const CTA = () => {
               Science-backed. Biology-driven. Personalized plans designed for
               your body’s exact needs.
             </p>
-          </div>
-          <div className="w-[30%] flex justify-center">
+          </motion.div>
+          <motion.div
+            {...fadeUp}
+            transition={{ ...fadeUp.transition, delay: 0.12 }}
+            className="w-[30%] flex justify-center"
+          >
             <img src="/landing/CTA/phone.png" alt="phone" />
-          </div>
-          <div className="w-[35%] flex flex-col gap-8">
+          </motion.div>
+          <motion.div
+            {...fadeUp}
+            transition={{ ...fadeUp.transition, delay: 0.18 }}
+            className="w-[35%] flex flex-col gap-8"
+          >
             <h3 className="text-landing-light-bg font-landing-title text-4xl text-balance">
               Built to Guide You Daily
             </h3>
@@ -66,9 +93,9 @@ const CTA = () => {
               We interpret a broad spectrum of biomarkers to identify early
               signals and support timely, personalised care.
             </p>
-          </div>
+          </motion.div>
         </div>
-      </div>
+      </motion.div>
     </section>
   );
 };

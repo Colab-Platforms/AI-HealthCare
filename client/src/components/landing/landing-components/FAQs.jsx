@@ -1,5 +1,27 @@
 import { useState } from "react";
 import { Plus, Minus } from "lucide-react";
+import { motion } from "framer-motion";
+
+const fadeUp = {
+  initial: { opacity: 0, y: 30 },
+  whileInView: { opacity: 1, y: 0 },
+  viewport: { once: true, margin: "-100px" },
+  transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] },
+};
+
+const fadeLeft = {
+  initial: { opacity: 0, x: -28 },
+  whileInView: { opacity: 1, x: 0 },
+  viewport: { once: true, margin: "-100px" },
+  transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] },
+};
+
+const fadeRight = {
+  initial: { opacity: 0, x: 28 },
+  whileInView: { opacity: 1, x: 0 },
+  viewport: { once: true, margin: "-100px" },
+  transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] },
+};
 
 const FAQs = () => {
   const [openIndex, setOpenIndex] = useState(null);
@@ -36,25 +58,38 @@ const FAQs = () => {
   ]
 
   return (
-    <section className="container mx-auto py-24 px-5 flex flex-col lg:flex-row justify-between items-center gap-10">
+    <motion.section
+      {...fadeUp}
+      className="container mx-auto py-24 px-5 flex flex-col lg:flex-row justify-between items-center gap-10"
+    >
 
-      <div className="w-full lg:w-1/2 flex flex-col justify-between py-2 lg:py-8">
+      <motion.div
+        {...fadeLeft}
+        className="w-full lg:w-1/2 flex flex-col justify-between py-2 lg:py-8"
+      >
         <div>
           <h2 className=" font-landing-title text-3xl md:text-4xl/[3rem] text-balance mb-2">
            What it does. How it helps. <br />
             <span className="text-landing-primary-hover italic">Why it matters.</span>
           </h2>
         </div>
-      </div>
+      </motion.div>
 
-      <div className="w-full lg:w-1/2 flex flex-col py-2 lg:py-8 mt-10 lg:mt-0">
+      <motion.div
+        {...fadeRight}
+        className="w-full lg:w-1/2 flex flex-col py-2 lg:py-8 mt-10 lg:mt-0"
+      >
         <div className="w-full">
           {faqs.map((faq, index) => (
-            <div 
+            <motion.div
               key={index} 
               className={`border-t border-[#e5e5e5] py-5 md:py-6 ${
                 index === faqs.length - 1 ? 'border-b' : ''
               }`}
+              initial={{ opacity: 0, y: 14 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true, margin: "-100px" }}
+              transition={{ duration: 0.45, delay: index * 0.05, ease: [0.16, 1, 0.3, 1] }}
             >
               <button 
                 onClick={() => toggleFAQ(index)}
@@ -80,11 +115,11 @@ const FAQs = () => {
                   {faq.answer}
                 </p>
               </div>
-            </div>
+            </motion.div>
           ))}
         </div>
-      </div>
-    </section>
+      </motion.div>
+    </motion.section>
   )
 }
 
