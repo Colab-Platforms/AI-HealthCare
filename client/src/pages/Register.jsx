@@ -207,7 +207,7 @@ export default function Register() {
       await refreshUser();
 
       toast.success('Registration completed successfully!');
-      navigate('/dashboard');
+      navigate('/onboarding');
     } catch (error) {
       const msg = error.response?.data?.message || 'Profile completion failed';
       toast.error(msg);

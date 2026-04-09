@@ -254,7 +254,7 @@ export function NutritionTab({
                 <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-md"><AlertTriangle size={20} className="text-[#E88F4A]" strokeWidth={2.5} /></div>
                 <h4 className="text-[16px] font-black text-[#1a2138] dark:text-white uppercase tracking-tight">Nutrition Insight</h4>
               </div>
-              <span className="bg-[#E88F4A] text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest">AI ANALYSIS</span>
+              <span className="bg-[#E88F4A] text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest whitespace-nowrap">AI ANALYSIS</span>
             </div>
             <div className="flex flex-col gap-3">
               {(() => {

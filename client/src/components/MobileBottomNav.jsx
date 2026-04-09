@@ -71,9 +71,9 @@ export default function MobileBottomNav() {
     { path: '/dashboard', icon: LayoutDashboard, label: 'Home' },
     isDiabetic
       ? { path: '/complete-analysis', icon: BarChart3, label: 'Analysis' }
-      : { path: '/nutrition', icon: Activity, label: 'Nutrition' },
+      : { path: '/nutrition', icon: Activity, label: 'Nutrition', image: 'https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_3.svg?v=1775560186' },
     { path: '#log', icon: Plus, label: 'Log', isCenter: true },
-    { path: reportsPath, icon: FileText, label: 'Reports' }
+    { path: reportsPath, icon: FileText, label: 'Reports' },
   ];
 
   const logActivities = [
@@ -265,7 +265,7 @@ export default function MobileBottomNav() {
                     >
                       <div className="flex items-center gap-4">
                         <div className="w-11 h-11 bg-white rounded-[16px] flex items-center justify-center shadow-sm border border-[#A4B0C9]/10">
-                          <BarChart3 size={22} className="text-[#7C8BA8]" strokeWidth={2.5} />
+                          <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_4.svg?v=1775560574" alt="Progress" className="w-6 h-6 object-contain" />
                         </div>
                         <div className="text-left">
                           <div className="text-[16px] font-extrabold text-[#445577] mb-0.5 tracking-tight px-0.5">Progress Insights</div>
@@ -337,10 +337,10 @@ export default function MobileBottomNav() {
       </AnimatePresence>
 
       <nav 
-        className={`mobile-bottom-nav-container ${hideNavbarUI ? 'hidden' : ''} !bg-[#EBF0E6] border-t border-emerald-100/30 shadow-[0_-5px_20px_rgba(0,0,0,0.03)] z-[250] !fixed bottom-0 left-0 right-0`}
+        className={`mobile-bottom-nav-container ${hideNavbarUI ? 'hidden' : ''} bg-transparent z-[250] !fixed bottom-0 left-0 right-0`}
         style={{ zIndex: 250 }}
       >
-        <div className="mobile-bottom-nav">
+        <div className="mobile-bottom-nav border-t border-emerald-100/30 shadow-[0_-5px_20px_rgba(0,0,0,0.03)]">
           {navItems.map((item, index) => {
             const Icon = item.icon;
             const active = isActive(item.path);
@@ -387,8 +387,16 @@ export default function MobileBottomNav() {
                 aria-label={item.label}
                 title={item.label}
               >
-                <Icon className="w-5 h-5" />
-                <span className="text-[10px] font-black uppercase tracking-tighter mt-0.5">{item.label}</span>
+                {item.image ? (
+                  <img 
+                    src={item.image} 
+                    alt={item.label} 
+                    className={`w-5 h-5 object-contain transition-all duration-300 ${active ? 'scale-110' : 'opacity-40 grayscale group-hover:opacity-80 group-hover:grayscale-0'}`} 
+                  />
+                ) : (
+                  <Icon className="w-5 h-5 transition-transform group-hover:scale-110" />
+                )}
+                <span className="text-[10px] font-black tracking-tight mt-0.5">{item.label}</span>
               </Link>
             );
           })}
@@ -400,7 +408,7 @@ export default function MobileBottomNav() {
             title="Diet Plan"
           >
             <Apple className="w-5 h-5" />
-            <span className="text-[10px] font-black uppercase tracking-tighter mt-0.5">Diet Plan</span>
+            <span className="text-[10px] font-black tracking-tight mt-0.5">Diet Plan</span>
           </Link>
         </div>
       </nav>

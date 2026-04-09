@@ -741,14 +741,6 @@ exports.generateDietAfterReport = async (userId) => {
     const user = await User.findById(userId);
     if (!user) throw new Error('User not found');
 
-<<<<<<< HEAD
-    // Calculate nutrition goals
-    const currentWeight = user.profile?.weight || 70;
-    const height = user.profile?.height || 170;
-    const heightInMeters = height / 100;
-    const currentBMI = currentWeight / (heightInMeters * heightInMeters);
-    const bmiGoal = user.nutritionGoal?.goal || 'maintain';
-=======
     // --- Diabetes detection ---
     const diabetesProfile = user.profile?.diabetesProfile || {};
     const medicalHistoryConditions = user.profile?.medicalHistory?.conditions || [];
@@ -762,45 +754,36 @@ exports.generateDietAfterReport = async (userId) => {
       diabetesProfile.type === 'Prediabetes' ||
       medicalHistoryConditions.some(c => /prediabet/i.test(c))
     );
->>>>>>> 3b4b025e0dd07e969b27879e47e90e6678a4857a
+
+    const currentWeight = user.profile?.weight || 70;
+    const height = user.profile?.height || 170;
+    const heightInMeters = height / 100;
+    const currentBMI = currentWeight / (heightInMeters * heightInMeters);
+    const bmiGoal = user.nutritionGoal?.goal || 'maintain';
 
     let nutritionGoals;
     if (user.nutritionGoal?.calorieGoal && user.nutritionGoal.calorieGoal > 0) {
       nutritionGoals = {
         calorieGoal: user.nutritionGoal.calorieGoal,
-<<<<<<< HEAD
-        proteinGoal: user.nutritionGoal.proteinGoal || 150,
-        carbsGoal: user.nutritionGoal.carbsGoal || 200,
-=======
         proteinGoal: user.nutritionGoal.proteinGoal || (isDiabetic ? 84 : 90),
         carbsGoal: user.nutritionGoal.carbsGoal || (isDiabetic ? 180 : 250),
->>>>>>> 3b4b025e0dd07e969b27879e47e90e6678a4857a
         fatGoal: user.nutritionGoal.fatGoal || 65
       };
     } else {
       nutritionGoals = {
-<<<<<<< HEAD
-        calorieGoal: 2000,
-        proteinGoal: 150,
-        carbsGoal: 200,
-=======
         calorieGoal: isDiabetic ? 1800 : 2000,
         proteinGoal: isDiabetic ? 84 : 90,
         carbsGoal: isDiabetic ? 180 : 250,
->>>>>>> 3b4b025e0dd07e969b27879e47e90e6678a4857a
         fatGoal: 65
       };
     }
 
-<<<<<<< HEAD
-=======
     const diabetesInfo = isDiabetic || isPrediabetic ? {
       isDiabetic,
       isPrediabetic,
       diabetesType: diabetesProfile.type || 'Type 2'
     } : null;
 
->>>>>>> 3b4b025e0dd07e969b27879e47e90e6678a4857a
     // Get latest report data
     const healthReports = await HealthReport.find({ user: userId }).sort({ createdAt: -1 }).limit(3);
     const deficiencies = [];
@@ -809,17 +792,6 @@ exports.generateDietAfterReport = async (userId) => {
         r.aiAnalysis.deficiencies.forEach(d => deficiencies.push({ nutrient: d.name || d, severity: d.severity || 'detected' }));
       }
     });
-
-<<<<<<< HEAD
-=======
-    // Extract user profile stats
-    const currentWeight = user.profile?.weight || 70;
-    const height = user.profile?.height || 170;
-    const heightInMeters = height / 100;
-    const currentBMI = currentWeight / (heightInMeters * heightInMeters);
-    const bmiGoal = user.nutritionGoal?.goal || 'maintain';
-
->>>>>>> 3b4b025e0dd07e969b27879e47e90e6678a4857a
     const userData = {
       age: user.profile?.age || 25,
       gender: user.profile?.gender || 'male',

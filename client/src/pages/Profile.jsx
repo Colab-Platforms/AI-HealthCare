@@ -1,17 +1,16 @@
 import { useState, useEffect, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import {
   User, Save, Heart, AlertCircle, Camera, Mail, Phone, Target,
   Activity, Droplet, Cigarette, Wine, Moon, Apple, Dumbbell, Pill, Upload,
   Bell, ShieldCheck, ChevronRight, LogOut, FileText, Settings, CheckCircle2,
-  TrendingUp, TrendingDown, Clock, Sparkles
+  TrendingUp, TrendingDown, Clock, Sparkles, Zap, X
 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import BMIWidget from '../components/BMIWidget';
+import { motion, AnimatePresence } from 'framer-motion';
 import ProfileSkeleton from '../components/skeletons/ProfileSkeleton';
-import { useNavigate } from 'react-router-dom';
 
 export default function Profile() {
   const { user, updateUser, logout } = useAuth();
@@ -24,15 +23,13 @@ export default function Profile() {
   const [healthGoal, setHealthGoal] = useState(null);
   const [goalLoading, setGoalLoading] = useState(false);
   const [extraData, setExtraData] = useState({
-    appointmentsCount: 0,
     reportsCount: 0,
     metrics: {},
-    recentActivity: [],
-    wearable: null,
     latestAnalysis: null,
     loading: true
   });
   const [expandedSection, setExpandedSection] = useState(null); // 'profile' or 'goals'
+  
   const [goalFormData, setGoalFormData] = useState({
     goalType: 'maintenance',
     currentWeight: user?.profile?.weight || '',
@@ -43,6 +40,7 @@ export default function Profile() {
     activityLevel: user?.profile?.activityLevel || 'sedentary',
     dietaryPreference: user?.profile?.dietaryPreference || 'non-vegetarian'
   });
+
   const [formData, setFormData] = useState({
     name: user?.name || '',
     profile: {
@@ -55,7 +53,7 @@ export default function Profile() {
       phone: user?.phone || user?.profile?.phone || '',
       activityLevel: user?.profile?.activityLevel || 'sedentary',
       isDiabetic: user?.profile?.isDiabetic || 'no',
-      allergies: user?.profile?.allergies ? user.profile.allergies.join(', ') : '',
+      allergies: user?.profile?.allergies || '',
       medicalHistory: {
         conditions: user?.profile?.medicalHistory?.conditions || []
       },
@@ -66,7 +64,7 @@ export default function Profile() {
         stressLevel: user?.profile?.lifestyle?.stressLevel || 'moderate',
         waterIntake: user?.profile?.lifestyle?.waterIntake || '8'
       },
-      diabetesProfile: user?.profile?.diabetesProfile || { type: '', hba1c: '' }
+      diabetesProfile: user?.profile?.diabetesProfile || { type: 'Type 2', hba1c: '' }
     }
   });
 
@@ -94,11 +92,9 @@ export default function Profile() {
 
   const fetchExtraData = async () => {
     try {
-      const [aptRes, reportsRes, summaryRes, wearableRes, dashRes] = await Promise.all([
-        api.get('doctor/appointments'),
+      const [reportsRes, summaryRes, dashRes] = await Promise.all([
         api.get('health/reports'),
         api.get('metrics/summary/latest?types=heart_rate,blood_pressure'),
-        api.get('wearables/dashboard'),
         api.get('health/dashboard')
       ]);
 
@@ -108,12 +104,10 @@ export default function Profile() {
         : reportsArray.length;
 
       setExtraData({
-        appointmentsCount: aptRes.data.length,
-        reportsCount: dashRes.data.totalReports || reportsRes.data.length || 0,
+        reportsCount,
         metrics: summaryRes.data,
-        recentActivity: aptRes.data.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 4),
-        wearable: wearableRes.data,
         latestAnalysis: dashRes.data.latestAnalysis,
+        recentReports: reportsArray.slice(0, 3),
         loading: false
       });
     } catch (e) {
@@ -125,9 +119,7 @@ export default function Profile() {
   useEffect(() => {
     fetchHealthGoal();
     fetchExtraData();
-    if (searchParams.get('tab') === 'goals') {
-      setExpandedSection('goals');
-    }
+    if (searchParams.get('tab') === 'goals') setExpandedSection('goals');
   }, [searchParams]);
 
   useEffect(() => {
@@ -145,112 +137,45 @@ export default function Profile() {
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
-    if (name.startsWith('profile.lifestyle.')) {
-      const field = name.split('.')[2];
-      setFormData(prev => ({
-        ...prev,
-        profile: {
-          ...prev.profile,
-          lifestyle: { ...prev.profile.lifestyle, [field]: type === 'checkbox' ? checked : value }
-        }
-      }));
-    } else if (name.startsWith('profile.diabetesProfile.')) {
-      const field = name.split('.')[2];
-      setFormData(prev => ({
-        ...prev,
-        profile: {
-          ...prev.profile,
-          diabetesProfile: { ...prev.profile.diabetesProfile, [field]: value }
-        }
-      }));
-    } else if (name === 'profile.isDiabetic') {
-      const isNo = value === 'no';
-      setFormData(prev => {
-        let newConditions = [...(prev.profile.medicalHistory.conditions || [])];
-        if (isNo) {
-          // Remove diabetes from conditions if switching to 'no'
-          newConditions = newConditions.filter(c => !c.toLowerCase().includes('diabetes'));
-        }
-        
-        return {
-          ...prev,
-          profile: {
-            ...prev.profile,
-            isDiabetic: value,
-            medicalHistory: {
-              ...prev.profile.medicalHistory,
-              conditions: newConditions
-            },
-            // Clear diabetes profile if switching to 'no'
-             diabetesProfile: isNo ? { type: 'Type 2', hba1c: '' } : prev.profile.diabetesProfile
-          }
-        };
-      });
-    } else if (name.startsWith('profile.')) {
-      const field = name.split('.')[1];
-      setFormData(prev => ({ ...prev, profile: { ...prev.profile, [field]: value } }));
-    } else {
-      setFormData(prev => ({ ...prev, [name]: value }));
-    }
+    
+    setFormData(prev => {
+      const keys = name.split('.');
+      if (keys.length === 1) {
+        return { ...prev, [name]: type === 'checkbox' ? checked : value };
+      }
+      
+      const newFormData = { ...prev };
+      let current = newFormData;
+      
+      for (let i = 0; i < keys.length - 1; i++) {
+        current[keys[i]] = { ...current[keys[i]] };
+        current = current[keys[i]];
+      }
+      
+      current[keys[keys.length - 1]] = type === 'checkbox' ? checked : value;
+      return newFormData;
+    });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const isDiabetic = formData.profile.isDiabetic === 'yes';
       const payload = {
         name: formData.name,
         phone: formData.profile.phone,
         profile: {
           ...formData.profile,
-          gender: formData.profile.gender || undefined,
-          dietaryPreference: formData.profile.dietaryPreference || undefined,
-          age: formData.profile.age ? Number(formData.profile.age) : undefined,
-          height: formData.profile.height ? Number(formData.profile.height) : undefined,
-          weight: formData.profile.weight ? Number(formData.profile.weight) : undefined,
-          allergies: formData.profile.allergies ? formData.profile.allergies.split(',').map(a => a.trim()).filter(Boolean) : [],
-          lifestyle: {
-            ...formData.profile.lifestyle,
-            sleepHours: Number(formData.profile.lifestyle.sleepHours),
-            waterIntake: Number(formData.profile.lifestyle.waterIntake)
-          },
-          // Only send diabetesProfile if they are diabetic and have a type
-          diabetesProfile: (isDiabetic && formData.profile.diabetesProfile?.type) ? formData.profile.diabetesProfile : undefined
+          age: Number(formData.profile.age),
+          height: Number(formData.profile.height),
+          weight: Number(formData.profile.weight),
+          diabetesProfile: formData.profile.isDiabetic === 'yes' ? formData.profile.diabetesProfile : undefined
         }
       };
       const { data } = await api.put('auth/profile', payload);
       updateUser(data);
       toast.success('Profile updated successfully!');
-
-      if (data.bmiChanged) {
-        await fetchHealthGoal();
-        toast((t) => (
-          <div className="flex flex-col gap-2">
-            <p className="text-sm font-medium">
-              Your BMI has changed to <span className="font-bold text-cyan-600">{data.newBmi}</span>.
-              Nutrition targets have been updated!
-            </p>
-            <div className="flex justify-end gap-2">
-              <button
-                onClick={() => {
-                  toast.dismiss(t.id);
-                  setExpandedSection('goals');
-                }}
-                className="px-3 py-1.5 bg-cyan-100 text-cyan-700 rounded-lg text-xs font-black uppercase tracking-wider hover:bg-cyan-200 transition-colors"
-              >
-                Review Fitness Goal
-              </button>
-              <button
-                onClick={() => toast.dismiss(t.id)}
-                className="px-3 py-1.5 bg-slate-100 text-slate-500 rounded-lg text-xs font-bold uppercase tracking-wider hover:bg-slate-200 transition-colors"
-              >
-                Later
-              </button>
-            </div>
-          </div>
-        ), { duration: 8000, position: 'bottom-center' });
-      }
+      if (data.bmiChanged) await fetchHealthGoal();
     } catch (error) {
       toast.error(error.response?.data?.message || 'Failed to update profile');
     } finally {
@@ -258,79 +183,25 @@ export default function Profile() {
     }
   };
 
-  // Derive age, height, weight from profile for fitness goal
-  const profileAge = Number(formData.profile.age) || user?.profile?.age || 0;
-  const profileHeight = Number(formData.profile.height) || user?.profile?.height || 0;
-  const profileWeight = Number(formData.profile.weight) || user?.profile?.weight || 0;
-  const profileGender = formData.profile.gender || user?.profile?.gender || 'male';
-
   const handleGoalSubmit = async (e) => {
     e.preventDefault();
-    
-    // Validate profile data exists
-    if (!profileWeight || profileWeight < 30) {
-      toast.error('Please set your weight (min 30kg) in General Profile first');
-      setExpandedSection('profile');
-      return;
-    }
-    if (!profileHeight || profileHeight < 100) {
-      toast.error('Please set your height (min 100cm) in General Profile first');
-      setExpandedSection('profile');
-      return;
-    }
-    if (!profileAge || profileAge < 1) {
-      toast.error('Please set your age in General Profile first');
-      setExpandedSection('profile');
-      return;
-    }
-    if (!goalFormData.targetWeight || goalFormData.targetWeight < 30) {
-      toast.error('Target weight must be at least 30kg');
-      return;
-    }
-
-    // New Validation Logic
-    const currentW = Number(profileWeight);
-    const targetW = Number(goalFormData.targetWeight);
-    const goalType = goalFormData.goalType;
-
-    if (goalType === 'weight_loss' && targetW >= currentW) {
-      toast.error(`For weight loss, target weight (${targetW}kg) must be less than current weight (${currentW}kg)`);
-      return;
-    }
-    if (goalType === 'weight_gain' && targetW <= currentW) {
-      toast.error(`For weight gain, target weight (${targetW}kg) must be greater than current weight (${currentW}kg)`);
-      return;
-    }
-
     setGoalLoading(true);
     try {
-      const token = localStorage.getItem('token');
       const payload = {
         ...goalFormData,
-        currentWeight: parseFloat(profileWeight) || 0,
-        targetWeight: parseFloat(goalFormData.targetWeight) || 0,
-        height: parseFloat(profileHeight) || 0,
-        age: parseInt(profileAge) || 0,
-        gender: profileGender || 'male' // Default to male if missing for BMR
+        currentWeight: parseFloat(formData.profile.weight),
+        targetWeight: parseFloat(goalFormData.targetWeight),
+        height: parseFloat(formData.profile.height),
+        age: parseInt(formData.profile.age),
+        gender: formData.profile.gender
       };
-
-      // Use PUT if goal exists, POST if new
-      const response = healthGoal
-        ? await api.put('nutrition/goals', payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        })
-        : await api.post('nutrition/goals', payload, {
-          headers: { Authorization: `Bearer ${token}` }
-        });
-
-      setHealthGoal(response.data.healthGoal);
-      toast.success('Fitness goal set successfully! Your daily targets have been calculated.');
-      
-      // Update global user context to sync nutritionGoals immediately
+      const { data } = await api.put('nutrition/goals', payload);
+      setHealthGoal(data.healthGoal);
+      toast.success('Fitness goal updated!');
       const { data: userData } = await api.get('auth/profile');
       updateUser(userData);
     } catch (error) {
-      toast.error(error.response?.data?.message || 'Failed to set fitness goal');
+      toast.error(error.response?.data?.message || 'Failed to update goal');
     } finally {
       setGoalLoading(false);
     }
@@ -344,83 +215,24 @@ export default function Profile() {
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
-
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      toast.error('Please select an image file');
-      return;
-    }
-
     setUploadingImage(true);
-
     try {
-      // Small compression utility using Canvas
-      const compressImage = (file) => {
-        return new Promise((resolve) => {
-          const reader = new FileReader();
-          reader.readAsDataURL(file);
-          reader.onload = (event) => {
-            const img = new Image();
-            img.src = event.target.result;
-            img.onload = () => {
-              const canvas = document.createElement('canvas');
-              let width = img.width;
-              let height = img.height;
-
-              // Max dimension 800px for profile pic
-              const MAX_DIM = 800;
-              if (width > height) {
-                if (width > MAX_DIM) {
-                  height *= MAX_DIM / width;
-                  width = MAX_DIM;
-                }
-              } else {
-                if (height > MAX_DIM) {
-                  width *= MAX_DIM / height;
-                  height = MAX_DIM;
-                }
-              }
-
-              canvas.width = width;
-              canvas.height = height;
-              const ctx = canvas.getContext('2d');
-              ctx.drawImage(img, 0, 0, width, height);
-
-              canvas.toBlob((blob) => {
-                resolve(new File([blob], file.name, { type: 'image/jpeg', lastModified: Date.now() }));
-              }, 'image/jpeg', 0.8); // 80% quality
-            };
-          };
-        });
-      };
-
-      const compressedFile = file.size > 500 * 1024 ? await compressImage(file) : file;
-      console.log(`Original: ${(file.size / 1024).toFixed(2)}KB, Compressed: ${(compressedFile.size / 1024).toFixed(2)}KB`);
-
       const formData = new FormData();
-      formData.append('profilePicture', compressedFile);
-
+      formData.append('profilePicture', file);
       const { data } = await api.post('auth/upload-profile-picture', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-
-      // Update user with new profile picture
       updateUser({ ...user, profilePicture: data.profilePicture });
-      toast.success('Profile picture updated successfully!');
+      toast.success('Profile picture updated!');
     } catch (error) {
-      console.error('Upload error:', error);
-      toast.error(error.response?.data?.message || 'Failed to upload image');
+      toast.error('Failed to upload image');
     } finally {
       setUploadingImage(false);
     }
   };
 
-
-
   const bmi = formData.profile.height && formData.profile.weight
     ? (formData.profile.weight / Math.pow(formData.profile.height / 100, 2)).toFixed(1) : null;
-
-
 
   const getBmiStatus = (bmi) => {
     if (!bmi) return { label: 'N/A', color: 'slate' };
@@ -432,633 +244,479 @@ export default function Profile() {
 
   const bmiStatus = getBmiStatus(parseFloat(bmi));
 
-  const colorMap = {
-    blue: { bg: 'bg-blue-50', text: 'text-blue-600', border: 'border-blue-100', pillBg: 'bg-blue-100', pillText: 'text-blue-700' },
-    emerald: { bg: 'bg-emerald-50', text: 'text-emerald-600', border: 'border-emerald-100', pillBg: 'bg-emerald-100', pillText: 'text-emerald-700' },
-    amber: { bg: 'bg-amber-50', text: 'text-amber-600', border: 'border-amber-100', pillBg: 'bg-amber-100', pillText: 'text-amber-700' },
-    red: { bg: 'bg-red-50', text: 'text-red-600', border: 'border-red-100', pillBg: 'bg-red-100', pillText: 'text-red-700' },
-    slate: { bg: 'bg-slate-50', text: 'text-slate-600', border: 'border-slate-100', pillBg: 'bg-slate-100', pillText: 'text-slate-700' }
-  };
-  const bmiColors = colorMap[bmiStatus.color] || colorMap.slate;
-
   if (!user) return <ProfileSkeleton />;
 
   return (
-    <div className="w-full relative min-h-screen bg-transparent overflow-x-hidden animate-fade-in pb-24">
-      {/* Brand Header Background - Deep Healthy Green Gradient */}
-      <div className="absolute top-0 left-0 right-0 h-48 md:h-72 bg-gradient-to-br from-[#064e3b] via-[#065f46] to-[#042f24] shadow-2xl" />
-      
-      {/* Decorative Glow Elements */}
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-400/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-      <div className="absolute top-0 left-0 w-[300px] h-[300px] bg-cyan-400/10 rounded-full blur-[100px] -translate-y-1/4 -translate-x-1/4 pointer-events-none" />
-
-      <div className="relative z-10 px-4 md:px-8 pt-2 md:pt-12 max-w-5xl mx-auto space-y-6">
-        {/* Profile Header Card */}
-        <div className="bg-white rounded-[2.5rem] p-6 md:p-10 shadow-xl border border-slate-100">
-          <div className="flex items-center gap-6 mb-8">
-            {/* Profile Picture Section */}
-            <div className="relative group flex-shrink-0">
-              <div className="relative">
-                {user?.profilePicture ? (
-                  <img
-                    src={user.profilePicture}
-                    alt={user.name}
-                    className="w-20 h-20 md:w-24 md:h-24 rounded-full object-cover border-4 border-white shadow-lg ring-1 ring-slate-100"
-                  />
-                ) : (
-                  <div className="w-20 h-20 md:w-24 md:h-24 rounded-full bg-slate-100 flex items-center justify-center text-3xl font-black text-slate-400 border-4 border-white shadow-lg ring-1 ring-slate-100">
-                    {user?.name?.[0]?.toUpperCase()}
-                  </div>
-                )}
-                <div className="absolute bottom-1 right-1 w-5 h-5 bg-[#10B981] rounded-full border-4 border-white shadow-sm ring-1 ring-slate-100">
-                  <div className="absolute inset-0 bg-[#10B981] animate-ping opacity-25 rounded-full" />
+    <div className="w-full relative min-h-screen bg-[#F9FCF3] overflow-x-hidden animate-fade-in pb-32">
+      <div className="relative z-10 px-[21.96px] pt-12 max-w-lg mx-auto">
+        
+        {/* Profile Header Section - Horizontal Layout */}
+        <div className="flex items-center gap-[18px] mb-10">
+          <div className="relative flex-shrink-0">
+            <div className="relative group cursor-pointer" onClick={() => setExpandedSection(expandedSection === 'img_options' ? null : 'img_options')}>
+              {user?.profilePicture ? (
+                <img
+                  src={user.profilePicture}
+                  alt={user.name}
+                  className="w-[84.18px] h-[84.18px] rounded-full object-cover border-[3.66px] border-white shadow-lg transition-transform active:scale-95"
+                />
+              ) : (
+                <div className="w-[84.18px] h-[84.18px] rounded-full bg-slate-100 flex items-center justify-center text-2xl font-black text-slate-400 border-[3.66px] border-white shadow-lg transition-transform active:scale-95">
+                  {user?.name?.[0]?.toUpperCase()}
+                </div>
+              )}
+              
+              <div className="absolute -bottom-1 -right-1">
+                <div className="w-[31.1px] h-[31.1px] rounded-xl bg-[#1a2138] flex items-center justify-center border-[2.75px] border-white shadow-md">
+                  <Camera className="w-[14px] h-[14px] text-white" strokeWidth={3} />
                 </div>
               </div>
 
-              <div className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-all flex items-center justify-center gap-3">
-                <button
-                  onClick={() => {
-                    if (cameraInputRef.current) cameraInputRef.current.value = '';
-                    cameraInputRef.current?.click();
-                  }}
-                  disabled={uploadingImage}
-                  className="p-2 bg-white/20 hover:bg-white/40 rounded-full transition-all"
-                  title="Take Photo"
-                >
-                  <Camera className="w-6 h-6 text-white" />
-                </button>
-                <button
-                  onClick={() => {
-                    if (fileInputRef.current) fileInputRef.current.value = '';
-                    fileInputRef.current?.click();
-                  }}
-                  disabled={uploadingImage}
-                  className="p-2 bg-white/20 hover:bg-white/40 rounded-full transition-all"
-                  title="Upload from Gallery"
-                >
-                  <Upload className="w-6 h-6 text-white" />
-                </button>
-              </div>
-              <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
-              <input type="file" ref={cameraInputRef} onChange={handleImageUpload} accept="image/*" capture="environment" className="hidden" />
-            </div>
-
-            {/* User Info */}
-            <div className="flex-1 min-w-0 space-y-1">
-              <h2 className="text-2xl md:text-3xl font-bold text-slate-900 truncate capitalize">{user?.name}</h2>
-              <div className="flex items-center gap-x-2 text-slate-500 font-medium text-sm">
-                <span className="capitalize">{user?.profile?.gender || 'N/A'}</span>
-                <span className="text-slate-300">•</span>
-                <span>{user?.profile?.age ? `${user.profile.age} years old` : 'Age not set'}</span>
-              </div>
-              <div className="flex flex-col gap-1 mt-2">
-                <div className="flex items-center gap-2 text-xs text-slate-400 font-bold uppercase tracking-widest">
-                  <Mail className="w-3.5 h-3.5" />
-                  <span className="truncate max-w-[200px] md:max-w-[400px]" title={user?.email}>{user?.email}</span>
-                </div>
-                {(user?.phone || user?.profile?.phone) && (
-                  <div className="flex items-center gap-2 text-xs text-slate-400 font-bold uppercase tracking-widest">
-                    <Phone className="w-3.5 h-3.5" />
-                    {user?.phone || user?.profile?.phone}
-                  </div>
-                )}
-              </div>
-              <div className="inline-flex items-center px-4 py-1 bg-[#064e3b] text-white rounded-2xl text-[10px] md:text-xs font-black uppercase tracking-widest mt-3 shadow-md border border-[#065f46]">
-                {user?.subscription?.plan || 'Free'} Member
-              </div>
-            </div>
-          </div>
-
-          <div className="w-full h-px bg-slate-100 mb-8" />
-
-          {/* Core Dashboard Stats - Health Score & Reports Only */}
-          <div className="flex items-center justify-center w-full max-w-xl mx-auto gap-12">
-            <div className="text-center space-y-1">
-              <p className="text-3xl md:text-4xl font-black text-black">
-                {user?.healthMetrics?.healthScore || extraData.latestAnalysis?.healthScore || 'N/A'}
-              </p>
-              <div className="flex flex-col items-center">
-                <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-wider">Health Score</p>
-                <div className="h-1 w-12 bg-emerald-400 rounded-full mt-1" />
-              </div>
-            </div>
-            <div className="h-12 w-px bg-slate-100" />
-            <div className="text-center space-y-1">
-              <p className="text-3xl md:text-4xl font-black text-black">
-                {extraData.reportsCount || 0}
-              </p>
-              <div className="flex flex-col items-center">
-                <p className="text-[10px] md:text-xs text-slate-400 font-bold uppercase tracking-wider">Reports</p>
-                <div className="h-1 w-12 bg-blue-400 rounded-full mt-1" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Relocated BMI Summary Card - Just below Profile Header */}
-        {bmi && (
-          <div className="bg-white rounded-[2.5rem] border border-slate-100 p-6 md:p-8 shadow-sm animate-fade-in shadow-xl hover:shadow-2xl transition-all">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-              <div className="flex items-center gap-6">
-                <div className={`w-20 h-20 md:w-24 md:h-24 rounded-full ${bmiColors.bg} border-4 border-white shadow-lg ring-1 ring-slate-100 flex items-center justify-center transition-transform hover:scale-105 pointer-events-none`}>
-                  <span className={`text-2xl md:text-3xl font-bold ${bmiColors.text}`}>{bmi}</span>
-                </div>
-                <div>
-                  <h3 className="text-xl font-bold text-slate-900 mb-1">Body Mass Index (BMI)</h3>
-                  <span className={`px-4 py-1 rounded-full text-xs font-black uppercase tracking-wider ${bmiColors.pillBg} ${bmiColors.pillText}`}>
-                    {bmiStatus.label}
-                  </span>
-                </div>
-              </div>
-              <div className="hidden md:block h-12 w-px bg-slate-100 mx-4" />
-              <div className="flex-1 max-w-md text-slate-500 text-sm">
-                <p className="leading-relaxed">Your BMI indicates you are in the <strong className={bmiColors.text}>{bmiStatus.label.toLowerCase()}</strong> range. {
-                  bmiStatus.color === 'emerald'
-                    ? "Excellent! You're in the healthy range. Keep up the great work with your nutrition and exercise."
-                    : "Work towards a balanced diet and regular activity to reach the optimal health range for your height/age."
-                }</p>
-              </div>
-            </div>
-          </div>
-        )}
-
-        <div className="space-y-12 animate-slide-up pb-12">
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-            {/* Left Column: Personalization (2/3 width) */}
-            <div className="lg:col-span-2 space-y-8">
-              <div className="space-y-6">
-                <h3 className="text-xl font-bold text-slate-900">Personalize Your Health</h3>
-                <div className="space-y-4">
-                  {/* General Profile Details Card */}
-                  <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden transition-all duration-300">
-                    <div
-                      onClick={() => setExpandedSection(expandedSection === 'profile' ? null : 'profile')}
-                      className="p-6 flex items-center justify-between cursor-pointer hover:bg-slate-50"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-[#EFF6FF] text-[#2563EB] flex items-center justify-center">
-                          <User className="w-6 h-6" />
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-slate-900">General Profile Details</h4>
-                          <p className="text-sm text-slate-500">Edit age, weight, blood group, etc.</p>
-                        </div>
-                      </div>
-                      <ChevronRight className={`w-6 h-6 text-slate-300 transition-transform duration-300 ${expandedSection === 'profile' ? 'rotate-90' : ''}`} />
-                    </div>
-
-                    {expandedSection === 'profile' && (
-                      <div className="px-6 pb-8 pt-2 animate-fade-in">
-                        <form onSubmit={handleSubmit} className="space-y-6">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Age</label>
-                              <input
-                                type="number"
-                                name="profile.age"
-                                value={formData.profile.age || ''}
-                                onChange={handleChange}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:ring-0 focus:outline-none"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Gender</label>
-                              <select
-                                name="profile.gender"
-                                value={formData.profile.gender || ''}
-                                onChange={handleChange}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
-                              >
-                                <option value="">Select Gender</option>
-                                <option value="male">Male</option>
-                                <option value="female">Female</option>
-                                <option value="other">Other</option>
-                              </select>
-                            </div>
-                            <div>
-                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Height (cm)</label>
-                              <input
-                                type="number"
-                                name="profile.height"
-                                value={formData.profile.height || ''}
-                                onChange={handleChange}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
-                              />
-                            </div>
-                            <div>
-                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Weight (kg)</label>
-                              <input
-                                type="number"
-                                name="profile.weight"
-                                value={formData.profile.weight || ''}
-                                onChange={handleChange}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
-                              />
-                            </div>
-                            <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
-                              <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Blood Group</label>
-                                <select
-                                  name="profile.bloodGroup"
-                                  value={formData.profile.bloodGroup}
-                                  onChange={handleChange}
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
-                                >
-                                  <option value="">Select</option>
-                                  {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => (
-                                    <option key={bg} value={bg}>{bg}</option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Dietary Preference</label>
-                                <select
-                                  name="profile.dietaryPreference"
-                                  value={formData.profile.dietaryPreference}
-                                  onChange={handleChange}
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800"
-                                >
-                                  <option value="">Select Dietary Preference</option>
-                                  <option value="non-vegetarian">Non-Vegetarian</option>
-                                  <option value="vegetarian">Vegetarian</option>
-                                  <option value="vegan">Vegan</option>
-                                  <option value="eggetarian">Eggetarian</option>
-                                </select>
-                              </div>
-                              <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Activity Level</label>
-                                <select
-                                  name="profile.activityLevel"
-                                  value={formData.profile.activityLevel}
-                                  onChange={handleChange}
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
-                                >
-                                  <option value="">Select Activity Level</option>
-                                  <option value="sedentary">Sedentary (Little/no exercise)</option>
-                                  <option value="lightly_active">Lightly Active (1-3 days)</option>
-                                  <option value="moderately_active">Moderately Active (3-5 days)</option>
-                                  <option value="very_active">Very Active (6-7 days)</option>
-                                  <option value="extremely_active">Extremely Active (Athlete)</option>
-                                </select>
-                              </div>
-                              <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Phone Number</label>
-                                <input
-                                  name="profile.phone"
-                                  value={formData.profile.phone || ''}
-                                  onChange={handleChange}
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
-                                  placeholder="e.g. +1 234 567 890"
-                                />
-                              </div>
-                              <div>
-                                <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Are you Diabetic?</label>
-                                <select
-                                  name="profile.isDiabetic"
-                                  value={formData.profile.isDiabetic}
-                                  onChange={handleChange}
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800 focus:border-blue-500 focus:outline-none"
-                                >
-                                  <option value="no">No</option>
-                                  <option value="yes">Yes</option>
-                                </select>
-                              </div>
-                            </div>
-
-                            {/* Lifestyle Section */}
-                            <div className="md:col-span-2 pt-4 border-t border-slate-100">
-                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Stress Level</label>
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                                <select
-                                  name="profile.lifestyle.stressLevel"
-                                  value={formData.profile.lifestyle.stressLevel}
-                                  onChange={handleChange}
-                                  className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-xs font-bold"
-                                >
-                                  <option value="low">Low</option>
-                                  <option value="moderate">Moderate</option>
-                                  <option value="high">High</option>
-                                </select>
-                                <div className="flex items-center gap-4 mt-2">
-                                  <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                      type="checkbox"
-                                      name="profile.lifestyle.smoker"
-                                      checked={formData.profile.lifestyle.smoker}
-                                      onChange={handleChange}
-                                      className="w-4 h-4 text-blue-600 rounded"
-                                    />
-                                    <span className="text-xs font-bold text-slate-400 uppercase">Smoker</span>
-                                  </label>
-                                  <label className="flex items-center gap-2 cursor-pointer">
-                                    <input
-                                      type="checkbox"
-                                      name="profile.lifestyle.alcohol"
-                                      checked={formData.profile.lifestyle.alcohol}
-                                      onChange={handleChange}
-                                      className="w-4 h-4 text-blue-600 rounded"
-                                    />
-                                  </label>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* Medical History */}
-                            <div className="md:col-span-2 pt-4 border-t border-slate-100">
-                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Medical Conditions (Comma separated)</label>
-                              <input
-                                type="text"
-                                value={formData.profile.medicalHistory.conditions.join(', ')}
-                                onChange={(e) => {
-                                  const conditions = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    profile: {
-                                      ...prev.profile,
-                                      medicalHistory: { ...prev.profile.medicalHistory, conditions }
-                                    }
-                                  }));
-                                }}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800"
-                                placeholder="e.g. Diabetes, Hypertension"
-                              />
-                            </div>
-
-                            {/* Diabetes Profile */}
-                             {formData.profile.isDiabetic === 'yes' && (
-                              <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-slate-100">
-                                <div>
-                                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Diabetes Type</label>
-                                  <select
-                                    name="profile.diabetesProfile.type"
-                                    value={formData.profile.diabetesProfile.type}
-                                    onChange={handleChange}
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4"
-                                  >
-                                    <option value="Type 1">Type 1</option>
-                                    <option value="Type 2">Type 2</option>
-                                    <option value="Prediabetes">Prediabetes</option>
-                                    <option value="Gestational">Gestational</option>
-                                  </select>
-                                </div>
-                                <div>
-                                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Current HbA1c (%)</label>
-                                  <input
-                                    type="number"
-                                    step="0.1"
-                                    name="profile.diabetesProfile.hba1c"
-                                    value={formData.profile.diabetesProfile.hba1c}
-                                    onChange={handleChange}
-                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4"
-                                  />
-                                </div>
-                              </div>
-                            )}
-                          </div>
-                          <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full py-4 bg-[#064e3b] text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#065f46] transition-all flex items-center justify-center gap-2 shadow-xl active:scale-95 border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
-                          >
-                            {loading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                            Update Profile Info
-                          </button>
-                        </form>
-                      </div>
-                    )}
-                  </div>
-                  {/* Fitness Goal Card */}
-                  <div className="bg-white rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden transition-all duration-300">
-                    <div
-                      onClick={() => setExpandedSection(expandedSection === 'goals' ? null : 'goals')}
-                      className="p-6 flex items-center justify-between cursor-pointer hover:bg-slate-50"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-2xl bg-[#064e3b]/10 text-[#064e3b] flex items-center justify-center">
-                          <Target className="w-6 h-6" />
-                        </div>
-                        <div>
-                          <h4 className="font-bold text-slate-900">Set Fitness Goals</h4>
-                          <p className="text-sm text-slate-500">Update weight loss or gain targets</p>
-                        </div>
-                      </div>
-                      <ChevronRight className={`w-6 h-6 text-slate-300 transition-transform duration-300 ${expandedSection === 'goals' ? 'rotate-90' : ''}`} />
-                    </div>
-
-                    {expandedSection === 'goals' && (
-                      <div className="px-6 pb-8 pt-2 animate-fade-in">
-                        <form onSubmit={handleGoalSubmit} className="space-y-6">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="md:col-span-2">
-                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Goal Objective</label>
-                              <select
-                                name="goalType"
-                                value={goalFormData.goalType}
-                                onChange={handleGoalChange}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 text-slate-800"
-                              >
-                                <option value="weight_loss">Weight Loss</option>
-                                <option value="weight_gain">Weight Gain</option>
-                                <option value="muscle_gain">Muscle Gain</option>
-                                <option value="maintain">Maintenance</option>
-                                <option value="general_health">General Health Improvement</option>
-                              </select>
-                            </div>
-                            {/* Age, Height, Current Weight — read-only from General Profile */}
-                            <div className="md:col-span-2 p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50">
-                              <p className="text-[10px] font-black text-[#065f46] uppercase tracking-wider mb-3">From Your Profile</p>
-                              <div className="grid grid-cols-3 gap-4">
-                                <div>
-                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Age</p>
-                                  <p className="text-lg font-bold text-slate-800">{profileAge || <span className="text-red-400 text-sm">Not set</span>}</p>
-                                </div>
-                                <div>
-                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Height</p>
-                                  <p className="text-lg font-bold text-slate-800">{profileHeight ? `${profileHeight} cm` : <span className="text-red-400 text-sm">Not set</span>}</p>
-                                </div>
-                                <div>
-                                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Weight</p>
-                                  <p className="text-lg font-bold text-slate-800">{profileWeight ? `${profileWeight} kg` : <span className="text-red-400 text-sm">Not set</span>}</p>
-                                </div>
-                              </div>
-                              {(!profileAge || !profileHeight || !profileWeight) && (
-                                <button type="button" onClick={() => setExpandedSection('profile')} className="mt-3 text-xs font-bold text-[#064e3b] hover:text-[#065f46] underline">
-                                  → Update in General Profile
-                                </button>
-                              )}
-                            </div>
-                            <div>
-                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Target Weight (kg)</label>
-                              <input
-                                type="number"
-                                name="targetWeight"
-                                value={goalFormData.targetWeight}
-                                onChange={handleGoalChange}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4 font-bold text-[#064e3b] focus:ring-2 focus:ring-[#064e3b]/10 focus:outline-none"
-                                placeholder="Target"
-                              />
-                            </div>
-                            
-                            {/* Validation & Information Feedback */}
-                            {goalFormData.targetWeight && profileWeight > 0 && (
-                              <div className="md:col-span-2 space-y-4">
-                                {(goalFormData.goalType === 'weight_loss' && Number(goalFormData.targetWeight) >= profileWeight) && (
-                                  <div className="p-4 bg-red-50 rounded-2xl border border-red-100 flex items-center gap-3 animate-shake mb-4">
-                                    <div className="p-2 bg-white rounded-lg shadow-sm">
-                                      <div className="w-5 h-5 text-red-500 font-bold text-xs flex items-center justify-center border-2 border-red-500 rounded-full">!</div>
-                                    </div>
-                                    <p className="text-xs font-bold text-red-900 leading-tight">
-                                      For weight loss, target ({goalFormData.targetWeight}kg) must be <span className="underline">lower</span> than current weight ({profileWeight}kg).
-                                    </p>
-                                  </div>
-                                )}
-                                {(goalFormData.goalType === 'weight_gain' && Number(goalFormData.targetWeight) <= profileWeight) && (
-                                  <div className="p-4 bg-red-50 rounded-2xl border border-red-100 flex items-center gap-3 animate-shake mb-4">
-                                    <div className="p-2 bg-white rounded-lg shadow-sm">
-                                      <div className="w-5 h-5 text-red-500 font-bold text-xs flex items-center justify-center border-2 border-red-500 rounded-full">!</div>
-                                    </div>
-                                    <p className="text-xs font-bold text-red-900 leading-tight">
-                                      For weight gain, target ({goalFormData.targetWeight}kg) must be <span className="underline">higher</span> than current weight ({profileWeight}kg).
-                                    </p>
-                                  </div>
-                                )}
-
-                                {(goalFormData.goalType === 'weight_loss' || goalFormData.goalType === 'weight_gain') && 
-                                 Math.abs(Number(goalFormData.targetWeight) - profileWeight) > 0.1 && (
-                                  <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 flex items-center gap-4 shadow-sm animate-fade-in">
-                                    <div className="p-3 bg-white rounded-xl shadow-md">
-                                      <Clock className="w-5 h-5 text-emerald-600" />
-                                    </div>
-                                    <div>
-                                      <p className="text-[10px] font-black text-emerald-400 uppercase tracking-widest mb-1">Estimated Roadmap</p>
-                                      <p className="text-sm font-bold text-[#064e3b] leading-none">
-                                        {Math.ceil(Math.abs(Number(goalFormData.targetWeight) - profileWeight) / 0.5)} Weeks 
-                                        <span className="ml-2 text-[10px] font-black text-emerald-400 uppercase tracking-wider">Goal: 0.5 kg / Week</span>
-                                      </p>
-                                      <p className="text-[10px] text-[#065f46] mt-1 font-medium opacity-60">
-                                        Sustainable target: {goalFormData.targetWeight}kg • Total variation: {Math.abs(Number(goalFormData.targetWeight) - profileWeight).toFixed(1)}kg
-                                      </p>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-
-                            <div className="md:col-span-2">
-                              <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Activity Level</label>
-                              <select
-                                name="activityLevel"
-                                value={goalFormData.activityLevel}
-                                onChange={handleGoalChange}
-                                className="w-full bg-slate-50 border border-slate-200 rounded-xl py-2 px-4"
-                              >
-                                <option value="sedentary">Sedentary (Little or no exercise)</option>
-                                <option value="lightly_active">Lightly Active (1-3 days/week)</option>
-                                <option value="moderately_active">Moderately Active (3-5 days/week)</option>
-                                <option value="very_active">Very Active (6-7 days/week)</option>
-                                <option value="extremely_active">Extremely Active (Athlete)</option>
-                              </select>
-                            </div>
-                          </div>
-
-                        {healthGoal && healthGoal.macroTargets && (
-                          <div className="p-4 bg-emerald-50 rounded-2xl border border-emerald-100 grid grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in shadow-inner">
-                            <div>
-                              <p className="text-[10px] font-black text-[#065f46] uppercase tracking-widest mb-1">Calories</p>
-                              <p className="text-xl font-black text-[#064e3b]">{healthGoal.dailyCalorieTarget || '—'}</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-black text-[#065f46] uppercase tracking-widest mb-1">Protein</p>
-                              <p className="text-xl font-black text-[#064e3b]">{healthGoal.macroTargets?.protein ? `${healthGoal.macroTargets.protein}g` : '—'}</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-black text-[#065f46] uppercase tracking-widest mb-1">Carbs</p>
-                              <p className="text-xl font-black text-[#064e3b]">{healthGoal.macroTargets?.carbs ? `${healthGoal.macroTargets.carbs}g` : '—'}</p>
-                            </div>
-                            <div>
-                              <p className="text-[10px] font-black text-[#065f46] uppercase tracking-widest mb-1">Fats</p>
-                              <p className="text-xl font-black text-[#064e3b]">{healthGoal.macroTargets?.fats ? `${healthGoal.macroTargets.fats}g` : '—'}</p>
-                            </div>
-                          </div>
-                        )}
-
-                          <button
-                            type="submit"
-                            disabled={goalLoading || 
-                              (goalFormData.goalType === 'weight_loss' && Number(goalFormData.targetWeight) >= profileWeight) ||
-                              (goalFormData.goalType === 'weight_gain' && Number(goalFormData.targetWeight) <= profileWeight)
-                            }
-                            className="w-full py-4 bg-[#064e3b] text-white rounded-2xl text-[10px] font-black uppercase tracking-[0.2em] hover:bg-[#065f46] transition-all flex items-center justify-center gap-2 shadow-xl active:scale-95 border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1 disabled:grayscale disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            {goalLoading && <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />}
-                            {((goalFormData.goalType === 'weight_loss' && Number(goalFormData.targetWeight) >= profileWeight) || 
-                              (goalFormData.goalType === 'weight_gain' && Number(goalFormData.targetWeight) <= profileWeight)) 
-                              ? 'Invalid Weight Target' 
-                              : 'Recalculate & Save Goal'}
-                          </button>
-                        </form>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Right Column: Mini Info / Stats (1/3 width) */}
-            <div className="space-y-8">
-              {/* AI Health Insights Section - Now above Account Control */}
-              <div className="space-y-6">
-                <div className="flex items-center gap-2">
-                  <div className="p-1.5 bg-purple-100 text-purple-600 rounded-lg">
-                    <Sparkles className="w-5 h-5 transition-transform group-hover:rotate-12" />
-                  </div>
-                  <h1 className="text-xl md:text-2xl font-bold text-slate-900 uppercase">AI Health Insights</h1>
-                </div>
-                <div className="bg-[#F8FAFF] rounded-[2rem] p-6 md:p-8 border border-[#EBF2FF] relative overflow-hidden group hover:shadow-md transition-all">
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-purple-200/20 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
-                  <div className="relative flex flex-col gap-5">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-white shadow-sm flex items-center justify-center flex-shrink-0 text-purple-600">
-                        <Activity className="w-6 h-6" />
-                      </div>
-                      <h4 className="text-lg font-bold text-slate-900">
-                        {extraData.latestAnalysis?.summary ? "Daily Analysis" : "Personalized Summary"}
-                      </h4>
-                    </div>
-                    <p className="text-slate-600 leading-relaxed text-sm">
-                      {extraData.latestAnalysis?.summary || 
-                       extraData.latestAnalysis?.recommendations?.lifestyle?.[0] ||
-                       user?.healthAnalysis?.summary || 
-                       "Based on your profile, we recommend maintaining a consistent sleep schedule and monitoring your activity levels."}
-                    </p>
-                    {extraData.latestAnalysis?.recommendations?.nutritional?.length > 0 && (
-                      <div className="pt-4 border-t border-purple-100/50">
-                        <p className="text-[10px] font-black text-purple-400 uppercase tracking-widest mb-2">Nutritional Focus</p>
-                        <p className="text-xs font-bold text-slate-700 italic">"{(extraData.latestAnalysis.recommendations.nutritional[0] || '').replace('Focus on: ', '')}"</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Account Control */}
-              <div className="bg-white rounded-[2rem] p-8 border border-slate-100 shadow-sm">
-                 <h3 className="text-xl font-bold text-slate-900 mb-6">Account Control</h3>
-                 <button
-                    onClick={logout}
-                    className="w-full flex items-center justify-between p-4 bg-red-50 text-red-600 rounded-2xl hover:bg-red-100 transition-all group"
+              <AnimatePresence>
+                {expandedSection === 'img_options' && (
+                  <motion.div 
+                    initial={{ opacity: 0, scale: 0.9, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.9, y: 10 }}
+                    className="absolute top-full left-0 mt-3 bg-white rounded-2xl shadow-2xl border border-slate-100 p-2 z-50 w-44"
+                    onClick={(e) => e.stopPropagation()}
                   >
-                    <div className="flex items-center gap-3">
-                      <LogOut className="w-5 h-5" />
-                      <span className="font-bold text-sm">Sign Out</span>
-                    </div>
-                    <ChevronRight className="w-4 h-4" />
-                  </button>
-              </div>
+                    <button 
+                      onClick={() => {
+                        fileInputRef.current?.click();
+                        setExpandedSection(null);
+                      }}
+                      className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl transition-colors"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-emerald-50 text-[#69A38D] flex items-center justify-center">
+                        <Upload size={14} />
+                      </div>
+                      <span className="text-[11px] font-black text-slate-600 uppercase tracking-tight">Upload Photo</span>
+                    </button>
+                    <button 
+                      onClick={() => {
+                        cameraInputRef.current?.click();
+                        setExpandedSection(null);
+                      }}
+                      className="w-full flex items-center gap-3 p-3 hover:bg-slate-50 rounded-xl transition-colors"
+                    >
+                      <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                        <Camera size={14} />
+                      </div>
+                      <span className="text-[11px] font-black text-slate-600 uppercase tracking-tight">Open Camera</span>
+                    </button>
+                    <div className="absolute -top-1.5 left-6 w-3 h-3 bg-white border-t border-l border-slate-100 rotate-45" />
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+            <input type="file" ref={fileInputRef} onChange={handleImageUpload} accept="image/*" className="hidden" />
+            <input type="file" ref={cameraInputRef} onChange={handleImageUpload} accept="image/*" capture="environment" className="hidden" />
+          </div>
+
+          <div className="flex-1 flex flex-col items-start gap-1">
+            <h2 className="text-[28px] font-black text-[#1a1a1a] leading-none mb-1">{user?.name}</h2>
+            <div className="flex flex-col gap-1 mb-2">
+              <p className="text-[16px] font-bold text-[#7B8B9A] flex items-center gap-2">
+                <span>{user?.profile?.age ? `${user.profile.age} yrs` : 'Age not set'}</span>
+                <span className="w-1 h-1 bg-[#D9D9D9] rounded-full" />
+                <span className="capitalize">{user?.profile?.gender || 'Other'}</span>
+                <span className="w-1 h-1 bg-[#D9D9D9] rounded-full" />
+                <span>{user?.profile?.height ? `${user.profile.height}cm` : 'Height not set'}</span>
+              </p>
+              <p className="text-[12px] font-bold text-slate-400 flex items-center gap-1.5 lowercase">
+                <Mail size={12} className="text-slate-300" />
+                {user?.email}
+              </p>
             </div>
           </div>
         </div>
+
+        {/* Summary Row */}
+        <div className="w-full grid grid-cols-2 gap-3 mb-8">
+           <div className="bg-white rounded-[24px] py-6 px-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-slate-50 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#69A38D]/10 flex items-center justify-center flex-shrink-0">
+                 <Heart size={18} className="text-[#69A38D]" />
+              </div>
+              <div className="min-w-0">
+                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-tight leading-none mb-1 truncate">Health Score</p>
+                 <div className="flex items-baseline gap-1">
+                    <span className="text-[18px] font-black text-[#1a1a1a]">{user?.healthMetrics?.healthScore || extraData.latestAnalysis?.healthScore || '92'}</span>
+                    <span className="text-[10px] font-bold text-slate-300">/100</span>
+                 </div>
+              </div>
+           </div>
+
+           <div className="bg-white rounded-[24px] py-6 px-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-slate-50 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#1F75FE]/10 flex items-center justify-center flex-shrink-0">
+                 <Activity size={18} className="text-[#1F75FE]" />
+              </div>
+              <div className="min-w-0">
+                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-tight leading-none mb-1 truncate">Current BMI</p>
+                 <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="text-[18px] font-black text-[#1a1a1a]">{bmi || '22.4'}</span>
+                    <span className={`text-[8px] font-black px-1 py-0.5 rounded-md bg-[#1F75FE]/10 text-[#1F75FE] uppercase whitespace-nowrap`}>{bmiStatus.label}</span>
+                 </div>
+              </div>
+           </div>
+        </div>
+
+        {/* Settings List */}
+        <div className="w-full bg-white rounded-[40px] shadow-[0_8px_40px_rgba(0,0,0,0.03)] border border-slate-50 overflow-hidden mb-8">
+           <div className="flex flex-col">
+              
+              {/* Account Details */}
+              <button 
+                onClick={() => setExpandedSection(expandedSection === 'account' ? null : 'account')}
+                className="w-full px-8 py-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group"
+              >
+                 <div className="flex items-center gap-5">
+                    <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                       <User size={20} className="text-slate-600" />
+                    </div>
+                    <span className="text-[16px] font-black text-[#1a1a1a] tracking-tight">Account Details</span>
+                 </div>
+                 <ChevronRight size={18} className={`text-slate-300 transition-transform ${expandedSection === 'account' ? 'rotate-90' : ''}`} />
+              </button>
+
+              <AnimatePresence>
+                {expandedSection === 'account' && (
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-slate-50/30 px-8 pb-8">
+                    <div className="pt-4">
+                       <form onSubmit={handleSubmit} className="space-y-6">
+                          <div className="grid grid-cols-2 gap-4">
+                             <div className="col-span-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Full Name</label>
+                                <input name="name" value={formData.name} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm font-bold shadow-sm focus:outline-none focus:border-[#69A38D]/30" />
+                             </div>
+                             <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Age</label>
+                                <input name="profile.age" value={formData.profile.age} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm font-bold shadow-sm focus:outline-none focus:border-[#69A38D]/30" />
+                             </div>
+                             <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Gender</label>
+                                <select name="profile.gender" value={formData.profile.gender} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm font-bold shadow-sm focus:outline-none">
+                                   <option value="male">Male</option>
+                                   <option value="female">Female</option>
+                                   <option value="other">Other</option>
+                                </select>
+                             </div>
+                             <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Height (cm)</label>
+                                <input name="profile.height" value={formData.profile.height} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm font-bold shadow-sm focus:outline-none" />
+                             </div>
+                             <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Weight (kg)</label>
+                                <input name="profile.weight" value={formData.profile.weight} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm font-bold shadow-sm focus:outline-none" />
+                             </div>
+                             <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Blood Group</label>
+                                <select name="profile.bloodGroup" value={formData.profile.bloodGroup} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm font-bold shadow-sm">
+                                   <option value="">Select</option>
+                                   {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => <option key={bg} value={bg}>{bg}</option>)}
+                                </select>
+                             </div>
+                             <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Phone Number</label>
+                                <input name="profile.phone" value={formData.profile.phone} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm font-bold shadow-sm focus:outline-none" />
+                             </div>
+
+                             <div className="col-span-2 pt-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block border-t border-slate-50 pt-4">Health & Lifestyle</label>
+                                <div className="grid grid-cols-2 gap-4">
+                                   <div>
+                                      <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Are you Diabetic?</label>
+                                      <select name="profile.isDiabetic" value={formData.profile.isDiabetic} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-xl py-2 px-3 text-xs font-bold">
+                                         <option value="no">No</option>
+                                         <option value="yes">Yes</option>
+                                      </select>
+                                   </div>
+                                   {formData.profile.isDiabetic === 'yes' && (
+                                      <div>
+                                         <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">HbA1c (%)</label>
+                                         <input name="profile.diabetesProfile.hba1c" value={formData.profile.diabetesProfile.hba1c} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-xl py-2 px-3 text-xs font-bold" placeholder="Level" />
+                                      </div>
+                                   )}
+                                   <div className="col-span-2">
+                                      <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Medical Conditions</label>
+                                      <input 
+                                         value={formData.profile.medicalHistory.conditions.join(', ')} 
+                                         onChange={(e) => {
+                                            const conds = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
+                                            setFormData(prev => ({ ...prev, profile: { ...prev.profile, medicalHistory: { conditions: conds } } }));
+                                         }}
+                                         className="w-full bg-white border border-slate-100 rounded-xl py-2 px-3 text-xs font-bold" 
+                                         placeholder="e.g. Hypertension, Asthma" 
+                                      />
+                                   </div>
+                                   <div className="col-span-2">
+                                      <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Allergies</label>
+                                      <input name="profile.allergies" value={formData.profile.allergies} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-xl py-2 px-3 text-xs font-bold" placeholder="e.g. Peanuts, Penicillin" />
+                                   </div>
+                                   <div className="flex items-center gap-6 mt-2 col-span-2 bg-white/50 p-3 rounded-xl border border-slate-50">
+                                      <label className="flex items-center gap-2 cursor-pointer">
+                                         <input type="checkbox" name="profile.lifestyle.smoker" checked={formData.profile.lifestyle.smoker} onChange={handleChange} className="w-4 h-4 rounded text-[#69A38D]" />
+                                         <span className="text-[10px] font-black text-slate-500 uppercase">Smoker</span>
+                                      </label>
+                                      <label className="flex items-center gap-2 cursor-pointer">
+                                         <input type="checkbox" name="profile.lifestyle.alcohol" checked={formData.profile.lifestyle.alcohol} onChange={handleChange} className="w-4 h-4 rounded text-[#69A38D]" />
+                                         <span className="text-[10px] font-black text-slate-500 uppercase">Alcohol</span>
+                                      </label>
+                                   </div>
+                                </div>
+                             </div>
+                          </div>
+                          <button type="submit" className="w-full py-4 bg-[#1a2138] text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.1em] hover:bg-[#252d4a] transition-all shadow-lg active:scale-95">
+                             {loading ? 'Saving Changes...' : 'Save Account Details'}
+                          </button>
+                       </form>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Goal Settings */}
+              <button 
+                onClick={() => setExpandedSection(expandedSection === 'goals' ? null : 'goals')} 
+                className="w-full px-8 py-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group"
+              >
+                 <div className="flex items-center gap-5">
+                    <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                       <Target size={20} className="text-slate-600" />
+                    </div>
+                    <span className="text-[16px] font-black text-[#1a1a1a] tracking-tight">Goal Settings</span>
+                 </div>
+                 <ChevronRight size={18} className={`text-slate-300 transition-transform ${expandedSection === 'goals' ? 'rotate-90' : ''}`} />
+              </button>
+              
+              <AnimatePresence>
+                {expandedSection === 'goals' && (
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-slate-50/30 px-8 pb-8">
+                    <div className="pt-4">
+                       <form onSubmit={handleGoalSubmit} className="space-y-6">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                             <div className="col-span-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Health Objective</label>
+                                <select 
+                                   name="goalType" 
+                                   value={goalFormData.goalType} 
+                                   onChange={handleGoalChange}
+                                   className="w-full bg-white border-2 border-[#69A38D]/20 rounded-2xl py-3 px-4 text-sm font-black shadow-sm focus:outline-none focus:border-[#69A38D]"
+                                >
+                                   <option value="weight_loss">Weight Loss</option>
+                                   <option value="maintain">Maintenance</option>
+                                   <option value="weight_gain">Weight Gain</option>
+                                </select>
+                             </div>
+
+                             <div className="col-span-2 p-5 bg-emerald-50/50 rounded-2xl border border-emerald-100/30">
+                                <p className="text-[10px] font-black text-[#69A38D] uppercase tracking-wider mb-4">Current Vitals</p>
+                                <div className="grid grid-cols-3 gap-4">
+                                   <div>
+                                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Weight</p>
+                                      <p className="text-lg font-black text-[#1a1a1a]">{formData.profile.weight || '—'} <span className="text-[10px] text-slate-300">kg</span></p>
+                                   </div>
+                                   <div>
+                                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Height</p>
+                                      <p className="text-lg font-black text-[#1a1a1a]">{formData.profile.height || '—'} <span className="text-[10px] text-slate-300">cm</span></p>
+                                   </div>
+                                   <div>
+                                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Age</p>
+                                      <p className="text-lg font-black text-[#1a1a1a]">{formData.profile.age || '—'}</p>
+                                   </div>
+                                </div>
+                             </div>
+
+                             <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Target Weight (kg)</label>
+                                <input 
+                                   type="number" 
+                                   name="targetWeight" 
+                                   value={goalFormData.targetWeight} 
+                                   onChange={handleGoalChange} 
+                                   className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm font-bold shadow-sm" 
+                                   placeholder="Desired weight"
+                                />
+                             </div>
+
+                             <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Activity Level</label>
+                                <select 
+                                   name="activityLevel" 
+                                   value={goalFormData.activityLevel} 
+                                   onChange={handleGoalChange} 
+                                   className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm font-bold shadow-sm"
+                                >
+                                   <option value="sedentary">Sedentary</option>
+                                   <option value="lightly_active">Light Active</option>
+                                   <option value="moderately_active">Moderate</option>
+                                   <option value="very_active">Very Active</option>
+                                </select>
+                             </div>
+
+                             {/* Roadmap & Macros Restored */}
+                             {goalFormData.targetWeight && formData.profile.weight > 0 && Math.abs(goalFormData.targetWeight - formData.profile.weight) > 1 && (
+                                <div className="col-span-2 p-5 bg-white rounded-2xl border border-slate-100 shadow-sm animate-fade-in">
+                                   <div className="flex items-center gap-4">
+                                      <div className="w-12 h-12 rounded-xl bg-[#69A38D]/10 flex items-center justify-center text-[#69A38D]">
+                                         <Clock size={24} />
+                                      </div>
+                                      <div>
+                                         <p className="text-[10px] font-black text-[#69A38D] uppercase tracking-widest">Estimated Roadmap</p>
+                                         <p className="text-[15px] font-black text-[#1a1a1a]">
+                                            {Math.ceil(Math.abs(goalFormData.targetWeight - formData.profile.weight) / 0.5)} Weeks 
+                                            <span className="ml-2 text-[10px] text-slate-400 font-bold uppercase tracking-tight">Sustainable Path</span>
+                                         </p>
+                                      </div>
+                                   </div>
+                                </div>
+                             )}
+
+                             {healthGoal?.macroTargets && (
+                                <div className="col-span-2 grid grid-cols-4 gap-2">
+                                   {[
+                                      { label: 'CAL', val: healthGoal.dailyCalorieTarget, unit: 'kcal', color: 'bg-slate-900', text: 'text-white' },
+                                      { label: 'PRO', val: healthGoal.macroTargets.protein, unit: 'g', color: 'bg-rose-50', text: 'text-rose-600' },
+                                      { label: 'CARB', val: healthGoal.macroTargets.carbs, unit: 'g', color: 'bg-amber-50', text: 'text-amber-600' },
+                                      { label: 'FAT', val: healthGoal.macroTargets.fats, unit: 'g', color: 'bg-emerald-50', text: 'text-emerald-600' }
+                                   ].map(m => (
+                                      <div key={m.label} className={`${m.color} rounded-xl p-3 flex flex-col items-center justify-center`}>
+                                         <span className={`text-[9px] font-black uppercase tracking-widest ${m.text} opacity-60 mb-1`}>{m.label}</span>
+                                         <span className={`text-sm font-black ${m.text}`}>{m.val}</span>
+                                         <span className={`text-[8px] font-bold ${m.text} opacity-50`}>{m.unit}</span>
+                                      </div>
+                                   ))}
+                                </div>
+                             )}
+                          </div>
+                          <button type="submit" disabled={goalLoading} className="w-full py-4 bg-[#69A38D] text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.1em] shadow-lg hover:bg-[#5a8b78] transition-all">
+                             {goalLoading ? 'Recalculating...' : 'Update & Sync Fitness Goal'}
+                          </button>
+                       </form>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Medical Records */}
+              <div className="relative">
+                 <button 
+                  onClick={() => setExpandedSection(expandedSection === 'reports' ? null : 'reports')}
+                  className="w-full px-8 py-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group"
+                 >
+                    <div className="flex items-center gap-5">
+                       <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                          <FileText size={20} className="text-slate-600" />
+                       </div>
+                       <span className="text-[16px] font-black text-[#1a1a1a] tracking-tight">Medical Records</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                       <span className="text-[12px] font-black text-[#69A38D] uppercase tracking-tight">View All</span>
+                       <ChevronRight size={18} className={`text-slate-300 transition-transform ${expandedSection === 'reports' ? 'rotate-90' : ''}`} />
+                    </div>
+                 </button>
+
+                 <AnimatePresence>
+                   {expandedSection === 'reports' && (
+                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-slate-50/30 border-b border-slate-50">
+                        <div className="p-4 space-y-2">
+                           {extraData.recentReports?.length > 0 ? (
+                              extraData.recentReports.map(report => (
+                                 <button 
+                                    key={report._id}
+                                    onClick={() => navigate(`/reports/${report._id}`)}
+                                    className="w-full p-3 bg-white rounded-xl border border-slate-100 flex items-center justify-between hover:border-[#69A38D]/30 transition-all"
+                                 >
+                                    <div className="flex items-center gap-3">
+                                       <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-[#69A38D]">
+                                          <FileText size={14} />
+                                       </div>
+                                       <span className="text-[12px] font-bold text-slate-700 truncate max-w-[150px]">{report.reportType}</span>
+                                    </div>
+                                    <span className="text-[10px] font-medium text-slate-400">{new Date(report.date).toLocaleDateString()}</span>
+                                 </button>
+                              ))
+                           ) : (
+                              <p className="text-[10px] font-bold text-slate-400 text-center py-2">No recent reports found</p>
+                           )}
+                           <button 
+                              onClick={() => navigate('/all-reports')}
+                              className="w-full py-2 text-[10px] font-black text-[#69A38D] uppercase tracking-widest text-center"
+                           >
+                              Full Record Access →
+                           </button>
+                        </div>
+                     </motion.div>
+                   )}
+                 </AnimatePresence>
+              </div>
+
+              <button onClick={() => navigate('/complete-analysis')} className="w-full px-8 py-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group">
+                 <div className="flex items-center gap-5">
+                    <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                       <TrendingUp size={20} className="text-slate-600" />
+                    </div>
+                    <span className="text-[16px] font-black text-[#1a1a1a] tracking-tight">Progress Reports</span>
+                 </div>
+                 <ChevronRight size={18} className="text-slate-300" />
+              </button>
+
+              <button className="w-full px-8 py-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group">
+                 <div className="flex items-center gap-5">
+                    <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                       <Bell size={20} className="text-slate-600" />
+                    </div>
+                    <span className="text-[16px] font-black text-[#1a1a1a] tracking-tight">Reminders</span>
+                 </div>
+                 <ChevronRight size={18} className="text-slate-300" />
+              </button>
+
+              <button onClick={() => setExpandedSection(expandedSection === 'profile' ? null : 'profile')} className="w-full px-8 py-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors group">
+                 <div className="flex items-center gap-5">
+                    <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                       <Settings size={20} className="text-slate-600" />
+                    </div>
+                    <span className="text-[16px] font-black text-[#1a1a1a] tracking-tight">Account Settings</span>
+                 </div>
+                 <ChevronRight size={18} className={`text-slate-300 transition-transform ${expandedSection === 'profile' ? 'rotate-90' : ''}`} />
+              </button>
+              
+              <AnimatePresence>
+                {expandedSection === 'profile' && (
+                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-slate-50/30 px-8 pb-8">
+                    <div className="pt-4">
+                       <form onSubmit={handleSubmit} className="space-y-4">
+                          <div className="grid grid-cols-2 gap-4">
+                             <div className="col-span-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Full Name</label>
+                                <input name="name" value={formData.name} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm font-bold" />
+                             </div>
+                             <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Age</label>
+                                <input name="profile.age" value={formData.profile.age} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm font-bold" />
+                             </div>
+                             <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Phone</label>
+                                <input name="profile.phone" value={formData.profile.phone} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm font-bold" />
+                             </div>
+                          </div>
+                          <button type="submit" className="w-full py-3 bg-[#1a2138] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest">{loading ? 'Saving...' : 'Save Settings'}</button>
+                       </form>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+           </div>
+        </div>
+
+        {/* Logout Button */}
+        <button onClick={logout} className="w-full py-5 bg-white rounded-[24px] border border-slate-100 shadow-sm flex items-center justify-center gap-3 hover:bg-rose-50 hover:border-rose-100 transition-all group">
+           <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center group-hover:bg-white">
+              <LogOut size={16} className="text-rose-500" />
+           </div>
+           <span className="text-[15px] font-black text-rose-500 tracking-tight">Logout</span>
+        </button>
+
       </div>
     </div>
   );

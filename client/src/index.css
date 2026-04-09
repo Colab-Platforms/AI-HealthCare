@@ -1,4 +1,5 @@
-﻿@import url("https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Libre+Caslon+Text:ital,wght@0,400;0,700;1,400&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Libre+Caslon+Display&family=Outfit:wght@100..900&display=swap");
@@ -459,9 +460,11 @@ textarea:focus {
   display: flex;
   align-items: center;
   justify-content: space-around;
-  background: #ffffff;
-  height: 70px;
-  border-radius: 28px 28px 0 0;
+  background: rgba(226, 238, 210, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  height: 91.1px;
+  border-radius: 29.8px 29.8px 0 0;
   box-shadow: 0 -10px 40px rgba(0, 0, 0, 0.05);
   overflow: visible;
   padding: 0 10px;

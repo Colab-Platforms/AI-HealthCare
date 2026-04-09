@@ -34,16 +34,24 @@ import AdminFoodCache from './pages/AdminFoodCache';
 import StepTracker from './pages/StepTracker';
 import FoodSafety from './pages/FoodSafety';
 import CompleteAnalysis from './pages/CompleteAnalysis';
+import Onboarding from './pages/Onboarding';
 import LandingPage from './components/landing/LandingPage';
 // import HealthDNA from './pages/HealthDNA';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   
   if (loading) return <GenericSkeleton />;
   if (!user) return <Navigate to="/login" replace />;
   
+  // Check onboarding for regular users
+  const hasSeenOnboarding = localStorage.getItem('has_seen_onboarding') || user?.profile?.hasSeenMobileTour;
+  if (user.role === 'user' && !hasSeenOnboarding && location.pathname !== '/onboarding') {
+    return <Navigate to="/onboarding" replace />;
+  }
+
   // New users or default 'user' role should be treated as patients/clients
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     if (user.role === 'admin' || user.role === 'superadmin') {
@@ -151,6 +159,7 @@ export default function App() {
 
           <Route path="/admin/food-cache" element={<AdminRoute><Layout isAdmin><AdminFoodCache /></Layout></AdminRoute>} />
 
+          <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
           <Route path="/demo" element={<DemoPreview />} />
         </Routes>
       </div>

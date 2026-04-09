@@ -1,3 +1,4 @@
+const axios = require('axios');
 const HealthReport = require('../models/HealthReport');
 const FoodLog = require('../models/FoodLog');
 const User = require('../models/User');
@@ -29,14 +30,22 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
     if (!userDoc) throw new Error('User not found');
 
     let aiAnalysis;
-    if (fileMimetype === 'application/pdf') {
-      aiAnalysis = await analyzeHealthReport(extractedText, userDoc);
-    } else {
-      aiAnalysis = await analyzeHealthReport(null, userDoc, {
-        buffer: dataBuffer,
-        mimetype: fileMimetype
-      });
+    
+    // Ensure we have a buffer for vision/document analysis if it's not provided
+    if (!dataBuffer) {
+      const updatedReport = await HealthReport.findById(reportId);
+      if (updatedReport && updatedReport.originalFile?.cloudinaryUrl) {
+        console.log(`📥 [BG] Fetching file from Cloudinary for analysis: ${updatedReport.originalFile.cloudinaryUrl}`);
+        const axios = require('axios');
+        const response = await axios.get(updatedReport.originalFile.cloudinaryUrl, { responseType: 'arraybuffer' });
+        dataBuffer = Buffer.from(response.data);
+      }
     }
+
+    aiAnalysis = await analyzeHealthReport(extractedText, userDoc, {
+      buffer: dataBuffer,
+      mimetype: fileMimetype
+    });
 
     const updatedReport = await HealthReport.findById(reportId);
     if (!updatedReport) return;
@@ -100,15 +109,6 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
     // 🚀 Auto-trigger diet plan generation after successful report analysis
     try {
       const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
-<<<<<<< HEAD
-      const existingPlan = await PersonalizedDietPlan.findOne({ userId, isActive: true });
-      if (!existingPlan) {
-        console.log('[BG] No active diet plan found. Auto-generating based on new report...');
-        // Trigger diet generation in background (non-blocking)
-        const { generateDietAfterReport } = require('./dietRecommendationController');
-        if (generateDietAfterReport) {
-          setImmediate(() => generateDietAfterReport(userId).catch(e => console.warn('[BG] Auto-diet failed:', e.message)));
-=======
       const existingPlan = await PersonalizedDietPlan.findOne({ userId, isActive: true, status: 'completed' });
       if (!existingPlan) {
         console.log('[BG] No active diet plan found. Auto-generating based on new report...');
@@ -128,7 +128,6 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
           if (generateDietAfterReport) {
             setImmediate(() => generateDietAfterReport(userId).catch(e => console.warn('[BG] Auto-diet failed:', e.message)));
           }
->>>>>>> 3b4b025e0dd07e969b27879e47e90e6678a4857a
         }
       }
     } catch (dietErr) {
@@ -189,10 +188,17 @@ exports.uploadReport = async (req, res) => {
     let extractedText = '';
     
     if (req.file.mimetype === 'application/pdf') {
-      const pdfData = await pdfParse(dataBuffer);
-      extractedText = pdfData.text;
+      try {
+        const pdfData = await pdfParse(dataBuffer);
+        extractedText = pdfData.text;
+      } catch (e) {
+        console.warn('PDF Text extraction failed, relying on AI Vision/OCR:', e.message);
+        extractedText = '';
+      }
+    } else if (req.file.mimetype === 'text/plain') {
+      extractedText = dataBuffer.toString('utf8');
     } else {
-      extractedText = req.body.manualText || 'Vision analysis requested';
+      extractedText = req.body.manualText || '';
     }
 
     let cloudinaryUrl = null;
@@ -227,7 +233,7 @@ exports.uploadReport = async (req, res) => {
         extractedText
       }, baseUrl);
     } else {
-      setImmediate(() => processReportInternal(req.user._id, report._id, req.file.mimetype, extractedText));
+      setImmediate(() => processReportInternal(req.user._id, report._id, req.file.mimetype, extractedText, dataBuffer));
     }
 
   } catch (error) {
@@ -504,8 +510,20 @@ exports.aiChat = async (req, res) => {
     let systemPrompt = `Helpful medical AI. User: ${req.user.name}. Context: ${latestReport?.aiAnalysis?.summary || 'None'}`;
     const userMessages = (conversationHistory || []).slice(-5).map(m => ({ role: m.role, content: m.content }));
     userMessages.push({ role: 'user', content: query });
-    const axios = require('axios');
-    const response = await axios.post('https://api.anthropic.com/v1/messages', { model: 'claude-3-5-sonnet-latest', system: systemPrompt, messages: userMessages, max_tokens: 1500 }, { headers: { 'x-api-key': anthropicKey, 'anthropic-version': '2023-06-01', 'Content-Type': 'application/json' }, timeout: 45000 });
+    const { CLAUDE_MODEL } = require('../services/aiService');
+    const response = await axios.post('https://api.anthropic.com/v1/messages', { 
+      model: CLAUDE_MODEL, 
+      system: systemPrompt, 
+      messages: userMessages, 
+      max_tokens: 1500 
+    }, { 
+      headers: { 
+        'x-api-key': anthropicKey, 
+        'anthropic-version': '2023-06-01', 
+        'Content-Type': 'application/json' 
+      }, 
+      timeout: 45000 
+    });
     res.json({ success: true, response: response.data.content[0].text });
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -3,9 +3,13 @@ const { robustJsonParse } = require('../utils/aiParser');
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
-// 🚨 USER SPECIFIC MODEL - The user insists on using 'claude-sonnet-4-6' for EVERYTHING
+// 🚨 USER SPECIFIC MODEL - Updated to valid Anthropic model IDs for 2026
 const CLAUDE_MODEL = 'claude-sonnet-4-6'; 
-const CLAUDE_HAIKU_MODEL = 'claude-sonnet-4-6';
+const CLAUDE_HAIKU_MODEL = 'claude-4-haiku-latest';
+
+// Export for other services
+exports.CLAUDE_MODEL = CLAUDE_MODEL;
+exports.CLAUDE_HAIKU_MODEL = CLAUDE_HAIKU_MODEL;
 
 const makeAnthropicRequest = async (messages, maxTokens = 4096, modelOverride = null) => {
   try {
@@ -81,40 +85,53 @@ STRUCTURE:
       "symptoms": ["Symptom1", "Symptom2"]
     }
   },
-<<<<<<< HEAD
-  "deficiencies": [{"name": "Vit D", "severity": "mild/moderate/severe"}],
-=======
   "deficiencies": [{"name": "Vit D", "severity": "mild/moderate/severe", "currentValue": "value", "normalRange": "range", "explanation": "Why this matters in simple terms"}],
->>>>>>> 3b4b025e0dd07e969b27879e47e90e6678a4857a
   "recommendations": {"immediate": [], "lifestyle": []},
   "doctorConsultation": {"recommended": true, "urgency": "low", "specializations": ["Specialist"]}
 }
 CRITICAL: Extraction is your priority. Scan the entire report text and populate the "metrics" object with ALL found markers. For EACH metric, you MUST fill in whatIsThis, whatItDoes, lowHighImpact, topFoods, and symptoms.
-<<<<<<< HEAD
-IMPORTANT: Deficiency "severity" MUST be one of: "mild", "moderate", "severe".`;
-=======
 IMPORTANT: Deficiency "severity" MUST be one of: "mild", "moderate", "severe".
-IMPORTANT: The "doctorSummary" MUST be written like a real doctor talking to the patient. Do NOT write bullet points — write flowing, conversational paragraphs with Markdown bolding for emphasis. Be warm, professional, and thorough.`;
->>>>>>> 3b4b025e0dd07e969b27879e47e90e6678a4857a
+IMPORTANT: The "doctorSummary" MUST be written like a real doctor talking to the patient. Do NOT write bullet points — write flowing, conversational paragraphs with Markdown bolding for emphasis. Be warm, professional, and thorough.
+IMPORTANT: The "doctorAdvice" array MUST consist of 3-5 specific, actionable points derived directly from the user's specific bio-marker results. Include the "why" for each advice based on their clinical data. Avoid generic advice.`;
 
-exports.analyzeHealthReport = async (reportText, user = {}, imageData = null, reportType = 'general') => {
+exports.analyzeHealthReport = async (reportText, user = {}, fileData = null, reportType = 'general') => {
   try {
     let userContext = `User: ${user.name || 'Patient'}. Type: ${reportType}`;
     const userContent = [];
     
-    if (reportText) {
-      userContent.push({ type: 'text', text: `${userContext}\n\nReport:\n${reportText.substring(0, 30000)}` });
+    if (reportText && reportText.trim()) {
+      userContent.push({ type: 'text', text: `${userContext}\n\nExtracted Text:\n${reportText.substring(0, 50000)}` });
+    } else {
+      userContent.push({ type: 'text', text: userContext });
     }
 
-    if (imageData && imageData.buffer) {
-      userContent.push({
-        type: 'image',
-        source: { type: 'base64', media_type: imageData.mimetype || 'image/jpeg', data: imageData.buffer.toString('base64') }
-      });
+    if (fileData && fileData.buffer) {
+      const mimetype = fileData.mimetype || 'image/jpeg';
+      
+      if (mimetype === 'application/pdf') {
+        // Use Anthropic PDF support (Beta/Claude 3+)
+        userContent.push({
+          type: 'document',
+          source: { 
+            type: 'base64', 
+            media_type: 'application/pdf', 
+            data: fileData.buffer.toString('base64') 
+          }
+        });
+      } else if (mimetype.startsWith('image/')) {
+        userContent.push({
+          type: 'image',
+          source: { 
+            type: 'base64', 
+            media_type: mimetype, 
+            data: fileData.buffer.toString('base64') 
+          }
+        });
+      }
     }
 
     const messages = [{ role: 'system', content: HEALTH_ANALYSIS_PROMPT }, { role: 'user', content: userContent }];
-    const content = await makeAnthropicRequest(messages, 8000); // 8000 tokens for comprehensive extraction
+    const content = await makeAnthropicRequest(messages, 8000); 
 
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) throw new Error('AI format invalid');
