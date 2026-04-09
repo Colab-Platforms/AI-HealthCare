@@ -1028,42 +1028,8 @@ export default function DashboardEnhanced() {
       });
       return dailyGaps.sort((a, b) => a.percent - b.percent).slice(0, 3);
     }
-    // Priority 3: Dummy Data for all users if no logs exist
-    return [
-      {
-        name: 'Vitamin D',
-        status: 'Low',
-        currentValue: '18',
-        normalRange: '30-100',
-        unit: 'ng/mL',
-        percent: 45,
-        food: 'Fatty fish, Egg yolks, Fortified milk',
-        supplement: 'Vitamin D3 (2000 IU)',
-        type: 'dummy'
-      },
-      {
-        name: 'Iron (Ferritin)',
-        status: 'Deficient',
-        currentValue: '22',
-        normalRange: '30-400',
-        unit: 'ng/mL',
-        percent: 32,
-        food: 'Spinach, Beetroot, Red meat',
-        supplement: 'Ferrous Sulfate',
-        type: 'dummy'
-      },
-      {
-        name: 'Vitamin B12',
-        status: 'Moderate',
-        currentValue: '210',
-        normalRange: '200-900',
-        unit: 'pg/mL',
-        percent: 65,
-        food: 'Dairy, Eggs, Fortified cereals',
-        supplement: 'Methylcobalamin',
-        type: 'dummy'
-      }
-    ];
+
+    return [];
   }, [dashboardData, nutritionData]);
 
   const cardCount = 3;

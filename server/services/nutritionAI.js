@@ -2,8 +2,8 @@ const axios = require('axios');
 const { robustJsonParse } = require('../utils/aiParser');
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-// Next-gen high-speed model for results in 10-15 seconds
-const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
+// Next-gen high-fidelity model for results in 10-15 seconds
+const CLAUDE_MODEL = 'claude-sonnet-4-6';
 
 class NutritionAI {
   constructor() {
@@ -36,7 +36,7 @@ class NutritionAI {
         max_tokens: payload.max_tokens || 2000,
         system: payload.system || '',
         messages: payload.messages || [],
-        temperature: 0
+        temperature: 0.4
       };
 
       // Vision requests can be very slow - using 2-minute timeout
@@ -69,15 +69,16 @@ class NutritionAI {
     2. If NOT food (e.g., a person, a car, a document, or a completely empty plate), set "isFood" to false and provide a helpful "errorMessage".
     3. If it IS food, perform high-precision nutritional analysis.
     
-    SPECIAL INSTRUCTIONS FOR ACCURACY:
-    - IDENTIFICATION: Be specific. Instead of "Curry", identify if it is "Butter Chicken" or "Chana Masala" based on visual cues.
-    - PORTION SENSE: Use the context "${context}" for quantity. If context is missing, use visual estimation (e.g., "1 bowl", "2 slices").
-    - MACRO PRECISION: Use the following multipliers for total calculations:
+    - IDENTIFICATION: Be specific. Identify the exact dish (e.g., "Egg Curry" vs "Boiled Egg").
+    - REFERENCE DATA: Use official nutritional databases (USDA, Indian Food Composition Tables (IFCT)) as your primary source for all values.
+    - PORTION SENSE: Use the context "${context}" for quantity. If context is missing, use standard serving sizes.
+    - MACRO PRECISION (MANDATORY): Use these multipliers:
         * 1g Protein = 4 kcal
         * 1g Carb = 4 kcal
         * 1g Fat = 9 kcal
-      Ensure (Protein*4 + Carbs*4 + Fats*9) roughly equals total calories.
-    - Indian Cuisine Knowledge: Account for oils (Ghee/Butter) used in Indian cooking which significantly increase fat/calorie counts even in small portions.
+      The sum (Protein*4 + Carbs*4 + Fats*9) MUST exactly match the total calories returned.
+    - COMPOSITE DECOMPOSITION: For complex meals (e.g., "Bagel with Cream Cheese and Chicken"), mentally break down the food into its components (Bagel + Cream Cheese + Chicken), calculate for each, and then aggregate. Do not use generic "Sandwich" averages.
+    - EXCLUSIVITY: Do NOT use generic averages. Account for the specific preparation mentioned (oils, frying, etc.).
     
     JSON STRUCTURE:
     {

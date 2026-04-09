@@ -15,94 +15,7 @@ const withTimeout = (query, timeoutMs = 30000) => {
 };
 
 // --- HARDCODED NUTRITIONAL STANDARDS FOR 100% ACCURACY ---
-const STANDARDS = {
-  egg: { calories: 70, protein: 6, fats: 5, carbs: 0.5, unit: 'egg' },
-  chicken: { calories: 165, protein: 31, fats: 3.6, carbs: 0, unit: '100g' },
-  paneer: { calories: 265, protein: 18, fats: 20, carbs: 1.2, unit: '100g' },
-  apple: { calories: 95, protein: 0.5, fats: 0.3, carbs: 25, unit: 'apple' },
-  chapati: { calories: 104, protein: 3, fats: 0.4, carbs: 22, unit: 'chapati' },
-  roti: { calories: 104, protein: 3, fats: 0.4, carbs: 22, unit: 'roti' },
-  rice: { calories: 130, protein: 2.7, fats: 0.3, carbs: 28, unit: '100g' },
-  biryani: { calories: 180, protein: 9, fats: 8, carbs: 22, unit: '100g' },
-  dal: { calories: 116, protein: 9, fats: 0.4, carbs: 20, unit: '100g' }
-};
 
-const applyStandards = (foodName, description, data) => {
-  const name = String(foodName || '').toLowerCase();
-  const desc = String(description || '').toLowerCase();
-  const combined = `${name} ${desc}`;
-  
-  // Supported units for matching
-  const weightUnits = ['g', 'gram', 'ml', 'milliliter'];
-
-  // 1. Identify if this is a composite food (Biryani, Burger, etc.)
-  // We prioritize composite standards over component standards.
-  const compositeKeywords = ['biryani', 'pizza', 'sandwich', 'burger', 'roll', 'wrap', 'curry', 'masala', 'fried rice', 'pulao'];
-  const isComposite = compositeKeywords.some(comp => combined.includes(comp));
-
-  // 2. Extract Quantity from either the analyzed name or original query
-  const { qty, unit: detectedUnit } = extractQuantity(combined);
-  
-  for (const [key, std] of Object.entries(STANDARDS)) {
-    // Check if the staple name exists
-    if (combined.includes(key)) {
-      
-      // STAPLE PROTECTION: 
-      // If we are matching 'chicken' but it's a 'chicken biryani', skip if key is just 'chicken'.
-      if (isComposite && key !== 'biryani' && combined.includes('biryani')) continue;
-      if (isComposite && key !== 'rice' && combined.includes('rice') && key === 'rice') { /* rice is okay for rice dishes */ }
-      else if (isComposite && !key.includes(combined.split(' ').find(w => compositeKeywords.includes(w)) || '')) {
-         // Generic component matching protection
-         if (key === 'chicken' || key === 'paneer' || key === 'egg') {
-           if (!name.startsWith(key) && name.length > key.length + 3) continue;
-         }
-      }
-
-      let factor = qty;
-      const usesGrams = weightUnits.some(u => combined.includes(u));
-
-      // FIXED FACTOR MATH
-      if (std.unit === '100g') {
-        if (usesGrams) {
-          factor = qty / 100;
-        } else {
-          // If no grams specified (e.g. "Chicken Biryani"), assume a standard serving (e.g. 250g)
-          // or just 1.0 if we want to stick to base.
-          factor = 1.0; 
-        }
-      } else {
-        // For unit-based (eggs, chapatis), factor is just the quantity
-        factor = qty;
-      }
-      
-      console.log(`🎯 [Rigid Standard] Applied: "${key}" | Qty: ${qty} | Factor: ${factor.toFixed(2)}`);
-      
-      const standardized = {
-        ...data,
-        calories: parseFloat((std.calories * factor).toFixed(1)),
-        protein: parseFloat((std.protein * factor).toFixed(1)),
-        fats: parseFloat((std.fats * factor).toFixed(1)),
-        carbs: parseFloat((std.carbs * factor).toFixed(1)),
-        _isStandardized: true
-      };
-
-      // Ensure all UI paths get the same data
-      const macroKeys = ['calories', 'protein', 'fats', 'carbs'];
-      if (standardized.foodItem?.nutrition) {
-         macroKeys.forEach(k => standardized.foodItem.nutrition[k] = standardized[k]);
-      }
-      if (standardized.nutrition) {
-         macroKeys.forEach(k => standardized.nutrition[k] = standardized[k]);
-      }
-       if (standardized.totalNutrition) {
-         macroKeys.forEach(k => standardized.totalNutrition[k] = standardized[k]);
-      }
-
-      return standardized;
-    }
-  }
-  return data;
-};
 // Helper to safely convert to Number (handles strings with units like "50 kcal" or "20g")
 const getNum = (val) => {
   if (val === null || val === undefined) return 0;
@@ -258,15 +171,10 @@ const normalizeAnalysisResult = (item) => {
     _isFromCache: true
   };
 
-  // APPLY RIGID STANDARDS (Override AI and Cached variance)
-  // BUT SKIP for image-based scans — the AI vision model has already computed
-  // portion-accurate nutrition by actually seeing the food. Standards are only
-  // useful for text-based queries where quantity/portion is ambiguous.
-  if (pojo.scanType === 'image') {
-    return base;
-  }
-  return applyStandards(base.foodItem.name, base.foodItem.quantity, base);
-};
+  // ─── PURE AI ANALYSIS (BYPASSING LEGACY STANDARDS OVERRIDE) ───
+  // We now rely 100% on Claude Sonnet 4.6's reasoning for accuracy
+  return base;
+}
 
 // --- SMART PROPORTIONAL SCALING (NEW) ---
 const scaleNutrition = (pojo, factor) => {
@@ -336,83 +244,7 @@ const extractQuantity = (str) => {
   return { qty: 1, food: s, unit: '' };
 };
 
-const findAndScaleCachedFood = async (description) => {
-  if (!description) return null;
-  const query = description.trim().toLowerCase();
 
-  const { qty: searchQty, food: searchFood, unit: searchUnit } = extractQuantity(query);
-  console.log(`🔍 [Cache Search] "${searchFood}" | Quantity: ${searchQty}${searchUnit}`);
-
-  // 1. Exact Match Check (Stricter about quantity)
-  const exactMatch = await QuickFoodCheck.findOne({
-    $or: [
-      { searchDescription: query }, 
-      { foodName: { $regex: new RegExp(`^${description.trim()}$`, 'i') } }
-    ]
-  }).sort({ timestamp: -1 });
-
-  if (exactMatch) {
-    let result = normalizeAnalysisResult(exactMatch);
-    const { qty: matchQty, unit: matchUnit } = extractQuantity(exactMatch.searchDescription || exactMatch.foodName || exactMatch.quantity || '');
-    
-    // If quantities match and units match, return it
-    if (Math.abs(matchQty - searchQty) < 0.01 && matchUnit === searchUnit && (result.calories > 0 || query.includes('water'))) {
-      console.log('✅ [Cache Hit] Exact match found with correct quantity.');
-      return result;
-    }
-
-    // NEW: If string matches but quantity differs, scale EXACT MATCH result immediately
-    const factor = searchQty / (matchQty || 1);
-    console.log(`⚖️ [Smart Scale] Exact string match but quantity mismatch (${matchQty} vs ${searchQty}). Auto-scaling by ${factor.toFixed(2)}x`);
-    result = scaleNutrition(result, factor);
-    result.quantity = description;
-    
-    // Re-apply standards to ensure accuracy after scaling
-    const finalResult = applyStandards(description, description, result);
-    finalResult._isScaled = true;
-    return finalResult;
-  }
-
-  // 2. Proportional Scaling Match (e.g., "200g chicken" -> scale from "100g")
-  const cleanSuffix = searchFood.replace(/^g\s+/, '').replace(/s$/, '').replace(/ies$/, 'y').replace(/^(plate|bowl|cup|serving)\s+of\s+/, '');
-  console.log(`⚖️ [Smart Scale] Attempting to find base items for: "${cleanSuffix}"`);
-  
-  const baseItems = await QuickFoodCheck.find({
-    $or: [
-      { foodName: { $regex: new RegExp(`^${cleanSuffix}$`, 'i') } },
-      { searchDescription: { $regex: new RegExp(`^\\d*\\s*[a-zA-Z]*\\s*${cleanSuffix}$`, 'i') } },
-      { searchDescription: cleanSuffix }
-    ]
-  }).sort({ timestamp: -1 }).limit(15);
-
-  for (const item of baseItems) {
-    const { qty: itemQty, unit: itemUnit } = extractQuantity(item.searchDescription || item.foodName || item.quantity);
-    
-    if (itemQty > 0) {
-      let factor = searchQty / itemQty;
-      
-      // Unit Normalization
-      if ((searchUnit === 'g' || searchUnit === 'ml') && (!itemUnit || itemUnit === 'serving' || itemUnit === 'unit')) {
-        factor = searchQty / 100; // Assume base unit is 100g for staples
-      } else if (searchUnit !== itemUnit && searchUnit && itemUnit) {
-        continue; // Mismatch - skip
-      }
-
-      let result = normalizeAnalysisResult(item);
-      if (result.calories < 10 && !query.includes('water')) continue;
-
-      console.log(`⚖️ [Smart Scale] Match: "${item.foodName}" (${itemQty}${itemUnit}). Factor: ${factor.toFixed(2)}x`);
-      let scaled = scaleNutrition(result, factor);
-      scaled.quantity = description;
-      
-      // Final Force-override with Standards
-      scaled = applyStandards(description, description, scaled);
-      scaled._isScaled = true;
-      return scaled;
-    }
-  }
-  return null;
-};
 
 // Analyze food from image or text
 exports.analyzeFood = async (req, res) => {
@@ -468,17 +300,12 @@ exports.analyzeFood = async (req, res) => {
         
       console.log('🔑 [Cache Key]:', searchKey);
       
-      // ─── GLOBAL INTELLIGENCE CACHE (NOW WITH SMART SCALING) ───
-      const cachedResult = await findAndScaleCachedFood(searchKey);
-
-      if (cachedResult) {
-        console.log('📦 Global Intelligence Cache Hit (Exact or Scaled):', foodDescription);
-        analysis = { success: true, data: cachedResult, source: 'global_history' };
-      } else {
-        analysis = await nutritionAI.quickFoodCheck(foodDescription, additionalContext);
-        
-        // Save to cache for future use
-        if (analysis?.success && analysis?.data?.foodItem) {
+      // ─── PURE AI ANALYSIS (BYPASSING CACHE & STANDARDS AS REQUESTED) ───
+      console.log('Using Pure AI analysis for text/voice log...');
+      analysis = await nutritionAI.quickFoodCheck(foodDescription, additionalContext);
+      
+      // Save for historical reference but do not use for retrieval next time
+      if (analysis?.success && analysis?.data?.foodItem) {
           const aiData = analysis.data;
           const nutrition = {
             calories: getNum(aiData.foodItem?.nutrition?.calories || aiData.totalNutrition?.calories || aiData.calories),
@@ -513,7 +340,6 @@ exports.analyzeFood = async (req, res) => {
             timestamp: new Date()
           });
           await cacheEntry.save().catch(e => console.error('Cache save error in analyzeFood:', e.message));
-        }
       }
     }
 
@@ -1730,28 +1556,12 @@ exports.quickFoodCheck = async (req, res) => {
         analysis = await nutritionAI.quickFoodCheck(fallbackContext);
       }
     } else {
-      console.log('📝 Using text analysis for:', foodDescription);
-      console.log('🔑 [Cache Key]:', searchKey, '| Original:', foodDescription, '| Quantity:', quantity);
-
-      // ─── GLOBAL INTELLIGENCE CACHE (NOW WITH SMART SCALING) ───
-      const cachedResult = await findAndScaleCachedFood(searchKey);
-
-      if (cachedResult && !imageBase64) {
-        console.log('♻️ [Cache Hit] Global Intelligence reused (Exact or Scaled) for:', foodDescription);
-        
-        return res.json({
-          success: true,
-          data: cachedResult,
-          isCached: true,
-          source: 'global_cache',
-          message: 'Retrieved from Global Intelligence Cache'
-        });
-      }
-
+      // ─── PURE AI ANALYSIS (BYPASSING CACHE & STANDARDS AS REQUESTED) ───
+      console.log('📝 Using Pure AI analysis for:', foodDescription);
       analysis = await nutritionAI.quickFoodCheck(foodDescription, additionalContext);
     }
 
-    if (!analysis.success || !analysis.data) {
+    if (!analysis?.success || !analysis?.data) {
       throw new Error('AI failed to return valid data');
     }
 
