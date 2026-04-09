@@ -781,14 +781,15 @@ function Nutrition() {
           />
 
           {/* View Meal Detail Modal */}
-          {viewingMeal && (
-            <MealAnalysisModal
-              isOpen={!!viewingMeal}
-              onClose={() => setViewingMeal(null)}
-              meal={viewingMeal}
-              source="view"
-            />
-          )}
+          <AnimatePresence>
+            {viewingMeal && (
+              <MealAnalysisModal
+                meal={viewingMeal}
+                onClose={() => setViewingMeal(null)}
+                source="view"
+              />
+            )}
+          </AnimatePresence>
        </div>
 
       {/* Add Meal Modal */}
