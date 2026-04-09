@@ -1,7 +1,45 @@
 import { ArrowRightIcon } from "lucide-react";
 import { Link } from "react-router-dom";
 import { motion, useScroll, useTransform, useSpring } from "framer-motion";
-import { useRef } from "react";
+import { useRef, Suspense } from "react";
+import { Canvas, useFrame } from "@react-three/fiber";
+import { useGLTF, Environment } from "@react-three/drei";
+
+function Model({ scrollYProgress }) {
+  const { scene } = useGLTF("/landing/demo/man-comp.glb");
+  const modelRef = useRef();
+
+  useFrame(() => {
+    if (modelRef.current) {
+      const scroll = scrollYProgress.get();
+      // If the model looks to the side at 0 radians, we offset it by -90 degrees to face the camera
+      const baseRotation = -Math.PI / 2;
+      let targetRotation = baseRotation; // Face front
+
+      if (scroll < 0.4) {
+        // 0 to 0.4 : rotate from side to front
+        targetRotation = baseRotation + ((0.4 - scroll) / 0.4) * (Math.PI / 2);
+      } else if (scroll > 0.6) {
+        // 0.6 to 1 : rotate from front to other side
+        targetRotation = baseRotation - ((scroll - 0.6) / 0.4) * (Math.PI / 2);
+      }
+      
+      // Smooth interpolation with easing
+      modelRef.current.rotation.y += (targetRotation - modelRef.current.rotation.y) * 0.08;
+    }
+  });
+
+  return (
+    <primitive 
+      ref={modelRef} 
+      object={scene} 
+      scale={6.5} 
+      position={[0, -3.5, 0]} 
+    />
+  );
+}
+
+useGLTF.preload("/landing/demo/man-comp.glb");
 
 const fadeUp = {
   initial: { opacity: 0, y: 40 },
@@ -44,7 +82,7 @@ const Demo = () => {
     <section ref={containerRef} className="container mx-auto py-24 px-5">
       <motion.div {...fadeUp} className="flex justify-center text-center items-center">
         <div>
-          <h2 className="text-landing-primary-hover font-landing-title text-3xl md:text-5xl">
+          <h2 className="text-landing-primary-hover font-landing-title text-3xl md:text-4xl">
             Guidance That Moves With You
           </h2>
           <p className="text-xl text-landing-text/80 mt-4">
@@ -54,6 +92,7 @@ const Demo = () => {
       </motion.div>
 
       <div className="flex justify-center flex-col items-center mt-64 relative">
+        {/* interactive */}
         <motion.div {...fadeLeft} className="absolute left-0 top-[35%] -translate-y-1/2">
           <h3 className="font-landing-title text-xl font-semibold max-w-10">
             Interactive Tool (Symptom Checker)
@@ -66,6 +105,8 @@ const Demo = () => {
         </motion.div>
         
         <div className="relative">
+
+          {/* border */}
           <motion.img 
             initial={{ opacity: 0, scale: 1 }}
             whileInView={{ opacity: 1, scale: 1 }}
@@ -74,20 +115,37 @@ const Demo = () => {
             src="/landing/demo/border.svg" 
             alt="border" fxd5r 
           />
+
+
           <div className="absolute bottom-0 left-[22%]">
-            <motion.img 
-              initial={{ opacity: 0, y: 0 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              src="/landing/demo/man.png" 
-              alt="man" 
-            />
+            <div className="inline-block  -mb-[70px]">
+              <img 
+                src="/landing/demo/man.png" 
+                alt="" 
+                className="opacity-0 pointer-events-none select-none block" 
+              />
+              <motion.div 
+                initial={{ opacity: 0, y: 0 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-100px" }}
+                transition={{ duration: 0.8, delay: 0.2 }}
+                className="absolute inset-0 z-10"
+              >
+                <Canvas camera={{ position: [0, 0, 10], fov: 35 }} className="w-full h-full">
+                  <ambientLight intensity={1.2} />
+                  <directionalLight position={[10, 10, 10]} intensity={1.5} />
+                  <Environment preset="city" />
+                  <Suspense fallback={null}>
+                    <Model scrollYProgress={scrollYProgress} />
+                  </Suspense>
+                </Canvas>
+              </motion.div>
+            </div>
             <motion.img
               style={{ rotate: rotate1 }}
               src="/landing/demo/circle.png"
               alt="circle"
-              className="absolute -right-[50%] top-20 w-1/2 origin-center"
+              className="absolute -right-[50%] top-0 w-1/2 origin-center"
             />
             <motion.img
               style={{ rotate: rotate2 }}
@@ -111,10 +169,12 @@ const Demo = () => {
               transition={{ duration: 0.6, delay: 0.5 }}
               src="/landing/demo/sugar.png"
               alt="sugar"
-              className="absolute -right-[50%] -bottom-20"
+              className="absolute -right-[50%] -bottom-24"
             />
           </div>
-          <motion.div {...fadeRight} className="absolute -right-80 top-[30%] -translate-y-1/2">
+
+          {/* our Ai */}
+          <motion.div {...fadeRight} className="absolute -right-72 top-[30%] -translate-y-1/2">
             <p className="font-landing-accent text-sm leading-5 font-semibold max-w-56">
               Our AI engine evaluates patterns across vast medical datasets to
               support accurate diagnosis, reduce errors, and enhance
@@ -130,6 +190,7 @@ const Demo = () => {
           </motion.div>
         </div>
 
+        {/* demo button */}
         <motion.button 
           {...fadeUp}
           className="mt-16 px-6 py-4 bg-landing-primary-hover border-2 uppercase font-landing-accent rounded-full hover:bg-landing-primary transition flex items-center hover:text-white"

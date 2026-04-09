@@ -68,7 +68,7 @@ const Potential = () => {
       </style>
       
       <div className="flex justify-center text-center items-center relative z-10 pb-8">
-        <h2 className=" font-landing-title text-3xl md:text-5xl">
+        <h2 className=" font-landing-title text-3xl md:text-4xl">
           Unlocking Human {" "}
           <span className='text-landing-primary-hover italic'>Potential</span>
         </h2>
