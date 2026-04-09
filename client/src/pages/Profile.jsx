@@ -38,7 +38,8 @@ export default function Profile() {
     age: user?.profile?.age || '',
     gender: user?.profile?.gender || 'male',
     activityLevel: user?.profile?.activityLevel || 'sedentary',
-    dietaryPreference: user?.profile?.dietaryPreference || 'non-vegetarian'
+    dietaryPreference: user?.profile?.dietaryPreference || 'non-vegetarian',
+    targetWeeks: '12'
   });
 
   const [formData, setFormData] = useState({
@@ -187,8 +188,12 @@ export default function Profile() {
     e.preventDefault();
     setGoalLoading(true);
     try {
+      const targetDate = new Date();
+      targetDate.setDate(targetDate.getDate() + (parseInt(goalFormData.targetWeeks) * 7));
+
       const payload = {
         ...goalFormData,
+        targetDate,
         currentWeight: parseFloat(formData.profile.weight),
         targetWeight: parseFloat(goalFormData.targetWeight),
         height: parseFloat(formData.profile.height),
@@ -332,390 +337,319 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Summary Row */}
-        <div className="w-full grid grid-cols-2 gap-3 mb-8">
-           <div className="bg-white rounded-[24px] py-6 px-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-slate-50 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#69A38D]/10 flex items-center justify-center flex-shrink-0">
-                 <Heart size={18} className="text-[#69A38D]" />
-              </div>
-              <div className="min-w-0">
-                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-tight leading-none mb-1 truncate">Health Score</p>
-                 <div className="flex items-baseline gap-1">
-                    <span className="text-[18px] font-black text-[#1a1a1a]">{user?.healthMetrics?.healthScore || extraData.latestAnalysis?.healthScore || '92'}</span>
-                    <span className="text-[10px] font-bold text-slate-300">/100</span>
+        {/* Summary Row - Precision Layout */}
+        <div className="w-full grid grid-cols-2 gap-[14px] mb-8">
+           {/* Health Score Card */}
+           <div className="bg-white rounded-[25.6px] p-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border-[0.91px] border-white/50 flex flex-col justify-between h-[144.91px] w-full overflow-hidden">
+              <div className="flex items-center gap-2">
+                 <div className="w-[36px] h-[36px] rounded-full bg-[#EEF6F2] flex items-center justify-center flex-shrink-0">
+                    <Heart size={16} className="text-[#69A38D]" />
                  </div>
+                 <span className="text-[12px] font-bold text-[#4A5568] tracking-tight truncate">Health Score</span>
+              </div>
+              <div className="flex flex-col">
+                 <div className="flex items-baseline gap-1">
+                    <span className="text-[32px] font-black text-[#1a2138] leading-none shrink-0">
+                       {user?.healthMetrics?.healthScore || extraData.latestAnalysis?.healthScore || '92'}
+                    </span>
+                    <span className="text-[16px] font-bold text-[#69A38D] -translate-y-1">/ 100</span>
+                 </div>
+                 <p className="text-[10px] font-medium text-[#7B8B9A] whitespace-nowrap overflow-hidden text-ellipsis">Top 5% for your age</p>
               </div>
            </div>
 
-           <div className="bg-white rounded-[24px] py-6 px-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border border-slate-50 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#1F75FE]/10 flex items-center justify-center flex-shrink-0">
-                 <Activity size={18} className="text-[#1F75FE]" />
+           {/* BMI Card */}
+           <div className="bg-white rounded-[25.6px] p-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border-[0.91px] border-white/50 flex flex-col justify-between h-[144.91px] w-full overflow-hidden">
+              <div className="flex items-center gap-2">
+                 <div className="w-[36px] h-[36px] rounded-full bg-[#EAF2FF] flex items-center justify-center flex-shrink-0">
+                    <Activity size={16} className="text-[#1F75FE]" />
+                 </div>
+                 <span className="text-[12px] font-bold text-[#4A5568] tracking-tight truncate">Current BMI</span>
               </div>
-              <div className="min-w-0">
-                 <p className="text-[9px] font-black text-slate-400 uppercase tracking-tight leading-none mb-1 truncate">Current BMI</p>
-                 <div className="flex items-center gap-1.5 flex-wrap">
-                    <span className="text-[18px] font-black text-[#1a1a1a]">{bmi || '22.4'}</span>
-                    <span className={`text-[8px] font-black px-1 py-0.5 rounded-md bg-[#1F75FE]/10 text-[#1F75FE] uppercase whitespace-nowrap`}>{bmiStatus.label}</span>
+              <div className="flex flex-col gap-2">
+                 <span className="text-[32px] font-black text-[#1a2138] leading-none">{bmi || '22.4'}</span>
+                 <div className="flex">
+                    <div 
+                      className="flex items-center justify-center bg-[#EAF2FF] border-[0.91px] border-[#1F75FE]/20 rounded-[7.31px]" 
+                      style={{ width: '67.47px', height: '22.86px' }}
+                    >
+                       <span className="text-[8px] font-black text-[#1F75FE] uppercase tracking-tight">{bmiStatus.label}</span>
+                    </div>
                  </div>
               </div>
            </div>
         </div>
 
-        {/* Settings List */}
-        <div className="w-full bg-white rounded-[40px] shadow-[0_8px_40px_rgba(0,0,0,0.03)] border border-slate-50 overflow-hidden mb-8">
+        {/* Big Settings & Logout Card - Unified & Dynamic Height */}
+        <div 
+          className="w-full bg-white shadow-[0_8px_40px_rgba(0,0,0,0.03)] border-[0.91px] border-slate-100 flex flex-col mx-auto mb-10"
+          style={{ 
+            minHeight: '468.10px', 
+            borderRadius: '25.6px',
+            maxWidth: '349.25px'
+          }}
+        >
            <div className="flex flex-col">
-              
-              {/* Account Details */}
-              <button 
-                onClick={() => setExpandedSection(expandedSection === 'account' ? null : 'account')}
-                className="w-full px-8 py-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group"
-              >
-                 <div className="flex items-center gap-5">
-                    <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
-                       <User size={20} className="text-slate-600" />
+                 {/* Account Details */}
+                 <button 
+                  onClick={() => setExpandedSection(expandedSection === 'account' ? null : 'account')}
+                  className="w-full px-8 py-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group"
+                 >
+                    <div className="flex items-center gap-5">
+                       <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                          <User size={18} className="text-slate-600" />
+                       </div>
+                       <span className="text-[15px] font-black text-[#1a1a1a] tracking-tight">Account Details</span>
                     </div>
-                    <span className="text-[16px] font-black text-[#1a1a1a] tracking-tight">Account Details</span>
-                 </div>
-                 <ChevronRight size={18} className={`text-slate-300 transition-transform ${expandedSection === 'account' ? 'rotate-90' : ''}`} />
-              </button>
-
-              <AnimatePresence>
-                {expandedSection === 'account' && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-slate-50/30 px-8 pb-8">
-                    <div className="pt-4">
-                       <form onSubmit={handleSubmit} className="space-y-6">
+                    <ChevronRight size={18} className={`text-slate-300 transition-transform ${expandedSection === 'account' ? 'rotate-90' : ''}`} />
+                 </button>
+   
+                 <AnimatePresence>
+                   {expandedSection === 'account' && (
+                     <motion.div 
+                        initial={{ height: 0, opacity: 0 }} 
+                        animate={{ height: 'auto', opacity: 1 }} 
+                        exit={{ height: 0, opacity: 0 }} 
+                        className="bg-slate-50/30 px-6 border-b border-slate-100 overflow-hidden"
+                     >
+                       <div className="py-6 space-y-5">
                           <div className="grid grid-cols-2 gap-4">
                              <div className="col-span-2">
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Full Name</label>
-                                <input name="name" value={formData.name} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm font-bold shadow-sm focus:outline-none focus:border-[#69A38D]/30" />
+                                <input name="name" value={formData.name} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-xl py-3 px-4 text-sm font-bold shadow-sm" />
+                             </div>
+                             <div className="col-span-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Email</label>
+                                <input value={user?.email} disabled className="w-full bg-slate-50 border border-slate-100 rounded-xl py-3 px-4 text-sm font-bold text-slate-400" />
+                             </div>
+                             <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Phone</label>
+                                <input name="profile.phone" value={formData.profile.phone} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-xl py-3 px-4 text-sm font-bold shadow-sm" />
                              </div>
                              <div>
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Age</label>
-                                <input name="profile.age" value={formData.profile.age} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm font-bold shadow-sm focus:outline-none focus:border-[#69A38D]/30" />
+                                <input name="profile.age" value={formData.profile.age} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-xl py-3 px-4 text-sm font-bold shadow-sm" />
                              </div>
                              <div>
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Gender</label>
-                                <select name="profile.gender" value={formData.profile.gender} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm font-bold shadow-sm focus:outline-none">
+                                <select name="profile.gender" value={formData.profile.gender} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-xl py-3 px-4 text-sm font-bold shadow-sm">
                                    <option value="male">Male</option>
                                    <option value="female">Female</option>
                                    <option value="other">Other</option>
                                 </select>
                              </div>
                              <div>
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Height (cm)</label>
-                                <input name="profile.height" value={formData.profile.height} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm font-bold shadow-sm focus:outline-none" />
-                             </div>
-                             <div>
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Weight (kg)</label>
-                                <input name="profile.weight" value={formData.profile.weight} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm font-bold shadow-sm focus:outline-none" />
-                             </div>
-                             <div>
                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Blood Group</label>
-                                <select name="profile.bloodGroup" value={formData.profile.bloodGroup} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm font-bold shadow-sm">
+                                <select name="profile.bloodGroup" value={formData.profile.bloodGroup} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-xl py-3 px-4 text-sm font-bold shadow-sm">
                                    <option value="">Select</option>
                                    {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(bg => <option key={bg} value={bg}>{bg}</option>)}
                                 </select>
                              </div>
                              <div>
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Phone Number</label>
-                                <input name="profile.phone" value={formData.profile.phone} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm font-bold shadow-sm focus:outline-none" />
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Height (cm)</label>
+                                <input name="profile.height" value={formData.profile.height} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-xl py-3 px-4 text-sm font-bold shadow-sm" />
                              </div>
-
-                             <div className="col-span-2 pt-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2 block border-t border-slate-50 pt-4">Health & Lifestyle</label>
+                             <div>
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Weight (kg)</label>
+                                <input name="profile.weight" value={formData.profile.weight} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-xl py-3 px-4 text-sm font-bold shadow-sm" />
+                             </div>
+                             
+                             <div className="col-span-2 border-t border-slate-200 pt-5 mt-2">
+                                <label className="text-[11px] font-black text-[#69A38D] uppercase tracking-widest mb-4 block">Comprehensive Health History</label>
                                 <div className="grid grid-cols-2 gap-4">
                                    <div>
-                                      <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Are you Diabetic?</label>
-                                      <select name="profile.isDiabetic" value={formData.profile.isDiabetic} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-xl py-2 px-3 text-xs font-bold">
+                                      <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">Are you Diabetic?</label>
+                                      <select name="profile.isDiabetic" value={formData.profile.isDiabetic} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-xl py-2.5 px-3 text-[11px] font-bold">
                                          <option value="no">No</option>
                                          <option value="yes">Yes</option>
                                       </select>
                                    </div>
                                    {formData.profile.isDiabetic === 'yes' && (
                                       <div>
-                                         <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">HbA1c (%)</label>
-                                         <input name="profile.diabetesProfile.hba1c" value={formData.profile.diabetesProfile.hba1c} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-xl py-2 px-3 text-xs font-bold" placeholder="Level" />
+                                         <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">HbA1c (%)</label>
+                                         <input name="profile.diabetesProfile.hba1c" value={formData.profile.diabetesProfile.hba1c} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-xl py-2.5 px-3 text-[11px] font-bold" />
                                       </div>
                                    )}
                                    <div className="col-span-2">
-                                      <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Medical Conditions</label>
+                                      <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">Medical Conditions</label>
                                       <input 
                                          value={formData.profile.medicalHistory.conditions.join(', ')} 
                                          onChange={(e) => {
                                             const conds = e.target.value.split(',').map(s => s.trim()).filter(Boolean);
                                             setFormData(prev => ({ ...prev, profile: { ...prev.profile, medicalHistory: { conditions: conds } } }));
                                          }}
-                                         className="w-full bg-white border border-slate-100 rounded-xl py-2 px-3 text-xs font-bold" 
+                                         className="w-full bg-white border border-slate-100 rounded-xl py-3 px-4 text-xs font-bold" 
                                          placeholder="e.g. Hypertension, Asthma" 
                                       />
                                    </div>
                                    <div className="col-span-2">
-                                      <label className="text-[10px] font-bold text-slate-400 uppercase mb-1 block">Allergies</label>
-                                      <input name="profile.allergies" value={formData.profile.allergies} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-xl py-2 px-3 text-xs font-bold" placeholder="e.g. Peanuts, Penicillin" />
-                                   </div>
-                                   <div className="flex items-center gap-6 mt-2 col-span-2 bg-white/50 p-3 rounded-xl border border-slate-50">
-                                      <label className="flex items-center gap-2 cursor-pointer">
-                                         <input type="checkbox" name="profile.lifestyle.smoker" checked={formData.profile.lifestyle.smoker} onChange={handleChange} className="w-4 h-4 rounded text-[#69A38D]" />
-                                         <span className="text-[10px] font-black text-slate-500 uppercase">Smoker</span>
-                                      </label>
-                                      <label className="flex items-center gap-2 cursor-pointer">
-                                         <input type="checkbox" name="profile.lifestyle.alcohol" checked={formData.profile.lifestyle.alcohol} onChange={handleChange} className="w-4 h-4 rounded text-[#69A38D]" />
-                                         <span className="text-[10px] font-black text-slate-500 uppercase">Alcohol</span>
-                                      </label>
+                                      <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">Allergies</label>
+                                      <input name="profile.allergies" value={formData.profile.allergies} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-xl py-3 px-4 text-xs font-bold" placeholder="e.g. Peanuts, Penicillin" />
                                    </div>
                                 </div>
                              </div>
                           </div>
-                          <button type="submit" className="w-full py-4 bg-[#1a2138] text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.1em] hover:bg-[#252d4a] transition-all shadow-lg active:scale-95">
-                             {loading ? 'Saving Changes...' : 'Save Account Details'}
-                          </button>
-                       </form>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Goal Settings */}
-              <button 
-                onClick={() => setExpandedSection(expandedSection === 'goals' ? null : 'goals')} 
-                className="w-full px-8 py-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group"
-              >
-                 <div className="flex items-center gap-5">
-                    <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
-                       <Target size={20} className="text-slate-600" />
-                    </div>
-                    <span className="text-[16px] font-black text-[#1a1a1a] tracking-tight">Goal Settings</span>
-                 </div>
-                 <ChevronRight size={18} className={`text-slate-300 transition-transform ${expandedSection === 'goals' ? 'rotate-90' : ''}`} />
-              </button>
-              
-              <AnimatePresence>
-                {expandedSection === 'goals' && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-slate-50/30 px-8 pb-8">
-                    <div className="pt-4">
-                       <form onSubmit={handleGoalSubmit} className="space-y-6">
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                             <div className="col-span-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Health Objective</label>
-                                <select 
-                                   name="goalType" 
-                                   value={goalFormData.goalType} 
-                                   onChange={handleGoalChange}
-                                   className="w-full bg-white border-2 border-[#69A38D]/20 rounded-2xl py-3 px-4 text-sm font-black shadow-sm focus:outline-none focus:border-[#69A38D]"
-                                >
-                                   <option value="weight_loss">Weight Loss</option>
-                                   <option value="maintain">Maintenance</option>
-                                   <option value="weight_gain">Weight Gain</option>
-                                </select>
-                             </div>
-
-                             <div className="col-span-2 p-5 bg-emerald-50/50 rounded-2xl border border-emerald-100/30">
-                                <p className="text-[10px] font-black text-[#69A38D] uppercase tracking-wider mb-4">Current Vitals</p>
-                                <div className="grid grid-cols-3 gap-4">
-                                   <div>
-                                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Weight</p>
-                                      <p className="text-lg font-black text-[#1a1a1a]">{formData.profile.weight || '—'} <span className="text-[10px] text-slate-300">kg</span></p>
-                                   </div>
-                                   <div>
-                                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Height</p>
-                                      <p className="text-lg font-black text-[#1a1a1a]">{formData.profile.height || '—'} <span className="text-[10px] text-slate-300">cm</span></p>
-                                   </div>
-                                   <div>
-                                      <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Age</p>
-                                      <p className="text-lg font-black text-[#1a1a1a]">{formData.profile.age || '—'}</p>
-                                   </div>
-                                </div>
-                             </div>
-
-                             <div>
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Target Weight (kg)</label>
-                                <input 
-                                   type="number" 
-                                   name="targetWeight" 
-                                   value={goalFormData.targetWeight} 
-                                   onChange={handleGoalChange} 
-                                   className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm font-bold shadow-sm" 
-                                   placeholder="Desired weight"
-                                />
-                             </div>
-
-                             <div>
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Activity Level</label>
-                                <select 
-                                   name="activityLevel" 
-                                   value={goalFormData.activityLevel} 
-                                   onChange={handleGoalChange} 
-                                   className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm font-bold shadow-sm"
-                                >
-                                   <option value="sedentary">Sedentary</option>
-                                   <option value="lightly_active">Light Active</option>
-                                   <option value="moderately_active">Moderate</option>
-                                   <option value="very_active">Very Active</option>
-                                </select>
-                             </div>
-
-                             {/* Roadmap & Macros Restored */}
-                             {goalFormData.targetWeight && formData.profile.weight > 0 && Math.abs(goalFormData.targetWeight - formData.profile.weight) > 1 && (
-                                <div className="col-span-2 p-5 bg-white rounded-2xl border border-slate-100 shadow-sm animate-fade-in">
-                                   <div className="flex items-center gap-4">
-                                      <div className="w-12 h-12 rounded-xl bg-[#69A38D]/10 flex items-center justify-center text-[#69A38D]">
-                                         <Clock size={24} />
-                                      </div>
-                                      <div>
-                                         <p className="text-[10px] font-black text-[#69A38D] uppercase tracking-widest">Estimated Roadmap</p>
-                                         <p className="text-[15px] font-black text-[#1a1a1a]">
-                                            {Math.ceil(Math.abs(goalFormData.targetWeight - formData.profile.weight) / 0.5)} Weeks 
-                                            <span className="ml-2 text-[10px] text-slate-400 font-bold uppercase tracking-tight">Sustainable Path</span>
-                                         </p>
-                                      </div>
-                                   </div>
-                                </div>
-                             )}
-
-                             {healthGoal?.macroTargets && (
-                                <div className="col-span-2 grid grid-cols-4 gap-2">
-                                   {[
-                                      { label: 'CAL', val: healthGoal.dailyCalorieTarget, unit: 'kcal', color: 'bg-slate-900', text: 'text-white' },
-                                      { label: 'PRO', val: healthGoal.macroTargets.protein, unit: 'g', color: 'bg-rose-50', text: 'text-rose-600' },
-                                      { label: 'CARB', val: healthGoal.macroTargets.carbs, unit: 'g', color: 'bg-amber-50', text: 'text-amber-600' },
-                                      { label: 'FAT', val: healthGoal.macroTargets.fats, unit: 'g', color: 'bg-emerald-50', text: 'text-emerald-600' }
-                                   ].map(m => (
-                                      <div key={m.label} className={`${m.color} rounded-xl p-3 flex flex-col items-center justify-center`}>
-                                         <span className={`text-[9px] font-black uppercase tracking-widest ${m.text} opacity-60 mb-1`}>{m.label}</span>
-                                         <span className={`text-sm font-black ${m.text}`}>{m.val}</span>
-                                         <span className={`text-[8px] font-bold ${m.text} opacity-50`}>{m.unit}</span>
-                                      </div>
-                                   ))}
-                                </div>
-                             )}
-                          </div>
-                          <button type="submit" disabled={goalLoading} className="w-full py-4 bg-[#69A38D] text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.1em] shadow-lg hover:bg-[#5a8b78] transition-all">
-                             {goalLoading ? 'Recalculating...' : 'Update & Sync Fitness Goal'}
-                          </button>
-                       </form>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-
-              {/* Medical Records */}
-              <div className="relative">
+                          <button onClick={handleSubmit} className="w-full py-4 bg-[#1a2138] text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.15em] shadow-lg active:scale-98 transition-transform">Save Changes</button>
+                       </div>
+                     </motion.div>
+                   )}
+                 </AnimatePresence>
+   
+                 {/* Goal Settings */}
                  <button 
-                  onClick={() => setExpandedSection(expandedSection === 'reports' ? null : 'reports')}
-                  className="w-full px-8 py-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group"
+                  onClick={() => setExpandedSection(expandedSection === 'goals' ? null : 'goals')} 
+                  className="w-full px-8 py-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group"
                  >
                     <div className="flex items-center gap-5">
-                       <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
-                          <FileText size={20} className="text-slate-600" />
+                       <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                          <Target size={18} className="text-slate-600" />
                        </div>
-                       <span className="text-[16px] font-black text-[#1a1a1a] tracking-tight">Medical Records</span>
+                       <span className="text-[15px] font-black text-[#1a1a1a] tracking-tight">Goal Settings</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                       <span className="text-[12px] font-black text-[#69A38D] uppercase tracking-tight">View All</span>
-                       <ChevronRight size={18} className={`text-slate-300 transition-transform ${expandedSection === 'reports' ? 'rotate-90' : ''}`} />
-                    </div>
+                    <ChevronRight size={18} className={`text-slate-300 transition-transform ${expandedSection === 'goals' ? 'rotate-90' : ''}`} />
                  </button>
 
                  <AnimatePresence>
-                   {expandedSection === 'reports' && (
-                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-slate-50/30 border-b border-slate-50">
-                        <div className="p-4 space-y-2">
-                           {extraData.recentReports?.length > 0 ? (
-                              extraData.recentReports.map(report => (
-                                 <button 
-                                    key={report._id}
-                                    onClick={() => navigate(`/reports/${report._id}`)}
-                                    className="w-full p-3 bg-white rounded-xl border border-slate-100 flex items-center justify-between hover:border-[#69A38D]/30 transition-all"
+                   {expandedSection === 'goals' && (
+                     <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="bg-slate-50/30 px-6 border-b border-slate-100 overflow-hidden">
+                        <div className="py-6 space-y-6">
+                           <form onSubmit={handleGoalSubmit} className="space-y-6">
+                              <div>
+                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Health Objective</label>
+                                 <select 
+                                    name="goalType" 
+                                    value={goalFormData.goalType} 
+                                    onChange={handleGoalChange}
+                                    className="w-full bg-white border-2 border-[#69A38D]/20 rounded-xl py-3 px-4 text-[13px] font-black shadow-sm"
                                  >
-                                    <div className="flex items-center gap-3">
-                                       <div className="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center text-[#69A38D]">
-                                          <FileText size={14} />
-                                       </div>
-                                       <span className="text-[12px] font-bold text-slate-700 truncate max-w-[150px]">{report.reportType}</span>
+                                    <option value="weight_loss">Weight loss</option>
+                                    <option value="weight_gain">Weight gain</option>
+                                    <option value="maintenance">Maintain weight</option>
+                                    <option value="muscle_gain">Muscle gain / strength building</option>
+                                    <option value="health_improvement">Improve fitness / stamina</option>
+                                    <option value="general_health">General health / wellness</option>
+                                    <option value="disease_management">Disease management</option>
+                                 </select>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-4">
+                                 <div className="p-4 bg-emerald-50/50 rounded-xl border border-emerald-100/30">
+                                    <p className="text-[9px] font-black text-[#69A38D] uppercase mb-1">Current Weight</p>
+                                    <p className="text-lg font-black text-[#1a1a1a]">{formData.profile.weight || user?.profile?.weight || '—'} <span className="text-[10px] text-slate-400">kg</span></p>
+                                 </div>
+                                 <div className="p-4 bg-white rounded-xl border border-slate-100">
+                                    <p className="text-[9px] font-black text-slate-400 uppercase mb-1">Target Weight</p>
+                                    <input 
+                                       type="number" 
+                                       name="targetWeight" 
+                                       value={goalFormData.targetWeight} 
+                                       onChange={handleGoalChange} 
+                                       className="w-full text-lg font-black text-[#1a1a1a] bg-transparent focus:outline-none" 
+                                       placeholder="Set target"
+                                    />
+                                 </div>
+                              </div>
+
+                              <div>
+                                 <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Target Timeframe</label>
+                                 <select 
+                                    name="targetWeeks" 
+                                    value={goalFormData.targetWeeks} 
+                                    onChange={handleGoalChange}
+                                    className="w-full bg-white border-2 border-slate-100 rounded-xl py-3 px-4 text-sm font-bold shadow-sm"
+                                 >
+                                    <option value="4">4 Weeks (Aggressive)</option>
+                                    <option value="8">8 Weeks (Steady)</option>
+                                    <option value="12">12 Weeks (Sustainable)</option>
+                                    <option value="16">16 Weeks (Lifestyle)</option>
+                                    <option value="24">24 Weeks (Long-term)</option>
+                                 </select>
+                                 <p className="text-[9px] text-slate-400 mt-2 italic px-1">Tip: 12 weeks is recommended for sustainable fat loss or muscle gain.</p>
+                              </div>
+
+                              {healthGoal?.macroTargets && (
+                                 <div className="p-5 bg-[#1a2138] rounded-2xl text-white shadow-xl">
+                                    <div className="flex items-center justify-between mb-4">
+                                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Daily Calorie Budget</span>
+                                       <span className="text-xl font-black">{healthGoal.dailyCalorieTarget} <span className="text-[11px] text-[#69A38D]">KCAL</span></span>
                                     </div>
-                                    <span className="text-[10px] font-medium text-slate-400">{new Date(report.date).toLocaleDateString()}</span>
-                                 </button>
-                              ))
-                           ) : (
-                              <p className="text-[10px] font-bold text-slate-400 text-center py-2">No recent reports found</p>
-                           )}
-                           <button 
-                              onClick={() => navigate('/all-reports')}
-                              className="w-full py-2 text-[10px] font-black text-[#69A38D] uppercase tracking-widest text-center"
-                           >
-                              Full Record Access →
-                           </button>
+                                    <div className="grid grid-cols-3 gap-3">
+                                       {[
+                                          { label: 'PRO', val: healthGoal.macroTargets.protein, unit: 'g', color: 'bg-emerald-500' },
+                                          { label: 'CARB', val: healthGoal.macroTargets.carbs, unit: 'g', color: 'bg-amber-500' },
+                                          { label: 'FAT', val: healthGoal.macroTargets.fats, unit: 'g', color: 'bg-rose-500' }
+                                       ].map(m => (
+                                          <div key={m.label} className="bg-white/5 rounded-xl p-3">
+                                             <div className={`w-1 h-4 ${m.color} rounded-full mb-2`} />
+                                             <p className="text-[10px] font-black text-slate-400 mb-0.5">{m.label}</p>
+                                             <p className="text-sm font-black">{m.val}{m.unit}</p>
+                                          </div>
+                                       ))}
+                                    </div>
+                                 </div>
+                              )}
+
+                              <button type="submit" className="w-full py-4 bg-[#69A38D] text-white rounded-2xl text-[11px] font-black uppercase tracking-widest shadow-lg hover:bg-[#5a8b78] transition-all">
+                                 Sync Fitness Plan
+                              </button>
+                           </form>
                         </div>
                      </motion.div>
                    )}
                  </AnimatePresence>
+                 
+                 {/* Medical Records */}
+                 <button 
+                  onClick={() => setExpandedSection(expandedSection === 'reports' ? null : 'reports')}
+                  className="w-full px-8 py-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group"
+                 >
+                    <div className="flex items-center gap-5">
+                       <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                          <FileText size={18} className="text-slate-600" />
+                       </div>
+                       <span className="text-[15px] font-black text-[#1a1a1a] tracking-tight">Medical Records</span>
+                    </div>
+                    <ChevronRight size={18} className={`text-slate-300 transition-transform ${expandedSection === 'reports' ? 'rotate-90' : ''}`} />
+                 </button>
+
+                 <AnimatePresence>
+                    {expandedSection === 'reports' && (
+                       <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} className="bg-slate-50/30 px-6 border-b border-slate-100">
+                          <div className="py-4 max-h-[200px] overflow-y-auto no-scrollbar space-y-2">
+                             {extraData.recentReports?.map(r => (
+                                <div key={r._id} onClick={() => navigate(`/reports/${r._id}`)} className="p-3 bg-white rounded-xl border border-slate-100 flex items-center justify-between">
+                                   <span className="text-[11px] font-bold text-slate-700 truncate">{r.reportType}</span>
+                                   <span className="text-[9px] text-slate-400">{new Date(r.date).toLocaleDateString()}</span>
+                                </div>
+                             ))}
+                             <button onClick={() => navigate('/all-reports')} className="w-full py-2 text-[9px] font-black text-[#69A38D] uppercase tracking-widest text-center">Open Vault →</button>
+                          </div>
+                       </motion.div>
+                    )}
+                 </AnimatePresence>
+   
+                 <button onClick={() => navigate('/complete-analysis')} className="w-full px-8 py-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group">
+                    <div className="flex items-center gap-5">
+                       <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                          <TrendingUp size={18} className="text-slate-600" />
+                       </div>
+                       <span className="text-[15px] font-black text-[#1a1a1a] tracking-tight">Progress Reports</span>
+                    </div>
+                    <ChevronRight size={18} className="text-slate-300" />
+                 </button>
               </div>
 
-              <button onClick={() => navigate('/complete-analysis')} className="w-full px-8 py-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group">
-                 <div className="flex items-center gap-5">
-                    <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
-                       <TrendingUp size={20} className="text-slate-600" />
-                    </div>
-                    <span className="text-[16px] font-black text-[#1a1a1a] tracking-tight">Progress Reports</span>
-                 </div>
-                 <ChevronRight size={18} className="text-slate-300" />
+           {/* Logout Section - Fixed at the bottom of the card */}
+           <div className="p-6 border-t border-slate-50 bg-slate-50/30">
+              <button 
+                onClick={logout} 
+                className="w-full py-4 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center justify-center gap-3 hover:bg-rose-50 hover:border-rose-100 transition-all group"
+              >
+                 <LogOut size={16} className="text-rose-500" />
+                 <span className="text-[14px] font-black text-rose-500 tracking-tight">Logout Account</span>
               </button>
-
-              <button className="w-full px-8 py-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group">
-                 <div className="flex items-center gap-5">
-                    <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
-                       <Bell size={20} className="text-slate-600" />
-                    </div>
-                    <span className="text-[16px] font-black text-[#1a1a1a] tracking-tight">Reminders</span>
-                 </div>
-                 <ChevronRight size={18} className="text-slate-300" />
-              </button>
-
-              <button onClick={() => setExpandedSection(expandedSection === 'profile' ? null : 'profile')} className="w-full px-8 py-6 flex items-center justify-between hover:bg-slate-50/50 transition-colors group">
-                 <div className="flex items-center gap-5">
-                    <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
-                       <Settings size={20} className="text-slate-600" />
-                    </div>
-                    <span className="text-[16px] font-black text-[#1a1a1a] tracking-tight">Account Settings</span>
-                 </div>
-                 <ChevronRight size={18} className={`text-slate-300 transition-transform ${expandedSection === 'profile' ? 'rotate-90' : ''}`} />
-              </button>
-              
-              <AnimatePresence>
-                {expandedSection === 'profile' && (
-                  <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden bg-slate-50/30 px-8 pb-8">
-                    <div className="pt-4">
-                       <form onSubmit={handleSubmit} className="space-y-4">
-                          <div className="grid grid-cols-2 gap-4">
-                             <div className="col-span-2">
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Full Name</label>
-                                <input name="name" value={formData.name} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm font-bold" />
-                             </div>
-                             <div>
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Age</label>
-                                <input name="profile.age" value={formData.profile.age} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm font-bold" />
-                             </div>
-                             <div>
-                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1 block">Phone</label>
-                                <input name="profile.phone" value={formData.profile.phone} onChange={handleChange} className="w-full bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm font-bold" />
-                             </div>
-                          </div>
-                          <button type="submit" className="w-full py-3 bg-[#1a2138] text-white rounded-2xl text-[10px] font-black uppercase tracking-widest">{loading ? 'Saving...' : 'Save Settings'}</button>
-                       </form>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
            </div>
         </div>
-
-        {/* Logout Button */}
-        <button onClick={logout} className="w-full py-5 bg-white rounded-[24px] border border-slate-100 shadow-sm flex items-center justify-center gap-3 hover:bg-rose-50 hover:border-rose-100 transition-all group">
-           <div className="w-8 h-8 rounded-full bg-rose-50 flex items-center justify-center group-hover:bg-white">
-              <LogOut size={16} className="text-rose-500" />
-           </div>
-           <span className="text-[15px] font-black text-rose-500 tracking-tight">Logout</span>
-        </button>
 
       </div>
     </div>

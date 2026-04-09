@@ -9,7 +9,7 @@ const healthGoalSchema = new mongoose.Schema({
   },
   goalType: {
     type: String,
-    enum: ['weight_loss', 'weight_gain', 'muscle_gain', 'maintain', 'maintenance', 'health_improvement', 'general_health'],
+    enum: ['weight_loss', 'weight_gain', 'muscle_gain', 'maintain', 'maintenance', 'health_improvement', 'general_health', 'disease_management'],
     required: true
   },
   currentWeight: {
@@ -139,6 +139,7 @@ healthGoalSchema.methods.calculateCalorieTarget = function () {
     case 'maintain':
     case 'health_improvement':
     case 'general_health':
+    case 'disease_management':
       calorieAdjust = 0; // Maintenance: no adjustment
       break;
     default:

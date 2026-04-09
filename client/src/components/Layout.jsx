@@ -273,58 +273,78 @@ export default function Layout({ children, isAdmin: isAdminLayout, isDoctor: isD
               </button>
             )}
 
-            {/* Profile Image - Now on Left */}
-            <div className="flex items-center gap-4">
-              <button
-                onClick={() => navigate('/profile')}
-                className="tour-profile rounded-full overflow-hidden border border-slate-100 shadow-sm hover:ring-4 hover:ring-slate-100 transition-all pointer-events-auto"
-                style={{ 
-                  width: '43.93733596801758px', 
-                  height: '43.93733596801758px',
-                  marginTop: '0px' // Offset handled by container padding or flex
-                }}
-              >
-                {user?.profilePicture ? (
-                  <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" />
-                ) : (
-                  <div className="w-full h-full bg-black flex items-center justify-center text-xs font-black text-white uppercase">
-                    {user?.name?.[0] || 'U'}
-                  </div>
-                )}
-              </button>
-              
-            {/* Welcome Message - Now in Header */}
-            <div className="flex flex-col">
-              <span 
-                style={{
-                  fontFamily: 'Poppins, sans-serif',
-                  fontWeight: '700',
-                  fontSize: '16px',
-                  lineHeight: '20.6px',
-                  letterSpacing: '-0.41px',
-                  color: '#1a1a1a'
-                }}
-              >
-                Hello {user?.name?.split(' ')[0] || 'User'}!
-              </span>
-              <span 
-                style={{
-                  fontFamily: 'Poppins, sans-serif',
-                  fontWeight: '600',
-                  fontSize: '14px',
-                  lineHeight: '21.97px',
-                  letterSpacing: '0px',
-                  color: '#69A38D',
-                  width: '160.7889404296875px',
-                  height: '22px'
-                }}
-              >
-                {getGreeting()}
-              </span>
-            </div>
-          </div>
+            {/* Header Content - Conditional for Profile */}
+            {location.pathname === '/profile' ? (
+              <div className="flex-1 flex justify-center items-center">
+                <span 
+                  style={{
+                    fontFamily: 'Poppins, sans-serif',
+                    fontWeight: '700',
+                    fontSize: '18.29px',
+                    lineHeight: '27.43px',
+                    letterSpacing: '-0.46px',
+                    color: '#1a1a1a',
+                    width: 'auto', // User gave 88 but auto is safer for centering
+                    height: '28px'
+                  }}
+                >
+                  My Profile
+                </span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-4">
+                {/* Profile Image - Now on Left */}
+                <button
+                  onClick={() => navigate('/profile')}
+                  className="tour-profile rounded-full overflow-hidden border border-slate-100 shadow-sm hover:ring-4 hover:ring-slate-100 transition-all pointer-events-auto"
+                  style={{ 
+                    width: '43.93733596801758px', 
+                    height: '43.93733596801758px',
+                    marginTop: '0px'
+                  }}
+                >
+                  {user?.profilePicture ? (
+                    <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-black flex items-center justify-center text-xs font-black text-white uppercase">
+                      {user?.name?.[0] || 'U'}
+                    </div>
+                  )}
+                </button>
+                
+                {/* Welcome Message - Now in Header */}
+                <div className="flex flex-col">
+                  <span 
+                    style={{
+                      fontFamily: 'Poppins, sans-serif',
+                      fontWeight: '700',
+                      fontSize: '16px',
+                      lineHeight: '20.6px',
+                      letterSpacing: '-0.41px',
+                      color: '#1a1a1a'
+                    }}
+                  >
+                    Hello {user?.name?.split(' ')[0] || 'User'}!
+                  </span>
+                  <span 
+                    style={{
+                      fontFamily: 'Poppins, sans-serif',
+                      fontWeight: '600',
+                      fontSize: '14px',
+                      lineHeight: '21.97px',
+                      letterSpacing: '0px',
+                      color: '#69A38D',
+                      width: '160.7889404296875px',
+                      height: '22px'
+                    }}
+                  >
+                    {getGreeting()}
+                  </span>
+                </div>
+              </div>
+            )}
 
-          <div className="flex-1" />
+          {location.pathname !== '/profile' && <div className="flex-1" />}
 
           {/* Bell icon on extreme right */}
           <button
