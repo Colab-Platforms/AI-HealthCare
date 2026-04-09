@@ -91,7 +91,8 @@ const Potential = () => {
                 animation: 'arc-marquee 360s linear infinite', // Significantly slowed down movement
                 animationPlayState: isHovered ? 'paused' : 'running',
                 width: '0px',
-                height: '0px'
+                height: '0px',
+                willChange: 'transform'
              }}
            >
               {circleItems.map((item, index) => {

@@ -23,7 +23,7 @@ const PotentialItem = ({ src, alt, title, subTitle, description }) => {
           className="absolute inset-0 bg-landing-secondary rounded-2xl overflow-hidden shadow-lg border border-white/10"
           style={{ backfaceVisibility: 'hidden' }}
         >
-          <img src={src} alt={alt} className='w-full h-full object-cover transition-transform duration-700 group-hover:scale-110' />
+          <img src={src} alt={alt} loading="lazy" decoding="async" className='w-full h-full object-cover transition-transform duration-700 group-hover:scale-110' />
           <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent p-6 flex flex-col justify-end items-center text-center text-white pb-8">
             <h3 className="font-landing-title text-2xl font-semibold mt-4">{title}</h3>
             <p className="mt-2 text-sm text-gray-300 mb-4">{subTitle}</p>

@@ -1,6 +1,6 @@
 import { ArrowRightIcon } from "lucide-react";
 import { Link } from "react-router-dom";
-import { motion, useScroll, useTransform, useSpring } from "framer-motion";
+import { motion, useScroll, useTransform, useSpring, useInView } from "framer-motion";
 import { useRef, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useGLTF, Environment } from "@react-three/drei";
@@ -68,6 +68,8 @@ const Demo = () => {
     target: containerRef,
     offset: ["start end", "end start"]
   });
+  
+  const isInView = useInView(containerRef, { margin: "400px 0px" });
 
   // Base rotations with slower paces and different directions
   const rotate1Raw = useTransform(scrollYProgress, [0, 1], [0, 120]); 
@@ -131,10 +133,16 @@ const Demo = () => {
                 transition={{ duration: 0.8, delay: 0.2 }}
                 className="absolute inset-0 z-10"
               >
-                <Canvas camera={{ position: [0, 0, 10], fov: 35 }} className="w-full h-full">
+                <Canvas 
+                  frameloop={isInView ? "always" : "never"}
+                  camera={{ position: [0, 0, 10], fov: 35 }} 
+                  className="w-full h-full"
+                  dpr={[1, 1.5]} 
+                  gl={{ powerPreference: "high-performance", antialias: false }}
+                >
                   <ambientLight intensity={1.2} />
                   <directionalLight position={[10, 10, 10]} intensity={1.5} />
-                  <Environment preset="city" />
+                  <Environment preset="city" resolution={256} />
                   <Suspense fallback={null}>
                     <Model scrollYProgress={scrollYProgress} />
                   </Suspense>
@@ -142,13 +150,13 @@ const Demo = () => {
               </motion.div>
             </div>
             <motion.img
-              style={{ rotate: rotate1 }}
+              style={{ rotate: rotate1, willChange: "transform" }}
               src="/landing/demo/circle.png"
               alt="circle"
               className="absolute -right-[50%] top-0 w-1/2 origin-center"
             />
             <motion.img
-              style={{ rotate: rotate2 }}
+              style={{ rotate: rotate2, willChange: "transform" }}
               src="/landing/demo/circle.png"
               alt="circle"
               className="absolute -left-[45%] -bottom-20 w-1/3 origin-center"
