@@ -761,14 +761,14 @@ export default function DashboardEnhanced() {
 
   const [completedTasks, setCompletedTasks] = useState(() => {
     const saved = localStorage.getItem('carePlanTasks');
-    if (!saved) return [0, 2];
+    if (!saved) return [];
     try {
       const { tasks, date } = JSON.parse(saved);
       const today = new Date().toISOString().split('T')[0];
       if (date === today) return tasks;
       return []; // Reset for new day
     } catch (e) {
-      return [0, 2];
+      return [];
     }
   });
 
@@ -1028,7 +1028,42 @@ export default function DashboardEnhanced() {
       });
       return dailyGaps.sort((a, b) => a.percent - b.percent).slice(0, 3);
     }
-    return [];
+    // Priority 3: Dummy Data for all users if no logs exist
+    return [
+      {
+        name: 'Vitamin D',
+        status: 'Low',
+        currentValue: '18',
+        normalRange: '30-100',
+        unit: 'ng/mL',
+        percent: 45,
+        food: 'Fatty fish, Egg yolks, Fortified milk',
+        supplement: 'Vitamin D3 (2000 IU)',
+        type: 'dummy'
+      },
+      {
+        name: 'Iron (Ferritin)',
+        status: 'Deficient',
+        currentValue: '22',
+        normalRange: '30-400',
+        unit: 'ng/mL',
+        percent: 32,
+        food: 'Spinach, Beetroot, Red meat',
+        supplement: 'Ferrous Sulfate',
+        type: 'dummy'
+      },
+      {
+        name: 'Vitamin B12',
+        status: 'Moderate',
+        currentValue: '210',
+        normalRange: '200-900',
+        unit: 'pg/mL',
+        percent: 65,
+        food: 'Dairy, Eggs, Fortified cereals',
+        supplement: 'Methylcobalamin',
+        type: 'dummy'
+      }
+    ];
   }, [dashboardData, nutritionData]);
 
   const cardCount = 3;
