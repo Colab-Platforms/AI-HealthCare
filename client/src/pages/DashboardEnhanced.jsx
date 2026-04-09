@@ -466,7 +466,7 @@ const MealDetailModal = ({ meal, onClose, onAdd }) => {
 // --- Main Component ---
 
 export default function DashboardEnhanced() {
-  const { user, refreshUser, updateUser } = useAuth();
+  const { user, refreshUser } = useAuth();
   const { dashboardData, nutritionData, wearableData, weeklyTrends, fetchDashboard, fetchNutrition, fetchNutritionLogs, fetchDietPlan, fetchWearable, fetchWeeklyTrends, loading, dataRefreshTrigger, invalidateCache } = useData();
   const navigate = useNavigate();
 
@@ -706,50 +706,55 @@ export default function DashboardEnhanced() {
   }
 
   // Step 1: Trigger the tour for authenticated new users ONLY
-  useEffect(() => {
-    if (!user?._id || isTourCompleted || runTour) return;
-    
-    const timer = setTimeout(() => {
-      setRunTour(true);
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [user?._id, isTourCompleted]);
+  // useEffect(() => {
+  //   if (!user?._id || isTourCompleted) return;
+  //   setRunTour(true);
+  // }, [user?._id, isTourCompleted]);
 
   // Step 2: Mark tour as completed in local storage AND database
   const handleJoyrideCallback = (data) => {
     const { status, type, step } = data;
 
-    if (status === "finished" || status === "skipped") {
+    if (status === "finished" || status === "skipped" || type === "tour:end") {
       if (user?._id) {
+        // Double-lock persistence
         localStorage.setItem(`joyride-completed-${user._id}`, "true");
         localStorage.setItem("joyride-completed-any", "true");
 
+        const updatedProfile = { ...user.profile, hasSeenMobileTour: true };
         api.put('auth/profile', { profile: { hasSeenMobileTour: true } })
-          .then(() => updateUser && updateUser({ ...user, profile: { ...user.profile, hasSeenMobileTour: true } }))
+          .then(() => updateUser && updateUser({ ...user, profile: updatedProfile }))
           .catch(e => console.error('DB Sync Fail:', e));
       }
       setRunTour(false);
       document.body.classList.add('onboarding-tour-finished');
     }
 
-    // Smooth scroll logic maintained and enhanced
-    if (type === 'step:after' || type === 'target:found') {
-      const target = document.querySelector(step.target);
-      if (target) {
-        // Handle horizontal scrolling for the card container if needed
-        if (['.tour-nutrient-info', '.tour-diet-plan', '.tour-ai-insights'].includes(step.target)) {
-          if (scrollContainerRef.current) {
-            let leftScroll = 0;
-            if (step.target === '.tour-nutrient-info') { leftScroll = 0; }
-            else if (step.target === '.tour-diet-plan') { leftScroll = window.innerWidth * 0.85; }
-            else if (step.target === '.tour-ai-insights') { leftScroll = window.innerWidth * 1.7; }
-            scrollContainerRef.current.scrollTo({ left: leftScroll, behavior: 'smooth' });
+    // Smooth scroll logic maintained below...
+
+    // Maintain the smooth scrolling logic for tour steps
+    if (type === 'step:before' || type === 'tooltip') {
+      setTimeout(() => {
+        try {
+          if (step?.target && ['.tour-nutrient-info', '.tour-diet-plan', '.tour-ai-insights'].includes(step.target)) {
+            if (scrollContainerRef.current) {
+              let leftScroll = 0;
+              if (step.target === '.tour-nutrient-info') { leftScroll = 0; }
+              else if (step.target === '.tour-diet-plan') { leftScroll = window.innerWidth * 0.85; }
+              else if (step.target === '.tour-ai-insights') { leftScroll = window.innerWidth * 1.7; }
+              scrollContainerRef.current.scrollTo({ left: leftScroll, behavior: 'smooth' });
+            }
           }
-        }
-        
-        // Always ensure target is in view vertically
-        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      }
+          const targetEl = document.querySelector(step.target);
+          if (targetEl) {
+            const bodyRect = document.body.getBoundingClientRect().top;
+            const elementRect = targetEl.getBoundingClientRect().top;
+            const elementPosition = elementRect - bodyRect;
+            const yOffset = elementPosition - (window.innerHeight / 2) + (targetEl.clientHeight / 2);
+            window.scrollTo({ top: Math.max(0, yOffset), behavior: 'smooth' });
+          }
+        } catch (err) { console.error('Tour focus fail:', err); }
+      }, 50);
     }
   };
 
@@ -1129,7 +1134,7 @@ export default function DashboardEnhanced() {
           transition={{ delay: 0.1 }}
           className="px-4 md:px-0 mb-4 w-full"
         >
-          <div className="tour-health-profile relative overflow-hidden w-full min-h-[140px] rounded-[26px] border border-white/30">
+          <div className="relative overflow-hidden w-full min-h-[140px] rounded-[26px] border border-white/30">
             <img
               src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/6de313b1e5c8e1bb654eedecdc54a6f84116947a.jpg?v=1775563817"
               alt=""
