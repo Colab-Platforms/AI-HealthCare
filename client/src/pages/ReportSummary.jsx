@@ -423,18 +423,21 @@ export default function ReportSummary() {
             <div className="flex flex-col gap-4">
               {(aiAnalysis?.doctorAdvice && aiAnalysis.doctorAdvice.length > 0 ? 
                 aiAnalysis.doctorAdvice.map(advice => t(advice)) :
+                aiAnalysis?.recommendations?.lifestyle && aiAnalysis.recommendations.lifestyle.length > 0 ?
+                aiAnalysis.recommendations.lifestyle.map(advice => t(advice)) :
                 [
-                  isHindi ? "सप्ताह में 5 दिन व्यायाम करें" : "Exercise 5 days/week — mix cardio and strength training",
-                  isHindi ? "प्रतिदिन 7-8 घंटे सोएं" : "Sleep 7-8 hours daily — poor sleep raises inflammation markers",
-                  isHindi ? "योग या ध्यान के माध्यम से तनाव प्रबंधन" : "Manage stress through yoga or meditation — reduces cortisol and inflammation",
-                  isHindi ? "धूम्रपान से बचें और शराब सीमित करें" : "Avoid smoking and limit alcohol — both lower HDL and raise hsCRP"
+                  `Clinical follow-up for your ${report.reportType} biomarkers`,
+                  "Monitor trends in your medical synthesis over time",
+                  "Discuss these AI insights with a licensed medical professional",
+                  "Maintain a nutrition profile specific to your laboratory findings"
                 ]
               ).map((step, idx) => (
-                <div key={idx} className="bg-white/10 rounded-[32px] p-6 flex items-center gap-6 group hover:bg-white/15 transition-all">
-                  <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-sm font-black shrink-0">
+                <div key={idx} className="bg-white/10 rounded-[32px] p-6 flex items-start gap-6 group hover:bg-white/15 transition-all relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full -mr-12 -mt-12 blur-2xl"></div>
+                  <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center text-sm font-black shrink-0 border border-white/20 shadow-sm relative z-10">
                     {idx + 1}
                   </div>
-                  <p className="text-[15px] font-bold leading-snug">{step}</p>
+                  <p className="text-[15px] font-bold leading-snug relative z-10 pt-1.5">{step}</p>
                 </div>
               ))}
             </div>
