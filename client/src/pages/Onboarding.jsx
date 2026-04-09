@@ -87,11 +87,11 @@ export default function Onboarding() {
         </AnimatePresence>
 
         {/* Pagination Dots */}
-        <div className="absolute bottom-12 left-0 w-full flex justify-center gap-2 z-10">
+        <div className="absolute bottom-0 left-0 w-full flex justify-center gap-2 z-10">
           {ONBOARDING_SCREENS.map((_, i) => (
             <div
               key={i}
-              className={`h-1.5 rounded-full transition-all duration-300 ${i === currentScreen ? 'w-6 bg-black' : 'w-1.5 bg-slate-200'
+              className={`h-1.5 rounded-full transition-all duration-300 ${i === currentScreen ? 'w-6 bg-[#6E6E6E]' : 'w-1.5 bg-[#D9D9D9]'
                 }`}
             />
           ))}
@@ -122,10 +122,10 @@ export default function Onboarding() {
         </div>
 
         {/* Next Button */}
-        <div className="w-full px-4 mb-8 mt-2">
+        <div className="w-full px-0 mb-8 mt-10">
           <button
             onClick={handleNext}
-            className="w-full h-[60px] bg-white border border-[#69A38D] rounded-[20px] text-black font-bold text-xl transition-all flex items-center justify-center active:scale-[0.98] shadow-sm hover:bg-slate-50"
+            className="w-full h-[40px] bg-white border border-[#69A38D] rounded-[15px] text-black font-bold text-xl transition-all flex items-center justify-center active:scale-[0.98] shadow-sm hover:bg-slate-50"
           >
             {currentScreen === ONBOARDING_SCREENS.length - 1 ? 'Get Started' : 'Next'}
           </button>
