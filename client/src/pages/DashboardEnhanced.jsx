@@ -4,7 +4,7 @@ import { useData } from '../context/DataContext';
 import {
   Flame, Moon, Utensils, Activity, Sparkles, TrendingUp, TrendingDown, Bell,
   ChevronRight, ChevronLeft, Plus, FileText, AlertCircle, Droplet,
-  Search, Sun, Clock, Heart, Apple, Info, Target, Calendar,
+  Search, Sun, Heart, Apple, Info, Target, Calendar,
   ArrowUpRight, Upload, Coffee, Dumbbell, MessageCircle, BarChart3,
   Circle, Smile, FlaskConical, Leaf, Pill, CheckCircle2, Zap, Eye,
   UtensilsCrossed, UploadCloud, ShieldCheck, AlertTriangle, Check, Dna,
@@ -940,7 +940,7 @@ export default function DashboardEnhanced() {
   useEffect(() => {
     const hour = new Date().getHours();
     if (hour < 11) setActiveMealTab('breakfast');
-    else if (hour < 16) setActiveMealTab('lunch');
+    else if (hour < 17) setActiveMealTab('lunch');
     else setActiveMealTab('dinner');
   }, []);
 
@@ -1326,22 +1326,20 @@ export default function DashboardEnhanced() {
             </div>
 
             {/* Meal Tabs Row */}
-            <div className="px-5 mb-4 w-full overflow-x-auto scrollbar-hide">
-              <div className="flex items-center gap-2">
+            <div className="px-5 mb-4 w-full">
+              <div className="flex items-center gap-1.5 w-full">
                 {[
                   { id: 'breakfast', label: 'Breakfast' },
-                  { id: 'midMorningSnack', label: 'Mid-Morning' },
                   { id: 'lunch', label: 'Lunch' },
-                  { id: 'eveningSnack', label: 'Evening' },
                   { id: 'dinner', label: 'Dinner' }
                 ].map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveMealTab(tab.id)}
-                    className={`transition-all whitespace-nowrap flex-none h-[32.5px] px-4 rounded-full font-semibold text-xs transition-all ${
+                    className={`transition-all whitespace-nowrap flex-1 h-[36px] rounded-full font-bold text-[11px] uppercase tracking-wider transition-all ${
                       activeMealTab === tab.id
-                        ? 'bg-[#76B39D] text-white shadow-lg shadow-[#76B39D]/30'
-                        : 'bg-[#FAFBF8] text-[#8a8a8a] border border-[#f0f0ea] hover:bg-[#E8F3EE]'
+                        ? 'bg-[#76B39D] text-white shadow-lg shadow-[#76B39D]/30 border-transparent'
+                        : 'bg-white text-[#8a8a8a] border border-[#f0f0ea] hover:bg-[#E8F3EE]'
                     }`}
                     style={{ fontFamily: 'Poppins, sans-serif' }}
                   >
@@ -1397,16 +1395,20 @@ export default function DashboardEnhanced() {
                                   />
                                 </div>
                                 {/* Content Card */}
-                                <div className="absolute bottom-0 left-0 w-full h-[122px] bg-[#F6F7F2] rounded-[22px] border border-[#ededdf] pt-[55px] px-4 pb-3 z-10 text-left">
-                                  <h4 className="truncate font-bold text-[13px] text-[#1a1a1a] mb-1.5" style={{ fontFamily: 'Poppins, sans-serif' }}>{foodName}</h4>
-                                  <div className="flex items-center gap-3">
-                                    <div className="flex items-center gap-1 text-[#6B7280]">
-                                      <Clock className="w-3 h-3 text-[#FF7E5F]" />
-                                      <span className="text-[10px] font-medium">12 Min</span>
+                                <div className="absolute bottom-0 left-0 w-full h-[126px] bg-[#F6F7F2] rounded-[22px] border border-[#ededdf] pt-[52px] px-4 pb-3 z-10 text-left">
+                                  <h4 className="truncate font-bold text-[13px] text-[#1a1a1a] mb-1" style={{ fontFamily: 'Poppins, sans-serif' }}>{foodName}</h4>
+                                  <div className="flex flex-col gap-1">
+                                    <div className="flex items-start gap-1.5">
+                                      <Scale className="w-2.5 h-2.5 text-[#76B39D] mt-0.5 shrink-0" />
+                                      <span className="text-[9px] font-black text-[#76B39D] uppercase tracking-tight leading-tight break-words line-clamp-2 max-w-[170px]">
+                                        {item?.portionSize || '1 Serving'}
+                                      </span>
                                     </div>
-                                    <div className="flex items-center gap-1 text-[#6B7280]">
-                                      <Flame className="w-3 h-3 text-[#FF7E5F]" />
-                                      <span className="text-[10px] font-medium">{item?.calories || '280'} Cal</span>
+                                    <div className="flex items-center gap-1.5">
+                                      <div className="flex items-center gap-1.5">
+                                        <Flame className="w-2.5 h-2.5 text-orange-500" />
+                                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wide">{item?.calories || '280'} Kcal</span>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>

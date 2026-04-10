@@ -76,11 +76,9 @@ STRUCTURE:
 {
   "dailyCalorieTarget": ${nutritionGoals?.dailyCalories || 2000},
   "mealPlan": {
-    "breakfast": [{"name": "Meal Name", "portionSize": "descriptive size (e.g. 1 bowl, 2 pieces)", "calories": 0, "protein": 0, "carbs": 0, "fats": 0}],
-    "midMorningSnack": [{"name": "Snack Name", "portionSize": "descriptive size", "calories": 0, "protein": 0, "carbs": 0, "fats": 0}],
-    "lunch": [{"name": "Meal Name", "portionSize": "descriptive size", "calories": 0, "protein": 0, "carbs": 0, "fats": 0}],
-    "eveningSnack": [{"name": "Snack Name", "portionSize": "descriptive size", "calories": 0, "protein": 0, "carbs": 0, "fats": 0}],
-    "dinner": [{"name": "Meal Name", "portionSize": "descriptive size", "calories": 0, "protein": 0, "carbs": 0, "fats": 0}]
+    "breakfast": [{"name": "Meal Name", "portionSize": "1 bowl / 2 pieces / 200g", "calories": 0, "protein": 0, "carbs": 0, "fats": 0}],
+    "lunch": [{"name": "Meal Name", "portionSize": "1 plate / 1.5 bowl / 350g", "calories": 0, "protein": 0, "carbs": 0, "fats": 0}],
+    "dinner": [{"name": "Meal Name", "portionSize": "1 bowl / 150g", "calories": 0, "protein": 0, "carbs": 0, "fats": 0}]
   }
 }
 USER DATA:
@@ -93,14 +91,13 @@ USER DATA:
 - Macro Targets: Protein ${nutritionGoals?.protein}g, Carbs ${nutritionGoals?.carbs}g, Fats ${nutritionGoals?.fats}g
 
 REQUIREMENTS:
-1. Provide COMPLETELY UNIQUE AND VARIED options. Do NOT repeat standardized meals for every user.
-2. Focus on Indian cuisine (varied regions: North, South, East, West).
-3. Output 1-2 options per meal.
-4. Descriptive measurements (e.g., 100g, 1 bowl, 2 pieces) required in "portionSize".
-5. For Diabetic users: Low Glycemic Index (GI), higher fiber, controlled portions.
-6. ${promptExtension}
+1. CRITICAL: The SUM of Calories, Protein, Carbs, and Fats across NO MORE than one option from each meal (Breakfast + Lunch + Dinner) MUST strictly align with the USER'S Macro Targets provided.
+2. PRECISE PORTIONS: Use measurements like "1.5 Bowl (250g)", "2 Medium Roti (80g)", etc., in "portionSize". The portion must explain BOTH the visual quantity (bowl/piece) AND the approximate weight (grams) if applicable.
+3. Focus on varied Indian cuisine.
+4. Output 1-2 options per meal.
+5. ${promptExtension}
 
-JSON output ONLY. High variety requested.`;
+JSON output ONLY. Exact mathematical alignment with macro goals is mandatory.`;
 
     try {
       const aiResponse = await this.makeAIRequest({

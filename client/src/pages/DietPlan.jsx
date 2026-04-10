@@ -7,7 +7,7 @@ import {
   Heart, Clock, ArrowLeft, Flame, Target,
   AlertCircle, Sparkles, CheckCircle, Lightbulb, X, UtensilsCrossed, Utensils,
   ChevronLeft, ChevronRight, Calendar, Search, Filter, RefreshCw, Eye, ChefHat,
-  ArrowRight, Check, Zap, Info, Coffee, Sun, Activity, Mail, Plus, ArrowUpRight
+  ArrowRight, Check, Zap, Info, Coffee, Sun, Activity, Mail, Plus, ArrowUpRight, Scale
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -143,12 +143,10 @@ const Moon = ({ className }) => (
   </svg>
 );
 
-const MEAL_ORDER = ['breakfast', 'midMorningSnack', 'lunch', 'eveningSnack', 'dinner'];
+const MEAL_ORDER = ['breakfast', 'lunch', 'dinner'];
 const SECTION_INFO = {
   breakfast: { label: 'Breakfast', time: '08:00 AM', emoji: '🍳', icon: Coffee },
-  midMorningSnack: { label: 'Mid-Morning', time: '11:00 AM', emoji: '🍎', icon: Sun },
   lunch: { label: 'Lunch', time: '01:30 PM', emoji: '🥗', icon: Utensils },
-  eveningSnack: { label: 'Evening', time: '05:00 PM', emoji: '☕', icon: Sunset },
   dinner: { label: 'Dinner', time: '08:30 PM', emoji: '🌙', icon: Moon }
 };
 
@@ -283,14 +281,18 @@ const MealOptionsModal = ({ label, meals, loggedMeals, mealType, onClose, onLog,
                   </div>
                   <div className="flex-1 py-1">
                     <h3 className="text-base md:text-lg font-bold text-[#1a2e35] mb-2 leading-tight">{name}</h3>
-                    <div className="flex items-center gap-4">
-                      <div className="flex items-center gap-1.5 text-slate-400">
-                        <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-orange-400" />
-                        <span className="text-[10px] md:text-xs font-black uppercase tracking-widest">{meal.prepTime || '15 Min'}</span>
+                    <div className="flex flex-col gap-2 mt-auto">
+                      <div className="flex items-start gap-1.5 w-fit max-w-full">
+                        <Scale className="w-3.5 h-3.5 text-[#69A38D] mt-0.5 shrink-0" strokeWidth={2.5} />
+                        <span className="text-[10px] md:text-sm font-black uppercase tracking-tight text-[#69A38D] leading-tight break-words">
+                          {meal.portionSize || '1 Serving'}
+                        </span>
                       </div>
-                      <div className="flex items-center gap-1.5 text-slate-400">
-                        <Flame className="w-3.5 h-3.5 md:w-4 md:h-4 text-orange-400" />
-                        <span className="text-[10px] md:text-xs font-black uppercase tracking-widest">{getMealCalories(meal)} Cal</span>
+                      <div className="flex items-center gap-1.5">
+                        <Flame className="w-3.5 h-3.5 text-orange-400 shrink-0" strokeWidth={2.5} />
+                        <span className="text-[10px] md:text-sm font-black uppercase tracking-tight text-slate-400">
+                          {getMealCalories(meal)} Kcal
+                        </span>
                       </div>
                     </div>
                   </div>

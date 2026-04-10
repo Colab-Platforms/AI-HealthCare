@@ -294,17 +294,13 @@ export function NutritionTab({
             </div>
 
             {[
-              { name: 'Breakfast', target: Math.round((dailySummary.calorieTarget || 1800) * 0.20), icon: Coffee, time: '09:00' },
-              { name: 'Mid-morning', target: Math.round((dailySummary.calorieTarget || 1800) * 0.10), icon: Apple, time: '11:30' },
-              { name: 'Lunch', target: Math.round((dailySummary.calorieTarget || 1800) * 0.35), icon: Utensils, time: '13:30' },
-              { name: 'Evening Snack', target: Math.round((dailySummary.calorieTarget || 1800) * 0.15), icon: Zap, time: '16:45' },
-              { name: 'Dinner', target: Math.round((dailySummary.calorieTarget || 1800) * 0.20), icon: UtensilsCrossed, time: '20:15' }
+              { name: 'Breakfast', target: Math.round((dailySummary.calorieTarget || 1800) * 0.30), icon: Coffee, time: '09:00' },
+              { name: 'Lunch', target: Math.round((dailySummary.calorieTarget || 1800) * 0.40), icon: Utensils, time: '13:30' },
+              { name: 'Dinner', target: Math.round((dailySummary.calorieTarget || 1800) * 0.30), icon: UtensilsCrossed, time: '20:15' }
             ].map((meal, idx) => {
               const typeKey = 
                 meal.name === 'Breakfast' ? 'breakfast' :
-                meal.name === 'Mid-morning' ? 'midMorningSnack' :
                 meal.name === 'Lunch' ? 'lunch' :
-                meal.name === 'Evening Snack' ? 'eveningSnack' :
                 meal.name === 'Dinner' ? 'dinner' : 'other';
 
               const meals = (loggedMeals || []).filter(m => {
@@ -396,9 +392,7 @@ export function NutritionTab({
                                 >
                                   {[
                                     { label: 'Breakfast', value: 'breakfast' },
-                                    { label: 'Mid-morning', value: 'midMorningSnack' },
                                     { label: 'Lunch', value: 'lunch' },
-                                    { label: 'Evening Snack', value: 'eveningSnack' },
                                     { label: 'Dinner', value: 'dinner' }
                                   ].map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
                                 </select>

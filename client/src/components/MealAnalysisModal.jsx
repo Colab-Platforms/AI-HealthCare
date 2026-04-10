@@ -134,7 +134,7 @@ export function MealAnalysisModal({ meal, onClose, onAdd, source }) {
 
   // Use consistent name extraction
   const foodName = extractFoodName(meal);
-  const quantity = meal.foodItems?.[0]?.quantity || meal.foodItem?.quantity || meal.quantity || '1 serving';
+  const quantity = meal.portionSize || meal.foodItems?.[0]?.quantity || meal.foodItem?.quantity || meal.quantity || '1 serving';
   const healthScore = meal.healthScore || (meal.healthScore10 ? meal.healthScore10 * 10 : 0) || 50;
   
   const calories = meal.foodItems?.[0]?.nutrition?.calories || meal.foodItem?.nutrition?.calories || meal.totalNutrition?.calories || meal.nutrition?.calories || meal.calories || 0;

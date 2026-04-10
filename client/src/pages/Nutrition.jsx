@@ -53,9 +53,7 @@ function Nutrition() {
   });
   const [mealLogs, setMealLogs] = useState({
     Breakfast: [],
-    'Mid-Morning': [],
     Lunch: [],
-    Evening: [],
     Dinner: []
   });
   const [weeklyTrendsData, setWeeklyTrendsData] = useState([]);
@@ -298,9 +296,7 @@ function Nutrition() {
       
       const grouped = {
         Breakfast: [],
-        'Mid-Morning': [],
         Lunch: [],
-        Evening: [],
         Dinner: []
       };
 
@@ -308,11 +304,8 @@ function Nutrition() {
         logs.forEach(log => {
           const type = log.mealType;
           if (type.toLowerCase().includes('breakfast')) grouped.Breakfast.push(log);
-          else if (type.toLowerCase().includes('mid') || type.toLowerCase().includes('morning')) grouped['Mid-Morning'].push(log);
           else if (type.toLowerCase().includes('lunch')) grouped.Lunch.push(log);
-          else if (type.toLowerCase().includes('evening') || type.toLowerCase().includes('afternoon')) grouped.Evening.push(log);
-          else if (type.toLowerCase().includes('dinner')) grouped.Dinner.push(log);
-          else grouped.Evening.push(log); // Fallback to evening for generic snacks
+          else grouped.Dinner.push(log); // Fallback for everything else
         });
         setMealLogs(grouped);
         setRecentMeals(logs.slice(0, 15));
@@ -554,10 +547,7 @@ function Nutrition() {
 
   const handleConfirmLog = async (data) => {
     try {
-      const mappedMealType = 
-        mealTab.toLowerCase() === 'mid-morning' ? 'midMorningSnack' : 
-        mealTab.toLowerCase() === 'evening' ? 'eveningSnack' : 
-        mealTab.toLowerCase();
+      const mappedMealType = mealTab.toLowerCase();
 
       const logData = {
         mealType: mappedMealType,
@@ -765,7 +755,7 @@ function Nutrition() {
               {/* Header */}
               <div className="p-6 md:p-8 pb-4">
                 <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Add to {mealTab === 'Evening' ? 'Snack' : mealTab}</h3>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Add to {mealTab}</h3>
                   <button onClick={() => setIsModalOpen(false)} className="w-10 h-10 bg-white hover:bg-slate-50 rounded-full flex items-center justify-center transition-all border border-slate-200 shadow-sm shrink-0">
                     <X className="w-5 h-5 text-slate-400" />
                   </button>
@@ -775,9 +765,7 @@ function Nutrition() {
                 <div className="flex gap-2 mb-6 overflow-x-auto pb-1 scrollbar-hide -mx-2 px-2">
                   {[
                     { id: 'Breakfast', label: 'BREAKFAST', icon: null },
-                    { id: 'Mid-Morning', label: 'MID-MORN', icon: Sun },
                     { id: 'Lunch', label: 'LUNCH', icon: Sun },
-                    { id: 'Evening', label: 'SNACK', icon: Cookie },
                     { id: 'Dinner', label: 'DINNER', icon: Moon }
                   ].map(tab => (
                     <button
