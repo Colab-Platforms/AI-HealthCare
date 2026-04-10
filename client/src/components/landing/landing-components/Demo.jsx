@@ -7,7 +7,7 @@ import {
   useSpring,
   useInView,
 } from "framer-motion";
-import { useRef, Suspense } from "react";
+import { useRef, Suspense, useEffect, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useGLTF, Environment } from "@react-three/drei";
 
@@ -71,6 +71,28 @@ const fadeRight = {
 
 const Demo = () => {
   const containerRef = useRef(null);
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window !== "undefined" ? window.innerWidth : 1280,
+  );
+
+  useEffect(() => {
+    const handleResize = () => setViewportWidth(window.innerWidth);
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const deviceType =
+    viewportWidth < 768
+      ? "mobile"
+      : viewportWidth < 1024
+        ? "tablet"
+        : "desktop";
+  const borderImageSrc =
+    deviceType === "desktop"
+      ? "/landing/demo/border.svg"
+      : "/landing/demo/border-mob.svg";
+
   const { scrollYProgress } = useScroll({
     target: containerRef,
     offset: ["start end", "end start"],
@@ -90,27 +112,27 @@ const Demo = () => {
   return (
     <section
       ref={containerRef}
-      className="container mx-auto py-24 px-5 overflow-hidden"
+      className="container mx-auto pb-24 lg:py-24 px-5 overflow-hidden"
     >
       <motion.div
         {...fadeUp}
         className="flex justify-center text-center items-center"
       >
         <div>
-          <h2 className="text-landing-primary-hover font-landing-title text-3xl md:text-4xl">
+          <h2 className="text-landing-primary-hover font-landing-title text-2xl md:text-4xl text-balance">
             Guidance That Moves With You
           </h2>
-          <p className="text-xl text-landing-text/80 mt-4">
+          <p className="lg:text-lg text-landing-text/80 mt-4 text-balance">
             A Smarter Way to Understand and Extend Your Longevity.
           </p>
         </div>
       </motion.div>
 
-      <div className="flex justify-center flex-col items-center mt-64 relative">
+      <div className="flex justify-center flex-col items-center mt-36 lg:mt-64 relative">
         {/* interactive */}
         <motion.div
           {...fadeLeft}
-          className="absolute left-0 top-[35%] -translate-y-1/2"
+          className="absolute left-0 top-[35%] -translate-y-1/2 hidden lg:block"
         >
           <h3 className="font-landing-title text-xl font-semibold max-w-10">
             Interactive Tool (Symptom Checker)
@@ -129,13 +151,13 @@ const Demo = () => {
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 1 }}
-            src="/landing/demo/border.svg"
+            src={borderImageSrc}
             alt="border"
             fxd5r
           />
 
-          <div className="absolute bottom-0 left-[22%]">
-            <div className="inline-block  -mb-[70px]">
+          <div className="absolute bottom-0 lg:left-[22%]">
+            <div className="inline-block -mb-[70px]">
               <img
                 src="/landing/demo/man.png"
                 alt=""
@@ -168,13 +190,13 @@ const Demo = () => {
               style={{ rotate: rotate1, willChange: "transform" }}
               src="/landing/demo/circle.png"
               alt="circle"
-              className="absolute -right-[50%] top-0 w-1/2 origin-center"
+              className="absolute -right-[24%] -top-20 lg:-right-[50%] lg:top-0 w-1/2 origin-center"
             />
             <motion.img
               style={{ rotate: rotate2, willChange: "transform" }}
               src="/landing/demo/circle.png"
               alt="circle"
-              className="absolute -left-[45%] -bottom-20 w-1/3 origin-center"
+              className="absolute -left-[12%] -bottom-10 lg:-left-[45%] lg:-bottom-20 w-1/3 origin-center z-50"
             />
             <motion.img
               initial={{ opacity: 0, scale: 0.8 }}
@@ -183,7 +205,7 @@ const Demo = () => {
               transition={{ duration: 0.6, delay: 0.4 }}
               src="/landing/demo/innovation.svg"
               alt="innovation"
-              className="absolute lg:-left-[70%] md:-left-80 md:top-0 lg:top-10 backdrop-blur-[2px]"
+              className="absolute lg:-left-[70%] md:-left-80 md:top-0 lg:top-10 backdrop-blur-[2px] hidden lg:block"
             />
             <motion.img
               initial={{ opacity: 0, scale: 0.8 }}
@@ -192,7 +214,7 @@ const Demo = () => {
               transition={{ duration: 0.6, delay: 0.5 }}
               src="/landing/demo/sugar.png"
               alt="sugar"
-              className="absolute -right-[50%] -bottom-24"
+              className="absolute -right-[50%] -bottom-24 hidden lg:block"
             />
           </div>
 
