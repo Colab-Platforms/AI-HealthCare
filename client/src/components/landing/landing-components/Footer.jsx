@@ -59,7 +59,11 @@ const Footer = () => {
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.55, delay: 0.04, ease: [0.16, 1, 0.3, 1] }}
+            transition={{
+              duration: 0.55,
+              delay: 0.04,
+              ease: [0.16, 1, 0.3, 1],
+            }}
           >
             <img src="/landing/logo.svg" className="mb-5" alt="" />
             <p className="max-w-sm">
@@ -73,7 +77,11 @@ const Footer = () => {
               initial={{ opacity: 0, y: 16 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-100px" }}
-              transition={{ duration: 0.55, delay: 0.08 + index * 0.05, ease: [0.16, 1, 0.3, 1] }}
+              transition={{
+                duration: 0.55,
+                delay: 0.08 + index * 0.05,
+                ease: [0.16, 1, 0.3, 1],
+              }}
             >
               <h5 className="uppercase text-white/50 mb-5 tracking-wider">
                 {item.title}
@@ -94,7 +102,11 @@ const Footer = () => {
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true, margin: "-100px" }}
-            transition={{ duration: 0.55, delay: 0.24, ease: [0.16, 1, 0.3, 1] }}
+            transition={{
+              duration: 0.55,
+              delay: 0.24,
+              ease: [0.16, 1, 0.3, 1],
+            }}
           >
             <h5 className="uppercase text-white/50 mb-5 tracking-wider">
               Stay Updated

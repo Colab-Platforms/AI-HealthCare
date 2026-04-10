@@ -143,7 +143,11 @@ const Testimonials = () => {
                   initial={{ opacity: 0 }}
                   whileInView={{ opacity: 1 }}
                   viewport={{ once: true, margin: "-100px" }}
-                  transition={{ duration: 0.55, delay: index * 0.04, ease: [0.16, 1, 0.3, 1] }}
+                  transition={{
+                    duration: 0.55,
+                    delay: index * 0.04,
+                    ease: [0.16, 1, 0.3, 1],
+                  }}
                 >
                   <TestimonialItem {...testimonial} />
                 </motion.div>
