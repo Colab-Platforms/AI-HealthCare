@@ -242,11 +242,13 @@ export function MealAnalysisModal({ meal, onClose, onAdd, source }) {
               alt={foodName}
               className="w-full h-full object-cover"
             />
-            <div className="absolute top-4 left-4">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-lg text-[9px] font-black text-slate-700 uppercase tracking-wider shadow-md border border-white/60">
-                <Sparkles className="w-3 h-3 text-emerald-500" /> Analyzed Image
-              </span>
-            </div>
+            {(meal.source === 'ai_vision' || meal._isImageAnalysis) && (
+              <div className="absolute top-4 left-4">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-lg text-[9px] font-black text-slate-700 uppercase tracking-wider shadow-md border border-white/60">
+                  <Sparkles className="w-3 h-3 text-emerald-500" /> Analyzed Image
+                </span>
+              </div>
+            )}
           </motion.div>
 
           {/* ─── MACROS CARD ─── */}

@@ -383,9 +383,11 @@ const MealDetailModal = ({ meal, onClose, onAdd }) => {
               foodName={meal.name}
               className="w-full h-full object-cover"
             />
-            <div className="absolute bottom-4 right-4 px-4 py-1.5 bg-white/90 backdrop-blur-md rounded-full text-[9px] font-black uppercase tracking-widest text-black shadow-sm border border-white">
-              Analyzed Image
-            </div>
+            {(meal.image || data.imageUrl) && (
+              <div className="absolute bottom-4 right-4 px-4 py-1.5 bg-white/90 backdrop-blur-md rounded-full text-[9px] font-black uppercase tracking-widest text-black shadow-sm border border-white">
+                Analyzed Image
+              </div>
+            )}
           </div>
 
           {/* Macros Grid */}

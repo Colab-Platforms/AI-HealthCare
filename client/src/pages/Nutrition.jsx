@@ -500,7 +500,8 @@ function Nutrition() {
         _userInput: foodInput,
         _isFromCache: isCached,
         _cacheSource: response.data?.source,
-        _alreadyLogged: true
+        _alreadyLogged: true,
+        _isImageAnalysis: !!image
       };
 
       // AUTO-LOG: Directly log the meal to the database using the selected mealTab
@@ -561,7 +562,9 @@ function Nutrition() {
         healthBenefitsSummary: data.healthBenefitsSummary || data.analysis,
         warnings: data.warnings,
         alternatives: data.alternatives,
-        date: selectedDate
+        date: selectedDate,
+        imageUrl: data.imageUrl,
+        source: data._isImageAnalysis ? 'ai_vision' : 'manual'
       };
       await nutritionService.logMeal(logData);
       toast.success('Added to ' + mealTab);
