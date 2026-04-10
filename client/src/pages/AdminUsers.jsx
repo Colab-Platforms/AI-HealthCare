@@ -27,7 +27,10 @@ export default function AdminUsers() {
             setTotal(data.total || 0);
             setPages(data.pages || 1);
         } catch (err) {
-            toast.error('Failed to load user database');
+            const msg = err.response?.data?.message || 'Failed to load user database';
+            const hint = err.response?.data?.hint ? ` - ${err.response.data.hint}` : '';
+            toast.error(`${msg}${hint}`);
+            console.error('Admin Fetch Error:', err.response?.data || err.message);
         } finally {
             setLoading(false);
         }

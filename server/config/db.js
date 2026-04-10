@@ -23,14 +23,14 @@ const connectDB = async () => {
     // If no connection promise, create one
     if (!cached.promise) {
       const options = {
-        serverSelectionTimeoutMS: process.env.VERCEL ? 20000 : 30000,
-        socketTimeoutMS: 45000,
-        connectTimeoutMS: process.env.VERCEL ? 20000 : 30000,
+        serverSelectionTimeoutMS: process.env.VERCEL ? 30000 : 30000,
+        socketTimeoutMS: 60000,
+        connectTimeoutMS: process.env.VERCEL ? 30000 : 30000,
         retryWrites: true,
         w: 'majority',
-        maxPoolSize: process.env.VERCEL ? 3 : 10,
+        maxPoolSize: process.env.VERCEL ? 10 : 20, // Increased for concurrency
         minPoolSize: process.env.VERCEL ? 0 : 2,
-        maxIdleTimeMS: process.env.VERCEL ? 10000 : 30000,
+        maxIdleTimeMS: process.env.VERCEL ? 15000 : 30000,
         family: 4,
         autoIndex: !process.env.VERCEL && !process.env.RAILWAY_ENVIRONMENT_ID,
       };
