@@ -32,7 +32,7 @@ const Hero = () => {
       initial="hidden"
       animate="show"
       variants={bgFade}
-      className="relative z-10 bg-hero bg-cover h-screen bg-top-center flex items-center justify-center text-center pb-10 px-10"
+      className="relative z-10 bg-hero bg-cover h-screen bg-top flex items-center justify-center text-center pb-10 px-10"
     >
       <div className="absolute inset-0 bg-black/30"></div>
       <motion.div
