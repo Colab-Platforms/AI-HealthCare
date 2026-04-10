@@ -390,7 +390,6 @@ function Nutrition() {
     setFoodInput('');
     setFoodQuantity('');
     setPrepMethod('');
-    setPrepMethod('');
     setImage(null);
     setImagePreview(null);
     resetTranscript();

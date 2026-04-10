@@ -6,7 +6,7 @@ import {
   User, Save, Heart, AlertCircle, Camera, Mail, Phone, Target,
   Activity, Droplet, Cigarette, Wine, Moon, Apple, Dumbbell, Pill, Upload,
   Bell, ShieldCheck, ChevronRight, LogOut, FileText, Settings, CheckCircle2,
-  TrendingUp, TrendingDown, Clock, Sparkles, Zap, X
+  TrendingUp, TrendingDown, Clock, Sparkles, Zap, X, ScrollText, Shield, Headphones
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -198,7 +198,8 @@ export default function Profile() {
         targetWeight: parseFloat(goalFormData.targetWeight),
         height: parseFloat(formData.profile.height),
         age: parseInt(formData.profile.age),
-        gender: formData.profile.gender
+        gender: formData.profile.gender,
+        isDiabetic: formData.profile.isDiabetic === 'yes'
       };
       const { data } = await api.put('nutrition/goals', payload);
       setHealthGoal(data.healthGoal);
@@ -248,6 +249,77 @@ export default function Profile() {
   };
 
   const bmiStatus = getBmiStatus(parseFloat(bmi));
+
+  // Smart weight / goal mismatch warning
+  const goalMismatchWarning = (() => {
+    const cw = parseFloat(formData.profile.weight) || parseFloat(user?.profile?.weight) || 0;
+    const tw = parseFloat(goalFormData.targetWeight) || 0;
+    const goal = goalFormData.goalType;
+    
+    if (!cw || !tw) return null;
+
+    if (goal === 'weight_loss' && tw > cw) {
+      return { msg: `Weight mismatch: Target (${tw}kg) is higher than current (${cw}kg).`, icon: '⚠️' };
+    } else if ((goal === 'weight_gain' || goal === 'muscle_gain') && tw < cw) {
+      return { msg: `Weight mismatch: Target (${tw}kg) is lower than current (${cw}kg).`, icon: '⚠️' };
+    }
+    return null;
+  })();
+
+  // Toast alert for mismatch
+  useEffect(() => {
+    if (goalMismatchWarning && goalMismatchWarning.icon === '⚠️') {
+      toast.error(goalMismatchWarning.msg, { id: 'weight-mismatch' });
+    }
+  }, [goalMismatchWarning]);
+
+  // Live Macro Preview (Client-side calculation to match backend)
+  const liveMacroPreview = (() => {
+    const cw = parseFloat(formData.profile.weight) || parseFloat(user?.profile?.weight) || 0;
+    const ht = parseFloat(formData.profile.height) || parseFloat(user?.profile?.height) || 0;
+    const age = parseInt(formData.profile.age) || parseInt(user?.profile?.age) || 0;
+    const gender = formData.profile.gender || user?.profile?.gender || 'male';
+    const goal = goalFormData.goalType;
+    const activity = goalFormData.activityLevel || 'sedentary';
+    const isDiabetic = formData.profile.isDiabetic === 'yes';
+
+    if (!cw || !ht || !age) return null;
+
+    // 1. Calculate BMR
+    let bmr = (10 * cw) + (6.25 * ht) - (5 * age);
+    bmr = gender === 'male' ? bmr + 5 : bmr - 161;
+
+    // 2. Calculate TDEE
+    const multipliers = { sedentary: 1.2, lightly_active: 1.375, moderately_active: 1.55, very_active: 1.725, extremely_active: 1.9 };
+    const tdee = bmr * (multipliers[activity] || 1.2);
+
+    // 3. Calorie Target
+    let adjust = 0;
+    if (goal === 'weight_loss') adjust = isDiabetic ? -400 : -500;
+    else if (goal === 'weight_gain') adjust = isDiabetic ? 250 : 500;
+    else if (goal === 'muscle_gain') adjust = isDiabetic ? 200 : 300;
+    
+    const calorieTarget = Math.round(tdee + adjust);
+
+    // 4. Macros
+    let pro, carb, fat;
+    if (isDiabetic) {
+      const proPct = (goal === 'weight_loss' || goal === 'muscle_gain') ? 0.35 : 0.30;
+      const carbPct = 0.25;
+      const fatPct = 1 - proPct - carbPct;
+      pro = Math.round((calorieTarget * proPct) / 4);
+      carb = Math.round((calorieTarget * carbPct) / 4);
+      fat = Math.round((calorieTarget * fatPct) / 9);
+    } else {
+      const proPerKg = goal === 'weight_loss' ? 1.6 : goal === 'muscle_gain' ? 1.8 : 1.2;
+      const fatPerKg = goal === 'weight_loss' ? 0.6 : 1.0;
+      pro = Math.round(cw * proPerKg);
+      fat = Math.round(cw * fatPerKg);
+      carb = Math.round(Math.max((calorieTarget - (pro * 4) - (fat * 9)) / 4, 0));
+    }
+
+    return { calories: calorieTarget, protein: pro, carbs: carb, fats: fat };
+  })();
 
   if (!user) return <ProfileSkeleton />;
 
@@ -550,6 +622,14 @@ export default function Profile() {
                                  </div>
                               </div>
 
+                              {/* Smart Weight / Goal Mismatch Warning */}
+                              {goalMismatchWarning && (
+                                <div className="flex items-center gap-2.5 p-3.5 bg-red-50 border border-red-100 rounded-xl animate-bounce-subtle">
+                                  <span className="text-sm">{goalMismatchWarning.icon}</span>
+                                  <p className="text-[10px] font-bold text-red-700">{goalMismatchWarning.msg}</p>
+                                </div>
+                              )}
+
                               <div>
                                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">Target Timeframe</label>
                                  <select 
@@ -567,25 +647,55 @@ export default function Profile() {
                                  <p className="text-[9px] text-slate-400 mt-2 italic px-1">Tip: 12 weeks is recommended for sustainable fat loss or muscle gain.</p>
                               </div>
 
-                              {healthGoal?.macroTargets && (
-                                 <div className="p-5 bg-[#1a2138] rounded-2xl text-white shadow-xl">
-                                    <div className="flex items-center justify-between mb-4">
-                                       <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Daily Calorie Budget</span>
-                                       <span className="text-xl font-black">{healthGoal.dailyCalorieTarget} <span className="text-[11px] text-[#69A38D]">KCAL</span></span>
+                              {/* Macros Card - Uses Live Preview or Last Synced Data */}
+                              {(liveMacroPreview || healthGoal?.macroTargets) && (
+                                 <div className="p-5 bg-[#1a2138] rounded-2xl text-white shadow-xl relative overflow-hidden">
+                                    {/* Preview Glow Effect */}
+                                    <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 blur-[40px] rounded-full -mr-10 -mt-10" />
+                                    
+                                    <div className="flex items-center justify-between mb-4 relative z-10">
+                                       <div className="flex flex-col gap-0.5">
+                                          <div className="flex items-center gap-2">
+                                             <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Daily Calorie Budget</span>
+                                             {formData.profile.isDiabetic === 'yes' && (
+                                               <span className="text-[8px] font-black uppercase tracking-wider bg-amber-500/20 text-amber-400 px-2 py-0.5 rounded-full border border-amber-500/30">Diabetic</span>
+                                             )}
+                                          </div>
+                                          {!healthGoal && <span className="text-[8px] font-bold text-[#69A38D] uppercase tracking-tight">Live Prediction</span>}
+                                       </div>
+                                       <span className="text-xl font-black">
+                                          {liveMacroPreview?.calories || healthGoal?.dailyCalorieTarget} 
+                                          <span className="text-[11px] text-[#69A38D] ml-1">KCAL</span>
+                                       </span>
                                     </div>
-                                    <div className="grid grid-cols-3 gap-3">
+
+                                    <div className="grid grid-cols-3 gap-3 relative z-10">
                                        {[
-                                          { label: 'PRO', val: healthGoal.macroTargets.protein, unit: 'g', color: 'bg-emerald-500' },
-                                          { label: 'CARB', val: healthGoal.macroTargets.carbs, unit: 'g', color: 'bg-amber-500' },
-                                          { label: 'FAT', val: healthGoal.macroTargets.fats, unit: 'g', color: 'bg-rose-500' }
+                                          { label: 'PRO', val: liveMacroPreview?.protein || healthGoal?.macroTargets.protein, unit: 'g', color: 'bg-emerald-500' },
+                                          { label: 'CARB', val: liveMacroPreview?.carbs || healthGoal?.macroTargets.carbs, unit: 'g', color: 'bg-amber-500' },
+                                          { label: 'FAT', val: liveMacroPreview?.fats || healthGoal?.macroTargets.fats, unit: 'g', color: 'bg-rose-500' }
                                        ].map(m => (
-                                          <div key={m.label} className="bg-white/5 rounded-xl p-3">
-                                             <div className={`w-1 h-4 ${m.color} rounded-full mb-2`} />
+                                          <div key={m.label} className="bg-white/5 rounded-xl p-3 border border-white/5">
+                                             <div className={`w-1 h-4 ${m.color} rounded-full mb-2 shadow-[0_0_10px_rgba(0,0,0,0.2)]`} />
                                              <p className="text-[10px] font-black text-slate-400 mb-0.5">{m.label}</p>
-                                             <p className="text-sm font-black">{m.val}{m.unit}</p>
+                                             <p className="text-sm font-black text-white">{m.val}{m.unit}</p>
                                           </div>
                                        ))}
                                     </div>
+
+                                    {formData.profile.isDiabetic === 'yes' && (
+                                      <div className="mt-4 flex flex-col gap-1 px-1 relative z-10">
+                                        <div className="flex items-center gap-2">
+                                          <div className="w-1 h-1 rounded-full bg-amber-400 animate-pulse" />
+                                          <p className="text-[9px] text-amber-400/80 italic font-medium">
+                                            🩺 Glucose Optimization: Controlled carbs for stable insulin levels
+                                          </p>
+                                        </div>
+                                        <p className="text-[8px] text-slate-500 opacity-60 ml-3 italic">
+                                          *Macros are based on current weight to ensure safety during your journey
+                                        </p>
+                                      </div>
+                                    )}
                                  </div>
                               )}
 
@@ -634,6 +744,48 @@ export default function Profile() {
                           <TrendingUp size={18} className="text-slate-600" />
                        </div>
                        <span className="text-[15px] font-black text-[#1a1a1a] tracking-tight">Progress Reports</span>
+                    </div>
+                    <ChevronRight size={18} className="text-slate-300" />
+                 </button>
+
+                 {/* Terms & Conditions */}
+                 <button 
+                   onClick={() => toast('Terms & Conditions coming soon', { icon: '📄' })}
+                   className="w-full px-8 py-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group"
+                 >
+                    <div className="flex items-center gap-5">
+                       <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                          <ScrollText size={18} className="text-slate-600" />
+                       </div>
+                       <span className="text-[15px] font-black text-[#1a1a1a] tracking-tight">Terms & Conditions</span>
+                    </div>
+                    <ChevronRight size={18} className="text-slate-300" />
+                 </button>
+
+                 {/* Privacy Policy */}
+                 <button 
+                   onClick={() => toast('Privacy Policy coming soon', { icon: '🔒' })}
+                   className="w-full px-8 py-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group"
+                 >
+                    <div className="flex items-center gap-5">
+                       <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                          <Shield size={18} className="text-slate-600" />
+                       </div>
+                       <span className="text-[15px] font-black text-[#1a1a1a] tracking-tight">Privacy Policy</span>
+                    </div>
+                    <ChevronRight size={18} className="text-slate-300" />
+                 </button>
+
+                 {/* Customer Support */}
+                 <button 
+                   onClick={() => toast('Customer Support coming soon', { icon: '🎧' })}
+                   className="w-full px-8 py-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group"
+                 >
+                    <div className="flex items-center gap-5">
+                       <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                          <Headphones size={18} className="text-slate-600" />
+                       </div>
+                       <span className="text-[15px] font-black text-[#1a1a1a] tracking-tight">Customer Support</span>
                     </div>
                     <ChevronRight size={18} className="text-slate-300" />
                  </button>
