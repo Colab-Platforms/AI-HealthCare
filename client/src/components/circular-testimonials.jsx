@@ -9,33 +9,7 @@ import React, {
 import { FaArrowLeft, FaArrowRight } from "react-icons/fa";
 import { motion, AnimatePresence } from "framer-motion";
 
-interface Testimonial {
-  quote: string;
-  name: string;
-  designation: string;
-  src: string;
-}
-interface Colors {
-  name?: string;
-  designation?: string;
-  testimony?: string;
-  arrowBackground?: string;
-  arrowForeground?: string;
-  arrowHoverBackground?: string;
-}
-interface FontSizes {
-  name?: string;
-  designation?: string;
-  quote?: string;
-}
-interface CircularTestimonialsProps {
-  testimonials: Testimonial[];
-  autoplay?: boolean;
-  colors?: Colors;
-  fontSizes?: FontSizes;
-}
-
-function calculateGap(width: number) {
+function calculateGap(width) {
   const minWidth = 1024;
   const maxWidth = 1456;
   const minGap = 60;
@@ -43,7 +17,9 @@ function calculateGap(width: number) {
   if (width <= minWidth) return minGap;
   if (width >= maxWidth)
     return Math.max(minGap, maxGap + 0.06018 * (width - maxWidth));
-  return minGap + (maxGap - minGap) * ((width - minWidth) / (maxWidth - minWidth));
+  return (
+    minGap + (maxGap - minGap) * ((width - minWidth) / (maxWidth - minWidth))
+  );
 }
 
 export const CircularTestimonials = ({
@@ -51,7 +27,7 @@ export const CircularTestimonials = ({
   autoplay = true,
   colors = {},
   fontSizes = {},
-}: CircularTestimonialsProps) => {
+}) => {
   // Color & font config
   const colorName = colors.name ?? "#ffffff";
   const colorDesignation = colors.designation ?? "#06b6d4";
@@ -69,13 +45,13 @@ export const CircularTestimonials = ({
   const [hoverNext, setHoverNext] = useState(false);
   const [containerWidth, setContainerWidth] = useState(1200);
 
-  const imageContainerRef = useRef<HTMLDivElement>(null);
-  const autoplayIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const imageContainerRef = useRef(null);
+  const autoplayIntervalRef = useRef(null);
 
   const testimonialsLength = useMemo(() => testimonials.length, [testimonials]);
   const activeTestimonial = useMemo(
     () => testimonials[activeIndex],
-    [activeIndex, testimonials]
+    [activeIndex, testimonials],
   );
 
   // Responsive gap calculation
@@ -98,13 +74,14 @@ export const CircularTestimonials = ({
       }, 5000);
     }
     return () => {
-      if (autoplayIntervalRef.current) clearInterval(autoplayIntervalRef.current);
+      if (autoplayIntervalRef.current)
+        clearInterval(autoplayIntervalRef.current);
     };
   }, [autoplay, testimonialsLength]);
 
   // Keyboard navigation
   useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
+    const handleKey = (e) => {
       if (e.key === "ArrowLeft") handlePrev();
       if (e.key === "ArrowRight") handleNext();
     };
@@ -119,18 +96,22 @@ export const CircularTestimonials = ({
     if (autoplayIntervalRef.current) clearInterval(autoplayIntervalRef.current);
   }, [testimonialsLength]);
   const handlePrev = useCallback(() => {
-    setActiveIndex((prev) => (prev - 1 + testimonialsLength) % testimonialsLength);
+    setActiveIndex(
+      (prev) => (prev - 1 + testimonialsLength) % testimonialsLength,
+    );
     if (autoplayIntervalRef.current) clearInterval(autoplayIntervalRef.current);
   }, [testimonialsLength]);
 
   // Compute transforms for each image (always show 3: left, center, right)
-  function getImageStyle(index: number): React.CSSProperties {
+  function getImageStyle(index) {
     const gap = calculateGap(containerWidth);
     const maxStickUp = gap * 0.8;
-    const offset = (index - activeIndex + testimonialsLength) % testimonialsLength;
+    const offset =
+      (index - activeIndex + testimonialsLength) % testimonialsLength;
     // const zIndex = testimonialsLength - Math.abs(offset);
     const isActive = index === activeIndex;
-    const isLeft = (activeIndex - 1 + testimonialsLength) % testimonialsLength === index;
+    const isLeft =
+      (activeIndex - 1 + testimonialsLength) % testimonialsLength === index;
     const isRight = (activeIndex + 1) % testimonialsLength === index;
     if (isActive) {
       return {
@@ -210,7 +191,10 @@ export const CircularTestimonials = ({
               </h3>
               <p
                 className="designation"
-                style={{ color: colorDesignation, fontSize: fontSizeDesignation }}
+                style={{
+                  color: colorDesignation,
+                  fontSize: fontSizeDesignation,
+                }}
               >
                 {activeTestimonial.designation}
               </p>
@@ -272,56 +256,72 @@ export const CircularTestimonials = ({
           </div>
         </div>
       </div>
-      <style jsx>{`
+      <style>{`
         .testimonial-container {
           width: 100%;
-          padding: 2rem;
+          padding: 1rem;
         }
         .testimonial-grid {
           display: grid;
-          gap: 5rem;
+          gap: 2rem;
         }
         .image-container {
           position: relative;
           width: 100%;
-          height: 24rem;
+          height: 16rem;
           perspective: 1000px;
+          overflow: hidden;
         }
         .testimonial-image {
           position: absolute;
           width: 100%;
           height: 100%;
           object-fit: cover;
-          border-radius: 1.5rem;
+          border-radius: 1rem;
           box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+          max-width: 100%;
         }
         .testimonial-content {
           display: flex;
           flex-direction: column;
           justify-content: space-between;
-          background: linear-gradient(135deg, rgba(10, 61, 92, 0.85) 0%, rgba(13, 90, 138, 0.85) 100%);
+          background: linear-gradient(
+            135deg,
+            rgba(10, 61, 92, 0.85) 0%,
+            rgba(13, 90, 138, 0.85) 100%
+          );
           border: 1px solid rgba(6, 182, 212, 0.4);
-          border-radius: 1.5rem;
-          padding: 2rem;
+          border-radius: 1rem;
+          padding: 1.5rem;
           backdrop-filter: blur(10px);
+          overflow-x: hidden;
+          overflow-y: auto;
+          max-height: fit-content;
         }
         .name {
           font-weight: bold;
           margin-bottom: 0.25rem;
           color: #ffffff;
+          font-size: clamp(1.125rem, 4vw, 1.5rem);
+          word-break: break-word;
         }
         .designation {
-          margin-bottom: 2rem;
+          margin-bottom: 1.5rem;
           color: #06b6d4;
+          font-size: clamp(0.75rem, 2vw, 0.925rem);
+          word-break: break-word;
         }
         .quote {
-          line-height: 1.75;
+          line-height: 1.6;
           color: #cffafe;
+          font-size: clamp(0.875rem, 2.5vw, 1.125rem);
+          word-break: break-word;
+          hyphens: auto;
         }
         .arrow-buttons {
           display: flex;
-          gap: 1.5rem;
-          padding-top: 3rem;
+          gap: 1rem;
+          padding-top: 1.5rem;
         }
         .arrow-button {
           width: 2.7rem;
@@ -333,13 +333,43 @@ export const CircularTestimonials = ({
           cursor: pointer;
           transition: background-color 0.3s;
           border: none;
+          flex-shrink: 0;
         }
         .word {
           display: inline-block;
+          word-break: break-word;
+        }
+        @media (min-width: 640px) {
+          .testimonial-container {
+            padding: 1.5rem;
+          }
+          .testimonial-grid {
+            gap: 3rem;
+          }
+          .image-container {
+            height: 20rem;
+          }
+          .testimonial-content {
+            padding: 2rem;
+          }
+          .arrow-buttons {
+            gap: 1.5rem;
+            padding-top: 2rem;
+          }
         }
         @media (min-width: 768px) {
+          .testimonial-container {
+            padding: 2rem;
+          }
           .testimonial-grid {
             grid-template-columns: 1fr 1fr;
+            gap: 5rem;
+          }
+          .image-container {
+            height: 24rem;
+          }
+          .testimonial-content {
+            padding: 2rem;
           }
           .arrow-buttons {
             padding-top: 0;

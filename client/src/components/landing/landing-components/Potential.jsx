@@ -68,9 +68,8 @@ const Potential = () => {
     },
   ];
 
-  // Configure perfectly calculated continuous Ferris wheel mechanics for an arc marquee
-  const radius = 3750; // Increased radius for a flatter, smaller arc effect
-  const numItems = 65; // Reduced density for more space between items
+  const radius = 3750;
+  const numItems = 65;
   const angleStep = 360 / numItems;
   const circleItems = Array.from({ length: numItems }).map(
     (_, i) => potentialItems[i % potentialItems.length],
@@ -81,7 +80,7 @@ const Potential = () => {
   return (
     <motion.section
       {...fadeIn}
-      className="mx-auto pb-24 overflow-hidden relative"
+      className="mx-auto pb-0 lg:pb-24 overflow-hidden relative"
     >
       <style>
         {`

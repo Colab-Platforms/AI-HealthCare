@@ -105,35 +105,48 @@ const Testimonials = () => {
   return (
     <motion.section
       {...fadeUp}
-      className="container mx-auto pt-24 px-5 flex flex-col lg:flex-row justify-between gap-10"
+      className="container mx-auto pt-16 md:pt-24 px-4 sm:px-5 flex flex-col lg:flex-row justify-between gap-6 md:gap-10 overflow-hidden"
     >
       <motion.div
         {...fadeLeft}
         className="w-full lg:w-1/2 flex flex-col justify-between py-2 lg:py-8"
       >
         <div>
-          <h2 className=" font-landing-title text-3xl md:text-4xl/[3rem] text-balance mb-2">
-            You trust what ranks high. It’s time your{" "}
+          <h2 className=" font-landing-title text-2xl sm:text-3xl md:text-4xl/[3rem] text-balance mb-2">
+            You trust what ranks high. It's time your{" "}
             <span className="text-landing-primary-hover italic">health</span>{" "}
             did too
           </h2>
-          <p>See how others are making small changes that actually stick</p>
+          <p className="text-sm md:text-base">
+            See how others are making small changes that actually stick
+          </p>
         </div>
 
-        <div className="mt-14">
+        <div className="mt-8 md:mt-14 hidden sm:block">
           <hr />
           <div className="flex items-center mt-5 gap-5">
-            <img src="/landing/testimonial/testimonial.webp" alt="" />
+            <img
+              src="/landing/testimonial/testimonial.webp"
+              alt=""
+              className="w-12 h-12 md:w-auto"
+            />
             <div>
-              <h5>2,000+ Active Members</h5>
-              <img src="/landing/testimonial/star.svg" alt="" />
+              <h5 className="text-sm md:text-base">2,000+ Active Members</h5>
+              <img
+                src="/landing/testimonial/star.svg"
+                alt=""
+                className="w-24 md:w-auto"
+              />
             </div>
           </div>
         </div>
       </motion.div>
 
-      <motion.div {...fadeRight} className="w-full lg:w-1/2 flex justify-end">
-        <div className="w-full max-w-xl">
+      <motion.div
+        {...fadeRight}
+        className="w-full lg:w-1/2 flex justify-center lg:justify-end overflow-hidden"
+      >
+        <div className="w-full px-0 sm:px-0 max-w-md sm:max-w-lg md:max-w-xl">
           <div className="overflow-hidden" ref={emblaRef}>
             <div className="flex -ml-4">
               {testimonials.map((testimonial, index) => (
@@ -155,7 +168,7 @@ const Testimonials = () => {
             </div>
           </div>
 
-          <div className="mt-6 flex items-center">
+          <div className="mt-4 md:mt-6 flex items-center">
             <div
               className="flex items-center gap-2"
               aria-label="testimonial slider controls"
@@ -163,7 +176,7 @@ const Testimonials = () => {
               <button
                 type="button"
                 onClick={scrollPrev}
-                className="h-10 w-10 rounded-full border border-[#d9d9d9] bg-white text-[#013F3F] text-xl leading-none transition-colors hover:bg-[#f4f7f7]"
+                className="h-9 w-9 sm:h-10 sm:w-10 rounded-full border border-[#d9d9d9] bg-white text-[#013F3F] text-lg sm:text-xl leading-none transition-colors hover:bg-[#f4f7f7] flex-shrink-0"
                 aria-label="Previous testimonial"
               >
                 &#8592;
@@ -171,7 +184,7 @@ const Testimonials = () => {
               <button
                 type="button"
                 onClick={scrollNext}
-                className="h-10 w-10 rounded-full border border-[#d9d9d9] bg-white text-[#013F3F] text-xl leading-none transition-colors hover:bg-[#f4f7f7]"
+                className="h-9 w-9 sm:h-10 sm:w-10 rounded-full border border-[#d9d9d9] bg-white text-[#013F3F] text-lg sm:text-xl leading-none transition-colors hover:bg-[#f4f7f7] flex-shrink-0"
                 aria-label="Next testimonial"
               >
                 &#8594;

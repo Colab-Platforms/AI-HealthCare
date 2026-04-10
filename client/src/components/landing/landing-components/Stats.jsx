@@ -25,7 +25,7 @@ const fadeRightObj = {
 
 const Stats = () => {
   return (
-    <section className="container mx-auto py-24 px-5">
+    <section className="container mx-auto py-24 px-5 overflow-hidden">
       <div className="flex flex-col lg:flex-row lg:justify-between items-center text-center lg:text-left gap-5">
         <motion.div
           initial={{ opacity: 0, x: -30 }}
@@ -61,15 +61,15 @@ const Stats = () => {
 
       <div>
         <div
-          className="grid grid-cols-1 md:grid-cols-4 gap-6 mt-16  auto-rows-auto 
-                lg:auto-rows-[300px]"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 md:gap-4 lg:gap-6 mt-16 auto-rows-auto 
+          lg:auto-rows-[300px]"
         >
           {/* A */}
           <motion.div
             {...fadeLeftObj}
-            className="md:col-span-2 bg-[#f8f6f0] rounded-3xl flex flex-col justify-between overflow-hidden relative group h-[350px] lg:h-auto md:row-span-2"
+            className="lg:col-span-2 bg-[#f8f6f0] rounded-3xl flex flex-col justify-between overflow-hidden relative group h-[350px] md:h-[320px] lg:h-auto lg:row-span-2"
           >
-            <div className="flex lg:flex-col gap-2 px-8 pt-8 items-start">
+            <div className="flex lg:flex-col gap-2 px-8 pt-8 md:px-5 md:pt-5 lg:px-8 lg:pt-8 items-start">
               <img
                 src="/landing/stats/a.svg"
                 alt="Brain icon"
@@ -87,7 +87,7 @@ const Stats = () => {
               </div>
             </div>
 
-            <div className=" relative h-40 lg:h-64 w-full flex items-end justify-end">
+            <div className=" relative h-40 md:h-32 lg:h-64 w-full flex items-end justify-end">
               <img src="/landing/stats/A.png" alt="Lab Data" className="" />
             </div>
 
@@ -101,7 +101,7 @@ const Stats = () => {
           {/* B */}
           <motion.div
             {...fadeUpObj}
-            className="md:row-span-2 rounded-3xl relative overflow-hidden group h-[500px] lg:h-auto"
+            className="rounded-3xl relative overflow-hidden group h-[500px] md:h-[320px] lg:h-auto lg:row-span-2"
           >
             <img
               src="/landing/stats/B.jpg"
@@ -110,14 +110,16 @@ const Stats = () => {
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent"></div>
 
-            <div className="absolute top-6 left-6 flex gap-4 text-white">
+            <div className="absolute top-6 left-6 md:top-4 md:left-4 md:gap-3 lg:top-6 lg:left-6 lg:gap-4 flex gap-4 text-white">
               <div className="flex flex-col items-center lg:gap-1">
                 <img
                   src="/landing/stats/b-shoes.svg"
                   alt="Steps"
                   className="w-6 h-6"
                 />
-                <span className="font-semibold text-lg">6000</span>
+                <span className="font-semibold text-lg md:text-base lg:text-lg">
+                  6000
+                </span>
                 <span className="text-xs text-white/80">Steps</span>
               </div>
               <div className="flex flex-col items-center lg:gap-1">
@@ -126,18 +128,20 @@ const Stats = () => {
                   alt="Activity"
                   className="w-6 h-6"
                 />
-                <span className="font-semibold text-lg">2h 3m</span>
+                <span className="font-semibold text-lg md:text-base lg:text-lg">
+                  2h 3m
+                </span>
               </div>
             </div>
 
-            <div className="absolute bottom-6 left-6 right-6 text-white flex flex-col gap-3">
+            <div className="absolute bottom-6 left-6 right-6 md:bottom-4 md:left-4 md:right-4 lg:bottom-6 lg:left-6 lg:right-6 text-white flex flex-col gap-3">
               <div className="flex items-center gap-3">
                 <img
                   src="/landing/stats/b-wave.svg"
                   alt="Activity Wave"
                   className="w-8 h-8"
                 />
-                <h3 className="text-lg lg:text-2xl font-semibold">
+                <h3 className="text-lg md:text-base lg:text-2xl font-semibold">
                   Move Better
                 </h3>
               </div>
@@ -150,7 +154,7 @@ const Stats = () => {
           {/* C */}
           <motion.div
             {...fadeRightObj}
-            className="bg-[#d5e6df] rounded-3xl p-6 relative overflow-hidden flex flex-col justify-between group h-[280px] lg:h-auto"
+            className="bg-[#d5e6df] rounded-3xl p-6 md:p-4 lg:p-6 relative overflow-hidden flex flex-col justify-between group h-[280px] md:h-[260px] lg:h-auto"
           >
             <img
               src="/landing/stats/c-shape-top-right.svg"
@@ -166,7 +170,7 @@ const Stats = () => {
               <h3 className="text-lg lg:text-2xl font-semibold text-slate-800">
                 Sleep Better, Recover Smarter
               </h3>
-              <p className="text-slate-500 leading-relaxed text-pretty max-w-48 text-sm lg:text-base">
+              <p className="text-slate-500 leading-relaxed text-pretty max-w-48 md:max-w-full lg:max-w-48 text-sm lg:text-base">
                 Gain clarity into your rest quality and take simple steps to
                 improve recovery over time.
               </p>
@@ -183,7 +187,7 @@ const Stats = () => {
           {/* D */}
           <motion.div
             {...fadeRightObj}
-            className="bg-white border border-[#efebe7] shadow-sm rounded-3xl p-6 flex flex-col justify-center gap-4 group"
+            className="bg-white border border-[#efebe7] shadow-sm rounded-3xl p-6 md:p-4 lg:p-6 flex flex-col justify-center gap-4 group"
           >
             <img
               src="/landing/stats/d-pill.svg"
@@ -202,10 +206,10 @@ const Stats = () => {
           {/* E */}
           <motion.div
             {...fadeLeftObj}
-            className="md:col-span-2 bg-landing-primary-hover text-white rounded-3xl flex justify-between relative overflow-hidden group"
+            className="lg:col-span-2 bg-landing-primary-hover text-white rounded-3xl flex justify-between relative overflow-hidden group"
           >
             <div className="flex flex-col lg:flex-row">
-              <div className="p-8 flex flex-col gap-2 justify-center">
+              <div className="p-8 md:p-6 lg:p-8 flex flex-col gap-2 justify-center">
                 <div className="flex items-center gap-2 bg-white/10 w-max px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider">
                   <img
                     src="/landing/stats/e.svg"
@@ -223,11 +227,11 @@ const Stats = () => {
                 </p>
               </div>
 
-              <div className="flex justify-end">
+              <div className="flex justify-end md:items-end">
                 <img
                   src="/landing/stats/E.png"
                   alt="Metabolism Data"
-                  className=""
+                  className="md:max-w-[220px] lg:max-w-none"
                 />
               </div>
             </div>
@@ -236,7 +240,7 @@ const Stats = () => {
           {/* F */}
           <motion.div
             {...fadeUpObj}
-            className="md:col-span-2 rounded-3xl relative overflow-hidden flex items-end p-8 group h-[350px] lg:h-auto"
+            className="lg:col-span-2 rounded-3xl relative overflow-hidden flex items-end p-8 md:p-6 lg:p-8 group h-[350px] md:h-[320px] lg:h-auto"
           >
             <img
               src="/landing/stats/f.jpg"
@@ -245,7 +249,7 @@ const Stats = () => {
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
 
-            <div className="relative z-10 w-full md:w-2/3 flex flex-col gap-3">
+            <div className="relative z-10 w-full md:w-3/4 lg:w-2/3 flex flex-col gap-3">
               <img
                 src="/landing/stats/f.svg"
                 alt="Apple icon"
