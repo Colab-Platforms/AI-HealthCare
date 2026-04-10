@@ -70,7 +70,7 @@ const Potential = () => {
 
   // Configure perfectly calculated continuous Ferris wheel mechanics for an arc marquee
   const radius = 3750; // Increased radius for a flatter, smaller arc effect
-  const numItems = 60; // Reduced density for more space between items
+  const numItems = 65; // Reduced density for more space between items
   const angleStep = 360 / numItems;
   const circleItems = Array.from({ length: numItems }).map(
     (_, i) => potentialItems[i % potentialItems.length],
@@ -81,7 +81,7 @@ const Potential = () => {
   return (
     <motion.section
       {...fadeIn}
-      className="mx-auto py-24 overflow-hidden relative"
+      className="mx-auto pb-24 overflow-hidden relative"
     >
       <style>
         {`
@@ -96,7 +96,7 @@ const Potential = () => {
         {...fadeUp}
         className="flex justify-center text-center items-center relative z-10 pb-8"
       >
-        <h2 className=" font-landing-title text-3xl md:text-4xl">
+        <h2 className=" font-landing-title text-2xl md:text-4xl">
           Unlocking Human{" "}
           <span className="text-landing-primary-hover italic">Potential</span>
         </h2>
