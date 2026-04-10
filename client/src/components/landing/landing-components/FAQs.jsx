@@ -67,14 +67,14 @@ const FAQs = () => {
   return (
     <motion.section
       {...fadeUp}
-      className="container mx-auto py-16 md:py-24 px-4 sm:px-5 flex flex-col lg:flex-row justify-between items-start gap-6 md:gap-10 overflow-hidden"
+      className="container mx-auto py-16 md:py-24 px-4 sm:px-5 flex flex-col lg:flex-row justify-between items-center gap-6 md:gap-10 overflow-hidden"
     >
       <motion.div
         {...fadeLeft}
         className="w-full lg:w-1/2 flex flex-col justify-between py-2 lg:py-8"
       >
         <div>
-          <h2 className=" font-landing-title text-2xl sm:text-3xl md:text-4xl/[3rem] text-balance mb-2">
+          <h2 className=" font-landing-title text-2xl md:text-4xl/[3rem] text-balance mb-2">
             What it does. How it helps. <br />
             <span className="text-landing-primary-hover italic">
               Why it matters.

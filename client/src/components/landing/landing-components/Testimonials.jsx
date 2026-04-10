@@ -112,23 +112,23 @@ const Testimonials = () => {
         className="w-full lg:w-1/2 flex flex-col justify-between py-2 lg:py-8"
       >
         <div>
-          <h2 className=" font-landing-title text-2xl sm:text-3xl md:text-4xl/[3rem] text-balance mb-2">
+          <h2 className=" font-landing-title text-2xl md:text-4xl/[3rem] text-balance mb-2">
             You trust what ranks high. It's time your{" "}
             <span className="text-landing-primary-hover italic">health</span>{" "}
             did too
           </h2>
-          <p className="text-sm md:text-base">
+          <p className="text-base lg:text-lg text-balance">
             See how others are making small changes that actually stick
           </p>
         </div>
 
-        <div className="mt-8 md:mt-14 hidden sm:block">
+        <div className="mt-8 md:mt-14">
           <hr />
           <div className="flex items-center mt-5 gap-5">
             <img
               src="/landing/testimonial/testimonial.webp"
-              alt=""
-              className="w-12 h-12 md:w-auto"
+              alt="testimonial"
+              className=" md:w-auto"
             />
             <div>
               <h5 className="text-sm md:text-base">2,000+ Active Members</h5>
@@ -146,7 +146,7 @@ const Testimonials = () => {
         {...fadeRight}
         className="w-full lg:w-1/2 flex justify-center lg:justify-end overflow-hidden"
       >
-        <div className="w-full px-0 sm:px-0 max-w-md sm:max-w-lg md:max-w-xl">
+        <div className="w-full px-0 pt-5 sm:px-0 max-w-md sm:max-w-lg md:max-w-xl">
           <div className="overflow-hidden" ref={emblaRef}>
             <div className="flex -ml-4">
               {testimonials.map((testimonial, index) => (
