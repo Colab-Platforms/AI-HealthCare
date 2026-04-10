@@ -17,6 +17,7 @@ import { useAuth } from '../context/AuthContext';
 import NutritionSkeleton from '../components/skeletons/NutritionSkeleton';
 import { NutritionTab } from '../components/NutritionTab';
 import { MealAnalysisModal } from '../components/MealAnalysisModal';
+import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 
 function Nutrition() {
   const { user } = useAuth();
@@ -182,8 +183,17 @@ function Nutrition() {
   const [foodQuantity, setFoodQuantity] = useState('');
   const [lastSource, setLastSource] = useState('Scan'); // 'Scan' or 'Upload'
   const [prepMethod, setPrepMethod] = useState('');
-  const [isListening, setIsListening] = useState(false);
-  const recognitionRef = React.useRef(null);
+  
+  // Use the robust utility hook for voice logging
+  const { 
+    transcript, 
+    interimTranscript, 
+    listening: isListening, 
+    startListening: startVoiceCapture, 
+    stopListening: stopVoiceCapture,
+    resetTranscript
+  } = useSpeechRecognition();
+
   const [expandedMeal, setExpandedMeal] = useState(null);
   const [analyzingMessage, setAnalyzingMessage] = useState('Analyzing food...');
   const pendingAutoAnalyzeRef = React.useRef(false);
@@ -380,8 +390,10 @@ function Nutrition() {
     setFoodInput('');
     setFoodQuantity('');
     setPrepMethod('');
+    setPrepMethod('');
     setImage(null);
     setImagePreview(null);
+    resetTranscript();
   };
 
   // Image Upload Logic from QuickFoodCheck
@@ -580,71 +592,15 @@ function Nutrition() {
     }
   };
 
-  const finalTranscriptRef = React.useRef('');
-
-  const startVoiceCapture = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      toast.error("Speech recognition not supported in this browser.");
-      return;
+  // Sync transcript from hook to foodInput
+  useEffect(() => {
+    if (isListening) {
+      const displayText = (transcript + ' ' + interimTranscript).trim();
+      if (displayText) setFoodInput(displayText);
     }
-    const recognition = new SpeechRecognition();
-    recognitionRef.current = recognition;
-    recognition.lang = 'en-IN';
-    recognition.continuous = true;
-    recognition.interimResults = true;
+  }, [transcript, interimTranscript, isListening]);
 
-    recognition.onstart = () => {
-      setIsListening(true);
-      finalTranscriptRef.current = ''; // Reset accumulated transcript
-      if (inputMethod === 'Predict') {
-        setFoodInput('');
-      }
-      toast('Listening...', { icon: '🎙️', duration: 2000 });
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
-    recognition.onresult = (event) => {
-      let interimTranscript = '';
-      
-      // Process only from the latest resultIndex to avoid reprocessing old results
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscriptRef.current += transcript;
-        } else {
-          interimTranscript += transcript;
-        }
-      }
-      
-      // Build display text: committed finals + current interim
-      const displayText = (finalTranscriptRef.current + ' ' + interimTranscript).trim();
-      setFoodInput(displayText);
-    };
-
-    recognition.onerror = (event) => {
-      console.error('Speech Recognition Error:', event.error);
-      setIsListening(false);
-      toast.error('Voice capture failed: ' + event.error);
-    };
-
-    try {
-      recognition.start();
-    } catch (e) {
-      console.error(e);
-      setIsListening(false);
-    }
-  };
-
-  const stopVoiceCapture = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-    }
-  };
+  // stopVoiceCapture is now handled by the hook
 
   const handleDeleteMeal = async (logId) => {
     try {
