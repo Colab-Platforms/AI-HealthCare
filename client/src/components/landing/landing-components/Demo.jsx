@@ -1,6 +1,12 @@
 import { ArrowRightIcon } from "lucide-react";
 import { Link } from "react-router-dom";
-import { motion, useScroll, useTransform, useSpring, useInView } from "framer-motion";
+import {
+  motion,
+  useScroll,
+  useTransform,
+  useSpring,
+  useInView,
+} from "framer-motion";
 import { useRef, Suspense } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useGLTF, Environment } from "@react-three/drei";
@@ -23,18 +29,19 @@ function Model({ scrollYProgress }) {
         // 0.6 to 1 : rotate from front to other side
         targetRotation = baseRotation - ((scroll - 0.6) / 0.4) * (Math.PI / 2);
       }
-      
+
       // Smooth interpolation with easing
-      modelRef.current.rotation.y += (targetRotation - modelRef.current.rotation.y) * 0.08;
+      modelRef.current.rotation.y +=
+        (targetRotation - modelRef.current.rotation.y) * 0.08;
     }
   });
 
   return (
-    <primitive 
-      ref={modelRef} 
-      object={scene} 
-      scale={6.5} 
-      position={[0, -3.5, 0]} 
+    <primitive
+      ref={modelRef}
+      object={scene}
+      scale={6.5}
+      position={[0, -3.5, 0]}
     />
   );
 }
@@ -45,35 +52,35 @@ const fadeUp = {
   initial: { opacity: 0, y: 40 },
   whileInView: { opacity: 1, y: 0 },
   viewport: { once: true, margin: "-100px" },
-  transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] }
+  transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] },
 };
 
 const fadeLeft = {
   initial: { opacity: 0, x: -50 },
   whileInView: { opacity: 1, x: 0 },
   viewport: { once: true, margin: "-100px" },
-  transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] }
+  transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
 };
 
 const fadeRight = {
   initial: { opacity: 0, x: 50 },
   whileInView: { opacity: 1, x: 0 },
   viewport: { once: true, margin: "-100px" },
-  transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] }
+  transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] },
 };
 
 const Demo = () => {
   const containerRef = useRef(null);
   const { scrollYProgress } = useScroll({
     target: containerRef,
-    offset: ["start end", "end start"]
+    offset: ["start end", "end start"],
   });
-  
+
   const isInView = useInView(containerRef, { margin: "400px 0px" });
 
   // Base rotations with slower paces and different directions
-  const rotate1Raw = useTransform(scrollYProgress, [0, 1], [0, 120]); 
-  const rotate2Raw = useTransform(scrollYProgress, [0, 1], [-45, -135]); 
+  const rotate1Raw = useTransform(scrollYProgress, [0, 1], [0, 120]);
+  const rotate2Raw = useTransform(scrollYProgress, [0, 1], [-45, -135]);
 
   // Apply spring physics for natural momentum and smooth stopping
   const springConfig = { damping: 25, stiffness: 60, mass: 1.2 };
@@ -81,8 +88,14 @@ const Demo = () => {
   const rotate2 = useSpring(rotate2Raw, springConfig);
 
   return (
-    <section ref={containerRef} className="container mx-auto py-24 px-5">
-      <motion.div {...fadeUp} className="flex justify-center text-center items-center">
+    <section
+      ref={containerRef}
+      className="container mx-auto py-24 px-5 overflow-hidden"
+    >
+      <motion.div
+        {...fadeUp}
+        className="flex justify-center text-center items-center"
+      >
         <div>
           <h2 className="text-landing-primary-hover font-landing-title text-3xl md:text-4xl">
             Guidance That Moves With You
@@ -95,7 +108,10 @@ const Demo = () => {
 
       <div className="flex justify-center flex-col items-center mt-64 relative">
         {/* interactive */}
-        <motion.div {...fadeLeft} className="absolute left-0 top-[35%] -translate-y-1/2">
+        <motion.div
+          {...fadeLeft}
+          className="absolute left-0 top-[35%] -translate-y-1/2"
+        >
           <h3 className="font-landing-title text-xl font-semibold max-w-10">
             Interactive Tool (Symptom Checker)
           </h3>
@@ -105,39 +121,38 @@ const Demo = () => {
             className="w-10 h-10 mt-3"
           />
         </motion.div>
-        
-        <div className="relative">
 
+        <div className="relative">
           {/* border */}
-          <motion.img 
+          <motion.img
             initial={{ opacity: 0, scale: 1 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true, margin: "-100px" }}
             transition={{ duration: 1 }}
-            src="/landing/demo/border.svg" 
-            alt="border" fxd5r 
+            src="/landing/demo/border.svg"
+            alt="border"
+            fxd5r
           />
-
 
           <div className="absolute bottom-0 left-[22%]">
             <div className="inline-block  -mb-[70px]">
-              <img 
-                src="/landing/demo/man.png" 
-                alt="" 
-                className="opacity-0 pointer-events-none select-none block" 
+              <img
+                src="/landing/demo/man.png"
+                alt=""
+                className="opacity-0 pointer-events-none select-none block"
               />
-              <motion.div 
+              <motion.div
                 initial={{ opacity: 0, y: 0 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true, margin: "-100px" }}
                 transition={{ duration: 0.8, delay: 0.2 }}
                 className="absolute inset-0 z-10"
               >
-                <Canvas 
+                <Canvas
                   frameloop={isInView ? "always" : "never"}
-                  camera={{ position: [0, 0, 10], fov: 35 }} 
+                  camera={{ position: [0, 0, 10], fov: 35 }}
                   className="w-full h-full"
-                  dpr={[1, 1.5]} 
+                  dpr={[1, 1.5]}
                   gl={{ powerPreference: "high-performance", antialias: false }}
                 >
                   <ambientLight intensity={1.2} />
@@ -182,7 +197,10 @@ const Demo = () => {
           </div>
 
           {/* our Ai */}
-          <motion.div {...fadeRight} className="absolute -right-72 top-[30%] -translate-y-1/2">
+          <motion.div
+            {...fadeRight}
+            className="absolute -right-72 top-[30%] -translate-y-1/2"
+          >
             <p className="font-landing-accent text-sm leading-5 font-semibold max-w-56">
               Our AI engine evaluates patterns across vast medical datasets to
               support accurate diagnosis, reduce errors, and enhance
@@ -199,7 +217,7 @@ const Demo = () => {
         </div>
 
         {/* demo button */}
-        <motion.button 
+        <motion.button
           {...fadeUp}
           className="mt-16 px-6 py-4 bg-landing-primary-hover border-2 uppercase font-landing-accent rounded-full hover:bg-landing-primary transition flex items-center hover:text-white"
         >
