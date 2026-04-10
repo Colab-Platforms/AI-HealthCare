@@ -6,10 +6,6 @@ const DietPlanTemplate = require('../models/DietPlanTemplate');
 const DeficiencyRule = require('../models/DeficiencyRule');
 const SupplementMapping = require('../models/SupplementMapping');
 const QuickFoodCheck = require('../models/QuickFoodCheck');
-const Appointment = require('../models/Appointment');
-const WearableData = require('../models/WearableData');
-const ChatHistory = require('../models/ChatHistory');
-const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
 
 // User Management
 exports.getAllUsers = async (req, res) => {
@@ -37,8 +33,7 @@ exports.getAllUsers = async (req, res) => {
       .select('-password')
       .sort({ createdAt: -1 })
       .skip((page - 1) * limit)
-      .limit(parseInt(limit))
-      .lean();
+      .limit(parseInt(limit));
 
     const total = await User.countDocuments(filter);
     res.json({ users, total, page: parseInt(page), pages: Math.ceil(total / limit) });
@@ -54,8 +49,8 @@ exports.getUserDetails = async (req, res) => {
 
     // Fetch diverse activity types
     const [reports, appointments] = await Promise.all([
-      HealthReport.find({ user: req.params.id }).sort({ createdAt: -1 }).limit(10).lean(),
-      Appointment.find({ patient: req.params.id }).sort({ date: -1 }).limit(10).lean()
+      HealthReport.find({ user: req.params.id }).sort({ createdAt: -1 }).limit(10),
+      require('../models/Appointment').find({ user: req.params.id }).sort({ date: -1 }).limit(10)
     ]);
 
     // Simple activity consolidation
@@ -148,10 +143,10 @@ exports.deleteUser = async (req, res) => {
     await Promise.all([
       User.findByIdAndDelete(id),
       HealthReport.deleteMany({ user: id }),
-      WearableData.deleteMany({ user: id }),
+      require('../models/WearableData').deleteMany({ user: id }),
       Doctor.findOneAndDelete({ user: id }),
-      ChatHistory.deleteMany({ user: id }),
-      Appointment.deleteMany({ patient: id })
+      require('../models/ChatHistory').deleteMany({ user: id }),
+      require('../models/Appointment').deleteMany({ patient: id })
     ]);
 
     res.json({ message: 'User and all related data deleted successfully' });

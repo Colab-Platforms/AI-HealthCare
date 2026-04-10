@@ -1064,7 +1064,7 @@ export default function DashboardEnhanced() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
           className="px-4 md:px-0 mb-2"
-          style={{ marginTop: '4px' }}
+          style={{ marginTop: '15px' }}
         >
           <div
             onClick={() => navigate('/ai-chat')}
@@ -1179,7 +1179,7 @@ export default function DashboardEnhanced() {
             className="tour-nutrient-info w-full bg-white px-5 pb-5 pt-5 lg:px-8 lg:pb-8 lg:pt-8 border border-slate-100/80 shadow-[0_4px_24px_rgba(0,0,0,0.03)] flex flex-col relative overflow-hidden"
             style={{ 
               borderRadius: '29.29px', 
-              marginTop: '0px'
+              marginTop: '4px'
             }}
           >
             {/* Calories Header */}
@@ -1302,7 +1302,7 @@ export default function DashboardEnhanced() {
             style={{ 
               minHeight: '400px', 
               borderRadius: '29.29px', 
-              marginTop: '0px'
+              marginTop: '4px'
             }}
           >
             {/* Header Row */}
@@ -1451,7 +1451,7 @@ export default function DashboardEnhanced() {
             transition={{ delay: 0.15 }}
             className="tour-ai-insights w-full bg-white rounded-[24px] p-5 lg:p-8 border border-slate-100/80 shadow-[0_4px_24px_rgba(0,0,0,0.03)] flex flex-col relative overflow-hidden"
             style={{
-              marginTop: '0px'
+              marginTop: '4px'
             }}
           >
             <div className="flex items-center justify-between mb-6">
@@ -1537,7 +1537,7 @@ export default function DashboardEnhanced() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="mx-4 lg:mx-0 bg-white border border-[#f0f0ea] rounded-[32px] p-5 lg:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] relative overflow-hidden mt-0 mb-2"
+              className="mx-4 lg:mx-0 bg-white border border-[#f0f0ea] rounded-[32px] p-5 lg:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] relative overflow-hidden mt-4 mb-4"
             >
               <div className="relative z-10">
                 <div className="flex flex-row items-center justify-between mb-6">
@@ -1643,9 +1643,9 @@ export default function DashboardEnhanced() {
           </div>
           
           <div 
-            className="flex overflow-x-auto overflow-y-hidden scrollbar-hide snap-x snap-mandatory pb-4 gap-2 w-full" 
+            className="flex overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-4 gap-[11px] w-full" 
             style={{ 
-              minHeight: '210px'
+              minHeight: '230px'
             }}
           >
             {loggedMeals.length > 0 ? (
@@ -1658,8 +1658,8 @@ export default function DashboardEnhanced() {
                     key={idx}
                     className="bg-white shadow-sm flex flex-col flex-none snap-start group cursor-pointer border border-[#f0f0ea]/50"
                     style={{ 
-                      width: 'calc(50% - 4px)', 
-                      minHeight: '200px', 
+                      width: 'calc(50% - 6px)', 
+                      minHeight: '220px', 
                       borderRadius: '24px' 
                     }}
                     onClick={() => navigate('/nutrition', { state: { prefillData: meal } })}

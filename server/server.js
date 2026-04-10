@@ -23,29 +23,20 @@ if (!process.env.VERCEL) {
 
 const app = express();
 
-// Improved Database Middleware
+// Ensure database connection for every request
 app.use(async (req, res, next) => {
-  // Skip DB for health check and internal pings
-  const skipPaths = ['/api/health-check', '/api/ping', '/api/debug-connection'];
-  if (skipPaths.some(p => req.path === p || req.originalUrl === p)) {
+  // Skip DB for health check
+  if (req.path === '/api/health-check' || req.originalUrl === '/api/health-check') {
     return next();
   }
-
   try {
-    // If not connected, try connecting
-    if (mongoose.connection.readyState !== 1) {
-      if (!process.env.MONGODB_URI) {
-        throw new Error('MONGODB_URI is not defined in environment variables');
-      }
-      await connectDB();
-    }
+    await connectDB();
     next();
   } catch (error) {
-    console.error('[DB Middleware] Critical Failure:', error.message);
+    console.error('[DB Middleware] Connection failed:', error.message);
     res.status(503).json({
-      message: 'Database connection failed. Our systems are temporarily overloaded.',
+      message: 'Database connection failed. Please try again.',
       error: process.env.NODE_ENV === 'development' ? error.message : 'Service temporarily unavailable',
-      hint: 'Please refresh the page in a few seconds.',
       timestamp: new Date().toISOString()
     });
   }
@@ -205,15 +196,8 @@ try {
     const adminRouter = require('./routes/adminRoutes');
     app.use('/api/admin', adminRouter);
     console.log('[Server] ✅ Admin Router mounted at /api/admin');
-    
-    // Support direct access on Vercel (fallback if /api is stripped)
-    if (process.env.VERCEL) {
-      app.use('/admin', adminRouter);
-      console.log('[Server] Mounted Vercel fallback: /admin');
-    }
   } catch (adminErr) {
-    console.error('[Server] ❌ CRITICAL: FAILED to load adminRouter:', adminErr.message);
-    console.error(adminErr.stack);
+    console.error('[Server] ❌ FAILED to load adminRouter:', adminErr.message);
   }
 
   const routes = [
