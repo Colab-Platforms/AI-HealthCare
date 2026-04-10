@@ -21,7 +21,7 @@ const glassCard = "bg-white/80 backdrop-blur-2xl border border-white/50 rounded-
 export default function CompleteAnalysis() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { dashboardData, fetchDashboard, loading: contextLoading } = useData();
+  const { dashboardData, wearableData, nutritionData, fetchDashboard, loading: contextLoading } = useData();
   
   const [loading, setLoading] = useState(!dashboardData);
   const [glucoseLogs, setGlucoseLogs] = useState([]);
@@ -157,10 +157,10 @@ export default function CompleteAnalysis() {
       const vitals = dashboardData.vitals || {};
       history.push({
          date: new Date().toISOString(),
-         steps: vitals.steps?.value || 0,
-         sleep: vitals.sleep?.value || 0,
-         water: vitals.water?.value || 0,
-         calories: vitals.calories?.value || 0,
+         steps: wearableData?.todayMetrics?.steps || vitals.steps?.value || 0,
+         sleep: wearableData?.todayMetrics?.sleep ? (wearableData.todayMetrics.sleep / 60) : (vitals.sleep?.value || 0),
+         water: nutritionData?.totalWater || nutritionData?.waterIntake || vitals.water?.value || 0,
+         calories: nutritionData?.totalCalories || vitals.calories?.value || 0,
          weight: vitals.weight?.value || history[history.length - 1]?.weight || 0
       });
       // Keep only last limit
@@ -170,12 +170,23 @@ export default function CompleteAnalysis() {
        history = history.map(d => {
          if (d.date.startsWith(todayStr)) {
             const vitals = dashboardData.vitals || {};
+            
+            // Get today's sleep from wearable data if available
+            let wearableSleepToday = 0;
+            if (wearableData?.recentSleep?.length > 0) {
+              const latestSleep = wearableData.recentSleep[0];
+              const sleepDate = new Date(latestSleep.date).toISOString().split('T')[0];
+              if (sleepDate === todayStr) {
+                wearableSleepToday = (latestSleep.totalSleepMinutes || 0) / 60;
+              }
+            }
+
             return {
                ...d,
-               steps: vitals.steps?.value || d.steps,
-               sleep: vitals.sleep?.value || d.sleep,
-               water: vitals.water?.value || d.water,
-               calories: vitals.calories?.value || d.calories,
+               steps: wearableData?.todayMetrics?.steps || vitals.steps?.value || d.steps,
+               sleep: wearableSleepToday || vitals.sleep?.value || d.sleep,
+               water: nutritionData?.totalWater || nutritionData?.waterIntake || vitals.water?.value || d.water,
+               calories: nutritionData?.totalCalories || vitals.calories?.value || d.calories,
                weight: vitals.weight?.value || d.weight
             };
          }
@@ -187,6 +198,11 @@ export default function CompleteAnalysis() {
       const d = new Date(day.date);
       return {
         ...day,
+        steps: Math.round(day.steps || 0),
+        sleep: parseFloat(Number(day.sleep || 0).toFixed(1)),
+        water: Math.round(day.water || 0),
+        calories: Math.round(day.calories || 0),
+        weight: day.weight ? parseFloat(Number(day.weight).toFixed(1)) : 0,
         dayLabel: days[d.getDay()],
         fullLabel: d.toLocaleDateString('en-US', { weekday: 'short' }),
         dateNum: d.getDate()
@@ -194,17 +210,7 @@ export default function CompleteAnalysis() {
     });
   }, [dashboardData, activeRange]);
 
-  // Helper for hydration hourly view (mocking logic since we only have daily sums in history, 
-  // but ideally would fetch today's specific logs)
-  const hourlyHydration = useMemo(() => {
-    const hours = ['6A', '9A', '12P', '3P', '6P', '9P'];
-    const today = dashboardData?.vitals?.water?.value || 0;
-    // Distribute today's water across hours for visualization (heuristic)
-    return hours.map((h, i) => ({
-      hour: h,
-      v: i < 3 ? today * 0.2 : today * 0.15 
-    }));
-  }, [dashboardData]);
+  // Hydration data now uses multiDayData for daily trends instead of hourly distribution
 
   if (loading || contextLoading.dashboard) {
     return (
@@ -393,13 +399,13 @@ export default function CompleteAnalysis() {
                    <div>
                       <h4 className="text-2xl font-black text-[#011B1D]">Steps</h4>
                       <p className="text-lg font-black text-[#011B1D]/60 mt-1">
-                         {Math.round(dashboardData?.vitals?.steps?.value || 0).toLocaleString()} <span className="text-[#011B1D]/20 font-bold tracking-tight">/ {dashboardData?.goals?.steps || 10000}</span>
+                         {Math.round(wearableData?.todayMetrics?.steps || dashboardData?.vitals?.steps?.value || 0).toLocaleString()} <span className="text-[#011B1D]/20 font-bold tracking-tight">/ {dashboardData?.goals?.steps || 10000}</span>
                       </p>
                    </div>
                 </div>
-                {dashboardData?.vitals?.steps?.value && (
+                { (wearableData?.todayMetrics?.steps || dashboardData?.vitals?.steps?.value) && (
                   <div className="px-4 py-2 bg-[#FFF5EF] text-[#FF7A2F] text-[12px] font-black rounded-xl border border-[#FF7A2F]/10">
-                    {Math.round((dashboardData.vitals.steps.value / (dashboardData.goals.steps || 10000)) * 100)}% Target
+                    {Math.round(((wearableData?.todayMetrics?.steps || dashboardData?.vitals?.steps?.value || 0) / (dashboardData?.goals?.steps || 10000)) * 100)}% Target
                   </div>
                 )}
              </div>
@@ -435,7 +441,25 @@ export default function CompleteAnalysis() {
                    <div>
                       <h4 className="text-2xl font-black text-[#011B1D]">Sleep</h4>
                       <p className="text-lg font-black text-[#011B1D]/60 mt-1">
-                         {(dashboardData?.vitals?.sleep?.value || 0).toFixed(1)} <span className="text-[#011B1D]/20 font-bold">/ {dashboardData?.goals?.sleep || 8.0} hrs</span>
+                          {(() => {
+                             const todayStr = new Date().toISOString().split('T')[0];
+                             let wearableHours = 0;
+                             
+                             if (wearableData?.recentSleep?.length > 0) {
+                               const latest = wearableData.recentSleep[0];
+                               const latestDate = new Date(latest.date).toISOString().split('T')[0];
+                               if (latestDate === todayStr) {
+                                 wearableHours = (latest.totalSleepMinutes || 0) / 60;
+                               }
+                             }
+                             
+                             if (wearableHours > 0) return wearableHours.toFixed(1);
+                             
+                             const h = dashboardData?.vitals?.sleep?.value || dashboardData?.vitals?.sleepDuration?.value;
+                             if (h && h > 0) return h > 24 ? (h / 60).toFixed(1) : Number(h).toFixed(1);
+                             
+                             return "0.0";
+                          })()} <span className="text-[#011B1D]/20 font-bold">/ {dashboardData?.goals?.sleep || 8.0} hrs</span>
                       </p>
                    </div>
                 </div>
@@ -472,13 +496,13 @@ export default function CompleteAnalysis() {
                    <div>
                       <h4 className="text-2xl font-black text-[#011B1D]">Calories</h4>
                       <p className="text-lg font-black text-[#011B1D]/60 mt-1">
-                         {Math.round(dashboardData?.vitals?.calories?.value || 0).toLocaleString()} <span className="text-[#011B1D]/20 font-bold">/ {dashboardData?.goals?.calories || 2000}</span>
+                         {Math.round(nutritionData?.totalCalories || dashboardData?.vitals?.calories?.value || 0).toLocaleString()} <span className="text-[#011B1D]/20 font-bold">/ {dashboardData?.goals?.calories || 2000}</span>
                       </p>
                    </div>
                 </div>
-                {dashboardData?.vitals?.calories?.value && (
+                {(nutritionData?.totalCalories || dashboardData?.vitals?.calories?.value) && (
                   <div className="px-4 py-2 bg-[#ECFDF5] text-[#10B981] text-[12px] font-black rounded-xl border border-[#10B981]/10">
-                    {Math.round((dashboardData.vitals.calories.value / (dashboardData.goals.calories || 2000)) * 100)}% Target
+                    {Math.round(((nutritionData?.totalCalories || dashboardData?.vitals?.calories?.value || 0) / (dashboardData?.goals?.calories || 2000)) * 100)}% Target
                   </div>
                 )}
              </div>
@@ -511,7 +535,13 @@ export default function CompleteAnalysis() {
                    <div>
                       <h4 className="text-2xl font-black text-[#011B1D]">Hydration</h4>
                       <p className="text-lg font-black text-[#011B1D]/60 mt-1">
-                         {dashboardData?.vitals?.water?.value || 0} <span className="text-[#011B1D]/20 font-bold">/ {dashboardData?.goals?.water || 80} oz</span>
+                         {(() => {
+                            // Use the same consolidated logic as the graph for consistency
+                            const todayData = multiDayData.find(d => d.date?.startsWith(new Date().toISOString().split('T')[0]));
+                            if (todayData) return Math.round(todayData.water);
+                            
+                            return Math.round(nutritionData?.totalWater || nutritionData?.waterIntake || dashboardData?.vitals?.water?.value || 0);
+                         })()} <span className="text-[#011B1D]/20 font-bold">/ {dashboardData?.goals?.water || 8} glasses</span>
                       </p>
                    </div>
                 </div>
@@ -522,17 +552,20 @@ export default function CompleteAnalysis() {
              
              <div className="h-[220px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                   <BarChart data={hourlyHydration} margin={{ top: 0, right: 0, left: -40, bottom: 0 }}>
+                   <BarChart data={multiDayData} margin={{ top: 0, right: 0, left: -40, bottom: 0 }}>
                       <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
                       <XAxis 
-                        dataKey="hour" 
+                        dataKey="dayLabel" 
                         axisLine={false} 
                         tickLine={false} 
                         tick={{ fontSize: 13, fill: '#64748B', fontWeight: 900 }} 
                       />
                       <YAxis hide />
-                      <Tooltip contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 50px rgba(0,0,0,0.1)', fontWeight: 900 }} />
-                      <Bar dataKey="v" fill="#3B82F6" radius={[10, 10, 0, 0]} barSize={36} />
+                      <Tooltip 
+                        formatter={(value) => [`${value} glasses`, 'Total Intake']}
+                        contentStyle={{ borderRadius: '24px', border: 'none', boxShadow: '0 20px 50px rgba(0,0,0,0.1)', fontWeight: 900 }} 
+                      />
+                      <Bar dataKey="water" fill="#3B82F6" radius={[10, 10, 0, 0]} barSize={36} />
                    </BarChart>
                 </ResponsiveContainer>
              </div>

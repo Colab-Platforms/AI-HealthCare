@@ -268,7 +268,7 @@ const DiabetesMonitor = ({ onLog }) => {
 };
 
 const DailyMetricsCard = ({ onOpenLog }) => {
-  return null; // Temporarily hidden as requested
+  return null;
 };
 
 const MealDetailModal = ({ meal, onClose, onAdd }) => {
@@ -534,7 +534,7 @@ export default function DashboardEnhanced() {
     loadAllData();
   }, [fetchDashboard, fetchNutrition, fetchWearable, fetchWeeklyTrends]);
 
-  // Sync Sleep Inputs with Real Data (always sync, not just when modal is open)
+  // Sync Sleep Inputs with Real Data
   useEffect(() => {
     if (wearableData?.todayMetrics?.sleep !== undefined) {
       const totalMins = Number(wearableData.todayMetrics.sleep);
@@ -547,6 +547,17 @@ export default function DashboardEnhanced() {
       }
     }
   }, [wearableData?.todayMetrics?.sleep]);
+
+  // Sync Weight Input with Real Data
+  useEffect(() => {
+    const currentWeight = dashboardData?.vitals?.weight?.value || user?.profile?.weight;
+    if (currentWeight) {
+      setVitalsInput(prev => ({
+        ...prev,
+        weight: currentWeight.toString()
+      }));
+    }
+  }, [dashboardData?.vitals?.weight?.value, user?.profile?.weight]);
 
   // Robust Graph Data Processing (Last 7 Days)
   const formattedHistory = useMemo(() => {
@@ -982,7 +993,7 @@ export default function DashboardEnhanced() {
     };
 
     // Priority 1: Use medical report deficiencies if they exist
-    let reportList = (dashboardData?.latestAnalysis?.deficiencies || []).map(item => {
+    return (dashboardData?.latestAnalysis?.deficiencies || []).map(item => {
       const key = item.name.toLowerCase().replace(/\s+/g, '');
       const meta = nutrientMeta[key] || {};
       return {
@@ -991,48 +1002,8 @@ export default function DashboardEnhanced() {
         supplement: item.supplement || meta.supplement || 'Consult a specialist',
         percent: item.percent || (item.current && item.target ? Math.min((item.current/item.target)*100, 100) : 0)
       };
-    });
-
-    if (reportList.length > 0) return reportList.slice(0, 3);
-
-    // Priority 2: Calculate from daily intake
-    if (nutritionData) {
-      const driTargets = {
-        fiber: 30,
-        iron: 18,
-        vitaminc: 90,
-        vitamina: 900,
-        vitamind: 20,
-        calcium: 1000,
-        vitaminb12: 2.4
-      };
-
-      const dailyGaps = [];
-      Object.entries(driTargets).forEach(([key, target]) => {
-        const dataKey = 'total' + key.charAt(0).toUpperCase() + key.slice(1);
-        const val = nutritionData[dataKey] || 0;
-        const percent = Math.min(Math.round((val / target) * 100), 100);
-
-        if (percent < 80) {
-          const meta = nutrientMeta[key];
-          dailyGaps.push({
-            name: meta.name,
-            status: percent < 30 ? 'High Risk' : percent < 60 ? 'Deficient' : 'Low',
-            currentValue: val.toFixed(1),
-            normalRange: target,
-            unit: meta.unit,
-            percent: percent,
-            food: meta.food,
-            supplement: meta.supplement,
-            type: 'daily_gap'
-          });
-        }
-      });
-      return dailyGaps.sort((a, b) => a.percent - b.percent).slice(0, 3);
-    }
-
-    return [];
-  }, [dashboardData, nutritionData]);
+    }).slice(0, 3);
+  }, [dashboardData]);
 
   const cardCount = 3;
   const activeIndex = scrollProgress / (100 / (cardCount - 1 || 1));
@@ -1199,7 +1170,7 @@ export default function DashboardEnhanced() {
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 pb-12 w-full mt-2 px-4 md:px-0"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 pb-12 w-full mt-2 px-4 md:px-0 focus-visible:outline-none scroll-smooth"
         >
           {/* Card 1: Calories & Daily Tracking */}
           <motion.div
@@ -1555,13 +1526,7 @@ export default function DashboardEnhanced() {
           </motion.div>
         </div>
 
-        {/* Mobile Daily Vitals (New Position - Simple list) */}
-        <div className="lg:hidden px-4 mb-2">
-          <DailyMetricsCard onOpenLog={(tab) => {
-            setActiveLogTab(tab);
-            setIsLogVitalsOpen(true);
-          }} />
-        </div>
+
 
         {/* Diabetes Monitor Block */}
         {
@@ -1759,14 +1724,12 @@ export default function DashboardEnhanced() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 lg:mb-12 px-4 md:px-0">
 
 
-          {/* Daily Vitals (Weight, Steps, Sleep) - Visible only on Desktop here */}
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
-            className="hidden lg:flex flex-col h-full"
+            className="hidden lg:flex flex-col"
           >
-            <DailyMetricsCard />
 
             {/* 30 Day Challenge Mini Card */}
             <motion.div
