@@ -4,6 +4,9 @@ const axios = require('axios');
 const { protect } = require('../middleware/auth');
 const HealthMetric = require('../models/HealthMetric');
 const FoodLog = require('../models/FoodLog');
+const DailyProgress = require('../models/DailyProgress');
+const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
+const cache = require('../utils/cache');
 
 // AI Chat endpoint - Requires authentication for personalized context
 router.post('/chat', protect, async (req, res) => {
@@ -74,50 +77,74 @@ IMPORTANT FORMATTING RULES - Follow these strictly:
 
     let recentVitalsContext = '';
     let recentDietContext = '';
+    let activityContext = '';
+    let dietPlanContext = '';
 
-    if (isDiabetic) {
-      try {
-        const recentMetrics = await HealthMetric.find({
-            userId: user._id, 
-            type: { $in: ['blood_sugar', 'hba1c'] }
-        }).sort({ recordedAt: -1 }).limit(5);
+    try {
+      // 1. Fetch All Recent Vitals (Weight, Sugar, BP, etc)
+      const recentMetrics = await HealthMetric.find({ userId: user._id })
+        .sort({ recordedAt: -1 })
+        .limit(10);
 
-        if (recentMetrics && recentMetrics.length > 0) {
-          recentVitalsContext = `\n[Recent Logged Glucose/HbA1c]\n` + recentMetrics.map(m => `- ${m.type === 'blood_sugar' ? 'Blood Sugar' : 'HbA1c'}: ${m.value} ${m.unit} (${m.readingContext || 'N/A'}) on ${m.recordedAt ? new Date(m.recordedAt).toLocaleDateString() : 'recent'}`).join('\n');
-        }
-
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
-        const todaysLogs = await FoodLog.find({
-            userId: user._id,
-            timestamp: { $gte: startOfDay }
-        });
-
-        if (todaysLogs && todaysLogs.length > 0) {
-           let totalCal = 0;
-           let totalCarb = 0;
-           const items = [];
-           todaysLogs.forEach(log => {
-               totalCal += log.totalNutrition?.calories || 0;
-               totalCarb += log.totalNutrition?.carbs || 0;
-               if (log.foodItems) {
-                   log.foodItems.forEach(fi => items.push(`${fi.quantity} ${fi.name}`));
-               }
-           });
-           recentDietContext = `\n[Today's Diet Summary]\n- Total Calories: ${Math.round(totalCal)} kcal\n- Total Carbs: ${Math.round(totalCarb)} g\n- Foods Consumed: ${items.join(', ')}`;
-        }
-      } catch (err) {
-        console.error("Error fetching context for AI Coach:", err);
+      if (recentMetrics && recentMetrics.length > 0) {
+        recentVitalsContext = `\n[Recent Logged Vitals/Health Metrics]\n` + recentMetrics.map(m => `- ${m.type}: ${m.value} ${m.unit} on ${m.recordedAt ? new Date(m.recordedAt).toLocaleDateString() : 'recent'}`).join('\n');
       }
+
+      // 2. Fetch Activity Log & Dashboard Progress natively from Cache
+      const dashboardCache = await cache.get(`dashboard:${user._id}`);
+      if (dashboardCache) {
+          const totalSteps = dashboardCache.stepsToday || 0;
+          const totalWater = dashboardCache.nutritionData?.waterIntake || 0;
+          const totalSleep = dashboardCache.sleepToday || 0;
+          const activeCalories = dashboardCache.todayMetrics?.caloriesBurned || 0;
+          activityContext = `\n[Today's Activity Log & Progress]\n- Steps: ${totalSteps}/${dashboardCache.goals?.steps || 10000}\n- Water: ${totalWater}/${dashboardCache.goals?.water || 8} glasses\n- Sleep: ${totalSleep}/${dashboardCache.goals?.sleep || 8} hours\n- Activity Calories Burned: ${activeCalories} kcal`;
+      } else {
+          activityContext = `\n[Today's Activity Log & Progress]\n- Steps: 0\n- Water: 0\n- Sleep: 0\n(Activity log waiting for sync)`;
+      }
+
+      // 3. Fetch Today's Diet & Nutrition
+      const todaysLogs = await FoodLog.find({
+          userId: user._id,
+          timestamp: { $gte: startOfDay }
+      });
+
+      if (todaysLogs && todaysLogs.length > 0) {
+         let totalCal = 0, totalCarb = 0, totalProtein = 0, totalFat = 0;
+         const items = [];
+         todaysLogs.forEach(log => {
+             totalCal += log.totalNutrition?.calories || 0;
+             totalCarb += log.totalNutrition?.carbs || 0;
+             totalProtein += log.totalNutrition?.protein || 0;
+             totalFat += log.totalNutrition?.fats || 0;
+             if (log.foodItems) {
+                 log.foodItems.forEach(fi => items.push(`${fi.quantity} ${fi.name}`));
+             }
+         });
+         recentDietContext = `\n[Today's Nutrition Consumed]\n- Calories: ${Math.round(totalCal)} kcal\n- Carbs: ${Math.round(totalCarb)}g, Protein: ${Math.round(totalProtein)}g, Fats: ${Math.round(totalFat)}g\n- Actual Foods Consumed Today: ${items.join(', ')}`;
+      }
+
+      // 4. Fetch User's Active Diet Plan
+      const activePlan = await PersonalizedDietPlan.findOne({ userId: user._id, isActive: true });
+      if (activePlan && activePlan.dailyTargets) {
+          dietPlanContext = `\n[Current Assigned Diet Plan Targets]\n- Target Calories: ${activePlan.dailyTargets.calories || 'N/A'} kcal\n- Target Macros -> C: ${activePlan.dailyTargets.macros?.carbs || 0}g, P: ${activePlan.dailyTargets.macros?.protein || 0}g, F: ${activePlan.dailyTargets.macros?.fats || 0}g`;
+      }
+    } catch (err) {
+      console.error("Error fetching comprehensive context for AI Coach:", err);
     }
+
+    // Universal real-time context injection for all users
+    systemPrompt += `\n\nREAL-TIME USER LOGS & PLANS
+Below is the user's latest logged health vitals, active health tabs, nutrition limits, and daily progress:
+${recentVitalsContext}
+${activityContext}
+${dietPlanContext}
+${recentDietContext}
+
+Crucial Instruction: Directly utilize the real-time activity, nutrition page, and diet plan values provided above when giving advice, comparing their current progress against their goals.`;
 
     if (isDiabetic) {
       systemPrompt += `\n\nSPECIAL ABILITY: SMART GLYCEMIC RESPONSE PREDICTOR + MEAL COACH
 Since the user is diabetic, you must act as a "Personal Diabetic Coach in their pocket" anytime food or eating is mentioned.
-You have access to their real-time activity and vitals context below to make your predictions incredibly accurate:
-${recentVitalsContext}
-${recentDietContext}
-
 If the user inputs or describes a meal (e.g. "2 roti + dal", "I am about to eat a banana"), you MUST predict their glycemic response BEFORE they eat it. Consider what they have already eaten today and their recent glucose logs when forming your prediction.
 Structure your response exactly like this template:
 
