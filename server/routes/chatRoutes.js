@@ -2,6 +2,8 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 const { protect } = require('../middleware/auth');
+const HealthMetric = require('../models/HealthMetric');
+const FoodLog = require('../models/FoodLog');
 
 // AI Chat endpoint - Requires authentication for personalized context
 router.post('/chat', protect, async (req, res) => {
@@ -31,6 +33,7 @@ User Context:
 - Profile: Age ${profile.age || 'N/A'}, Gender ${profile.gender || 'N/A'}, BMI ${user.healthMetrics?.bmi || 'N/A'}
 - Medical History: ${medical.conditions?.length > 0 ? medical.conditions.join(', ') : 'None reported'}
 - Chronic Conditions: ${profile.chronicConditions?.length > 0 ? profile.chronicConditions.join(', ') : 'None reported'}
+- Diabetic: ${(profile.isDiabetic === 'yes' || (medical.conditions && medical.conditions.some(c => c.toLowerCase().includes('diabet')))) ? 'Yes' : 'No'}
 - Current Medications: ${medical.currentMedications?.length > 0 ? medical.currentMedications.join(', ') : 'None reported'}
 - Lifestyle: Smoker: ${lifestyle.smoker ? 'Yes' : 'No'}, Stress: ${lifestyle.stressLevel || 'N/A'}, Sleep: ${lifestyle.sleepHours || 'N/A'} hours
 - Fitness Goals: ${goals.goal || 'General health improvement'} (Target: ${goals.targetWeight || 'N/A'} kg)
@@ -64,6 +67,68 @@ IMPORTANT FORMATTING RULES - Follow these strictly:
       systemPrompt += `\n\nRecent Health Reports:\n${reportContext}`;
     }
 
+    let processedQuery = query;
+
+    const isDiabetic = profile.isDiabetic === 'yes' || 
+                       (medical.conditions && medical.conditions.some(c => c.toLowerCase().includes('diabet')));
+
+    let recentVitalsContext = '';
+    let recentDietContext = '';
+
+    if (isDiabetic) {
+      try {
+        const recentMetrics = await HealthMetric.find({
+            userId: user._id, 
+            type: { $in: ['blood_sugar', 'hba1c'] }
+        }).sort({ recordedAt: -1 }).limit(5);
+
+        if (recentMetrics && recentMetrics.length > 0) {
+          recentVitalsContext = `\n[Recent Logged Glucose/HbA1c]\n` + recentMetrics.map(m => `- ${m.type === 'blood_sugar' ? 'Blood Sugar' : 'HbA1c'}: ${m.value} ${m.unit} (${m.readingContext || 'N/A'}) on ${m.recordedAt ? new Date(m.recordedAt).toLocaleDateString() : 'recent'}`).join('\n');
+        }
+
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+        const todaysLogs = await FoodLog.find({
+            userId: user._id,
+            timestamp: { $gte: startOfDay }
+        });
+
+        if (todaysLogs && todaysLogs.length > 0) {
+           let totalCal = 0;
+           let totalCarb = 0;
+           const items = [];
+           todaysLogs.forEach(log => {
+               totalCal += log.totalNutrition?.calories || 0;
+               totalCarb += log.totalNutrition?.carbs || 0;
+               if (log.foodItems) {
+                   log.foodItems.forEach(fi => items.push(`${fi.quantity} ${fi.name}`));
+               }
+           });
+           recentDietContext = `\n[Today's Diet Summary]\n- Total Calories: ${Math.round(totalCal)} kcal\n- Total Carbs: ${Math.round(totalCarb)} g\n- Foods Consumed: ${items.join(', ')}`;
+        }
+      } catch (err) {
+        console.error("Error fetching context for AI Coach:", err);
+      }
+    }
+
+    if (isDiabetic) {
+      systemPrompt += `\n\nSPECIAL ABILITY: SMART GLYCEMIC RESPONSE PREDICTOR + MEAL COACH
+Since the user is diabetic, you must act as a "Personal Diabetic Coach in their pocket" anytime food or eating is mentioned.
+You have access to their real-time activity and vitals context below to make your predictions incredibly accurate:
+${recentVitalsContext}
+${recentDietContext}
+
+If the user inputs or describes a meal (e.g. "2 roti + dal", "I am about to eat a banana"), you MUST predict their glycemic response BEFORE they eat it. Consider what they have already eaten today and their recent glucose logs when forming your prediction.
+Structure your response exactly like this template:
+
+⚠️ This may spike your sugar to ~[Estimated mg/dL based on typical glycemic index/load, their history, and today's total carbs]
+⏰ Time to peak: [Estimated time, e.g. 1-2 hours]
+👉 [Suggest better alternatives or safe portion size, e.g., "Reduce rice by 50% OR add a large bowl of cucumber salad"]
+✅ [A specific post-meal lifestyle tip, e.g., "Add 10 min walk 30 mins after eating"]
+
+Make the meal feedback immediate, clear, highly actionable, and always use these emojis to act as a daily decision-making assistant. Use realistic estimations based on standard clinical knowledge for diabetes.`;
+    }
+
     // Build messages array
     const messages = [];
 
@@ -78,7 +143,7 @@ IMPORTANT FORMATTING RULES - Follow these strictly:
       });
     }
 
-    messages.push({ role: 'user', content: query });
+    messages.push({ role: 'user', content: processedQuery });
 
     let aiResponse = null;
 
