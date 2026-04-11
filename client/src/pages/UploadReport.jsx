@@ -10,7 +10,7 @@ import {
   Search, Clock, ArrowLeft, FileUp, CheckCircle2, AlertCircle, Languages, Share2, Download, User, Coffee, Utensils, UtensilsCrossed, Apple
 } from 'lucide-react';
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+  LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
 import { useData } from '../context/DataContext';
 import toast from 'react-hot-toast';
@@ -44,6 +44,53 @@ const healthTips = [
   { title: "Manage Stress", desc: "Practice daily yoga or meditation to keep cortisol levels in check.", image: "https://images.unsplash.com/photo-1621691223255-b89d5623df3a?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080" },
   { title: "Stay Hydrated", desc: "Drink at least 8 glasses of water to maintain metabolic balance.", image: "https://images.unsplash.com/photo-1555704574-a9cfdfab06e0?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&q=80&w=1080" }
 ];
+
+const CustomTooltip = ({ active, payload, label }) => {
+  if (active && payload && payload.length) {
+    const data = payload[0].payload;
+    const diff = data['Recent Report'] - data['Past Report'];
+    
+    const getTrendBadge = () => {
+      if (!data['Past Report'] || !data['Recent Report']) return null;
+      if (data.trend === 'improved') return <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider">👍 Improved</span>;
+      if (data.trend === 'worsened') return <span className="text-red-600 bg-red-50 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider">⚠️ Worsened</span>;
+      
+      const diffPercent = ((data['Recent Report'] - data['Past Report']) / data['Past Report'] * 100).toFixed(1);
+      return <span className="text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider">{diff > 0 ? '↑' : '↓'} {Math.abs(diffPercent)}% Change</span>;
+    };
+
+    return (
+      <div className="bg-white/95 backdrop-blur-md p-4 rounded-[20px] shadow-[0_10px_40px_rgba(0,0,0,0.15)] border border-slate-100 min-w-[220px]">
+        <div className="flex items-center justify-between mb-3 border-b border-slate-100 pb-2 gap-4">
+          <p className="font-black text-slate-800 text-sm uppercase tracking-tight">{label}</p>
+          {getTrendBadge()}
+        </div>
+        <div className="flex flex-col gap-3">
+          {payload.map((entry, index) => (
+            <div key={index} className="flex flex-col">
+              <span className="text-[9px] font-black uppercase tracking-widest text-slate-400 mb-0.5">{entry.name}</span>
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: entry.color }} />
+                <span className="font-black text-lg leading-none" style={{ color: entry.color }}>{entry.value}</span>
+                {entry.name === 'Recent Report' && data.recentStatus && (
+                  <span className={`text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider ${data.recentStatus.toLowerCase() === 'normal' ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
+                    {data.recentStatus}
+                  </span>
+                )}
+                {entry.name === 'Past Report' && data.pastStatus && (
+                  <span className={`text-[8px] px-1.5 py-0.5 rounded-md font-bold uppercase tracking-wider ${data.pastStatus.toLowerCase() === 'normal' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                    {data.pastStatus}
+                  </span>
+                )}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+  return null;
+};
 
 export default function UploadReport() {
   const [files, setFiles] = useState([]);
@@ -139,12 +186,35 @@ export default function UploadReport() {
     const allMetricKeys = [...new Set([...Object.keys(recentMetrics), ...Object.keys(pastMetrics)])];
 
     const chartData = allMetricKeys.map(key => {
-      const recentVal = typeof recentMetrics[key] === 'object' ? parseFloat(recentMetrics[key]?.value) : parseFloat(recentMetrics[key]);
-      const pastVal = typeof pastMetrics[key] === 'object' ? parseFloat(pastMetrics[key]?.value) : parseFloat(pastMetrics[key]);
+      const recentObj = recentMetrics[key];
+      const pastObj = pastMetrics[key];
+
+      const recentVal = typeof recentObj === 'object' ? parseFloat(recentObj?.value) : parseFloat(recentObj);
+      const pastVal = typeof pastObj === 'object' ? parseFloat(pastObj?.value) : parseFloat(pastObj);
+      
+      const recentStatus = typeof recentObj === 'object' ? recentObj?.status : 'normal';
+      const pastStatus = typeof pastObj === 'object' ? pastObj?.status : 'normal';
+
+      let trend = 'neutral';
+      if (recentStatus && pastStatus) {
+         if (pastStatus.toLowerCase() !== 'normal' && recentStatus.toLowerCase() === 'normal') {
+            trend = 'improved';
+         } else if (pastStatus.toLowerCase() === 'normal' && recentStatus.toLowerCase() !== 'normal') {
+            trend = 'worsened';
+         }
+      }
+      
+      if (trend === 'neutral' && !isNaN(recentVal) && !isNaN(pastVal)) {
+         if (recentVal < pastVal) trend = 'decreased';
+         else if (recentVal > pastVal) trend = 'increased';
+         else trend = 'unchanged';
+      }
+
       return {
         metric: key,
         'Recent Report': isNaN(recentVal) ? null : recentVal,
-        'Past Report': isNaN(pastVal) ? null : pastVal
+        'Past Report': isNaN(pastVal) ? null : pastVal,
+        recentStatus, pastStatus, trend
       };
     }).filter(d => d['Recent Report'] !== null || d['Past Report'] !== null);
 
@@ -362,13 +432,17 @@ export default function UploadReport() {
                     </div>
                     <div className="h-[300px] w-full">
                       <ResponsiveContainer width="100%" height="100%">
-                        <LineChart data={comparisonData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                        <BarChart data={comparisonData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
                           <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
                           <XAxis dataKey="metric" axisLine={false} tickLine={false} tick={{ fill: '#64748b', fontSize: 10, fontWeight: 700 }} dy={10} />
                           <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
-                          <Line type="monotone" dataKey="Past Report" stroke="#CBD5E1" strokeWidth={4} dot={{ r: 4, fill: '#CBD5E1' }} />
-                          <Line type="monotone" dataKey="Recent Report" stroke="#69A38D" strokeWidth={4} dot={{ r: 4, fill: '#69A38D' }} />
-                        </LineChart>
+                          <Tooltip 
+                            content={<CustomTooltip />}
+                            cursor={{ fill: 'rgba(105, 163, 141, 0.05)' }}
+                          />
+                          <Bar dataKey="Past Report" fill="#CBD5E1" radius={[4, 4, 0, 0]} barSize={12} />
+                          <Bar dataKey="Recent Report" fill="#69A38D" radius={[4, 4, 0, 0]} barSize={12} />
+                        </BarChart>
                       </ResponsiveContainer>
                     </div>
                   </div>
