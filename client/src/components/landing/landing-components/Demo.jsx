@@ -190,7 +190,7 @@ const Demo = () => {
               style={{ rotate: rotate1, willChange: "transform" }}
               src="/landing/demo/circle.png"
               alt="circle"
-              className="absolute -right-[24%] -top-20 lg:-right-[50%] lg:top-0 w-2/5 origin-center"
+              className="absolute -right-[16%] -top-10 lg:-right-[50%] lg:top-0 w-2/5 origin-center"
             />
             <motion.img
               style={{ rotate: rotate2, willChange: "transform" }}
@@ -205,7 +205,7 @@ const Demo = () => {
               transition={{ duration: 0.6, delay: 0.4 }}
               src="/landing/demo/innovation.svg"
               alt="innovation"
-              className="absolute lg:-left-[70%] md:-left-80 md:top-0 lg:top-10 backdrop-blur-[2px] hidden lg:block"
+              className="absolute lg:-left-[70%] md:-left-80 md:top-0 lg:top-10 backdrop-blur-[2px] lg:block w-24"
             />
             <motion.img
               initial={{ opacity: 0, scale: 0.8 }}
