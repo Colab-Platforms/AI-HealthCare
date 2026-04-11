@@ -7,7 +7,7 @@ const ImgPointer = () => {
   const [isMobImage3Available, setIsMobImage3Available] = useState(true);
 
   return (
-    <section className="container mx-auto py-28 px-5">
+    <section className="container mx-auto py-28 px-5 lg:px-20">
       <div className="flex flex-col gap-10">
         {isMobImage1Available && (
           <motion.img

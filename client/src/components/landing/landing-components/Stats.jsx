@@ -25,7 +25,7 @@ const fadeRightObj = {
 
 const Stats = () => {
   return (
-    <section className="container mx-auto py-24 px-5 overflow-hidden">
+    <section className="container mx-auto py-24 px-5 lg:px-20 overflow-hidden">
       <div className="flex flex-col lg:flex-row lg:justify-between items-center text-center lg:text-left gap-5">
         <motion.div
           initial={{ opacity: 0, x: -30 }}

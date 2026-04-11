@@ -11,6 +11,19 @@ import { useRef, Suspense, useEffect, useState } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { useGLTF, Environment } from "@react-three/drei";
 
+function supportsWebGL() {
+  if (typeof document === "undefined") return false;
+
+  try {
+    const canvas = document.createElement("canvas");
+    return Boolean(
+      canvas.getContext("webgl") || canvas.getContext("experimental-webgl"),
+    );
+  } catch {
+    return false;
+  }
+}
+
 function Model({ scrollYProgress }) {
   const { scene } = useGLTF("/landing/demo/man-comp.glb");
   const modelRef = useRef();
@@ -71,6 +84,7 @@ const fadeRight = {
 
 const Demo = () => {
   const containerRef = useRef(null);
+  const [hasWebGL] = useState(() => supportsWebGL());
   const [viewportWidth, setViewportWidth] = useState(() =>
     typeof window !== "undefined" ? window.innerWidth : 1280,
   );
@@ -112,7 +126,7 @@ const Demo = () => {
   return (
     <section
       ref={containerRef}
-      className="container mx-auto pb-24 lg:py-24 px-5 overflow-hidden"
+      className="container mx-auto pb-24 lg:py-24 px-5 lg:px-20 overflow-hidden"
     >
       <motion.div
         {...fadeUp}
@@ -160,31 +174,40 @@ const Demo = () => {
             <div className="inline-block -mb-[70px]">
               <img
                 src="/landing/demo/man.png"
-                alt=""
-                className="opacity-0 pointer-events-none select-none block"
+                alt="demo preview"
+                className={
+                  hasWebGL
+                    ? "opacity-0 pointer-events-none select-none block"
+                    : "block"
+                }
               />
-              <motion.div
-                initial={{ opacity: 0, y: 0 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true, margin: "-100px" }}
-                transition={{ duration: 0.8, delay: 0.2 }}
-                className="absolute inset-0 z-10"
-              >
-                <Canvas
-                  frameloop={isInView ? "always" : "never"}
-                  camera={{ position: [0, 0, 10], fov: 35 }}
-                  className="w-full h-full"
-                  dpr={[1, 1.5]}
-                  gl={{ powerPreference: "high-performance", antialias: false }}
+              {hasWebGL ? (
+                <motion.div
+                  initial={{ opacity: 0, y: 0 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true, margin: "-100px" }}
+                  transition={{ duration: 0.8, delay: 0.2 }}
+                  className="absolute inset-0 z-10"
                 >
-                  <ambientLight intensity={1.2} />
-                  <directionalLight position={[10, 10, 10]} intensity={1.5} />
-                  <Environment preset="city" resolution={256} />
-                  <Suspense fallback={null}>
-                    <Model scrollYProgress={scrollYProgress} />
-                  </Suspense>
-                </Canvas>
-              </motion.div>
+                  <Canvas
+                    frameloop={isInView ? "always" : "never"}
+                    camera={{ position: [0, 0, 10], fov: 35 }}
+                    className="w-full h-full"
+                    dpr={[1, 1.5]}
+                    gl={{
+                      powerPreference: "high-performance",
+                      antialias: false,
+                    }}
+                  >
+                    <ambientLight intensity={1.2} />
+                    <directionalLight position={[10, 10, 10]} intensity={1.5} />
+                    <Environment preset="city" resolution={256} />
+                    <Suspense fallback={null}>
+                      <Model scrollYProgress={scrollYProgress} />
+                    </Suspense>
+                  </Canvas>
+                </motion.div>
+              ) : null}
             </div>
             <motion.img
               style={{ rotate: rotate1, willChange: "transform" }}
@@ -205,7 +228,7 @@ const Demo = () => {
               transition={{ duration: 0.6, delay: 0.4 }}
               src="/landing/demo/innovation.svg"
               alt="innovation"
-              className="absolute lg:-left-[70%] md:-left-80 md:top-0 lg:top-10 backdrop-blur-[2px] lg:block w-24"
+              className="absolute lg:-left-[70%] md:-left-80 md:top-0 lg:top-10 backdrop-blur-[2px] lg:block"
             />
             <motion.img
               initial={{ opacity: 0, scale: 0.8 }}

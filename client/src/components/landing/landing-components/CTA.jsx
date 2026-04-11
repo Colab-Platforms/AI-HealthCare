@@ -71,7 +71,7 @@ const CTA = () => {
         {...fadeIn}
         className="bg-landing-primary pt-16 lg:pt-14 z-50"
       >
-        <div className="container mx-auto lg:flex text-center items-center px-5">
+        <div className="container mx-auto lg:flex text-center items-center px-5 lg:px-20 overflow-hidden">
           <motion.div
             {...fadeUp}
             transition={{ ...fadeUp.transition, delay: 0.05 }}

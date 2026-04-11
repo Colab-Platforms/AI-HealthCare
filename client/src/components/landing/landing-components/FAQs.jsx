@@ -67,7 +67,7 @@ const FAQs = () => {
   return (
     <motion.section
       {...fadeUp}
-      className="container mx-auto py-16 md:py-24 px-4 sm:px-5 flex flex-col lg:flex-row justify-between items-center gap-6 md:gap-10 overflow-hidden"
+      className="container mx-auto py-16 md:py-24 px-5 lg:px-20 flex flex-col lg:flex-row justify-between items-center gap-6 md:gap-10 overflow-hidden"
     >
       <motion.div
         {...fadeLeft}
