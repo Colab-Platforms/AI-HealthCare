@@ -4,7 +4,7 @@ import { useData } from '../context/DataContext';
 import {
   Flame, Moon, Utensils, Activity, Sparkles, TrendingUp, TrendingDown, Bell,
   ChevronRight, ChevronLeft, Plus, FileText, AlertCircle, Droplet,
-  Search, Sun, Clock, Heart, Apple, Info, Target, Calendar,
+  Search, Sun, Heart, Apple, Info, Target, Calendar,
   ArrowUpRight, Upload, Coffee, Dumbbell, MessageCircle, BarChart3,
   Circle, Smile, FlaskConical, Leaf, Pill, CheckCircle2, Zap, Eye,
   UtensilsCrossed, UploadCloud, ShieldCheck, AlertTriangle, Check, Dna,
@@ -268,7 +268,7 @@ const DiabetesMonitor = ({ onLog }) => {
 };
 
 const DailyMetricsCard = ({ onOpenLog }) => {
-  return null; // Temporarily hidden as requested
+  return null;
 };
 
 const MealDetailModal = ({ meal, onClose, onAdd }) => {
@@ -383,9 +383,11 @@ const MealDetailModal = ({ meal, onClose, onAdd }) => {
               foodName={meal.name}
               className="w-full h-full object-cover"
             />
-            <div className="absolute bottom-4 right-4 px-4 py-1.5 bg-white/90 backdrop-blur-md rounded-full text-[9px] font-black uppercase tracking-widest text-black shadow-sm border border-white">
-              Analyzed Image
-            </div>
+            {(meal.image || data.imageUrl) && (
+              <div className="absolute bottom-4 right-4 px-4 py-1.5 bg-white/90 backdrop-blur-md rounded-full text-[9px] font-black uppercase tracking-widest text-black shadow-sm border border-white">
+                Analyzed Image
+              </div>
+            )}
           </div>
 
           {/* Macros Grid */}
@@ -532,7 +534,7 @@ export default function DashboardEnhanced() {
     loadAllData();
   }, [fetchDashboard, fetchNutrition, fetchWearable, fetchWeeklyTrends]);
 
-  // Sync Sleep Inputs with Real Data (always sync, not just when modal is open)
+  // Sync Sleep Inputs with Real Data
   useEffect(() => {
     if (wearableData?.todayMetrics?.sleep !== undefined) {
       const totalMins = Number(wearableData.todayMetrics.sleep);
@@ -545,6 +547,17 @@ export default function DashboardEnhanced() {
       }
     }
   }, [wearableData?.todayMetrics?.sleep]);
+
+  // Sync Weight Input with Real Data
+  useEffect(() => {
+    const currentWeight = dashboardData?.vitals?.weight?.value || user?.profile?.weight;
+    if (currentWeight) {
+      setVitalsInput(prev => ({
+        ...prev,
+        weight: currentWeight.toString()
+      }));
+    }
+  }, [dashboardData?.vitals?.weight?.value, user?.profile?.weight]);
 
   // Robust Graph Data Processing (Last 7 Days)
   const formattedHistory = useMemo(() => {
@@ -761,14 +774,14 @@ export default function DashboardEnhanced() {
 
   const [completedTasks, setCompletedTasks] = useState(() => {
     const saved = localStorage.getItem('carePlanTasks');
-    if (!saved) return [0, 2];
+    if (!saved) return [];
     try {
       const { tasks, date } = JSON.parse(saved);
       const today = new Date().toISOString().split('T')[0];
       if (date === today) return tasks;
       return []; // Reset for new day
     } catch (e) {
-      return [0, 2];
+      return [];
     }
   });
 
@@ -927,7 +940,7 @@ export default function DashboardEnhanced() {
   useEffect(() => {
     const hour = new Date().getHours();
     if (hour < 11) setActiveMealTab('breakfast');
-    else if (hour < 16) setActiveMealTab('lunch');
+    else if (hour < 17) setActiveMealTab('lunch');
     else setActiveMealTab('dinner');
   }, []);
 
@@ -980,7 +993,7 @@ export default function DashboardEnhanced() {
     };
 
     // Priority 1: Use medical report deficiencies if they exist
-    let reportList = (dashboardData?.latestAnalysis?.deficiencies || []).map(item => {
+    return (dashboardData?.latestAnalysis?.deficiencies || []).map(item => {
       const key = item.name.toLowerCase().replace(/\s+/g, '');
       const meta = nutrientMeta[key] || {};
       return {
@@ -989,47 +1002,8 @@ export default function DashboardEnhanced() {
         supplement: item.supplement || meta.supplement || 'Consult a specialist',
         percent: item.percent || (item.current && item.target ? Math.min((item.current/item.target)*100, 100) : 0)
       };
-    });
-
-    if (reportList.length > 0) return reportList.slice(0, 3);
-
-    // Priority 2: Calculate from daily intake
-    if (nutritionData) {
-      const driTargets = {
-        fiber: 30,
-        iron: 18,
-        vitaminc: 90,
-        vitamina: 900,
-        vitamind: 20,
-        calcium: 1000,
-        vitaminb12: 2.4
-      };
-
-      const dailyGaps = [];
-      Object.entries(driTargets).forEach(([key, target]) => {
-        const dataKey = 'total' + key.charAt(0).toUpperCase() + key.slice(1);
-        const val = nutritionData[dataKey] || 0;
-        const percent = Math.min(Math.round((val / target) * 100), 100);
-
-        if (percent < 80) {
-          const meta = nutrientMeta[key];
-          dailyGaps.push({
-            name: meta.name,
-            status: percent < 30 ? 'High Risk' : percent < 60 ? 'Deficient' : 'Low',
-            currentValue: val.toFixed(1),
-            normalRange: target,
-            unit: meta.unit,
-            percent: percent,
-            food: meta.food,
-            supplement: meta.supplement,
-            type: 'daily_gap'
-          });
-        }
-      });
-      return dailyGaps.sort((a, b) => a.percent - b.percent).slice(0, 3);
-    }
-    return [];
-  }, [dashboardData, nutritionData]);
+    }).slice(0, 3);
+  }, [dashboardData]);
 
   const cardCount = 3;
   const activeIndex = scrollProgress / (100 / (cardCount - 1 || 1));
@@ -1089,7 +1063,7 @@ export default function DashboardEnhanced() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.05 }}
-          className="px-4 md:px-0 mb-4"
+          className="px-4 md:px-0 mb-2"
           style={{ marginTop: '15px' }}
         >
           <div
@@ -1132,7 +1106,7 @@ export default function DashboardEnhanced() {
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="px-4 md:px-0 mb-4 w-full"
+          className="px-4 md:px-0 mb-2 w-full"
         >
           <div className="relative overflow-hidden w-full min-h-[140px] rounded-[26px] border border-white/30">
             <img
@@ -1196,7 +1170,7 @@ export default function DashboardEnhanced() {
         <div
           ref={scrollContainerRef}
           onScroll={handleScroll}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 pb-12 w-full mt-2 px-4 md:px-0"
+          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-5 pb-8 w-full mt-0 px-4 md:px-0 focus-visible:outline-none scroll-smooth"
         >
           {/* Card 1: Calories & Daily Tracking */}
           <motion.div
@@ -1205,7 +1179,7 @@ export default function DashboardEnhanced() {
             className="tour-nutrient-info w-full bg-white px-5 pb-5 pt-5 lg:px-8 lg:pb-8 lg:pt-8 border border-slate-100/80 shadow-[0_4px_24px_rgba(0,0,0,0.03)] flex flex-col relative overflow-hidden"
             style={{ 
               borderRadius: '29.29px', 
-              marginTop: '8px'
+              marginTop: '4px'
             }}
           >
             {/* Calories Header */}
@@ -1328,7 +1302,7 @@ export default function DashboardEnhanced() {
             style={{ 
               minHeight: '400px', 
               borderRadius: '29.29px', 
-              marginTop: '8px'
+              marginTop: '4px'
             }}
           >
             {/* Header Row */}
@@ -1352,22 +1326,20 @@ export default function DashboardEnhanced() {
             </div>
 
             {/* Meal Tabs Row */}
-            <div className="px-5 mb-4 w-full overflow-x-auto scrollbar-hide">
-              <div className="flex items-center gap-2">
+            <div className="px-5 mb-4 w-full">
+              <div className="flex items-center gap-1.5 w-full">
                 {[
                   { id: 'breakfast', label: 'Breakfast' },
-                  { id: 'midMorningSnack', label: 'Mid-Morning' },
                   { id: 'lunch', label: 'Lunch' },
-                  { id: 'eveningSnack', label: 'Evening' },
                   { id: 'dinner', label: 'Dinner' }
                 ].map((tab) => (
                   <button
                     key={tab.id}
                     onClick={() => setActiveMealTab(tab.id)}
-                    className={`transition-all whitespace-nowrap flex-none h-[32.5px] px-4 rounded-full font-semibold text-xs transition-all ${
+                    className={`transition-all whitespace-nowrap flex-1 h-[36px] rounded-full font-bold text-[11px] uppercase tracking-wider transition-all ${
                       activeMealTab === tab.id
-                        ? 'bg-[#76B39D] text-white shadow-lg shadow-[#76B39D]/30'
-                        : 'bg-[#FAFBF8] text-[#8a8a8a] border border-[#f0f0ea] hover:bg-[#E8F3EE]'
+                        ? 'bg-[#76B39D] text-white shadow-lg shadow-[#76B39D]/30 border-transparent'
+                        : 'bg-white text-[#8a8a8a] border border-[#f0f0ea] hover:bg-[#E8F3EE]'
                     }`}
                     style={{ fontFamily: 'Poppins, sans-serif' }}
                   >
@@ -1423,16 +1395,20 @@ export default function DashboardEnhanced() {
                                   />
                                 </div>
                                 {/* Content Card */}
-                                <div className="absolute bottom-0 left-0 w-full h-[122px] bg-[#F6F7F2] rounded-[22px] border border-[#ededdf] pt-[55px] px-4 pb-3 z-10 text-left">
-                                  <h4 className="truncate font-bold text-[13px] text-[#1a1a1a] mb-1.5" style={{ fontFamily: 'Poppins, sans-serif' }}>{foodName}</h4>
-                                  <div className="flex items-center gap-3">
-                                    <div className="flex items-center gap-1 text-[#6B7280]">
-                                      <Clock className="w-3 h-3 text-[#FF7E5F]" />
-                                      <span className="text-[10px] font-medium">12 Min</span>
+                                <div className="absolute bottom-0 left-0 w-full h-[126px] bg-[#F6F7F2] rounded-[22px] border border-[#ededdf] pt-[52px] px-4 pb-3 z-10 text-left">
+                                  <h4 className="truncate font-bold text-[13px] text-[#1a1a1a] mb-1" style={{ fontFamily: 'Poppins, sans-serif' }}>{foodName}</h4>
+                                  <div className="flex flex-col gap-1">
+                                    <div className="flex items-start gap-1.5">
+                                      <Scale className="w-2.5 h-2.5 text-[#76B39D] mt-0.5 shrink-0" />
+                                      <span className="text-[9px] font-black text-[#76B39D] uppercase tracking-tight leading-tight break-words line-clamp-2 max-w-[170px]">
+                                        {item?.portionSize || '1 Serving'}
+                                      </span>
                                     </div>
-                                    <div className="flex items-center gap-1 text-[#6B7280]">
-                                      <Flame className="w-3 h-3 text-[#FF7E5F]" />
-                                      <span className="text-[10px] font-medium">{item?.calories || '280'} Cal</span>
+                                    <div className="flex items-center gap-1.5">
+                                      <div className="flex items-center gap-1.5">
+                                        <Flame className="w-2.5 h-2.5 text-orange-500" />
+                                        <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wide">{item?.calories || '280'} Kcal</span>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
@@ -1475,7 +1451,7 @@ export default function DashboardEnhanced() {
             transition={{ delay: 0.15 }}
             className="tour-ai-insights w-full bg-white rounded-[24px] p-5 lg:p-8 border border-slate-100/80 shadow-[0_4px_24px_rgba(0,0,0,0.03)] flex flex-col relative overflow-hidden"
             style={{
-              marginTop: '8px'
+              marginTop: '4px'
             }}
           >
             <div className="flex items-center justify-between mb-6">
@@ -1552,13 +1528,7 @@ export default function DashboardEnhanced() {
           </motion.div>
         </div>
 
-        {/* Mobile Daily Vitals (New Position - Simple list) */}
-        <div className="lg:hidden px-4 mb-2">
-          <DailyMetricsCard onOpenLog={(tab) => {
-            setActiveLogTab(tab);
-            setIsLogVitalsOpen(true);
-          }} />
-        </div>
+
 
         {/* Diabetes Monitor Block */}
         {
@@ -1567,7 +1537,7 @@ export default function DashboardEnhanced() {
               initial={{ opacity: 0, y: 15 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="mx-4 lg:mx-0 bg-white border border-[#f0f0ea] rounded-[32px] p-5 lg:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] relative overflow-hidden mt-8 mb-8"
+              className="mx-4 lg:mx-0 bg-white border border-[#f0f0ea] rounded-[32px] p-5 lg:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] relative overflow-hidden mt-4 mb-4"
             >
               <div className="relative z-10">
                 <div className="flex flex-row items-center justify-between mb-6">
@@ -1665,7 +1635,7 @@ export default function DashboardEnhanced() {
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="tour-logged-meals mb-8 w-full px-6 md:px-0"
+          className="tour-logged-meals mb-4 w-full px-6 md:px-0"
         >
           <div className="flex items-center justify-between mb-5">
             <h2 className="text-lg font-bold text-[#1a1a1a]">Logged Meals</h2>
@@ -1673,9 +1643,9 @@ export default function DashboardEnhanced() {
           </div>
           
           <div 
-            className="flex overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-6 gap-[11px] w-full" 
+            className="flex overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-4 gap-[11px] w-full" 
             style={{ 
-              height: '220px'
+              minHeight: '230px'
             }}
           >
             {loggedMeals.length > 0 ? (
@@ -1689,7 +1659,7 @@ export default function DashboardEnhanced() {
                     className="bg-white shadow-sm flex flex-col flex-none snap-start group cursor-pointer border border-[#f0f0ea]/50"
                     style={{ 
                       width: 'calc(50% - 6px)', 
-                      height: '210px', 
+                      minHeight: '220px', 
                       borderRadius: '24px' 
                     }}
                     onClick={() => navigate('/nutrition', { state: { prefillData: meal } })}
@@ -1753,17 +1723,15 @@ export default function DashboardEnhanced() {
         </motion.div>
 
         {/* Bottom Grid - Consistent with Main Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8 lg:mb-12 px-4 md:px-0">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mb-4 lg:mb-8 px-4 md:px-0">
 
 
-          {/* Daily Vitals (Weight, Steps, Sleep) - Visible only on Desktop here */}
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
-            className="hidden lg:flex flex-col h-full"
+            className="hidden lg:flex flex-col"
           >
-            <DailyMetricsCard />
 
             {/* 30 Day Challenge Mini Card */}
             <motion.div
@@ -1851,18 +1819,18 @@ export default function DashboardEnhanced() {
                 })
               ) : (
                 <div className="flex flex-col items-center justify-center p-10 bg-emerald-50/20 rounded-[2rem] border border-emerald-100/30 text-center">
-                  {loggedMeals.length > 0 || dashboardData?.latestAnalysis?.deficiencies?.length > 0 ? (
+                  {dashboardData?.latestAnalysis?.deficiencies?.length > 0 ? (
                     <>
                       <CheckCircle2 className="w-10 h-10 text-emerald-500 mb-4" />
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-loose">
-                        Great job! You've met <br /> all nutritional targets
+                        Great job! No deficiencies <br /> found in your reports
                       </p>
                     </>
                   ) : (
                     <>
-                      <Activity className="w-10 h-10 text-slate-300 mb-4" />
+                      <FileText className="w-10 h-10 text-slate-300 mb-4" />
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-loose">
-                        Log your meals to see <br /> nutritional insights
+                        Upload lab reports to see <br /> nutritional insights
                       </p>
                     </>
                   )}

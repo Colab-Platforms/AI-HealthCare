@@ -406,6 +406,7 @@ export const DataProvider = ({ children }) => {
     loading,
 
     pendingAnalysisIds,
+    pendingDietPlanIds,
     dataRefreshTrigger,
 
     // Methods

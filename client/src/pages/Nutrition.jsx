@@ -17,6 +17,7 @@ import { useAuth } from '../context/AuthContext';
 import NutritionSkeleton from '../components/skeletons/NutritionSkeleton';
 import { NutritionTab } from '../components/NutritionTab';
 import { MealAnalysisModal } from '../components/MealAnalysisModal';
+import { useSpeechRecognition } from '../hooks/useSpeechRecognition';
 
 function Nutrition() {
   const { user } = useAuth();
@@ -52,9 +53,7 @@ function Nutrition() {
   });
   const [mealLogs, setMealLogs] = useState({
     Breakfast: [],
-    'Mid-Morning': [],
     Lunch: [],
-    Evening: [],
     Dinner: []
   });
   const [weeklyTrendsData, setWeeklyTrendsData] = useState([]);
@@ -182,8 +181,17 @@ function Nutrition() {
   const [foodQuantity, setFoodQuantity] = useState('');
   const [lastSource, setLastSource] = useState('Scan'); // 'Scan' or 'Upload'
   const [prepMethod, setPrepMethod] = useState('');
-  const [isListening, setIsListening] = useState(false);
-  const recognitionRef = React.useRef(null);
+  
+  // Use the robust utility hook for voice logging
+  const { 
+    transcript, 
+    interimTranscript, 
+    listening: isListening, 
+    startListening: startVoiceCapture, 
+    stopListening: stopVoiceCapture,
+    resetTranscript
+  } = useSpeechRecognition();
+
   const [expandedMeal, setExpandedMeal] = useState(null);
   const [analyzingMessage, setAnalyzingMessage] = useState('Analyzing food...');
   const pendingAutoAnalyzeRef = React.useRef(false);
@@ -288,9 +296,7 @@ function Nutrition() {
       
       const grouped = {
         Breakfast: [],
-        'Mid-Morning': [],
         Lunch: [],
-        Evening: [],
         Dinner: []
       };
 
@@ -298,11 +304,8 @@ function Nutrition() {
         logs.forEach(log => {
           const type = log.mealType;
           if (type.toLowerCase().includes('breakfast')) grouped.Breakfast.push(log);
-          else if (type.toLowerCase().includes('mid') || type.toLowerCase().includes('morning')) grouped['Mid-Morning'].push(log);
           else if (type.toLowerCase().includes('lunch')) grouped.Lunch.push(log);
-          else if (type.toLowerCase().includes('evening') || type.toLowerCase().includes('afternoon')) grouped.Evening.push(log);
-          else if (type.toLowerCase().includes('dinner')) grouped.Dinner.push(log);
-          else grouped.Evening.push(log); // Fallback to evening for generic snacks
+          else grouped.Dinner.push(log); // Fallback for everything else
         });
         setMealLogs(grouped);
         setRecentMeals(logs.slice(0, 15));
@@ -382,6 +385,7 @@ function Nutrition() {
     setPrepMethod('');
     setImage(null);
     setImagePreview(null);
+    resetTranscript();
   };
 
   // Image Upload Logic from QuickFoodCheck
@@ -500,7 +504,8 @@ function Nutrition() {
         _userInput: foodInput,
         _isFromCache: isCached,
         _cacheSource: response.data?.source,
-        _alreadyLogged: true
+        _alreadyLogged: true,
+        _isImageAnalysis: !!image
       };
 
       // AUTO-LOG: Directly log the meal to the database using the selected mealTab
@@ -542,10 +547,7 @@ function Nutrition() {
 
   const handleConfirmLog = async (data) => {
     try {
-      const mappedMealType = 
-        mealTab.toLowerCase() === 'mid-morning' ? 'midMorningSnack' : 
-        mealTab.toLowerCase() === 'evening' ? 'eveningSnack' : 
-        mealTab.toLowerCase();
+      const mappedMealType = mealTab.toLowerCase();
 
       const logData = {
         mealType: mappedMealType,
@@ -561,7 +563,9 @@ function Nutrition() {
         healthBenefitsSummary: data.healthBenefitsSummary || data.analysis,
         warnings: data.warnings,
         alternatives: data.alternatives,
-        date: selectedDate
+        date: selectedDate,
+        imageUrl: data.imageUrl,
+        source: data._isImageAnalysis ? 'ai_vision' : 'manual'
       };
       await nutritionService.logMeal(logData);
       toast.success('Added to ' + mealTab);
@@ -577,71 +581,15 @@ function Nutrition() {
     }
   };
 
-  const finalTranscriptRef = React.useRef('');
-
-  const startVoiceCapture = () => {
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if (!SpeechRecognition) {
-      toast.error("Speech recognition not supported in this browser.");
-      return;
+  // Sync transcript from hook to foodInput
+  useEffect(() => {
+    if (isListening) {
+      const displayText = (transcript + ' ' + interimTranscript).trim();
+      if (displayText) setFoodInput(displayText);
     }
-    const recognition = new SpeechRecognition();
-    recognitionRef.current = recognition;
-    recognition.lang = 'en-IN';
-    recognition.continuous = true;
-    recognition.interimResults = true;
+  }, [transcript, interimTranscript, isListening]);
 
-    recognition.onstart = () => {
-      setIsListening(true);
-      finalTranscriptRef.current = ''; // Reset accumulated transcript
-      if (inputMethod === 'Predict') {
-        setFoodInput('');
-      }
-      toast('Listening...', { icon: '🎙️', duration: 2000 });
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-    };
-
-    recognition.onresult = (event) => {
-      let interimTranscript = '';
-      
-      // Process only from the latest resultIndex to avoid reprocessing old results
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        const transcript = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscriptRef.current += transcript;
-        } else {
-          interimTranscript += transcript;
-        }
-      }
-      
-      // Build display text: committed finals + current interim
-      const displayText = (finalTranscriptRef.current + ' ' + interimTranscript).trim();
-      setFoodInput(displayText);
-    };
-
-    recognition.onerror = (event) => {
-      console.error('Speech Recognition Error:', event.error);
-      setIsListening(false);
-      toast.error('Voice capture failed: ' + event.error);
-    };
-
-    try {
-      recognition.start();
-    } catch (e) {
-      console.error(e);
-      setIsListening(false);
-    }
-  };
-
-  const stopVoiceCapture = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-    }
-  };
+  // stopVoiceCapture is now handled by the hook
 
   const handleDeleteMeal = async (logId) => {
     try {
@@ -781,14 +729,15 @@ function Nutrition() {
           />
 
           {/* View Meal Detail Modal */}
-          {viewingMeal && (
-            <MealAnalysisModal
-              isOpen={!!viewingMeal}
-              onClose={() => setViewingMeal(null)}
-              meal={viewingMeal}
-              source="view"
-            />
-          )}
+          <AnimatePresence>
+            {viewingMeal && (
+              <MealAnalysisModal
+                meal={viewingMeal}
+                onClose={() => setViewingMeal(null)}
+                source="view"
+              />
+            )}
+          </AnimatePresence>
        </div>
 
       {/* Add Meal Modal */}
@@ -806,7 +755,7 @@ function Nutrition() {
               {/* Header */}
               <div className="p-6 md:p-8 pb-4">
                 <div className="flex justify-between items-center mb-6">
-                  <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Add to {mealTab === 'Evening' ? 'Snack' : mealTab}</h3>
+                  <h3 className="text-2xl font-black text-slate-900 tracking-tight uppercase">Add to {mealTab}</h3>
                   <button onClick={() => setIsModalOpen(false)} className="w-10 h-10 bg-white hover:bg-slate-50 rounded-full flex items-center justify-center transition-all border border-slate-200 shadow-sm shrink-0">
                     <X className="w-5 h-5 text-slate-400" />
                   </button>
@@ -816,9 +765,7 @@ function Nutrition() {
                 <div className="flex gap-2 mb-6 overflow-x-auto pb-1 scrollbar-hide -mx-2 px-2">
                   {[
                     { id: 'Breakfast', label: 'BREAKFAST', icon: null },
-                    { id: 'Mid-Morning', label: 'MID-MORN', icon: Sun },
                     { id: 'Lunch', label: 'LUNCH', icon: Sun },
-                    { id: 'Evening', label: 'SNACK', icon: Cookie },
                     { id: 'Dinner', label: 'DINNER', icon: Moon }
                   ].map(tab => (
                     <button

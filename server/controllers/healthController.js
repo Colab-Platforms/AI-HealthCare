@@ -123,10 +123,12 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
             isAutoTrigger: true
           }, appUrl);
         } else {
-          // On local: use setImmediate (server stays alive)
+          // On local: use setTimeout with cooldown (server stays alive)
+          // ⏳ 15s cooldown to prevent 529 (overloaded) errors from back-to-back Claude API calls
           const { generateDietAfterReport } = require('./dietRecommendationController');
           if (generateDietAfterReport) {
-            setImmediate(() => generateDietAfterReport(userId).catch(e => console.warn('[BG] Auto-diet failed:', e.message)));
+            console.log('[BG] Scheduling auto-diet generation in 15s (API cooldown)...');
+            setTimeout(() => generateDietAfterReport(userId).catch(e => console.warn('[BG] Auto-diet failed:', e.message)), 15000);
           }
         }
       }

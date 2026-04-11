@@ -9,7 +9,7 @@ const healthGoalSchema = new mongoose.Schema({
   },
   goalType: {
     type: String,
-    enum: ['weight_loss', 'weight_gain', 'muscle_gain', 'maintain', 'maintenance', 'health_improvement', 'general_health'],
+    enum: ['weight_loss', 'weight_gain', 'muscle_gain', 'maintain', 'maintenance', 'health_improvement', 'general_health', 'disease_management'],
     required: true
   },
   currentWeight: {
@@ -83,6 +83,10 @@ const healthGoalSchema = new mongoose.Schema({
   isActive: {
     type: Boolean,
     default: true
+  },
+  isDiabetic: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true
@@ -127,19 +131,20 @@ healthGoalSchema.methods.calculateCalorieTarget = function () {
 
   switch (this.goalType) {
     case 'weight_loss':
-      calorieAdjust = -500; // Fat loss: 500 calorie deficit for ~0.5kg/week
+      calorieAdjust = this.isDiabetic ? -400 : -500;
       break;
     case 'weight_gain':
-      calorieAdjust = 500; // Weight gain: 500 calorie surplus
+      calorieAdjust = this.isDiabetic ? 250 : 500;
       break;
     case 'muscle_gain':
-      calorieAdjust = 300; // Muscle gain: 300 calorie lean surplus
+      calorieAdjust = this.isDiabetic ? 200 : 300;
       break;
     case 'maintenance':
     case 'maintain':
     case 'health_improvement':
     case 'general_health':
-      calorieAdjust = 0; // Maintenance: no adjustment
+    case 'disease_management':
+      calorieAdjust = 0;
       break;
     default:
       calorieAdjust = 0;
@@ -155,22 +160,60 @@ healthGoalSchema.methods.calculateMacros = function () {
     this.calculateCalorieTarget();
   }
 
-  // Dynamic multipliers based on goal
-  let proteinPerKg = 1.2; // Base healthy active adult target
-  let fatPerKg = 0.8; // Essential hormone production baseline
+  // --- DIABETIC USERS: Clinically safe macro split ---
+  // Diabetics need strictly controlled carbs (130-150g/day max),
+  // adequate protein, and moderate healthy fats.
+  if (this.isDiabetic) {
+    let proteinPct, carbPct, fatPct;
+
+    switch (this.goalType) {
+      case 'weight_loss':
+        proteinPct = 0.35; // High protein for satiety + muscle preservation
+        carbPct = 0.25;    // Strict carb control for blood sugar
+        fatPct = 0.40;     // Moderate healthy fats
+        break;
+      case 'muscle_gain':
+        proteinPct = 0.35; // High protein for muscle synthesis
+        carbPct = 0.25;    // Controlled carbs
+        fatPct = 0.40;     // Moderate fats
+        break;
+      case 'weight_gain':
+        proteinPct = 0.30; // Good protein for lean mass
+        carbPct = 0.25;    // Controlled carbs (~130g for safety)
+        fatPct = 0.45;     // Healthy fats for caloric surplus
+        break;
+      default: // maintenance, general_health, disease_management
+        proteinPct = 0.30;
+        carbPct = 0.25;
+        fatPct = 0.45;
+        break;
+    }
+
+    this.macroTargets = {
+      protein: Math.round((this.dailyCalorieTarget * proteinPct) / 4),
+      carbs: Math.round((this.dailyCalorieTarget * carbPct) / 4),
+      fats: Math.round((this.dailyCalorieTarget * fatPct) / 9)
+    };
+
+    return this.macroTargets;
+  }
+
+  // --- NON-DIABETIC USERS: Per-kg body weight approach ---
+  let proteinPerKg = 1.2;
+  let fatPerKg = 0.8;
 
   switch (this.goalType) {
     case 'weight_loss':
-      proteinPerKg = 1.6; // Higher protein to preserve muscle mass in deficit
-      fatPerKg = 0.6; // Lower fat to accommodate caloric restriction
+      proteinPerKg = 1.6;
+      fatPerKg = 0.6;
       break;
     case 'muscle_gain':
-      proteinPerKg = 1.8; // High protein for optimal muscle protein synthesis
+      proteinPerKg = 1.8;
       fatPerKg = 0.8;
       break;
     case 'weight_gain':
       proteinPerKg = 1.4;
-      fatPerKg = 1.0; // Higher fat for easier caloric surplus
+      fatPerKg = 1.0;
       break;
     default:
       proteinPerKg = 1.2;
@@ -181,22 +224,22 @@ healthGoalSchema.methods.calculateMacros = function () {
   let protein = Math.round(this.currentWeight * proteinPerKg);
   let fats = Math.round(this.currentWeight * fatPerKg);
 
-  // Safety cap for extremely large weights ensuring protein/fats aren't absurdly high
+  // Safety cap for extremely large weights
   const maxProtein = Math.round((this.dailyCalorieTarget * 0.35) / 4);
   protein = Math.min(protein, maxProtein, 250);
 
   const proteinCalories = protein * 4;
   const fatsCalories = fats * 9;
-  
+
   let remainingCalories = this.dailyCalorieTarget - proteinCalories - fatsCalories;
-  
-  // If baseline calories drop too low, re-adjust fats to ensure at least some carbs
+
+  // If baseline calories drop too low, re-adjust fats
   if (remainingCalories < 400) {
     fats = Math.max(Math.round((this.dailyCalorieTarget * 0.2) / 9), 30);
     remainingCalories = this.dailyCalorieTarget - proteinCalories - (fats * 9);
   }
 
-  const carbs = Math.round(Math.max(remainingCalories / 4, 0)); // Carbs provide 4 cal/g
+  const carbs = Math.round(Math.max(remainingCalories / 4, 0));
 
   this.macroTargets = {
     protein: protein,

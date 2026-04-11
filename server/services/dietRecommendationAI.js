@@ -13,9 +13,9 @@ class DietRecommendationAI {
 
   async makeAIRequest(payload, modelOverride = null) {
     const apiKey = process.env.ANTHROPIC_API_KEY;
-    const selectedModel = modelOverride || CLAUDE_MODEL;
-
-    console.log(`🔄 DietAI | Model: ${selectedModel} | Tokens: ${payload.max_tokens}`);
+    const primaryModel = modelOverride || CLAUDE_MODEL;
+    const MAX_RETRIES = 5;
+    const RETRY_DELAYS = [8000, 20000, 40000, 60000, 90000]; // 8s, 20s, 40s, 60s, 90s
 
     const headers = {
       'x-api-key': apiKey,
@@ -24,25 +24,46 @@ class DietRecommendationAI {
       'Connection': 'close'
     };
 
-    try {
-      const response = await axios.post(ANTHROPIC_API_URL, {
-        model: selectedModel,
-        max_tokens: payload.max_tokens,
-        system: payload.system || '',
-        messages: payload.messages.filter(m => m.role !== 'system'),
-        temperature: payload.temperature || 0.3
-      }, { 
-        headers, 
-        timeout: 300000 
-      });
+    for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+      // Fallback to Haiku after 2 failed attempts for better availability
+      const currentModel = (attempt >= 2 && !modelOverride) ? CLAUDE_HAIKU_MODEL : primaryModel;
+      
+      console.log(`🔄 DietAI | Model: ${currentModel} | Attempt: ${attempt + 1}/${MAX_RETRIES} | Tokens: ${payload.max_tokens}`);
 
-      if (response.data && response.data.content && response.data.content[0]) {
-        return response.data.content[0].text;
+      try {
+        const response = await axios.post(ANTHROPIC_API_URL, {
+          model: currentModel,
+          max_tokens: payload.max_tokens,
+          system: payload.system || '',
+          messages: payload.messages.filter(m => m.role !== 'system'),
+          temperature: payload.temperature || 0.3
+        }, { 
+          headers, 
+          timeout: 300000 
+        });
+
+        if (response.data && response.data.content && response.data.content[0]) {
+          if (attempt > 0) console.log(`✅ DietAI | Succeeded on attempt ${attempt + 1} with ${currentModel}`);
+          return response.data.content[0].text;
+        }
+        throw new Error('Invalid response');
+      } catch (error) {
+        const status = error.response?.status;
+        const isOverloaded = status === 529;
+        const isRateLimit = status === 429;
+        const isRetryable = isOverloaded || isRateLimit;
+
+        console.error(`❌ Diet AI Request Error (attempt ${attempt + 1}):`, error.response?.data?.error?.message || error.message);
+
+        if (isRetryable && attempt < MAX_RETRIES - 1) {
+          const delay = RETRY_DELAYS[attempt];
+          console.log(`⏳ DietAI | ${isOverloaded ? 'Overloaded' : 'Rate limited'} — retrying in ${delay / 1000}s...`);
+          await new Promise(resolve => setTimeout(resolve, delay));
+          continue;
+        }
+
+        throw error;
       }
-      throw new Error('Invalid response');
-    } catch (error) {
-      console.error(`❌ Diet AI Request Error:`, error.response?.data?.error?.message || error.message);
-      throw error;
     }
   }
 
@@ -55,11 +76,9 @@ STRUCTURE:
 {
   "dailyCalorieTarget": ${nutritionGoals?.dailyCalories || 2000},
   "mealPlan": {
-    "breakfast": [{"name": "Meal Name", "portionSize": "descriptive size (e.g. 1 bowl, 2 pieces)", "calories": 0, "protein": 0, "carbs": 0, "fats": 0}],
-    "midMorningSnack": [{"name": "Snack Name", "portionSize": "descriptive size", "calories": 0, "protein": 0, "carbs": 0, "fats": 0}],
-    "lunch": [{"name": "Meal Name", "portionSize": "descriptive size", "calories": 0, "protein": 0, "carbs": 0, "fats": 0}],
-    "eveningSnack": [{"name": "Snack Name", "portionSize": "descriptive size", "calories": 0, "protein": 0, "carbs": 0, "fats": 0}],
-    "dinner": [{"name": "Meal Name", "portionSize": "descriptive size", "calories": 0, "protein": 0, "carbs": 0, "fats": 0}]
+    "breakfast": [{"name": "Meal Name", "portionSize": "1 bowl / 2 pieces / 200g", "calories": 0, "protein": 0, "carbs": 0, "fats": 0}],
+    "lunch": [{"name": "Meal Name", "portionSize": "1 plate / 1.5 bowl / 350g", "calories": 0, "protein": 0, "carbs": 0, "fats": 0}],
+    "dinner": [{"name": "Meal Name", "portionSize": "1 bowl / 150g", "calories": 0, "protein": 0, "carbs": 0, "fats": 0}]
   }
 }
 USER DATA:
@@ -72,14 +91,13 @@ USER DATA:
 - Macro Targets: Protein ${nutritionGoals?.protein}g, Carbs ${nutritionGoals?.carbs}g, Fats ${nutritionGoals?.fats}g
 
 REQUIREMENTS:
-1. Provide COMPLETELY UNIQUE AND VARIED options. Do NOT repeat standardized meals for every user.
-2. Focus on Indian cuisine (varied regions: North, South, East, West).
-3. Output 1-2 options per meal.
-4. Descriptive measurements (e.g., 100g, 1 bowl, 2 pieces) required in "portionSize".
-5. For Diabetic users: Low Glycemic Index (GI), higher fiber, controlled portions.
-6. ${promptExtension}
+1. CRITICAL: The SUM of Calories, Protein, Carbs, and Fats across NO MORE than one option from each meal (Breakfast + Lunch + Dinner) MUST strictly align with the USER'S Macro Targets provided.
+2. PRECISE PORTIONS: Use measurements like "1.5 Bowl (250g)", "2 Medium Roti (80g)", etc., in "portionSize". The portion must explain BOTH the visual quantity (bowl/piece) AND the approximate weight (grams) if applicable.
+3. Focus on varied Indian cuisine.
+4. Output 1-2 options per meal.
+5. ${promptExtension}
 
-JSON output ONLY. High variety requested.`;
+JSON output ONLY. Exact mathematical alignment with macro goals is mandatory.`;
 
     try {
       const aiResponse = await this.makeAIRequest({
@@ -91,6 +109,14 @@ JSON output ONLY. High variety requested.`;
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
       return jsonMatch ? robustJsonParse(jsonMatch[0]) : null;
     } catch (error) { throw error; }
+  }
+
+  /**
+   * Generate diet plan using Haiku model (for auto-triggered background tasks)
+   * Uses Haiku directly to reduce API load when triggered after report analysis
+   */
+  async generatePersonalizedDietPlanLight(userData, promptExtension = '') {
+    return this.generatePersonalizedDietPlan(userData, promptExtension);
   }
 
 
