@@ -1020,9 +1020,19 @@ export default function DashboardEnhanced() {
     return extractedDeficiencies.map(item => {
       const key = item.name.toLowerCase().replace(/\s+/g, '');
       const meta = nutrientMeta[key] || {};
+      
+      let aiFoods = null;
+      if (dashboardData?.latestAnalysis?.metrics) {
+        Object.entries(dashboardData.latestAnalysis.metrics).forEach(([mKey, val]) => {
+          if (typeof val === 'object' && mKey.toLowerCase().includes(item.name.toLowerCase()) && val.foodsToConsume) {
+             aiFoods = Array.isArray(val.foodsToConsume) ? val.foodsToConsume.join(', ') : val.foodsToConsume;
+          }
+        });
+      }
+
       return {
         ...item,
-        food: item.food || meta.food || 'Green leafy vegetables, Balanced diet',
+        food: item.food || aiFoods || meta.food || 'Nutrient-rich balanced meals tailored to your report',
         supplement: item.supplement || meta.supplement || 'Consult a specialist',
         percent: item.percent || 50 // Rough default gauge percent
       };

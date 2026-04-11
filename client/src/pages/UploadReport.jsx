@@ -51,7 +51,14 @@ const CustomTooltip = ({ active, payload, label }) => {
     const diff = data['Recent Report'] - data['Past Report'];
     
     const getTrendBadge = () => {
-      if (!data['Past Report'] || !data['Recent Report']) return null;
+      // Handle single report case
+      if (data['Past Report'] === null || data['Past Report'] === undefined) {
+         if (data.recentStatus) {
+            return <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${data.recentStatus.toLowerCase() === 'normal' ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>{data.recentStatus}</span>;
+         }
+         return null;
+      }
+
       if (data.trend === 'improved') return <span className="text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider">👍 Improved</span>;
       if (data.trend === 'worsened') return <span className="text-red-600 bg-red-50 px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider">⚠️ Worsened</span>;
       
@@ -176,12 +183,19 @@ export default function UploadReport() {
       if (report1 && report2) {
         buildComparisonData(report1, report2);
       }
+    } else if (selectedReports.length === 1) {
+      const report1 = allReports.find(r => r._id === selectedReports[0]);
+      if (report1) {
+        buildComparisonData(report1, null);
+      }
+    } else {
+      setComparisonData([]);
     }
   }, [selectedReports, allReports]);
 
   const buildComparisonData = (recentReport, pastReport) => {
-    const recentMetrics = recentReport.aiAnalysis?.metrics || {};
-    const pastMetrics = pastReport.aiAnalysis?.metrics || {};
+    const recentMetrics = recentReport?.aiAnalysis?.metrics || {};
+    const pastMetrics = pastReport?.aiAnalysis?.metrics || {};
 
     const allMetricKeys = [...new Set([...Object.keys(recentMetrics), ...Object.keys(pastMetrics)])];
 
@@ -233,10 +247,10 @@ export default function UploadReport() {
       }
     });
 
-    const recentScore = recentReport.aiAnalysis?.healthScore;
-    const pastScore = pastReport.aiAnalysis?.healthScore;
-    const recentDefs = (recentReport.aiAnalysis?.deficiencies || []).map(d => d.name).filter(Boolean);
-    const pastDefs = (pastReport.aiAnalysis?.deficiencies || []).map(d => d.name).filter(Boolean);
+    const recentScore = recentReport?.aiAnalysis?.healthScore;
+    const pastScore = pastReport?.aiAnalysis?.healthScore;
+    const recentDefs = (recentReport?.aiAnalysis?.deficiencies || []).map(d => d.name).filter(Boolean);
+    const pastDefs = (pastReport?.aiAnalysis?.deficiencies || []).map(d => d.name).filter(Boolean);
     const resolvedDefs = pastDefs.filter(d => !recentDefs.includes(d));
     const newDefs = recentDefs.filter(d => !pastDefs.includes(d));
 
@@ -423,12 +437,16 @@ export default function UploadReport() {
                   </div>
                 </div>
 
-                {selectedReports.length === 2 && comparisonData.length > 0 ? (
+                {selectedReports.length >= 1 && comparisonData.length > 0 ? (
                   <div className="flex flex-col gap-6">
                     <div className="flex items-center gap-4 justify-center">
-                      <span className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest"><div className="w-2 h-2 rounded-full bg-slate-300"></div> Past</span>
-                      <span className="text-slate-300 font-bold">vs</span>
-                      <span className="flex items-center gap-2 text-xs font-black text-[#69A38D] uppercase tracking-widest"><div className="w-2 h-2 rounded-full bg-[#69A38D]"></div> Recent</span>
+                      {selectedReports.length === 2 && (
+                        <>
+                          <span className="flex items-center gap-2 text-xs font-black text-slate-400 uppercase tracking-widest"><div className="w-2 h-2 rounded-full bg-slate-300"></div> Past</span>
+                          <span className="text-slate-300 font-bold">vs</span>
+                        </>
+                      )}
+                      <span className="flex items-center gap-2 text-xs font-black text-[#69A38D] uppercase tracking-widest"><div className="w-2 h-2 rounded-full bg-[#69A38D]"></div> {selectedReports.length === 2 ? 'Recent' : 'Current Report'}</span>
                     </div>
                     <div className="h-[300px] w-full">
                       <ResponsiveContainer width="100%" height="100%">
@@ -440,7 +458,7 @@ export default function UploadReport() {
                             content={<CustomTooltip />}
                             cursor={{ fill: 'rgba(105, 163, 141, 0.05)' }}
                           />
-                          <Bar dataKey="Past Report" fill="#CBD5E1" radius={[4, 4, 0, 0]} barSize={12} />
+                          {selectedReports.length === 2 && <Bar dataKey="Past Report" fill="#CBD5E1" radius={[4, 4, 0, 0]} barSize={12} />}
                           <Bar dataKey="Recent Report" fill="#69A38D" radius={[4, 4, 0, 0]} barSize={12} />
                         </BarChart>
                       </ResponsiveContainer>
@@ -449,7 +467,7 @@ export default function UploadReport() {
                 ) : (
                   <div className="flex flex-col items-center justify-center py-16 gap-4 bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
                     <Activity size={32} className="text-slate-300" />
-                    <p className="text-slate-400 font-bold text-center">Select two reports from history <br />to visualize comparative trends</p>
+                    <p className="text-slate-400 font-bold text-center">Select report(s) from history <br />to visualize analytics</p>
                   </div>
                 )}
               </div>
