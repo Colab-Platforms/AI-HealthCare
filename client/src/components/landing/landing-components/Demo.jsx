@@ -190,13 +190,13 @@ const Demo = () => {
               style={{ rotate: rotate1, willChange: "transform" }}
               src="/landing/demo/circle.png"
               alt="circle"
-              className="absolute -right-[24%] -top-20 lg:-right-[50%] lg:top-0 w-1/2 origin-center"
+              className="absolute -right-[24%] -top-20 lg:-right-[50%] lg:top-0 w-2/5 origin-center"
             />
             <motion.img
               style={{ rotate: rotate2, willChange: "transform" }}
               src="/landing/demo/circle.png"
               alt="circle"
-              className="absolute -left-[12%] -bottom-10 lg:-left-[45%] lg:-bottom-20 w-1/3 origin-center z-50"
+              className="absolute -left-[12%] -bottom-10 lg:-left-[45%] lg:-bottom-14 w-1/4 origin-center z-50"
             />
             <motion.img
               initial={{ opacity: 0, scale: 0.8 }}
@@ -221,16 +221,16 @@ const Demo = () => {
           {/* our Ai */}
           <motion.div
             {...fadeRight}
-            className="absolute -right-72 top-[30%] -translate-y-1/2"
+            className="absolute -right-44 top-[22%] -translate-y-1/2 hidden lg:block"
           >
-            <p className="font-landing-accent text-sm leading-5 font-semibold max-w-56">
+            <p className="font-landing-accent text-xs leading-5 font-semibold max-w-36 mb-1">
               Our AI engine evaluates patterns across vast medical datasets to
               support accurate diagnosis, reduce errors, and enhance
               decision-making for healthcare professionals.
             </p>
             <Link
               to="/demo"
-              className="inline-flex text-sm font-semibold items-center font-landing-title text-landing-primary-hover transition-colors"
+              className="inline-flex text-xs font-semibold items-center font-landing-title text-landing-primary-hover transition-colors"
             >
               Learn More
               <ArrowRightIcon className="ml-2 h-4 w-4" />
