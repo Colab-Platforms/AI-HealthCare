@@ -475,6 +475,15 @@ function Nutrition() {
     }
   }, [image]);
 
+  // Guardian: Ensure imagePreview is always reconstructed if image exists (safeguard against transient nulls)
+  useEffect(() => {
+    if (image && !imagePreview) {
+      console.log('🛡️ Preview Guardian: Reconstructing lost image preview');
+      const url = URL.createObjectURL(image);
+      setImagePreview(url);
+    }
+  }, [image, imagePreview]);
+
   const handleAnalyzeAndLog = async () => {
     if (!foodInput && !image) return;
     if (isListening) stopVoiceCapture();
@@ -498,7 +507,7 @@ function Nutrition() {
 
       const response = await api.post('nutrition/quick-check', formData, {
         timeout: 60000,
-        skipAutoLogout: true
+        skipAutoLogout: true // Absolute priority protection
       });
 
       const result = response.data.data;

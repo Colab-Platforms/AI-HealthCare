@@ -97,29 +97,39 @@ api.interceptors.response.use(
     const skipAutoLogout = error.config?.skipAutoLogout;
 
     if (error.response?.status === 401) {
-      console.warn('🔓 401 Unauthorized detected for URL:', error.config?.url);
+      const config = error.config;
       
-      // CRITICAL: Skip auto-logout on main App pages to prevent mobile camera reloads from kicking the user
-      const appPages = ['nutrition', 'dashboard', 'vault', 'chat', 'profile', 'metrics'];
+      // CRITICAL: Skip auto-logout on main App pages or common sync URLs
+      const appPages = ['nutrition', 'dashboard', 'vault', 'chat', 'profile', 'metrics', 'report', 'onboarding', 'summary'];
       const isAppPage = appPages.some(p => window.location.pathname.toLowerCase().includes(p)) || window.location.pathname === '/';
-      const shouldSkip = !!skipAutoLogout || isAppPage;
+      const isSyncUrl = config.url?.includes('nutrition/') || config.url?.includes('health/dashboard');
+      const shouldSkip = !!config.skipAutoLogout || isAppPage || isSyncUrl;
       
-      console.log('🔓 401 Error Info:', { 
-        url: error.config?.url,
+      // Self-Healing: If we are on an app page, retry the request ONCE after 800ms 
+      // This handles cases where the token might not be ready yet after a mobile reload
+      if (shouldSkip && !config._isRetry) {
+        console.warn('🔄 401 detected on App page. Retrying once in 800ms...', config.url);
+        config._isRetry = true;
+        return new Promise(resolve => {
+          setTimeout(() => resolve(api(config)), 800);
+        });
+      }
+
+      console.warn('🔓 401 Unauthorized - Final check:', { 
+        url: config.url,
         shouldSkip, 
         pathname: window.location.pathname 
       });
       
       if (!shouldSkip) {
         console.log('🚪 Triggering auto-logout and redirecting to /login');
-        // Clear only sensitive auth data, preserving UI flags like onboarding tour status
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         sessionStorage.removeItem('token');
         cache.clear();
         window.location.href = '/login';
       } else {
-        console.log('🛡️ skipAutoLogout is TRUE or User is on Nutrition Page — keeping user on current page');
+        console.log('🛡️ skipAutoLogout active — keeping user on current page');
       }
     } else if (!error.response) {
       console.error('Network Error:', {
