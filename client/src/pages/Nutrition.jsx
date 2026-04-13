@@ -196,6 +196,7 @@ function Nutrition() {
   const [analyzingMessage, setAnalyzingMessage] = useState('Analyzing food...');
   const pendingAutoAnalyzeRef = React.useRef(false);
   const cameraModalInputRef = React.useRef(null);
+  const galleryInputRef = React.useRef(null);
 
   useEffect(() => {
     if (isAnalyzing) {
@@ -379,6 +380,7 @@ function Nutrition() {
   const openModal = (meal) => {
     setMealTab(meal);
     setIsModalOpen(true);
+    setInputMethod('Scan');
     setAnalysisResult(null);
     setFoodInput('');
     setFoodQuantity('');
@@ -427,17 +429,34 @@ function Nutrition() {
   const handleImageSelect = async (fileOrEvent, autoAnalyze = false) => {
     const file = fileOrEvent?.target ? fileOrEvent.target.files[0] : fileOrEvent;
     if (!file) return;
+
+    // Immediately show the modal in Scan mode
+    setInputMethod('Scan');
+    setIsModalOpen(true);
+    
+    // Show instant preview from the raw file while we compress in the background
+    const rawUrl = URL.createObjectURL(file);
+    setImagePreview(rawUrl);
+    
+    // Safety: don't auto-analyze unless explicitly requested
+    pendingAutoAnalyzeRef.current = autoAnalyze;
+
     try {
       const compressed = await compressImage(file);
       setImage(compressed);
-      setImagePreview(URL.createObjectURL(compressed));
-      // If auto-analyze is requested (e.g. from camera capture), trigger analysis after state update
-      if (autoAnalyze) {
-        pendingAutoAnalyzeRef.current = true;
-      }
+      // Update with compressed preview for actual logging
+      const compressedUrl = URL.createObjectURL(compressed);
+      setImagePreview(compressedUrl);
+      
+      // Cleanup the raw URL after a brief delay to avoid flicker
+      setTimeout(() => {
+        try { URL.revokeObjectURL(rawUrl); } catch (e) {}
+      }, 1000);
     } catch (error) {
+      console.error('Image processing error:', error);
       toast.error('Failed to process image');
     }
+    
     // Reset file input value so the same file can be re-selected
     if (fileOrEvent?.target) {
       fileOrEvent.target.value = '';
@@ -478,8 +497,8 @@ function Nutrition() {
       if (context) formData.append('additionalContext', context);
 
       const response = await api.post('nutrition/quick-check', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-        timeout: 60000
+        timeout: 60000,
+        skipAutoLogout: true
       });
 
       const result = response.data.data;
@@ -699,11 +718,9 @@ function Nutrition() {
               if (inputMode === 'Scan') {
                 setInputMethod('Scan');
                 if (file) {
-                  setImage(null);
-                  setImagePreview(null);
                   if (mealType) setMealTab(mealType);
                   setIsModalOpen(true);
-                  await handleImageSelect(file, true);
+                  handleImageSelect(file);
                   return;
                 }
               }
@@ -874,22 +891,16 @@ function Nutrition() {
                           <span className="text-white/60 text-[10px] font-black uppercase mb-4 tracking-[0.2em]">OR</span>
                           
                           <button 
-                              onClick={() => document.getElementById('food-img-upload')?.click()}
+                              onClick={() => {
+                                if (galleryInputRef.current) galleryInputRef.current.value = '';
+                                galleryInputRef.current?.click();
+                              }}
                               className="bg-white/10 hover:bg-white/20 border border-white/20 text-white px-6 py-3.5 rounded-full text-[13px] font-black uppercase tracking-wider transition-all flex items-center justify-center gap-2 w-full max-w-[220px] shadow-sm backdrop-blur-sm"
                           >
                               <ImageIcon size={16} /> UPLOAD PHOTO
                           </button>
                         </>
                       )}
-                      <input id="food-img-upload" type="file" accept="image/*" className="hidden" onChange={(e) => handleImageSelect(e)} />
-                      <input
-                        ref={cameraModalInputRef}
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        className="hidden"
-                        onChange={(e) => handleImageSelect(e, true)}
-                      />
                     </div>
 
                     <p className="text-center text-[#1a2138] font-bold text-[13px] px-6 mt-6 mb-6 leading-relaxed">
@@ -1183,6 +1194,23 @@ function Nutrition() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* Hidden File Inputs - OUTSIDE modal so they survive camera app suspension */}
+      <input
+        ref={cameraModalInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => handleImageSelect(e)}
+      />
+      <input
+        ref={galleryInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={(e) => handleImageSelect(e)}
+      />
     </div>
   );
 }
