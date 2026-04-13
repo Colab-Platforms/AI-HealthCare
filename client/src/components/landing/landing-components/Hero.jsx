@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 
@@ -27,14 +28,50 @@ const bgFade = {
 };
 
 const Hero = () => {
+  const videoRef = useRef(null);
+  const [isVideoReady, setIsVideoReady] = useState(false);
+
+  useEffect(() => {
+    if (!isVideoReady || !videoRef.current) return;
+
+    const playPromise = videoRef.current.play();
+    if (playPromise && typeof playPromise.catch === "function") {
+      playPromise.catch(() => {
+        // Ignore autoplay restriction failures; user interaction will allow playback later.
+      });
+    }
+  }, [isVideoReady]);
+
   return (
     <motion.section
       initial="hidden"
       animate="show"
       variants={bgFade}
-      className="relative z-10 bg-hero bg-cover h-screen bg-top flex items-center justify-center text-center pb-10 px-5 lg:px-20"
+      className="relative z-10 h-screen flex items-center justify-center text-center pb-10 px-5 lg:px-20 overflow-hidden"
     >
-      <div className="absolute inset-0 bg-black/30"></div>
+      <img
+        src="/landing/bg-back.jpg"
+        alt="Healthy lifestyle"
+        className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${
+          isVideoReady ? "opacity-0" : "opacity-100"
+        }`}
+      />
+
+      <video
+        ref={videoRef}
+        loop
+        muted
+        playsInline
+        preload="auto"
+        onCanPlay={() => setIsVideoReady(true)}
+        className={`absolute inset-0 w-full h-full object-cover transition-opacity duration-700 ${
+          isVideoReady ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        <source src="/landing/bg-video.mp4" type="video/mp4" />
+      </video>
+
+      <div className="absolute inset-0 bg-black/40"></div>
       <motion.div
         className="relative z-10"
         variants={container}
