@@ -98,19 +98,9 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401) {
       console.warn('🔓 401 Unauthorized detected for URL:', error.config?.url);
-      
-      // CRITICAL: Skip auto-logout on main App pages to prevent mobile camera reloads from kicking the user
-      const appPages = ['nutrition', 'dashboard', 'vault', 'chat', 'profile', 'metrics'];
-      const isAppPage = appPages.some(p => window.location.pathname.toLowerCase().includes(p)) || window.location.pathname === '/';
-      const shouldSkip = !!skipAutoLogout || isAppPage;
-      
-      console.log('🔓 401 Error Info:', { 
-        url: error.config?.url,
-        shouldSkip, 
-        pathname: window.location.pathname 
-      });
-      
-      if (!shouldSkip) {
+      console.log('🔓 skipAutoLogout flag status:', !!skipAutoLogout);
+
+      if (!skipAutoLogout) {
         console.log('🚪 Triggering auto-logout and redirecting to /login');
         // Clear only sensitive auth data, preserving UI flags like onboarding tour status
         localStorage.removeItem('token');
@@ -119,7 +109,7 @@ api.interceptors.response.use(
         cache.clear();
         window.location.href = '/login';
       } else {
-        console.log('🛡️ skipAutoLogout is TRUE or User is on Nutrition Page — keeping user on current page');
+        console.log('🛡️ skipAutoLogout is TRUE — keeping user on current page');
       }
     } else if (!error.response) {
       console.error('Network Error:', {
@@ -144,7 +134,7 @@ export const healthService = {
   getReport: (id) => api.get(`health/reports/${id}`),
   getReportStatus: (id) => api.get(`health/reports/${id}/status`),
   deleteReport: (id) => api.delete(`health/reports/${id}`),
-  getDashboard: (config) => api.get('health/dashboard', { ...config, skipAutoLogout: true }),
+  getDashboard: (config) => api.get('health/dashboard', config),
   getHistory: (reportType) => api.get('health/history', { params: { reportType } }),
   compareReport: (id) => api.get(`health/reports/${id}/compare`),
   chatAboutReport: (id, message, chatHistory) => api.post(`health/reports/${id}/chat`, { message, chatHistory }),
@@ -272,21 +262,21 @@ export const subscriptionService = {
 };
 
 export const nutritionService = {
-  analyzeFood: (foodDescription) => api.post('nutrition/analyze-food', { foodDescription }, { skipAutoLogout: true }),
-  logMeal: (mealData) => api.post('nutrition/log-meal', mealData, { skipAutoLogout: true }),
-  getTodayLogs: () => api.get('nutrition/logs/today', { skipAutoLogout: true }),
-  getLogs: (date) => api.get('nutrition/logs', { params: { date }, skipAutoLogout: true }),
-  getDailySummary: (date) => api.get('nutrition/summary/daily', { params: { date }, skipAutoLogout: true }),
-  getWeeklySummary: () => api.get('nutrition/summary/weekly', { skipAutoLogout: true }),
-  getGoals: () => api.get('nutrition/goals', { skipAutoLogout: true }),
-  updateGoals: (goals) => api.put('nutrition/goals', goals, { skipAutoLogout: true }),
-  deleteNutritionLog: (id) => api.delete(`nutrition/logs/${id}`, { skipAutoLogout: true }),
-  updateNutritionLog: (id, data) => api.put(`nutrition/logs/${id}`, data, { skipAutoLogout: true })
+  analyzeFood: (foodDescription) => api.post('nutrition/analyze-food', { foodDescription }),
+  logMeal: (mealData) => api.post('nutrition/log-meal', mealData),
+  getTodayLogs: () => api.get('nutrition/logs/today'),
+  getLogs: (date) => api.get('nutrition/logs', { params: { date } }),
+  getDailySummary: (date) => api.get('nutrition/summary/daily', { params: { date } }),
+  getWeeklySummary: () => api.get('nutrition/summary/weekly'),
+  getGoals: () => api.get('nutrition/goals'),
+  updateGoals: (goals) => api.put('nutrition/goals', goals),
+  deleteNutritionLog: (id) => api.delete(`nutrition/logs/${id}`),
+  updateNutritionLog: (id, data) => api.put(`nutrition/logs/${id}`, data)
 };
 
 export const dietRecommendationService = {
-  generateDietPlan: (data) => api.post('diet-recommendations/diet-plan/generate', data, { skipAutoLogout: true }),
-  getActiveDietPlan: (config) => api.get('diet-recommendations/diet-plan/active', { ...config, skipAutoLogout: true }),
+  generateDietPlan: (data) => api.post('diet-recommendations/diet-plan/generate', data),
+  getActiveDietPlan: (config) => api.get('diet-recommendations/diet-plan/active', config),
 
   getDietPlanHistory: () => api.get('diet-recommendations/diet-plan/history'),
   getDietPlanById: (planId) => api.get(`diet-recommendations/diet-plan/${planId}`),

@@ -29,23 +29,17 @@ exports.protect = async (req, res, next) => {
     }
 
     req.user = user;
+    console.log('User authenticated:', req.user._id, req.user.name);
     next();
   } catch (error) {
     console.error('Auth middleware error:', error.message);
-    
-    // Explicitly return 401 ONLY for authentication failures
-    if (error.name === 'JsonWebTokenError' || error.name === 'TokenExpiredError') {
-      return res.status(401).json({ 
-        message: 'Invalid or expired token',
-        errorType: error.name 
-      });
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({ message: 'Invalid token' });
     }
-
-    // For other errors (database timeouts, etc.), return 500 so the frontend doesn't log the user out
-    res.status(500).json({ 
-      message: 'Internal authentication error. Please try again.',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({ message: 'Token expired' });
+    }
+    res.status(401).json({ message: 'Not authorized, token failed' });
   }
 };
 
