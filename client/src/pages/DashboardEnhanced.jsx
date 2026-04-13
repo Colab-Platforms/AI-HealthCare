@@ -989,20 +989,54 @@ export default function DashboardEnhanced() {
       vitamind: { name: 'Vitamin D', unit: 'mcg', food: 'Fatty Fish, Eggs, Sun', supplement: 'Vitamin D3' },
       calcium: { name: 'Calcium', unit: 'mg', food: 'Milk, Tofu, Almonds', supplement: 'Calcium + D3' },
       vitaminb12: { name: 'Vitamin B12', unit: 'mcg', food: 'Dairy, Eggs, Fortified foods', supplement: 'B12 Complex' },
-      protein: { name: 'Protein', unit: 'g', food: 'Paneer, Eggs, Lentils', supplement: 'Whey Protein' }
+      protein: { name: 'Protein', unit: 'g', food: 'Paneer, Eggs, Lentils', supplement: 'Whey Protein' },
+      ferritin: { name: 'Iron', unit: 'ng/mL', food: 'Spinach, Beetroot, Red Meat', supplement: 'Iron Supplements' }
     };
 
-    // Priority 1: Use medical report deficiencies if they exist
-    return (dashboardData?.latestAnalysis?.deficiencies || []).map(item => {
+    let extractedDeficiencies = [...(dashboardData?.latestAnalysis?.deficiencies || [])];
+    
+    // Fallback: Ensure any "low" or "deficient" markers in the general metrics are caught
+    if (dashboardData?.latestAnalysis?.metrics) {
+      Object.entries(dashboardData.latestAnalysis.metrics).forEach(([key, val]) => {
+        if (typeof val === 'object' && val.status) {
+          const statusLower = val.status.toLowerCase();
+          if (statusLower.includes('low') || statusLower.includes('deficient') || statusLower.includes('risk')) {
+            const exists = extractedDeficiencies.some(d => d.name.toLowerCase().includes(key.toLowerCase()) || key.toLowerCase().includes(d.name.toLowerCase()));
+            if (!exists) {
+              extractedDeficiencies.push({
+                name: key,
+                severity: val.status,
+                currentValue: val.value,
+                normalRange: val.normalRange,
+                unit: val.unit,
+                explanation: val.lowHighImpact || "Levels are below normal. Please consult a doctor."
+              });
+            }
+          }
+        }
+      });
+    }
+
+    return extractedDeficiencies.map(item => {
       const key = item.name.toLowerCase().replace(/\s+/g, '');
       const meta = nutrientMeta[key] || {};
+      
+      let aiFoods = null;
+      if (dashboardData?.latestAnalysis?.metrics) {
+        Object.entries(dashboardData.latestAnalysis.metrics).forEach(([mKey, val]) => {
+          if (typeof val === 'object' && mKey.toLowerCase().includes(item.name.toLowerCase()) && val.foodsToConsume) {
+             aiFoods = Array.isArray(val.foodsToConsume) ? val.foodsToConsume.join(', ') : val.foodsToConsume;
+          }
+        });
+      }
+
       return {
         ...item,
-        food: item.food || meta.food || 'Green leafy vegetables',
+        food: item.food || aiFoods || meta.food || 'Nutrient-rich balanced meals tailored to your report',
         supplement: item.supplement || meta.supplement || 'Consult a specialist',
-        percent: item.percent || (item.current && item.target ? Math.min((item.current/item.target)*100, 100) : 0)
+        percent: item.percent || 50 // Rough default gauge percent
       };
-    }).slice(0, 3);
+    }).slice(0, 5);
   }, [dashboardData]);
 
   const cardCount = 3;
@@ -1467,7 +1501,7 @@ export default function DashboardEnhanced() {
               </button>
             </div>
 
-            <div className="flex-1 space-y-3 min-h-[180px]">
+            <div className="flex-1 space-y-3 min-h-[180px] max-h-[300px] overflow-y-auto scrollbar-hide pr-1">
               {dashboardData?.processingReport ? (
                 <div className="flex flex-col items-center justify-center p-6 bg-[#FAFBF8] rounded-[24px] text-center border border-[#f0f0ea]">
                   <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 border border-[#E8F3EE]">
@@ -1478,7 +1512,7 @@ export default function DashboardEnhanced() {
                 </div>
               ) : dashboardData?.totalReports > 0 && dashboardData?.latestAnalysis?.metrics && Object.keys(dashboardData.latestAnalysis.metrics).length > 0 ? (
                 <div className="space-y-3">
-                  {Object.entries(dashboardData.latestAnalysis.metrics).slice(0, 3).map(([key, val]) => (
+                  {Object.entries(dashboardData.latestAnalysis.metrics).map(([key, val]) => (
                     <div key={key} className="p-3 bg-[#FAFBF8] rounded-2xl border border-[#f0f0ea] flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-xl bg-white border border-[#E8F3EE] flex items-center justify-center">
@@ -1775,11 +1809,18 @@ export default function DashboardEnhanced() {
               <button className="text-[10px] font-bold text-[#888888] hover:text-[#1a1a1a] uppercase tracking-wide">Detailed &rarr;</button>
             </div>
             <div className="space-y-6 flex-1 overflow-y-auto pr-2 pb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
-              {dynamicDeficiencies?.length > 0 ? (
+              {dashboardData?.processingReport ? (
+                <div className="flex flex-col items-center justify-center p-8 bg-[#FAFBF8] rounded-[24px] border border-[#f0f0ea]">
+                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 border border-[#E8F3EE]">
+                    <Clock className="w-5 h-5 text-[#5B8C6F] animate-spin" />
+                  </div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">AI Analysis <br /> In Progress...</p>
+                </div>
+              ) : dynamicDeficiencies?.length > 0 ? (
                 dynamicDeficiencies.map((item, i) => {
-                  const isRisk = item.status?.toLowerCase().includes('risk') || item.status?.toLowerCase().includes('deficient');
-                  const statusColor = isRisk ? 'text-white bg-black' : 'text-black bg-slate-100';
-                  const barColor = isRisk ? 'bg-black' : 'bg-slate-400';
+                  const isRisk = item.status?.toLowerCase().includes('risk') || item.status?.toLowerCase().includes('deficient') || item.severity?.toLowerCase().includes('severe') || item.severity?.toLowerCase().includes('moderate');
+                  const statusColor = isRisk ? 'text-white bg-[#FF6B6B]' : 'text-[#5B8C6F] bg-[#E8F3EE]';
+                  const barColor = isRisk ? 'bg-[#FF6B6B]' : 'bg-[#5B8C6F]';
 
                   return (
                     <div key={i} className="flex flex-col gap-2">
@@ -1787,11 +1828,11 @@ export default function DashboardEnhanced() {
                         <div className="flex items-center gap-2">
                           <span className="text-sm font-medium text-[#1a1a1a]">{item.name}</span>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor}`}>
-                            {item.status}
+                            {item.severity || item.status || 'Moderate'}
                           </span>
                         </div>
                         <div className="text-xs text-[#888888]">
-                          <span className="font-bold text-[#1a1a1a] text-sm">{item.currentValue || item.current}</span>/{item.normalRange || item.target} {item.unit}
+                          <span className="font-bold text-[#1a1a1a] text-sm">{item.currentValue || item.current || '--'}</span>/{item.normalRange || item.target || '--'} {item.unit || ''}
                         </div>
                       </div>
 
@@ -1817,25 +1858,21 @@ export default function DashboardEnhanced() {
                     </div>
                   )
                 })
-              ) : (
-                <div className="flex flex-col items-center justify-center p-10 bg-emerald-50/20 rounded-[2rem] border border-emerald-100/30 text-center">
-                  {dashboardData?.latestAnalysis?.deficiencies?.length > 0 ? (
-                    <>
-                      <CheckCircle2 className="w-10 h-10 text-emerald-500 mb-4" />
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-loose">
-                        Great job! No deficiencies <br /> found in your reports
-                      </p>
-                    </>
-                  ) : (
-                    <>
-                      <FileText className="w-10 h-10 text-slate-300 mb-4" />
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-loose">
-                        Upload lab reports to see <br /> nutritional insights
-                      </p>
-                    </>
-                  )}
-                </div>
-              )}
+                ) : dashboardData?.totalReports > 0 ? (
+                  <div className="flex flex-col items-center justify-center p-10 bg-emerald-50/10 rounded-[2rem] border border-emerald-100/30 text-center w-full">
+                    <CheckCircle2 className="w-10 h-10 text-emerald-500 mb-4" />
+                    <p className="text-[10px] font-black text-emerald-600/80 uppercase tracking-widest leading-loose">
+                      Great job! No deficiencies <br /> found in your reports
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center p-10 bg-[#FAFBF8] rounded-[2rem] border border-[#f0f0ea] text-center w-full">
+                    <FileText className="w-10 h-10 text-slate-300 mb-4" />
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-loose">
+                      Upload lab reports to see <br /> nutritional insights
+                    </p>
+                  </div>
+                )}
             </div>
           </motion.div>
 
@@ -1872,7 +1909,7 @@ export default function DashboardEnhanced() {
                   if (hasCondition('anemia') || isHigh('hemoglobin')) { defaultTasks.push('Iron-rich Foods'); defaultTasks[2] = 'Take Iron Supplement'; }
                   if (isHigh('cholesterol')) { defaultTasks.push('Omega-3 Supplement'); defaultTasks[3] = 'Fiber-rich Dinner'; }
                   if (isOverLimit) { defaultTasks[1] = 'Extra 15m Cardio'; if (defaultTasks.length < 5) defaultTasks.push('Log Extra Calories'); }
-                  return (dashboardData?.latestAnalysis?.recommendations?.lifestyle || defaultTasks.slice(0, 5)).length;
+                  return (dashboardData?.latestAnalysis?.recommendations?.lifestyle?.length > 0 ? dashboardData.latestAnalysis.recommendations.lifestyle : defaultTasks.slice(0, 5)).length;
                 })()}</span>
               </span>
             </div>
@@ -1920,7 +1957,7 @@ export default function DashboardEnhanced() {
                   if (defaultTasks.length < 5) defaultTasks.push('Log Extra Calories');
                 }
 
-                const tasksToRender = (dashboardData?.latestAnalysis?.recommendations?.lifestyle || defaultTasks.slice(0, 5));
+                const tasksToRender = (dashboardData?.latestAnalysis?.recommendations?.lifestyle?.length > 0 ? dashboardData.latestAnalysis.recommendations.lifestyle : defaultTasks.slice(0, 5));
 
                 return tasksToRender.map((task, i) => {
                   const isCompleted = completedTasks.includes(i);
@@ -1967,7 +2004,7 @@ export default function DashboardEnhanced() {
                       if (hasCondition('anemia') || isHigh('hemoglobin')) { defaultTasks.push('Iron-rich Foods'); defaultTasks[2] = 'Take Iron Supplement'; }
                       if (isHigh('cholesterol')) { defaultTasks.push('Omega-3 Supplement'); defaultTasks[3] = 'Fiber-rich Dinner'; }
                       if (isOverLimit) { defaultTasks[1] = 'Extra 15m Cardio'; if (defaultTasks.length < 5) defaultTasks.push('Log Extra Calories'); }
-                      return (dashboardData?.latestAnalysis?.recommendations?.lifestyle || defaultTasks.slice(0, 5)).length;
+                      return (dashboardData?.latestAnalysis?.recommendations?.lifestyle?.length > 0 ? dashboardData.latestAnalysis.recommendations.lifestyle : defaultTasks.slice(0, 5)).length;
                     })()) * 100}%`
                   }}
                   transition={{ duration: 1, delay: 1 }}
@@ -1992,7 +2029,7 @@ export default function DashboardEnhanced() {
                   if (hasCondition('anemia') || isHigh('hemoglobin')) { defaultTasks.push('Iron-rich Foods'); defaultTasks[2] = 'Take Iron Supplement'; }
                   if (isHigh('cholesterol')) { defaultTasks.push('Omega-3 Supplement'); defaultTasks[3] = 'Fiber-rich Dinner'; }
                   if (isOverLimit) { defaultTasks[1] = 'Extra 15m Cardio'; if (defaultTasks.length < 5) defaultTasks.push('Log Extra Calories'); }
-                  const list = (dashboardData?.latestAnalysis?.recommendations?.lifestyle || defaultTasks.slice(0, 5));
+                  const list = (dashboardData?.latestAnalysis?.recommendations?.lifestyle?.length > 0 ? dashboardData.latestAnalysis.recommendations.lifestyle : defaultTasks.slice(0, 5));
                   return Math.max(0, list.length - completedTasks.length);
                 })()} tasks remaining
               </p>

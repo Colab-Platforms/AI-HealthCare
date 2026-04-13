@@ -304,22 +304,25 @@ export default function ReportDetailsEnhanced() {
                 <span className="text-[10px] uppercase tracking-[0.2em] text-slate-600 font-black mb-4 block">Health Score</span>
 
                 {/* Mini comparison graph */}
-                <div className="w-full h-24 flex items-end gap-1 justify-center mb-3">
+                <div className="w-full h-28 flex items-end gap-2 justify-center mb-2 mt-4">
                   {reportsWithScores.slice(-5).map((r, idx) => {
-                    const score = r.aiAnalysis.healthScore;
-                    const height = (score / 100) * 100;
+                    const score = r.aiAnalysis.healthScore || 0;
+                    const height = Math.max(10, (score / 100) * 100);
                     const isCurrentReport = r._id === id;
 
                     return (
-                      <div key={r._id} className="flex flex-col items-center gap-1 flex-1">
-                        <div
-                          className={`w-full rounded-t-lg transition-all ${isCurrentReport
-                              ? 'bg-gradient-to-t from-purple-600 to-orange-600 shadow-lg'
-                              : 'bg-slate-300'
-                            }`}
-                          style={{ height: `${height}%` }}
-                        />
-                        <span className="text-[8px] font-black text-slate-400">
+                      <div key={r._id} className="flex flex-col items-center gap-1 flex-1 relative">
+                        <div className="w-full relative flex flex-col items-center justify-end" style={{ height: '100px' }}>
+                          <span className={`text-[10px] md:text-xs font-black mb-1 ${isCurrentReport ? 'text-purple-600' : 'text-slate-500'}`}>{score}</span>
+                          <div
+                            className={`w-full rounded-t-xl transition-all shadow-sm ${isCurrentReport
+                                ? 'bg-gradient-to-t from-purple-600 to-orange-600 shadow-purple-200'
+                                : 'bg-slate-200 hover:bg-slate-300'
+                              }`}
+                            style={{ height: `${height}%` }}
+                          />
+                        </div>
+                        <span className="text-[8px] font-black text-slate-400 truncate w-full text-center">
                           {new Date(r.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
                         </span>
                       </div>
@@ -399,35 +402,40 @@ export default function ReportDetailsEnhanced() {
       {/* Health Progress Comparison - Show when multiple reports exist */}
       {reportsWithScores.length > 1 && (
         <div className="card p-8 border-none ring-1 ring-purple-100">
-          <h2 className="text-xl font-black text-slate-800 mb-6 flex items-center gap-3">
-            <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center shadow-inner">
-              <TrendingUp className="w-5 h-5 text-purple-600" />
-            </div>
-            HEALTH PROGRESS TRACKING
-          </h2>
+          <div className="mb-6">
+            <h2 className="text-xl font-black text-slate-800 flex items-center gap-3">
+              <div className="w-10 h-10 bg-purple-50 rounded-xl flex items-center justify-center shadow-inner shrink-0">
+                <TrendingUp className="w-5 h-5 text-purple-600" />
+              </div>
+              YOUR HEALTH SCORE PROGRESS
+            </h2>
+            <p className="text-sm font-semibold text-slate-500 mt-2 ml-14">
+              Track how your AI-calculated health score (0-100) changes over time. Higher scores indicate fewer deficiencies and better overall vital metrics.
+            </p>
+          </div>
 
           {/* Full comparison graph */}
-          <div className="bg-gradient-to-br from-slate-50 to-white rounded-3xl p-6 border-2 border-white shadow-inner mb-6">
-            <div className="flex items-end justify-between gap-2 h-64">
+          <div className="bg-gradient-to-br from-slate-50 to-white rounded-3xl p-6 border-2 border-white shadow-inner mb-6 overflow-x-auto">
+            <div className="flex items-end justify-between gap-3 h-[300px] min-w-[400px]">
               {reportsWithScores.map((r, idx) => {
-                const score = r.aiAnalysis.healthScore;
-                const height = (score / 100) * 100;
+                const score = r.aiAnalysis.healthScore || 0;
+                const height = Math.max(10, (score / 100) * 100);
                 const isCurrentReport = r._id === id;
                 const prevScore = idx > 0 ? reportsWithScores[idx - 1].aiAnalysis.healthScore : null;
                 const change = prevScore ? score - prevScore : 0;
 
                 return (
-                  <div key={r._id} className="flex-1 flex flex-col items-center gap-2 group/bar">
-                    {/* Score label on hover */}
-                    <div className="opacity-0 group-hover/bar:opacity-100 transition-opacity">
-                      <div className={`px-3 py-1 rounded-lg text-xs font-black ${isCurrentReport ? 'bg-purple-600 text-white' : 'bg-slate-200 text-slate-700'
+                  <div key={r._id} className="flex-1 flex flex-col items-center gap-2">
+                    {/* Score label always visible */}
+                    <div className="flex flex-col items-center mb-1">
+                      <div className={`px-2 md:px-3 py-1 rounded-xl text-xs md:text-sm font-black shadow-sm ${isCurrentReport ? 'bg-purple-600 text-white shadow-purple-200' : 'bg-white text-slate-700 border border-slate-200'
                         }`}>
-                        {score}
+                        {score}/100
                       </div>
                       {change !== 0 && (
-                        <div className={`text-[10px] font-black text-center mt-1 ${change > 0 ? 'text-emerald-600' : 'text-red-600'
+                        <div className={`text-[10px] font-black text-center mt-1.5 flex items-center gap-0.5 bg-white backdrop-blur px-1.5 py-0.5 rounded-full shadow-sm border border-slate-100 ${change > 0 ? 'text-emerald-600' : 'text-red-600'
                           }`}>
-                          {change > 0 ? '+' : ''}{change}
+                          {change > 0 ? '↑' : '↓'} {Math.abs(change)}
                         </div>
                       )}
                     </div>

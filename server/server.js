@@ -23,20 +23,23 @@ if (!process.env.VERCEL) {
 
 const app = express();
 
-// Ensure database connection for every request
+// Improved Database Middleware
 app.use(async (req, res, next) => {
-  // Skip DB for health check
-  if (req.path === '/api/health-check' || req.originalUrl === '/api/health-check') {
-    return next();
-  }
+  const skipPaths = ['/api/health-check', '/api/ping', '/api/debug-connection'];
+  if (skipPaths.some(p => req.path === p || req.originalUrl === p)) return next();
+
   try {
-    await connectDB();
+    if (mongoose.connection.readyState !== 1) {
+      if (!process.env.MONGODB_URI) throw new Error('MONGODB_URI is not defined');
+      await connectDB();
+    }
     next();
   } catch (error) {
-    console.error('[DB Middleware] Connection failed:', error.message);
+    console.error('[DB Middleware] Critical Failure:', error.message);
     res.status(503).json({
-      message: 'Database connection failed. Please try again.',
-      error: process.env.NODE_ENV === 'development' ? error.message : 'Service temporarily unavailable',
+      message: 'Database connection failed. Please try again in a few seconds.',
+      error: process.env.NODE_ENV === 'development' ? error.message : 'Service Unavailable',
+      hint: 'The server is currently establishing database links.',
       timestamp: new Date().toISOString()
     });
   }
@@ -191,13 +194,17 @@ app.use('/api/admin', (req, res, next) => {
 });
 
 try {
-  // 🛡️ ADMIN ROUTER - Explicit Priority Mount
+  // 🛡️ ADMIN ROUTER
   try {
     const adminRouter = require('./routes/adminRoutes');
     app.use('/api/admin', adminRouter);
     console.log('[Server] ✅ Admin Router mounted at /api/admin');
+    
+    // Support Railway/Vercel fallbacks
+    app.use('/admin', adminRouter); 
   } catch (adminErr) {
-    console.error('[Server] ❌ FAILED to load adminRouter:', adminErr.message);
+    console.error('[Server] ❌ CRITICAL FAIL: adminRouter loading error:', adminErr.message);
+    console.error(adminErr.stack);
   }
 
   const routes = [

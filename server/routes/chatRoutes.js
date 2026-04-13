@@ -2,6 +2,11 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 const { protect } = require('../middleware/auth');
+const HealthMetric = require('../models/HealthMetric');
+const FoodLog = require('../models/FoodLog');
+const DailyProgress = require('../models/DailyProgress');
+const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
+const cache = require('../utils/cache');
 
 // AI Chat endpoint - Requires authentication for personalized context
 router.post('/chat', protect, async (req, res) => {
@@ -31,6 +36,7 @@ User Context:
 - Profile: Age ${profile.age || 'N/A'}, Gender ${profile.gender || 'N/A'}, BMI ${user.healthMetrics?.bmi || 'N/A'}
 - Medical History: ${medical.conditions?.length > 0 ? medical.conditions.join(', ') : 'None reported'}
 - Chronic Conditions: ${profile.chronicConditions?.length > 0 ? profile.chronicConditions.join(', ') : 'None reported'}
+- Diabetic: ${(profile.isDiabetic === 'yes' || (medical.conditions && medical.conditions.some(c => c.toLowerCase().includes('diabet')))) ? 'Yes' : 'No'}
 - Current Medications: ${medical.currentMedications?.length > 0 ? medical.currentMedications.join(', ') : 'None reported'}
 - Lifestyle: Smoker: ${lifestyle.smoker ? 'Yes' : 'No'}, Stress: ${lifestyle.stressLevel || 'N/A'}, Sleep: ${lifestyle.sleepHours || 'N/A'} hours
 - Fitness Goals: ${goals.goal || 'General health improvement'} (Target: ${goals.targetWeight || 'N/A'} kg)
@@ -64,6 +70,92 @@ IMPORTANT FORMATTING RULES - Follow these strictly:
       systemPrompt += `\n\nRecent Health Reports:\n${reportContext}`;
     }
 
+    let processedQuery = query;
+
+    const isDiabetic = profile.isDiabetic === 'yes' || 
+                       (medical.conditions && medical.conditions.some(c => c.toLowerCase().includes('diabet')));
+
+    let recentVitalsContext = '';
+    let recentDietContext = '';
+    let activityContext = '';
+    let dietPlanContext = '';
+
+    try {
+      // 1. Fetch All Recent Vitals (Weight, Sugar, BP, etc)
+      const recentMetrics = await HealthMetric.find({ userId: user._id })
+        .sort({ recordedAt: -1 })
+        .limit(10);
+
+      if (recentMetrics && recentMetrics.length > 0) {
+        recentVitalsContext = `\n[Recent Logged Vitals/Health Metrics]\n` + recentMetrics.map(m => `- ${m.type}: ${m.value} ${m.unit} on ${m.recordedAt ? new Date(m.recordedAt).toLocaleDateString() : 'recent'}`).join('\n');
+      }
+
+      // 2. Fetch Activity Log & Dashboard Progress natively from Cache
+      const dashboardCache = await cache.get(`dashboard:${user._id}`);
+      if (dashboardCache) {
+          const totalSteps = dashboardCache.stepsToday || 0;
+          const totalWater = dashboardCache.nutritionData?.waterIntake || 0;
+          const totalSleep = dashboardCache.sleepToday || 0;
+          const activeCalories = dashboardCache.todayMetrics?.caloriesBurned || 0;
+          activityContext = `\n[Today's Activity Log & Progress]\n- Steps: ${totalSteps}/${dashboardCache.goals?.steps || 10000}\n- Water: ${totalWater}/${dashboardCache.goals?.water || 8} glasses\n- Sleep: ${totalSleep}/${dashboardCache.goals?.sleep || 8} hours\n- Activity Calories Burned: ${activeCalories} kcal`;
+      } else {
+          activityContext = `\n[Today's Activity Log & Progress]\n- Steps: 0\n- Water: 0\n- Sleep: 0\n(Activity log waiting for sync)`;
+      }
+
+      // 3. Fetch Today's Diet & Nutrition
+      const todaysLogs = await FoodLog.find({
+          userId: user._id,
+          timestamp: { $gte: startOfDay }
+      });
+
+      if (todaysLogs && todaysLogs.length > 0) {
+         let totalCal = 0, totalCarb = 0, totalProtein = 0, totalFat = 0;
+         const items = [];
+         todaysLogs.forEach(log => {
+             totalCal += log.totalNutrition?.calories || 0;
+             totalCarb += log.totalNutrition?.carbs || 0;
+             totalProtein += log.totalNutrition?.protein || 0;
+             totalFat += log.totalNutrition?.fats || 0;
+             if (log.foodItems) {
+                 log.foodItems.forEach(fi => items.push(`${fi.quantity} ${fi.name}`));
+             }
+         });
+         recentDietContext = `\n[Today's Nutrition Consumed]\n- Calories: ${Math.round(totalCal)} kcal\n- Carbs: ${Math.round(totalCarb)}g, Protein: ${Math.round(totalProtein)}g, Fats: ${Math.round(totalFat)}g\n- Actual Foods Consumed Today: ${items.join(', ')}`;
+      }
+
+      // 4. Fetch User's Active Diet Plan
+      const activePlan = await PersonalizedDietPlan.findOne({ userId: user._id, isActive: true });
+      if (activePlan && activePlan.dailyTargets) {
+          dietPlanContext = `\n[Current Assigned Diet Plan Targets]\n- Target Calories: ${activePlan.dailyTargets.calories || 'N/A'} kcal\n- Target Macros -> C: ${activePlan.dailyTargets.macros?.carbs || 0}g, P: ${activePlan.dailyTargets.macros?.protein || 0}g, F: ${activePlan.dailyTargets.macros?.fats || 0}g`;
+      }
+    } catch (err) {
+      console.error("Error fetching comprehensive context for AI Coach:", err);
+    }
+
+    // Universal real-time context injection for all users
+    systemPrompt += `\n\nREAL-TIME USER LOGS & PLANS
+Below is the user's latest logged health vitals, active health tabs, nutrition limits, and daily progress:
+${recentVitalsContext}
+${activityContext}
+${dietPlanContext}
+${recentDietContext}
+
+Crucial Instruction: Directly utilize the real-time activity, nutrition page, and diet plan values provided above when giving advice, comparing their current progress against their goals.`;
+
+    if (isDiabetic) {
+      systemPrompt += `\n\nSPECIAL ABILITY: SMART GLYCEMIC RESPONSE PREDICTOR + MEAL COACH
+Since the user is diabetic, you must act as a "Personal Diabetic Coach in their pocket" anytime food or eating is mentioned.
+If the user inputs or describes a meal (e.g. "2 roti + dal", "I am about to eat a banana"), you MUST predict their glycemic response BEFORE they eat it. Consider what they have already eaten today and their recent glucose logs when forming your prediction.
+Structure your response exactly like this template:
+
+⚠️ This may spike your sugar to ~[Estimated mg/dL based on typical glycemic index/load, their history, and today's total carbs]
+⏰ Time to peak: [Estimated time, e.g. 1-2 hours]
+👉 [Suggest better alternatives or safe portion size, e.g., "Reduce rice by 50% OR add a large bowl of cucumber salad"]
+✅ [A specific post-meal lifestyle tip, e.g., "Add 10 min walk 30 mins after eating"]
+
+Make the meal feedback immediate, clear, highly actionable, and always use these emojis to act as a daily decision-making assistant. Use realistic estimations based on standard clinical knowledge for diabetes.`;
+    }
+
     // Build messages array
     const messages = [];
 
@@ -78,7 +170,7 @@ IMPORTANT FORMATTING RULES - Follow these strictly:
       });
     }
 
-    messages.push({ role: 'user', content: query });
+    messages.push({ role: 'user', content: processedQuery });
 
     let aiResponse = null;
 

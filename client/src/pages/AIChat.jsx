@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Send, Bot, User, Loader2, Copy, Check, Trash2, Menu, X, Bell, Sparkles, ArrowLeft, MoreVertical, MessageSquare, ShieldCheck, History } from 'lucide-react';
+import { Send, Bot, User, Loader2, Copy, Check, Trash2, Menu, X, Bell, Sparkles, ArrowLeft, MoreVertical, MessageSquare, ShieldCheck, History, Activity, ChevronRight, TrendingUp, Zap } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
 import toast from 'react-hot-toast';
@@ -33,6 +33,7 @@ export default function AIChat() {
   const location = useLocation();
   const navigate = useNavigate();
   const [messages, setMessages] = useState([]);
+  const [searchHistory, setSearchHistory] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [streaming, setStreaming] = useState(false);
@@ -43,6 +44,9 @@ export default function AIChat() {
   const [loaderMessageIndex, setLoaderMessageIndex] = useState(0);
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
+
+  const isDiabetic = user?.profile?.isDiabetic === 'yes' || 
+    user?.profile?.medicalHistory?.conditions?.some(c => c.toLowerCase().includes('diabet'));
 
   // Rotate loader messages during analysis
   useEffect(() => {
@@ -74,12 +78,15 @@ export default function AIChat() {
         const { data } = await api.get('chat/history');
         if (data.success && data.messages && data.messages.length > 0) {
           setMessages(data.messages);
+          setSearchHistory(data.messages);
           localStorage.setItem(`chat_history_${user?.id}`, JSON.stringify(data.messages));
           return;
         }
         const savedMessages = localStorage.getItem(`chat_history_${user?.id}`);
         if (savedMessages) {
-          setMessages(JSON.parse(savedMessages));
+          const parsed = JSON.parse(savedMessages);
+          setMessages(parsed);
+          setSearchHistory(parsed);
         } else {
           const greeting = generateGreetingWithReports();
           setMessages([{ role: 'assistant', content: greeting, timestamp: new Date() }]);
@@ -88,7 +95,9 @@ export default function AIChat() {
         console.error('Failed to load chat history:', error);
         const savedMessages = localStorage.getItem(`chat_history_${user?.id}`);
         if (savedMessages) {
-          setMessages(JSON.parse(savedMessages));
+          const parsed = JSON.parse(savedMessages);
+          setMessages(parsed);
+          setSearchHistory(parsed);
         } else {
           const greeting = generateGreetingWithReports();
           setMessages([{ role: 'assistant', content: greeting, timestamp: new Date() }]);
@@ -154,11 +163,13 @@ export default function AIChat() {
         localStorage.removeItem(`chat_history_${user?.id}`);
         const greeting = generateGreetingWithReports();
         setMessages([{ role: 'assistant', content: greeting, timestamp: new Date() }]);
+        setSearchHistory([]);
         toast.success('Conversation history wiped');
       } catch (error) {
         localStorage.removeItem(`chat_history_${user?.id}`);
         const greeting = generateGreetingWithReports();
         setMessages([{ role: 'assistant', content: greeting, timestamp: new Date() }]);
+        setSearchHistory([]);
       }
     }
   };
@@ -191,6 +202,7 @@ export default function AIChat() {
           const aiResponse = { role: 'assistant', content: cleanedResponse, timestamp: new Date() };
           const updatedMessages = [...messages, userMessage, aiResponse];
           setMessages(updatedMessages);
+          setSearchHistory(prev => [...prev, userMessage, aiResponse]);
           setStreamingText('');
           saveChatToBackend(updatedMessages);
         });
@@ -208,6 +220,104 @@ export default function AIChat() {
     setCopiedIndex(index);
     setTimeout(() => setCopiedIndex(null), 2000);
     toast.success('Copied to clipboard');
+  };
+
+  const highlightText = (str) => {
+    const words = str.split(/(\s+)/);
+    return words.map((word, i) => {
+       if (/\d+/.test(word) && /[a-zA-Z%]+/.test(word) && !/^[A-Za-z]+$/.test(word)) {
+           return <span key={i} className="text-slate-800 font-extrabold tracking-tight">{word}</span>;
+       }
+       if (/\b\d+\b/.test(word)) {
+           return <span key={i} className="font-extrabold text-slate-800">{word}</span>;
+       }
+       const lower = word.toLowerCase().replace(/[^a-z]/g, '');
+       if (['high', 'spike', 'danger', 'reduce', 'avoid'].includes(lower)) return <span key={i} className="text-rose-600 font-bold">{word}</span>;
+       if (['low'].includes(lower)) return <span key={i} className="text-orange-500 font-bold">{word}</span>;
+       if (['normal', 'safe', 'good', 'healthy', 'stable', 'add'].includes(lower)) return <span key={i} className="text-emerald-600 font-bold">{word}</span>;
+       if (/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|\uD83E[\uDD10-\uDDFF]/.test(word)) {
+           return <span key={i} className="text-lg inline-block drop-shadow-sm">{word}</span>;
+       }
+       return word;
+    });
+  };
+
+  const renderFormattedText = (text) => {
+    if (!text) return null;
+    const lines = text.split('\n');
+    return (
+      <div className="space-y-1.5 w-full">
+        {lines.map((line, i) => {
+          if (!line.trim()) return null;
+  
+          const emojisInLine = line.match(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|\uD83E[\uDD10-\uDDFF]/g);
+          const hasWarning = emojisInLine?.includes('⚠️') || line.toLowerCase().includes('spike') || line.toLowerCase().includes('high');
+          const hasTime = emojisInLine?.includes('⏰') || line.toLowerCase().includes('time');
+          const hasAction = emojisInLine?.includes('👉') || line.toLowerCase().includes('reduce') || line.toLowerCase().includes('add');
+          const hasSuccess = emojisInLine?.includes('✅') || line.toLowerCase().includes('safe') || line.toLowerCase().includes('healthy');
+  
+          if (line.includes(':') && line.split(':')[0].length < 35 && (hasWarning || hasTime || hasAction || hasSuccess)) {
+             const [labelRaw, ...rest] = line.split(':');
+             const label = labelRaw.trim();
+             const val = rest.join(':').trim();
+             
+             let Icon = Activity;
+             let colorClass = 'text-blue-600 bg-[#f0f4ff]';
+             let isSpikeGraph = false;
+             
+             if (hasWarning) { Icon = TrendingUp; colorClass = 'text-[#d62828] bg-[#fff5f5]'; isSpikeGraph = true; }
+             else if (hasTime) { Icon = History; colorClass = 'text-[#e85d04] bg-[#fff8ee]'; }
+             else if (hasAction) { Icon = Zap; colorClass = 'text-indigo-600 bg-[#f8f9ff]'; }
+             else if (hasSuccess) { Icon = Check; colorClass = 'text-emerald-600 bg-[#f0fdf4]'; }
+  
+             return (
+                <div key={i} className={`flex flex-col my-2 p-4 rounded-2xl w-full transition-all ${colorClass}`}>
+                   <div className="flex items-center gap-3 mb-2">
+                      <div className="w-7 h-7 bg-white rounded-full flex items-center justify-center">
+                        <Icon strokeWidth={2.5} className="w-4 h-4" />
+                      </div>
+                      <span className="font-black text-xs uppercase tracking-widest">{label.replace(/[\u2700-\u27BF]|[\uE000-\uF8FF]|\uD83C[\uDC00-\uDFFF]|\uD83D[\uDC00-\uDFFF]|\uD83E[\uDD10-\uDDFF]/g, '').trim()}</span>
+                   </div>
+                   {val && <span className="text-lg font-extrabold leading-relaxed text-slate-800">{highlightText(val)}</span>}
+
+                   {isSpikeGraph && (
+                      <div className="mt-4 pt-4 border-t border-rose-100/50 w-full">
+                         <svg viewBox="0 0 200 45" className="w-full h-12 text-[#d62828] overflow-visible">
+                             <defs>
+                               <linearGradient id="spikeGrad" x1="0" y1="0" x2="0" y2="1">
+                                 <stop offset="0%" stopColor="currentColor" stopOpacity="0.15" />
+                                 <stop offset="100%" stopColor="currentColor" stopOpacity="0" />
+                               </linearGradient>
+                             </defs>
+                             <path d="M 0 40 L 40 40" stroke="#fecdd3" strokeWidth="2" strokeDasharray="4 4" fill="none" />
+                             <path d="M 160 40 L 200 40" stroke="#fecdd3" strokeWidth="2" strokeDasharray="4 4" fill="none" />
+                             <path d="M 40 40 C 70 40, 80 5, 100 5 C 120 5, 130 40, 160 40" fill="url(#spikeGrad)" />
+                             <path d="M 40 40 C 70 40, 80 5, 100 5 C 120 5, 130 40, 160 40" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+                             <circle cx="100" cy="5" r="4" fill="currentColor" className="animate-pulse" />
+                             <text x="100" y="20" fill="currentColor" fontSize="10" fontWeight="bold" textAnchor="middle">PEAK</text>
+                         </svg>
+                      </div>
+                   )}
+                </div>
+             );
+          }
+  
+          if (line.trim().startsWith('•') || line.trim().startsWith('-')) {
+              const content = line.substring(line.indexOf('•') !== -1 ? line.indexOf('•') + 1 : line.indexOf('-') + 1).trim();
+              return (
+                <div key={i} className="flex gap-3 items-start pl-1 py-1.5">
+                  <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center shrink-0 mt-0.5">
+                    <ChevronRight className="w-3 h-3 text-slate-500" />
+                  </div>
+                  <div className="flex-1 text-[15px] leading-relaxed font-bold text-slate-800">{highlightText(content)}</div>
+                </div>
+              );
+          }
+  
+          return <p key={i} className="text-sm leading-relaxed font-medium py-1">{highlightText(line)}</p>;
+        })}
+      </div>
+    );
   };
 
   return (
@@ -235,10 +345,25 @@ export default function AIChat() {
           </button>
 
           <div className="pt-4 px-2">
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Recent Sessions</p>
-            <div className="p-4 bg-white rounded-2xl border border-slate-100 text-[11px] font-bold text-slate-500 italic">
-              All health insights are encrypted & private.
-            </div>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Recent Searches</p>
+            {searchHistory.filter(m => m.role === 'user').length > 0 ? (
+               <div className="space-y-2">
+                 {searchHistory.filter(m => m.role === 'user').slice(-6).reverse().map((msg, idx) => (
+                    <div 
+                      key={idx} 
+                      onClick={() => { setMessages(searchHistory); setSidebarOpen(false); }}
+                      className="p-3.5 bg-white rounded-2xl border border-slate-100 text-[11px] font-bold text-slate-600 flex items-center gap-3 cursor-pointer hover:bg-slate-50 hover:border-slate-200 transition-all shadow-sm shadow-black/[0.01]"
+                    >
+                       <MessageSquare className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                       <span className="truncate flex-1">{msg.content}</span>
+                    </div>
+                 ))}
+               </div>
+            ) : (
+               <div className="p-4 bg-white rounded-2xl border border-slate-100 text-[11px] font-bold text-slate-500 italic text-center">
+                 No recent health queries.
+               </div>
+            )}
           </div>
         </div>
 
@@ -254,21 +379,32 @@ export default function AIChat() {
       {/* Main Chat Interface - uses fixed input on mobile */}
       <div className="flex-1 flex flex-col relative bg-transparent" style={{ height: '100%', minHeight: 0 }}>
 
+        {/* Mobile Sidebar Toggle Header */}
+        <div className="md:hidden flex items-center justify-start px-4 py-3 bg-white/90 backdrop-blur-md border-b border-slate-100 z-20 sticky top-0 shadow-sm shadow-black/[0.02]">
+           <button onClick={() => setSidebarOpen(true)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2">
+             <History className="w-4 h-4 text-slate-700" />
+           </button>
+        </div>
+
         {/* Message Viewport - scrollable, with bottom padding for the fixed input dock */}
-        <div ref={chatContainerRef} className="flex-1 overflow-y-auto px-6 pt-4 pb-44 md:pb-8 space-y-8 scroll-smooth" style={{ minHeight: 0 }}>
+        <div ref={chatContainerRef} className="flex-1 overflow-y-auto px-6 pt-4 pb-44 md:pb-8 space-y-8 scroll-smooth flex flex-col z-10" style={{ minHeight: 0 }}>
           {messages.map((msg, i) => (
             <div key={i} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'} animate-in fade-in slide-in-from-bottom-4 duration-500`}>
               <div className={`flex gap-3 md:gap-4 w-full md:max-w-[75%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
                 {msg.role === 'assistant' && (
-                  <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center border border-slate-200 bg-white">
-                    <Sparkles className="w-4 h-4 text-emerald-600" />
+                  <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center border border-slate-200 bg-white overflow-hidden">
+                    <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/icon.png?v=1775538354" alt="Coach" className="w-full h-full object-cover" />
                   </div>
                 )}
-                <div className={`relative w-full md:w-auto flex flex-col ${msg.role === 'user' ? 'bg-slate-100 text-slate-800 rounded-3xl px-5 py-3.5' : 'bg-transparent text-slate-800 py-1'}`}>
-                  <div className="text-sm leading-relaxed font-medium whitespace-pre-wrap max-w-none">
-                    {msg.content}
-                  </div>
-                  <div className={`flex items-center mt-2 gap-4 ${msg.role === 'user' ? 'justify-end hidden' : 'justify-start text-slate-400'}`}>
+                <div className={`relative w-full md:w-auto flex flex-col ${msg.role === 'user' ? 'bg-slate-100 text-slate-800 rounded-3xl px-5 py-3.5' : 'bg-transparent text-slate-800 py-1 w-full max-w-none'}`}>
+                  {msg.role === 'user' ? (
+                     <div className="text-sm leading-relaxed font-medium whitespace-pre-wrap max-w-none">
+                       {msg.content}
+                     </div>
+                  ) : (
+                     renderFormattedText(msg.content)
+                  )}
+                  <div className={`flex items-center mt-2 gap-4 ${msg.role === 'user' ? 'justify-end hidden' : 'justify-start text-slate-400 opacity-50 hover:opacity-100 transition-opacity'}`}>
                     {msg.role === 'assistant' && (
                       <button onClick={() => copyToClipboard(msg.content, i)} className="p-1 hover:bg-slate-100 rounded transition-colors flex items-center justify-center">
                         {copiedIndex === i ? <Check className="w-3.5 h-3.5 text-black" /> : <Copy className="w-3.5 h-3.5" />}
@@ -283,13 +419,13 @@ export default function AIChat() {
           {(streamingText || loading) && (
             <div className="flex justify-start animate-in fade-in duration-300">
               <div className="flex gap-3 md:gap-4 w-full md:max-w-[75%]">
-                <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center border border-slate-200 bg-white">
-                  <Sparkles className="w-4 h-4 text-emerald-600" />
+                <div className="w-8 h-8 rounded-full shrink-0 flex items-center justify-center border border-slate-200 bg-white overflow-hidden">
+                  <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/icon.png?v=1775538354" alt="Coach" className="w-full h-full object-cover" />
                 </div>
-                <div className="relative w-full md:w-auto flex flex-col bg-transparent text-slate-800 py-1 min-w-[120px]">
+                <div className="relative w-full md:w-auto flex flex-col bg-transparent text-slate-800 py-1 w-full max-w-none">
                   {streamingText ? (
                     <div className="text-sm leading-relaxed font-medium whitespace-pre-wrap flex items-center">
-                      {streamingText}
+                      {renderFormattedText(streamingText)}
                       <span className="inline-block w-1.5 h-4 ml-1 bg-black animate-pulse"></span>
                     </div>
                       ) : (
@@ -327,17 +463,17 @@ export default function AIChat() {
 
         {/* Input Dock - FIXED at the bottom of viewport on mobile, flex-end on desktop */}
         <div className="fixed bottom-0 left-0 right-0 md:relative md:bottom-auto px-4 md:px-6 py-4 md:py-6 bg-white border-t border-slate-100 z-40">
-          <div className="max-w-4xl mx-auto">
-            <form onSubmit={handleSubmit} className="relative group">
-              <div className="relative bg-white border border-slate-200 focus-within:border-slate-300 rounded-[2rem] p-2 flex items-center gap-3 transition-all shadow-lg shadow-black/[0.03]">
-                <div className="hidden sm:flex w-10 h-10 items-center justify-center text-slate-300">
+          <div className="max-w-4xl mx-auto relative">
+            <form onSubmit={handleSubmit} className="relative group w-full">
+              <div className="relative bg-white border border-slate-200 focus-within:border-slate-300 rounded-[2rem] p-2 flex items-center gap-2 transition-all shadow-lg shadow-black/[0.03]">
+                <div className="hidden sm:flex w-10 h-10 items-center justify-center text-slate-300 shrink-0">
                   <MessageSquare className="w-5 h-5" />
                 </div>
                 <input
                   type="text"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  placeholder="Ask about your health reports..."
+                  placeholder="Ask about your health reports or upcoming meals..."
                   disabled={loading || streaming}
                   className="flex-1 bg-transparent py-3 px-2 text-sm font-bold text-black focus:outline-none focus:ring-0 placeholder:text-slate-400 placeholder:font-black placeholder:uppercase placeholder:text-[10px] placeholder:tracking-widest border-none"
                 />

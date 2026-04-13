@@ -27,7 +27,11 @@ export default function AdminUsers() {
             setTotal(data.total || 0);
             setPages(data.pages || 1);
         } catch (err) {
-            toast.error('Failed to load user database');
+            const errorData = err.response?.data;
+            const message = errorData?.message || 'Connection failed';
+            const hint = errorData?.hint ? ` (${errorData.hint})` : ' - Check server status';
+            toast.error(`Admin Registry: ${message}${hint}`);
+            console.error('Admin API Failure:', errorData || err.message);
         } finally {
             setLoading(false);
         }
