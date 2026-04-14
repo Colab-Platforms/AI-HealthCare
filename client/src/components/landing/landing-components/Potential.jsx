@@ -22,7 +22,7 @@ const Potential = () => {
       title: "CoreGrid",
       subTitle: "All your health dimensions, mapped together",
       description:
-        "Get a comprehensive view of your overall wellness by tracking and correlating multiple health metrics simultaneously in one unified grid.",
+        "Connect and visualize your body’s key health signals in one unified system, revealing how everything works together",
       src: "/landing/potential/core-grid.webp",
       alt: "CoreGrid",
     },
@@ -30,7 +30,7 @@ const Potential = () => {
       title: "HealthLens",
       subTitle: "Refined Lab Intelligence",
       description:
-        "Decode complex laboratory results into easily understandable insights, highlighting core areas of focus for your long-term vitality.",
+        "Build a clear understanding of your health through connected biomarkers and intelligent analysis, translating complex data into meaningful insights.",
       src: "/landing/potential/health-lens.webp",
       alt: "HealthLens",
     },
@@ -38,7 +38,7 @@ const Potential = () => {
       title: "RiskSense",
       subTitle: "Flag abnormal health markers early",
       description:
-        "Proactively identify subtle deviations in your health data to prevent potential issues before they develop into serious conditions.",
+        "Identify early deviations in key health markers using predictive intelligence, enabling timely awareness and proactive health decisions.",
       src: "/landing/potential/risk-sense.webp",
       alt: "RiskSense",
     },
@@ -46,7 +46,7 @@ const Potential = () => {
       title: "DeficiencyDetection",
       subTitle: "Reveal hidden nutrient gaps",
       description:
-        "Analyze your dietary and biomarker data to pinpoint exactly which essential vitamins and minerals your body might be lacking.",
+        "Uncover underlying nutritional gaps through data-driven analysis of your reports, helping restore balance and support optimal function.",
       src: "/landing/potential/deficiency-detection.webp",
       alt: "DeficiencyDetection",
     },
@@ -54,7 +54,7 @@ const Potential = () => {
       title: "NutriPath",
       subTitle: "Plans tailored to your health profile",
       description:
-        "Receive dynamically adjusted nutritional recommendations based on your unique metabolic responses, goals, and lifestyle preferences.",
+        "Personalized nutrition strategies derived from your biological data, designed to align with your body’s needs and long-term health goals.",
       src: "/landing/potential/nutri-path.webp",
       alt: "NutriPath",
     },
@@ -62,7 +62,7 @@ const Potential = () => {
       title: "VitalSync",
       subTitle: "Track your steps and hydration",
       description:
-        "Seamlessly integrate your daily movement and fluid intake, ensuring you meet fundamental physiological needs effortlessly.",
+        "Continuously track and interpret changes across your reports, revealing patterns and trends that shape your overall health trajectory.",
       src: "/landing/potential/vital-sync.webp",
       alt: "VitalSync",
     },

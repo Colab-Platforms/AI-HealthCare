@@ -50,22 +50,21 @@ const PotentialItem = ({ src, alt, title, subTitle, description }) => {
 
         {/* Back Side */}
         <div
-          className="absolute inset-0 bg-gradient-to-br from-[#1c2c28] to-[#0a1110] rounded-2xl overflow-hidden p-6 flex flex-col justify-center items-center text-center text-white border border-white/20 shadow-xl"
+          className="absolute inset-0 rounded-2xl overflow-hidden p-6 flex flex-col justify-center items-start text-white border border-white/20 shadow-xl"
           style={{
             backfaceVisibility: "hidden",
             transform: "rotateY(180deg)",
           }}
         >
-          <h3 className="font-landing-title text-2xl font-semibold mb-3 text-[#4d867c]">
+          <h3 className="font-landing-title text-xl font-semibold mb-3 text-[#4d867c]">
             {title}
           </h3>
-          <div className="w-12 h-1 bg-[#4d867c]/50 rounded mb-4"></div>
-          <p className="text-sm md:text-base text-gray-300 leading-relaxed font-light">
+          <p className="text-base font-medium text-gray-800 mb-4 text-balance">
+            {subTitle}
+          </p>
+          <p className="text-sm text-gray-800 leading-relaxed font-light">
             {description}
           </p>
-          <div className="mt-6 text-xs text-gray-500 uppercase tracking-widest border border-gray-700 rounded-full px-4 py-1">
-            Tap to flip
-          </div>
         </div>
       </motion.div>
     </div>
