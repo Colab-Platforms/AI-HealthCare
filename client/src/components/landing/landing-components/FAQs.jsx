@@ -34,33 +34,31 @@ const FAQs = () => {
     {
       question: "How does Take.Health work?",
       answer:
-        "It’s a health tracking platform that brings together your food, activity, sleep, and lab reports in one place. Using AI, it connects these dots to show you what’s affecting your health and what you can do about it.",
+        "Upload your reports, and Take Health turns them into clear, easy-to-understand insights within minutes.",
     },
     {
       question: "Can I trust this with my health data?",
       answer:
-        "We take data privacy seriously. Your information is encrypted and stored securely. You control what you share, and we don’t sell your personal health data to third parties.",
+        "Yes. Your data is securely handled and kept private at all times.",
     },
     {
       question:
         "What makes these insights feel personal, not one-size-fits-all?",
       answer:
-        "The app learns your patterns over time. It doesn’t just give generic advice—it connects your specific food choices, activity levels, sleep quality, and lab results to show you what’s actually moving the needle for *your* body.",
+        "Insights are tailored to your reports, your patterns, and what your body actually needs.",
     },
     {
       question: "Will I finally understand what my reports mean?",
       answer:
-        "Yes. The AI analyser breaks down complex medical terms into simple, actionable insights. It tells you what each marker means, whether it’s in the healthy range, and what lifestyle changes could help improve it.",
+        "Yes. Everything is simplified so you can clearly understand what matters.",
     },
     {
       question: "Do I need medical knowledge to use this?",
-      answer:
-        "Not at all. The app is designed for everyday people, not doctors. It translates medical data into plain language and gives you clear, practical steps you can follow.",
+      answer: "No. It’s designed to be simple and understandable for everyone.",
     },
     {
       question: "Is the app free to use?",
-      answer:
-        "You can start with the free version, which includes basic tracking and insights. For advanced features like AI lab analysis and personalized health plans, we offer a premium subscription.",
+      answer: "Yes. Take Health is currently free and accessible to all.",
     },
   ];
 
