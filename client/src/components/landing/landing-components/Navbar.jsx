@@ -7,9 +7,9 @@ const Navbar = () => {
 
   const navLinks = [
     { to: "/", label: "Home" },
-    { to: "/about-us", label: "About Us" },
-    { to: "/how-it-works", label: "How It Works" },
-    { to: "/faq", label: "FAQ" },
+    { to: "#", label: "About Us" },
+    { to: "#", label: "How It Works" },
+    { to: "#", label: "FAQ" },
   ];
 
   const linkClass =
