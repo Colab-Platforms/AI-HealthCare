@@ -26,7 +26,7 @@ const Navbar = () => {
     >
       <div>
         <img
-          src="/landing/logo.svg"
+          src="/landing/logo.png"
           alt="AI HealthCare"
           className="w-44 sm:w-48 lg:w-52 h-auto"
         />
@@ -50,14 +50,14 @@ const Navbar = () => {
           Log in
         </Link>
         <Link to="/register">
-          <button className={ctaButtonClass}>Register</button>
+          <button className={ctaButtonClass}>SIGN UP</button>
         </Link>
       </div>
 
       <div className="lg:hidden flex items-center gap-3">
-        <Link to="/login" onClick={() => setIsMenuOpen(false)}>
+        <Link to="/register" onClick={() => setIsMenuOpen(false)}>
           <button className="px-5 py-2 bg-landing-primary text-white font-landing-accent rounded-full hover:bg-landing-primary/90 transition">
-            Log in
+            Sign Up
           </button>
         </Link>
 
