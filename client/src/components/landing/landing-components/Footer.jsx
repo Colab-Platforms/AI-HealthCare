@@ -36,27 +36,27 @@ const Footer = () => {
     {
       title: "Platform",
       items: [
-        { name: "Features", link: "/features" },
-        { name: "AI Analysis", link: "/pricing" },
-        { name: "Health Coaching", link: "/about" },
-        { name: "Pricing", link: "/contact" },
+        { name: "Features", link: "#" },
+        { name: "AI Analysis", link: "#" },
+        { name: "Health Coaching", link: "#" },
+        { name: "Pricing", link: "#" },
       ],
     },
     {
       title: "Support",
       items: [
-        { name: "Help Center", link: "/features" },
-        { name: "Safety Guide", link: "/pricing" },
-        { name: "Community", link: "/about" },
-        { name: "Contact", link: "/contact" },
+        { name: "Help Center", link: "#" },
+        { name: "Safety Guide", link: "#" },
+        { name: "Community", link: "#" },
+        { name: "Contact", link: "#" },
       ],
     },
     {
       title: "Legal",
       items: [
-        { name: "Privacy Policy", link: "/features" },
-        { name: "Terms of Service", link: "/pricing" },
-        { name: "Medical Disclaimer", link: "/about" },
+        { name: "Privacy Policy", link: "#" },
+        { name: "Terms of Service", link: "#" },
+        { name: "Medical Disclaimer", link: "#" },
       ],
     },
   ];
@@ -148,6 +148,7 @@ const Footer = () => {
               <button
                 type="submit"
                 className="text-white absolute right-0 bottom-2"
+                disabled
               >
                 Subscribe
               </button>

@@ -33,7 +33,7 @@ const Navbar = () => {
       </div>
 
       <div className="hidden lg:block">
-        <ul className="flex items-center gap-8">
+        <ul className="flex items-center gap-10">
           {navLinks.map((link) => (
             <Link key={link.to} to={link.to} className={linkClass}>
               {link.label}
@@ -49,8 +49,8 @@ const Navbar = () => {
         >
           Log in
         </Link>
-        <Link to="/get-started">
-          <button className={ctaButtonClass}>Get App</button>
+        <Link to="/register">
+          <button className={ctaButtonClass}>Register</button>
         </Link>
       </div>
 
