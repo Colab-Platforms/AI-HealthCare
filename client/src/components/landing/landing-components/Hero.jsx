@@ -95,7 +95,7 @@ const Hero = () => {
           enhance your longevity through advanced, data-driven care.
         </motion.p>
         <motion.div variants={item}>
-          <Link to="/get-started">
+          <Link to="/register">
             <button className="px-6 py-2 bg-landing-primary text-white uppercase font-landing-accent rounded-full hover:bg-landing-primary-hover transition">
               Track For Free
             </button>

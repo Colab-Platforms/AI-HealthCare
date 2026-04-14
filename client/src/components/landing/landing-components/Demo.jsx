@@ -228,7 +228,7 @@ const Demo = () => {
               transition={{ duration: 0.6, delay: 0.4 }}
               src="/landing/demo/innovation.svg"
               alt="innovation"
-              className="absolute lg:-left-[70%] md:-left-80 md:top-0 lg:top-10 backdrop-blur-[2px] lg:block"
+              className="absolute -left-[50%] lg:w-5/12 lg:-left-[60%] md:-left-80 md:top-0 lg:top-10 backdrop-blur-[2px] hidden lg:block"
             />
             <motion.img
               initial={{ opacity: 0, scale: 0.8 }}
@@ -267,7 +267,7 @@ const Demo = () => {
           className="mt-16 px-6 py-4 bg-landing-primary-hover border-2 uppercase font-landing-accent rounded-full hover:bg-landing-primary transition flex items-center hover:text-white"
         >
           <Link
-            to="/demo"
+            to="/register"
             className="flex text-sm items-center font-landing-title text-white"
           >
             Try Demo

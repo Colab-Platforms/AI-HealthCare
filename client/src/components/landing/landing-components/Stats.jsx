@@ -50,7 +50,7 @@ const Stats = () => {
           viewport={{ once: true, margin: "-50px" }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
         >
-          <Link to="/get-started">
+          <Link to="/register">
             <button className="px-6 py-2 border-landing-primary-hover border-2 uppercase font-landing-accent rounded-full hover:bg-landing-primary-hover transition flex items-center hover:text-white">
               View all features
               <ArrowRightIcon className="w-4 h-4 ml-2" />

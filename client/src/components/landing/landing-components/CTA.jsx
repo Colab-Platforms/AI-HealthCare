@@ -42,7 +42,7 @@ const CTA = () => {
           bg-landing-secondary 
           text-landing-text bg-landing-accent-bg font-landing-title lg:text-lg py-2 px-6 rounded-full hover:bg-landing-tertiary transition-colors duration-300"
           >
-            <Link to="/get-started" className="flex items-center gap-2">
+            <Link to="/register" className="flex items-center gap-2">
               Start testing
             </Link>
           </button>
@@ -60,7 +60,7 @@ const CTA = () => {
               transition-all duration-300
             "
           >
-            <Link to="/get-started" className="flex items-center gap-2">
+            <Link to="/register" className="flex items-center gap-2">
               Know More
             </Link>
           </button>
