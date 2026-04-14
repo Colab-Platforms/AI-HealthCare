@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
+import Marquee from "react-fast-marquee";
 
 const fadeUp = {
   initial: { opacity: 0, y: 32 },
@@ -15,21 +16,43 @@ const fadeIn = {
   transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] },
 };
 
+const cards = [
+  "/landing/CTA/card1.svg",
+  "/landing/CTA/card2.svg",
+  "/landing/CTA/card3.svg",
+  "/landing/CTA/card4.svg",
+  "/landing/CTA/card5.svg",
+  "/landing/CTA/card6.svg",
+  "/landing/CTA/card7.svg",
+  "/landing/CTA/card8.svg",
+];
+
 const CTA = () => {
   return (
     <section>
-      <motion.div {...fadeIn} className="relative mt-24 z-0">
+      <motion.div {...fadeIn} className="relative mt-24 z-0 overflow-hidden">
         <img
           src="/landing/CTA/bg.webp"
           className="w-full h-[400px] lg:h-full object-cover lg:w-full z-0"
           alt=""
         />
         <div className="absolute inset-0 bg-black/60 z-0"></div>
-        <img
-          src="/landing/CTA/cards.svg"
-          alt=""
-          className="w-full h-full absolute inset-0 -top-12 lg:-top-44 z-0"
-        />
+
+        <div className="absolute inset-x-0 top-14 lg:top-44 z-0 pointer-events-none [perspective:1300px]">
+          <div className="[transform:rotateX(10deg)_rotateY(15deg)] overflow-hidden lg:w-[150%]">
+            <Marquee autoFill speed={25} gradient={false} pauseOnHover={false}>
+              {cards.map((card, index) => (
+                <img
+                  key={`${card}-${index}`}
+                  src={card}
+                  alt={`card-${index + 1}`}
+                  className="w-28 lg:w-60"
+                />
+              ))}
+            </Marquee>
+          </div>
+        </div>
+
         <img
           src="/landing/CTA/bg-pop.webp"
           className="w-full h-[400px] lg:h-full object-cover lg:w-full absolute inset-0 z-0"

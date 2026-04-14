@@ -186,6 +186,13 @@ body {
   overflow-x: hidden;
 }
 
+.rfm-marquee,
+.rfm-initial-child-container {
+  align-items: start !important;
+  gap: 18px !important;
+  margin-right: 8px !important;
+}
+
 /* Neutral Grey Scrollbar */
 ::-webkit-scrollbar {
   width: 6px;
