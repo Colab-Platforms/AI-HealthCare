@@ -68,7 +68,10 @@ const Hero = () => {
           isVideoReady ? "opacity-100" : "opacity-0"
         }`}
       >
-        <source src="/landing/bg-video.mp4" type="video/mp4" />
+        <source
+          src="https://cdn.shopify.com/videos/c/o/v/bf5d3425a43a49f98e4bc647c660ef7f.mp4"
+          type="video/mp4"
+        />
       </video>
 
       <div className="absolute inset-0 bg-black/40"></div>
