@@ -269,7 +269,7 @@ const Footer = () => {
         </motion.div>
 
         <div className="text-center lg:text-left lg:flex justify-between w-full border-t border-white/10 pt-5">
-          <p>© 2026 FitCure Inc. All rights reserved.</p>
+          <p>© 2026 Take Health Inc. All rights reserved.</p>
           <p>Designed with purpose. Priced with care.</p>
         </div>
 
