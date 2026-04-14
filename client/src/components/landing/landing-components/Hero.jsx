@@ -76,14 +76,14 @@ const Hero = () => {
 
       <div className="absolute inset-0 bg-black/40"></div>
       <motion.div
-        className="relative z-10"
+        className="relative z-10 flex flex-col items-center justify-center gap-2"
         variants={container}
         initial="hidden"
         animate="show"
       >
         <motion.h1
           variants={item}
-          className="text-3xl md:text-6xl text-white font-landing-accent-2 text-balance"
+          className="text-4xl md:text-6xl text-white font-landing-accent-2 text-balance"
         >
           Your Health, Understood Ahead of Time
         </motion.h1>
