@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Mail, Phone } from "lucide-react";
 
 const fadeUp = {
   initial: { opacity: 0, y: 30 },
@@ -153,6 +153,26 @@ const Footer = () => {
                 Subscribe
               </button>
             </form>
+
+            <h5 className="uppercase text-white/50 my-5 tracking-wider">
+              Get in Touch
+            </h5>
+            <div className="flex flex-col gap-4">
+              <a
+                href="mailto:takesolutionsltd@gmail.com"
+                className="flex items-center gap-2 hover:text-white transition"
+              >
+                <Mail />
+                <span>takesolutionsltd@gmail.com</span>
+              </a>
+              <a
+                href="tel:+918156020445"
+                className="flex items-center gap-2 hover:text-white transition"
+              >
+                <Phone />
+                <span>+918156020445</span>
+              </a>
+            </div>
           </motion.div>
         </motion.div>
 
@@ -265,10 +285,25 @@ const Footer = () => {
               <button
                 type="submit"
                 className="text-white absolute right-0 bottom-2"
+                disabled
               >
                 Subscribe
               </button>
             </form>
+
+            <h5 className="uppercase text-white/50 my-5 tracking-wider">
+              Get in Touch
+            </h5>
+            <div className="flex flex-col gap-3">
+              <p className="flex items-center gap-2">
+                <Mail />
+                <span>takesolutionsltd@gmail.com</span>
+              </p>
+              <p className="flex items-center gap-2">
+                <Phone />
+                <span>+918156020445</span>
+              </p>
+            </div>
           </motion.div>
         </motion.div>
 
