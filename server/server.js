@@ -221,6 +221,7 @@ try {
     { path: '/api/chat', module: './routes/chatHistoryRoutes' },
     { path: '/api/translate', module: './routes/translateRoutes' },
     { path: '/api/food-safety', module: './routes/foodSafetyRoutes' },
+    { path: '/api/documents', module: './routes/documentRoutes' },
     { path: '/api', module: './routes/chatRoutes' } // 🔚 Generic catch-all goes last
   ];
 

@@ -28,6 +28,11 @@ const nutritionSummarySchema = new mongoose.Schema({
   totalIron: { type: Number, default: 0 },
   totalCalcium: { type: Number, default: 0 },
   averageHealthScore: { type: Number, default: 0 },
+  
+  // Quality breakdown
+  healthyFoodsCount: { type: Number, default: 0 },
+  junkFoodsCount: { type: Number, default: 0 },
+  totalFoodsCount: { type: Number, default: 0 },
 
   // Meal breakdown
   mealsLogged: {

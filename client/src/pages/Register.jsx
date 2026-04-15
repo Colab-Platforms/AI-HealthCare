@@ -62,20 +62,36 @@ export default function Register() {
       toast.error('Passwords do not match');
       return;
     }
-    const pwdRegex = /^(?=.*[A-Z])(?=.*[!@#$%^&*])(?=.*[0-9]).{6,}$/;
-    if (!pwdRegex.test(formData.password)) {
-      toast.error('Password must contain 1 uppercase, 1 special char, and 1 number');
+    // Granular Password Validation with specific toasts
+    if (formData.password.length < 6) {
+      toast.error('Password must be at least 6 characters long');
+      return;
+    }
+    if (!/[a-z]/.test(formData.password)) {
+      toast.error('Password must contain at least one lowercase letter');
+      return;
+    }
+    if (!/[A-Z]/.test(formData.password)) {
+      toast.error('Password must contain at least one uppercase letter');
+      return;
+    }
+    if (!/[0-9]/.test(formData.password)) {
+      toast.error('Password must contain at least one number');
+      return;
+    }
+    if (!/[!@#$%^&*._]/.test(formData.password)) {
+      toast.error('Password must contain at least one special character (!@#$%^&*._)');
       return;
     }
 
     setLoading(true);
     try {
-      // ✅ JUST REQUEST OTP - Don't create user yet as per requirement
+      // âœ… JUST REQUEST OTP - Don't create user yet as per requirement
       await api.post('auth/register-otp', {
         name: formData.name,
         email: formData.email
       });
-      toast.success('Verification code sent to your email!', { icon: '📧' });
+      toast.success('Verification code sent to your email!', { icon: 'ðŸ“§' });
       setStep(1.5);
     } catch (error) {
       const msg = error.response?.data?.message || 'Failed to send verification code';
@@ -94,7 +110,7 @@ export default function Register() {
 
     setLoading(true);
     try {
-      // ✅ FINALIZE REGISTRATION ONLY AFTER OTP VERIFICATION
+      // âœ… FINALIZE REGISTRATION ONLY AFTER OTP VERIFICATION
       await register(
         formData.name,
         formData.email,
@@ -138,7 +154,7 @@ export default function Register() {
     const weight = parseFloat(formData.weight);
     const height = parseFloat(formData.height);
 
-    // ✅ NEW MEDICAL VALIDATION (Logical Consistency Check)
+    // âœ… NEW MEDICAL VALIDATION (Logical Consistency Check)
     if (age < 10) {
       toast.error('Minimum age for health tracking is 10 years');
       return;
@@ -218,7 +234,7 @@ export default function Register() {
 
   return (
     <div className="min-h-screen flex bg-white font-sans">
-      {/* Visual Left Panel */}
+      {/* Left Panel - Branding */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-[#064e3b]">
         {/* Decorative Glow Elements matching Dashboard */}
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-400/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
@@ -226,368 +242,245 @@ export default function Register() {
         
         <div className="absolute inset-0 bg-gradient-to-br from-[#064e3b] via-[#065f46] to-[#042f24] opacity-90" />
 
-        <div className="relative z-10 flex flex-col justify-center items-center w-full p-12 text-white text-center">
-          <div className="relative w-32 h-32 mb-10 group flex items-center justify-center">
-            <div className="absolute inset-0 bg-emerald-400/20 blur-2xl rounded-full group-hover:bg-emerald-400/40 transition-all duration-700" />
-            <div className="absolute inset-0 bg-white/10 backdrop-blur-3xl rounded-[2rem] border border-white/20 flex items-center justify-center transition-transform duration-700 group-hover:scale-110 shadow-2xl">
-              <Heart className="w-16 h-16 text-emerald-400 fill-emerald-400/20" />
+        <div className="relative z-10 flex flex-col justify-center items-center w-full p-12 text-white">
+          <div className="flex justify-center mb-10 group">
+            <div className="relative">
+              <div className="absolute inset-0 bg-emerald-400/20 blur-2xl rounded-full group-hover:bg-emerald-400/40 transition-all duration-700" />
+              <img 
+                src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
+                alt="take.health" 
+                className="h-32 w-auto object-contain brightness-0 invert relative z-10 transition-transform duration-700 group-hover:scale-105"
+              />
             </div>
           </div>
-          <h1 className="text-4xl font-black mb-4 text-center uppercase tracking-tight">Your Health Revolution</h1>
-          <p className="text-xl text-emerald-50/70 text-center max-w-md mb-10 leading-relaxed font-light">
-            Join thousands of users leveraging AI for proactive, personalized health management.
+          <h1 className="text-4xl font-light tracking-tight mb-4 text-center">
+            {step === 1 ? 'Start Your Journey' : step === 1.5 ? 'Verify Identity' : 'Personalize Care'}
+          </h1>
+          <p className="text-xl text-emerald-50/70 text-center max-w-md leading-relaxed">
+            {step === 1 ? "Join thousands of users who have transformed their life with take.health AI." :
+             step === 1.5 ? "We've sent a 6-digit code to your email. This ensures your health data stays private." :
+             "Tell us a bit about yourself so our AI can craft your perfect health strategy."}
           </p>
-          <div className="flex gap-4">
-            <div className={`w-16 h-1.5 rounded-full transition-all duration-500 ${step >= 1 ? 'bg-emerald-400' : 'bg-white/10'}`}></div>
-            <div className={`w-16 h-1.5 rounded-full transition-all duration-500 ${step >= 1.5 ? 'bg-emerald-400' : 'bg-white/10'}`}></div>
-            <div className={`w-16 h-1.5 rounded-full transition-all duration-500 ${step >= 2 ? 'bg-emerald-400' : 'bg-white/10'}`}></div>
-          </div>
         </div>
       </div>
 
-      {/* Main Registration Form Area */}
-      <div className="flex-1 flex bg-white sm:bg-slate-50/30 sm:p-8">
-        <div className="w-full max-w-md bg-white p-5 sm:p-10 min-h-screen sm:min-h-0 flex flex-col justify-center rounded-none sm:rounded-[2.5rem] shadow-none sm:shadow-[0_20px_60px_rgba(6,78,59,0.05)] border-0 sm:border border-emerald-50/50">
-          {/* Mobile Identity */}
-          <div className="lg:hidden flex justify-center mb-6">
+      {/* Right Panel - Form */}
+      <div className="flex-1 flex bg-white overflow-y-auto">
+        <div className="w-full max-w-xl mx-auto flex flex-col lg:justify-center px-6 sm:px-12 lg:px-20 pt-0 pb-8 sm:py-12">
+          {/* Mobile Logo */}
+          <div className="lg:hidden flex justify-center mb-1">
             <img 
               src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
               alt="take.health" 
-              className="h-16 w-auto object-contain"
+              className="h-20 w-auto object-contain"
             />
           </div>
 
-          <div className="mb-4 relative">
+          <div className="mb-2 relative">
             {step > 1 && (
-              <button onClick={() => setStep(step - 0.5)} className="absolute -top-6 left-0 flex items-center gap-1 text-[#064e3b] font-black uppercase text-[10px] tracking-widest hover:text-[#042f24] transition-all">
-                <ArrowLeft className="w-4 h-4" /> Back
+              <button onClick={() => setStep(step - 0.5)} className="absolute -top-4 left-0 flex items-center gap-1 text-[#064e3b] font-black uppercase text-[9px] tracking-widest hover:text-[#042f24] transition-all">
+                <ArrowLeft className="w-3 h-3" /> Back
               </button>
             )}
-            <h2 className="text-2xl font-black mb-1 text-[#064e3b] uppercase tracking-tighter mt-1">
+            <h2 className="text-xl font-black mb-0.5 text-[#064e3b] uppercase tracking-tighter">
               {step === 1 ? 'Create Account' : step === 1.5 ? 'Verify Identity' : 'Setup Profile'}
             </h2>
-            {step > 1 && (
-              <p className="text-emerald-800/40 font-black uppercase text-[10px] tracking-[0.2em]">
-                {step === 1.5 ? 'Phase 1.5 • Verification' : 'Phase 02 • Health Identity'}
-              </p>
-            )}
+            <p className="text-gray-400 font-bold uppercase text-[8px] tracking-[0.2em]">
+              {step === 1 ? 'Fill in your details to get started' : step === 1.5 ? 'Email verification' : 'Health identity'}
+            </p>
           </div>
 
           {step === 1 ? (
-            <form onSubmit={handleNext} className="space-y-2.5">
+            <form onSubmit={handleNext} className="space-y-2">
               <div>
-                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-0.5 ml-1">Full Name *</label>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Full Name *</label>
                 <div className="relative group">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-xl py-2 pl-10 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20 text-sm"
-                    placeholder="John Doe"
-                    required
-                  />
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 group-focus-within:text-[#064e3b] transition-colors" />
+                  <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-sm"
+                    placeholder="Full Name" required />
                 </div>
               </div>
-
               <div>
-                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-0.5 ml-1">Email Address *</label>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Email Address *</label>
                 <div className="relative group">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-xl py-2 pl-10 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20 text-sm"
-                    placeholder="you@email.com"
-                    required
-                  />
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 group-focus-within:text-[#064e3b] transition-colors" />
+                  <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-sm"
+                    placeholder="Email Address" required />
                 </div>
               </div>
-
               <div>
-                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-0.5 ml-1">Phone Number *</label>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Phone Number *</label>
                 <div className="relative group">
-                  <Activity className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
-                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-xl py-2 pl-10 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b) font-bold transition-all placeholder:text-emerald-800/20 text-sm"
-                    placeholder="10 digit number"
-                    required
-                  />
+                  <Activity className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 group-focus-within:text-[#064e3b] transition-colors" />
+                  <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
+                    className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-sm"
+                    placeholder="Phone Number" required />
                 </div>
               </div>
-
               <div>
-                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-0.5 ml-1">Password *</label>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Password *</label>
                 <div className="relative group">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-xl py-2 pl-10 pr-10 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20 text-sm"
-                    placeholder="••••••••"
-                    required
-                  />
-                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-800/20 hover:text-[#064e3b] transition-colors">
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 group-focus-within:text-[#064e3b] transition-colors" />
+                  <input type={showPassword ? "text" : "password"} value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-12 pr-12 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-sm"
+                    placeholder="Password" required />
+                  <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#064e3b] transition-colors">
+                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
-                {/* 🔒 Password Requirements Alert */}
-                <div className="mt-1 ml-1 flex flex-wrap gap-x-2 gap-y-0 text-[7.5px] font-black uppercase tracking-tight">
-                  <div className={`flex items-center gap-0.5 transition-colors ${/[A-Z]/.test(formData.password) ? 'text-emerald-500' : 'text-emerald-800/10'}`}>
-                    <div className={`w-0.5 h-0.5 rounded-full ${/[A-Z]/.test(formData.password) ? 'bg-emerald-500' : 'bg-emerald-800/10'}`} />
-                    1 UP
-                  </div>
-                  <div className={`flex items-center gap-0.5 transition-colors ${/[!@#$%^&*]/.test(formData.password) ? 'text-emerald-500' : 'text-emerald-800/10'}`}>
-                    <div className={`w-0.5 h-0.5 rounded-full ${/[!@#$%^&*]/.test(formData.password) ? 'bg-emerald-500' : 'bg-emerald-800/10'}`} />
-                    1 SPEC
-                  </div>
-                  <div className={`flex items-center gap-0.5 transition-colors ${/[0-9]/.test(formData.password) ? 'text-emerald-500' : 'text-emerald-800/10'}`}>
-                    <div className={`w-0.5 h-0.5 rounded-full ${/[0-9]/.test(formData.password) ? 'bg-emerald-500' : 'bg-emerald-800/10'}`} />
-                    1 NUM
-                  </div>
-                  <div className={`flex items-center gap-0.5 transition-colors ${formData.password.length >= 6 ? 'text-emerald-500' : 'text-emerald-800/10'}`}>
-                    <div className={`w-0.5 h-0.5 rounded-full ${formData.password.length >= 6 ? 'bg-emerald-500' : 'bg-emerald-800/10'}`} />
-                    MIN 6
+                <div className="mt-2 ml-1 p-2 bg-gray-50/50 rounded-lg border border-gray-100">
+                  <p className="text-[7px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Requirements:</p>
+                  <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                    <p className={`text-[8px] font-black uppercase tracking-widest flex items-center gap-1 ${/[A-Z]/.test(formData.password) ? 'text-emerald-600' : 'text-gray-400'}`}>
+                      <div className={`w-1 h-1 rounded-full ${/[A-Z]/.test(formData.password) ? 'bg-emerald-600' : 'bg-gray-300'}`} /> One uppercase
+                    </p>
+                    <p className={`text-[8px] font-black uppercase tracking-widest flex items-center gap-1 ${/[a-z]/.test(formData.password) ? 'text-emerald-600' : 'text-gray-400'}`}>
+                      <div className={`w-1 h-1 rounded-full ${/[a-z]/.test(formData.password) ? 'bg-emerald-600' : 'bg-gray-300'}`} /> One lowercase
+                    </p>
+                    <p className={`text-[8px] font-black uppercase tracking-widest flex items-center gap-1 ${/[0-9]/.test(formData.password) ? 'text-emerald-600' : 'text-gray-400'}`}>
+                      <div className={`w-1 h-1 rounded-full ${/[0-9]/.test(formData.password) ? 'bg-emerald-600' : 'bg-gray-300'}`} /> One number
+                    </p>
+                    <p className={`text-[8px] font-black uppercase tracking-widest flex items-center gap-1 ${/[!@#$%^&*._]/.test(formData.password) ? 'text-emerald-600' : 'text-gray-400'}`}>
+                      <div className={`w-1 h-1 rounded-full ${/[!@#$%^&*._]/.test(formData.password) ? 'bg-emerald-600' : 'bg-gray-300'}`} /> One special
+                    </p>
                   </div>
                 </div>
               </div>
-
               <div>
-                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-0.5 ml-1">Confirm Password *</label>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Confirm Password *</label>
                 <div className="relative group">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
-                  <input
-                    type="password"
-                    value={formData.confirmPassword}
-                    onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-xl py-2 pl-10 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20 text-sm"
-                    placeholder="••••••••"
-                    required
-                  />
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 group-focus-within:text-[#064e3b] transition-colors" />
+                  <input type="password" value={formData.confirmPassword} onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-sm"
+                    placeholder="Confirm Password" required />
                 </div>
+                {formData.confirmPassword && (
+                    <p className={`text-[9px] mt-1 ml-1 font-black uppercase tracking-widest ${formData.password === formData.confirmPassword ? 'text-emerald-600' : 'text-red-500'}`}>
+                        {formData.password === formData.confirmPassword ? '✓ Passwords match' : '✗ Passwords do not match'}
+                    </p>
+                )}
               </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3 mt-3 text-emerald-50 font-black uppercase text-xs tracking-[0.2em] rounded-xl transition-all flex items-center justify-center gap-3 bg-[#064e3b] hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] disabled:opacity-70 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
-              >
+              <button type="submit" disabled={loading}
+                className="w-full py-4 mt-2 text-white font-black uppercase text-xs tracking-[0.2em] rounded-xl transition-all flex items-center justify-center gap-3 bg-[#064e3b] hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] disabled:opacity-70 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1">
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><span className="text-sm">Continue</span> <ArrowRight className="w-4 h-4" /></>}
               </button>
-
               <div className="mt-4 text-center">
-                <span className="text-[10px] font-black text-emerald-800/40 uppercase tracking-widest">Already registered?</span>{' '}
-                <Link to="/login" className="ml-2 font-black text-[#064e3b] hover:text-[#042f24] transition-all uppercase text-[10px] tracking-widest border-b-2 border-emerald-100 hover:border-[#064e3b] pb-0.5">Sign In</Link>
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Already registered?</span>{' '}
+                <Link to="/login" className="ml-2 font-black text-[#064e3b] hover:text-[#042f24] transition-all uppercase text-[10px] tracking-widest border-b-2 border-gray-200 hover:border-[#064e3b] pb-0.5">Sign In</Link>
               </div>
             </form>
           ) : step === 1.5 ? (
             <div className="space-y-6 text-center">
-              <div className="w-20 h-20 bg-emerald-50 rounded-[2rem] flex items-center justify-center mx-auto mb-2 border-2 border-dashed border-[#064e3b]/20 relative">
-                <div className="absolute inset-0 bg-emerald-400/10 animate-pulse rounded-[2rem]" />
+              <div className="w-20 h-20 bg-gray-50 rounded-[2rem] flex items-center justify-center mx-auto mb-2 border-2 border-dashed border-gray-200 relative">
+                <div className="absolute inset-0 bg-gray-100/50 animate-pulse rounded-[2rem]" />
                 <Mail className="w-8 h-8 text-[#064e3b]" />
               </div>
               <div className="space-y-1">
                 <p className="text-[#064e3b] font-black text-lg uppercase tracking-tighter">Enter Code</p>
-                <p className="text-emerald-800/40 font-bold text-[9px] uppercase tracking-widest">Sent to <span className="text-[#064e3b] px-2 py-0.5 bg-emerald-50 rounded-lg">{formData.email}</span></p>
+                <p className="text-gray-400 font-bold text-[9px] uppercase tracking-widest">Sent to <span className="text-[#064e3b] px-2 py-0.5 bg-gray-50 rounded-lg">{formData.email}</span></p>
               </div>
               <div className="flex justify-center gap-2">
                 {verificationCode.map((digit, i) => (
-                  <input
-                    key={i}
-                    id={`otp-${i}`}
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    autoComplete={i === 0 ? 'one-time-code' : 'off'}
-                    maxLength="1"
-                    value={digit}
-                    onChange={(e) => {
-                      const val = e.target.value.replace(/\D/g, '');
-                      const newCode = [...verificationCode];
-                      newCode[i] = val;
-                      setVerificationCode(newCode);
-                      if (val && i < 5) {
-                        document.getElementById(`otp-${i + 1}`).focus();
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Backspace' && !verificationCode[i] && i > 0) {
-                        document.getElementById(`otp-${i - 1}`).focus();
-                      }
-                    }}
-                    className="w-10 h-14 bg-emerald-50/30 border-2 border-emerald-100 rounded-2xl text-center font-black text-xl focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] focus:outline-none text-[#064e3b] shadow-sm transition-all"
+                  <input key={i} id={`otp-${i}`} type="text" inputMode="numeric" pattern="[0-9]*"
+                    autoComplete={i === 0 ? 'one-time-code' : 'off'} maxLength="1" value={digit}
+                    onChange={(e) => { const val = e.target.value.replace(/\D/g, ''); const newCode = [...verificationCode]; newCode[i] = val; setVerificationCode(newCode); if (val && i < 5) document.getElementById(`otp-${i + 1}`).focus(); }}
+                    onKeyDown={(e) => { if (e.key === 'Backspace' && !verificationCode[i] && i > 0) document.getElementById(`otp-${i - 1}`).focus(); }}
+                    className="w-11 h-14 bg-white border-2 border-gray-200 rounded-2xl text-center font-black text-xl focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] focus:outline-none text-gray-800 shadow-sm transition-all"
                   />
                 ))}
               </div>
               <div className="space-y-3">
-                <button
-                  onClick={handleVerifyEmail}
-                  disabled={loading}
-                  className="w-full py-3.5 bg-[#064e3b] text-emerald-50 font-black uppercase text-xs tracking-[0.2em] rounded-2xl shadow-xl hover:bg-[#042f24] transition-all flex items-center justify-center gap-3 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
-                >
+                <button onClick={handleVerifyEmail} disabled={loading}
+                  className="w-full py-4 bg-[#064e3b] text-white font-black uppercase text-xs tracking-[0.2em] rounded-xl shadow-xl hover:bg-[#042f24] transition-all flex items-center justify-center gap-3 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1">
                   {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span className="text-sm">Confirm Identity</span>}
                 </button>
-                <button onClick={handleResendCode} className="text-[9px] font-black text-emerald-800/30 uppercase tracking-widest hover:text-[#064e3b] transition-colors">Resend Verification Code</button>
+                <button onClick={handleResendCode} className="text-[9px] font-black text-gray-400 uppercase tracking-widest hover:text-[#064e3b] transition-colors">Resend Verification Code</button>
               </div>
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1 ml-1">Age *</label>
-                  <input
-                    type="number"
-                    value={formData.age}
-                    onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all"
-                    placeholder="Years"
-                    min="10" max="120"
-                    required
-                  />
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Age *</label>
+                  <input type="number" value={formData.age} onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                    className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all text-base"
+                    placeholder="Years" min="10" max="120" required />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1 ml-1">Gender *</label>
-                  <select
-                    value={formData.gender}
-                    onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold appearance-none transition-all"
-                    required
-                  >
-                    <option value="">Select</option>
-                    <option value="male">Male</option>
-                    <option value="female">Female</option>
-                    <option value="other">Other</option>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Gender *</label>
+                  <select value={formData.gender} onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
+                    className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold appearance-none transition-all text-base" required>
+                    <option value="">Select</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option>
                   </select>
                 </div>
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <div className="flex items-center justify-between mb-1 ml-1">
-                    <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest">Height *</label>
-                    <div className="flex bg-emerald-100/50 rounded-lg p-0.5">
-                      <button type="button" onClick={() => setHeightUnit('cm')} className={`px-2 py-0.5 text-[8px] font-black uppercase rounded-md transition-all ${heightUnit === 'cm' ? 'bg-[#064e3b] text-white shadow-sm' : 'text-emerald-800/40'}`}>cm</button>
-                      <button type="button" onClick={() => setHeightUnit('ft')} className={`px-2 py-0.5 text-[8px] font-black uppercase rounded-md transition-all ${heightUnit === 'ft' ? 'bg-[#064e3b] text-white shadow-sm' : 'text-emerald-800/40'}`}>ft</button>
+                    <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest">Height *</label>
+                    <div className="flex bg-gray-100 rounded-lg p-0.5">
+                      <button type="button" onClick={() => setHeightUnit('cm')} className={`px-2 py-0.5 text-[8px] font-black uppercase rounded-md transition-all ${heightUnit === 'cm' ? 'bg-[#064e3b] text-white shadow-sm' : 'text-gray-400'}`}>cm</button>
+                      <button type="button" onClick={() => setHeightUnit('ft')} className={`px-2 py-0.5 text-[8px] font-black uppercase rounded-md transition-all ${heightUnit === 'ft' ? 'bg-[#064e3b] text-white shadow-sm' : 'text-gray-400'}`}>ft</button>
                     </div>
                   </div>
-                  
                   {heightUnit === 'cm' ? (
-                    <input
-                      type="number"
-                      value={formData.height}
-                      onChange={(e) => setFormData({ ...formData, height: e.target.value })}
-                      className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all"
-                      placeholder="170"
-                      min="100" max="250"
-                      required
-                    />
+                    <input type="number" value={formData.height} onChange={(e) => setFormData({ ...formData, height: e.target.value })}
+                      className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all text-base"
+                      placeholder="170" min="100" max="250" required />
                   ) : (
                     <div className="flex gap-2">
-                      <input
-                        type="number"
-                        placeholder="Ft"
-                        value={feet}
-                        onChange={(e) => {
-                          const f = e.target.value;
-                          setFeet(f);
-                          const totalCm = (parseFloat(f || 0) * 30.48) + (parseFloat(inches || 0) * 2.54);
-                          setFormData({ ...formData, height: totalCm.toFixed(1) });
-                        }}
-                        className="w-1/2 bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-2.5 px-3 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all"
-                        required
-                      />
-                      <input
-                        type="number"
-                        placeholder="In"
-                        value={inches}
-                        onChange={(e) => {
-                          const i = e.target.value;
-                          setInches(i);
-                          const totalCm = (parseFloat(feet || 0) * 30.48) + (parseFloat(i || 0) * 2.54);
-                          setFormData({ ...formData, height: totalCm.toFixed(1) });
-                        }}
-                        className="w-1/2 bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-2.5 px-3 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all"
-                        required
-                      />
+                      <input type="number" placeholder="Ft" value={feet} onChange={(e) => { const f = e.target.value; setFeet(f); const totalCm = (parseFloat(f || 0) * 30.48) + (parseFloat(inches || 0) * 2.54); setFormData({ ...formData, height: totalCm.toFixed(1) }); }}
+                        className="w-1/2 bg-white border border-gray-200 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all text-base" required />
+                      <input type="number" placeholder="In" value={inches} onChange={(e) => { const i = e.target.value; setInches(i); const totalCm = (parseFloat(feet || 0) * 30.48) + (parseFloat(i || 0) * 2.54); setFormData({ ...formData, height: totalCm.toFixed(1) }); }}
+                        className="w-1/2 bg-white border border-gray-200 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all text-base" required />
                     </div>
                   )}
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1 ml-1">Weight (kg) *</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    value={formData.weight}
-                    onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all"
-                    placeholder="70.5"
-                    min="30" max="300"
-                    required
-                  />
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Weight (kg) *</label>
+                  <input type="number" step="0.1" value={formData.weight} onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                    className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all text-base"
+                    placeholder="70.5" min="30" max="300" required />
                 </div>
               </div>
-
               <div>
-                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1 ml-1">Activity Level *</label>
-                <select
-                  value={formData.activityLevel}
-                  onChange={(e) => setFormData({ ...formData, activityLevel: e.target.value })}
-                  className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold appearance-none transition-all"
-                  required
-                >
-                  <option value="sedentary">Sedentary (Little/no exercise)</option>
-                  <option value="lightly_active">Lightly Active (1-3 days)</option>
-                  <option value="moderately_active">Moderately Active (3-5 days)</option>
-                  <option value="very_active">Very Active (6-7 days)</option>
+                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Activity Level *</label>
+                <select value={formData.activityLevel} onChange={(e) => setFormData({ ...formData, activityLevel: e.target.value })}
+                  className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold appearance-none transition-all text-base" required>
+                  <option value="sedentary">Sedentary (Little/no exercise)</option><option value="lightly_active">Lightly Active (1-3 days)</option>
+                  <option value="moderately_active">Moderately Active (3-5 days)</option><option value="very_active">Very Active (6-7 days)</option>
                   <option value="extremely_active">Extremely Active (Athlete)</option>
                 </select>
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1 ml-1">Are you Diabetic? *</label>
-                  <select
-                    value={formData.isDiabetic}
-                    onChange={(e) => setFormData({ ...formData, isDiabetic: e.target.value })}
-                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold appearance-none transition-all"
-                    required
-                  >
-                    <option value="no">No</option>
-                    <option value="yes">Yes</option>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Are you Diabetic? *</label>
+                  <select value={formData.isDiabetic} onChange={(e) => setFormData({ ...formData, isDiabetic: e.target.value })}
+                    className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold appearance-none transition-all text-base" required>
+                    <option value="no">No</option><option value="yes">Yes</option>
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1 ml-1">Diet Preference *</label>
-                  <select
-                    value={formData.dietaryPreference}
-                    onChange={(e) => setFormData({ ...formData, dietaryPreference: e.target.value })}
-                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold appearance-none transition-all"
-                    required
-                  >
-                    <option value="non-vegetarian">Non-Vegetarian</option>
-                    <option value="vegetarian">Vegetarian</option>
-                    <option value="vegan">Vegan</option>
-                    <option value="eggetarian">Eggetarian</option>
+                  <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Diet Preference *</label>
+                  <select value={formData.dietaryPreference} onChange={(e) => setFormData({ ...formData, dietaryPreference: e.target.value })}
+                    className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold appearance-none transition-all text-base" required>
+                    <option value="non-vegetarian">Non-Vegetarian</option><option value="vegetarian">Vegetarian</option>
+                    <option value="vegan">Vegan</option><option value="eggetarian">Eggetarian</option>
                   </select>
                 </div>
               </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full py-3.5 mt-2 text-emerald-50 font-black uppercase text-xs tracking-[0.2em] rounded-2xl transition-all flex items-center justify-center gap-3 bg-[#064e3b] hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] disabled:opacity-70 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
-              >
+              <button type="submit" disabled={loading}
+                className="w-full py-4 mt-2 text-white font-black uppercase text-xs tracking-[0.2em] rounded-xl transition-all flex items-center justify-center gap-3 bg-[#064e3b] hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] disabled:opacity-70 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1">
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span className="text-sm">Sign Up</span>}
               </button>
             </form>
           )}
         </div>
       </div>
-    </div >
+    </div>
+
   );
 }
+

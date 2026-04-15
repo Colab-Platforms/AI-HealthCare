@@ -6,7 +6,7 @@ import {
   LayoutDashboard, MessageSquare, Utensils, FileText, MoreVertical,
   Settings, LogOut, Heart, Watch, X, Calendar, ScanLine,
   Activity, Bell, Plus, Scale, Droplets, Moon, Footprints,
-  Apple, Sparkles, Trophy, BarChart3, ArrowRight
+  Apple, Sparkles, Trophy, BarChart3, ArrowRight, ShieldCheck
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -223,17 +223,17 @@ export default function MobileBottomNav() {
                     </div>
                   </button>
 
-                  {/* Lab Insights */}
+                  {/* Medical Records */}
                   <button 
-                    onClick={() => { setShowLogModal(false); navigate('/upload'); }}
+                    onClick={() => { setShowLogModal(false); navigate('/medical-vault'); }}
                     className="bg-white p-4 rounded-[24px] shadow-[0_4px_15px_rgba(0,0,0,0.02)] border border-white hover:scale-[1.02] active:scale-95 transition-all duration-300 flex flex-col items-center justify-center gap-2"
                   >
                     <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center">
-                      <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_1.svg?v=1775559212" alt="Lab Insights" className="w-7 h-7 object-contain" />
+                      <ShieldCheck size={24} className="text-[#5D5589]" strokeWidth={2.5} />
                     </div>
                     <div className="text-center">
-                      <div className="text-[14px] font-extrabold text-[#1A2138] mb-0">Lab Insights</div>
-                      <div className="text-[10px] text-slate-400 font-semibold">Direct clarity</div>
+                      <div className="text-[14px] font-extrabold text-[#1A2138] mb-0">Medical Records</div>
+                      <div className="text-[10px] text-slate-400 font-semibold">Vault records</div>
                     </div>
                   </button>
                 </div>
@@ -320,13 +320,13 @@ export default function MobileBottomNav() {
 
                 {/* Additional Features Row */}
                 <div className="grid grid-cols-2 gap-3 mt-auto">
-                  <button onClick={() => { setShowLogModal(false); navigate('/ai-chat'); }} className="flex items-center gap-3 p-3.5 bg-white/40 rounded-[22px] border border-white hover:bg-white active:scale-95 transition-all justify-center">
-                    <Sparkles className="text-emerald-600" size={16} />
-                    <span className="text-[10px] font-black text-[#1A2138] uppercase tracking-tighter">Ask Coach</span>
+                  <button onClick={() => { setShowLogModal(false); navigate('/ai-chat'); }} className="flex items-center gap-2 p-3.5 bg-white/40 rounded-[22px] border border-white hover:bg-white active:scale-95 transition-all justify-center">
+                    <Sparkles className="text-emerald-600 shrink-0" size={16} />
+                    <span className="text-[10px] font-black text-[#1A2138] uppercase tracking-tighter truncate">Ask Coach</span>
                   </button>
-                  <button onClick={() => { setShowLogModal(false); navigate('/challenge'); }} className="flex items-center gap-3 p-3.5 bg-white/40 rounded-[22px] border border-white hover:bg-white active:scale-95 transition-all justify-center">
-                    <Trophy className="text-amber-500" size={16} />
-                    <span className="text-[10px] font-black text-[#1A2138] uppercase tracking-tighter">Challenge</span>
+                  <button onClick={() => { setShowLogModal(false); navigate('/challenge'); }} className="flex items-center gap-2 p-3.5 bg-white/40 rounded-[22px] border border-white hover:bg-white active:scale-95 transition-all justify-center">
+                    <Trophy className="text-amber-500 shrink-0" size={16} />
+                    <span className="text-[10px] font-black text-[#1A2138] uppercase tracking-tighter truncate">Challenge</span>
                   </button>
                 </div>
 

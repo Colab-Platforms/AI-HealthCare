@@ -1077,6 +1077,9 @@ exports.getWeeklySummary = async (req, res) => {
       avgCarbs: 0,
       avgFats: 0,
       daysLogged: summaries.length,
+      healthyFoodsCount: 0,
+      junkFoodsCount: 0,
+      totalFoodsCount: 0,
       dailySummaries: summaries
     };
 
@@ -1085,7 +1088,10 @@ exports.getWeeklySummary = async (req, res) => {
         weeklyStats.avgCalories += summary.totalCalories;
         weeklyStats.avgProtein += summary.totalProtein;
         weeklyStats.avgCarbs += summary.totalCarbs;
-        weeklyStats.avgFats += summary.totalFats;
+        weeklyStats.avgFats += (summary.totalFats || 0);
+        weeklyStats.healthyFoodsCount += (summary.healthyFoodsCount || 0);
+        weeklyStats.junkFoodsCount += (summary.junkFoodsCount || 0);
+        weeklyStats.totalFoodsCount += (summary.totalFoodsCount || 0);
       });
 
       weeklyStats.avgCalories = Math.round(weeklyStats.avgCalories / summaries.length);
@@ -1253,7 +1259,10 @@ async function updateDailySummary(userId, date) {
       totalVitaminB12: 0,
       totalIron: 0,
       totalCalcium: 0,
-      averageHealthScore: 0
+      averageHealthScore: 0,
+      healthyFoodsCount: 0,
+      junkFoodsCount: 0,
+      totalFoodsCount: 0
     };
 
     const mealsLogged = {
@@ -1327,6 +1336,12 @@ async function updateDailySummary(userId, date) {
       weightedHealthScoreSum += healthScore * (calories || 100);
       totalWeight += (calories || 100);
 
+      // Quality counts
+      const score10 = log.healthScore10 !== undefined ? log.healthScore10 : (log.healthScore / 10);
+      if (score10 >= 7) totals.healthyFoodsCount++;
+      else if (score10 <= 4.5 && score10 > 0) totals.junkFoodsCount++;
+      totals.totalFoodsCount++;
+
       if (log.mealType === 'snack') {
         mealsLogged.snacks++;
       } else if (['breakfast', 'lunch', 'dinner'].includes(log.mealType)) {
@@ -1367,6 +1382,9 @@ async function updateDailySummary(userId, date) {
         totalIron: totals.totalIron,
         totalCalcium: totals.totalCalcium,
         averageHealthScore: totals.averageHealthScore,
+        healthyFoodsCount: totals.healthyFoodsCount,
+        junkFoodsCount: totals.junkFoodsCount,
+        totalFoodsCount: totals.totalFoodsCount,
         mealsLogged
       });
 
@@ -1411,6 +1429,9 @@ async function updateDailySummary(userId, date) {
     summary.totalIron = totals.totalIron;
     summary.totalCalcium = totals.totalCalcium;
     summary.averageHealthScore = totals.averageHealthScore;
+    summary.healthyFoodsCount = totals.healthyFoodsCount;
+    summary.junkFoodsCount = totals.junkFoodsCount;
+    summary.totalFoodsCount = totals.totalFoodsCount;
     summary.mealsLogged = mealsLogged;
     // Keep waterIntake as is, unless we want to reset it (unlikely)
 

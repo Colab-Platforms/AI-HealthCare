@@ -2,7 +2,7 @@ import React, { useState, useRef, useMemo } from 'react';
 import { 
   ChevronLeft, ChevronRight, Plus, Camera, Mic, Utensils, Droplet, Minus, CheckCircle2, 
   AlertTriangle, AlertCircle, X, Coffee, Apple, Calendar, Image as ImageIcon, 
-  Type, History, ArrowLeft, Flame, UtensilsCrossed, Zap, Search, Trash2, MoreHorizontal 
+  Type, History, ArrowLeft, Flame, UtensilsCrossed, Zap, Search, Trash2, MoreHorizontal, Sparkles
 } from 'lucide-react';
 import { ImageWithFallback } from './ImageWithFallback';
 import { toast } from 'react-hot-toast';
@@ -167,6 +167,59 @@ export function NutritionTab({
   const diffFromLastWeek = Math.round(((avgKcal - 1900) / 1900) * 100);
 
   const progressPercent = Math.min(100, (totalTodayKcal / (dailySummary.calorieTarget || 1800)) * 100);
+
+  // --- Healthy vs Junk Calculation ---
+  const todayQuality = useMemo(() => {
+    let healthy = 0;
+    let junk = 0;
+    let total = 0;
+    
+    loggedMeals.forEach(meal => {
+      const score = meal.healthScore10 !== undefined ? meal.healthScore10 : (meal.healthScore / 10);
+      if (score >= 7) healthy++;
+      else if (score <= 4.5 && score > 0) junk++;
+      total++;
+    });
+
+    return {
+      healthy: total > 0 ? Math.round((healthy / total) * 100) : 0,
+      junk: total > 0 ? Math.round((junk / total) * 100) : 0,
+      total
+    };
+  }, [loggedMeals]);
+
+  const overallQuality = useMemo(() => {
+    let healthy = 0;
+    let junk = 0;
+    let total = 0;
+    
+    // Process historical days
+    weeklyTrendsData.forEach(day => {
+      healthy += (day.healthyFoodsCount || 0);
+      junk += (day.junkFoodsCount || 0);
+      total += (day.totalFoodsCount || 0);
+    });
+
+    // Add today's real-time logs
+    let todayHealthy = 0;
+    let todayJunk = 0;
+    loggedMeals.forEach(meal => {
+      const score = meal.healthScore10 !== undefined ? meal.healthScore10 : (meal.healthScore / 10);
+      if (score >= 7) todayHealthy++;
+      else if (score <= 4.5 && score > 0) todayJunk++;
+    });
+
+    healthy += todayHealthy;
+    junk += todayJunk;
+    total += loggedMeals.length;
+
+    return {
+      healthy: total > 0 ? Math.round((healthy / total) * 100) : 0,
+      junk: total > 0 ? Math.round((junk / total) * 100) : 0,
+      total
+    };
+  }, [weeklyTrendsData, loggedMeals]);
+
   return (
     <div className="flex flex-col gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-8 max-w-5xl mx-auto w-full pt-1">
       {/* Primary Header - Compact & Refined */}
@@ -292,6 +345,8 @@ export function NutritionTab({
                 <input type="date" ref={dateInputRef} className="absolute inset-0 opacity-0 pointer-events-none" value={selectedDate} onChange={(e) => onDateChange && onDateChange(e.target.value)} max={new Date().toISOString().split('T')[0]} />
               </div>
             </div>
+
+
 
             {[
               { name: 'Breakfast', target: Math.round((dailySummary.calorieTarget || 1800) * 0.30), icon: Coffee, time: '09:00' },
@@ -423,33 +478,64 @@ export function NutritionTab({
               );
             })}
           </div>
+
+          {/* Meal Quality Breakdown (Detailed) - Bottom of Column */}
+          <div className="bg-white/60 backdrop-blur-xl rounded-[32px] p-6 shadow-sm border border-white relative overflow-hidden dark:bg-[#1A221E]/90 dark:border-white/10 mt-6 mb-2">
+            <h3 className="text-[14px] font-black text-[#1a2138] dark:text-white uppercase tracking-tight mb-4 flex items-center gap-2">
+              <Sparkles size={16} className="text-amber-500" /> Diet Quality Score
+            </h3>
+            
+            <div className="flex flex-col gap-3">
+              {/* Today's Quality Pill */}
+              <div className="p-4 bg-[#6FAF95]/5 dark:bg-white/5 rounded-[24px] border border-[#6FAF95]/10">
+                <div className="flex items-center justify-between mb-2.5 px-0.5">
+                  <span className="text-[10px] font-black text-[#6FAF95] uppercase tracking-widest">Today's Quality</span>
+                  <div className="flex gap-2 md:gap-4 font-black text-[9px] md:text-[10px] uppercase tracking-widest">
+                    <span className="text-[#6FAF95]">{todayQuality.healthy}% Healthy</span>
+                    <span className="text-slate-400">{100 - todayQuality.healthy - todayQuality.junk}% Average</span>
+                    <span className="text-orange-500">{todayQuality.junk}% Junk</span>
+                  </div>
+                </div>
+                <div className="h-3 w-full bg-slate-100 dark:bg-black/20 rounded-full overflow-hidden flex relative">
+                  <motion.div initial={{ width: 0 }} animate={{ width: `${todayQuality.healthy}%` }} className="h-full bg-[#6FAF95]" />
+                  <motion.div initial={{ width: 0 }} animate={{ width: `${100 - todayQuality.healthy - todayQuality.junk}%` }} className="h-full bg-slate-200 dark:bg-slate-700" />
+                  <motion.div initial={{ width: 0 }} animate={{ width: `${todayQuality.junk}%` }} className="h-full bg-orange-400" />
+                </div>
+              </div>
+
+              {/* Bio Trend Pill */}
+              <div className="p-4 bg-blue-50/50 dark:bg-white/5 rounded-[24px] border border-blue-100/50">
+                <div className="flex items-center justify-between mb-2.5 px-0.5">
+                  <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Overall Bio Trend</span>
+                  <div className="flex gap-2 md:gap-4 font-black text-[9px] md:text-[10px] uppercase tracking-widest">
+                    <span className="text-blue-500">{overallQuality.healthy}% Healthy</span>
+                    <span className="text-slate-400">{100 - overallQuality.healthy - overallQuality.junk}% Average</span>
+                    <span className="text-orange-500">{overallQuality.junk}% Junk</span>
+                  </div>
+                </div>
+                <div className="h-3 w-full bg-slate-100 dark:bg-black/20 rounded-full overflow-hidden flex relative">
+                  <motion.div initial={{ width: 0 }} animate={{ width: `${overallQuality.healthy}%` }} className="h-full bg-blue-500" />
+                  <motion.div initial={{ width: 0 }} animate={{ width: `${100 - overallQuality.healthy - overallQuality.junk}%` }} className="h-full bg-slate-200 dark:bg-slate-700" />
+                  <motion.div initial={{ width: 0 }} animate={{ width: `${overallQuality.junk}%` }} className="h-full bg-orange-400" />
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-5 p-3 bg-white/40 dark:bg-white/5 rounded-2xl border border-white flex items-start gap-3">
+              <Zap size={14} className="text-amber-500 mt-0.5 shrink-0" />
+              <p className="text-[10px] md:text-[11px] font-bold text-slate-500 leading-snug">
+                {todayQuality.healthy > 70 
+                  ? "Outstanding! You're consistently choosing high-nutrient fuel. This is accelerating your biological age reversal." 
+                  : todayQuality.total > 0 
+                    ? "Your body craves micronutrients. Try substituting refined carbs with leafy greens at your next meal."
+                    : "Track your first meal to unlock personalized biological fuel insights."}
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* Right Column */}
         <div className="flex flex-col gap-6">
-          {/* Smart Meal Suggestions */}
-          <div className="bg-white/60 backdrop-blur-xl rounded-[32px] p-6 shadow-sm border border-white dark:bg-[#1A221E]/90 dark:border-white/10">
-            <h3 className="text-[16px] font-black text-[#1a2138] mb-4 tracking-tight dark:text-white">Smart Meal Suggestions</h3>
-            <div className="flex gap-4 mb-5 overflow-x-auto pb-1" style={{ scrollbarWidth: 'none' }}>
-              {['Recommended', 'High Protein', 'Balanced', 'Low Carb'].map(tab => (
-                <button key={tab} onClick={() => setActiveSuggestion(tab)} className={`text-[12px] font-bold whitespace-nowrap relative pb-1.5 ${activeSuggestion === tab ? 'text-[#1a2138] dark:text-white' : 'text-[#64748b]/70'}`}>
-                  {tab}
-                  {activeSuggestion === tab && <motion.div layoutId="suggestion-underline" className="absolute bottom-0 left-0 w-full h-[2px] bg-[#69A38D] rounded-full" />}
-                </button>
-              ))}
-            </div>
-            <div className="rounded-[24px] overflow-hidden border border-white/80 bg-white/50 shadow-sm dark:bg-[#111815] transition-all">
-              <div className="relative h-[160px] w-full group overflow-hidden"><ImageWithFallback src={currentSuggestion.image} alt={currentSuggestion.title} className="w-full h-full object-cover transition-transform group-hover:scale-110" /></div>
-              <div className="p-5">
-                <h4 className="text-[16px] font-semibold text-[#1a2138] mb-2 dark:text-white truncate">{currentSuggestion.title}</h4>
-                <div className="flex items-center gap-3 mb-4 text-[11px] font-bold text-[#64748b] dark:text-slate-400">
-                  <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#5D5589]"></span> {currentSuggestion.protein} Protein</span>
-                  <span className="flex items-center gap-1.5"><span className="w-1.5 h-1.5 rounded-full bg-[#E88F4A]"></span> {currentSuggestion.calories}</span>
-                </div>
-                <button onClick={() => setShowRecipe(true)} className="w-full py-3 rounded-xl border border-[#6FAF95]/50 bg-[#6FAF95] font-bold text-[13px] text-white hover:bg-[#5B9A80] shadow-md transition-all">View Recipe</button>
-              </div>
-            </div>
-          </div>
 
           {/* Quick Access */}
           <div className="grid grid-cols-2 gap-3">

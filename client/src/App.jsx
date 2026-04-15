@@ -30,6 +30,7 @@ import DiabetesCare from "./pages/DiabetesCare";
 import ReportSummary from "./pages/ReportSummary";
 import VitalSigns from "./pages/VitalSigns";
 import Supplements from "./pages/Supplements";
+import MedicalVault from "./pages/MedicalVault";
 import GlucoseLog from "./pages/GlucoseLog";
 import LogVitals from "./pages/LogVitals";
 import AdminUsers from "./pages/AdminUsers";
@@ -149,235 +150,26 @@ export default function App() {
           />
 
           {/* Patient Routes */}
-          <Route
-            path="/dashboard"
-            element={
-              <ProtectedRoute
-                allowedRoles={["user", "patient", "client", "admin", "doctor"]}
-              >
-                <Layout>
-                  <DashboardEnhanced />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/upload"
-            element={
-              <ProtectedRoute
-                allowedRoles={["user", "patient", "client", "admin", "doctor"]}
-              >
-                <Layout>
-                  <UploadReport />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/reports"
-            element={
-              <ProtectedRoute
-                allowedRoles={["user", "patient", "client", "admin", "doctor"]}
-              >
-                <Layout>
-                  <AllReports />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/reports/:id"
-            element={
-              <ProtectedRoute
-                allowedRoles={["user", "patient", "client", "admin", "doctor"]}
-              >
-                <Layout>
-                  <ReportAnalysisMobile />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/report/:id"
-            element={
-              <ProtectedRoute
-                allowedRoles={["user", "patient", "client", "admin", "doctor"]}
-              >
-                <Layout>
-                  <ReportAnalysisMobile />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/reports/:id/summary"
-            element={
-              <ProtectedRoute
-                allowedRoles={["user", "patient", "client", "admin", "doctor"]}
-              >
-                <Layout>
-                  <ReportSummary />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/challenge"
-            element={
-              <ProtectedRoute
-                allowedRoles={["user", "patient", "client", "admin", "doctor"]}
-              >
-                <Layout>
-                  <Challenge30Days />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/diabetes"
-            element={
-              <ProtectedRoute
-                allowedRoles={["user", "patient", "client", "admin", "doctor"]}
-              >
-                <Layout>
-                  <DiabetesCare />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/nutrition"
-            element={
-              <ProtectedRoute
-                allowedRoles={["user", "patient", "client", "admin", "doctor"]}
-              >
-                <Layout>
-                  <Nutrition />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/glucose-log"
-            element={
-              <ProtectedRoute
-                allowedRoles={["user", "patient", "client", "admin", "doctor"]}
-              >
-                <Layout>
-                  <GlucoseLog />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/vital-signs"
-            element={
-              <ProtectedRoute
-                allowedRoles={["user", "patient", "client", "admin", "doctor"]}
-              >
-                <Layout>
-                  <VitalSigns />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/supplements"
-            element={
-              <ProtectedRoute
-                allowedRoles={["user", "patient", "client", "admin", "doctor"]}
-              >
-                <Layout>
-                  <Supplements />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/subscription"
-            element={
-              <ProtectedRoute
-                allowedRoles={["user", "patient", "client", "admin", "doctor"]}
-              >
-                <Layout>
-                  <Subscription />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/diet-plan"
-            element={
-              <ProtectedRoute
-                allowedRoles={["user", "patient", "client", "admin", "doctor"]}
-              >
-                <Layout>
-                  <DietPlan />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/complete-analysis"
-            element={
-              <ProtectedRoute
-                allowedRoles={["user", "patient", "client", "admin", "doctor"]}
-              >
-                <Layout>
-                  <CompleteAnalysis />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/log-vitals/:metric"
-            element={
-              <ProtectedRoute
-                allowedRoles={["user", "patient", "client", "admin", "doctor"]}
-              >
-                <Layout>
-                  <LogVitals />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/step-tracker"
-            element={
-              <ProtectedRoute
-                allowedRoles={["user", "patient", "client", "admin", "doctor"]}
-              >
-                <Layout>
-                  <StepTracker />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          <Route
-            path="/ai-chat"
-            element={
-              <ProtectedRoute
-                allowedRoles={["user", "patient", "client", "admin", "doctor"]}
-              >
-                <Layout>
-                  <AIChat />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
-          {/* <Route path="/health-dna" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><HealthDNA /></Layout></ProtectedRoute>} /> */}
-          <Route
-            path="/food-safety"
-            element={
-              <ProtectedRoute
-                allowedRoles={["user", "patient", "client", "admin", "doctor"]}
-              >
-                <Layout>
-                  <FoodSafety />
-                </Layout>
-              </ProtectedRoute>
-            }
-          />
+          <Route path="/dashboard" element={<ProtectedRoute allowedRoles={["user", "patient", "client", "admin", "doctor"]}><Layout><DashboardEnhanced /></Layout></ProtectedRoute>} />
+          <Route path="/upload" element={<ProtectedRoute allowedRoles={["user", "patient", "client", "admin", "doctor"]}><Layout><UploadReport /></Layout></ProtectedRoute>} />
+          <Route path="/reports" element={<ProtectedRoute allowedRoles={["user", "patient", "client", "admin", "doctor"]}><Layout><AllReports /></Layout></ProtectedRoute>} />
+          <Route path="/reports/:id" element={<ProtectedRoute allowedRoles={["user", "patient", "client", "admin", "doctor"]}><Layout><ReportAnalysisMobile /></Layout></ProtectedRoute>} />
+          <Route path="/report/:id" element={<ProtectedRoute allowedRoles={["user", "patient", "client", "admin", "doctor"]}><Layout><ReportAnalysisMobile /></Layout></ProtectedRoute>} />
+          <Route path="/reports/:id/summary" element={<ProtectedRoute allowedRoles={["user", "patient", "client", "admin", "doctor"]}><Layout><ReportSummary /></Layout></ProtectedRoute>} />
+          <Route path="/challenge" element={<ProtectedRoute allowedRoles={["user", "patient", "client", "admin", "doctor"]}><Layout><Challenge30Days /></Layout></ProtectedRoute>} />
+          <Route path="/diabetes" element={<ProtectedRoute allowedRoles={["user", "patient", "client", "admin", "doctor"]}><Layout><DiabetesCare /></Layout></ProtectedRoute>} />
+          <Route path="/nutrition" element={<ProtectedRoute allowedRoles={["user", "patient", "client", "admin", "doctor"]}><Layout><Nutrition /></Layout></ProtectedRoute>} />
+          <Route path="/glucose-log" element={<ProtectedRoute allowedRoles={["user", "patient", "client", "admin", "doctor"]}><Layout><GlucoseLog /></Layout></ProtectedRoute>} />
+          <Route path="/vital-signs" element={<ProtectedRoute allowedRoles={["user", "patient", "client", "admin", "doctor"]}><Layout><VitalSigns /></Layout></ProtectedRoute>} />
+          <Route path="/medical-vault" element={<ProtectedRoute allowedRoles={["user", "patient", "client", "admin", "doctor"]}><Layout><MedicalVault /></Layout></ProtectedRoute>} />
+          <Route path="/supplements" element={<ProtectedRoute allowedRoles={["user", "patient", "client", "admin", "doctor"]}><Layout><Supplements /></Layout></ProtectedRoute>} />
+          <Route path="/subscription" element={<ProtectedRoute allowedRoles={["user", "patient", "client", "admin", "doctor"]}><Layout><Subscription /></Layout></ProtectedRoute>} />
+          <Route path="/diet-plan" element={<ProtectedRoute allowedRoles={["user", "patient", "client", "admin", "doctor"]}><Layout><DietPlan /></Layout></ProtectedRoute>} />
+          <Route path="/complete-analysis" element={<ProtectedRoute allowedRoles={["user", "patient", "client", "admin", "doctor"]}><Layout><CompleteAnalysis /></Layout></ProtectedRoute>} />
+          <Route path="/log-vitals/:metric" element={<ProtectedRoute allowedRoles={["user", "patient", "client", "admin", "doctor"]}><Layout><LogVitals /></Layout></ProtectedRoute>} />
+          <Route path="/step-tracker" element={<ProtectedRoute allowedRoles={["user", "patient", "client", "admin", "doctor"]}><Layout><StepTracker /></Layout></ProtectedRoute>} />
+          <Route path="/ai-chat" element={<ProtectedRoute allowedRoles={["user", "patient", "client", "admin", "doctor"]}><Layout><AIChat /></Layout></ProtectedRoute>} />
+          <Route path="/food-safety" element={<ProtectedRoute allowedRoles={["user", "patient", "client", "admin", "doctor"]}><Layout><FoodSafety /></Layout></ProtectedRoute>} />
 
           {/* Shared Routes */}
           <Route
