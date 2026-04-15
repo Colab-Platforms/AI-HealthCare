@@ -98,10 +98,15 @@ export default function ForgotPassword() {
                 <div className="absolute inset-0 bg-gradient-to-br from-[#064e3b] via-[#065f46] to-[#042f24] opacity-90" />
 
                 <div className="relative z-10 flex flex-col justify-center items-center w-full p-12 text-white text-center">
-                    <div className="w-20 h-20 bg-white/20 backdrop-blur-xl rounded-3xl flex items-center justify-center mb-8 border border-white/30">
-                        {step === 1 && <Mail className="w-10 h-10 text-white" />}
-                        {step === 2 && <ShieldCheck className="w-10 h-10 text-white" />}
-                        {step === 3 && <KeyRound className="w-10 h-10 text-white" />}
+                    <div className="flex justify-center mb-10 group">
+                        <div className="relative">
+                            <div className="absolute inset-0 bg-emerald-400/20 blur-2xl rounded-full group-hover:bg-emerald-400/40 transition-all duration-700" />
+                            <img 
+                                src="/assets/logos/logo-icon.png" 
+                                alt="take.health" 
+                                className="h-32 w-auto object-contain relative z-10 transition-transform duration-700 group-hover:scale-105"
+                            />
+                        </div>
                     </div>
                     <h1 className="text-4xl font-black mb-4 tracking-tighter uppercase whitespace-normal">
                         {step === 1 ? 'Forgot Password?' : step === 2 ? 'Check Your Email' : 'Reset Password'}
@@ -116,11 +121,11 @@ export default function ForgotPassword() {
 
             {/* Right Panel - Form */}
             <div className="flex-1 flex bg-white overflow-y-auto">
-                <div className="w-full max-w-xl mx-auto flex flex-col lg:justify-center px-6 sm:px-12 lg:px-20 pt-0 pb-8 sm:py-12">
+                <div className="w-full max-w-xl mx-auto flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-8 sm:py-12">
                     {/* Mobile Logo */}
                     <div className="lg:hidden flex justify-center mb-1">
                         <img 
-                            src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
+                            src="/assets/logos/logo-full.png" 
                             alt="take.health" 
                             className="h-20 w-auto object-contain"
                         />
