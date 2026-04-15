@@ -41,6 +41,7 @@ import FoodSafety from "./pages/FoodSafety";
 import CompleteAnalysis from "./pages/CompleteAnalysis";
 import Onboarding from "./pages/Onboarding";
 import LandingPage from "./pages/LandingPage";
+import HowItWorks from "./pages/HowItWorks";
 // import HealthDNA from './pages/HealthDNA';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
@@ -143,6 +144,7 @@ export default function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={getLoginRedirect()} />
           <Route path="/register" element={<Register />} />
+          <Route path="/how-it-works" element={<HowItWorks />} />
           <Route
             path="/forgot-password"
             element={user ? <Navigate to="/dashboard" /> : <ForgotPassword />}
