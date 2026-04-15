@@ -36,16 +36,17 @@ import FoodSafety from './pages/FoodSafety';
 import CompleteAnalysis from './pages/CompleteAnalysis';
 import Onboarding from './pages/Onboarding';
 import LandingPage from './components/landing/LandingPage';
+import AboutUs from './pages/AboutUs';
 // import HealthDNA from './pages/HealthDNA';
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
   const { user, loading } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   if (loading) return <GenericSkeleton />;
   if (!user) return <Navigate to="/login" replace />;
-  
+
   // Check onboarding for regular users
   const hasSeenOnboarding = localStorage.getItem('has_seen_onboarding') || user?.profile?.hasSeenMobileTour;
   if (user.role === 'user' && !hasSeenOnboarding && location.pathname !== '/onboarding') {
@@ -62,22 +63,22 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     // If we're already on target path but still failing, let's allow it if it's 'user'
     if (user.role !== 'user') return <Navigate to="/login" replace />;
   }
-  
+
   return children;
 };
 
 const AdminRoute = ({ children }) => {
   const { user, loading, isAdmin } = useAuth();
   const location = useLocation();
-  
+
   if (loading) return <GenericSkeleton />;
   if (!user) return <Navigate to="/login" replace />;
-  
+
   if (!isAdmin()) {
     if (location.pathname !== '/dashboard') return <Navigate to="/dashboard" replace />;
     return <Navigate to="/login" replace />;
   }
-  
+
   return children;
 };
 
@@ -95,10 +96,10 @@ export default function App() {
 
   // PWA Standalone Redirect Logic
   useEffect(() => {
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || 
-                        window.navigator.standalone || 
-                        document.referrer.includes('android-app://');
-    
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches ||
+      window.navigator.standalone ||
+      document.referrer.includes('android-app://');
+
     if (isStandalone && location.pathname === '/') {
       console.log('📱 PWA Standalone detected, redirecting...');
       if (isAdmin()) {
@@ -112,7 +113,7 @@ export default function App() {
   }, [location.pathname, navigate]);
 
   console.log('Rendering App', { userEmail: user?.email, isAuth: !!user, path: location.pathname });
-  
+
   useEffect(() => {
     console.log('📍 Route Changed:', location.pathname);
   }, [location.pathname]);
@@ -122,6 +123,7 @@ export default function App() {
       <div className="min-h-screen bg-[#F9FCF3]">
         <Routes>
           <Route path='/landing' element={<LandingPage />} />
+          <Route path='/about' element={<AboutUs />} />
           <Route path="/" element={<Landing />} />
           <Route path="/login" element={getLoginRedirect()} />
           <Route path="/register" element={<Register />} />
@@ -146,7 +148,7 @@ export default function App() {
           <Route path="/log-vitals/:metric" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><LogVitals /></Layout></ProtectedRoute>} />
           <Route path="/step-tracker" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><StepTracker /></Layout></ProtectedRoute>} />
           <Route path="/ai-chat" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><AIChat /></Layout></ProtectedRoute>} />
-{/* <Route path="/health-dna" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><HealthDNA /></Layout></ProtectedRoute>} /> */}
+          {/* <Route path="/health-dna" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><HealthDNA /></Layout></ProtectedRoute>} /> */}
           <Route path="/food-safety" element={<ProtectedRoute allowedRoles={['user', 'patient', 'client', 'admin', 'doctor']}><Layout><FoodSafety /></Layout></ProtectedRoute>} />
 
           {/* Shared Routes */}
