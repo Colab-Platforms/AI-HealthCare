@@ -1,6 +1,7 @@
 import React, { lazy, Suspense } from "react";
 import Navbar from "../components/landing/landing-components/Navbar";
 import Hero from "../components/landing/landing-components/Hero";
+import WhatsAppButton from "../components/landing/landing-components/WhatsAppButton";
 
 const CTA = lazy(() => import("../components/landing/landing-components/CTA"));
 const Demo = lazy(
@@ -27,7 +28,7 @@ const Testimonials = lazy(
 
 const LandingPage = () => {
   return (
-    <section className="bg-landing-light-bg text-landing-text font-landing-body">
+    <section className="bg-landing-light-bg text-landing-text font-landing-body relative">
       <Navbar />
       <Hero />
       <Suspense fallback={<div className="h-20" />}>
@@ -40,6 +41,7 @@ const LandingPage = () => {
         <FAQs />
         <Footer />
       </Suspense>
+      <WhatsAppButton />
     </section>
   );
 };

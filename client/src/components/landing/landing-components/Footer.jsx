@@ -19,18 +19,6 @@ const fadeIn = {
 
 const Footer = () => {
   const [openSections, setOpenSections] = useState([]);
-  const [showBackToTop, setShowBackToTop] = useState(false);
-
-  useEffect(() => {
-    const handleScroll = () => {
-      setShowBackToTop(window.scrollY > 300);
-    };
-
-    handleScroll();
-    window.addEventListener("scroll", handleScroll, { passive: true });
-
-    return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
 
   const footerItems = [
     {
@@ -312,22 +300,6 @@ const Footer = () => {
           <p>Designed with purpose. Priced with care.</p>
         </div>
 
-        <motion.button
-          type="button"
-          onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-          initial={{ opacity: 0, y: 12, scale: 0.95 }}
-          animate={
-            showBackToTop
-              ? { opacity: 1, y: 0, scale: 1 }
-              : { opacity: 0, y: 12, scale: 0.95 }
-          }
-          transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="fixed bottom-5 right-5 z-50 flex h-12 w-12 items-center justify-center rounded-full border border-white/15 bg-white/10 text-landing-text shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl transition-transform duration-200 hover:scale-105 hover:bg-white/15 focus:outline-none focus:ring-offset-2 md:bottom-8 md:right-8"
-          aria-label="Back to top"
-          title="Back to top"
-        >
-          <ArrowUp className="h-5 w-5" />
-        </motion.button>
       </div>
     </motion.section>
   );

@@ -83,7 +83,7 @@ export function Component() {
       for (const s of slides) {
         try {
           const imageUrl = isMobileDevice ? (s.mediaMobile || s.media) : s.media;
-          const t = await new Promise<any>((res, rej) => loader.load(imageUrl, (tex) => res(tex), undefined, rej));
+          const t = await new Promise<any>((res, rej) => loader.load(imageUrl, (tex: any) => res(tex), undefined, rej));
           t.minFilter = t.magFilter = THREE.LinearFilter;
           t.userData = { size: new THREE.Vector2(t.image.width, t.image.height) };
           slideTextures.push(t);
