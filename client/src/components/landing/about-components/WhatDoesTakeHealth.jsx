@@ -163,7 +163,7 @@ const WhatDoesTakeHealth = () => {
 
                 {/* Lower Part (Image - Reduced height for mobile) */}
                 <div
-                    className="relative w-full h-[400px] overflow-hidden"
+                    className="relative w-full w-full h-[425px] md:h-[700px] overflow-hidden mx-auto"
                     style={{ borderRadius: '12px' }}
                 >
                     <img src="/landing/about/Longevity.webp" alt="Longevity" className="absolute inset-0 w-full h-90% object-cover" />

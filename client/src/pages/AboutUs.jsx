@@ -4,6 +4,8 @@ import AboutHero from '../components/landing/about-components/AboutHero'
 import { AboutParagraph } from '../components/landing/about-components/AboutParagraph'
 import WhatDoesTakeHealth from '../components/landing/about-components/WhatDoesTakeHealth'
 import Footer from '../components/landing/landing-components/Footer'
+import HealthcareRedefined from '../components/landing/about-components/HealthcareRedefined'
+import Faq from '../components/landing/about-components/Faq'
 
 
 const AboutUs = () => {
@@ -14,9 +16,8 @@ const AboutUs = () => {
             <Suspense fallback={<div className="h-20" />}>
                 <AboutParagraph />
                 <WhatDoesTakeHealth />
-                {/* <WhatWeDoSection /> */}
-                {/* <RedefinedSection /> */}
-                {/* <CardsSection /> */}
+                <HealthcareRedefined />
+                <Faq />
                 <Footer />
             </Suspense>
         </section>
