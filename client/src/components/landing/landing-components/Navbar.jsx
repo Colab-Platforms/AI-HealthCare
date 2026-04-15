@@ -8,7 +8,7 @@ const Navbar = () => {
   const navLinks = [
     { to: "/", label: "Home" },
     { to: "/about", label: "About Us" },
-    { to: "#", label: "How It Works" },
+    { to: "/how-it-works", label: "How It Works" },
     { to: "#", label: "FAQ" },
   ];
 
@@ -26,14 +26,14 @@ const Navbar = () => {
     >
       <div>
         <img
-          src="/landing/logo.svg"
+          src="/landing/logo.png"
           alt="AI HealthCare"
           className="w-44 sm:w-48 lg:w-52 h-auto"
         />
       </div>
 
       <div className="hidden lg:block">
-        <ul className="flex items-center gap-8">
+        <ul className="flex items-center gap-10">
           {navLinks.map((link) => (
             <Link key={link.to} to={link.to} className={linkClass}>
               {link.label}
@@ -49,15 +49,15 @@ const Navbar = () => {
         >
           Log in
         </Link>
-        <Link to="/get-started">
-          <button className={ctaButtonClass}>Get App</button>
+        <Link to="/register">
+          <button className={ctaButtonClass}>SIGN UP</button>
         </Link>
       </div>
 
       <div className="lg:hidden flex items-center gap-3">
-        <Link to="/login" onClick={() => setIsMenuOpen(false)}>
+        <Link to="/register" onClick={() => setIsMenuOpen(false)}>
           <button className="px-5 py-2 bg-landing-primary text-white font-landing-accent rounded-full hover:bg-landing-primary/90 transition">
-            Log in
+            Sign Up
           </button>
         </Link>
 

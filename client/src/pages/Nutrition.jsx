@@ -315,7 +315,10 @@ function Nutrition() {
         const chartData = trends.map(day => ({
           day: new Date(day.date).toLocaleDateString('en-IN', { weekday: 'short', timeZone: 'Asia/Kolkata' }),
           value: day.totalCalories,
-          active: new Date(day.date).toISOString().split('T')[0] === date
+          active: new Date(day.date).toISOString().split('T')[0] === date,
+          healthyFoodsCount: day.healthyFoodsCount || 0,
+          junkFoodsCount: day.junkFoodsCount || 0,
+          totalFoodsCount: day.totalFoodsCount || 0
         }));
         setWeeklyTrendsData(chartData);
       }
@@ -575,7 +578,8 @@ function Nutrition() {
       
       // If we are auto-logging from analysis, we don't want to close the result detail view
       // But we DO want to close the initial "Add Meal" input modal
-      setIsModalOpen(false); 
+      setIsModalOpen(false);
+      setFoodInput('');
     } catch (error) {
       toast.error('Failed to log meal');
     }
@@ -691,16 +695,19 @@ function Nutrition() {
        <div className="container mx-auto px-4 pt-2 pb-8">
           <NutritionTab 
             onLogFood={async (mode, mealType, file) => {
-              const inputMode = mode === 'photo' || mode === 'Add Food via Photo' ? 'Scan' :
+              const inputMode = mode === 'photo' || mode === 'Add Food via Photo' || mode === 'import' || mode === 'Import Image' ? 'Scan' :
                                mode === 'voice' || mode === 'Voice Log' ? 'Predict' :
-                               mode === 'text' || mode === 'Type' ? 'Type' : 
+                               mode === 'text' || mode === 'Type' || mode === 'Text Only' ? 'Type' : 
                                mode === 'Scan' ? 'Scan' : 'Scan';
+              
+              // Clear previous inputs
+              setFoodInput('');
+              setImage(null);
+              setImagePreview(null);
               
               if (inputMode === 'Scan') {
                 setInputMethod('Scan');
                 if (file) {
-                  setImage(null);
-                  setImagePreview(null);
                   if (mealType) setMealTab(mealType);
                   setIsModalOpen(true);
                   await handleImageSelect(file, true);

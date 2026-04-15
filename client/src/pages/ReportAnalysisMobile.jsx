@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useLocation } from 'react-router-dom';
 import { healthService } from '../services/api';
 import api from '../services/api';
 import {
@@ -44,6 +44,7 @@ const healthTipsDefaults = [
 export default function ReportAnalysisMobile() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const location = useLocation();
     const { addPendingAnalysis, pendingAnalysisIds, dataRefreshTrigger } = useData();
     const [report, setReport] = useState(null);
     const [loading, setLoading] = useState(true);
@@ -323,7 +324,13 @@ export default function ReportAnalysisMobile() {
             {/* Header */}
             <div className="px-6 pt-12 pb-6 flex items-center justify-between sticky top-0 bg-[#F2F5EC]/80 dark:bg-[#161719]/80 backdrop-blur-md z-50 border-b border-white/50">
                 <button 
-                  onClick={() => navigate('/upload')}
+                  onClick={() => {
+                    if (location.state?.fromVault) {
+                        navigate('/medical-vault');
+                    } else {
+                        navigate('/reports');
+                    }
+                  }}
                   className="w-10 h-10 bg-white shadow-sm border border-white rounded-full flex items-center justify-center text-[#1a2138] hover:scale-105 transition-all no-pdf"
                 >
                     <ArrowLeft size={20} strokeWidth={2.5} />

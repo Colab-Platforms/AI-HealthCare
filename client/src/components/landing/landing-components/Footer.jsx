@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowUp } from "lucide-react";
+import { ArrowUp, Mail, Phone } from "lucide-react";
 
 const fadeUp = {
   initial: { opacity: 0, y: 30 },
@@ -36,27 +36,27 @@ const Footer = () => {
     {
       title: "Platform",
       items: [
-        { name: "Features", link: "/features" },
-        { name: "AI Analysis", link: "/pricing" },
-        { name: "Health Coaching", link: "/about" },
-        { name: "Pricing", link: "/contact" },
+        { name: "Features", link: "#" },
+        { name: "AI Analysis", link: "#" },
+        { name: "Health Coaching", link: "#" },
+        { name: "Pricing", link: "#" },
       ],
     },
     {
       title: "Support",
       items: [
-        { name: "Help Center", link: "/features" },
-        { name: "Safety Guide", link: "/pricing" },
-        { name: "Community", link: "/about" },
-        { name: "Contact", link: "/contact" },
+        { name: "Help Center", link: "#" },
+        { name: "Safety Guide", link: "#" },
+        { name: "Community", link: "#" },
+        { name: "Contact", link: "#" },
       ],
     },
     {
       title: "Legal",
       items: [
-        { name: "Privacy Policy", link: "/features" },
-        { name: "Terms of Service", link: "/pricing" },
-        { name: "Medical Disclaimer", link: "/about" },
+        { name: "Privacy Policy", link: "#" },
+        { name: "Terms of Service", link: "#" },
+        { name: "Medical Disclaimer", link: "#" },
       ],
     },
   ];
@@ -89,7 +89,7 @@ const Footer = () => {
               ease: [0.16, 1, 0.3, 1],
             }}
           >
-            <img src="/landing/logo.svg" className="mb-5" alt="" />
+            <img src="/landing/logo.png" className="mb-5 w-16 lg:w-60" alt="" />
             <p className="max-w-sm">
               The definitive AI health companion for those who demand more from
               their bodies. Precision analytics for everyday vitality.
@@ -148,10 +148,31 @@ const Footer = () => {
               <button
                 type="submit"
                 className="text-white absolute right-0 bottom-2"
+                disabled
               >
                 Subscribe
               </button>
             </form>
+
+            <h5 className="uppercase text-white/50 my-5 tracking-wider">
+              Get in Touch
+            </h5>
+            <div className="flex flex-col gap-4">
+              <a
+                href="mailto:takesolutionsltd@gmail.com"
+                className="flex items-center gap-2 hover:text-white transition"
+              >
+                <Mail />
+                <span>takesolutionsltd@gmail.com</span>
+              </a>
+              <a
+                href="tel:+918156020445"
+                className="flex items-center gap-2 hover:text-white transition"
+              >
+                <Phone />
+                <span>+918156020445</span>
+              </a>
+            </div>
           </motion.div>
         </motion.div>
 
@@ -169,7 +190,11 @@ const Footer = () => {
               ease: [0.16, 1, 0.3, 1],
             }}
           >
-            <img src="/landing/logo.svg" className="mb-5" alt="" />
+            <img
+              src="/landing/logo.png"
+              className="mb-5 w-2/3 lg:w-60"
+              alt=""
+            />
             <p className="max-w-sm">
               The definitive AI health companion for those who demand more from
               their bodies. Precision analytics for everyday vitality.
@@ -260,15 +285,30 @@ const Footer = () => {
               <button
                 type="submit"
                 className="text-white absolute right-0 bottom-2"
+                disabled
               >
                 Subscribe
               </button>
             </form>
+
+            <h5 className="uppercase text-white/50 my-5 tracking-wider">
+              Get in Touch
+            </h5>
+            <div className="flex flex-col gap-3">
+              <p className="flex items-center gap-2">
+                <Mail />
+                <span>takesolutionsltd@gmail.com</span>
+              </p>
+              <p className="flex items-center gap-2">
+                <Phone />
+                <span>+918156020445</span>
+              </p>
+            </div>
           </motion.div>
         </motion.div>
 
         <div className="text-center lg:text-left lg:flex justify-between w-full border-t border-white/10 pt-5">
-          <p>© 2026 FitCure Inc. All rights reserved.</p>
+          <p>© 2026 Take Solutions Ltd. All rights reserved.</p>
           <p>Designed with purpose. Priced with care.</p>
         </div>
 

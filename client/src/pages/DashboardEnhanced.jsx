@@ -8,7 +8,7 @@ import {
   ArrowUpRight, Upload, Coffee, Dumbbell, MessageCircle, BarChart3,
   Circle, Smile, FlaskConical, Leaf, Pill, CheckCircle2, Zap, Eye,
   UtensilsCrossed, UploadCloud, ShieldCheck, AlertTriangle, Check, Dna,
-  Scale, Footprints, X, Minus, GlassWater, Save, ArrowRight, Lightbulb
+  Scale, Footprints, X, Minus, GlassWater, Save, ArrowRight, Lightbulb, Clock
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { Link, useNavigate, useLocation } from 'react-router-dom';

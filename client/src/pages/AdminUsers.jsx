@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  Users, Search, ChevronLeft, ChevronRight, UserCheck, 
-  UserX, Eye, X, Mail, Smartphone, Award, Shield, Activity, ExternalLink, Trash2
+import {
+    Users, Search, ChevronLeft, ChevronRight, UserCheck,
+    UserX, Eye, X, Mail, Smartphone, Award, Shield, Activity, ExternalLink, Trash2
 } from 'lucide-react';
 import { adminService } from '../services/api';
 import toast from 'react-hot-toast';
@@ -79,7 +79,7 @@ export default function AdminUsers() {
                 localStorage.setItem('originalAdminToken', localStorage.getItem('token'));
                 localStorage.setItem('originalAdminUser', localStorage.getItem('user'));
             }
-            
+
             localStorage.setItem('token', data.token);
             localStorage.setItem('user', JSON.stringify(data));
             toast.success('Switching to user view...');
@@ -90,13 +90,13 @@ export default function AdminUsers() {
     };
 
     const handleDeleteUser = async (userId, userName) => {
-        if (!window.confirm(`CRITICAL ACTION: Are you sure you want to PERMANENTLY delete user "${userName}"? This action is IRREVERSIBLE and will wipe all health records, reports, and associated data from the database.`)) {
+        if (!window.confirm(`CRITICAL ACTION: Are you sure you want to PERMANENTLY delete user "${userName}"? .`)) {
             return;
         }
 
         try {
             await adminService.deleteUser(userId);
-            toast.success('User permanently purged from system');
+            toast.success('User permanently deleted');
             if (userDetail?._id === userId) {
                 setUserDetail(null);
             }
@@ -127,7 +127,7 @@ export default function AdminUsers() {
                     <h1 className="text-2xl font-bold text-slate-800">User Registry</h1>
                     <p className="text-slate-500 text-sm">{total} total system identities recorded</p>
                 </div>
-                
+
                 <div className="flex bg-white p-1 rounded-xl border border-slate-100 shadow-sm overflow-x-auto whitespace-nowrap">
                     {['', 'user', 'admin', 'superadmin'].map((role) => (
                         <button
@@ -144,9 +144,9 @@ export default function AdminUsers() {
             {/* Search */}
             <div className="relative">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input 
+                <input
                     type="text"
-                    placeholder="Search by name, email or identifier..."
+                    placeholder="Search by username or email..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     className="w-full pl-11 pr-4 py-3 bg-white border border-slate-100 rounded-2xl text-sm focus:border-blue-500 outline-none shadow-sm transition-all"
@@ -164,9 +164,9 @@ export default function AdminUsers() {
                         <table className="w-full text-left">
                             <thead className="bg-slate-50/50">
                                 <tr className="border-b border-slate-50">
-                                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Identify</th>
+                                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Username</th>
                                     <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Authority</th>
-                                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Status</th>
+                                    <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Registration</th>
                                     <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Actions</th>
                                 </tr>
                             </thead>
@@ -190,21 +190,18 @@ export default function AdminUsers() {
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${
-                                                    u.role === 'superadmin' ? 'bg-purple-50 text-purple-600 border-purple-100' :
+                                                <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${u.role === 'superadmin' ? 'bg-purple-50 text-purple-600 border-purple-100' :
                                                     u.role === 'admin' ? 'bg-red-50 text-red-600 border-red-100' :
-                                                    (u.role === 'user' || u.role === 'patient') ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
-                                                    'bg-slate-100 text-slate-600 border-slate-200'
-                                                }`}>
+                                                        (u.role === 'user' || u.role === 'patient') ? 'bg-emerald-50 text-emerald-600 border-emerald-100' :
+                                                            'bg-slate-100 text-slate-600 border-slate-200'
+                                                    }`}>
                                                     {u.role === 'patient' ? 'user' : u.role}
                                                 </span>
                                             </td>
                                             <td className="px-6 py-4">
-                                                <div className="flex items-center gap-2">
-                                                    <div className={`w-1.5 h-1.5 rounded-full ${u.isActive ? 'bg-emerald-500' : 'bg-slate-300'}`} />
-                                                    <span className={`text-[10px] font-bold uppercase ${u.isActive ? 'text-emerald-600' : 'text-slate-400'}`}>
-                                                        {u.isActive ? 'Active' : 'Suspended'}
-                                                    </span>
+                                                <div>
+                                                    <p className="text-[11px] font-bold text-slate-700">{new Date(u.createdAt).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}</p>
+                                                    <p className="text-[9px] text-slate-400 font-medium uppercase">{new Date(u.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}</p>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-right">
@@ -243,13 +240,13 @@ export default function AdminUsers() {
                 {userDetail && (
                     <div className="fixed inset-0 z-[100] flex items-center justify-center overflow-hidden p-4 md:p-8">
                         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={() => setUserDetail(null)} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
-                        <motion.div 
-                            initial={{ scale: 0.9, opacity: 0, y: 20 }} 
-                            animate={{ scale: 1, opacity: 1, y: 0 }} 
-                            exit={{ scale: 0.9, opacity: 0, y: 20 }} 
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                            animate={{ scale: 1, opacity: 1, y: 0 }}
+                            exit={{ scale: 0.9, opacity: 0, y: 20 }}
                             className="relative bg-white w-full max-w-3xl max-h-[90vh] shadow-2xl rounded-3xl flex flex-col overflow-hidden"
                         >
-                            
+
                             <div className="p-6 border-b border-slate-50 flex items-center justify-between bg-slate-50/30">
                                 <div>
                                     <h2 className="font-bold text-slate-800 text-lg">Detailed Identity Profile</h2>
@@ -269,23 +266,22 @@ export default function AdminUsers() {
                                     </div>
                                 </div>
 
-                                 <div className="space-y-4">
-                                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Authority Control</p>
-                                   <div className="grid grid-cols-3 gap-3">
-                                       {['user', 'admin', 'superadmin'].map(r => (
-                                           <button 
-                                                key={r} 
+                                <div className="space-y-4">
+                                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Authority Control</p>
+                                    <div className="grid grid-cols-3 gap-3">
+                                        {['user', 'admin', 'superadmin'].map(r => (
+                                            <button
+                                                key={r}
                                                 onClick={() => handleUpdateRole(userDetail._id, r)}
                                                 disabled={(userDetail.role === r || (userDetail.role === 'patient' && r === 'user')) || updating}
-                                                className={`py-3 rounded-2xl text-xs font-bold border transition-all ${
-                                                    (userDetail.role === r || (userDetail.role === 'patient' && r === 'user')) 
-                                                    ? 'bg-slate-900 text-white border-slate-900 shadow-lg scale-105' 
+                                                className={`py-3 rounded-2xl text-xs font-bold border transition-all ${(userDetail.role === r || (userDetail.role === 'patient' && r === 'user'))
+                                                    ? 'bg-slate-900 text-white border-slate-900 shadow-lg scale-105'
                                                     : 'bg-white text-slate-500 border-slate-100 hover:border-slate-300 hover:bg-slate-50'}`}
-                                           >
-                                               {r.charAt(0).toUpperCase() + r.slice(1)}
-                                           </button>
-                                       ))}
-                                   </div>
+                                            >
+                                                {r.charAt(0).toUpperCase() + r.slice(1)}
+                                            </button>
+                                        ))}
+                                    </div>
                                 </div>
 
                                 <div className="space-y-4">
@@ -302,7 +298,7 @@ export default function AdminUsers() {
                                     </div>
                                 </div>
 
-                                 <div className="space-y-4">
+                                <div className="space-y-4">
                                     <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Health & Lifestyle Metadata</p>
                                     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                                         <div className="p-3 bg-white border border-slate-100 rounded-2xl shadow-sm">
@@ -340,7 +336,7 @@ export default function AdminUsers() {
                                             <p className="text-xs font-bold text-slate-700">{new Date(userDetail.createdAt).toLocaleDateString()}</p>
                                         </div>
                                     </div>
-                                    
+
                                     {/* Additional Detailed Sections */}
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                                         <div className="p-4 bg-slate-50/50 rounded-2xl border border-slate-100">
@@ -431,19 +427,19 @@ export default function AdminUsers() {
                             </div>
 
                             <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4">
-                                <button 
+                                <button
                                     onClick={() => handleImpersonate(userDetail._id)}
                                     className="flex-1 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm transition-all shadow-sm hover:bg-black flex items-center justify-center gap-2"
                                 >
                                     <ExternalLink className="w-4 h-4" /> Login as this User
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => handleToggleStatus(userDetail)}
                                     className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all shadow-sm border ${userDetail.isActive ? 'bg-white text-red-600 border-red-50 hover:bg-red-50' : 'bg-emerald-600 text-white hover:bg-emerald-700'}`}
                                 >
                                     {userDetail.isActive ? 'Suspend Identity' : 'Restore Identity'}
                                 </button>
-                                <button 
+                                <button
                                     onClick={() => handleDeleteUser(userDetail._id, userDetail.name)}
                                     className="px-4 py-3 bg-red-600 text-white rounded-xl font-bold text-sm transition-all shadow-sm hover:bg-red-700"
                                     title="Delete User Permanently"

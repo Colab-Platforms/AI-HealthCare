@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import {
   LayoutDashboard,
@@ -43,8 +44,9 @@ const patientNavItems = [
   { path: "/diabetes", icon: Droplet, label: "Diabetes", isDiabeticOnly: true },
   { path: "/complete-analysis", icon: TrendingUp, label: "Analysis" },
   { path: "/upload", icon: Brain, label: "AI Analyzer" },
+  { path: "/medical-vault", icon: ShieldCheck, label: "Medical Records" },
   { path: "/nutrition", icon: Utensils, label: "Nutrition" },
-  { path: "/diet-plan", icon: FileText, label: "Diet Plan" },
+  { path: "/diet-plan", icon: FileText, label: "Diet Plan" }
 ];
 
 const doctorNavItems = [
@@ -274,11 +276,10 @@ export default function Layout({
                       key={path}
                       to={path}
                       onClick={() => setSidebarOpen(false)}
-                      className={`flex items-center justify-between px-5 py-3.5 rounded-2xl font-bold transition-all group ${
-                        isActive
-                          ? "bg-slate-900 text-white shadow-lg"
-                          : "text-slate-400 hover:text-black hover:bg-slate-50"
-                      }`}
+                      className={`flex items-center justify-between px-5 py-3.5 rounded-2xl font-bold transition-all group ${isActive
+                        ? "bg-slate-900 text-white shadow-lg"
+                        : "text-slate-400 hover:text-black hover:bg-slate-50"
+                        }`}
                     >
                       <div className="flex items-center gap-4">
                         <Icon
@@ -357,17 +358,17 @@ export default function Layout({
               {/* Back Button for Profile & AI Chat */}
               {(location.pathname === "/profile" ||
                 location.pathname === "/ai-chat") && (
-                <button
-                  onClick={() => navigate("/dashboard")}
-                  className="w-10 h-10 rounded-full bg-white/40 border border-white/20 flex items-center justify-center shadow-sm hover:bg-white/60 transition-all mr-2"
-                >
-                  <ArrowLeft
-                    size={20}
-                    className="text-[#1a2138]"
-                    strokeWidth={2.5}
-                  />
-                </button>
-              )}
+                  <button
+                    onClick={() => navigate("/dashboard")}
+                    className="w-10 h-10 rounded-full bg-white/40 border border-white/20 flex items-center justify-center shadow-sm hover:bg-white/60 transition-all mr-2"
+                  >
+                    <ArrowLeft
+                      size={20}
+                      className="text-[#1a2138]"
+                      strokeWidth={2.5}
+                    />
+                  </button>
+                )}
 
               {/* Header Content - Conditional for Profile */}
               {location.pathname === "/profile" ? (
@@ -448,7 +449,7 @@ export default function Layout({
 
               {/* Bell icon on extreme right */}
               <button
-                onClick={() => {}}
+                onClick={() => { }}
                 className="w-10 h-10 rounded-full bg-white/40 border border-white/20 flex items-center justify-center shadow-sm hover:bg-white/60 transition-all"
               >
                 <Bell className="w-5 h-5 text-[#5B8C6F]" />
@@ -464,7 +465,7 @@ export default function Layout({
             className={`flex-1 flex flex-col overflow-x-hidden w-full ${location.pathname === "/ai-chat" ? "" : "main-content-mobile"}`}
             style={
               location.pathname === "/nutrition" ||
-              location.pathname === "/ai-chat"
+                location.pathname === "/ai-chat"
                 ? { padding: 0, backgroundColor: "transparent" }
                 : { padding: 0 }
             }
@@ -477,21 +478,23 @@ export default function Layout({
         <MobileBottomNav />
         <PWAInstallPrompt />
 
-        {showBackToTop && (
-          <motion.button
-            type="button"
-            onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
-            initial={{ opacity: 0, y: 12, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: 0.95 }}
-            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed bottom-24 right-5 z-[260] flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-slate-900/85 text-white shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl transition-transform duration-200 hover:scale-105 hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/30 focus:ring-offset-2 focus:ring-offset-transparent md:bottom-8 md:right-8"
-            aria-label="Back to top"
-            title="Back to top"
-          >
-            <ArrowUp className="h-5 w-5" />
-          </motion.button>
-        )}
+        <AnimatePresence>
+          {showBackToTop && (
+            <motion.button
+              type="button"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              initial={{ opacity: 0, y: 12, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 12, scale: 0.95 }}
+              transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+              className="fixed bottom-24 right-5 z-[260] flex h-12 w-12 items-center justify-center rounded-full border border-white/20 bg-slate-900/85 text-white shadow-[0_12px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl transition-transform duration-200 hover:scale-105 hover:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900/30 focus:ring-offset-2 focus:ring-offset-transparent md:bottom-8 md:right-8"
+              aria-label="Back to top"
+              title="Back to top"
+            >
+              <ArrowUp className="h-5 w-5" />
+            </motion.button>
+          )}
+        </AnimatePresence>
 
         {/* Text Selection Popup - Disabled on AI Chat page */}
         {location.pathname !== "/ai-chat" && <TextSelectionPopup />}
