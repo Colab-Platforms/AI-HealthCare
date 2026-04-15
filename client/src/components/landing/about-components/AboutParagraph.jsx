@@ -11,55 +11,28 @@ const fadeUp = {
 
 export const AboutParagraph = () => {
   return (
-    <section className="bg-landing-light-bg pt-[100px] lg:pt-[230px] px-[20px] lg:ml-[20px] lg:mr-[37px]">
+    <section className="container mx-auto px-5 md:px-16 lg:px-32 mt-32">
       <motion.div
         {...fadeUp}
         className="max-w-[1863px] mx-auto text-center flex flex-col justify-center items-center"
       >
-        <div className="w-full text-center capitalize word-wrap break-word text-[18px] lg:text-[50px] leading-[1.4] text-[#000000]">
+        <div className="w-full text-center capitalize word-wrap break-word text-xl md:text-2xl lg:text-4xl leading-[1.4] text-[#000000]">
           <div className="font-landing-body font-normal">
             Taking control of your health shouldn’t feel confusing.
           </div>
           <div className="font-landing-body font-normal mt-2">
             Over
-            <span className="inline-flex relative w-[54px] lg:w-[140px] h-[24px] lg:h-[60px] bg-[#104747] rounded-[40px] mx-1 lg:mx-2 -rotate-[7deg] align-middle overflow-hidden shadow-sm translate-y-[-4px] lg:translate-y-[-8px]">
-              <img
-                src="/landing/about/virusss.webp"
-                alt="virus icon"
-                className="absolute"
-                style={{
-                  width: '12px', height: '12px', left: '4px', top: '7px',
-                  '--lg-width': '32px', '--lg-height': '32px', '--lg-left': '11.05px', '--lg-top': '18px'
-                }}
-              // We'll use classes for the responsive bits instead of style vars for simplicity
-              />
-              {/* Responsive Icon placement */}
-              <div className="hidden lg:block">
+            <span className="inline-flex conatiner mx-auto relative w-[54px] lg:w-[130px] h-[24px] lg:h-[50px] bg-[#104747] flex justify-center items-center rounded-[40px] mx-2 lg:mx-2 -rotate-[7deg] align-middle overflow-hidden shadow-sm translate-y-[-4px] lg:translate-y-[-8px]">
+              <div className="">
                 <img
                   src="/landing/about/virusss.webp"
                   alt="virus icon"
-                  style={{ width: 32, height: 32, left: 11.05, top: 18, position: 'absolute' }}
+                  className="w-4 h-4 lg:w-10 lg:h-10"
+                // style={{ width: 32, height: 32, left: 11.05, top: 10, position: 'absolute' }}
                 />
               </div>
-              <div className="lg:hidden">
-                <img
-                  src="/landing/about/virusss.webp"
-                  alt="virus icon"
-                  style={{ width: 14, height: 14, left: 4, top: 5, position: 'absolute' }}
-                />
-              </div>
-
-              <span className="font-landing-title absolute text-white font-medium"
-                style={{
-                  left: '20px', top: '4px', fontSize: '12px', transform: 'rotate(-3deg)',
-                  '--lg-left': '52px', '--lg-top': '12px', '--lg-font-size': '32px'
-                }}
-              >
-                70%
-              </span>
-              {/* Responsive text placement */}
-              <div className="hidden lg:block">
-                <span className="font-landing-title" style={{ left: 52, top: 12, position: 'absolute', transform: 'rotate(-3deg)', color: 'white', fontSize: 32, fontWeight: '500' }}>
+              <div className="">
+                <span className="font-landing-body text-sm lg:text-4xl text-center w-5 h-5 lg:w-10 lg:h-10 text-white">
                   70%
                 </span>
               </div>
@@ -84,7 +57,7 @@ export const AboutParagraph = () => {
                 />
               </svg>
             </span>
-            and <br className="hidden lg:block" /> unclear health guidance often without realizing the root cause.
+            and unclear health guidance often without realizing the root cause.
           </div>
           <div className="text-[#104747] font-landing-title font-medium leading-[26.76px] lg:leading-[74.33px] mt-6 lg:mt-12">
             Take Health was built to change that.

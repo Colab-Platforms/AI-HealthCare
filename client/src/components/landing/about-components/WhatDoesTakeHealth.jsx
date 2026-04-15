@@ -10,7 +10,7 @@ const fadeUp = {
 
 const WhatDoesTakeHealth = () => {
     return (
-        <section className="pt-[100px] lg:pt-[205px] px-5 lg:px-0 lg:ml-[72px] lg:mr-[54px]">
+        <section className="container mx-auto mt-28 px-8">
             {/* Desktop View */}
             <div className="hidden lg:flex max-w-[1863px] mx-auto overflow-hidden relative"
                 style={{
@@ -39,48 +39,50 @@ const WhatDoesTakeHealth = () => {
                     />
                 </div>
 
-                <div className="w-1/2 relative min-h-[1152px] z-10">
-                    <div className="flex justify-between items-start w-full max-w-[832px] absolute px-10" style={{ top: '206px', left: '0px' }}>
-                        <div className="relative flex flex-col items-center justify-center shrink-0" style={{ width: '216.51px', height: '216.51px' }}>
-                            <img src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
-                            <div className="relative z-10 flex flex-col items-center text-center">
-                                <span className="text-white text-[40px] font-landing-body font-normal leading-tight">90%</span>
-                                <span className="text-white text-[18px] font-landing-body font-normal leading-tight mt-1">of health data is <br /> never fully used</span>
+                <div className="container w-full flex justify-between items-center gap-10">
+                    <div className="w-1/2 relative min-h-[1152px] z-10">
+                        <div className="flex justify-between items-start max-w-[532px] absolute px-2 gap-5" style={{ top: '206px', left: '0px' }}>
+                            <div className="relative flex flex-col items-center justify-center shrink-0" style={{ width: '148.51px', height: '148.51px' }}>
+                                <img src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
+                                <div className="relative z-10 flex flex-col items-center text-center">
+                                    <span className="text-white text-[40px] font-landing-body font-normal leading-tight">90%</span>
+                                    <span className="text-white text-[12px] font-landing-body font-normal leading-tight mt-1">of health data is <br /> never fully used</span>
+                                </div>
+                            </div>
+                            <div className="relative flex flex-col items-center justify-center shrink-0" style={{ width: '148.51px', height: '148.51px' }}>
+                                <img src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
+                                <div className="relative z-10 flex flex-col items-center text-center">
+                                    <span className="text-white text-[40px] font-landing-body font-normal leading-tight whitespace-nowrap">1 in 3</span>
+                                    <span className="text-white text-[12px] font-landing-body font-normal leading-tight mt-1">people don't understand <br /> their reports</span>
+                                </div>
+                            </div>
+                            <div className="relative flex flex-col items-center justify-center shrink-0" style={{ width: '148.51px', height: '148.51px' }}>
+                                <img src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
+                                <div className="relative z-10 flex flex-col items-center text-center">
+                                    <span className="text-white text-[40px] font-landing-body font-normal leading-tight">50%</span>
+                                    <span className="text-white text-[12px] font-landing-body font-normal leading-tight mt-1">of health depends <br /> on lifestyle</span>
+                                </div>
                             </div>
                         </div>
-                        <div className="relative flex flex-col items-center justify-center shrink-0" style={{ width: '216.51px', height: '216.51px' }}>
-                            <img src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
-                            <div className="relative z-10 flex flex-col items-center text-center">
-                                <span className="text-white text-[40px] font-landing-body font-normal leading-tight whitespace-nowrap">1 in 3</span>
-                                <span className="text-white text-[18px] font-landing-body font-normal leading-tight mt-1">people don’t understand <br /> their reports</span>
-                            </div>
-                        </div>
-                        <div className="relative flex flex-col items-center justify-center shrink-0" style={{ width: '216.51px', height: '216.51px' }}>
-                            <img src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
-                            <div className="relative z-10 flex flex-col items-center text-center">
-                                <span className="text-white text-[40px] font-landing-body font-normal leading-tight">50%</span>
-                                <span className="text-white text-[18px] font-landing-body font-normal leading-tight mt-1">of health depends <br /> on lifestyle</span>
-                            </div>
+
+                        <div className="absolute flex flex-col items-center text-center gap-12" style={{ top: '540px', left: '28px' }}>
+                            <motion.h2 {...fadeUp} className="text-white text-16 md:text-2xl lg:text-4xl font-landing-title">
+                                What Does <span className="italic font-normal">Take Health</span> Do?
+                            </motion.h2>
+                            <motion.p {...fadeUp} transition={{ delay: 0.2 }} className="text-white text-8 md:text-xl lg:text-2xl font-medium font-landing-body leading-snug tracking-tight">
+                                Your health data, transformed into clear, science-backed insights personalized to help you <br /> take control and build a longer, healthier life.
+                            </motion.p>
+                            <motion.button {...fadeUp} transition={{ delay: 0.4 }} className="bg-[#C2D5CD] hover:bg-white text-black text-[24px] font-semibold font-landing-body flex items-center justify-center transition-all duration-300" style={{ width: '188px', height: '58px', borderRadius: '40px' }}>
+                                Start Testing
+                            </motion.button>
                         </div>
                     </div>
 
-                    <div className="absolute flex flex-col items-center text-center gap-12" style={{ top: '540px', left: '28px', width: '788px' }}>
-                        <motion.h2 {...fadeUp} className="text-white text-[60px] leading-tight font-landing-title">
-                            What Does <span className="italic font-normal">Take Health</span> Do?
-                        </motion.h2>
-                        <motion.p {...fadeUp} transition={{ delay: 0.2 }} className="text-white text-[30px] font-medium font-landing-body leading-snug tracking-tight">
-                            Your health data, transformed into clear, science-backed insights personalized to help you <br /> take control and build a longer, healthier life.
-                        </motion.p>
-                        <motion.button {...fadeUp} transition={{ delay: 0.4 }} className="bg-[#C2D5CD] hover:bg-white text-black text-[24px] font-semibold font-landing-body flex items-center justify-center transition-all duration-300" style={{ width: '188px', height: '58px', borderRadius: '40px' }}>
-                            Start Testing
-                        </motion.button>
-                    </div>
-                </div>
-
-                <div className="w-1/2 relative min-h-full">
-                    <img src="/landing/about/Longevity.webp" alt="Longevity" className="absolute inset-0 w-full h-full object-cover" style={{ borderTopRightRadius: '64px', borderBottomRightRadius: '64px' }} />
-                    <div className="absolute inset-x-0 bottom-20 px-20 text-center">
-                        <h2 className="text-white text-[85px] leading-tight font-landing-title italic">Longevity Starts <br /> Here</h2>
+                    <div className="w-1/2 relative min-h-full">
+                        <img src="/landing/about/Longevity.webp" alt="Longevity" className="absolute inset-0 w-full h-full object-cover" style={{ borderTopRightRadius: '64px', borderBottomRightRadius: '64px' }} />
+                        <div className="absolute inset-x-0 bottom-20 px-20 text-center">
+                            <h2 className="text-white text-6xl leading-tight font-landing-title italic">Longevity Starts <br /> Here</h2>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -117,29 +119,29 @@ const WhatDoesTakeHealth = () => {
                     </div>
 
                     {/* Stats Row (Mobile) */}
-                    <div className="flex justify-between items-center w-full px-4 relative z-10" style={{ top: '60px' }}>
+                    <div className="flex justify-center items-center gap-1 w-full px-1 relative z-10 overflow-x-auto" style={{ top: '60px' }}>
                         {/* 90% */}
-                        <div className="relative flex flex-col items-center justify-center" style={{ width: '93.76px', height: '93.76px' }}>
+                        <div className="relative flex flex-col items-center justify-center flex-shrink-0" style={{ width: '85px', height: '85px' }}>
                             <img src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
                             <div className="z-10 text-center flex flex-col items-center pt-1">
-                                <span className="text-white text-[14px] font-landing-body leading-none">90%</span>
-                                <span className="text-white text-[7.5px] font-landing-body leading-tight mt-0.5">of health data is <br /> never fully used</span>
+                                <span className="text-white text-[12px] font-landing-body leading-none">90%</span>
+                                <span className="text-white text-[6px] font-landing-body leading-tight mt-0.5">of health data is <br /> never fully used</span>
                             </div>
                         </div>
                         {/* 1 in 3 */}
-                        <div className="relative flex flex-col items-center justify-center" style={{ width: '93.76px', height: '93.76px' }}>
+                        <div className="relative flex flex-col items-center justify-center flex-shrink-0" style={{ width: '85px', height: '85px' }}>
                             <img src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
                             <div className="z-10 text-center flex flex-col items-center pt-1">
-                                <span className="text-white text-[14px] font-landing-body leading-none">1 in 3</span>
-                                <span className="text-white text-[7.5px] font-landing-body leading-tight mt-0.5">people don’t understand <br /> their reports</span>
+                                <span className="text-white text-[12px] font-landing-body leading-none">1 in 3</span>
+                                <span className="text-white text-[6px] font-landing-body leading-tight mt-0.5">people don't understand <br /> their reports</span>
                             </div>
                         </div>
                         {/* 50% */}
-                        <div className="relative flex flex-col items-center justify-center" style={{ width: '93.76px', height: '93.76px' }}>
+                        <div className="relative flex flex-col items-center justify-center flex-shrink-0" style={{ width: '85px', height: '85px' }}>
                             <img src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
                             <div className="z-10 text-center flex flex-col items-center pt-1">
-                                <span className="text-white text-[14px] font-landing-body leading-none">50%</span>
-                                <span className="text-white text-[7.5px] font-landing-body leading-tight mt-0.5">of health depends <br /> on lifestyle</span>
+                                <span className="text-white text-[12px] font-landing-body leading-none">50%</span>
+                                <span className="text-white text-[6px] font-landing-body leading-tight mt-0.5">of health depends <br /> on lifestyle</span>
                             </div>
                         </div>
                     </div>
@@ -147,7 +149,6 @@ const WhatDoesTakeHealth = () => {
                     {/* Content Section (Mobile) */}
                     <div
                         className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center text-center gap-4 w-[320px] z-10 top-[180px]"
-
                     >
                         <h2 className="text-white text-[14px] font-landing-title leading-tight">
                             What Does <span className="italic font-normal">Take Health</span> Do?
@@ -163,13 +164,12 @@ const WhatDoesTakeHealth = () => {
 
                 {/* Lower Part (Image - Reduced height for mobile) */}
                 <div
-                    className="relative w-full w-full h-[425px] md:h-[700px] overflow-hidden mx-auto"
+                    className="relative w-full h-[425px] md:h-[700px] overflow-hidden mx-auto"
                     style={{ borderRadius: '12px' }}
                 >
                     <img src="/landing/about/Longevity.webp" alt="Longevity" className="absolute inset-0 w-full h-90% object-cover" />
-                    <div className="absolute inset-0 bg-black/5" />
-                    <div className="absolute inset-x-0 bottom-6 px-6 text-center">
-                        <h2 className="text-white text-[32px] leading-tight font-landing-title italic">Longevity Starts <br /> Here</h2>
+                    <div className="absolute inset-x-0 bottom-10 px-6 text-center">
+                        <h2 className="text-white text-2xl leading-tight font-landing-title italic">Longevity Starts <br /> Here</h2>
                     </div>
                 </div>
             </div>

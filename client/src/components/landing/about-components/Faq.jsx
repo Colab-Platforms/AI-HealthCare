@@ -37,24 +37,22 @@ export default function Faq() {
     return (
         <section className="relative w-full flex justify-center items-center px-4 pb-16 md:px-10 lg:px-20">
             <div className="relative w-full h-[500px] md:h-[600px] lg:h-[800px] overflow-hidden shadow-2xl" style={{ borderRadius: '40px' }}>
-                {/* Fixed height container allows the full height of the biker to be visible on mobile */}
                 <img
                     src="/landing/about/frame_1000001190.webp"
                     alt="FAQ"
                     className="absolute inset-0 w-full h-full object-cover object-center"
                 />
 
-                {/* Dark gradient overlay at the top to ensure text readability */}
                 {/* <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-transparent to-transparent h-1/2"></div> */}
 
                 <div className="absolute top-[10%] inset-x-0 flex flex-col items-center px-6 lg:px-20 z-10 w-full h-full overflow-y-auto pb-8">
 
                     <div className="inline-block text-center">
-                        <h2 className="text-white text-[20px] md:text-4xl lg:text-6xl font-landing-title tracking-wide leading-tight mb-6 md:mb-16 lg:mb-20 px-4">
+                        <h2 className="text-white text-[20px] md:text-4xl lg:text-4xl font-landing-title tracking-wide leading-tight mb-6 md:mb-16 lg:mb-20 px-4">
                             Got questions? We've got you.
                         </h2>
 
-                        <div className="w-full flex flex-col text-left px-8 md:px-24 lg:px-56">
+                        <div className="w-full flex flex-col text-left px-8 md:px-12 lg:px-24">
                             <div className="w-full h-[0.1px] bg-white"></div>
 
                             {faqData.map((faq, index) => (

@@ -67,7 +67,7 @@ export default function HealthcareRedefined() {
                         <div className="absolute inset-0 flex items-end justify-center text-white text-center px-4">
                             <p className="text-sm md:text-[30px] h-28 flex flex-col justify-center font-landing-body leading-tight">
                                 {card.title.split(",").map((line, i) => (
-                                    <span key={i} className="block mt-2 first:mt-0">
+                                    <span key={i} className="block first:mt-0">
                                         {line}
                                     </span>
                                 ))}
