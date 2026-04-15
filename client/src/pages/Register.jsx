@@ -27,6 +27,7 @@ export default function Register() {
   const [verificationCode, setVerificationCode] = useState(['', '', '', '', '', '']);
 
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [heightUnit, setHeightUnit] = useState('cm');
@@ -352,9 +353,12 @@ export default function Register() {
                 <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Confirm Password *</label>
                 <div className="relative group">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 group-focus-within:text-[#064e3b] transition-colors" />
-                  <input type="password" value={formData.confirmPassword} onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-sm"
+                  <input type={showConfirmPassword ? "text" : "password"} value={formData.confirmPassword} onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+                    className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-12 pr-12 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-sm"
                     placeholder="Confirm Password" required />
+                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#064e3b] transition-colors">
+                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
                 </div>
                 {formData.confirmPassword && (
                   <p className={`text-[9px] mt-1 ml-1 font-black uppercase tracking-widest ${formData.password === formData.confirmPassword ? 'text-emerald-600' : 'text-red-500'}`}>
