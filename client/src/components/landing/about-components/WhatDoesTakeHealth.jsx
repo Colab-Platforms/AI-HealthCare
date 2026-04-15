@@ -41,7 +41,7 @@ const WhatDoesTakeHealth = () => {
 
                 <div className="container w-full flex justify-between items-center gap-10">
                     <div className="w-1/2 relative min-h-[1152px] z-10">
-                        <div className="flex justify-between items-start max-w-[532px] absolute px-2 gap-5" style={{ top: '206px', left: '0px' }}>
+                        <div className="container mx-28 flex justify-between items-center max-w-[532px] absolute px-2 gap-5" style={{ top: '206px', left: '0px' }}>
                             <div className="relative flex flex-col items-center justify-center shrink-0" style={{ width: '148.51px', height: '148.51px' }}>
                                 <img src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
                                 <div className="relative z-10 flex flex-col items-center text-center">
