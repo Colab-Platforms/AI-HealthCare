@@ -246,42 +246,44 @@ export default function Register() {
       </div>
 
       {/* Main Registration Form Area */}
-      <div className="flex-1 flex items-center justify-center p-0 sm:p-8 bg-slate-50/30">
-        <div className="w-full max-w-md bg-white p-6 sm:p-10 rounded-none sm:rounded-[2.5rem] shadow-[0_20px_60px_rgba(6,78,59,0.05)] border-0 sm:border border-emerald-50/50">
+      <div className="flex-1 flex bg-white sm:bg-slate-50/30 sm:p-8">
+        <div className="w-full max-w-md bg-white p-5 sm:p-10 min-h-screen sm:min-h-0 flex flex-col justify-center rounded-none sm:rounded-[2.5rem] shadow-none sm:shadow-[0_20px_60px_rgba(6,78,59,0.05)] border-0 sm:border border-emerald-50/50">
           {/* Mobile Identity */}
-          <div className="lg:hidden flex justify-center mb-10">
+          <div className="lg:hidden flex justify-center mb-6">
             <img 
               src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
               alt="take.health" 
-              className="h-24 w-auto object-contain"
+              className="h-16 w-auto object-contain"
             />
           </div>
 
-          <div className="mb-10 relative">
+          <div className="mb-4 relative">
             {step > 1 && (
-              <button onClick={() => setStep(step - 0.5)} className="absolute -top-8 left-0 flex items-center gap-1 text-[#064e3b] font-black uppercase text-[10px] tracking-widest hover:text-[#042f24] transition-all">
+              <button onClick={() => setStep(step - 0.5)} className="absolute -top-6 left-0 flex items-center gap-1 text-[#064e3b] font-black uppercase text-[10px] tracking-widest hover:text-[#042f24] transition-all">
                 <ArrowLeft className="w-4 h-4" /> Back
               </button>
             )}
-            <h2 className="text-3xl font-black mb-2 text-[#064e3b] uppercase tracking-tighter mt-2">
-              {step === 1 ? 'Start Journey' : step === 1.5 ? 'Verify Identity' : 'Setup Profile'}
+            <h2 className="text-2xl font-black mb-1 text-[#064e3b] uppercase tracking-tighter mt-1">
+              {step === 1 ? 'Create Account' : step === 1.5 ? 'Verify Identity' : 'Setup Profile'}
             </h2>
-            <p className="text-emerald-800/40 font-black uppercase text-[10px] tracking-[0.2em]">
-              Phase {step === 1.5 ? '1.5' : step === 1 ? '01' : '02'} • {step === 1 ? 'Credentials' : step === 1.5 ? 'Verification' : 'Health Identity'}
-            </p>
+            {step > 1 && (
+              <p className="text-emerald-800/40 font-black uppercase text-[10px] tracking-[0.2em]">
+                {step === 1.5 ? 'Phase 1.5 • Verification' : 'Phase 02 • Health Identity'}
+              </p>
+            )}
           </div>
 
           {step === 1 ? (
-            <form onSubmit={handleNext} className="space-y-4">
+            <form onSubmit={handleNext} className="space-y-2.5">
               <div>
-                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1.5 ml-1">Full Name *</label>
+                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-0.5 ml-1">Full Name *</label>
                 <div className="relative group">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20"
+                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-xl py-2 pl-10 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20 text-sm"
                     placeholder="John Doe"
                     required
                   />
@@ -289,14 +291,14 @@ export default function Register() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1.5 ml-1">Email Address *</label>
+                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-0.5 ml-1">Email Address *</label>
                 <div className="relative group">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
                   <input
                     type="email"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20"
+                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-xl py-2 pl-10 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20 text-sm"
                     placeholder="you@email.com"
                     required
                   />
@@ -304,14 +306,14 @@ export default function Register() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1.5 ml-1">Phone Number *</label>
+                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-0.5 ml-1">Phone Number *</label>
                 <div className="relative group">
-                  <Activity className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
+                  <Activity className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
                   <input
                     type="tel"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
-                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20"
+                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-xl py-2 pl-10 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b) font-bold transition-all placeholder:text-emerald-800/20 text-sm"
                     placeholder="10 digit number"
                     required
                   />
@@ -319,51 +321,51 @@ export default function Register() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1.5 ml-1">Password *</label>
+                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-0.5 ml-1">Password *</label>
                 <div className="relative group">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
                   <input
                     type={showPassword ? "text" : "password"}
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3.5 pl-12 pr-12 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20"
+                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-xl py-2 pl-10 pr-10 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20 text-sm"
                     placeholder="••••••••"
                     required
                   />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-emerald-800/20 hover:text-[#064e3b] transition-colors">
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
                 {/* 🔒 Password Requirements Alert */}
-                <div className="mt-2 ml-1 flex flex-wrap gap-x-3 gap-y-1">
-                  <div className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-widest transition-colors ${/[A-Z]/.test(formData.password) ? 'text-emerald-500' : 'text-emerald-800/20'}`}>
-                    <div className={`w-1 h-1 rounded-full ${/[A-Z]/.test(formData.password) ? 'bg-emerald-500' : 'bg-emerald-800/20'}`} />
-                    1 Uppercase
+                <div className="mt-1 ml-1 flex flex-wrap gap-x-2 gap-y-0 text-[7.5px] font-black uppercase tracking-tight">
+                  <div className={`flex items-center gap-0.5 transition-colors ${/[A-Z]/.test(formData.password) ? 'text-emerald-500' : 'text-emerald-800/10'}`}>
+                    <div className={`w-0.5 h-0.5 rounded-full ${/[A-Z]/.test(formData.password) ? 'bg-emerald-500' : 'bg-emerald-800/10'}`} />
+                    1 UP
                   </div>
-                  <div className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-widest transition-colors ${/[!@#$%^&*]/.test(formData.password) ? 'text-emerald-500' : 'text-emerald-800/20'}`}>
-                    <div className={`w-1 h-1 rounded-full ${/[!@#$%^&*]/.test(formData.password) ? 'bg-emerald-500' : 'bg-emerald-800/20'}`} />
-                    1 Special Char
+                  <div className={`flex items-center gap-0.5 transition-colors ${/[!@#$%^&*]/.test(formData.password) ? 'text-emerald-500' : 'text-emerald-800/10'}`}>
+                    <div className={`w-0.5 h-0.5 rounded-full ${/[!@#$%^&*]/.test(formData.password) ? 'bg-emerald-500' : 'bg-emerald-800/10'}`} />
+                    1 SPEC
                   </div>
-                  <div className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-widest transition-colors ${/[0-9]/.test(formData.password) ? 'text-emerald-500' : 'text-emerald-800/20'}`}>
-                    <div className={`w-1 h-1 rounded-full ${/[0-9]/.test(formData.password) ? 'bg-emerald-500' : 'bg-emerald-800/20'}`} />
-                    1 Number
+                  <div className={`flex items-center gap-0.5 transition-colors ${/[0-9]/.test(formData.password) ? 'text-emerald-500' : 'text-emerald-800/10'}`}>
+                    <div className={`w-0.5 h-0.5 rounded-full ${/[0-9]/.test(formData.password) ? 'bg-emerald-500' : 'bg-emerald-800/10'}`} />
+                    1 NUM
                   </div>
-                  <div className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-widest transition-colors ${formData.password.length >= 6 ? 'text-emerald-500' : 'text-emerald-800/20'}`}>
-                    <div className={`w-1 h-1 rounded-full ${formData.password.length >= 6 ? 'bg-emerald-500' : 'bg-emerald-800/20'}`} />
-                    Min 6 Chars
+                  <div className={`flex items-center gap-0.5 transition-colors ${formData.password.length >= 6 ? 'text-emerald-500' : 'text-emerald-800/10'}`}>
+                    <div className={`w-0.5 h-0.5 rounded-full ${formData.password.length >= 6 ? 'bg-emerald-500' : 'bg-emerald-800/10'}`} />
+                    MIN 6
                   </div>
                 </div>
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1.5 ml-1">Confirm Password *</label>
+                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-0.5 ml-1">Confirm Password *</label>
                 <div className="relative group">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
+                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
                   <input
                     type="password"
                     value={formData.confirmPassword}
                     onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20"
+                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-xl py-2 pl-10 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20 text-sm"
                     placeholder="••••••••"
                     required
                   />
@@ -373,27 +375,27 @@ export default function Register() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 mt-6 text-emerald-50 font-black uppercase text-xs tracking-[0.2em] rounded-2xl transition-all flex items-center justify-center gap-3 bg-[#064e3b] hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] disabled:opacity-70 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
+                className="w-full py-3 mt-3 text-emerald-50 font-black uppercase text-xs tracking-[0.2em] rounded-xl transition-all flex items-center justify-center gap-3 bg-[#064e3b] hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] disabled:opacity-70 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
               >
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><span className="text-sm">Sign Up</span> <ArrowRight className="w-4 h-4" /></>}
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><span className="text-sm">Continue</span> <ArrowRight className="w-4 h-4" /></>}
               </button>
 
-              <div className="mt-8 text-center">
+              <div className="mt-4 text-center">
                 <span className="text-[10px] font-black text-emerald-800/40 uppercase tracking-widest">Already registered?</span>{' '}
                 <Link to="/login" className="ml-2 font-black text-[#064e3b] hover:text-[#042f24] transition-all uppercase text-[10px] tracking-widest border-b-2 border-emerald-100 hover:border-[#064e3b] pb-0.5">Sign In</Link>
               </div>
             </form>
           ) : step === 1.5 ? (
-            <div className="space-y-8 text-center">
-              <div className="w-24 h-24 bg-emerald-50 rounded-[2rem] flex items-center justify-center mx-auto mb-4 border-2 border-dashed border-[#064e3b]/20 relative">
+            <div className="space-y-6 text-center">
+              <div className="w-20 h-20 bg-emerald-50 rounded-[2rem] flex items-center justify-center mx-auto mb-2 border-2 border-dashed border-[#064e3b]/20 relative">
                 <div className="absolute inset-0 bg-emerald-400/10 animate-pulse rounded-[2rem]" />
-                <Mail className="w-10 h-10 text-[#064e3b]" />
+                <Mail className="w-8 h-8 text-[#064e3b]" />
               </div>
-              <div className="space-y-2">
-                <p className="text-[#064e3b] font-black text-xl uppercase tracking-tighter">Enter Code</p>
-                <p className="text-emerald-800/40 font-bold text-[10px] uppercase tracking-widest">Sent to <span className="text-[#064e3b] px-2 py-0.5 bg-emerald-50 rounded-lg">{formData.email}</span></p>
+              <div className="space-y-1">
+                <p className="text-[#064e3b] font-black text-lg uppercase tracking-tighter">Enter Code</p>
+                <p className="text-emerald-800/40 font-bold text-[9px] uppercase tracking-widest">Sent to <span className="text-[#064e3b] px-2 py-0.5 bg-emerald-50 rounded-lg">{formData.email}</span></p>
               </div>
-              <div className="flex justify-center gap-3">
+              <div className="flex justify-center gap-2">
                 {verificationCode.map((digit, i) => (
                   <input
                     key={i}
@@ -418,42 +420,42 @@ export default function Register() {
                         document.getElementById(`otp-${i - 1}`).focus();
                       }
                     }}
-                    className="w-12 h-16 bg-emerald-50/30 border-2 border-emerald-100 rounded-2xl text-center font-black text-2xl focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] focus:outline-none text-[#064e3b] shadow-sm transition-all"
+                    className="w-10 h-14 bg-emerald-50/30 border-2 border-emerald-100 rounded-2xl text-center font-black text-xl focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] focus:outline-none text-[#064e3b] shadow-sm transition-all"
                   />
                 ))}
               </div>
-              <div className="space-y-4">
+              <div className="space-y-3">
                 <button
                   onClick={handleVerifyEmail}
                   disabled={loading}
-                  className="w-full py-4 bg-[#064e3b] text-emerald-50 font-black uppercase text-xs tracking-[0.2em] rounded-2xl shadow-xl hover:bg-[#042f24] transition-all flex items-center justify-center gap-3 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
+                  className="w-full py-3.5 bg-[#064e3b] text-emerald-50 font-black uppercase text-xs tracking-[0.2em] rounded-2xl shadow-xl hover:bg-[#042f24] transition-all flex items-center justify-center gap-3 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
                 >
                   {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span className="text-sm">Confirm Identity</span>}
                 </button>
-                <button onClick={handleResendCode} className="text-[10px] font-black text-emerald-800/30 uppercase tracking-widest hover:text-[#064e3b] transition-colors">Resend Verification Code</button>
+                <button onClick={handleResendCode} className="text-[9px] font-black text-emerald-800/30 uppercase tracking-widest hover:text-[#064e3b] transition-colors">Resend Verification Code</button>
               </div>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="space-y-5">
-              <div className="grid grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1.5 ml-1">Age *</label>
+                  <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1 ml-1">Age *</label>
                   <input
                     type="number"
                     value={formData.age}
                     onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all"
+                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all"
                     placeholder="Years"
                     min="10" max="120"
                     required
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1.5 ml-1">Gender *</label>
+                  <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1 ml-1">Gender *</label>
                   <select
                     value={formData.gender}
                     onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold appearance-none transition-all"
+                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold appearance-none transition-all"
                     required
                   >
                     <option value="">Select</option>
@@ -464,13 +466,13 @@ export default function Register() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <div className="flex items-center justify-between mb-1.5 ml-1">
+                  <div className="flex items-center justify-between mb-1 ml-1">
                     <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest">Height *</label>
                     <div className="flex bg-emerald-100/50 rounded-lg p-0.5">
-                      <button type="button" onClick={() => setHeightUnit('cm')} className={`px-2 py-0.5 text-[9px] font-black uppercase rounded-md transition-all ${heightUnit === 'cm' ? 'bg-[#064e3b] text-white shadow-sm' : 'text-emerald-800/40'}`}>cm</button>
-                      <button type="button" onClick={() => setHeightUnit('ft')} className={`px-2 py-0.5 text-[9px] font-black uppercase rounded-md transition-all ${heightUnit === 'ft' ? 'bg-[#064e3b] text-white shadow-sm' : 'text-emerald-800/40'}`}>ft</button>
+                      <button type="button" onClick={() => setHeightUnit('cm')} className={`px-2 py-0.5 text-[8px] font-black uppercase rounded-md transition-all ${heightUnit === 'cm' ? 'bg-[#064e3b] text-white shadow-sm' : 'text-emerald-800/40'}`}>cm</button>
+                      <button type="button" onClick={() => setHeightUnit('ft')} className={`px-2 py-0.5 text-[8px] font-black uppercase rounded-md transition-all ${heightUnit === 'ft' ? 'bg-[#064e3b] text-white shadow-sm' : 'text-emerald-800/40'}`}>ft</button>
                     </div>
                   </div>
                   
@@ -479,7 +481,7 @@ export default function Register() {
                       type="number"
                       value={formData.height}
                       onChange={(e) => setFormData({ ...formData, height: e.target.value })}
-                      className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all"
+                      className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all"
                       placeholder="170"
                       min="100" max="250"
                       required
@@ -496,7 +498,7 @@ export default function Register() {
                           const totalCm = (parseFloat(f || 0) * 30.48) + (parseFloat(inches || 0) * 2.54);
                           setFormData({ ...formData, height: totalCm.toFixed(1) });
                         }}
-                        className="w-1/2 bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3 px-3 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all"
+                        className="w-1/2 bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-2.5 px-3 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all"
                         required
                       />
                       <input
@@ -509,20 +511,20 @@ export default function Register() {
                           const totalCm = (parseFloat(feet || 0) * 30.48) + (parseFloat(i || 0) * 2.54);
                           setFormData({ ...formData, height: totalCm.toFixed(1) });
                         }}
-                        className="w-1/2 bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3 px-3 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all"
+                        className="w-1/2 bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-2.5 px-3 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all"
                         required
                       />
                     </div>
                   )}
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1.5 ml-1">Weight (kg) *</label>
+                  <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1 ml-1">Weight (kg) *</label>
                   <input
                     type="number"
                     step="0.1"
                     value={formData.weight}
                     onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all"
+                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all"
                     placeholder="70.5"
                     min="30" max="300"
                     required
@@ -531,11 +533,11 @@ export default function Register() {
               </div>
 
               <div>
-                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1.5 ml-1">Activity Level *</label>
+                <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1 ml-1">Activity Level *</label>
                 <select
                   value={formData.activityLevel}
                   onChange={(e) => setFormData({ ...formData, activityLevel: e.target.value })}
-                  className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold appearance-none transition-all"
+                  className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold appearance-none transition-all"
                   required
                 >
                   <option value="sedentary">Sedentary (Little/no exercise)</option>
@@ -546,13 +548,13 @@ export default function Register() {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1.5 ml-1">Are you Diabetic? *</label>
+                  <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1 ml-1">Are you Diabetic? *</label>
                   <select
                     value={formData.isDiabetic}
                     onChange={(e) => setFormData({ ...formData, isDiabetic: e.target.value })}
-                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold appearance-none transition-all"
+                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold appearance-none transition-all"
                     required
                   >
                     <option value="no">No</option>
@@ -560,11 +562,11 @@ export default function Register() {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1.5 ml-1">Diet Preference *</label>
+                  <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1 ml-1">Diet Preference *</label>
                   <select
                     value={formData.dietaryPreference}
                     onChange={(e) => setFormData({ ...formData, dietaryPreference: e.target.value })}
-                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold appearance-none transition-all"
+                    className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold appearance-none transition-all"
                     required
                   >
                     <option value="non-vegetarian">Non-Vegetarian</option>
@@ -578,7 +580,7 @@ export default function Register() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full py-4 mt-4 text-emerald-50 font-black uppercase text-xs tracking-[0.2em] rounded-2xl transition-all flex items-center justify-center gap-3 bg-[#064e3b] hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] disabled:opacity-70 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
+                className="w-full py-3.5 mt-2 text-emerald-50 font-black uppercase text-xs tracking-[0.2em] rounded-2xl transition-all flex items-center justify-center gap-3 bg-[#064e3b] hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] disabled:opacity-70 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
               >
                 {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span className="text-sm">Sign Up</span>}
               </button>

@@ -87,32 +87,32 @@ export default function Login() {
       </div>
 
       {/* Right Panel - Form */}
-      <div className="flex-1 flex items-center justify-center p-0 sm:p-8 bg-slate-50/30">
-        <div className="w-full max-w-md bg-white p-6 sm:p-10 rounded-none sm:rounded-[2.5rem] shadow-[0_20px_60px_rgba(6,78,59,0.05)] border-0 sm:border border-emerald-50/50">
+      <div className="flex-1 flex bg-white sm:bg-slate-50/30 sm:p-8">
+        <div className="w-full max-w-md bg-white p-5 sm:p-10 min-h-screen sm:min-h-0 flex flex-col justify-center rounded-none sm:rounded-[2.5rem] shadow-none sm:shadow-[0_20px_60px_rgba(6,78,59,0.05)] border-0 sm:border border-emerald-50/50">
           {/* Mobile Logo */}
-          <div className="lg:hidden flex justify-center mb-12">
+          <div className="lg:hidden flex justify-center mb-6">
             <img 
               src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099" 
               alt="take.health" 
-              className="h-24 w-auto object-contain"
+              className="h-16 w-auto object-contain"
             />
           </div>
 
-          <div className="text-center mb-10">
-            <h2 className="text-3xl font-black mb-2 text-[#064e3b] tracking-tight uppercase">Sign In</h2>
-            <p className="text-emerald-800/40 font-bold uppercase text-[10px] tracking-[0.2em]">Access your health portal</p>
+          <div className="text-center mb-6">
+            <h2 className="text-2xl font-black mb-1 text-[#064e3b] tracking-tight uppercase">Sign In</h2>
+            <p className="text-emerald-800/40 font-bold uppercase text-[9px] tracking-[0.2em]">Access your health portal</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-2 ml-1">Email Address</label>
+              <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1.5 ml-1">Email Address</label>
               <div className="relative group">
                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-4 pl-12 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20"
+                  className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20"
                   placeholder="you@example.com"
                   required
                 />
@@ -120,17 +120,17 @@ export default function Login() {
             </div>
 
             <div>
-              <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-2 ml-1">Password</label>
+              <label className="block text-[10px] font-black text-emerald-800/40 uppercase tracking-widest mb-1.5 ml-1">Password</label>
               <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-4 pl-12 pr-12 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20"
+                  className="w-full bg-emerald-50/30 border border-emerald-100/50 rounded-2xl py-3.5 pl-12 pr-12 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/5 focus:border-[#064e3b] text-[#064e3b] font-bold transition-all placeholder:text-emerald-800/20"
                   placeholder="••••••••"
                   required
                 />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
@@ -158,7 +158,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 bg-[#064e3b] text-emerald-50 font-black uppercase text-xs tracking-[0.2em] rounded-2xl hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] transition-all flex items-center justify-center gap-3 disabled:opacity-50 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
+              className="w-full py-3.5 bg-[#064e3b] text-emerald-50 font-black uppercase text-xs tracking-[0.2em] rounded-2xl hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] transition-all flex items-center justify-center gap-3 disabled:opacity-50 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -171,9 +171,9 @@ export default function Login() {
             </button>
           </form>
 
-          <p className="text-center mt-12">
+          <p className="text-center mt-8">
             <span className="text-[10px] font-black text-emerald-800/40 uppercase tracking-widest">New to take.health?</span>{' '}
-            <Link to="/register" className="ml-2 font-black text-[#064e3b] hover:text-[#042f24] transition-all uppercase text-[10px] tracking-widest border-b-2 border-emerald-100 hover:border-[#064e3b] pb-0.5">Create Final Profile</Link>
+            <Link to="/register" className="ml-2 font-black text-[#064e3b] hover:text-[#042f24] transition-all uppercase text-[10px] tracking-widest border-b-2 border-emerald-100 hover:border-[#064e3b] pb-0.5">Create Account</Link>
           </p>
         </div>
       </div>
