@@ -750,36 +750,39 @@ export default function Profile() {
                     <ChevronRight size={18} className="text-slate-300" />
                  </button>
 
-                 {/* Terms & Conditions */}
-                 <button 
-                   onClick={() => {
-                     setViewingPdf('https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Terrms_and_Conditions_take.health.pdf?v=1776320323');
-                     setPdfLoading(true);
-                   }}
-                   className="w-full px-8 py-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group"
-                 >
-                    <div className="flex items-center gap-5">
-                       <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
-                          <ScrollText size={18} className="text-slate-600" />
-                       </div>
-                       <span className="text-[15px] font-black text-[#1a1a1a] tracking-tight">Terms & Conditions</span>
-                    </div>
-                    <ChevronRight size={18} className="text-slate-300" />
-                 </button>
+                  {/* Terms & Conditions */}
+                  <button 
+                    onClick={() => {
+                      setViewingPdf('https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Terrms_and_Conditions_take.health_revised.pdf?v=1776407779');
+                      setPdfLoading(true);
+                    }}
+                    className="w-full px-8 py-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group"
+                  >
+                     <div className="flex items-center gap-5">
+                        <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                           <ScrollText size={18} className="text-slate-600" />
+                        </div>
+                        <span className="text-[15px] font-black text-[#1a1a1a] tracking-tight">Terms & Conditions</span>
+                     </div>
+                     <ChevronRight size={18} className="text-slate-300" />
+                  </button>
 
-                 {/* Privacy Policy */}
-                 <button 
-                   onClick={() => toast('Privacy Policy coming soon', { icon: '🔒' })}
-                   className="w-full px-8 py-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group"
-                 >
-                    <div className="flex items-center gap-5">
-                       <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
-                          <Shield size={18} className="text-slate-600" />
-                       </div>
-                       <span className="text-[15px] font-black text-[#1a1a1a] tracking-tight">Privacy Policy</span>
-                    </div>
-                    <ChevronRight size={18} className="text-slate-300" />
-                 </button>
+                  {/* Privacy Policy */}
+                  <button 
+                    onClick={() => {
+                      setViewingPdf('https://cdn.shopify.com/s/files/1/0636/5226/6115/files/take_health_privacy_policy.pdf?v=1776407816');
+                      setPdfLoading(true);
+                    }}
+                    className="w-full px-8 py-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group"
+                  >
+                     <div className="flex items-center gap-5">
+                        <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                           <Shield size={18} className="text-slate-600" />
+                        </div>
+                        <span className="text-[15px] font-black text-[#1a1a1a] tracking-tight">Privacy Policy</span>
+                     </div>
+                     <ChevronRight size={18} className="text-slate-300" />
+                  </button>
 
                  {/* Customer Support */}
                  <button 
@@ -821,7 +824,9 @@ export default function Profile() {
             <div className="p-4 flex items-center justify-between text-white border-b border-white/10 bg-[#1a2138]">
               <div className="flex flex-col">
                 <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">Compliance</h3>
-                <h3 className="text-xs font-black uppercase tracking-tight text-white/90">Terms & Conditions</h3>
+                <h3 className="text-xs font-black uppercase tracking-tight text-white/90">
+                  {viewingPdf?.includes('privacy') ? 'Privacy Policy' : 'Terms & Conditions'}
+                </h3>
               </div>
               <button 
                 onClick={() => setViewingPdf(null)}
@@ -840,9 +845,10 @@ export default function Profile() {
               )}
               
               <iframe 
-                src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingPdf)}&embedded=true`}
-                className="w-full h-full border-none scale-[1.001]"
-                title="PDF Viewer"
+                src={`${viewingPdf}#toolbar=1&navpanes=0&scrollbar=1&view=FitH`}
+                className="w-full h-full border-none bg-white"
+                style={{ WebkitOverflowScrolling: 'touch' }}
+                title="Legal Document"
                 onLoad={() => setPdfLoading(false)}
               />
             </div>

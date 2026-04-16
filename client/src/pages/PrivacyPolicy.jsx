@@ -2,8 +2,8 @@ import React from "react";
 import Navbar from "../components/landing/landing-components/Navbar";
 import Footer from "../components/landing/landing-components/Footer";
 
-const TermsAndCondition = () => {
-  const pdfUrl = "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Terrms_and_Conditions_take.health_revised.pdf?v=1776407779";
+const PrivacyPolicy = () => {
+  const pdfUrl = "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/take_health_privacy_policy.pdf?v=1776407816";
 
   return (
     <div className="bg-landing-light-bg text-landing-text font-landing-body">
@@ -12,11 +12,10 @@ const TermsAndCondition = () => {
         <div className="h-[350px] bg-landing-primary relative z-10 flex items-center justify-center text-center">
           <div className="container px-5 lg:px-20 mx-auto relative z-10 text-white mt-14">
             <h1 className="text-3xl lg:text-6xl text-white font-landing-accent-2 text-balance">
-              Terms and conditions
+              Privacy Policy
             </h1>
             <p className="text-sm lg:text-base text-white mt-4">
-              Please read our terms and conditions carefully before using our
-              services.
+              Your privacy is important to us. Please read our privacy policy carefully.
             </p>
           </div>
         </div>
@@ -24,7 +23,7 @@ const TermsAndCondition = () => {
         <div className="container mx-auto px-5 lg:px-20 h-[calc(100vh-220px)] overflow-hidden  mt-10 ">
           <iframe
             src={`${pdfUrl}#toolbar=1&navpanes=1&scrollbar=1&view=FitH`}
-            title="Terms and Conditions PDF"
+            title="Privacy Policy PDF"
             className="h-full w-full border-0 rounded-lg shadow-lg"
           />
         </div>
@@ -52,4 +51,4 @@ const TermsAndCondition = () => {
   );
 };
 
-export default TermsAndCondition;
+export default PrivacyPolicy;

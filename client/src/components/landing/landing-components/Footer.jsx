@@ -42,7 +42,7 @@ const Footer = () => {
     {
       title: "Legal",
       items: [
-        { name: "Privacy Policy", link: "#" },
+        { name: "Privacy Policy", link: "/privacy-policy" },
         { name: "Terms & Conditions", link: "/terms-and-conditions" },
         { name: "Medical Disclaimer", link: "#" },
       ],

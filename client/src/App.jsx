@@ -45,7 +45,7 @@ import LandingPage from "./pages/LandingPage";
 import HowItWorks from "./pages/HowItWorks";
 import AboutUs from "./pages/AboutUs";
 import TermsAndCondition from "./pages/TermsAndCondition";
-// import HealthDNA from './pages/HealthDNA';
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
 const ProtectedRoute = ({ children, allowedRoles }) => {
     const { user, loading } = useAuth();
@@ -150,6 +150,7 @@ export default function App() {
                     <Route path="/register" element={<Register />} />
                     <Route path="/how-it-works" element={<HowItWorks />} />
                     <Route path="/terms-and-conditions" element={<TermsAndCondition />} />
+                    <Route path="/privacy-policy" element={<PrivacyPolicy />} />
                     <Route
                         path="/forgot-password"
                         element={user ? <Navigate to="/dashboard" /> : <ForgotPassword />}
