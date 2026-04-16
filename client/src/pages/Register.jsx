@@ -248,9 +248,9 @@ export default function Register() {
             <div className="relative">
               <div className="absolute inset-0 bg-emerald-400/20 blur-2xl rounded-full group-hover:bg-emerald-400/40 transition-all duration-700" />
               <img
-                src="/assets/logos/logo-icon.png"
+                src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099"
                 alt="take.health"
-                className="h-32 w-auto object-contain relative z-10 transition-transform duration-700 group-hover:scale-105"
+                className="h-32 w-auto object-contain brightness-0 invert relative z-10 transition-transform duration-700 group-hover:scale-105"
               />
             </div>
           </div>
@@ -271,7 +271,7 @@ export default function Register() {
           {/* Mobile Logo */}
           <div className="lg:hidden flex justify-center mb-1">
             <img
-              src="/assets/logos/logo-full.png"
+              src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099"
               alt="take.health"
               className="h-20 w-auto object-contain"
             />

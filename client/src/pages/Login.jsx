@@ -63,17 +63,17 @@ export default function Login() {
         {/* Decorative Glow Elements matching Dashboard */}
         <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-400/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-cyan-400/10 rounded-full blur-[100px] translate-y-1/4 -translate-x-1/4 pointer-events-none" />
-        
+
         <div className="absolute inset-0 bg-gradient-to-br from-[#064e3b] via-[#065f46] to-[#042f24] opacity-90" />
 
         <div className="relative z-10 flex flex-col justify-center items-center w-full p-12 text-white">
           <div className="flex justify-center mb-10 group">
             <div className="relative">
               <div className="absolute inset-0 bg-emerald-400/20 blur-2xl rounded-full group-hover:bg-emerald-400/40 transition-all duration-700" />
-              <img 
-                src="/assets/logos/logo-icon.png" 
-                alt="take.health" 
-                className="h-32 w-auto object-contain relative z-10 transition-transform duration-700 group-hover:scale-105"
+              <img
+                src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099"
+                alt="take.health"
+                className="h-32 w-auto object-contain brightness-0 invert relative z-10 transition-transform duration-700 group-hover:scale-105"
               />
             </div>
           </div>
@@ -91,9 +91,9 @@ export default function Login() {
         <div className="w-full max-w-xl mx-auto flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-8 sm:py-12">
           {/* Mobile Logo */}
           <div className="lg:hidden flex justify-center mb-1">
-            <img 
-              src="/assets/logos/logo-full.png" 
-              alt="take.health" 
+            <img
+              src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099"
+              alt="take.health"
               className="h-20 w-auto object-contain"
             />
           </div>
@@ -131,6 +131,7 @@ export default function Login() {
                   placeholder="Password"
                   required
                 />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
@@ -147,7 +148,7 @@ export default function Login() {
                   <input type="checkbox" className="peer sr-only" />
                   <div className="w-5 h-5 bg-white border-2 border-gray-200 rounded-lg peer-checked:bg-[#064e3b] peer-checked:border-[#064e3b] transition-all" />
                   <div className="absolute text-white opacity-0 peer-checked:opacity-100 transition-opacity">
-                    <svg className="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M0 11l2-2 5 5L18 3l2 2L7 18z"/></svg>
+                    <svg className="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M0 11l2-2 5 5L18 3l2 2L7 18z" /></svg>
                   </div>
                 </div>
                 <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:text-[#064e3b] transition-colors">Remember me</span>

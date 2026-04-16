@@ -1,0 +1,26 @@
+services:
+  - type: web
+    name: healthcare-api
+    env: node
+    # The Root Directory is left blank to use the monorepo root.
+    # The 'postinstall' script in the root package.json will automatically install the 'server' directory dependencies.
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Define your other essential backend env variables below in the Render UI:
+      # - key: MONGODB_URI
+      #   sync: false
+      # - key: JWT_SECRET
+      #   sync: false
+      # - key: CLIENT_URL
+      #   sync: false (Your Vercel Frontend URL)
+      # - key: ANTHROPIC_API_KEY
+      #   sync: false
+      # - key: CLOUDINARY_CLOUD_NAME
+      #   sync: false
+      # - key: CLOUDINARY_API_KEY
+      #   sync: false
+      # - key: CLOUDINARY_API_SECRET
+      #   sync: false

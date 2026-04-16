@@ -94,7 +94,7 @@ export default function ForgotPassword() {
                 {/* Decorative Glow Elements matching Dashboard */}
                 <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-400/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
                 <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-cyan-400/10 rounded-full blur-[100px] translate-y-1/4 -translate-x-1/4 pointer-events-none" />
-                
+
                 <div className="absolute inset-0 bg-gradient-to-br from-[#064e3b] via-[#065f46] to-[#042f24] opacity-90" />
 
                 <div className="relative z-10 flex flex-col justify-center items-center w-full p-12 text-white text-center">
@@ -124,9 +124,9 @@ export default function ForgotPassword() {
                 <div className="w-full max-w-xl mx-auto flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-8 sm:py-12">
                     {/* Mobile Logo */}
                     <div className="lg:hidden flex justify-center mb-1">
-                        <img 
-                            src="/assets/logos/logo-full.png" 
-                            alt="take.health" 
+                        <img
+                            src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099"
+                            alt="take.health"
                             className="h-20 w-auto object-contain"
                         />
                     </div>
@@ -189,11 +189,11 @@ export default function ForgotPassword() {
                                                     newCode[i] = val;
                                                     const combined = newCode.join('');
                                                     setCode(combined.slice(0, 4));
-                                                    if (i < 3) document.getElementById(`otp-${i+1}`).focus();
+                                                    if (i < 3) document.getElementById(`otp-${i + 1}`).focus();
                                                 } else {
                                                     newCode[i] = '';
                                                     setCode(newCode.join(''));
-                                                    if (i > 0) document.getElementById(`otp-${i-1}`).focus();
+                                                    if (i > 0) document.getElementById(`otp-${i - 1}`).focus();
                                                 }
                                             }}
                                             onKeyDown={(e) => {
