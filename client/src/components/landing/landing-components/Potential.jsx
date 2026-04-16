@@ -1,6 +1,21 @@
 import PotentialItem from "./PotentialItem";
-import React, { useState } from "react";
-import { motion } from "framer-motion";
+import React, { useRef, useState } from "react";
+import { motion, useInView } from "framer-motion";
+
+function isIOSSafari() {
+  if (typeof navigator === "undefined") return false;
+
+  const ua = navigator.userAgent || "";
+  const platform = navigator.platform || "";
+  const touchPoints = navigator.maxTouchPoints || 0;
+
+  const isIOS =
+    /iPad|iPhone|iPod/.test(ua) || (platform === "MacIntel" && touchPoints > 1);
+  const isSafari =
+    /Safari/.test(ua) && !/Chrome|CriOS|FxiOS|EdgiOS|OPiOS|Android/.test(ua);
+
+  return isIOS && isSafari;
+}
 
 const fadeUp = {
   initial: { opacity: 0, y: 32 },
@@ -17,6 +32,8 @@ const fadeIn = {
 };
 
 const Potential = () => {
+  const [isIOS] = useState(() => isIOSSafari());
+  const sectionRef = useRef(null);
   const potentialItems = [
     {
       title: "CoreGrid",
@@ -68,14 +85,16 @@ const Potential = () => {
     },
   ];
 
-  const radius = 3750;
-  const numItems = 65;
+  const radius = isIOS ? 1300 : 3750;
+  const numItems = isIOS ? 24 : 65;
   const angleStep = 360 / numItems;
   const circleItems = Array.from({ length: numItems }).map(
     (_, i) => potentialItems[i % potentialItems.length],
   );
 
   const [isHovered, setIsHovered] = useState(false);
+  const isInView = useInView(sectionRef, { margin: "200px 0px" });
+  const shouldAnimate = isInView && !isHovered;
 
   return (
     <motion.section
@@ -102,6 +121,7 @@ const Potential = () => {
       </motion.div>
 
       <motion.div
+        ref={sectionRef}
         {...fadeIn}
         className="relative w-full h-[450px] md:h-[550px] mt-10 pointer-events-none"
       >
@@ -117,11 +137,11 @@ const Potential = () => {
           {/* The CSS rotating arm ensuring infinite smooth animation */}
           <div
             style={{
-              animation: "arc-marquee 360s linear infinite", // Significantly slowed down movement
-              animationPlayState: isHovered ? "paused" : "running",
+              animation: `arc-marquee ${isIOS ? 520 : 360}s linear infinite`,
+              animationPlayState: shouldAnimate ? "running" : "paused",
               width: "0px",
               height: "0px",
-              willChange: "transform",
+              willChange: shouldAnimate ? "transform" : "auto",
             }}
           >
             {circleItems.map((item, index) => {
@@ -141,10 +161,30 @@ const Potential = () => {
                   {/* Wrapper to center the item precisely on the geometric arm, preventing overlap offset */}
                   <div
                     className="relative -translate-x-1/2 pointer-events-auto"
-                    onMouseEnter={() => setIsHovered(true)}
-                    onMouseLeave={() => setIsHovered(false)}
+                    onMouseEnter={isIOS ? undefined : () => setIsHovered(true)}
+                    onMouseLeave={isIOS ? undefined : () => setIsHovered(false)}
                   >
-                    <PotentialItem {...item} />
+                    {isIOS ? (
+                      <div className="relative w-56 h-72 rounded-2xl overflow-hidden shadow-md border border-white/10">
+                        <img
+                          src={item.src}
+                          alt={item.alt}
+                          loading="lazy"
+                          decoding="async"
+                          className="w-full h-full object-cover"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent p-4 flex flex-col justify-end text-center text-white">
+                          <h3 className="font-landing-title text-lg font-semibold">
+                            {item.title}
+                          </h3>
+                          <p className="mt-1 text-xs text-white/80">
+                            {item.subTitle}
+                          </p>
+                        </div>
+                      </div>
+                    ) : (
+                      <PotentialItem {...item} />
+                    )}
                   </div>
                 </div>
               );

@@ -43,7 +43,7 @@ const Footer = () => {
       title: "Legal",
       items: [
         { name: "Privacy Policy", link: "#" },
-        { name: "Terms of Service", link: "#" },
+        { name: "Terms & Conditions", link: "/terms-and-conditions" },
         { name: "Medical Disclaimer", link: "#" },
       ],
     },
@@ -299,7 +299,6 @@ const Footer = () => {
           <p>© 2026 Take Solutions Ltd. All rights reserved.</p>
           <p>Designed with purpose. Priced with care.</p>
         </div>
-
       </div>
     </motion.section>
   );
