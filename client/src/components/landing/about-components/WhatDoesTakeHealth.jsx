@@ -10,7 +10,7 @@ const fadeUp = {
 
 const WhatDoesTakeHealth = () => {
     return (
-        <section className="container mx-auto mt-28 px-8">
+        <section className="container mx-auto mt-28 px-4 sm:px-8">
             {/* Desktop View */}
             <div className="hidden lg:flex max-w-[1863px] mx-auto overflow-hidden relative"
                 style={{
@@ -39,49 +39,53 @@ const WhatDoesTakeHealth = () => {
                     />
                 </div>
 
-                <div className="container w-full flex justify-between items-center gap-10">
-                    <div className="w-1/2 relative min-h-[1152px] z-10">
-                        <div className="container mx-28 flex justify-between items-center max-w-[532px] absolute px-2 gap-5" style={{ top: '206px', left: '0px' }}>
-                            <div className="relative flex flex-col items-center justify-center shrink-0" style={{ width: '148.51px', height: '148.51px' }}>
+                <div className="w-full flex items-stretch">
+                    {/* Left Column */}
+                    <div className="w-1/2 relative z-10 flex flex-col items-center py-20 px-6 xl:px-20">
+                        {/* Stats Row */}
+                        <div className="w-full max-w-[632px] flex justify-center items-center gap-4 mt-32">
+                            <div className="relative flex flex-col items-center justify-center shrink-0 w-[120px] xl:w-[168px] h-[120px] xl:h-[168px]">
                                 <img src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
                                 <div className="relative z-10 flex flex-col items-center text-center">
-                                    <span className="text-white text-[40px] font-landing-body font-normal leading-tight">90%</span>
-                                    <span className="text-white text-[12px] font-landing-body font-normal leading-tight mt-1">of health data is <br /> never fully used</span>
+                                    <span className="text-white text-xl xl:text-[40px] font-landing-body font-normal leading-tight">90%</span>
+                                    <span className="text-white text-[8px] xl:text-[12px] font-landing-body font-normal leading-tight mt-1">of health data is <br /> never fully used</span>
                                 </div>
                             </div>
-                            <div className="relative flex flex-col items-center justify-center shrink-0" style={{ width: '148.51px', height: '148.51px' }}>
+                            <div className="relative flex flex-col items-center justify-center shrink-0 w-[120px] xl:w-[168px] h-[120px] xl:h-[168px]">
                                 <img src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
                                 <div className="relative z-10 flex flex-col items-center text-center">
-                                    <span className="text-white text-[40px] font-landing-body font-normal leading-tight whitespace-nowrap">1 in 3</span>
-                                    <span className="text-white text-[12px] font-landing-body font-normal leading-tight mt-1">people don't understand <br /> their reports</span>
+                                    <span className="text-white text-xl xl:text-[40px] font-landing-body font-normal leading-tight whitespace-nowrap">1 in 3</span>
+                                    <span className="text-white text-[8px] xl:text-[12px] font-landing-body font-normal leading-tight mt-1">people don't understand <br /> their reports</span>
                                 </div>
                             </div>
-                            <div className="relative flex flex-col items-center justify-center shrink-0" style={{ width: '148.51px', height: '148.51px' }}>
+                            <div className="relative flex flex-col items-center justify-center shrink-0 w-[120px] xl:w-[168px] h-[120px] xl:h-[168px]">
                                 <img src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
                                 <div className="relative z-10 flex flex-col items-center text-center">
-                                    <span className="text-white text-[40px] font-landing-body font-normal leading-tight">50%</span>
-                                    <span className="text-white text-[12px] font-landing-body font-normal leading-tight mt-1">of health depends <br /> on lifestyle</span>
+                                    <span className="text-white text-xl xl:text-[40px] font-landing-body font-normal leading-tight">50%</span>
+                                    <span className="text-white text-[8px] xl:text-[12px] font-landing-body font-normal leading-tight mt-1">of health depends <br /> on lifestyle</span>
                                 </div>
                             </div>
                         </div>
 
-                        <div className="absolute flex flex-col items-center text-center gap-12" style={{ top: '540px', left: '28px' }}>
-                            <motion.h2 {...fadeUp} className="text-white text-16 md:text-2xl lg:text-4xl font-landing-title">
+                        {/* Content Section */}
+                        <div className="mt-40 xl:mt-60 flex flex-col items-center text-center gap-8 xl:gap-12 max-w-[600px]">
+                            <motion.h2 {...fadeUp} className="text-white text-3xl xl:text-4xl font-landing-title">
                                 What Does <span className="italic font-normal">Take Health</span> Do?
                             </motion.h2>
-                            <motion.p {...fadeUp} transition={{ delay: 0.2 }} className="text-white text-8 md:text-xl lg:text-2xl font-medium font-landing-body leading-snug tracking-tight">
-                                Your health data, transformed into clear, science-backed insights personalized to help you <br /> take control and build a longer, healthier life.
+                            <motion.p {...fadeUp} transition={{ delay: 0.2 }} className="text-white text-lg xl:text-2xl font-medium font-landing-body leading-snug tracking-tight">
+                                Your health data, transformed into clear, science-backed insights personalized to help you take control and build a longer, healthier life.
                             </motion.p>
-                            <motion.button {...fadeUp} transition={{ delay: 0.4 }} className="bg-[#C2D5CD] hover:bg-white text-black text-[24px] font-semibold font-landing-body flex items-center justify-center transition-all duration-300" style={{ width: '188px', height: '58px', borderRadius: '40px' }}>
+                            <motion.button {...fadeUp} transition={{ delay: 0.4 }} className="bg-[#C2D5CD] hover:bg-white text-black text-lg xl:text-[24px] font-semibold font-landing-body flex items-center justify-center transition-all duration-300 w-[160px] xl:w-[188px] h-[48px] xl:h-[58px]" style={{ borderRadius: '40px' }}>
                                 Start Testing
                             </motion.button>
                         </div>
                     </div>
 
-                    <div className="w-1/2 relative min-h-full">
-                        <img src="/landing/about/Longevity.webp" alt="Longevity" className="absolute inset-0 w-full h-full object-cover" style={{ borderTopRightRadius: '64px', borderBottomRightRadius: '64px' }} />
-                        <div className="absolute inset-x-0 bottom-20 px-20 text-center">
-                            <h2 className="text-white text-6xl leading-tight font-landing-title italic">Longevity Starts <br /> Here</h2>
+                    {/* Right Column */}
+                    <div className="w-1/2 relative">
+                        <img src="/landing/about/Longevity.webp" alt="Longevity" className="absolute inset-0 w-full h-full object-cover" style={{ borderTopRightRadius: '48px', borderBottomRightRadius: '48px' }} />
+                        <div className="absolute inset-x-0 bottom-20 px-10 xl:px-20 text-center">
+                            <h2 className="text-white text-4xl xl:text-6xl leading-tight font-landing-title italic">Longevity Starts <br /> Here</h2>
                         </div>
                     </div>
                 </div>
@@ -95,7 +99,7 @@ const WhatDoesTakeHealth = () => {
                     style={{
                         background: 'linear-gradient(180deg, #086262 0%, #0F4747 51%)',
                         borderRadius: '12px',
-                        height: '350px'
+                        minHeight: '400px'
                     }}
                 >
                     {/* Background Decorative Shapes (Mobile) */}
@@ -119,9 +123,9 @@ const WhatDoesTakeHealth = () => {
                     </div>
 
                     {/* Stats Row (Mobile) */}
-                    <div className="flex justify-center items-center gap-1 w-full px-1 relative z-10 overflow-x-auto" style={{ top: '60px' }}>
+                    <div className="flex justify-center items-center gap-2 w-full px-4 pt-12 relative z-10">
                         {/* 90% */}
-                        <div className="relative flex flex-col items-center justify-center flex-shrink-0" style={{ width: '85px', height: '85px' }}>
+                        <div className="relative flex flex-col items-center justify-center flex-shrink-0 w-[85px] h-[85px]">
                             <img src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
                             <div className="z-10 text-center flex flex-col items-center pt-1">
                                 <span className="text-white text-[12px] font-landing-body leading-none">90%</span>
@@ -129,7 +133,7 @@ const WhatDoesTakeHealth = () => {
                             </div>
                         </div>
                         {/* 1 in 3 */}
-                        <div className="relative flex flex-col items-center justify-center flex-shrink-0" style={{ width: '85px', height: '85px' }}>
+                        <div className="relative flex flex-col items-center justify-center flex-shrink-0 w-[85px] h-[85px]">
                             <img src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
                             <div className="z-10 text-center flex flex-col items-center pt-1">
                                 <span className="text-white text-[12px] font-landing-body leading-none">1 in 3</span>
@@ -137,7 +141,7 @@ const WhatDoesTakeHealth = () => {
                             </div>
                         </div>
                         {/* 50% */}
-                        <div className="relative flex flex-col items-center justify-center flex-shrink-0" style={{ width: '85px', height: '85px' }}>
+                        <div className="relative flex flex-col items-center justify-center flex-shrink-0 w-[85px] h-[85px]">
                             <img src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
                             <div className="z-10 text-center flex flex-col items-center pt-1">
                                 <span className="text-white text-[12px] font-landing-body leading-none">50%</span>
@@ -148,28 +152,27 @@ const WhatDoesTakeHealth = () => {
 
                     {/* Content Section (Mobile) */}
                     <div
-                        className="absolute left-1/2 -translate-x-1/2 flex flex-col items-center text-center gap-4 w-[320px] z-10 top-[180px]"
+                        className="flex flex-col items-center text-center gap-4 w-full px-6 z-10 py-10"
                     >
-                        <h2 className="text-white text-[14px] font-landing-title leading-tight">
+                        <h2 className="text-white text-xl font-landing-title leading-tight">
                             What Does <span className="italic font-normal">Take Health</span> Do?
                         </h2>
-                        <p className="text-white text-[10px] font-landing-body font-medium leading-[1.6] max-w-[280px]">
-                            Your health data, transformed into clear, science-backed insights personalized to help you <br /> take control and build a longer, healthier life.
+                        <p className="text-white text-sm font-landing-body font-medium leading-relaxed max-w-[320px]">
+                            Your health data, transformed into clear, science-backed insights personalized to help you take control and build a longer, healthier life.
                         </p>
-                        <button className="bg-[#C2D5CD] rounded-[16px] text-black text-[10px] font-bold flex items-center justify-center" style={{ width: '69px', height: '23px', marginTop: '10px' }}>
+                        <button className="bg-[#C2D5CD] rounded-full text-black text-xs font-bold flex items-center justify-center w-[120px] h-[36px] mt-4">
                             Start Testing
                         </button>
                     </div>
                 </div>
 
-                {/* Lower Part (Image - Reduced height for mobile) */}
+                {/* Lower Part (Image) */}
                 <div
-                    className="relative w-full h-[425px] md:h-[700px] overflow-hidden mx-auto"
-                    style={{ borderRadius: '12px' }}
+                    className="relative w-full h-[400px] md:h-[600px] overflow-hidden rounded-xl"
                 >
-                    <img src="/landing/about/Longevity.webp" alt="Longevity" className="absolute inset-0 w-full h-90% object-cover" />
+                    <img src="/landing/about/Longevity.webp" alt="Longevity" className="absolute inset-0 w-full h-full object-cover" />
                     <div className="absolute inset-x-0 bottom-10 px-6 text-center">
-                        <h2 className="text-white text-2xl leading-tight font-landing-title italic">Longevity Starts <br /> Here</h2>
+                        <h2 className="text-white text-3xl leading-tight font-landing-title italic">Longevity Starts <br /> Here</h2>
                     </div>
                 </div>
             </div>
