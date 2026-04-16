@@ -6,7 +6,7 @@ import {
   User, Save, Heart, AlertCircle, Camera, Mail, Phone, Target,
   Activity, Droplet, Cigarette, Wine, Moon, Apple, Dumbbell, Pill, Upload,
   Bell, ShieldCheck, ChevronRight, LogOut, FileText, Settings, CheckCircle2,
-  TrendingUp, TrendingDown, Clock, Sparkles, Zap, X, ScrollText, Shield, Headphones
+  TrendingUp, TrendingDown, Clock, Sparkles, Zap, X, ScrollText, Shield, Headphones, ExternalLink
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -29,6 +29,8 @@ export default function Profile() {
     loading: true
   });
   const [expandedSection, setExpandedSection] = useState(null); // 'profile' or 'goals'
+  const [viewingPdf, setViewingPdf] = useState(null); // URL of PDF to view
+  const [pdfLoading, setPdfLoading] = useState(true);
   
   const [goalFormData, setGoalFormData] = useState({
     goalType: 'maintenance',
@@ -750,7 +752,10 @@ export default function Profile() {
 
                  {/* Terms & Conditions */}
                  <button 
-                   onClick={() => toast('Terms & Conditions coming soon', { icon: '📄' })}
+                   onClick={() => {
+                     setViewingPdf('https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Terrms_and_Conditions_take.health.pdf?v=1776320323');
+                     setPdfLoading(true);
+                   }}
                    className="w-full px-8 py-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group"
                  >
                     <div className="flex items-center gap-5">
@@ -801,7 +806,49 @@ export default function Profile() {
                  <span className="text-[14px] font-black text-rose-500 tracking-tight">Logout Account</span>
               </button>
            </div>
-        </div>
+         </div>
+
+      {/* PDF Viewer Modal */}
+      <AnimatePresence>
+        {viewingPdf && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[9999] bg-black flex flex-col h-[100dvh]"
+            style={{ paddingTop: 'env(safe-area-inset-top)' }}
+          >
+            <div className="p-4 flex items-center justify-between text-white border-b border-white/10 bg-[#1a2138]">
+              <div className="flex flex-col">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">Compliance</h3>
+                <h3 className="text-xs font-black uppercase tracking-tight text-white/90">Terms & Conditions</h3>
+              </div>
+              <button 
+                onClick={() => setViewingPdf(null)}
+                className="w-10 h-10 rounded-2xl bg-white/10 flex items-center justify-center hover:bg-rose-500/20 hover:text-rose-500 transition-all border border-white/5 active:scale-90"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            
+            <div className="flex-1 w-full bg-slate-100 relative overflow-hidden">
+              {pdfLoading && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-white z-10">
+                  <div className="w-12 h-12 border-4 border-slate-100 border-t-[#69A38D] rounded-full animate-spin mb-4" />
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Optimizing View...</p>
+                </div>
+              )}
+              
+              <iframe 
+                src={`https://docs.google.com/viewer?url=${encodeURIComponent(viewingPdf)}&embedded=true`}
+                className="w-full h-full border-none scale-[1.001]"
+                title="PDF Viewer"
+                onLoad={() => setPdfLoading(false)}
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       </div>
     </div>

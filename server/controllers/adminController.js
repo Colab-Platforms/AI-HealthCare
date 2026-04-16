@@ -15,7 +15,7 @@ const Otp = require('../models/Otp');
 // User Management
 exports.getAllUsers = async (req, res) => {
   try {
-    const { role, status, search, page = 1, limit = 20 } = req.query;
+    const { role, status, search, page = 1, limit = 20, startDate, endDate } = req.query;
     const filter = {};
     if (role) {
       if (role === 'user') {
@@ -27,6 +27,21 @@ exports.getAllUsers = async (req, res) => {
     if (status === 'active') filter.isActive = true;
     if (status === 'inactive') filter.isActive = false;
     
+    // Date Range Filter
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) {
+        const sDate = new Date(startDate);
+        sDate.setHours(0, 0, 0, 0);
+        filter.createdAt.$gte = sDate;
+      }
+      if (endDate) {
+        const eDate = new Date(endDate);
+        eDate.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = eDate;
+      }
+    }
+
     if (search) {
       filter.$or = [
         { name: { $regex: search, $options: 'i' } },

@@ -15,6 +15,8 @@ export default function AdminUsers() {
     const [loading, setLoading] = useState(true);
     const [search, setSearch] = useState('');
     const [roleFilter, setRoleFilter] = useState('');
+    const [startDate, setStartDate] = useState('');
+    const [endDate, setEndDate] = useState('');
     const [userDetail, setUserDetail] = useState(null);
     const [detailLoading, setDetailLoading] = useState(false);
     const [updating, setUpdating] = useState(false);
@@ -22,7 +24,14 @@ export default function AdminUsers() {
     const fetchUsers = async () => {
         setLoading(true);
         try {
-            const { data } = await adminService.getUsers({ page, limit: 12, role: roleFilter, search });
+            const { data } = await adminService.getUsers({ 
+                page, 
+                limit: 12, 
+                role: roleFilter, 
+                search,
+                startDate,
+                endDate
+            });
             setUsers(data.users || []);
             setTotal(data.total || 0);
             setPages(data.pages || 1);
@@ -40,7 +49,7 @@ export default function AdminUsers() {
     useEffect(() => {
         const timer = setTimeout(fetchUsers, 400);
         return () => clearTimeout(timer);
-    }, [page, roleFilter, search]);
+    }, [page, roleFilter, search, startDate, endDate]);
 
     const handleUpdateRole = async (userId, newRole) => {
         setUpdating(true);
@@ -141,16 +150,54 @@ export default function AdminUsers() {
                 </div>
             </div>
 
-            {/* Search */}
-            <div className="relative">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                <input
-                    type="text"
-                    placeholder="Search by username or email..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-11 pr-4 py-3 bg-white border border-slate-100 rounded-2xl text-sm focus:border-blue-500 outline-none shadow-sm transition-all"
-                />
+            {/* Search & Date Filter */}
+            <div className="flex flex-col lg:flex-row gap-4 items-center">
+                <div className="relative flex-1 w-full">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                    <input
+                        type="text"
+                        placeholder="Search by username or email..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="w-full pl-11 pr-4 py-3 bg-white border border-slate-100 rounded-2xl text-sm focus:border-blue-500 outline-none shadow-sm transition-all"
+                    />
+                </div>
+
+                <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto no-scrollbar py-1">
+                    <div className="flex flex-col">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1">From</span>
+                        <input
+                            type="date"
+                            value={startDate}
+                            onChange={(e) => { setStartDate(e.target.value); setPage(1); }}
+                            className="px-3 py-2 bg-white border border-slate-100 rounded-xl text-xs font-bold text-slate-600 focus:border-blue-500 outline-none shadow-sm transition-all cursor-pointer"
+                        />
+                    </div>
+                    
+                    <div className="mt-4 text-slate-300">
+                        <ChevronRight className="w-4 h-4" />
+                    </div>
+
+                    <div className="flex flex-col">
+                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1">To Date</span>
+                        <input
+                            type="date"
+                            value={endDate}
+                            onChange={(e) => { setEndDate(e.target.value); setPage(1); }}
+                            className="px-3 py-2 bg-white border border-slate-100 rounded-xl text-xs font-bold text-slate-600 focus:border-blue-500 outline-none shadow-sm transition-all cursor-pointer"
+                        />
+                    </div>
+
+                    {(startDate || endDate) && (
+                        <button 
+                            onClick={() => { setStartDate(''); setEndDate(''); setPage(1); }}
+                            className="mt-4 p-2 bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-800 rounded-xl transition-all shadow-sm"
+                            title="Clear Date Filters"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    )}
+                </div>
             </div>
 
             {/* Simple Tabular Layout */}

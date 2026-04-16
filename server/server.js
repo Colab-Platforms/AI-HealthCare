@@ -298,5 +298,8 @@ if (process.env.VERCEL) {
     if (process.env.RAILWAY_ENVIRONMENT_ID) {
       console.log(`🚂 Railway deployment detected: ${process.env.RAILWAY_PUBLIC_DOMAIN || 'Ready'}`);
     }
+    if (process.env.RENDER) {
+      console.log(`🚀 Render deployment detected: ${process.env.RENDER_EXTERNAL_URL || 'Ready'}`);
+    }
   });
 }
