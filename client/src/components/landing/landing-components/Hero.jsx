@@ -69,8 +69,8 @@ const Hero = () => {
         }`}
       >
         <source
-          src="https://cdn.shopify.com/videos/c/o/v/bf5d3425a43a49f98e4bc647c660ef7f.mp4"
-          type="video/mp4"
+          src="https://cdn.shopify.com/videos/c/o/v/d38ee290fc044331a38705af3a0bbe92.webm"
+          type="video/webm"
         />
       </video>
 
