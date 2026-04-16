@@ -2,19 +2,32 @@ import PotentialItem from "./PotentialItem";
 import React, { useRef, useState } from "react";
 import { motion, useInView } from "framer-motion";
 
-function isIOSSafari() {
+function isMobileDevice() {
+  if (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function"
+  ) {
+    const isCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
+    const hasNoHover = window.matchMedia("(hover: none)").matches;
+    if (isCoarsePointer || hasNoHover) {
+      return true;
+    }
+  }
+
   if (typeof navigator === "undefined") return false;
 
   const ua = navigator.userAgent || "";
   const platform = navigator.platform || "";
   const touchPoints = navigator.maxTouchPoints || 0;
 
-  const isIOS =
-    /iPad|iPhone|iPod/.test(ua) || (platform === "MacIntel" && touchPoints > 1);
-  const isSafari =
-    /Safari/.test(ua) && !/Chrome|CriOS|FxiOS|EdgiOS|OPiOS|Android/.test(ua);
+  const isTouchTablet = platform === "MacIntel" && touchPoints > 1;
+  const hasTouchOnlyInput = touchPoints > 0;
+  const isMobileUA =
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(
+      ua,
+    );
 
-  return isIOS && isSafari;
+  return isTouchTablet || hasTouchOnlyInput || isMobileUA;
 }
 
 const fadeUp = {
@@ -32,7 +45,7 @@ const fadeIn = {
 };
 
 const Potential = () => {
-  const [isIOS] = useState(() => isIOSSafari());
+  const [isMobile] = useState(() => isMobileDevice());
   const sectionRef = useRef(null);
   const potentialItems = [
     {
@@ -85,8 +98,8 @@ const Potential = () => {
     },
   ];
 
-  const radius = isIOS ? 1300 : 3750;
-  const numItems = isIOS ? 24 : 65;
+  const radius = isMobile ? 1300 : 3750;
+  const numItems = isMobile ? 24 : 65;
   const angleStep = 360 / numItems;
   const circleItems = Array.from({ length: numItems }).map(
     (_, i) => potentialItems[i % potentialItems.length],
@@ -137,7 +150,7 @@ const Potential = () => {
           {/* The CSS rotating arm ensuring infinite smooth animation */}
           <div
             style={{
-              animation: `arc-marquee ${isIOS ? 520 : 360}s linear infinite`,
+              animation: `arc-marquee ${isMobile ? 520 : 360}s linear infinite`,
               animationPlayState: shouldAnimate ? "running" : "paused",
               width: "0px",
               height: "0px",
@@ -161,10 +174,14 @@ const Potential = () => {
                   {/* Wrapper to center the item precisely on the geometric arm, preventing overlap offset */}
                   <div
                     className="relative -translate-x-1/2 pointer-events-auto"
-                    onMouseEnter={isIOS ? undefined : () => setIsHovered(true)}
-                    onMouseLeave={isIOS ? undefined : () => setIsHovered(false)}
+                    onMouseEnter={
+                      isMobile ? undefined : () => setIsHovered(true)
+                    }
+                    onMouseLeave={
+                      isMobile ? undefined : () => setIsHovered(false)
+                    }
                   >
-                    {isIOS ? (
+                    {isMobile ? (
                       <div className="relative w-56 h-72 rounded-2xl overflow-hidden shadow-md border border-white/10">
                         <img
                           src={item.src}

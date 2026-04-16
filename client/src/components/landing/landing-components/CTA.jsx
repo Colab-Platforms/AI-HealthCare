@@ -3,19 +3,32 @@ import { motion, useInView } from "framer-motion";
 import Marquee from "react-fast-marquee";
 import { useMemo, useRef } from "react";
 
-function isIOSSafari() {
+function isMobileDevice() {
+  if (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function"
+  ) {
+    const isCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
+    const hasNoHover = window.matchMedia("(hover: none)").matches;
+    if (isCoarsePointer || hasNoHover) {
+      return true;
+    }
+  }
+
   if (typeof navigator === "undefined") return false;
 
   const ua = navigator.userAgent || "";
   const platform = navigator.platform || "";
   const touchPoints = navigator.maxTouchPoints || 0;
 
-  const isIOS =
-    /iPad|iPhone|iPod/.test(ua) || (platform === "MacIntel" && touchPoints > 1);
-  const isSafari =
-    /Safari/.test(ua) && !/Chrome|CriOS|FxiOS|EdgiOS|OPiOS|Android/.test(ua);
+  const isTouchTablet = platform === "MacIntel" && touchPoints > 1;
+  const hasTouchOnlyInput = touchPoints > 0;
+  const isMobileUA =
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(
+      ua,
+    );
 
-  return isIOS && isSafari;
+  return isTouchTablet || hasTouchOnlyInput || isMobileUA;
 }
 
 const fadeUp = {
@@ -44,12 +57,12 @@ const cards = [
 ];
 
 const CTA = () => {
-  const isIOS = isIOSSafari();
+  const isMobile = isMobileDevice();
   const marqueeRef = useRef(null);
   const isMarqueeInView = useInView(marqueeRef, { margin: "180px 0px" });
   const marqueeCards = useMemo(
-    () => (isIOS ? [...cards, ...cards] : cards),
-    [isIOS],
+    () => (isMobile ? [...cards, ...cards] : cards),
+    [isMobile],
   );
 
   return (
@@ -67,7 +80,7 @@ const CTA = () => {
           className="absolute inset-x-0 top-14 lg:top-44 z-0 pointer-events-none [perspective:1300px]"
         >
           <div className="[transform:rotateX(10deg)_rotateY(15deg)] overflow-hidden lg:w-[150%]">
-            {isIOS ? (
+            {isMobile ? (
               <>
                 <style>
                   {`
@@ -103,7 +116,7 @@ const CTA = () => {
               </>
             ) : (
               <Marquee
-                autoFill={!isIOS}
+                autoFill={!isMobile}
                 speed={25}
                 gradient={false}
                 pauseOnHover={false}
