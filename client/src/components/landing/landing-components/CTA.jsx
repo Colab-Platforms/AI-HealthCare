@@ -1,6 +1,35 @@
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import { motion, useInView } from "framer-motion";
 import Marquee from "react-fast-marquee";
+import { useMemo, useRef } from "react";
+
+function isMobileDevice() {
+  if (
+    typeof window !== "undefined" &&
+    typeof window.matchMedia === "function"
+  ) {
+    const isCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
+    const hasNoHover = window.matchMedia("(hover: none)").matches;
+    if (isCoarsePointer || hasNoHover) {
+      return true;
+    }
+  }
+
+  if (typeof navigator === "undefined") return false;
+
+  const ua = navigator.userAgent || "";
+  const platform = navigator.platform || "";
+  const touchPoints = navigator.maxTouchPoints || 0;
+
+  const isTouchTablet = platform === "MacIntel" && touchPoints > 1;
+  const hasTouchOnlyInput = touchPoints > 0;
+  const isMobileUA =
+    /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(
+      ua,
+    );
+
+  return isTouchTablet || hasTouchOnlyInput || isMobileUA;
+}
 
 const fadeUp = {
   initial: { opacity: 0, y: 32 },
@@ -28,6 +57,14 @@ const cards = [
 ];
 
 const CTA = () => {
+  const isMobile = isMobileDevice();
+  const marqueeRef = useRef(null);
+  const isMarqueeInView = useInView(marqueeRef, { margin: "180px 0px" });
+  const marqueeCards = useMemo(
+    () => (isMobile ? [...cards, ...cards] : cards),
+    [isMobile],
+  );
+
   return (
     <section>
       <motion.div {...fadeIn} className="relative mt-24 z-0 overflow-hidden">
@@ -38,18 +75,63 @@ const CTA = () => {
         />
         <div className="absolute inset-0 bg-black/60 z-0"></div>
 
-        <div className="absolute inset-x-0 top-14 lg:top-44 z-0 pointer-events-none [perspective:1300px]">
+        <div
+          ref={marqueeRef}
+          className="absolute inset-x-0 top-14 lg:top-44 z-0 pointer-events-none [perspective:1300px]"
+        >
           <div className="[transform:rotateX(10deg)_rotateY(15deg)] overflow-hidden lg:w-[150%]">
-            <Marquee autoFill speed={25} gradient={false} pauseOnHover={false}>
-              {cards.map((card, index) => (
-                <img
-                  key={`${card}-${index}`}
-                  src={card}
-                  alt={`card-${index + 1}`}
-                  className="w-28 lg:w-60"
-                />
-              ))}
-            </Marquee>
+            {isMobile ? (
+              <>
+                <style>
+                  {`
+                    @keyframes cta-marquee-scroll {
+                      from { transform: translate3d(0, 0, 0); }
+                      to { transform: translate3d(-50%, 0, 0); }
+                    }
+                  `}
+                </style>
+                <div className="overflow-hidden w-full">
+                  <div
+                    className="flex items-start gap-2 sm:gap-3"
+                    style={{
+                      width: "max-content",
+                      alignItems: "flex-start",
+                      animation: isMarqueeInView
+                        ? "cta-marquee-scroll 28s linear infinite"
+                        : "none",
+                    }}
+                  >
+                    {[...cards, ...cards].map((card, index) => (
+                      <img
+                        key={`${card}-${index}`}
+                        src={card}
+                        alt={`card-${index + 1}`}
+                        className="block w-28 lg:w-60 align-top"
+                        loading="lazy"
+                        decoding="async"
+                      />
+                    ))}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <Marquee
+                autoFill={!isMobile}
+                speed={25}
+                gradient={false}
+                pauseOnHover={false}
+                play={isMarqueeInView}
+              >
+                {marqueeCards.map((card, index) => (
+                  <img
+                    key={`${card}-${index}`}
+                    src={card}
+                    alt={`card-${index + 1}`}
+                    className="w-28 lg:w-60"
+                  />
+                ))}
+              </Marquee>
+            )}
           </div>
         </div>
 
