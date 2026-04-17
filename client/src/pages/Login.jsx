@@ -71,9 +71,9 @@ export default function Login() {
             <div className="relative">
               <div className="absolute inset-0 bg-emerald-400/20 blur-2xl rounded-full group-hover:bg-emerald-400/40 transition-all duration-700" />
               <img
-                src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099"
+                src="/assets/logos/logo-full.png"
                 alt="take.health"
-                className="h-32 w-auto object-contain brightness-0 invert relative z-10 transition-transform duration-700 group-hover:scale-105"
+                className="h-40 w-auto object-contain brightness-0 invert relative z-10 transition-transform duration-700 group-hover:scale-105"
               />
             </div>
           </div>
@@ -87,94 +87,109 @@ export default function Login() {
       </div>
 
       {/* Right Panel - Form */}
-      <div className="flex-1 flex flex-col justify-center bg-white overflow-y-auto">
-        <div className="w-full max-w-xl mx-auto flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-8 sm:py-12">
-          {/* Mobile Logo */}
-          <div className="lg:hidden flex justify-center mb-1">
+      <div className="flex-1 flex flex-col bg-white overflow-hidden relative h-[100dvh] lg:h-screen">
+        {/* Mobile Hero Image - Increased height and refined logo placement */}
+        <div className="lg:hidden w-full h-[35vh] relative overflow-hidden shrink-0">
+          <img
+            src="/features_hero.png"
+            alt="Healthcare Platform Features"
+            className="w-full h-full object-cover"
+          />
+          {/* Logo Overlay - Top Left */}
+          <Link to="/" className="absolute top-4 left-4 z-20 hover:scale-105 transition-transform">
             <img
-              src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099"
+              src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/icon_main_file_1.png?v=1776498796"
               alt="take.health"
-              className="h-20 w-auto object-contain"
+              className="h-16 w-auto object-contain drop-shadow-lg"
             />
+          </Link>
+          {/* Diagonal Sweep Overlay */}
+          <div className="absolute bottom-0 left-0 w-full h-12 bg-white"
+            style={{ clipPath: 'polygon(0 100%, 100% 100%, 100% 0)' }}>
+          </div>
+        </div>
+
+        <div className="w-full max-w-xl mx-auto flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-2 sm:py-12 overflow-y-auto lg:overflow-visible">
+          {/* Desktop Logo Only - hidden on mobile as it's now in hero */}
+          <div className="hidden lg:flex justify-center mb-4">
+            {/* This space is handled by the desktop layout logic */}
           </div>
 
-          <div className="text-center mb-4">
-            <h2 className="text-2xl font-black mb-1 text-[#064e3b] tracking-tight uppercase">Sign In</h2>
-            <p className="text-gray-400 font-bold uppercase text-[9px] tracking-[0.2em]">Access your health portal</p>
+          <div className="text-left mb-4 shrink-0">
+            <h2 className="text-2xl font-black mb-0 text-[#064e3b] tracking-tight">Welcome Back</h2>
+            <p className="text-gray-400 font-bold uppercase text-[8px] tracking-[0.2em] ml-0.5">Login to your account</p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-2.5">
             <div>
-              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Email Address</label>
+              <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5 ml-1">Email Address</label>
               <div className="relative group">
-                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 group-focus-within:text-[#064e3b] transition-colors" />
+                <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300 group-focus-within:text-[#064e3b] transition-colors" />
                 <input
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-white border-2 border-gray-400 rounded-xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-base shadow-sm"
-                  placeholder="Email Address"
+                  className="w-full bg-white border-2 border-gray-400 rounded-xl py-2.5 pl-11 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-sm shadow-sm"
+                  placeholder="name@example.com"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Password</label>
+              <label className="block text-[9px] font-black text-gray-400 uppercase tracking-widest mb-0.5 ml-1">Password</label>
               <div className="relative group">
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 group-focus-within:text-[#064e3b] transition-colors" />
+                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-300 group-focus-within:text-[#064e3b] transition-colors" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-white border-2 border-gray-400 rounded-xl py-3.5 pl-12 pr-12 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-base shadow-sm"
-                  placeholder="Password"
+                  className="w-full bg-white border-2 border-gray-400 rounded-xl py-2.5 pl-11 pr-11 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-sm shadow-sm"
+                  placeholder="••••••••"
                   required
                 />
-                <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-emerald-800/20 group-focus-within:text-[#064e3b] transition-colors" />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
                   className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#064e3b] transition-colors"
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
             </div>
 
-            <div className="flex items-center justify-between px-1 gap-2">
-              <label className="flex items-center gap-2 cursor-pointer group whitespace-nowrap">
+            <div className="flex items-center justify-between px-1 gap-2 pt-1">
+              <label className="flex items-center gap-2 cursor-pointer group">
                 <div className="relative flex items-center justify-center">
                   <input type="checkbox" className="peer sr-only" />
-                  <div className="w-5 h-5 bg-white border-2 border-gray-200 rounded-lg peer-checked:bg-[#064e3b] peer-checked:border-[#064e3b] transition-all" />
+                  <div className="w-4 h-4 bg-white border-2 border-gray-300 rounded peer-checked:bg-[#064e3b] peer-checked:border-[#064e3b] transition-all" />
                   <div className="absolute text-white opacity-0 peer-checked:opacity-100 transition-opacity">
-                    <svg className="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M0 11l2-2 5 5L18 3l2 2L7 18z" /></svg>
+                    <svg className="w-2.5 h-2.5 fill-current" viewBox="0 0 20 20"><path d="M0 11l2-2 5 5L18 3l2 2L7 18z" /></svg>
                   </div>
                 </div>
-                <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest group-hover:text-[#064e3b] transition-colors">Remember me</span>
+                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:text-[#064e3b]">Remember me</span>
               </label>
-              <Link to="/forgot-password" title="Go to find password page" className="text-[11px] font-black text-gray-400 hover:text-[#064e3b] transition-colors uppercase tracking-widest whitespace-nowrap">Forgot password?</Link>
+              <Link to="/forgot-password" core="true" className="text-[10px] font-black text-gray-400 hover:text-[#064e3b] transition-colors uppercase tracking-widest whitespace-nowrap">Forgot Password?</Link>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-5 bg-[#064e3b] text-white font-black uppercase text-sm tracking-[0.2em] rounded-xl hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.3)] shadow-[0_10px_20px_rgba(6,78,59,0.15)] transition-all flex items-center justify-center gap-3 disabled:opacity-50 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
+              className="w-full py-4 bg-[#064e3b] text-white font-black uppercase text-xs tracking-[0.2em] rounded-xl hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.3)] shadow-[0_10px_20px_rgba(6,78,59,0.15)] transition-all flex items-center justify-center gap-3 disabled:opacity-50 active:scale-[0.98] border-b-4 border-[#042f24]"
             >
               {loading ? (
-                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  <span className="text-base">Sign In</span>
+                  <span className="text-sm">Sign In</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
             </button>
           </form>
 
-          <p className="text-center mt-8">
-            <span className="text-xs font-black text-gray-400 uppercase tracking-widest">New to take.health?</span>{' '}
-            <Link to="/register" className="ml-2 font-black text-[#064e3b] hover:text-[#042f24] transition-all uppercase text-xs tracking-widest border-b-2 border-gray-200 hover:border-[#064e3b] pb-0.5">Create Account</Link>
+          <p className="text-center mt-6 shrink-0">
+            <Link to="/register" className="font-black text-[#064e3b] hover:text-[#042f24] transition-all uppercase text-xs tracking-widest border-b-2 border-gray-200 hover:border-[#064e3b] pb-0.5">Create Account</Link>
           </p>
         </div>
       </div>
