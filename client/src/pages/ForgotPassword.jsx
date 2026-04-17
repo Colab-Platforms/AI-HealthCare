@@ -9,7 +9,6 @@ export default function ForgotPassword() {
     const [email, setEmail] = useState('');
     const [code, setCode] = useState('');
     const [password, setPassword] = useState('');
-    const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
@@ -48,32 +47,14 @@ export default function ForgotPassword() {
 
     const handleResetPassword = async (e) => {
         e.preventDefault();
-        if (password !== confirmPassword) {
-            toast.error('Passwords do not match');
-            return;
-        }
+
 
         // Granular Password Validation with specific toasts
         if (password.length < 6) {
             toast.error('Password must be at least 6 characters long');
             return;
         }
-        if (!/[a-z]/.test(password)) {
-            toast.error('Password must contain at least one lowercase letter');
-            return;
-        }
-        if (!/[A-Z]/.test(password)) {
-            toast.error('Password must contain at least one uppercase letter');
-            return;
-        }
-        if (!/[0-9]/.test(password)) {
-            toast.error('Password must contain at least one number');
-            return;
-        }
-        if (!/[!@#$%^&*._]/.test(password)) {
-            toast.error('Password must contain at least one special character (!@#$%^&*._)');
-            return;
-        }
+
 
         setLoading(true);
         try {
@@ -120,7 +101,7 @@ export default function ForgotPassword() {
             </div>
 
             {/* Right Panel - Form */}
-            <div className="flex-1 flex bg-white overflow-y-auto">
+            <div className="flex-1 flex flex-col justify-center bg-white overflow-y-auto">
                 <div className="w-full max-w-xl mx-auto flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-8 sm:py-12">
                     {/* Mobile Logo */}
                     <div className="lg:hidden flex justify-center mb-1">
@@ -154,15 +135,15 @@ export default function ForgotPassword() {
                                         type="email"
                                         value={email}
                                         onChange={(e) => setEmail(e.target.value)}
-                                        className="w-full bg-white border border-gray-200 rounded-xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-base"
+                                        className="w-full bg-white border-2 border-gray-400 rounded-xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-base shadow-sm"
                                         placeholder="Email Address"
                                         required
                                     />
                                 </div>
                             </div>
                             <button type="submit" disabled={loading}
-                                className="w-full py-4 bg-[#064e3b] text-white font-black uppercase text-xs tracking-[0.2em] rounded-xl hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] transition-all flex items-center justify-center gap-3 disabled:opacity-50 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1">
-                                {loading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><span className="text-sm">Send Code</span> <ArrowRight className="w-4 h-4" /></>}
+                                className="w-full py-5 bg-[#064e3b] text-white font-black uppercase text-sm tracking-[0.2em] rounded-xl hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.3)] shadow-[0_10px_20px_rgba(6,78,59,0.15)] transition-all flex items-center justify-center gap-3 disabled:opacity-50 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1">
+                                {loading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><span className="text-base">Send Code</span> <ArrowRight className="w-4 h-4" /></>}
                             </button>
                         </form>
                     )}
@@ -201,15 +182,15 @@ export default function ForgotPassword() {
                                                     document.getElementById(`otp-${i - 1}`).focus();
                                                 }
                                             }}
-                                            className="w-14 h-16 text-center text-3xl font-black bg-white border-2 border-gray-200 rounded-2xl focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] focus:outline-none text-gray-800 shadow-sm transition-all"
+                                            className="w-14 h-16 text-center text-3xl font-black bg-white border-2 border-gray-400 rounded-2xl focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] focus:outline-none text-gray-800 shadow-sm transition-all"
                                         />
                                     ))}
                                 </div>
                                 <p className="text-center mt-4 text-gray-400 font-bold uppercase text-[9px] tracking-widest">Didn't receive code? <button type="button" onClick={handleSendCode} className="text-[#064e3b] hover:text-[#042f24] transition-all border-b border-gray-200 hover:border-[#064e3b]">Resend Code</button></p>
                             </div>
                             <button type="submit" disabled={loading}
-                                className="w-full py-4 bg-[#064e3b] text-white font-black uppercase text-xs tracking-[0.2em] rounded-xl hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] transition-all flex items-center justify-center gap-3 disabled:opacity-50 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1">
-                                {loading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><span className="text-sm">Verify Code</span> <ArrowRight className="w-4 h-4" /></>}
+                                className="w-full py-5 bg-[#064e3b] text-white font-black uppercase text-sm tracking-[0.2em] rounded-xl hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.3)] shadow-[0_10px_20px_rgba(6,78,59,0.15)] transition-all flex items-center justify-center gap-3 disabled:opacity-50 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1">
+                                {loading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><span className="text-base">Verify Code</span> <ArrowRight className="w-4 h-4" /></>}
                             </button>
                         </form>
                     )}
@@ -224,7 +205,7 @@ export default function ForgotPassword() {
                                         type={showPassword ? 'text' : 'password'}
                                         value={password}
                                         onChange={(e) => setPassword(e.target.value)}
-                                        className="w-full bg-white border border-gray-200 rounded-xl py-3.5 pl-12 pr-12 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-base"
+                                        className="w-full bg-white border-2 border-gray-400 rounded-xl py-3.5 pl-12 pr-12 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-base shadow-sm"
                                         placeholder="New Password"
                                         required
                                     />
@@ -232,47 +213,11 @@ export default function ForgotPassword() {
                                         {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                                     </button>
                                 </div>
-                                {password && (
-                                    <div className="mt-2 space-y-1 ml-1">
-                                        <p className={`text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${/[A-Z]/.test(password) ? 'text-emerald-600' : 'text-gray-300'}`}>
-                                            <div className={`w-1 h-1 rounded-full ${/[A-Z]/.test(password) ? 'bg-emerald-600' : 'bg-gray-300'}`} /> One uppercase letter
-                                        </p>
-                                        <p className={`text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${/[a-z]/.test(password) ? 'text-emerald-600' : 'text-gray-300'}`}>
-                                            <div className={`w-1 h-1 rounded-full ${/[a-z]/.test(password) ? 'bg-emerald-600' : 'bg-gray-300'}`} /> One lowercase letter
-                                        </p>
-                                        <p className={`text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${/[0-9]/.test(password) ? 'text-emerald-600' : 'text-gray-300'}`}>
-                                            <div className={`w-1 h-1 rounded-full ${/[0-9]/.test(password) ? 'bg-emerald-600' : 'bg-gray-300'}`} /> One number
-                                        </p>
-                                        <p className={`text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 ${/[!@#$%^&*._]/.test(password) ? 'text-emerald-600' : 'text-gray-300'}`}>
-                                            <div className={`w-1 h-1 rounded-full ${/[!@#$%^&*._]/.test(password) ? 'bg-emerald-600' : 'bg-gray-300'}`} /> One special character (!@#$%^&*._)
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div>
-                                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Confirm Password</label>
-                                <div className="relative group">
-                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 group-focus-within:text-[#064e3b] transition-colors" />
-                                    <input
-                                        type="password"
-                                        value={confirmPassword}
-                                        onChange={(e) => setConfirmPassword(e.target.value)}
-                                        className="w-full bg-white border border-gray-200 rounded-xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-base"
-                                        placeholder="Confirm Password"
-                                        required
-                                    />
-                                </div>
-                                {confirmPassword && (
-                                    <p className={`text-[9px] mt-1 ml-1 font-black uppercase tracking-widest ${password === confirmPassword ? 'text-emerald-600' : 'text-red-500'}`}>
-                                        {password === confirmPassword ? '✓ Passwords match' : '✗ Passwords do not match'}
-                                    </p>
-                                )}
                             </div>
 
                             <button type="submit" disabled={loading}
-                                className="w-full py-4 mt-4 bg-[#064e3b] text-white font-black uppercase text-xs tracking-[0.2em] rounded-xl hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] transition-all flex items-center justify-center gap-3 disabled:opacity-50 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1">
-                                {loading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><span className="text-sm">Reset Password</span> <ArrowRight className="w-4 h-4" /></>}
+                                className="w-full py-5 mt-4 bg-[#064e3b] text-white font-black uppercase text-sm tracking-[0.2em] rounded-xl hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.3)] shadow-[0_10px_20px_rgba(6,78,59,0.15)] transition-all flex items-center justify-center gap-3 disabled:opacity-50 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1">
+                                {loading ? <div className="w-6 h-6 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><span className="text-base">Reset Password</span> <ArrowRight className="w-4 h-4" /></>}
                             </button>
                         </form>
                     )}

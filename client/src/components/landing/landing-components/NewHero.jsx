@@ -219,7 +219,7 @@ const NewHero = () => {
             >
               <Link
                 to={currentSlide.buttonLink}
-                className="px-6 py-2 bg-landing-primary text-white uppercase font-landing-accent rounded-full hover:bg-landing-primary-hover transition text-sm inline-flex"
+                className="px-8 py-3 bg-landing-primary text-white uppercase font-black tracking-widest rounded-full hover:bg-landing-primary-hover transition text-sm inline-flex shadow-[0_15px_30px_rgba(62,118,97,0.3)] active:scale-95"
               >
                 {currentSlide.buttonText}
               </Link>

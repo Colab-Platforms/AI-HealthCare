@@ -64,7 +64,7 @@ const Navbar = () => {
 
       <div className="lg:hidden flex items-center gap-3">
         <Link to="/register" onClick={() => setIsMenuOpen(false)}>
-          <button className="px-5 py-2 bg-landing-primary text-white font-landing-accent rounded-full hover:bg-landing-primary/90 transition">
+          <button className="px-6 py-2.5 bg-landing-primary text-white font-landing-accent font-black uppercase text-xs tracking-wider rounded-full hover:bg-landing-primary/90 transition shadow-[0_10px_20px_rgba(62,118,97,0.2)] active:scale-95">
             Sign Up
           </button>
         </Link>
