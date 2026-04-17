@@ -257,6 +257,11 @@ export const adminService = {
   clearFoodCache: () => api.delete('admin/food-cache/clear-all')
 };
 
+export const activityService = {
+  getLogs: (params) => api.get('activity', { params }),
+  getStats: () => api.get('activity/stats')
+};
+
 export const subscriptionService = {
   getSubscription: () => api.get('auth/subscription')
 };

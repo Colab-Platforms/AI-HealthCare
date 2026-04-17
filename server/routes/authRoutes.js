@@ -12,6 +12,7 @@ router.post('/register', register);
 router.post('/register-otp', requestRegistrationOtp);
 router.post('/register/doctor', registerDoctor);
 router.post('/login', login);
+router.post('/logout', protect, require('../controllers/authController').logout);
 router.post('/verify-email', verifyEmail);
 router.post('/resend-verify-code', resendVerificationCode);
 router.post('/forgot-password', require('../controllers/authController').forgotPassword);

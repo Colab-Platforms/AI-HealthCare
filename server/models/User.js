@@ -148,6 +148,10 @@ const userSchema = new mongoose.Schema({
       encouragement: String,
       lastUpdated: Date
     }
+  },
+  loginCount: {
+    type: Number,
+    default: 1
   }
 }, { timestamps: true, strict: false });
 

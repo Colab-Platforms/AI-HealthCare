@@ -36,6 +36,7 @@ import LogVitals from "./pages/LogVitals";
 import AdminUsers from "./pages/AdminUsers";
 import AdminReports from "./pages/AdminReports";
 import AdminFoodCache from "./pages/AdminFoodCache";
+import UserActivity from "./pages/UserActivity";
 
 import StepTracker from "./pages/StepTracker";
 import FoodSafety from "./pages/FoodSafety";
@@ -228,6 +229,17 @@ export default function App() {
                             <AdminRoute>
                                 <Layout isAdmin>
                                     <AdminFoodCache />
+                                </Layout>
+                            </AdminRoute>
+                        }
+                    />
+
+                    <Route
+                        path="/admin/activity"
+                        element={
+                            <AdminRoute>
+                                <Layout isAdmin>
+                                    <UserActivity />
                                 </Layout>
                             </AdminRoute>
                         }
