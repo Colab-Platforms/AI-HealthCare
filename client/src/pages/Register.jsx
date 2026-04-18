@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
-import { Activity, Mail, Lock, User, Eye, EyeOff, ArrowRight, ArrowLeft, Heart, Loader2 } from 'lucide-react';
+import { Activity, Mail, Lock, User, Eye, EyeOff, ArrowRight, ArrowLeft, Heart, Loader2, Phone } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function Register() {
@@ -12,7 +12,6 @@ export default function Register() {
     email: '',
     phone: '',
     password: '',
-    confirmPassword: '',
     age: '',
     gender: '',
     height: '',
@@ -27,7 +26,6 @@ export default function Register() {
   const [verificationCode, setVerificationCode] = useState(['', '', '', '', '', '']);
 
   const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [heightUnit, setHeightUnit] = useState('cm');
@@ -59,31 +57,12 @@ export default function Register() {
       toast.error('Phone number must be exactly 10 digits');
       return;
     }
-    if (formData.password !== formData.confirmPassword) {
-      toast.error('Passwords do not match');
-      return;
-    }
-    // Granular Password Validation with specific toasts
+    // Password Validation
     if (formData.password.length < 6) {
       toast.error('Password must be at least 6 characters long');
       return;
     }
-    if (!/[a-z]/.test(formData.password)) {
-      toast.error('Password must contain at least one lowercase letter');
-      return;
-    }
-    if (!/[A-Z]/.test(formData.password)) {
-      toast.error('Password must contain at least one uppercase letter');
-      return;
-    }
-    if (!/[0-9]/.test(formData.password)) {
-      toast.error('Password must contain at least one number');
-      return;
-    }
-    if (!/[!@#$%^&*._]/.test(formData.password)) {
-      toast.error('Password must contain at least one special character (!@#$%^&*._)');
-      return;
-    }
+
 
     setLoading(true);
     try {
@@ -266,7 +245,7 @@ export default function Register() {
       </div>
 
       {/* Right Panel - Form */}
-      <div className="flex-1 flex bg-white overflow-y-auto">
+      <div className="flex-1 flex flex-col justify-center bg-white overflow-y-auto">
         <div className="w-full max-w-xl mx-auto flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-8 sm:py-12">
           {/* Mobile Logo */}
           <div className="lg:hidden flex justify-center mb-1">
@@ -298,7 +277,7 @@ export default function Register() {
                 <div className="relative group">
                   <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 group-focus-within:text-[#064e3b] transition-colors" />
                   <input type="text" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-sm"
+                    className="w-full bg-white border-2 border-gray-400 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-sm shadow-sm"
                     placeholder="Full Name" required />
                 </div>
               </div>
@@ -307,16 +286,16 @@ export default function Register() {
                 <div className="relative group">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 group-focus-within:text-[#064e3b] transition-colors" />
                   <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                    className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-sm"
+                    className="w-full bg-white border-2 border-gray-400 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-sm shadow-sm"
                     placeholder="Email Address" required />
                 </div>
               </div>
               <div>
                 <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Phone Number *</label>
                 <div className="relative group">
-                  <Activity className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 group-focus-within:text-[#064e3b] transition-colors" />
+                  <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 group-focus-within:text-[#064e3b] transition-colors" />
                   <input type="tel" value={formData.phone} onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
-                    className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-sm"
+                    className="w-full bg-white border-2 border-gray-400 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-sm shadow-sm"
                     placeholder="Phone Number" required />
                 </div>
               </div>
@@ -325,54 +304,20 @@ export default function Register() {
                 <div className="relative group">
                   <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 group-focus-within:text-[#064e3b] transition-colors" />
                   <input type={showPassword ? "text" : "password"} value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-12 pr-12 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-sm"
+                    className="w-full bg-white border-2 border-gray-400 rounded-xl py-3 pl-12 pr-12 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-sm shadow-sm"
                     placeholder="Password" required />
                   <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#064e3b] transition-colors">
                     {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                   </button>
                 </div>
-                <div className="mt-2 ml-1 p-2 bg-gray-50/50 rounded-lg border border-gray-100">
-                  <p className="text-[7px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1">Requirements:</p>
-                  <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-                    <p className={`text-[8px] font-black uppercase tracking-widest flex items-center gap-1 ${/[A-Z]/.test(formData.password) ? 'text-emerald-600' : 'text-gray-400'}`}>
-                      <div className={`w-1 h-1 rounded-full ${/[A-Z]/.test(formData.password) ? 'bg-emerald-600' : 'bg-gray-300'}`} /> One uppercase
-                    </p>
-                    <p className={`text-[8px] font-black uppercase tracking-widest flex items-center gap-1 ${/[a-z]/.test(formData.password) ? 'text-emerald-600' : 'text-gray-400'}`}>
-                      <div className={`w-1 h-1 rounded-full ${/[a-z]/.test(formData.password) ? 'bg-emerald-600' : 'bg-gray-300'}`} /> One lowercase
-                    </p>
-                    <p className={`text-[8px] font-black uppercase tracking-widest flex items-center gap-1 ${/[0-9]/.test(formData.password) ? 'text-emerald-600' : 'text-gray-400'}`}>
-                      <div className={`w-1 h-1 rounded-full ${/[0-9]/.test(formData.password) ? 'bg-emerald-600' : 'bg-gray-300'}`} /> One number
-                    </p>
-                    <p className={`text-[8px] font-black uppercase tracking-widest flex items-center gap-1 ${/[!@#$%^&*._]/.test(formData.password) ? 'text-emerald-600' : 'text-gray-400'}`}>
-                      <div className={`w-1 h-1 rounded-full ${/[!@#$%^&*._]/.test(formData.password) ? 'bg-emerald-600' : 'bg-gray-300'}`} /> One special
-                    </p>
-                  </div>
-                </div>
-              </div>
-              <div>
-                <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Confirm Password *</label>
-                <div className="relative group">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 group-focus-within:text-[#064e3b] transition-colors" />
-                  <input type={showConfirmPassword ? "text" : "password"} value={formData.confirmPassword} onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                    className="w-full bg-white border border-gray-200 rounded-xl py-3 pl-12 pr-12 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-sm"
-                    placeholder="Confirm Password" required />
-                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-[#064e3b] transition-colors">
-                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                  </button>
-                </div>
-                {formData.confirmPassword && (
-                  <p className={`text-[9px] mt-1 ml-1 font-black uppercase tracking-widest ${formData.password === formData.confirmPassword ? 'text-emerald-600' : 'text-red-500'}`}>
-                    {formData.password === formData.confirmPassword ? '✓ Passwords match' : '✗ Passwords do not match'}
-                  </p>
-                )}
               </div>
               <button type="submit" disabled={loading}
-                className="w-full py-4 mt-2 text-white font-black uppercase text-xs tracking-[0.2em] rounded-xl transition-all flex items-center justify-center gap-3 bg-[#064e3b] hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] disabled:opacity-70 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1">
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><span className="text-sm">Continue</span> <ArrowRight className="w-4 h-4" /></>}
+                className="w-full py-5 mt-2 text-white font-black uppercase text-sm tracking-[0.2em] rounded-xl hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.3)] shadow-[0_10px_20px_rgba(6,78,59,0.15)] transition-all flex items-center justify-center gap-3 bg-[#064e3b] disabled:opacity-70 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1">
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <><span className="text-base">Continue</span> <ArrowRight className="w-4 h-4" /></>}
               </button>
               <div className="mt-4 text-center">
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Already registered?</span>{' '}
-                <Link to="/login" className="ml-2 font-black text-[#064e3b] hover:text-[#042f24] transition-all uppercase text-[10px] tracking-widest border-b-2 border-gray-200 hover:border-[#064e3b] pb-0.5">Sign In</Link>
+                <span className="text-xs font-black text-gray-400 uppercase tracking-widest">Already registered?</span>{' '}
+                <Link to="/login" className="ml-2 font-black text-[#064e3b] hover:text-[#042f24] transition-all uppercase text-xs tracking-widest border-b-2 border-gray-200 hover:border-[#064e3b] pb-0.5">Sign In</Link>
               </div>
             </form>
           ) : step === 1.5 ? (
@@ -391,14 +336,14 @@ export default function Register() {
                     autoComplete={i === 0 ? 'one-time-code' : 'off'} maxLength="1" value={digit}
                     onChange={(e) => { const val = e.target.value.replace(/\D/g, ''); const newCode = [...verificationCode]; newCode[i] = val; setVerificationCode(newCode); if (val && i < 5) document.getElementById(`otp-${i + 1}`).focus(); }}
                     onKeyDown={(e) => { if (e.key === 'Backspace' && !verificationCode[i] && i > 0) document.getElementById(`otp-${i - 1}`).focus(); }}
-                    className="w-11 h-14 bg-white border-2 border-gray-200 rounded-2xl text-center font-black text-xl focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] focus:outline-none text-gray-800 shadow-sm transition-all"
+                    className="w-11 h-14 bg-white border-2 border-gray-400 rounded-2xl text-center font-black text-xl focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] focus:outline-none text-gray-800 shadow-sm transition-all"
                   />
                 ))}
               </div>
               <div className="space-y-3">
                 <button onClick={handleVerifyEmail} disabled={loading}
-                  className="w-full py-4 bg-[#064e3b] text-white font-black uppercase text-xs tracking-[0.2em] rounded-xl shadow-xl hover:bg-[#042f24] transition-all flex items-center justify-center gap-3 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1">
-                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span className="text-sm">Confirm Identity</span>}
+                  className="w-full py-5 bg-[#064e3b] text-white font-black uppercase text-sm tracking-[0.2em] rounded-xl shadow-[0_10px_20px_rgba(6,78,59,0.15)] hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.3)] transition-all flex items-center justify-center gap-3 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1">
+                  {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span className="text-base">Confirm Identity</span>}
                 </button>
                 <button onClick={handleResendCode} className="text-[9px] font-black text-gray-400 uppercase tracking-widest hover:text-[#064e3b] transition-colors">Resend Verification Code</button>
               </div>
@@ -409,13 +354,13 @@ export default function Register() {
                 <div>
                   <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Age *</label>
                   <input type="number" value={formData.age} onChange={(e) => setFormData({ ...formData, age: e.target.value })}
-                    className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all text-base"
+                    className="w-full bg-white border-2 border-gray-400 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold transition-all text-base shadow-sm"
                     placeholder="Years" min="10" max="120" required />
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Gender *</label>
                   <select value={formData.gender} onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
-                    className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold appearance-none transition-all text-base" required>
+                    className="w-full bg-white border-2 border-gray-400 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold appearance-none transition-all text-base shadow-sm" required>
                     <option value="">Select</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option>
                   </select>
                 </div>
@@ -431,28 +376,28 @@ export default function Register() {
                   </div>
                   {heightUnit === 'cm' ? (
                     <input type="number" value={formData.height} onChange={(e) => setFormData({ ...formData, height: e.target.value })}
-                      className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all text-base"
+                      className="w-full bg-white border-2 border-gray-400 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold transition-all text-base shadow-sm"
                       placeholder="170" min="100" max="250" required />
                   ) : (
                     <div className="flex gap-2">
                       <input type="number" placeholder="Ft" value={feet} onChange={(e) => { const f = e.target.value; setFeet(f); const totalCm = (parseFloat(f || 0) * 30.48) + (parseFloat(inches || 0) * 2.54); setFormData({ ...formData, height: totalCm.toFixed(1) }); }}
-                        className="w-1/2 bg-white border border-gray-200 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all text-base" required />
+                        className="w-1/2 bg-white border-2 border-gray-400 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold transition-all text-base shadow-sm" required />
                       <input type="number" placeholder="In" value={inches} onChange={(e) => { const i = e.target.value; setInches(i); const totalCm = (parseFloat(feet || 0) * 30.48) + (parseFloat(i || 0) * 2.54); setFormData({ ...formData, height: totalCm.toFixed(1) }); }}
-                        className="w-1/2 bg-white border border-gray-200 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all text-base" required />
+                        className="w-1/2 bg-white border-2 border-gray-400 rounded-xl py-2.5 px-3 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold transition-all text-base shadow-sm" required />
                     </div>
                   )}
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Weight (kg) *</label>
                   <input type="number" step="0.1" value={formData.weight} onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-                    className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all text-base"
+                    className="w-full bg-white border-2 border-gray-400 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold transition-all text-base shadow-sm"
                     placeholder="70.5" min="30" max="300" required />
                 </div>
               </div>
               <div>
                 <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Activity Level *</label>
                 <select value={formData.activityLevel} onChange={(e) => setFormData({ ...formData, activityLevel: e.target.value })}
-                  className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold appearance-none transition-all text-base" required>
+                  className="w-full bg-white border-2 border-gray-400 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold appearance-none transition-all text-base shadow-sm" required>
                   <option value="sedentary">Sedentary (Little/no exercise)</option><option value="lightly_active">Lightly Active (1-3 days)</option>
                   <option value="moderately_active">Moderately Active (3-5 days)</option><option value="very_active">Very Active (6-7 days)</option>
                   <option value="extremely_active">Extremely Active (Athlete)</option>
@@ -462,22 +407,22 @@ export default function Register() {
                 <div>
                   <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Are you Diabetic? *</label>
                   <select value={formData.isDiabetic} onChange={(e) => setFormData({ ...formData, isDiabetic: e.target.value })}
-                    className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold appearance-none transition-all text-base" required>
+                    className="w-full bg-white border-2 border-gray-400 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold appearance-none transition-all text-base shadow-sm" required>
                     <option value="no">No</option><option value="yes">Yes</option>
                   </select>
                 </div>
                 <div>
                   <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">Diet Preference *</label>
                   <select value={formData.dietaryPreference} onChange={(e) => setFormData({ ...formData, dietaryPreference: e.target.value })}
-                    className="w-full bg-white border border-gray-200 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold appearance-none transition-all text-base" required>
+                    className="w-full bg-white border-2 border-gray-400 rounded-xl py-2.5 px-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold appearance-none transition-all text-base shadow-sm" required>
                     <option value="non-vegetarian">Non-Vegetarian</option><option value="vegetarian">Vegetarian</option>
                     <option value="vegan">Vegan</option><option value="eggetarian">Eggetarian</option>
                   </select>
                 </div>
               </div>
               <button type="submit" disabled={loading}
-                className="w-full py-4 mt-2 text-white font-black uppercase text-xs tracking-[0.2em] rounded-xl transition-all flex items-center justify-center gap-3 bg-[#064e3b] hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] disabled:opacity-70 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1">
-                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span className="text-sm">Sign Up</span>}
+                className="w-full py-5 mt-2 text-white font-black uppercase text-sm tracking-[0.2em] rounded-xl hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.3)] shadow-[0_10px_20px_rgba(6,78,59,0.15)] transition-all flex items-center justify-center gap-3 bg-[#064e3b] disabled:opacity-70 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1">
+                {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : <span className="text-base">Sign Up</span>}
               </button>
             </form>
           )}

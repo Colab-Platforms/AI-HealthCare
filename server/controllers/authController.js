@@ -59,11 +59,9 @@ exports.register = async (req, res) => {
     }
 
     // Password complexity validation
-    // At least one uppercase, one special character, one number, min 6 characters
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*._]).{6,}$/;
-    if (!passwordRegex.test(password)) {
+    if (password.length < 6) {
       return res.status(400).json({
-        message: 'Password must contain at least one uppercase letter, one lowercase letter, one special character (!@#$%^&*._), and one number'
+        message: 'Password must be at least 6 characters long'
       });
     }
 
@@ -686,10 +684,9 @@ exports.resetPassword = async (req, res) => {
     }
 
     // Password complexity check (same as registration)
-    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9])(?=.*[!@#$%^&*._]).{6,}$/;
-    if (!passwordRegex.test(password)) {
+    if (password.length < 6) {
       return res.status(400).json({
-        message: 'Password must contain at least one uppercase letter, one lowercase letter, one special character (!@#$%^&*._), and one number'
+        message: 'Password must be at least 6 characters long'
       });
     }
 

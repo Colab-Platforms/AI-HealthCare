@@ -1,9 +1,11 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useState } from "react";
 
 const Navbar = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const { pathname } = useLocation();
+  const isHomePage = pathname === "/";
 
   const navLinks = [
     { to: "/", label: "Home" },
@@ -12,10 +14,16 @@ const Navbar = () => {
     { to: "#", label: "FAQ" },
   ];
 
-  const linkClass =
-    "text-landing-light-bg hover:text-white uppercase font-landing-accent cursor-pointer transition";
+  const brandTextClass = isHomePage
+    ? "text-landing-text hover:text-landing-primary "
+    : "text-landing-light-bg hover:text-white";
+  const linkClass = `${brandTextClass} uppercase font-landing-accent cursor-pointer transition`;
   const ctaButtonClass =
     "px-6 py-2 bg-landing-primary text-white font-landing-accent rounded-full hover:bg-landing-primary/90 transition";
+  const menuButtonClass = isHomePage
+    ? "text-landing-primary hover:text-landing-primary-hover transition"
+    : "text-landing-text hover:text-landing-primary transition";
+  const logoSrc = isHomePage ? "/landing/logo_light.png" : "/landing/logo.png";
 
   return (
     <motion.nav
@@ -26,7 +34,7 @@ const Navbar = () => {
     >
       <div>
         <img
-          src="/landing/logo.png"
+          src={logoSrc}
           alt="AI HealthCare"
           className="w-44 sm:w-48 lg:w-52 h-auto"
         />
@@ -45,7 +53,7 @@ const Navbar = () => {
       <div className="hidden lg:flex items-center">
         <Link
           to="/login"
-          className="text-landing-light-bg hover:text-white uppercase font-landing-accent cursor-pointer transition mr-4"
+          className={`${brandTextClass} uppercase font-landing-accent cursor-pointer transition mr-4`}
         >
           Log in
         </Link>
@@ -56,14 +64,14 @@ const Navbar = () => {
 
       <div className="lg:hidden flex items-center gap-3">
         <Link to="/register" onClick={() => setIsMenuOpen(false)}>
-          <button className="px-5 py-2 bg-landing-primary text-white font-landing-accent rounded-full hover:bg-landing-primary/90 transition">
+          <button className="px-6 py-2.5 bg-landing-primary text-white font-landing-accent font-black uppercase text-xs tracking-wider rounded-full hover:bg-landing-primary/90 transition shadow-[0_10px_20px_rgba(62,118,97,0.2)] active:scale-95">
             Sign Up
           </button>
         </Link>
 
         <button
           type="button"
-          className="text-landing-light-bg hover:text-white transition"
+          className={menuButtonClass}
           onClick={() => setIsMenuOpen((prev) => !prev)}
           aria-label="Toggle navigation menu"
           aria-expanded={isMenuOpen}
@@ -95,7 +103,13 @@ const Navbar = () => {
 
       {isMenuOpen && (
         <div className="absolute top-full left-0 right-0 px-5 lg:hidden z-50">
-          <div className="rounded-2xl bg-black/20 backdrop-blur-sm p-5 ">
+          <div
+            className={`rounded-2xl backdrop-blur-sm p-5 ${
+              isHomePage
+                ? "bg-black/20"
+                : "bg-white/90 border border-slate-200 shadow-lg"
+            }`}
+          >
             <ul className="flex flex-col gap-4">
               {navLinks.map((link) => (
                 <Link

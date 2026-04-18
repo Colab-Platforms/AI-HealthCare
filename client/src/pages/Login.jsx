@@ -87,7 +87,7 @@ export default function Login() {
       </div>
 
       {/* Right Panel - Form */}
-      <div className="flex-1 flex bg-white overflow-y-auto">
+      <div className="flex-1 flex flex-col justify-center bg-white overflow-y-auto">
         <div className="w-full max-w-xl mx-auto flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-8 sm:py-12">
           {/* Mobile Logo */}
           <div className="lg:hidden flex justify-center mb-1">
@@ -112,7 +112,7 @@ export default function Login() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-white border border-gray-200 rounded-xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-base"
+                  className="w-full bg-white border-2 border-gray-400 rounded-xl py-3.5 pl-12 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-base shadow-sm"
                   placeholder="Email Address"
                   required
                 />
@@ -127,7 +127,7 @@ export default function Login() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full bg-white border border-gray-200 rounded-xl py-3.5 pl-12 pr-12 focus:outline-none focus:ring-2 focus:ring-[#064e3b]/20 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-base"
+                  className="w-full bg-white border-2 border-gray-400 rounded-xl py-3.5 pl-12 pr-12 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-base shadow-sm"
                   placeholder="Password"
                   required
                 />
@@ -151,21 +151,21 @@ export default function Login() {
                     <svg className="w-3 h-3 fill-current" viewBox="0 0 20 20"><path d="M0 11l2-2 5 5L18 3l2 2L7 18z" /></svg>
                   </div>
                 </div>
-                <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest group-hover:text-[#064e3b] transition-colors">Remember me</span>
+                <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest group-hover:text-[#064e3b] transition-colors">Remember me</span>
               </label>
-              <Link to="/forgot-password" title="Go to find password page" className="text-[10px] font-black text-gray-400 hover:text-[#064e3b] transition-colors uppercase tracking-widest whitespace-nowrap">Forgot password?</Link>
+              <Link to="/forgot-password" title="Go to find password page" className="text-[11px] font-black text-gray-400 hover:text-[#064e3b] transition-colors uppercase tracking-widest whitespace-nowrap">Forgot password?</Link>
             </div>
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-4 bg-[#064e3b] text-white font-black uppercase text-xs tracking-[0.2em] rounded-xl hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.2)] transition-all flex items-center justify-center gap-3 disabled:opacity-50 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
+              className="w-full py-5 bg-[#064e3b] text-white font-black uppercase text-sm tracking-[0.2em] rounded-xl hover:bg-[#042f24] hover:shadow-[0_20px_40px_rgba(6,78,59,0.3)] shadow-[0_10px_20px_rgba(6,78,59,0.15)] transition-all flex items-center justify-center gap-3 disabled:opacity-50 active:scale-[0.98] border-b-4 border-[#042f24] hover:border-b-2 hover:translate-y-px active:border-b-0 active:translate-y-1"
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  <span className="text-sm">Sign In</span>
+                  <span className="text-base">Sign In</span>
                   <ArrowRight className="w-4 h-4" />
                 </>
               )}
@@ -173,8 +173,8 @@ export default function Login() {
           </form>
 
           <p className="text-center mt-8">
-            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">New to take.health?</span>{' '}
-            <Link to="/register" className="ml-2 font-black text-[#064e3b] hover:text-[#042f24] transition-all uppercase text-[10px] tracking-widest border-b-2 border-gray-200 hover:border-[#064e3b] pb-0.5">Create Account</Link>
+            <span className="text-xs font-black text-gray-400 uppercase tracking-widest">New to take.health?</span>{' '}
+            <Link to="/register" className="ml-2 font-black text-[#064e3b] hover:text-[#042f24] transition-all uppercase text-xs tracking-widest border-b-2 border-gray-200 hover:border-[#064e3b] pb-0.5">Create Account</Link>
           </p>
         </div>
       </div>
