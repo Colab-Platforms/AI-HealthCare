@@ -83,9 +83,9 @@ export default function ForgotPassword() {
                         <div className="relative">
                             <div className="absolute inset-0 bg-emerald-400/20 blur-2xl rounded-full group-hover:bg-emerald-400/40 transition-all duration-700" />
                             <img 
-                                src="/assets/logos/logo-icon.png" 
+                                src="/assets/logos/logo-full.png" 
                                 alt="take.health" 
-                                className="h-32 w-auto object-contain relative z-10 transition-transform duration-700 group-hover:scale-105"
+                                className="h-40 w-auto object-contain brightness-0 invert relative z-10 transition-transform duration-700 group-hover:scale-105"
                             />
                         </div>
                     </div>
@@ -101,19 +101,33 @@ export default function ForgotPassword() {
             </div>
 
             {/* Right Panel - Form */}
-            <div className="flex-1 flex flex-col justify-center bg-white overflow-y-auto">
-                <div className="w-full max-w-xl mx-auto flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-8 sm:py-12">
-                    {/* Mobile Logo */}
-                    <div className="lg:hidden flex justify-center mb-1">
+            <div className="flex-1 flex flex-col bg-white overflow-hidden relative h-[100dvh] lg:h-screen">
+                {/* Mobile Hero Image - Increased height and refined logo placement */}
+                <div className="lg:hidden w-full h-[32vh] relative overflow-hidden shrink-0">
+                    <img 
+                        src="/features_hero.png" 
+                        alt="Healthcare Platform Features" 
+                        className="w-full h-full object-cover"
+                    />
+                    {/* Logo Overlay - Top Left */}
+                    <Link to="/" className="absolute top-4 left-4 z-20 hover:scale-105 transition-transform">
                         <img
-                            src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099"
+                            src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/icon_main_file_1.png?v=1776498796"
                             alt="take.health"
-                            className="h-20 w-auto object-contain"
+                            className="h-16 w-auto object-contain drop-shadow-lg"
                         />
+                    </Link>
+                    {/* Diagonal Sweep Overlay */}
+                    <div className="absolute bottom-0 left-0 w-full h-10 bg-white" 
+                         style={{ clipPath: 'polygon(0 100%, 100% 100%, 100% 0)' }}>
                     </div>
+                </div>
 
-                    <button onClick={() => step === 1 ? navigate('/login') : setStep(step - 1)} className="flex items-center gap-2 mb-4 text-[#064e3b] font-black uppercase tracking-tighter text-[10px] hover:text-[#042f24] transition-colors">
-                        <ArrowLeft className="w-4 h-4" /> Back to {step === 1 ? 'Login' : 'Previous Step'}
+                <div className="w-full max-w-xl mx-auto flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-2 sm:py-12 overflow-y-auto lg:overflow-visible">
+                    {/* Mobile Logo removed as it is now in hero */}
+
+                    <button onClick={() => step === 1 ? navigate('/login') : setStep(step - 1)} className="flex items-center gap-2 mb-3 text-[#064e3b] font-black uppercase tracking-tighter text-[9px] shrink-0">
+                        <ArrowLeft className="w-3 h-3" /> Back
                     </button>
 
                     <div className="text-center mb-6">

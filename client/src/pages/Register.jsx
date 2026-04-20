@@ -227,7 +227,7 @@ export default function Register() {
             <div className="relative">
               <div className="absolute inset-0 bg-emerald-400/20 blur-2xl rounded-full group-hover:bg-emerald-400/40 transition-all duration-700" />
               <img
-                src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099"
+                src="/assets/logos/logo-full.png"
                 alt="take.health"
                 className="h-32 w-auto object-contain brightness-0 invert relative z-10 transition-transform duration-700 group-hover:scale-105"
               />
@@ -245,28 +245,42 @@ export default function Register() {
       </div>
 
       {/* Right Panel - Form */}
-      <div className="flex-1 flex flex-col justify-center bg-white overflow-y-auto">
-        <div className="w-full max-w-xl mx-auto flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-8 sm:py-12">
-          {/* Mobile Logo */}
-          <div className="lg:hidden flex justify-center mb-1">
+      <div className="flex-1 flex flex-col bg-white overflow-hidden relative h-[100dvh] lg:h-screen">
+        {/* Mobile Hero Image - Increased height for features visibility */}
+        <div className="lg:hidden w-full h-[30vh] relative overflow-hidden shrink-0">
+          <img 
+            src="/features_hero.png" 
+            alt="Healthcare Platform Features" 
+            className="w-full h-full object-cover"
+          />
+          {/* Logo Overlay - Top Left */}
+          <Link to="/" className="absolute top-4 left-4 z-20 hover:scale-105 transition-transform">
             <img
-              src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099"
+              src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/icon_main_file_1.png?v=1776498796"
               alt="take.health"
-              className="h-20 w-auto object-contain"
+              className="h-16 w-auto object-contain drop-shadow-lg"
             />
+          </Link>
+          {/* Diagonal Sweep Overlay */}
+          <div className="absolute bottom-0 left-0 w-full h-8 bg-white" 
+               style={{ clipPath: 'polygon(0 100%, 100% 100%, 100% 0)' }}>
           </div>
+        </div>
 
-          <div className="mb-2 relative">
+        <div className="w-full max-w-xl mx-auto flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-2 sm:py-12 overflow-y-auto lg:overflow-visible">
+          {/* Mobile Logo removed as it is now in hero */}
+
+          <div className="mb-2 relative shrink-0">
             {step > 1 && (
-              <button onClick={() => setStep(step - 0.5)} className="absolute -top-4 left-0 flex items-center gap-1 text-[#064e3b] font-black uppercase text-[9px] tracking-widest hover:text-[#042f24] transition-all">
+              <button onClick={() => setStep(step - 0.5)} className="absolute -top-3 left-0 flex items-center gap-1 text-[#064e3b] font-black uppercase text-[8px] tracking-widest">
                 <ArrowLeft className="w-3 h-3" /> Back
               </button>
             )}
-            <h2 className="text-xl font-black mb-0.5 text-[#064e3b] uppercase tracking-tighter">
+            <h2 className="text-xl font-black mb-0 text-[#064e3b] uppercase tracking-tighter">
               {step === 1 ? 'Create Account' : step === 1.5 ? 'Verify Identity' : 'Setup Profile'}
             </h2>
-            <p className="text-gray-400 font-bold uppercase text-[8px] tracking-[0.2em]">
-              {step === 1 ? 'Fill in your details to get started' : step === 1.5 ? 'Email verification' : 'Health identity'}
+            <p className="text-gray-400 font-bold uppercase text-[7px] tracking-[0.2em]">
+              {step === 1 ? 'Start your health journey' : step === 1.5 ? 'Email verification' : 'Health identity'}
             </p>
           </div>
 
