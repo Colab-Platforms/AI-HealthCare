@@ -24,7 +24,7 @@ export const AboutParagraph = () => {
             Over
             <span className="inline-flex conatiner mx-auto relative w-[54px] lg:w-[130px] h-[24px] lg:h-[50px] bg-[#104747] flex justify-center items-center rounded-[40px] mx-2 lg:mx-2 -rotate-[7deg] align-middle overflow-hidden shadow-sm translate-y-[-4px] lg:translate-y-[-8px]">
               <div className="">
-                <img
+                <img loading="lazy" decoding="async"
                   src="/landing/about/virusss.webp"
                   alt="virus icon"
                   className="w-4 h-4 lg:w-10 lg:h-10"
