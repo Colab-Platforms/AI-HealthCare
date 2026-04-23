@@ -89,19 +89,20 @@ const Hero = () => {
           variants={item}
           className="text-4xl md:text-6xl text-white font-landing-accent-2 text-balance"
         >
-          Your Health, Understood Ahead of Time
+          A Thoughtfully Designed Health App
         </motion.h1>
         <motion.p
           variants={item}
-          className="text-xl md:text-2xl font-light text-landing-light-bg mt-4 font-landing-accent max-w-4xl mx-auto capitalize mb-5 text-balance"
+          className="text-md md:text-xl font-light tracking-wide text-landing-light-bg mt-4 font-landing-accent max-w-4xl mx-auto capitalize mb-5 text-balance"
         >
-          Access personalized health insights, anticipate risks early, and
-          enhance your longevity through advanced, data-driven care.
+          Everything you need to understand and improve your health,
+          track your progress, monitor key metrics, and get clear insights
+          without the overwhelm.
         </motion.p>
         <motion.div variants={item}>
           <Link to="/register">
-            <button className="px-6 py-2 bg-landing-primary text-white uppercase font-landing-accent rounded-full hover:bg-landing-primary-hover transition">
-              Track For Free
+            <button className="px-8 py-2.5 bg-landing-primary text-white uppercase font-landing-accent rounded-full hover:bg-landing-primary-hover transition tracking-wider">
+              Start Tracking
             </button>
           </Link>
         </motion.div>

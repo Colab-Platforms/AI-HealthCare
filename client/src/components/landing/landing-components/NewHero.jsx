@@ -123,6 +123,14 @@ const NewHero = () => {
       className="relative overflow-hidden select-none"
       style={{ backgroundColor: currentSlide.backgroundColor }}
     >
+      {/* Preload all slider images to prevent delayed network requests during auto-play, 
+          which causes tools like GTMetrix to wait ~20s for network quiet. */}
+      <div className="absolute w-0 h-0 opacity-0 overflow-hidden pointer-events-none" aria-hidden="true">
+        {slides.map((slide) => (
+          <img key={`preload-${slide.id}`} src={slide.image} alt="" priority={slide.id === 1 ? "true" : "false"} />
+        ))}
+      </div>
+
       <motion.div
         key={currentSlide.id}
         className="absolute inset-0"
@@ -133,7 +141,7 @@ const NewHero = () => {
         transition={{ duration: 0.7, ease: "easeInOut" }}
       />
       <motion.div
-        className="container relative mx-auto flex min-h-screen flex-col items-center justify-center gap-10 px-5 pt-36 lg:flex-row lg:justify-between lg:px-20 lg:pt-20"
+        className="container relative mx-auto flex min-h-screen flex-col items-center justify-center gap-10 px-5 pt-28 lg:flex-row lg:justify-between lg:px-20 lg:pt-20"
         drag="x"
         dragConstraints={{ left: 0, right: 0 }}
         dragElastic={0.12}
@@ -259,6 +267,8 @@ const NewHero = () => {
                   ease: "easeInOut",
                 }}
                 draggable="false"
+                fetchPriority={activeSlide === 0 ? "high" : "auto"}
+                loading={activeSlide === 0 ? "eager" : "lazy"}
               />
             </motion.div>
           </AnimatePresence>
