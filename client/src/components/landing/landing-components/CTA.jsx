@@ -199,7 +199,7 @@ const CTA = () => {
             transition={{ ...fadeUp.transition, delay: 0.12 }}
             className="w-3/4 mx-auto lg:w-[30%] flex justify-center"
           >
-            <img src="/landing/CTA/phone.png" alt="phone" width={300} height={600} />
+            <img src="/landing/CTA/phone.webp" alt="phone" width={300} height={600} />
           </motion.div>
           <motion.div
             {...fadeUp}
