@@ -1,13 +1,8 @@
-import React, { lazy, Suspense } from "react";
-import Navbar from "../components/landing/landing-components/Navbar";
+import { lazy, Suspense } from "react";
 import Hero from "../components/landing/landing-components/Hero";
-import WhatsAppButton from "../components/landing/landing-components/WhatsAppButton";
-import NewHero from "../components/landing/landing-components/NewHero";
+import NavbarOld from "../components/landing/landing-components/NavbarOld";
 
 const CTA = lazy(() => import("../components/landing/landing-components/CTA"));
-const Demo = lazy(
-  () => import("../components/landing/landing-components/Demo"),
-);
 const FAQs = lazy(
   () => import("../components/landing/landing-components/FAQs"),
 );
@@ -30,11 +25,11 @@ const Testimonials = lazy(
 const LandingPage = () => {
   return (
     <section className="bg-landing-light-bg text-landing-text font-landing-body relative">
-      <Navbar />
-      <NewHero />
+      <NavbarOld />
+      <Hero />
       <Suspense fallback={<div className="h-20" />}>
         <Stats />
-        <Demo />
+        {/* <Demo /> */}
         <ImgPointer />
         <Potential />
         <CTA />
@@ -42,7 +37,6 @@ const LandingPage = () => {
         <FAQs />
         <Footer />
       </Suspense>
-      <WhatsAppButton />
     </section>
   );
 };
