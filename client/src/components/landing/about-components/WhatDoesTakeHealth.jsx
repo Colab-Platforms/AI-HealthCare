@@ -45,21 +45,21 @@ const WhatDoesTakeHealth = () => {
                         {/* Stats Row */}
                         <div className="w-full max-w-[632px] flex justify-center items-center gap-4 mt-32">
                             <div className="relative flex flex-col items-center justify-center shrink-0 w-[120px] xl:w-[168px] h-[120px] xl:h-[168px]">
-                                <img src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
+                                <img loading="lazy" decoding="async" src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
                                 <div className="relative z-10 flex flex-col items-center text-center">
                                     <span className="text-white text-xl xl:text-[40px] font-landing-body font-normal leading-tight">90%</span>
                                     <span className="text-white text-[8px] xl:text-[12px] font-landing-body font-normal leading-tight mt-1">of health data is <br /> never fully used</span>
                                 </div>
                             </div>
                             <div className="relative flex flex-col items-center justify-center shrink-0 w-[120px] xl:w-[168px] h-[120px] xl:h-[168px]">
-                                <img src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
+                                <img loading="lazy" decoding="async" src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
                                 <div className="relative z-10 flex flex-col items-center text-center">
                                     <span className="text-white text-xl xl:text-[40px] font-landing-body font-normal leading-tight whitespace-nowrap">1 in 3</span>
                                     <span className="text-white text-[8px] xl:text-[12px] font-landing-body font-normal leading-tight mt-1">people don't understand <br /> their reports</span>
                                 </div>
                             </div>
                             <div className="relative flex flex-col items-center justify-center shrink-0 w-[120px] xl:w-[168px] h-[120px] xl:h-[168px]">
-                                <img src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
+                                <img loading="lazy" decoding="async" src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
                                 <div className="relative z-10 flex flex-col items-center text-center">
                                     <span className="text-white text-xl xl:text-[40px] font-landing-body font-normal leading-tight">50%</span>
                                     <span className="text-white text-[8px] xl:text-[12px] font-landing-body font-normal leading-tight mt-1">of health depends <br /> on lifestyle</span>
@@ -83,7 +83,7 @@ const WhatDoesTakeHealth = () => {
 
                     {/* Right Column */}
                     <div className="w-1/2 relative">
-                        <img src="/landing/about/Longevity.webp" alt="Longevity" className="absolute inset-0 w-full h-full object-cover" style={{ borderTopRightRadius: '48px', borderBottomRightRadius: '48px' }} />
+                        <img loading="lazy" decoding="async" src="/landing/about/Longevity.webp" alt="Longevity" className="absolute inset-0 w-full h-full object-cover" style={{ borderTopRightRadius: '48px', borderBottomRightRadius: '48px' }} />
                         <div className="absolute inset-x-0 bottom-20 px-10 xl:px-20 text-center">
                             <h2 className="text-white text-4xl xl:text-6xl leading-tight font-landing-title italic">Longevity Starts <br /> Here</h2>
                         </div>
@@ -126,7 +126,7 @@ const WhatDoesTakeHealth = () => {
                     <div className="flex justify-center items-center gap-2 w-full px-4 pt-12 relative z-10">
                         {/* 90% */}
                         <div className="relative flex flex-col items-center justify-center flex-shrink-0 w-[85px] h-[85px]">
-                            <img src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
+                            <img loading="lazy" decoding="async" src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
                             <div className="z-10 text-center flex flex-col items-center pt-1">
                                 <span className="text-white text-[12px] font-landing-body leading-none">90%</span>
                                 <span className="text-white text-[6px] font-landing-body leading-tight mt-0.5">of health data is <br /> never fully used</span>
@@ -134,7 +134,7 @@ const WhatDoesTakeHealth = () => {
                         </div>
                         {/* 1 in 3 */}
                         <div className="relative flex flex-col items-center justify-center flex-shrink-0 w-[85px] h-[85px]">
-                            <img src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
+                            <img loading="lazy" decoding="async" src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
                             <div className="z-10 text-center flex flex-col items-center pt-1">
                                 <span className="text-white text-[12px] font-landing-body leading-none">1 in 3</span>
                                 <span className="text-white text-[6px] font-landing-body leading-tight mt-0.5">people don't understand <br /> their reports</span>
@@ -142,7 +142,7 @@ const WhatDoesTakeHealth = () => {
                         </div>
                         {/* 50% */}
                         <div className="relative flex flex-col items-center justify-center flex-shrink-0 w-[85px] h-[85px]">
-                            <img src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
+                            <img loading="lazy" decoding="async" src="/landing/about/Ellipse 195.png" alt="circle" className="absolute inset-0 w-full h-full object-contain" />
                             <div className="z-10 text-center flex flex-col items-center pt-1">
                                 <span className="text-white text-[12px] font-landing-body leading-none">50%</span>
                                 <span className="text-white text-[6px] font-landing-body leading-tight mt-0.5">of health depends <br /> on lifestyle</span>
@@ -170,7 +170,7 @@ const WhatDoesTakeHealth = () => {
                 <div
                     className="relative w-full h-[50vh] md:h-[60vh] overflow-hidden rounded-xl p-2"
                 >
-                    <img src="/landing/about/Longevity.webp" alt="Longevity" className="absolute h-auto m-0 inset-0 w-full h-full object-cover" />
+                    <img loading="lazy" decoding="async" src="/landing/about/Longevity.webp" alt="Longevity" className="absolute h-auto m-0 inset-0 w-full h-full object-cover" />
                     <div className="absolute inset-x-0 bottom-1 px-3 text-center">
                         <p className="text-white text-4xl md:text-6xl leading-tight font-landing-title italic">Longevity Starts Here</p>
                     </div>

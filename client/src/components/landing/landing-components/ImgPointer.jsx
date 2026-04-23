@@ -10,7 +10,7 @@ const ImgPointer = () => {
     <section className="container mx-auto py-28 px-5 lg:px-20">
       <div className="flex flex-col gap-10">
         {isMobImage1Available && (
-          <motion.img
+          <motion.img loading="lazy" decoding="async"
             src="/landing/pointer/img1-mob.webp"
             alt="pointer"
             className="sticky lg:hidden"
@@ -22,7 +22,7 @@ const ImgPointer = () => {
             onError={() => setIsMobImage1Available(false)}
           />
         )}
-        <motion.img
+        <motion.img loading="lazy" decoding="async"
           src="/landing/pointer/img1.webp"
           alt="pointer"
           className="sticky hidden lg:block"
@@ -32,7 +32,7 @@ const ImgPointer = () => {
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
         />
-        <motion.img
+        <motion.img loading="lazy" decoding="async"
           src="/landing/pointer/img2.webp"
           alt="pointer"
           className="sticky hidden lg:block"
@@ -43,7 +43,7 @@ const ImgPointer = () => {
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
         />
         {isMobImage2Available && (
-          <motion.img
+          <motion.img loading="lazy" decoding="async"
             src="/landing/pointer/img2-mob.webp"
             alt="pointer"
             className="sticky lg:hidden"
@@ -55,7 +55,7 @@ const ImgPointer = () => {
             onError={() => setIsMobImage2Available(false)}
           />
         )}
-        <motion.img
+        <motion.img loading="lazy" decoding="async"
           src="/landing/pointer/img3.webp"
           alt="pointer"
           className="sticky hidden lg:block"
@@ -66,7 +66,7 @@ const ImgPointer = () => {
           transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
         />
         {isMobImage3Available && (
-          <motion.img
+          <motion.img loading="lazy" decoding="async"
             src="/landing/pointer/img3-mob.webp"
             alt="pointer"
             className="sticky lg:hidden"
