@@ -213,62 +213,18 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex bg-white font-sans">
-      {/* Left Panel - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-[#064e3b]">
-        {/* Decorative Glow Elements matching Dashboard */}
-        <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-emerald-400/10 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-[300px] h-[300px] bg-cyan-400/10 rounded-full blur-[100px] translate-y-1/4 -translate-x-1/4 pointer-events-none" />
-
-        <div className="absolute inset-0 bg-gradient-to-br from-[#064e3b] via-[#065f46] to-[#042f24] opacity-90" />
-
-        <div className="relative z-10 flex flex-col justify-center items-center w-full p-12 text-white">
-          <div className="flex justify-center mb-10 group">
-            <div className="relative">
-              <div className="absolute inset-0 bg-emerald-400/20 blur-2xl rounded-full group-hover:bg-emerald-400/40 transition-all duration-700" />
-              <img
-                src="/assets/logos/logo-full.png"
-                alt="take.health"
-                className="h-32 w-auto object-contain brightness-0 invert relative z-10 transition-transform duration-700 group-hover:scale-105"
-              />
-            </div>
-          </div>
-          <h1 className="text-4xl font-light tracking-tight mb-4 text-center">
-            {step === 1 ? 'Start Your Journey' : step === 1.5 ? 'Verify Identity' : 'Personalize Care'}
-          </h1>
-          <p className="text-xl text-emerald-50/70 text-center max-w-md leading-relaxed">
-            {step === 1 ? "Join thousands of users who have transformed their life with take.health AI." :
-              step === 1.5 ? "We've sent a 6-digit code to your email. This ensures your health data stays private." :
-                "Tell us a bit about yourself so our AI can craft your perfect health strategy."}
-          </p>
-        </div>
-      </div>
-
-      {/* Right Panel - Form */}
-      <div className="flex-1 flex flex-col bg-white overflow-hidden relative h-[100dvh] lg:h-screen">
-        {/* Mobile Hero Image - Increased height for features visibility */}
-        <div className="lg:hidden w-full h-[30vh] relative overflow-hidden shrink-0">
-          <img 
-            src="/features_hero.png" 
-            alt="Healthcare Platform Features" 
-            className="w-full h-full object-cover"
+    <div className="min-h-screen flex items-center justify-center bg-white font-sans p-4">
+      <div className="w-full max-w-md flex flex-col items-center">
+        {/* Centered Logo */}
+        <Link to="/" className="mb-8 hover:scale-105 transition-transform">
+          <img
+            src="/assets/logos/logo-full.png"
+            alt="take.health"
+            className="h-20 w-auto object-contain"
           />
-          {/* Logo Overlay - Top Left */}
-          <Link to="/" className="absolute top-4 left-4 z-20 hover:scale-105 transition-transform">
-            <img
-              src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/icon_main_file_1.png?v=1776498796"
-              alt="take.health"
-              className="h-16 w-auto object-contain drop-shadow-lg"
-            />
-          </Link>
-          {/* Diagonal Sweep Overlay */}
-          <div className="absolute bottom-0 left-0 w-full h-8 bg-white" 
-               style={{ clipPath: 'polygon(0 100%, 100% 100%, 100% 0)' }}>
-          </div>
-        </div>
+        </Link>
 
-        <div className="w-full max-w-xl mx-auto flex-1 flex flex-col justify-center px-6 sm:px-12 lg:px-20 py-2 sm:py-12 overflow-y-auto lg:overflow-visible">
-          {/* Mobile Logo removed as it is now in hero */}
+        <div className="w-full bg-white rounded-3xl p-2 sm:p-4">
 
           <div className="mb-2 relative shrink-0">
             {step > 1 && (

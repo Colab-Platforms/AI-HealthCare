@@ -259,7 +259,7 @@ export const adminService = {
 
 export const activityService = {
   getLogs: (params) => api.get('activity', { params }),
-  getStats: () => api.get('activity/stats')
+  getStats: (params) => api.get('activity/stats', { params })
 };
 
 export const subscriptionService = {

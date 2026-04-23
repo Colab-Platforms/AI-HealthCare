@@ -168,11 +168,11 @@ const WhatDoesTakeHealth = () => {
 
                 {/* Lower Part (Image) */}
                 <div
-                    className="relative w-full h-[400px] md:h-[600px] overflow-hidden rounded-xl"
+                    className="relative w-full h-[50vh] md:h-[60vh] overflow-hidden rounded-xl p-2"
                 >
-                    <img src="/landing/about/Longevity.webp" alt="Longevity" className="absolute inset-0 w-full h-full object-cover" />
-                    <div className="absolute inset-x-0 bottom-10 px-6 text-center">
-                        <h2 className="text-white text-3xl leading-tight font-landing-title italic">Longevity Starts <br /> Here</h2>
+                    <img src="/landing/about/Longevity.webp" alt="Longevity" className="absolute h-auto m-0 inset-0 w-full h-full object-cover" />
+                    <div className="absolute inset-x-0 bottom-1 px-3 text-center">
+                        <p className="text-white text-4xl md:text-6xl leading-tight font-landing-title italic">Longevity Starts Here</p>
                     </div>
                 </div>
             </div>

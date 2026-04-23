@@ -11,16 +11,16 @@ const fadeUp = {
 
 export const AboutParagraph = () => {
   return (
-    <section className="container mx-auto px-5 md:px-16 lg:px-32 mt-32">
+    <section className="container mx-auto px-3 md:px-16 lg:px-32 mt-32">
       <motion.div
         {...fadeUp}
-        className="max-w-[1863px] mx-auto text-center flex flex-col justify-center items-center"
+        className="mx-auto text-center"
       >
-        <div className="w-full text-center capitalize word-wrap break-word text-xl md:text-2xl lg:text-4xl leading-[1.4] text-[#000000]">
-          <div className="font-landing-body font-normal">
+        <div className="w-full text-center capitalize word-wrap break-word text-md md:text-2xl lg:text-4xl leading-[1.2] text-[#000000]">
+          <p className="font-landing-body font-normal">
             Taking control of your health shouldn’t feel confusing.
-          </div>
-          <div className="font-landing-body font-normal mt-2">
+          </p>
+          <div className="px-8 font-landing-body font-normal mt-2">
             Over
             <span className="inline-flex conatiner mx-auto relative w-[54px] lg:w-[130px] h-[24px] lg:h-[50px] bg-[#104747] flex justify-center items-center rounded-[40px] mx-2 lg:mx-2 -rotate-[7deg] align-middle overflow-hidden shadow-sm translate-y-[-4px] lg:translate-y-[-8px]">
               <div className="">
@@ -57,9 +57,9 @@ export const AboutParagraph = () => {
                 />
               </svg>
             </span>
-            and unclear health guidance often without realizing the root cause.
+            and <br className="md:hidden" /> unclear health guidance often without realizing the root cause.
           </div>
-          <div className="text-[#104747] font-landing-title font-medium leading-[26.76px] lg:leading-[74.33px] mt-6 lg:mt-12">
+          <div className="text-[#104747] font-landing-title font-semibold mt-2">
             Take Health was built to change that.
           </div>
         </div>
