@@ -39,6 +39,7 @@ const LogVitals = lazy(() => import("./pages/LogVitals"));
 const AdminUsers = lazy(() => import("./pages/AdminUsers"));
 const AdminReports = lazy(() => import("./pages/AdminReports"));
 const AdminFoodCache = lazy(() => import("./pages/AdminFoodCache"));
+const AdminActivity = lazy(() => import("./pages/UserActivity"));
 
 const StepTracker = lazy(() => import("./pages/StepTracker"));
 const FoodSafety = lazy(() => import("./pages/FoodSafety"));
@@ -231,6 +232,17 @@ export default function App() {
                                 <AdminRoute>
                                     <Layout isAdmin>
                                         <AdminFoodCache />
+                                    </Layout>
+                                </AdminRoute>
+                            }
+                        />
+
+                        <Route
+                            path="/admin/activity"
+                            element={
+                                <AdminRoute>
+                                    <Layout isAdmin>
+                                        <AdminActivity />
                                     </Layout>
                                 </AdminRoute>
                             }
