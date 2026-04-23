@@ -72,6 +72,8 @@ const CTA = () => {
           src="/landing/CTA/bg.webp"
           className="w-full h-[400px] lg:h-full object-cover lg:w-full z-0"
           alt=""
+          width={1920}
+          height={1080}
         />
         <div className="absolute inset-0 bg-black/60 z-0"></div>
 
@@ -139,6 +141,8 @@ const CTA = () => {
           src="/landing/CTA/bg-pop.webp"
           className="w-full h-[400px] lg:h-full object-cover lg:w-full absolute inset-0 z-0"
           alt=""
+          width={1920}
+          height={1080}
         />
 
         <div className="absolute -bottom-0 lg:-bottom-0 bg-gradient-to-t from-landing-primary to-transparent w-full h-24 lg:h-64 z-50 flex items-end justify-center gap-5">
@@ -195,7 +199,7 @@ const CTA = () => {
             transition={{ ...fadeUp.transition, delay: 0.12 }}
             className="w-3/4 mx-auto lg:w-[30%] flex justify-center"
           >
-            <img src="/landing/CTA/phone.png" alt="phone" />
+            <img src="/landing/CTA/phone.png" alt="phone" width={300} height={600} />
           </motion.div>
           <motion.div
             {...fadeUp}
