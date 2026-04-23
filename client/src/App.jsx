@@ -8,13 +8,13 @@ import {
 } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
 import { PedometerProvider } from "./context/PedometerContext";
-import Layout from "./components/Layout";
 import GenericSkeleton from "./components/skeletons/GenericSkeleton";
 import PageLoader from "./components/PageLoader";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import LandingPage from "./pages/LandingPage";
 
+const Layout = lazy(() => import("./components/Layout"));
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const DashboardEnhanced = lazy(() => import("./pages/DashboardEnhanced"));
 const UploadReport = lazy(() => import("./pages/UploadReport"));
