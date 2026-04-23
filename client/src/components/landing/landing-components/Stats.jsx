@@ -92,7 +92,7 @@ const Stats = () => {
             </div>
 
             <img
-              src="/landing/stats/a-blur.png"
+              src="/landing/stats/a-blur.webp"
               alt=""
               className="absolute top-0 right-0"
             />
