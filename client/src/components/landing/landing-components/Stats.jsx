@@ -106,6 +106,8 @@ const Stats = () => {
             <img
               src="/landing/stats/B.jpg"
               alt="Running"
+              width={600}
+              height={800}
               className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition duration-500"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent"></div>
@@ -245,6 +247,8 @@ const Stats = () => {
             <img
               src="/landing/stats/f.jpg"
               alt="Salad"
+              width={800}
+              height={600}
               className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition duration-500"
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
