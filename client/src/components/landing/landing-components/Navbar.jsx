@@ -36,6 +36,8 @@ const Navbar = () => {
         <img
           src={logoSrc}
           alt="AI HealthCare"
+          width={208}
+          height={48}
           className="w-44 sm:w-48 lg:w-52 h-auto"
         />
       </div>

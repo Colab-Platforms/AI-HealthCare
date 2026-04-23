@@ -248,6 +248,8 @@ const NewHero = () => {
               <motion.img
                 src={currentSlide.image}
                 alt="AI HealthCare"
+                width={800}
+                height={800}
                 className="mx-auto w-full select-none sm:max-w-sm md:max-w-md lg:mx-0 lg:w-full lg:max-w-none"
                 initial={{ y: 10 }}
                 animate={{ y: [0, -6, 0] }}
