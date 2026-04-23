@@ -63,9 +63,11 @@ export default function AdminDashboard() {
 
   const statCards = [
     { label: 'Total Users', value: stats?.stats?.totalUsers || 0, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', trend: 12.5 },
+    { label: 'Unique Users', value: stats?.stats?.uniqueUsers || 0, icon: ShieldCheck, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+    { label: 'Repeat Users', value: stats?.stats?.repeatUsers || 0, icon: Clock, color: 'text-rose-600', bg: 'bg-rose-50' },
     { label: 'Total Reports', value: stats?.stats?.totalReports || 0, icon: FileText, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: 8.2 },
     { label: 'Completion Rate', value: `${((stats?.stats?.completedReports / stats?.stats?.totalReports) * 100 || 0).toFixed(1)}%`, icon: Activity, color: 'text-orange-600', bg: 'bg-orange-50', trend: 2.4 },
-    { label: 'IQ Cache', value: stats?.stats?.totalCachedFoods || '4.2k', icon: Utensils, color: 'text-purple-600', bg: 'bg-purple-50' }
+    { label: 'IQ Cache', value: stats?.stats?.totalCachedFoods || 0, icon: Utensils, color: 'text-purple-600', bg: 'bg-purple-50' }
   ];
 
   return (
@@ -75,10 +77,16 @@ export default function AdminDashboard() {
         <p className="text-slate-500 text-sm">System performance and user engagement metrics</p>
       </div>
 
-      {/* Stats Cards - Simplified */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* Stats Cards - Expanded for new metrics */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         {statCards.map((stat, i) => (
-          <div key={i} className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-3">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: i * 0.1 }}
+            key={i} 
+            className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col gap-3 hover:shadow-md transition-all"
+          >
             <div className="flex justify-between items-start">
               <div className={`p-3 rounded-xl ${stat.bg}`}>
                 <stat.icon className={`w-5 h-5 ${stat.color}`} />
@@ -93,7 +101,7 @@ export default function AdminDashboard() {
               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-none mb-1.5">{stat.label}</p>
               <p className="text-2xl font-black text-slate-800 tracking-tight">{stat.value}</p>
             </div>
-          </div>
+          </motion.div>
         ))}
       </div>
 
@@ -201,6 +209,7 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-slate-50">
               {[
                 { label: 'Manage Users', desc: 'Verify and update user roles', path: '/admin/users', icon: Users },
+                { label: 'User Intelligence', desc: 'Monitor live activity logs', path: '/admin/activity', icon: Activity },
                 { label: 'Food DB', desc: 'Manage Food Database', path: '/admin/food-cache', icon: Utensils },
                 { label: 'Health Reports', desc: 'Review patient report analysis', path: '/admin/reports', icon: FileText }
               ].map((action, i) => (

@@ -6,6 +6,7 @@ const HealthGoal = require('../models/HealthGoal');
 const { calculateNutritionGoals } = require('../services/nutritionGoalCalculator');
 const cloudinary = require('../services/cloudinary');
 const Otp = require('../models/Otp');
+const { logActivity } = require('../utils/activityLogger');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
@@ -181,6 +182,9 @@ exports.register = async (req, res) => {
     }
 
     console.log('User registered successfully:', user._id);
+    
+    // Log activity
+    await logActivity(user._id, 'USER_REGISTER', 'authentication', { role: user.role }, req);
 
     res.status(201).json({
       _id: user._id,
@@ -327,6 +331,9 @@ exports.login = async (req, res) => {
     }
 
     if (passwordMatch) {
+      user.loginCount = (user.loginCount || 0) + 1;
+      await user.save();
+
       const response = {
         _id: user._id,
         name: user.name,
@@ -352,6 +359,10 @@ exports.login = async (req, res) => {
       }
 
       console.log('Login successful for user:', user._id);
+
+      // Log activity (Awaited for reliability)
+      await logActivity(user._id, 'USER_LOGIN', 'authentication', { method: email ? 'email' : 'phone' }, req);
+
       res.json(response);
     } else {
       console.log('Password mismatch for user:', user._id);
@@ -359,15 +370,23 @@ exports.login = async (req, res) => {
     }
   } catch (error) {
     console.error('Login error:', error.message);
-    console.error('Login error stack:', error.stack);
-    console.error('Login error code:', error.code);
-    res.status(500).json({
-      message: 'Login failed. Please try again.',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
-      timestamp: new Date().toISOString()
-    });
+    res.status(500).json({ message: error.message });
   }
 };
+
+// @desc    Logout user & log activity
+// @route   POST /api/auth/logout
+exports.logout = async (req, res) => {
+  try {
+    if (req.user) {
+      await logActivity(req.user._id, 'USER_LOGOUT', 'authentication', {}, req);
+    }
+    res.json({ success: true, message: 'Logged out successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 
 exports.getProfile = async (req, res) => {
   try {
@@ -391,7 +410,7 @@ exports.updateProfile = async (req, res) => {
       // Properly merge profile object and sanitize strict enums
       if (req.body.profile) {
         const sanitizedProfile = { ...req.body.profile };
-        
+
         // Remove empty strings for fields with fixed enums to prevent validation errors
         if (sanitizedProfile.gender === "") delete sanitizedProfile.gender;
         if (sanitizedProfile.dietaryPreference === "") delete sanitizedProfile.dietaryPreference;

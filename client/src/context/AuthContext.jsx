@@ -1,9 +1,15 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import api from '../services/api';
 
-const AuthContext = createContext();
+const AuthContext = createContext({});
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -125,7 +131,12 @@ export const AuthProvider = ({ children }) => {
     return data;
   };
 
-  const logout = () => {
+  const logout = async () => {
+    try {
+      // Notify server to log activity
+      await api.post('auth/logout').catch(err => console.warn('Logout log failed:', err.message));
+    } catch (e) {}
+
     // Logout should not wipe non-sensitive UI state like onboarding tour completion
     localStorage.removeItem('token');
     localStorage.removeItem('user');

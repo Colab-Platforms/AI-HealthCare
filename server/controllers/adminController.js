@@ -26,21 +26,6 @@ exports.getAllUsers = async (req, res) => {
     }
     if (status === 'active') filter.isActive = true;
     if (status === 'inactive') filter.isActive = false;
-    
-    // Date Range Filter
-    if (startDate || endDate) {
-      filter.createdAt = {};
-      if (startDate) {
-        const sDate = new Date(startDate);
-        sDate.setHours(0, 0, 0, 0);
-        filter.createdAt.$gte = sDate;
-      }
-      if (endDate) {
-        const eDate = new Date(endDate);
-        eDate.setHours(23, 59, 59, 999);
-        filter.createdAt.$lte = eDate;
-      }
-    }
 
     if (search) {
       filter.$or = [
@@ -113,7 +98,7 @@ exports.updateUserRole = async (req, res) => {
       { role },
       { new: true }
     ).select('-password');
-    
+
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json(user);
   } catch (error) {
@@ -206,6 +191,9 @@ exports.getReportStats = async (req, res) => {
     const failedReports = await HealthReport.countDocuments({ status: 'failed' });
     const totalUsers = await User.countDocuments({ role: { $in: ['patient', 'user'] } });
     const activeUsers = await User.countDocuments({ role: { $in: ['patient', 'user'] }, isActive: true });
+    const AllUsers = await User.countDocuments({ role: 'user' });
+    const repeatUsers = await User.countDocuments({ role: 'user', loginCount: { $gt: 1 } });
+    const uniqueUsers = AllUsers;
 
     const recentReports = await HealthReport.find()
       .populate('user', 'name')
@@ -215,22 +203,26 @@ exports.getReportStats = async (req, res) => {
     // Growth Data (last 7 days)
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
+
     const reportGrowth = await HealthReport.aggregate([
       { $match: { createdAt: { $gte: sevenDaysAgo } } },
-      { $group: {
+      {
+        $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
           count: { $sum: 1 }
-      }},
+        }
+      },
       { $sort: { _id: 1 } }
     ]);
-    
+
     const userGrowth = await User.aggregate([
       { $match: { createdAt: { $gte: sevenDaysAgo }, role: { $in: ['patient', 'user'] } } },
-      { $group: {
+      {
+        $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
           count: { $sum: 1 }
-      }},
+        }
+      },
       { $sort: { _id: 1 } }
     ]);
 
@@ -246,7 +238,9 @@ exports.getReportStats = async (req, res) => {
         totalUsers, activeUsers,
         reportGrowth,
         userGrowth,
-        distribution
+        distribution,
+        uniqueUsers,
+        repeatUsers
       },
       recentReports
     });
@@ -547,7 +541,7 @@ exports.bulkCreateCachedFood = async (req, res) => {
     const processedFoods = foods.map(data => {
       let healthScore10 = data.healthScore10;
       if (data.healthScore && !healthScore10) healthScore10 = data.healthScore / 10;
-      
+
       return {
         ...data,
         healthScore10,

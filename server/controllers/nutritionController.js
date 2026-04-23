@@ -8,6 +8,7 @@ const { uploadImage } = require('../services/cloudinary');
 const QuickFoodCheck = require('../models/QuickFoodCheck');
 const fs = require('fs');
 const cache = require('../utils/cache');
+const { logActivity } = require('../utils/activityLogger');
 
 // Helper function to add timeout to all queries for Vercel compatibility
 const withTimeout = (query, timeoutMs = 30000) => {
@@ -467,6 +468,14 @@ exports.logMeal = async (req, res) => {
 
     // Update daily summary
     await updateDailySummary(req.user._id, foodLog.timestamp);
+
+    // Log activity
+    await logActivity(req.user._id, 'LOG_MEAL', 'nutrition', { 
+      mealType, 
+      itemCount: foodItems.length,
+      calories: totalNutrition.calories,
+      foodNames: foodItems.map(i => i.foodItem?.name || i.name).join(', ')
+    }, req);
 
     res.json({
       success: true,

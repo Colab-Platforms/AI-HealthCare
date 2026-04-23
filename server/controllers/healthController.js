@@ -15,6 +15,7 @@ const emailService = require('../services/emailService');
 const queueService = require('../services/queueService');
 const HealthMetric = require('../models/HealthMetric');
 const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
+const { logActivity } = require('../utils/activityLogger');
 
 const withTimeout = (query, timeoutMs = 45000) => {
   return query.maxTimeMS(timeoutMs);
@@ -218,6 +219,13 @@ exports.uploadReport = async (req, res) => {
 
     await cache.delete(`reports:${req.user._id}`);
     
+    // Log activity
+    await logActivity(req.user._id, 'UPLOAD_REPORT', 'diagnostics', { 
+      reportType: req.body.reportType || 'general',
+      fileName: req.file.originalname,
+      reportId: report._id
+    }, req);
+
     // Respond to client
     res.status(201).json({ report, backgroundProcessing: true });
 
