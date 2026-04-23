@@ -125,14 +125,14 @@ const Testimonials = () => {
         <div className="mt-8 md:mt-14">
           <hr />
           <div className="flex items-center mt-5 gap-5">
-            <img
+            <img loading="lazy" decoding="async"
               src="/landing/testimonial/testimonial.webp"
               alt="testimonial"
               className=" md:w-auto"
             />
             <div>
               <h5 className="text-sm md:text-base">2,000+ Active Members</h5>
-              <img
+              <img loading="lazy" decoding="async"
                 src="/landing/testimonial/star.svg"
                 alt=""
                 className="w-24 md:w-auto"

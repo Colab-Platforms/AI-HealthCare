@@ -151,7 +151,7 @@ const Demo = () => {
           <h3 className="font-landing-title text-xl font-semibold max-w-10">
             Interactive Tool (Symptom Checker)
           </h3>
-          <img
+          <img loading="lazy" decoding="async"
             src="/landing/demo/wave.png"
             alt="wave"
             className="w-10 h-10 mt-3"
@@ -160,7 +160,7 @@ const Demo = () => {
 
         <div className="relative">
           {/* border */}
-          <motion.img
+          <motion.img loading="lazy" decoding="async"
             initial={{ opacity: 0, scale: 1 }}
             whileInView={{ opacity: 1, scale: 1 }}
             viewport={{ once: true, margin: "-100px" }}
@@ -172,8 +172,8 @@ const Demo = () => {
 
           <div className="absolute bottom-0 lg:left-[22%]">
             <div className="inline-block -mb-[70px]">
-              <img
-                src="/landing/demo/man.png"
+              <img loading="lazy" decoding="async"
+                src="/landing/demo/man.webp"
                 alt="demo preview"
                 className={
                   hasWebGL
@@ -209,33 +209,33 @@ const Demo = () => {
                 </motion.div>
               ) : null}
             </div>
-            <motion.img
+            <motion.img loading="lazy" decoding="async"
               style={{ rotate: rotate1, willChange: "transform" }}
-              src="/landing/demo/circle.png"
+              src="/landing/demo/circle.webp"
               alt="circle"
               className="absolute -right-[16%] -top-10 lg:-right-[50%] lg:top-0 w-2/5 origin-center"
             />
-            <motion.img
+            <motion.img loading="lazy" decoding="async"
               style={{ rotate: rotate2, willChange: "transform" }}
-              src="/landing/demo/circle.png"
+              src="/landing/demo/circle.webp"
               alt="circle"
               className="absolute -left-[12%] -bottom-10 lg:-left-[45%] lg:-bottom-14 w-1/4 origin-center z-50"
             />
-            <motion.img
+            <motion.img loading="lazy" decoding="async"
               initial={{ opacity: 0, scale: 0.8 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: 0.4 }}
-              src="/landing/demo/innovation.svg"
+              src="/landing/demo/innovation.webp"
               alt="innovation"
               className="absolute -left-[50%] lg:w-5/12 lg:-left-[60%] md:-left-80 md:top-0 lg:top-10 backdrop-blur-[2px] hidden lg:block"
             />
-            <motion.img
+            <motion.img loading="lazy" decoding="async"
               initial={{ opacity: 0, scale: 0.8 }}
               whileInView={{ opacity: 1, scale: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.6, delay: 0.5 }}
-              src="/landing/demo/sugar.png"
+              src="/landing/demo/sugar.webp"
               alt="sugar"
               className="absolute -right-[50%] -bottom-24 hidden lg:block"
             />

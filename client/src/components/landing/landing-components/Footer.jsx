@@ -77,7 +77,7 @@ const Footer = () => {
               ease: [0.16, 1, 0.3, 1],
             }}
           >
-            <img src="/landing/logo.png" className="mb-5 w-16 lg:w-60" alt="" width={240} height={55} />
+            <img loading="lazy" decoding="async" src="/landing/logo.png" className="mb-5 w-16 lg:w-60" alt="" width={240} height={55} />
             <p className="max-w-sm">
               The definitive AI health companion for those who demand more from
               their bodies. Precision analytics for everyday vitality.
@@ -178,7 +178,7 @@ const Footer = () => {
               ease: [0.16, 1, 0.3, 1],
             }}
           >
-            <img
+            <img loading="lazy" decoding="async"
               src="/landing/logo.png"
               className="mb-5 w-2/3 lg:w-60"
               alt=""

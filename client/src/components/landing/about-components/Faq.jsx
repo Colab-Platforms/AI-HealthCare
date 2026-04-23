@@ -37,7 +37,7 @@ export default function Faq() {
     return (
         <section className="relative w-full flex justify-center items-center px-4 pb-16 md:px-10 lg:px-20">
             <div className="relative w-full h-[500px] md:h-[600px] lg:h-[800px] overflow-hidden shadow-2xl" style={{ borderRadius: '40px' }}>
-                <img
+                <img loading="lazy" decoding="async"
                     src="/landing/about/frame_1000001190.webp"
                     alt="FAQ"
                     className="absolute inset-0 w-full h-full object-cover object-center"

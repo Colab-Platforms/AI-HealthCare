@@ -54,7 +54,7 @@ export default function HealthcareRedefined() {
                         className="w-full lg:flex-1 h-[40vh] md:h-[50vh] lg:h-[60vh] rounded-2xl overflow-hidden relative group"
                     >
                         {/* Image */}
-                        <img
+                        <img loading="lazy" decoding="async"
                             src={card.img}
                             alt="card"
                             className="w-full h-full object-cover"

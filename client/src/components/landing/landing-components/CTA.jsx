@@ -68,7 +68,7 @@ const CTA = () => {
   return (
     <section>
       <motion.div {...fadeIn} className="relative mt-24 z-0 overflow-hidden">
-        <img
+        <img loading="lazy" decoding="async"
           src="/landing/CTA/bg.webp"
           className="w-full h-[400px] lg:h-full object-cover lg:w-full z-0"
           alt=""
@@ -125,7 +125,7 @@ const CTA = () => {
                 play={isMarqueeInView}
               >
                 {marqueeCards.map((card, index) => (
-                  <img
+                  <img loading="lazy" decoding="async"
                     key={`${card}-${index}`}
                     src={card}
                     alt={`card-${index + 1}`}
@@ -137,7 +137,7 @@ const CTA = () => {
           </div>
         </div>
 
-        <img
+        <img loading="lazy" decoding="async"
           src="/landing/CTA/bg-pop.webp"
           className="w-full h-[400px] lg:h-full object-cover lg:w-full absolute inset-0 z-0"
           alt=""
@@ -199,7 +199,7 @@ const CTA = () => {
             transition={{ ...fadeUp.transition, delay: 0.12 }}
             className="w-3/4 mx-auto lg:w-[30%] flex justify-center"
           >
-            <img src="/landing/CTA/phone.png" alt="phone" width={300} height={600} />
+            <img loading="lazy" decoding="async" src="/landing/CTA/phone.webp" alt="phone" width={300} height={600} />
           </motion.div>
           <motion.div
             {...fadeUp}
