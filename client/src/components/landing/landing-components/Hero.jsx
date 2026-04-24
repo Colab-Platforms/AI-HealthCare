@@ -57,7 +57,7 @@ const Hero = () => {
       initial="hidden"
       animate="show"
       variants={bgFade}
-      className="relative z-10 h-screen flex items-center justify-center text-center pb-10 px-5 lg:px-20 overflow-hidden"
+      className="relative z-10 h-[100dvh] flex items-center justify-center text-center pb-10 px-5 lg:px-20 overflow-hidden"
     >
       <img
         src="/landing/bg-back.jpg"
