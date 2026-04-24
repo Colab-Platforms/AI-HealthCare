@@ -107,12 +107,13 @@ const Hero = () => {
           Enhance Your Longevity Through Advanced, Data-Driven Care.
         </motion.p>
 
-        <motion.div variants={item}>
+        <motion.div variants={item} className="flex flex-col items-center justify-center gap-2">
           <Link to="/register">
             <button className="px-8 py-2.5 bg-landing-primary text-white uppercase font-landing-accent rounded-full hover:bg-landing-primary-hover transition tracking-wider">
               Start For Free
             </button>
           </Link>
+          <span className="text-white/50 text-xs">* No Credit Card Required</span>
         </motion.div>
 
         
