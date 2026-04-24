@@ -113,7 +113,7 @@ const Hero = () => {
               Start For Free
             </button>
           </Link>
-          <span className="text-white/50 text-xs">No Credit Card Required</span>
+          <span className="text-white/50 text-xs">* No Credit Card Required</span>
         </motion.div>
 
         
