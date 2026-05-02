@@ -81,6 +81,14 @@
         gtag("js", new Date());
         gtag("config", "G-DB37B478X6");
 
+        // Google Ads (Delayed)
+        var gtagAdsScript = document.createElement("script");
+        gtagAdsScript.src =
+          "https://www.googletagmanager.com/gtag/js?id=AW-18108900048";
+        gtagAdsScript.async = true;
+        document.body.appendChild(gtagAdsScript);
+        gtag("config", "AW-18108900048");
+
         // Facebook Pixel (Delayed)
         var fbScript = document.createElement("script");
         fbScript.innerHTML = `
