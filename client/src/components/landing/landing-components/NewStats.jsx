@@ -154,7 +154,7 @@ const NewStats = () => {
             />
             <img
               src="/landing/new-stats/more-card.jpg"
-              className="rounded-md"
+              className="rounded-[10px] md:rounded-md"
               alt=""
             />
           </div>
