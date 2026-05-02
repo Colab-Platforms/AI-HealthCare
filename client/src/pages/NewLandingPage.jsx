@@ -15,9 +15,7 @@ const ImgPointer = lazy(
 const Potential = lazy(
   () => import("../components/landing/landing-components/Potential"),
 );
-const Stats = lazy(
-  () => import("../components/landing/landing-components/Stats"),
-);
+
 const NewStats = lazy(
   () => import("../components/landing/landing-components/NewStats"),
 );
@@ -31,9 +29,7 @@ const NewLandingPage = () => {
       <NavbarOld />
       <Hero />
       <Suspense fallback={<div className="h-20" />}>
-        {/* <Stats /> */}
         <NewStats />
-        {/* <Demo /> */}
         <ImgPointer />
         <Potential />
         <CTA />
