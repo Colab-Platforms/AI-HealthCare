@@ -112,7 +112,7 @@ const Testimonials = () => {
         className="w-full lg:w-1/2 flex flex-col justify-between py-2 lg:py-8"
       >
         <div>
-          <h2 className=" font-landing-title text-2xl md:text-4xl/[3rem] text-balance mb-2">
+          <h2 className="font-semibold font-landing-title text-2xl md:text-4xl/[3rem] text-balance mb-2">
             You trust what ranks high. It's time your{" "}
             <span className="text-landing-primary-hover italic">health</span>{" "}
             did too
@@ -125,14 +125,18 @@ const Testimonials = () => {
         <div className="mt-8 md:mt-14">
           <hr />
           <div className="flex items-center mt-5 gap-5">
-            <img loading="lazy" decoding="async"
+            <img
+              loading="lazy"
+              decoding="async"
               src="/landing/testimonial/testimonial.webp"
               alt="testimonial"
               className=" md:w-auto"
             />
             <div>
               <h5 className="text-sm md:text-base">2,000+ Active Members</h5>
-              <img loading="lazy" decoding="async"
+              <img
+                loading="lazy"
+                decoding="async"
                 src="/landing/testimonial/star.svg"
                 alt=""
                 className="w-24 md:w-auto"

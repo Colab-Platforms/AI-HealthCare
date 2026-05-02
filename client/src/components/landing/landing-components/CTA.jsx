@@ -68,7 +68,9 @@ const CTA = () => {
   return (
     <section>
       <motion.div {...fadeIn} className="relative mt-24 z-0 overflow-hidden">
-        <img loading="lazy" decoding="async"
+        <img
+          loading="lazy"
+          decoding="async"
           src="/landing/CTA/bg.webp"
           className="w-full h-[400px] lg:h-full object-cover lg:w-full z-0"
           alt=""
@@ -81,7 +83,7 @@ const CTA = () => {
           ref={marqueeRef}
           className="absolute inset-x-0 top-14 lg:top-44 z-0 pointer-events-none [perspective:1300px]"
         >
-          <div className="[transform:rotateX(10deg)_rotateY(15deg)] overflow-hidden lg:w-[150%]">
+          <div className="[transform:rotateX(10deg)_rotateY(15deg)] overflow-hidden w-[150%]">
             {isMobile ? (
               <>
                 <style>
@@ -125,7 +127,9 @@ const CTA = () => {
                 play={isMarqueeInView}
               >
                 {marqueeCards.map((card, index) => (
-                  <img loading="lazy" decoding="async"
+                  <img
+                    loading="lazy"
+                    decoding="async"
                     key={`${card}-${index}`}
                     src={card}
                     alt={`card-${index + 1}`}
@@ -137,9 +141,11 @@ const CTA = () => {
           </div>
         </div>
 
-        <img loading="lazy" decoding="async"
+        <img
+          loading="lazy"
+          decoding="async"
           src="/landing/CTA/bg-pop.webp"
-          className="w-full h-[400px] lg:h-full object-cover lg:w-full absolute inset-0 z-0"
+          className="w-full h-[400px] lg:h-full object-cover lg:w-full absolute inset-0 z-60"
           alt=""
           width={1920}
           height={1080}
@@ -149,7 +155,7 @@ const CTA = () => {
           <button
             className="
           bg-landing-secondary 
-          text-landing-text bg-landing-accent-bg font-landing-title lg:text-lg py-2 px-6 rounded-full hover:bg-landing-tertiary transition-colors duration-300"
+          text-landing-text bg-landing-accent-bg font-landing-title lg:text-lg py-2 px-6 rounded-full hover:bg-landing-tertiary transition-colors duration-300 hidden md:flex"
           >
             <Link to="/register" className="flex items-center gap-2">
               Start testing
@@ -166,7 +172,7 @@ const CTA = () => {
               py-2 px-6 
               rounded-full 
               hover:bg-white/20 
-              transition-all duration-300
+              transition-all duration-300 hidden md:flex
             "
           >
             <Link to="/register" className="flex items-center gap-2">
@@ -176,10 +182,7 @@ const CTA = () => {
         </div>
       </motion.div>
 
-      <motion.div
-        {...fadeIn}
-        className="bg-landing-primary pt-16 lg:pt-14 z-50"
-      >
+      <motion.div {...fadeIn} className="bg-landing-primary pt-5 lg:pt-14 z-50">
         <div className="container mx-auto lg:flex text-center items-center px-5 lg:px-20 overflow-hidden">
           <motion.div
             {...fadeUp}
@@ -197,9 +200,19 @@ const CTA = () => {
           <motion.div
             {...fadeUp}
             transition={{ ...fadeUp.transition, delay: 0.12 }}
-            className="w-3/4 mx-auto lg:w-[30%] flex justify-center"
+            className="w-3/4 mx-auto lg:w-[30%] flex justify-center pt-2 md:pt-0 pb-6 md:pb-0 relative"
           >
-            <img loading="lazy" decoding="async" src="/landing/CTA/phone.webp" alt="phone" width={300} height={600} />
+            <img
+              loading="lazy"
+              decoding="async"
+              src="/landing/CTA/phone.webp"
+              alt="phone"
+              width={300}
+              height={600}
+              className="w-56 md:w-4/5"
+            />
+
+            <div className="absolute bottom-5 left-0 w-full h-14 bg-gradient-to-t from-landing-primary to-transparent block md:hidden"></div>
           </motion.div>
           <motion.div
             {...fadeUp}

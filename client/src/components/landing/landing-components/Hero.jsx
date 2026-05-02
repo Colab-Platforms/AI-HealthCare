@@ -94,7 +94,7 @@ const Hero = () => {
       >
         <motion.h1
           variants={item}
-          className="text-4xl md:text-6xl text-white font-landing-accent-2 text-balance"
+          className="text-3xl md:text-5xl text-white font-landing-accent-2 font-semibold text-balance"
         >
           Live Longer, Better
         </motion.h1>
@@ -107,51 +107,75 @@ const Hero = () => {
           Enhance Your Longevity Through Advanced, Data-Driven Care.
         </motion.p>
 
-        <motion.div variants={item} className="flex flex-col items-center justify-center gap-2">
+        <motion.div
+          variants={item}
+          className="flex flex-col items-center justify-center gap-2"
+        >
           <Link to="/register">
             <button className="px-8 py-2.5 bg-landing-primary text-white uppercase font-landing-accent rounded-full hover:bg-landing-primary-hover transition tracking-wider">
               Start For Free
             </button>
           </Link>
-          <span className="text-white/50 text-xs">* No Credit Card Required</span>
+          <span className="text-white/50 text-xs">
+            * No Credit Card Required
+          </span>
         </motion.div>
-
-        
       </motion.div>
 
       <div className="absolute bottom-10 flex gap-2 lg:gap-10">
         <div className="flex items-center gap-0 ">
           <div>
-            <img src="/landing/left_leaf.png" alt="" className="w-9 lg:w-12 h-auto" />
+            <img
+              src="/landing/left_leaf.png"
+              alt=""
+              className="w-9 lg:w-12 h-auto"
+            />
           </div>
           <div>
             <p className="text-white flex flex-col justify-center items-center gap-1">
-              <span className="text-xl lg:text-4xl font-bold font-landing-title">20+</span>
-              <span className="text-white text-center text-xs lg:text-sm lg:max-w-full max-w-20 mx-auto">Years in Life Sciences</span>
+              <span className="text-xl lg:text-4xl font-bold font-landing-title">
+                20+
+              </span>
+              <span className="text-white text-center text-xs lg:text-sm lg:max-w-full max-w-20 mx-auto">
+                Years in Life Sciences
+              </span>
             </p>
           </div>
           <div>
-            <img src="/landing/right_leaf.png" alt="" className="w-9 lg:w-12 h-auto" />
+            <img
+              src="/landing/right_leaf.png"
+              alt=""
+              className="w-9 lg:w-12 h-auto"
+            />
           </div>
         </div>
         <div className="flex items-center -gap-10 ">
           <div>
-            <img src="/landing/left_leaf.png" alt="" className="w-9 lg:w-12 h-auto" />
+            <img
+              src="/landing/left_leaf.png"
+              alt=""
+              className="w-9 lg:w-12 h-auto"
+            />
           </div>
           <div>
             <p className="text-white flex flex-col justify-center items-center gap-1">
-              <span className="text-base lg:text-3xl font-bold font-landing-title">NSE & BSE</span>
-              <span className="text-white text-center text-xs lg:text-sm ">Listed Company</span>
+              <span className="text-base lg:text-3xl font-bold font-landing-title">
+                NSE & BSE
+              </span>
+              <span className="text-white text-center text-xs lg:text-sm ">
+                Listed Company
+              </span>
             </p>
           </div>
           <div>
-            <img src="/landing/right_leaf.png" alt="" className="w-9 lg:w-12 h-auto" />
+            <img
+              src="/landing/right_leaf.png"
+              alt=""
+              className="w-9 lg:w-12 h-auto"
+            />
           </div>
         </div>
       </div>
-       
-
-     
     </motion.section>
   );
 };

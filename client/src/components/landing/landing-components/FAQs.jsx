@@ -72,7 +72,7 @@ const FAQs = () => {
         className="w-full lg:w-1/2 flex flex-col justify-between py-2 lg:py-8"
       >
         <div>
-          <h2 className=" font-landing-title text-2xl md:text-4xl/[3rem] text-balance mb-2">
+          <h2 className="font-semibold font-landing-title text-2xl md:text-4xl/[3rem] text-balance mb-2">
             What it does. How it helps. <br />
             <span className="text-landing-primary-hover italic">
               Why it matters.
@@ -105,7 +105,7 @@ const FAQs = () => {
                 onClick={() => toggleFAQ(index)}
                 className="w-full flex items-start sm:items-center justify-between text-left focus:outline-none gap-3 group"
               >
-                <h3 className="text-sm sm:text-base md:text-lg text-gray-800 font-medium break-words group-hover:text-gray-900 transition-colors flex-1">
+                <h3 className="sm:text-base md:text-lg text-gray-800 font-medium break-words group-hover:text-gray-900 transition-colors flex-1">
                   {faq.question}
                 </h3>
                 <span className="text-gray-500 shrink-0 pt-1">
@@ -123,7 +123,7 @@ const FAQs = () => {
                     : "max-h-0 opacity-0"
                 }`}
               >
-                <p className="text-gray-600 text-xs sm:text-sm md:text-base leading-relaxed break-words pr-2">
+                <p className="text-gray-600 text-sm sm:text-sm md:text-base leading-relaxed break-words pr-2">
                   {faq.answer}
                 </p>
               </div>

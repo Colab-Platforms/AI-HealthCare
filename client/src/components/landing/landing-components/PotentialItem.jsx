@@ -1,19 +1,35 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpLeft, ArrowUpRight } from "lucide-react";
 
-const PotentialItem = ({ src, alt, title, subTitle, description }) => {
+const preserve3d = {
+  transformStyle: "preserve-3d",
+  WebkitTransformStyle: "preserve-3d",
+};
+
+const backfaceHidden = {
+  backfaceVisibility: "hidden",
+  WebkitBackfaceVisibility: "hidden",
+};
+
+const PotentialItem = ({ src, alt, title, subTitle, description, onFlip }) => {
   const [isFlipped, setIsFlipped] = useState(false);
+
+  const handleClick = () => {
+    const next = !isFlipped;
+    setIsFlipped(next);
+    onFlip?.(next);
+  };
 
   return (
     <div
-      className="relative w-72 h-80 md:w-72 md:h-96 cursor-pointer group flex-shrink-0"
-      style={{ perspective: "1000px" }}
-      onClick={() => setIsFlipped(!isFlipped)}
+      className="relative w-72 h-96 md:w-72 md:h-96 cursor-pointer group flex-shrink-0"
+      style={{ perspective: "1000px", WebkitPerspective: "1000px" }}
+      onClick={handleClick}
     >
       <motion.div
         className="w-full h-full relative"
-        style={{ transformStyle: "preserve-3d" }}
+        style={preserve3d}
         initial={false}
         animate={{ rotateY: isFlipped ? 180 : 0 }}
         transition={{
@@ -23,10 +39,10 @@ const PotentialItem = ({ src, alt, title, subTitle, description }) => {
           damping: 20,
         }}
       >
-        {/* Front Side */}
+        {/* ── Front Side ─────────────────────────────────────────────────── */}
         <div
           className="absolute inset-0 bg-landing-secondary rounded-2xl overflow-hidden shadow-lg border border-white/10"
-          style={{ backfaceVisibility: "hidden" }}
+          style={backfaceHidden}
         >
           <img
             src={src}
@@ -42,18 +58,19 @@ const PotentialItem = ({ src, alt, title, subTitle, description }) => {
             <p className="mt-2 text-sm text-gray-300 mb-4 text-balance">
               {subTitle}
             </p>
-            <div className="w-8 h-8 rounded-full border border-white/30 flex items-center justify-center bg-black/40 backdrop-blur-sm group-hover:bg-white/20 transition-colors">
-              <ArrowUpRight size={16} className="text-white" />
+            <div className="w-10 h-10 rounded-full  flex items-center justify-center bg-white/20 backdrop-blur-sm group-hover:bg-white/30 transition-colors">
+              <ArrowUpLeft size={16} className="text-white" />
             </div>
           </div>
         </div>
 
-        {/* Back Side */}
+        {/* ── Back Side ──────────────────────────────────────────────────── */}
         <div
           className="absolute inset-0 rounded-2xl overflow-hidden p-6 flex flex-col justify-center items-start text-white border border-white/20 shadow-xl"
           style={{
-            backfaceVisibility: "hidden",
+            ...backfaceHidden,
             transform: "rotateY(180deg)",
+            WebkitTransform: "rotateY(180deg)",
           }}
         >
           <h3 className="font-landing-title text-xl font-semibold mb-3 text-[#4d867c]">

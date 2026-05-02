@@ -70,7 +70,9 @@ const Stats = () => {
             className="lg:col-span-2 bg-[#f8f6f0] rounded-3xl flex flex-col justify-between overflow-hidden relative group h-[350px] md:h-[320px] lg:h-auto lg:row-span-2"
           >
             <div className="flex lg:flex-col gap-2 px-8 pt-8 md:px-5 md:pt-5 lg:px-8 lg:pt-8 items-start">
-              <img loading="lazy" decoding="async"
+              <img
+                loading="lazy"
+                decoding="async"
                 src="/landing/stats/a.svg"
                 alt="Brain icon"
                 className="w-5 h-5 lg:w-8 lg:h-8 mt-1.5"
@@ -88,10 +90,18 @@ const Stats = () => {
             </div>
 
             <div className=" relative h-40 md:h-32 lg:h-64 w-full flex items-end justify-end">
-              <img loading="lazy" decoding="async" src="/landing/stats/A.png" alt="Lab Data" className="" />
+              <img
+                loading="lazy"
+                decoding="async"
+                src="/landing/stats/A.png"
+                alt="Lab Data"
+                className=""
+              />
             </div>
 
-            <img loading="lazy" decoding="async"
+            <img
+              loading="lazy"
+              decoding="async"
               src="/landing/stats/a-blur.webp"
               alt=""
               className="absolute top-0 right-0"
@@ -103,7 +113,9 @@ const Stats = () => {
             {...fadeUpObj}
             className="rounded-3xl relative overflow-hidden group h-[500px] md:h-[320px] lg:h-auto lg:row-span-2"
           >
-            <img loading="lazy" decoding="async"
+            <img
+              loading="lazy"
+              decoding="async"
               src="/landing/stats/B.jpg"
               alt="Running"
               width={600}
@@ -114,7 +126,9 @@ const Stats = () => {
 
             <div className="absolute top-6 left-6 md:top-4 md:left-4 md:gap-3 lg:top-6 lg:left-6 lg:gap-4 flex gap-4 text-white">
               <div className="flex flex-col items-center lg:gap-1">
-                <img loading="lazy" decoding="async"
+                <img
+                  loading="lazy"
+                  decoding="async"
                   src="/landing/stats/b-shoes.svg"
                   alt="Steps"
                   className="w-6 h-6"
@@ -125,7 +139,9 @@ const Stats = () => {
                 <span className="text-xs text-white/80">Steps</span>
               </div>
               <div className="flex flex-col items-center lg:gap-1">
-                <img loading="lazy" decoding="async"
+                <img
+                  loading="lazy"
+                  decoding="async"
                   src="/landing/stats/b-run.svg"
                   alt="Activity"
                   className="w-6 h-6"
@@ -138,7 +154,9 @@ const Stats = () => {
 
             <div className="absolute bottom-6 left-6 right-6 md:bottom-4 md:left-4 md:right-4 lg:bottom-6 lg:left-6 lg:right-6 text-white flex flex-col gap-3">
               <div className="flex items-center gap-3">
-                <img loading="lazy" decoding="async"
+                <img
+                  loading="lazy"
+                  decoding="async"
                   src="/landing/stats/b-wave.svg"
                   alt="Activity Wave"
                   className="w-8 h-8"
@@ -158,13 +176,17 @@ const Stats = () => {
             {...fadeRightObj}
             className="bg-[#d5e6df] rounded-3xl p-6 md:p-4 lg:p-6 relative overflow-hidden flex flex-col justify-between group h-[280px] md:h-[260px] lg:h-auto"
           >
-            <img loading="lazy" decoding="async"
+            <img
+              loading="lazy"
+              decoding="async"
               src="/landing/stats/c-shape-top-right.svg"
               alt="Shape"
               className="absolute top-0 right-0 w-32 opacity-50"
             />
             <div className="flex flex-col gap-3 z-10 w-full">
-              <img loading="lazy" decoding="async"
+              <img
+                loading="lazy"
+                decoding="async"
                 src="/landing/stats/c-moon.svg"
                 alt="Moon icon"
                 className="w-8 h-8"
@@ -178,7 +200,9 @@ const Stats = () => {
               </p>
             </div>
             <div className="absolute bottom-0 right-0 z-10">
-              <img loading="lazy" decoding="async"
+              <img
+                loading="lazy"
+                decoding="async"
                 src="/landing/stats/c-sleep.svg"
                 alt="Sleeping person"
                 className="w-32 object-contain"
@@ -191,7 +215,9 @@ const Stats = () => {
             {...fadeRightObj}
             className="bg-white border border-[#efebe7] shadow-sm rounded-3xl p-6 md:p-4 lg:p-6 flex flex-col justify-center gap-4 group"
           >
-            <img loading="lazy" decoding="async"
+            <img
+              loading="lazy"
+              decoding="async"
               src="/landing/stats/d-pill.svg"
               alt="Pill icon"
               className="w-10 h-10"
@@ -213,7 +239,9 @@ const Stats = () => {
             <div className="flex flex-col lg:flex-row">
               <div className="p-8 md:p-6 lg:p-8 flex flex-col gap-2 justify-center">
                 <div className="flex items-center gap-2 bg-white/10 w-max px-3 py-1.5 rounded-full text-xs font-semibold tracking-wider">
-                  <img loading="lazy" decoding="async"
+                  <img
+                    loading="lazy"
+                    decoding="async"
                     src="/landing/stats/e.svg"
                     alt="Sparkles icon"
                     className="w-4 h-4"
@@ -230,7 +258,9 @@ const Stats = () => {
               </div>
 
               <div className="flex justify-end md:items-end">
-                <img loading="lazy" decoding="async"
+                <img
+                  loading="lazy"
+                  decoding="async"
                   src="/landing/stats/E.png"
                   alt="Metabolism Data"
                   className="md:max-w-[220px] lg:max-w-none"
@@ -244,7 +274,9 @@ const Stats = () => {
             {...fadeUpObj}
             className="lg:col-span-2 rounded-3xl relative overflow-hidden flex items-end p-8 md:p-6 lg:p-8 group h-[350px] md:h-[320px] lg:h-auto"
           >
-            <img loading="lazy" decoding="async"
+            <img
+              loading="lazy"
+              decoding="async"
               src="/landing/stats/f.jpg"
               alt="Salad"
               width={800}
@@ -254,7 +286,9 @@ const Stats = () => {
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent"></div>
 
             <div className="relative z-10 w-full md:w-3/4 lg:w-2/3 flex flex-col gap-3">
-              <img loading="lazy" decoding="async"
+              <img
+                loading="lazy"
+                decoding="async"
                 src="/landing/stats/f.svg"
                 alt="Apple icon"
                 className="w-10 h-10"
