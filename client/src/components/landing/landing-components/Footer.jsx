@@ -24,10 +24,10 @@ const Footer = () => {
     {
       title: "Platform",
       items: [
-        { name: "Features", link: "#" },
-        { name: "AI Analysis", link: "#" },
-        { name: "Health Coaching", link: "#" },
-        { name: "Pricing", link: "#" },
+        { name: "Home", link: "#" },
+        { name: "About us", link: "#" },
+        { name: "How it works", link: "#" },
+        { name: "FAQ", link: "#" },
       ],
     },
     {
@@ -77,7 +77,15 @@ const Footer = () => {
               ease: [0.16, 1, 0.3, 1],
             }}
           >
-            <img loading="lazy" decoding="async" src="/landing/logo.png" className="mb-5 w-16 lg:w-60" alt="" width={240} height={55} />
+            <img
+              loading="lazy"
+              decoding="async"
+              src="/landing/logo.png"
+              className="mb-5 w-16 lg:w-60"
+              alt=""
+              width={240}
+              height={55}
+            />
             <p className="max-w-sm">
               The definitive AI health companion for those who demand more from
               their bodies. Precision analytics for everyday vitality.
@@ -158,7 +166,7 @@ const Footer = () => {
                 className="flex items-center gap-2 hover:text-white transition"
               >
                 <Phone />
-                <span>+918156020445</span>
+                <span>+91 8156020445</span>
               </a>
             </div>
           </motion.div>
@@ -178,7 +186,9 @@ const Footer = () => {
               ease: [0.16, 1, 0.3, 1],
             }}
           >
-            <img loading="lazy" decoding="async"
+            <img
+              loading="lazy"
+              decoding="async"
               src="/landing/logo.png"
               className="mb-5 w-2/3 lg:w-60"
               alt=""

@@ -1,10 +1,12 @@
 const TestimonialItem = ({ name, role, img, feedback }) => {
   return (
     <div className="bg-[#fffeff] rounded-lg p-5 sm:p-7 md:p-14 w-full max-w-xl min-h-[320px] sm:min-h-[400px] md:min-h-[500px] flex flex-col justify-between gap-4 border-2 border-[#d9d9d9] rounded-l-[10px] rounded-r-[50px] rounded-tl-[50px] rounded-tr-[10px] select-none overflow-y-auto">
-      <img loading="lazy" decoding="async"
+      <img
+        loading="lazy"
+        decoding="async"
         src="/landing/testimonial/coma.svg"
         alt="comma"
-        className="w-10 sm:w-12 h-10 sm:h-12 self-end flex-shrink-0"
+        className="w-10 sm:w-12 h-10 sm:h-12 self-end flex-shrink-0 "
       />
 
       <p className="my-2 sm:my-4 text-base sm:text-lg md:text-2xl w-full md:w-3/4">
@@ -14,7 +16,9 @@ const TestimonialItem = ({ name, role, img, feedback }) => {
       <div>
         <hr />
         <div className="flex items-center gap-2 mt-5">
-          <img loading="lazy" decoding="async"
+          <img
+            loading="lazy"
+            decoding="async"
             src={img}
             alt={name}
             className="w-12 sm:w-14 h-12 sm:h-14 rounded-full object-cover flex-shrink-0"

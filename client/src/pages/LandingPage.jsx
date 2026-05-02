@@ -29,7 +29,7 @@ const LandingPage = () => {
       <Hero />
       <Suspense fallback={<div className="h-20" />}>
         <Stats />
-        {/* <Demo /> */}
+        <Demo />
         <ImgPointer />
         <Potential />
         <CTA />

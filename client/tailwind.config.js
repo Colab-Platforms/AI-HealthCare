@@ -72,11 +72,11 @@ export default {
         },
       },
       fontFamily: {
-        "landing-title": ["Libre Caslon Text", "serif"],
+        "landing-title": ["Montserrat", "sans-serif"],
         "landing-body": ["DM Sans", "sans-serif"],
-        "landing-accent": ["Outfit", "sans-serif"],
-        "landing-accent-2": ["Libre Caslon Display", "serif"],
-        sans: ["Inter", "system-ui", "sans-serif"],
+        "landing-accent": ["DM Sans", "sans-serif"],
+        "landing-accent-2": ["Montserrat", "sans-serif"],
+        sans: ["Montserrat", "sans-serif"],
       },
       boxShadow: {
         glow: "0 0 40px rgba(16, 185, 129, 0.15)",
@@ -122,9 +122,6 @@ export default {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
-      // 	backgroundImage: {
-      //     'hero': "url('/landing/hero.webp')",
-      //   }
     },
   },
   plugins: [require("tailwindcss-animate")],
