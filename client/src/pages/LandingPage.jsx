@@ -21,6 +21,9 @@ const Stats = lazy(
 const Testimonials = lazy(
   () => import("../components/landing/landing-components/Testimonials"),
 );
+const Demo = lazy(
+  () => import("../components/landing/landing-components/Demo"),
+);
 
 const LandingPage = () => {
   return (
