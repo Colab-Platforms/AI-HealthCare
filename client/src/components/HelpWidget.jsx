@@ -77,68 +77,142 @@ export default function HelpWidget() {
 
             {/* Modal */}
             {isOpen && (
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.95, y: 20 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                    transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-                    className="fixed bottom-36 right-6 w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 overflow-hidden"
-                >
-                    {/* Header */}
-                    <div className="bg-emerald-600 text-white p-6 flex items-center justify-between">
-                        <div>
-                            <h3 className="text-lg font-bold">Contact Support</h3>
-                            <p className="text-emerald-100 text-xs mt-1">We'll get back to you soon</p>
+                <>
+                    {/* Desktop: Popover next to button */}
+                    <motion.div
+                        initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                        className="hidden md:block fixed bottom-36 right-6 w-96 bg-white rounded-2xl shadow-2xl border border-slate-200 z-50 overflow-hidden"
+                    >
+                        {/* Header */}
+                        <div className="bg-emerald-600 text-white p-6 flex items-center justify-between">
+                            <div>
+                                <h3 className="text-lg font-bold">Contact Support</h3>
+                                <p className="text-emerald-100 text-xs mt-1">We'll get back to you soon</p>
+                            </div>
+                            <button
+                                onClick={() => setIsOpen(false)}
+                                className="p-2 hover:bg-emerald-700 rounded-lg transition-colors"
+                            >
+                                <X className="w-5 h-5" />
+                            </button>
                         </div>
-                        <button
-                            onClick={() => setIsOpen(false)}
-                            className="p-2 hover:bg-emerald-700 rounded-lg transition-colors"
+
+                        {/* Form */}
+                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                            {/* Subject */}
+                            <div>
+                                <label className="text-xs font-semibold text-slate-700 mb-2 block">
+                                    Subject
+                                </label>
+                                <input
+                                    type="text"
+                                    value={subject}
+                                    onChange={(e) => setSubject(e.target.value)}
+                                    placeholder="What do you need help with?"
+                                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-600 focus:border-transparent text-sm"
+                                />
+                            </div>
+
+                            {/* Message */}
+                            <div>
+                                <label className="text-xs font-semibold text-slate-700 mb-2 block">
+                                    Message
+                                </label>
+                                <textarea
+                                    value={message}
+                                    onChange={(e) => setMessage(e.target.value)}
+                                    placeholder="Describe your issue..."
+                                    rows="4"
+                                    className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-600 focus:border-transparent text-sm resize-none"
+                                />
+                            </div>
+
+                            {/* Submit Button */}
+                            <button
+                                type="submit"
+                                disabled={loading}
+                                className="w-full bg-emerald-600 text-white py-2 rounded-lg font-semibold text-sm hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                            >
+                                <Send className="w-4 h-4" />
+                                {loading ? 'Sending...' : 'Send'}
+                            </button>
+                        </form>
+                    </motion.div>
+
+                    {/* Mobile: Centered modal */}
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+                        className="md:hidden fixed inset-0 flex items-center justify-center p-4 z-50"
+                    >
+                        <motion.div
+                            initial={{ scale: 0.95, y: 20 }}
+                            animate={{ scale: 1, y: 0 }}
+                            exit={{ scale: 0.95, y: 20 }}
+                            className="w-full max-w-sm bg-white rounded-2xl shadow-2xl border border-slate-200 overflow-hidden"
                         >
-                            <X className="w-5 h-5" />
-                        </button>
-                    </div>
+                            {/* Header */}
+                            <div className="bg-emerald-600 text-white p-6 flex items-center justify-between">
+                                <div>
+                                    <h3 className="text-lg font-bold">Contact Support</h3>
+                                    <p className="text-emerald-100 text-xs mt-1">We'll get back to you soon</p>
+                                </div>
+                                <button
+                                    onClick={() => setIsOpen(false)}
+                                    className="p-2 hover:bg-emerald-700 rounded-lg transition-colors"
+                                >
+                                    <X className="w-5 h-5" />
+                                </button>
+                            </div>
 
-                    {/* Form */}
-                    <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                        {/* Subject */}
-                        <div>
-                            <label className="text-xs font-semibold text-slate-700 mb-2 block">
-                                Subject
-                            </label>
-                            <input
-                                type="text"
-                                value={subject}
-                                onChange={(e) => setSubject(e.target.value)}
-                                placeholder="What do you need help with?"
-                                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-600 focus:border-transparent text-sm"
-                            />
-                        </div>
+                            {/* Form */}
+                            <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                                {/* Subject */}
+                                <div>
+                                    <label className="text-xs font-semibold text-slate-700 mb-2 block">
+                                        Subject
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={subject}
+                                        onChange={(e) => setSubject(e.target.value)}
+                                        placeholder="What do you need help with?"
+                                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-600 focus:border-transparent text-sm"
+                                    />
+                                </div>
 
-                        {/* Message */}
-                        <div>
-                            <label className="text-xs font-semibold text-slate-700 mb-2 block">
-                                Message
-                            </label>
-                            <textarea
-                                value={message}
-                                onChange={(e) => setMessage(e.target.value)}
-                                placeholder="Describe your issue..."
-                                rows="4"
-                                className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-600 focus:border-transparent text-sm resize-none"
-                            />
-                        </div>
+                                {/* Message */}
+                                <div>
+                                    <label className="text-xs font-semibold text-slate-700 mb-2 block">
+                                        Message
+                                    </label>
+                                    <textarea
+                                        value={message}
+                                        onChange={(e) => setMessage(e.target.value)}
+                                        placeholder="Describe your issue..."
+                                        rows="4"
+                                        className="w-full px-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-emerald-600 focus:border-transparent text-sm resize-none"
+                                    />
+                                </div>
 
-                        {/* Submit Button */}
-                        <button
-                            type="submit"
-                            disabled={loading}
-                            className="w-full bg-emerald-600 text-white py-2 rounded-lg font-semibold text-sm hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                        >
-                            <Send className="w-4 h-4" />
-                            {loading ? 'Sending...' : 'Send'}
-                        </button>
-                    </form>
-                </motion.div>
+                                {/* Submit Button */}
+                                <button
+                                    type="submit"
+                                    disabled={loading}
+                                    className="w-full bg-emerald-600 text-white py-2 rounded-lg font-semibold text-sm hover:bg-emerald-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                                >
+                                    <Send className="w-4 h-4" />
+                                    {loading ? 'Sending...' : 'Send'}
+                                </button>
+                            </form>
+                        </motion.div>
+                    </motion.div>
+                </>
             )}
         </>
     )
