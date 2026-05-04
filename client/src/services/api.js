@@ -259,7 +259,8 @@ export const adminService = {
 
 export const activityService = {
   getLogs: (params) => api.get('activity', { params }),
-  getStats: (params) => api.get('activity/stats', { params })
+  getStats: (params) => api.get('activity/stats', { params }),
+  exportLogs: (params) => api.get('activity/export', { params, responseType: 'blob' })
 };
 
 export const subscriptionService = {
@@ -290,6 +291,13 @@ export const dietRecommendationService = {
   generateSupplements: () => api.post('diet-recommendations/supplements/generate'),
   getActiveSupplements: () => api.get('diet-recommendations/supplements/active'),
   trackSupplementUsage: (recommendationId, data) => api.post(`diet-recommendations/supplements/${recommendationId}/track`, data)
+};
+
+export const supportService = {
+  createTicket: (data) => api.post('support', data),
+  getMyTickets: () => api.get('support/my-tickets'),
+  getAllTickets: (params) => api.get('support', { params }),
+  respondToTicket: (ticketId, data) => api.patch(`support/${ticketId}/respond`, data)
 };
 
 export default api;

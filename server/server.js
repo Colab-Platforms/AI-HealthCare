@@ -223,6 +223,7 @@ try {
     { path: '/api/food-safety', module: './routes/foodSafetyRoutes' },
     { path: '/api/documents', module: './routes/documentRoutes' },
     { path: '/api/activity', module: './routes/activityRoutes' },
+    { path: '/api/support', module: './routes/supportRoutes' },
     { path: '/api', module: './routes/chatRoutes' } // 🔚 Generic catch-all goes last
   ];
 

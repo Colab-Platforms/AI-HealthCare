@@ -34,6 +34,19 @@ exports.getAllUsers = async (req, res) => {
       ];
     }
 
+    // Add date filter
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) {
+        filter.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = end;
+      }
+    }
+
     const users = await User.find(filter)
       .select('-password')
       .sort({ createdAt: -1 })

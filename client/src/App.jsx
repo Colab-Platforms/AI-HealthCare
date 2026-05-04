@@ -12,6 +12,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import LandingPage from "./pages/LandingPage";
 import NewLandingPage from "./pages/NewLandingPage";
+import HelpWidget from "./components/HelpWidget";
 
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const HowItWorks = lazy(() => import("./pages/HowItWorks"));
@@ -93,6 +94,9 @@ export default function App() {
           />
         </Routes>
       </Suspense>
+      
+      {/* Help Widget - Always visible for authenticated users */}
+      {user && <HelpWidget />}
     </div>
   );
 }

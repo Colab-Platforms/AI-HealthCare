@@ -30,6 +30,7 @@ const AdminUsers = lazy(() => import("./pages/AdminUsers"));
 const AdminReports = lazy(() => import("./pages/AdminReports"));
 const AdminFoodCache = lazy(() => import("./pages/AdminFoodCache"));
 const AdminActivity = lazy(() => import("./pages/UserActivity"));
+const AdminSupport = lazy(() => import("./pages/AdminSupport"));
 
 const StepTracker = lazy(() => import("./pages/StepTracker"));
 const FoodSafety = lazy(() => import("./pages/FoodSafety"));
@@ -126,6 +127,7 @@ export default function PrivateApp() {
                             <Route path="/admin/reports" element={<AdminRoute><Layout isAdmin><AdminReports /></Layout></AdminRoute>} />
                             <Route path="/admin/food-cache" element={<AdminRoute><Layout isAdmin><AdminFoodCache /></Layout></AdminRoute>} />
                             <Route path="/admin/activity" element={<AdminRoute><Layout isAdmin><AdminActivity /></Layout></AdminRoute>} />
+                            <Route path="/admin/support" element={<AdminRoute><Layout isAdmin><AdminSupport /></Layout></AdminRoute>} />
 
                             <Route path="/onboarding" element={<ProtectedRoute><Onboarding /></ProtectedRoute>} />
                         </Routes>

@@ -63,7 +63,7 @@ export default function AdminDashboard() {
 
   const statCards = [
     { label: 'Total Users', value: stats?.stats?.totalUsers || 0, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50', trend: 12.5 },
-    { label: 'Unique Users', value: stats?.stats?.uniqueUsers || 0, icon: ShieldCheck, color: 'text-indigo-600', bg: 'bg-indigo-50' },
+    // { label: 'Unique Users', value: stats?.stats?.uniqueUsers || 0, icon: ShieldCheck, color: 'text-indigo-600', bg: 'bg-indigo-50' },
     { label: 'Repeat Users', value: stats?.stats?.repeatUsers || 0, icon: Clock, color: 'text-rose-600', bg: 'bg-rose-50' },
     { label: 'Total Reports', value: stats?.stats?.totalReports || 0, icon: FileText, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: 8.2 },
     { label: 'Completion Rate', value: `${((stats?.stats?.completedReports / stats?.stats?.totalReports) * 100 || 0).toFixed(1)}%`, icon: Activity, color: 'text-orange-600', bg: 'bg-orange-50', trend: 2.4 },

@@ -13,8 +13,11 @@ exports.getActivityLogs = async (req, res) => {
       userId, 
       search,
       startDate,
-      endDate
+      endDate,
+      hour
     } = req.query;
+
+    console.log('🔍 Backend Received:', { page, limit, category, action, userId, search, startDate, endDate, hour });  // DEBUG LOG
 
     const query = {};
 
@@ -22,7 +25,7 @@ exports.getActivityLogs = async (req, res) => {
     if (action) query.action = action;
     if (userId) query.user = userId;
 
-    if (startDate || endDate) {
+    if (startDate || endDate || hour) {
       query.timestamp = {};
       if (startDate) query.timestamp.$gte = new Date(startDate);
       if (endDate) {
@@ -30,7 +33,31 @@ exports.getActivityLogs = async (req, res) => {
         end.setHours(23, 59, 59, 999);
         query.timestamp.$lte = end;
       }
+      
+      // If hour is specified, filter by that specific hour
+      if (hour !== undefined && hour !== null && hour !== '') {
+        const hourNum = parseInt(hour);
+        if (!isNaN(hourNum) && hourNum >= 0 && hourNum < 24) {
+          // Use startDate if available, otherwise use today
+          const baseDate = startDate ? new Date(startDate) : new Date();
+          
+          const startOfHour = new Date(baseDate);
+          startOfHour.setHours(hourNum, 0, 0, 0);
+          
+          const endOfHour = new Date(baseDate);
+          endOfHour.setHours(hourNum, 59, 59, 999);
+          
+          query.timestamp = {
+            $gte: startOfHour,
+            $lte: endOfHour
+          };
+          
+          console.log('⏰ Hour Filter Applied:', { hour: hourNum, startOfHour, endOfHour });  // DEBUG LOG
+        }
+      }
     }
+
+    console.log('📋 Final Query:', JSON.stringify(query, null, 2));  // DEBUG LOG
 
     if (search) {
       // Find users matching search term to filter logs
@@ -57,6 +84,8 @@ exports.getActivityLogs = async (req, res) => {
       .lean();
 
     const total = await ActivityLog.countDocuments(query);
+
+    console.log('✅ Query Results:', { total, logsReturned: logs.length });  // DEBUG LOG
 
     res.json({
       success: true,
@@ -213,6 +242,29 @@ exports.getActivityStats = async (req, res) => {
     }
     console.log(`Timeline DEBUG: Returned ${timelineStats.length} days | ActivePoints=${rawTimelineStats.length}`);
 
+    // Hourly Visit Time Analytics (Peak Hours)
+    const hourlyStats = await ActivityLog.aggregate([
+      { $match: filter },
+      {
+        $group: {
+          _id: { $hour: "$timestamp" },
+          count: { $sum: 1 }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // Fill missing hours (0-23)
+    const completeHourlyStats = [];
+    for (let hour = 0; hour < 24; hour++) {
+      const found = hourlyStats.find(h => h._id === hour);
+      completeHourlyStats.push({
+        hour: `${hour.toString().padStart(2, '0')}:00`,
+        count: found ? found.count : 0,
+        hourNum: hour
+      });
+    }
+
     res.json({
       success: true,
       stats: {
@@ -223,12 +275,118 @@ exports.getActivityStats = async (req, res) => {
         diabeticStats: diabeticStats || [],
         categoryStats: categoryStats || [],
         timelineStats: timelineStats || [],
+        hourlyStats: completeHourlyStats || [],  // Peak visit hours
         thisWeekCount,
         lastWeekCount,
         trend: lastWeekCount <= 0 ? 100 : Math.round(((thisWeekCount - lastWeekCount) / lastWeekCount) * 100)
       }
     });
   } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Export all activity logs as CSV (Admin only)
+// @route   GET /api/activity/export
+exports.exportActivityLogs = async (req, res) => {
+  try {
+    const { 
+      category, 
+      action, 
+      userId, 
+      search,
+      startDate,
+      endDate,
+      hour
+    } = req.query;
+
+    console.log('📥 Export Request:', { category, action, userId, search, startDate, endDate, hour });
+
+    const query = {};
+
+    if (category) query.category = category;
+    if (action) query.action = action;
+    if (userId) query.user = userId;
+
+    if (startDate || endDate || hour) {
+      query.timestamp = {};
+      if (startDate) query.timestamp.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        query.timestamp.$lte = end;
+      }
+      
+      // If hour is specified, filter by that specific hour
+      if (hour !== undefined && hour !== null && hour !== '') {
+        const hourNum = parseInt(hour);
+        if (!isNaN(hourNum) && hourNum >= 0 && hourNum < 24) {
+          const baseDate = startDate ? new Date(startDate) : new Date();
+          
+          const startOfHour = new Date(baseDate);
+          startOfHour.setHours(hourNum, 0, 0, 0);
+          
+          const endOfHour = new Date(baseDate);
+          endOfHour.setHours(hourNum, 59, 59, 999);
+          
+          query.timestamp = {
+            $gte: startOfHour,
+            $lte: endOfHour
+          };
+        }
+      }
+    }
+
+    if (search) {
+      const users = await User.find({
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { email: { $regex: search, $options: 'i' } },
+          { 'profile.gender': { $regex: `^${search}`, $options: 'i' } }
+        ]
+      }).select('_id');
+      
+      const userIds = users.map(u => u._id);
+      query.$or = [
+        { user: { $in: userIds } },
+        { action: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Fetch ALL logs without pagination
+    const logs = await ActivityLog.find(query)
+      .populate('user', 'name email profile.avatar profile.gender profile.isDiabetic')
+      .sort({ timestamp: -1 })
+      .lean();
+
+    console.log(`📊 Export: Found ${logs.length} records`);
+
+    // Convert to CSV format
+    const csvHeaders = ['User Name', 'Email', 'Gender', 'Diabetic', 'Category', 'Action', 'Timestamp', 'IP Address'];
+    const csvRows = logs.map(log => [
+      log.user?.name || 'Guest User',
+      log.user?.email || 'N/A',
+      log.user?.profile?.gender || 'N/A',
+      log.user?.profile?.isDiabetic === 'yes' ? 'Yes' : 'No',
+      log.category || 'N/A',
+      log.action?.replace(/_/g, ' ') || 'N/A',
+      new Date(log.timestamp).toLocaleString(),
+      log.metadata?.ip || 'N/A'
+    ]);
+
+    // Create CSV content
+    const csvContent = [
+      csvHeaders.join(','),
+      ...csvRows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    // Set response headers for file download
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="activity-logs-${new Date().toISOString().split('T')[0]}.csv"`);
+    
+    res.send(csvContent);
+  } catch (error) {
+    console.error('Error exporting activity logs:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };

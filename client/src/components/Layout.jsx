@@ -60,6 +60,7 @@ const adminExtraNavItems = [
   { path: "/admin/users", icon: Users, label: "Manage Users" },
   { path: "/admin/food-cache", icon: Utensils, label: "Food DB" },
   { path: "/admin/reports", icon: FileText, label: "Review Reports" },
+  { path: "/admin/support", icon: MessageCircle, label: "Support Tickets" }
 ];
 
 export default function Layout({
