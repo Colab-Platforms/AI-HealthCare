@@ -83,6 +83,8 @@ const NewStats = () => {
           <div className="w-full lg:w-[65%] rounded-lg ">
             <div className="relative ">
               <img
+                loading="lazy"
+                decoding="async"
                 src="/landing/new-stats/1.webp"
                 alt="bg-1"
                 className="w-full h-full min-h-[500px] object-[-100px] lg:object-[0] object-cover rounded-lg"
@@ -100,6 +102,8 @@ const NewStats = () => {
 
               <div className="flex flex-col items-center justify-center absolute bottom-10 right-10 md:bottom-20 md:right-20 w-[250px] md:w-[280px] lg:w-[320px]">
                 <img
+                  loading="lazy"
+                  decoding="async"
                   src="/landing/new-stats/device.svg"
                   alt="device"
                   className="relative z-0 w-[160px] md:w-[160px] lg:w-[200px]"
@@ -148,14 +152,18 @@ const NewStats = () => {
               </p>
             </div>
             <img
+              loading="lazy"
+              decoding="async"
               src="/landing/new-stats/2.webp"
               className="rounded-md w-2/3"
-              alt=""
+              alt="Move More Today card"
             />
             <img
+              loading="lazy"
+              decoding="async"
               src="/landing/new-stats/more-card.jpg"
               className="rounded-[10px] md:rounded-md border-[1.5px] border-black/20"
-              alt=""
+              alt="More card"
             />
           </div>
         </div>
@@ -174,20 +182,26 @@ const NewStats = () => {
               </p>
             </div>
             <img
+              loading="lazy"
+              decoding="async"
               src="/landing/new-stats/4.webp"
               className="rounded-md w-5/6"
-              alt=""
+              alt="Stay in range chart"
             />
             <img
+              loading="lazy"
+              decoding="async"
               src="/landing/new-stats/graph.svg"
               className="rounded-md"
-              alt=""
+              alt="Glucose graph"
             />
           </div>
 
           <div className="w-full lg:w-[65%] rounded-lg">
             <div className="relative">
               <img
+                loading="lazy"
+                decoding="async"
                 src="/landing/new-stats/3.webp"
                 alt="bg-3"
                 className="w-full h-full object-cover min-h-[500px] object-[-210px] lg:object-[0] rounded-lg"
@@ -217,8 +231,10 @@ const NewStats = () => {
                       className="w-20 h-20 bg-white/30 rounded-full backdrop-blur-sm flex items-center justify-center mx-2"
                     >
                       <img
+                        loading="lazy"
+                        decoding="async"
                         src={item.src}
-                        alt={item.id}
+                        alt={`marquee icon ${item.id}`}
                         className="object-contain p-5"
                       />
                     </div>
@@ -236,8 +252,10 @@ const NewStats = () => {
           <div className="w-full lg:w-[65%] rounded-lg">
             <div className="relative">
               <img
+                loading="lazy"
+                decoding="async"
                 src="/landing/new-stats/5.webp"
-                alt="bg-1"
+                alt="Eat with purpose background"
                 className="w-full h-full object-cover min-h-[500px]  object-[-250px] lg:object-[0] rounded-lg"
               />
               <div className="absolute top-0 left-0 w-full h-full lg:bg-black/50 bg-black/60 rounded-lg"></div>
@@ -251,9 +269,11 @@ const NewStats = () => {
                 </p>
                 <div className="backdrop-blur-sm bg-black/50 mt-24 p-5 rounded-3xl md:w-2/3 w-full">
                   <img
+                    loading="lazy"
+                    decoding="async"
                     src="/landing/new-stats/eat-content.png"
                     className=""
-                    alt=""
+                    alt="Meal tracking content"
                   />
                 </div>
               </div>
@@ -271,9 +291,11 @@ const NewStats = () => {
               </p>
             </div>
             <img
+              loading="lazy"
+              decoding="async"
               src="/landing/new-stats/rest.png"
               className="rounded-md w-full"
-              alt=""
+              alt="Sleep tracking visual"
             />
           </div>
         </div>
