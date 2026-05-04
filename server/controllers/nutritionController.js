@@ -1668,10 +1668,21 @@ exports.quickFoodCheck = async (req, res) => {
     });
   } catch (error) {
     console.error('❌ [QuickCheck] Fatal error:', error);
+    console.error('❌ [QuickCheck] Error name:', error.name);
+    console.error('❌ [QuickCheck] Error message:', error.message);
+    console.error('❌ [QuickCheck] Error stack:', error.stack);
+    
+    // Log the specific error details
+    if (error.response) {
+      console.error('❌ [QuickCheck] API Response Status:', error.response.status);
+      console.error('❌ [QuickCheck] API Response Data:', JSON.stringify(error.response.data, null, 2));
+    }
+    
     res.status(500).json({
       success: false,
       message: error.message || 'Failed to analyze food',
       error: error.message,
+      errorType: error.name,
       details: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }

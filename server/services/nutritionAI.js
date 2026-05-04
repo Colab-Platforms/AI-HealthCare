@@ -2,7 +2,7 @@ const axios = require('axios');
 const { robustJsonParse } = require('../utils/aiParser');
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-// Next-gen high-fidelity model for results in 10-15 seconds
+// Using Claude Sonnet 4-6 as specified
 const CLAUDE_MODEL = 'claude-sonnet-4-6';
 
 class NutritionAI {
@@ -198,7 +198,13 @@ class NutritionAI {
   }
 
   _parseResponse(r) {
-    if (!r) throw new Error('Empty AI response from server');
+    if (!r) {
+      console.error('❌ [NutritionAI] Empty response received');
+      throw new Error('Empty AI response from server');
+    }
+
+    console.log('📥 [NutritionAI] Raw response length:', r.length);
+    console.log('📥 [NutritionAI] First 200 chars:', r.substring(0, 200));
 
     // Extract JSON block
     const start = r.indexOf('{');
@@ -211,14 +217,21 @@ class NutritionAI {
     }
 
     const jsonStr = r.substring(start, end + 1);
+    console.log('📥 [NutritionAI] Extracted JSON length:', jsonStr.length);
+    
     try {
       const parsed = robustJsonParse(jsonStr);
-      if (!parsed) throw new Error('JSON parser returned empty result');
+      if (!parsed) {
+        console.error('❌ [NutritionAI] JSON parser returned null/undefined');
+        throw new Error('JSON parser returned empty result');
+      }
+      console.log('✅ [NutritionAI] Successfully parsed JSON');
       return { success: true, data: parsed };
     } catch (err) {
       console.error('❌ [NutritionAI] JSON Parse Failed');
-      console.error('❌ [NutritionAI] Problematic snippet:', jsonStr.substring(0, 100) + '...');
-      console.error('❌ [NutritionAI] Tail snippet:', jsonStr.substring(jsonStr.length - 100));
+      console.error('❌ [NutritionAI] Parse error:', err.message);
+      console.error('❌ [NutritionAI] Problematic snippet:', jsonStr.substring(0, 200) + '...');
+      console.error('❌ [NutritionAI] Tail snippet:', jsonStr.substring(Math.max(0, jsonStr.length - 200)));
       throw new Error(`Data processing error: ${err.message}`);
     }
   }
