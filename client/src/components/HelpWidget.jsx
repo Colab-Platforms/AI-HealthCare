@@ -46,7 +46,7 @@ export default function HelpWidget() {
                 category: 'general_help'
             });
 
-            toast.success('Thank you! We received your message. Our team will respond soon.');
+            toast.success('Thank you! We received your message.');
             setSubject('');
             setMessage('');
             setIsOpen(false);
