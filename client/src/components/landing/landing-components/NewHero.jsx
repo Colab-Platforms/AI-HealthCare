@@ -125,9 +125,17 @@ const NewHero = () => {
     >
       {/* Preload all slider images to prevent delayed network requests during auto-play, 
           which causes tools like GTMetrix to wait ~20s for network quiet. */}
-      <div className="absolute w-0 h-0 opacity-0 overflow-hidden pointer-events-none" aria-hidden="true">
+      <div
+        className="absolute w-0 h-0 opacity-0 overflow-hidden pointer-events-none"
+        aria-hidden="true"
+      >
         {slides.map((slide) => (
-          <img key={`preload-${slide.id}`} src={slide.image} alt="" priority={slide.id === 1 ? "true" : "false"} />
+          <img
+            key={`preload-${slide.id}`}
+            src={slide.image}
+            alt=""
+            priority={slide.id === 1 ? "true" : "false"}
+          />
         ))}
       </div>
 
