@@ -109,11 +109,21 @@ exports.getActivityStats = async (req, res) => {
     const totalLogs = await ActivityLog.countDocuments(filter);
     const now = new Date();
     
-    // Calculate Active Users (Unique users with activity in last 24h)
-    const activeUsersThreshold = new Date(now.getTime() - (24 * 60 * 60 * 1000));
-    const activeUsersCount = await ActivityLog.distinct('user', { 
-      timestamp: { $gte: activeUsersThreshold } 
+    // Calculate Live Active Users (Currently active - last 5 minutes for real-time accuracy)
+    // This matches how Clarity tracks "live" users
+    const liveUsersThreshold = new Date(now.getTime() - (5 * 60 * 1000)); // Last 5 minutes
+    const liveActiveUsersCount = await ActivityLog.distinct('user', { 
+      timestamp: { $gte: liveUsersThreshold } 
     }).then(users => users.length);
+    
+    // Calculate Active Users (Unique users within the applied filters)
+    // If no date filter is applied, default to last 24h for "active" users
+    let activeUsersFilter = { ...filter };
+    if (!filter.timestamp) {
+      const activeUsersThreshold = new Date(now.getTime() - (24 * 60 * 60 * 1000));
+      activeUsersFilter.timestamp = { $gte: activeUsersThreshold };
+    }
+    const activeUsersCount = await ActivityLog.distinct('user', activeUsersFilter).then(users => users.length);
 
     // Identify users active within the filter criteria to scope demographics
     const activeFilterUserIds = await ActivityLog.distinct('user', filter);
@@ -207,7 +217,8 @@ exports.getActivityStats = async (req, res) => {
       success: true,
       stats: {
         totalLogs,
-        activeUsersCount,
+        liveActiveUsersCount,  // Currently active (last 5 minutes) - matches Clarity
+        activeUsersCount,      // Active in last 24 hours
         genderStats: genderStats || [],
         diabeticStats: diabeticStats || [],
         categoryStats: categoryStats || [],

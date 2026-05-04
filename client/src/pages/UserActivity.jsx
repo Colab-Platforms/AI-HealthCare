@@ -246,7 +246,7 @@ export default function UserActivity() {
               { label: 'Total Interactions', value: stats?.totalLogs || 0, trend: `${stats?.trend >= 0 ? '+' : ''}${stats?.trend || 0}%`, up: (stats?.trend || 0) >= 0, icon: Zap, bg: 'bg-indigo-50', color: 'text-indigo-600' },
               { label: 'Security Events', value: stats?.categoryStats?.find(c => c._id === 'authentication')?.count || 0, trend: '+0.0%', up: true, icon: Shield, bg: 'bg-blue-50', color: 'text-blue-500' },
               { label: 'Health Analyses', value: stats?.categoryStats?.find(c => c._id === 'diagnostics')?.count || 0, trend: '-0.3%', up: false, icon: Activity, bg: 'bg-rose-50', color: 'text-rose-500' },
-              { label: 'Live Active Users', value: stats?.activeUsersCount || 0, trend: 'REAL-TIME', up: true, icon: TrendingUp, bg: 'bg-emerald-50', color: 'text-emerald-500' }
+              { label: 'Live Active Users', value: stats?.liveActiveUsersCount || 0, trend: 'REAL-TIME', up: true, icon: TrendingUp, bg: 'bg-emerald-50', color: 'text-emerald-500' }
             ].map((stat, i) => (
               <motion.div
                 key={i}
@@ -443,7 +443,7 @@ export default function UserActivity() {
               <div className="flex items-center justify-between bg-indigo-50/50 p-6 rounded-[2rem] border border-indigo-100/50 hover:bg-indigo-50 transition-colors cursor-default">
                 <div>
                   <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Live Active Users</p>
-                  <p className="text-3xl font-black text-indigo-600 tabular-nums">{stats?.activeUsersCount || 0}</p>
+                  <p className="text-3xl font-black text-indigo-600 tabular-nums">{stats?.liveActiveUsersCount || 0}</p>
                 </div>
                 <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200 animate-pulse">
                   <TrendingUp className="w-6 h-6 text-white" />

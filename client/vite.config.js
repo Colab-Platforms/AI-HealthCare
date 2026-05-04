@@ -25,11 +25,12 @@ export default defineConfig({
     host: '0.0.0.0', // Allow access from other devices on the network
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:5001',
-        changeOrigin: true
+        target: 'http://localhost:5001',
+        changeOrigin: true,
+        rewrite: (path) => path
       },
       '/uploads': {
-        target: 'http://127.0.0.1:5001',
+        target: 'http://localhost:5001',
         changeOrigin: true
       }
     }
