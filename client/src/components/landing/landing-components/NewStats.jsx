@@ -154,7 +154,7 @@ const NewStats = () => {
             />
             <img
               src="/landing/new-stats/more-card.jpg"
-              className="rounded-md"
+              className="rounded-[10px] md:rounded-md border-[1.5px] border-black/20"
               alt=""
             />
           </div>
@@ -242,18 +242,20 @@ const NewStats = () => {
               />
               <div className="absolute top-0 left-0 w-full h-full lg:bg-black/50 bg-black/60 rounded-lg"></div>
 
-              <div className="absolute top-0 left-0 p-10">
+              <div className="absolute top-0 left-0 p-8 md:p-10">
                 <h5 className="text-white text-xl font-semibold font-landing-title text-center md:text-left text-balance">
                   Eat with purpose.
                 </h5>
                 <p className="text-white text-base font-light max-w-xs font-landing-body mt-3 text-center md:text-left text-balance lead">
                   Track meals, understand nutrients, and fuel your body right.
                 </p>
-                <img
-                  src="/landing/new-stats/eat.svg"
-                  className="w-full mt-24 backdrop-blur-sm"
-                  alt=""
-                />
+                <div className="backdrop-blur-sm bg-black/50 mt-24 p-5 rounded-3xl md:w-2/3 w-full">
+                  <img
+                    src="/landing/new-stats/eat-content.png"
+                    className=""
+                    alt=""
+                  />
+                </div>
               </div>
 
               <div className="flex flex-col items-center justify-center absolute bottom-10 right-10 md:bottom-20 md:right-20 w-[240px] md:w-[280px] lg:w-[320px]"></div>
@@ -269,7 +271,7 @@ const NewStats = () => {
               </p>
             </div>
             <img
-              src="/landing/new-stats/rest.svg"
+              src="/landing/new-stats/rest.png"
               className="rounded-md w-full"
               alt=""
             />
