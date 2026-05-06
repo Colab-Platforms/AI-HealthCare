@@ -23,7 +23,10 @@ export default function MobileBottomNav() {
   const closeDrawerAndNavigate = (path, state) => {
     setShowLogModal(false);
     setShowMoreMenu(false);
-    navigate(path, state ? { state } : undefined);
+    // Let close state commit before route transition to avoid sticky drawer state.
+    requestAnimationFrame(() => {
+      navigate(path, state ? { state } : undefined);
+    });
   };
 
   // Determine the best path for 'Reports' tab
@@ -66,13 +69,14 @@ export default function MobileBottomNav() {
   useEffect(() => {
     setShowLogModal(false);
     setShowMoreMenu(false);
-  }, [location.key]);
+  }, [location.pathname, location.search, location.hash]);
 
   // Routes where the navbar should be completely hidden
   const isExcludedPage = location.pathname === '/ai-chat' || location.pathname === '/profile';
 
-  // Logic to hide the navbar UI but keep the component mounted (to allow the log modal to open)
-  const hideNavbarUI = isModalOpen || showMoreMenu;
+  // Hide nav controls whenever quick-log drawer or any modal/menu is active.
+  // This prevents center FAB interactions from re-opening the drawer during route changes.
+  const hideNavbarUI = showLogModal || isModalOpen || showMoreMenu;
 
   const isDiabetic = user?.profile?.isDiabetic === 'yes';
   const hasSeenTour = user?.profile?.hasSeenMobileTour || 
@@ -201,14 +205,14 @@ export default function MobileBottomNav() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowLogModal(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] md:hidden"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[230] md:hidden"
             />
             <motion.div
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 32, stiffness: 320 }}
-              className="fixed bottom-0 left-0 right-0 h-[90vh] bg-[#EBF1E5] rounded-t-[40px] z-[101] md:hidden shadow-[0_-10px_40px_rgba(0,0,0,0.12)] select-none border-t border-white/40 overflow-hidden"
+              className="fixed bottom-0 left-0 right-0 h-[90vh] bg-[#EBF1E5] rounded-t-[40px] z-[240] md:hidden shadow-[0_-10px_40px_rgba(0,0,0,0.12)] select-none border-t border-white/40 overflow-hidden"
             >
               <div className="p-5 pt-3 pb-[140px] max-h-[90vh] overflow-y-auto scrollbar-hide">
                 {/* Grab Handle */}
