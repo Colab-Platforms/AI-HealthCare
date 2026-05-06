@@ -84,7 +84,7 @@ const userSchema = new mongoose.Schema({
   nutritionGoal: {
     goal: {
       type: String,
-      enum: ['weight_loss', 'weight_gain', 'muscle_gain', 'maintain', 'maintenance', 'health_improvement', 'general_health'],
+      enum: ['weight_loss', 'weight_gain', 'muscle_gain', 'maintain', 'maintenance', 'health_improvement', 'general_health', 'disease_management'],
       default: 'general_health'
     },
     targetWeight: Number, // in kg
