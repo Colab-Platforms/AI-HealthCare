@@ -17,18 +17,19 @@ export default function Login() {
     setLoading(true);
 
     const attemptLogin = async (retryCount = 0) => {
+      let loadingToastId = null;
       try {
         const user = await login(email, password);
         toast.success('Welcome back!');
         navigate(user.role === 'admin' || user.role === 'superadmin' ? '/admin' : user.role === 'doctor' ? '/doctor/dashboard' : '/dashboard');
       } catch (error) {
         const status = error.response?.status;
-        const errorMsg = error.response?.data?.message || error.message || 'Login failed';
+        const errorMsg = error.response?.data?.message || error.message || 'Unable to sign in. Please check your credentials and try again.';
 
         // Handle 503 (database connection) errors with retry
         if (status === 503 && retryCount < 2) {
           console.log(`Database connection failed, retrying... (attempt ${retryCount + 1}/2)`);
-          toast.loading('Connecting to database, please wait...');
+          loadingToastId = toast.loading('Connecting to database, please wait...');
 
           // Wait 2 seconds before retrying
           await new Promise(resolve => setTimeout(resolve, 2000));
@@ -45,10 +46,15 @@ export default function Login() {
           });
         } else if (status === 503) {
           toast.error('Database temporarily unavailable. Please try again in a moment.');
+        } else if (status === 400 || status === 401) {
+          toast.error(error.response?.data?.message || 'Invalid email/phone or password. Please try again.');
         } else {
           toast.error(errorMsg);
         }
       } finally {
+        if (loadingToastId) {
+          toast.dismiss(loadingToastId);
+        }
         setLoading(false);
       }
     };
