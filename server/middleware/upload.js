@@ -1,11 +1,29 @@
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 
-// Use memory storage for Cloud platforms (Vercel/Railway), disk storage for local
-const storage = (process.env.VERCEL || process.env.RAILWAY_ENVIRONMENT_ID)
+const uploadsDir = path.resolve(__dirname, '..', 'uploads');
+
+// Ensure a stable absolute upload path exists when using disk storage
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+  }
+} catch (error) {
+  console.error('Failed to initialize uploads directory:', error.message);
+}
+
+// Use memory storage on serverless/cloud; disk storage locally
+const isCloudRuntime = Boolean(
+  process.env.VERCEL ||
+  process.env.VERCEL_ID ||
+  process.env.RAILWAY_ENVIRONMENT_ID
+);
+
+const storage = isCloudRuntime
   ? multer.memoryStorage() // Store in memory for Cloud
   : multer.diskStorage({
-      destination: (req, file, cb) => cb(null, 'uploads/'),
+      destination: (req, file, cb) => cb(null, uploadsDir),
       filename: (req, file, cb) => {
         const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
         cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
