@@ -4,7 +4,7 @@ const FoodLog = require('../models/FoodLog');
 const User = require('../models/User');
 const Doctor = require('../models/Doctor');
 const HealthGoal = require('../models/HealthGoal');
-const { analyzeHealthReport, compareReports, chatAboutReport, generateMetricInfo, generateVitalsInsights } = require('../services/aiService');
+const { analyzeHealthReport, validateMedicalReport, compareReports, chatAboutReport, generateMetricInfo, generateVitalsInsights } = require('../services/aiService');
 const pdfParse = require('pdf-parse');
 const fs = require('fs');
 const NutritionSummary = require('../models/NutritionSummary');
@@ -138,10 +138,11 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
     }
   } catch (error) {
     console.error(`❌ [BG] Analysis failed for ${reportId}:`, error.message);
-    await HealthReport.findByIdAndUpdate(reportId, {
-      status: 'failed',
-      'aiAnalysis.summary': `Error: ${error.message}`
-    });
+    const msg = String(error?.message || 'Analysis failed');
+    console.warn(`🗑️ [BG] Deleting failed report ${reportId}: ${msg}`);
+    await HealthReport.findByIdAndDelete(reportId);
+    await cache.delete(`reports:${userId}`);
+    await cache.delete(`dashboard:${userId}`);
   }
 }
 
@@ -204,6 +205,16 @@ exports.uploadReport = async (req, res) => {
       extractedText = req.body.manualText || '';
     }
 
+    const validation = await validateMedicalReport(extractedText, {
+      buffer: dataBuffer,
+      mimetype: req.file.mimetype
+    });
+    if (validation && validation.isMedical === false) {
+      return res.status(400).json({
+        message: validation.message || 'This file does not contains any medical report please upload correct medical report for analyze.'
+      });
+    }
+
     let cloudinaryUrl = null;
     try { cloudinaryUrl = await cloudinary.uploadImage(dataBuffer, 'health_reports'); }
     catch (e) { console.error('Cloudinary fail:', e.message); }
@@ -258,7 +269,9 @@ exports.getReports = async (req, res) => {
     const cached = await cache.get(cacheKey);
     if (cached) return res.json(cached);
 
-    const reports = await withTimeout(HealthReport.find({ user: req.user._id }).sort({ createdAt: -1 }).limit(50));
+    const reports = await withTimeout(
+      HealthReport.find({ user: req.user._id, status: { $ne: 'failed' } }).sort({ createdAt: -1 }).limit(50)
+    );
     await cache.set(cacheKey, reports, 180);
     res.json(reports);
   } catch (error) {

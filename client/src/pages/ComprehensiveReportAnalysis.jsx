@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { healthService } from '../services/api';
 import { ArrowLeft, AlertTriangle, CheckCircle, TrendingDown, Apple, Dumbbell, Heart, Activity, Info, ChevronDown, ChevronUp } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -11,6 +11,7 @@ import VitalDetailsPopup from '../components/VitalDetailsPopup';
 
 export default function ComprehensiveReportAnalysis() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [expandedMetric, setExpandedMetric] = useState(null);
@@ -157,7 +158,11 @@ export default function ComprehensiveReportAnalysis() {
         const { data } = await healthService.getReport(id);
         setReport(data.report);
       } catch (error) {
-        toast.error('Failed to load report');
+        const msg = error.response?.data?.message || 'Failed to load report';
+        toast.error(msg);
+        if (error.response?.status === 404) {
+          navigate('/reports');
+        }
       } finally {
         setLoading(false);
       }
