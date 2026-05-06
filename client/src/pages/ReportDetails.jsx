@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { healthService } from '../services/api';
 import { FileText, Activity, ArrowLeft, X, Droplets, Eye, Pill, UtensilsCrossed, Heart, TrendingUp, BarChart3 } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -260,6 +260,7 @@ const MetricDetailModal = ({ metric, onClose }) => {
 
 export default function ReportDetails() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [report, setReport] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedMetric, setSelectedMetric] = useState(null);
@@ -273,7 +274,11 @@ export default function ReportDetails() {
         const { data } = await healthService.getReport(id);
         setReport(data.report);
       } catch (error) {
-        toast.error('Failed to load report');
+        const msg = error.response?.data?.message || 'Failed to load report';
+        toast.error(msg);
+        if (error.response?.status === 404) {
+          navigate('/reports');
+        }
       } finally {
         setLoading(false);
       }
@@ -290,14 +295,25 @@ export default function ReportDetails() {
           const { data } = await healthService.getReportStatus(id);
           if (data.status === 'completed' || data.status === 'failed') {
             // Processing finished, fetch the full report again to get the data
-            const fullReport = await healthService.getReport(id);
-            setReport(fullReport.data.report);
+            let fullReport = null;
+            try {
+              fullReport = await healthService.getReport(id);
+              setReport(fullReport.data.report);
+            } catch (fetchErr) {
+              if (fetchErr.response?.status === 404) {
+                toast.error(data.summary || 'Report analysis failed because the file is not a medical report.');
+                clearInterval(pollInterval);
+                navigate('/reports');
+                return;
+              }
+              throw fetchErr;
+            }
             clearInterval(pollInterval);
             
             if (data.status === 'completed') {
               toast.success('Report analysis completed');
             } else {
-              toast.error('Report analysis failed.');
+              toast.error(data.summary || 'Report analysis failed.');
             }
           }
         } catch (error) {

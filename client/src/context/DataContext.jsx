@@ -314,12 +314,17 @@ export const DataProvider = ({ children }) => {
             const { data } = await healthService.getReportStatus(id);
             return { id, status: data.status };
           } catch (e) {
+            if (e?.response?.status === 404) {
+              return { id, status: 'deleted' };
+            }
             return { id, status: 'error' };
           }
         })
       );
 
-      const completed = results.filter(r => r.status === 'completed' || r.status === 'failed');
+      const completed = results.filter(
+        r => r.status === 'completed' || r.status === 'failed' || r.status === 'deleted' || r.status === 'error'
+      );
       
       if (completed.length > 0) {
         for (const report of completed) {
@@ -332,6 +337,14 @@ export const DataProvider = ({ children }) => {
             await invalidateCache(['dashboard', 'diet_plan']);
           } else if (report.status === 'failed') {
             toast.error('Report analysis failed. Please try again.', { id: `failed-${report.id}` });
+          } else if (report.status === 'deleted') {
+            toast.error('Report analysis failed. The uploaded file was not a valid medical report.', {
+              id: `deleted-${report.id}`
+            });
+          } else if (report.status === 'error') {
+            toast.error('Unable to check report status. Stopping background tracking for this report.', {
+              id: `error-${report.id}`
+            });
           }
         }
 
