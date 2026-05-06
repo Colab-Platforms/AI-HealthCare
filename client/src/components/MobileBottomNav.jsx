@@ -20,6 +20,15 @@ export default function MobileBottomNav() {
   const [showLogModal, setShowLogModal] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  const closeDrawerAndNavigate = (path, state) => {
+    setShowLogModal(false);
+    setShowMoreMenu(false);
+    // Let close state commit before route transition to avoid sticky drawer state.
+    requestAnimationFrame(() => {
+      navigate(path, state ? { state } : undefined);
+    });
+  };
+
   // Determine the best path for 'Reports' tab
   // If there's an active processing report, go there; otherwise go to upload
   const processingReportId = dashboardData?.processingReport?._id;
@@ -56,11 +65,18 @@ export default function MobileBottomNav() {
     };
   }, [location.pathname, showMoreMenu]);
 
+  // Ensure mobile drawers always close after any navigation.
+  useEffect(() => {
+    setShowLogModal(false);
+    setShowMoreMenu(false);
+  }, [location.pathname, location.search, location.hash]);
+
   // Routes where the navbar should be completely hidden
   const isExcludedPage = location.pathname === '/ai-chat' || location.pathname === '/profile';
 
-  // Logic to hide the navbar UI but keep the component mounted (to allow the log modal to open)
-  const hideNavbarUI = isModalOpen || showMoreMenu;
+  // Hide nav controls whenever quick-log drawer or any modal/menu is active.
+  // This prevents center FAB interactions from re-opening the drawer during route changes.
+  const hideNavbarUI = showLogModal || isModalOpen || showMoreMenu;
 
   const isDiabetic = user?.profile?.isDiabetic === 'yes';
   const hasSeenTour = user?.profile?.hasSeenMobileTour || 
@@ -189,14 +205,14 @@ export default function MobileBottomNav() {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               onClick={() => setShowLogModal(false)}
-              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] md:hidden"
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[230] md:hidden"
             />
             <motion.div
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 32, stiffness: 320 }}
-              className="fixed bottom-0 left-0 right-0 h-[90vh] bg-[#EBF1E5] rounded-t-[40px] z-[101] md:hidden shadow-[0_-10px_40px_rgba(0,0,0,0.12)] select-none border-t border-white/40 overflow-hidden"
+              className="fixed bottom-0 left-0 right-0 h-[90vh] bg-[#EBF1E5] rounded-t-[40px] z-[240] md:hidden shadow-[0_-10px_40px_rgba(0,0,0,0.12)] select-none border-t border-white/40 overflow-hidden"
             >
               <div className="p-5 pt-3 pb-[140px] max-h-[90vh] overflow-y-auto scrollbar-hide">
                 {/* Grab Handle */}
@@ -211,7 +227,7 @@ export default function MobileBottomNav() {
                 <div className="grid grid-cols-2 gap-3.5 mb-3.5">
                   {/* Add Meal */}
                   <button 
-                    onClick={() => { setShowLogModal(false); navigate('/nutrition', { state: { openLogMeal: true } }); }}
+                    onClick={() => closeDrawerAndNavigate('/nutrition', { openLogMeal: true })}
                     className="bg-white p-4 rounded-[24px] shadow-[0_4px_15px_rgba(0,0,0,0.02)] border border-white hover:scale-[1.02] active:scale-95 transition-all duration-300 flex flex-col items-center justify-center gap-2"
                   >
                     <div className="w-12 h-12 bg-emerald-50 rounded-xl flex items-center justify-center">
@@ -225,7 +241,7 @@ export default function MobileBottomNav() {
 
                   {/* Medical Records */}
                   <button 
-                    onClick={() => { setShowLogModal(false); navigate('/medical-vault'); }}
+                    onClick={() => closeDrawerAndNavigate('/medical-vault')}
                     className="bg-white p-4 rounded-[24px] shadow-[0_4px_15px_rgba(0,0,0,0.02)] border border-white hover:scale-[1.02] active:scale-95 transition-all duration-300 flex flex-col items-center justify-center gap-2"
                   >
                     <div className="w-12 h-12 bg-indigo-50 rounded-xl flex items-center justify-center">
@@ -242,7 +258,7 @@ export default function MobileBottomNav() {
                 <div className="mb-5">
                   {isDiabetic ? (
                     <button 
-                      onClick={() => { setShowLogModal(false); navigate('/nutrition'); }}
+                      onClick={() => closeDrawerAndNavigate('/nutrition')}
                       className="w-full bg-white/60 p-4 rounded-[26px] border border-[#A4B0C9]/30 hover:bg-white/80 active:scale-[0.98] transition-all duration-300 flex items-center justify-between group px-5 shadow-sm"
                     >
                       <div className="flex items-center gap-4">
@@ -260,7 +276,7 @@ export default function MobileBottomNav() {
                     </button>
                   ) : (
                     <button 
-                      onClick={() => { setShowLogModal(false); navigate('/complete-analysis'); }}
+                      onClick={() => closeDrawerAndNavigate('/complete-analysis')}
                       className="w-full bg-white/60 p-4 rounded-[26px] border border-[#A4B0C9]/30 hover:bg-white/80 active:scale-[0.98] transition-all duration-300 flex items-center justify-between group px-5 shadow-sm"
                     >
                       <div className="flex items-center gap-4">
@@ -288,28 +304,28 @@ export default function MobileBottomNav() {
                     Track Your Daily Activities
                   </h3>
                   <div className="grid grid-cols-2 gap-3">
-                    <button onClick={() => { setShowLogModal(false); navigate('/dashboard', { state: { openLogVitals: 'Weight' } }); }} className="flex items-center gap-3.5 bg-white p-3.5 rounded-[22px] shadow-sm border border-white/80 hover:bg-slate-50 active:scale-95 transition-all group">
+                    <button onClick={() => closeDrawerAndNavigate('/dashboard', { openLogVitals: 'Weight' })} className="flex items-center gap-3.5 bg-white p-3.5 rounded-[22px] shadow-sm border border-white/80 hover:bg-slate-50 active:scale-95 transition-all group">
                       <div className="bg-emerald-50 w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                         <Scale size={18} className="text-emerald-500" />
                       </div>
                       <span style={{ color: '#1A2138', fontSize: '12.71px', fontFamily: 'Poppins', fontWeight: '700', lineHeight: '19.06px', wordWrap: 'break-word' }}>Weight</span>
                     </button>
 
-                    <button onClick={() => { setShowLogModal(false); navigate('/dashboard', { state: { openLogVitals: 'Water' } }); }} className="flex items-center gap-3.5 bg-white p-3.5 rounded-[22px] shadow-sm border border-white/80 hover:bg-slate-50 active:scale-95 transition-all group">
+                    <button onClick={() => closeDrawerAndNavigate('/dashboard', { openLogVitals: 'Water' })} className="flex items-center gap-3.5 bg-white p-3.5 rounded-[22px] shadow-sm border border-white/80 hover:bg-slate-50 active:scale-95 transition-all group">
                       <div className="bg-blue-50 w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                         <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon.svg?v=1775559081" alt="Water" className="w-5 h-5 object-contain" />
                       </div>
                       <span style={{ color: '#1A2138', fontSize: '12.71px', fontFamily: 'Poppins', fontWeight: '700', lineHeight: '19.06px', wordWrap: 'break-word' }}>Water</span>
                     </button>
 
-                    <button onClick={() => { setShowLogModal(false); navigate('/dashboard', { state: { openLogVitals: 'Sleep' } }); }} className="flex items-center gap-3.5 bg-white p-3.5 rounded-[22px] shadow-sm border border-white/80 hover:bg-slate-50 active:scale-95 transition-all group">
+                    <button onClick={() => closeDrawerAndNavigate('/dashboard', { openLogVitals: 'Sleep' })} className="flex items-center gap-3.5 bg-white p-3.5 rounded-[22px] shadow-sm border border-white/80 hover:bg-slate-50 active:scale-95 transition-all group">
                       <div className="bg-purple-50 w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                         <Moon size={18} className="text-purple-500" />
                       </div>
                       <span style={{ color: '#1A2138', fontSize: '12.71px', fontFamily: 'Poppins', fontWeight: '700', lineHeight: '19.06px', wordWrap: 'break-word' }}>Sleep</span>
                     </button>
 
-                    <button onClick={() => { setShowLogModal(false); navigate('/dashboard', { state: { openLogVitals: 'Steps' } }); }} className="flex items-center gap-3.5 bg-white p-3.5 rounded-[22px] shadow-sm border border-white/80 hover:bg-slate-50 active:scale-95 transition-all group">
+                    <button onClick={() => closeDrawerAndNavigate('/dashboard', { openLogVitals: 'Steps' })} className="flex items-center gap-3.5 bg-white p-3.5 rounded-[22px] shadow-sm border border-white/80 hover:bg-slate-50 active:scale-95 transition-all group">
                       <div className="bg-orange-50 w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
                         <Footprints size={18} className="text-orange-500" />
                       </div>
@@ -320,11 +336,11 @@ export default function MobileBottomNav() {
 
                 {/* Additional Features Row */}
                 <div className="grid grid-cols-2 gap-3 mt-auto">
-                  <button onClick={() => { setShowLogModal(false); navigate('/ai-chat'); }} className="flex items-center gap-2 p-3.5 bg-white/40 rounded-[22px] border border-white hover:bg-white active:scale-95 transition-all justify-center">
+                  <button onClick={() => closeDrawerAndNavigate('/ai-chat')} className="flex items-center gap-2 p-3.5 bg-white/40 rounded-[22px] border border-white hover:bg-white active:scale-95 transition-all justify-center">
                     <Sparkles className="text-emerald-600 shrink-0" size={16} />
                     <span className="text-[10px] font-black text-[#1A2138] uppercase tracking-tighter truncate">Ask Coach</span>
                   </button>
-                  <button onClick={() => { setShowLogModal(false); navigate('/challenge'); }} className="flex items-center gap-2 p-3.5 bg-white/40 rounded-[22px] border border-white hover:bg-white active:scale-95 transition-all justify-center">
+                  <button onClick={() => closeDrawerAndNavigate('/challenge')} className="flex items-center gap-2 p-3.5 bg-white/40 rounded-[22px] border border-white hover:bg-white active:scale-95 transition-all justify-center">
                     <Trophy className="text-amber-500 shrink-0" size={16} />
                     <span className="text-[10px] font-black text-[#1A2138] uppercase tracking-tighter truncate">Challenge</span>
                   </button>

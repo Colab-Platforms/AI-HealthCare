@@ -395,17 +395,17 @@ export default function UploadReport() {
                   </div>
                 ) : files.length > 0 ? (
                   <div className="w-full flex flex-col gap-6" onClick={e => e.stopPropagation()}>
-                    <div className="flex items-center justify-between p-6 bg-white/80 rounded-3xl border border-[#69A38D]/10">
-                      <div className="flex items-center gap-4">
+                    <div className="flex items-center justify-between p-6 bg-white/80 rounded-3xl border border-[#69A38D]/10 min-w-0">
+                      <div className="flex items-center gap-4 min-w-0">
                         <div className="w-14 h-14 rounded-2xl bg-[#E2EED2] flex items-center justify-center text-[#69A38D]">
                           <FileText size={28} />
                         </div>
-                        <div className="text-left">
-                          <p className="font-bold text-[#1a2138]">{files[0].name}</p>
-                          <p className="text-xs font-bold text-[#64748b]">{(files[0].size/1024/1024).toFixed(2)} MB • {files[0].reportType}</p>
+                        <div className="text-left min-w-0">
+                          <p className="font-bold text-[#1a2138] truncate">{files[0].name}</p>
+                          <p className="text-xs font-bold text-[#64748b] truncate">{(files[0].size/1024/1024).toFixed(2)} MB • {files[0].reportType}</p>
                         </div>
                       </div>
-                      <button onClick={() => setFiles([])} className="p-3 bg-red-50 text-red-500 rounded-2xl hover:bg-red-100"><Trash2 size={20} /></button>
+                      <button onClick={() => setFiles([])} className="p-3 bg-red-50 text-red-500 rounded-2xl hover:bg-red-100 shrink-0"><Trash2 size={20} /></button>
                     </div>
                     <button onClick={handleSubmit} className="w-full py-5 bg-[#69A38D] text-white font-black rounded-3xl shadow-lg hover:bg-[#528270] transition-all flex items-center justify-center gap-3 active:scale-95">
                       <Zap size={20} fill="currentColor" /> ANALYZE NOW
