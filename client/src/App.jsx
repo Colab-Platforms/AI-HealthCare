@@ -95,8 +95,8 @@ export default function App() {
         </Routes>
       </Suspense>
       
-      {/* Help Widget - Always visible for authenticated users */}
-      {user && <HelpWidget />}
+      {/* Help Widget - Show for authenticated users except on landing page */}
+      {user && location.pathname !== "/" && <HelpWidget />}
     </div>
   );
 }

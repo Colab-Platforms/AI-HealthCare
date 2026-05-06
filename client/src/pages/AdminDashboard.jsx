@@ -67,7 +67,7 @@ export default function AdminDashboard() {
     { label: 'Repeat Users', value: stats?.stats?.repeatUsers || 0, icon: Clock, color: 'text-rose-600', bg: 'bg-rose-50' },
     { label: 'Total Reports', value: stats?.stats?.totalReports || 0, icon: FileText, color: 'text-emerald-600', bg: 'bg-emerald-50', trend: 8.2 },
     { label: 'Completion Rate', value: `${((stats?.stats?.completedReports / stats?.stats?.totalReports) * 100 || 0).toFixed(1)}%`, icon: Activity, color: 'text-orange-600', bg: 'bg-orange-50', trend: 2.4 },
-    { label: 'IQ Cache', value: stats?.stats?.totalCachedFoods || 0, icon: Utensils, color: 'text-purple-600', bg: 'bg-purple-50' }
+    // { label: 'IQ Cache', value: stats?.stats?.totalCachedFoods || 0, icon: Utensils, color: 'text-purple-600', bg: 'bg-purple-50' }
   ];
 
   return (
@@ -78,7 +78,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats Cards - Expanded for new metrics */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
         {statCards.map((stat, i) => (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}

@@ -292,13 +292,14 @@ export default function UserActivity() {
 
         {/* Top Area: Stats & Performance Side by Side */}
         <div className="grid grid-cols-1 lg:grid-cols-6 gap-8 items-start">
-          {/* Stats & Gender Grid (3/6) */}
+          {/* Stats Cards Grid (3/6) */}
           <div className="lg:col-span-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {[
               { label: 'Total User Actions', value: stats?.totalLogs || 0, trend: `${stats?.trend >= 0 ? '+' : ''}${stats?.trend || 0}%`, up: (stats?.trend || 0) >= 0, icon: Zap, bg: 'bg-indigo-50', color: 'text-indigo-600' },
               { label: 'Login/Logout Events', value: stats?.categoryStats?.find(c => c._id === 'authentication')?.count || 0, trend: '+0.0%', up: true, icon: Shield, bg: 'bg-blue-50', color: 'text-blue-500' },
               { label: 'Health Reports Processed', value: stats?.categoryStats?.find(c => c._id === 'diagnostics')?.count || 0, trend: '-0.3%', up: false, icon: Activity, bg: 'bg-rose-50', color: 'text-rose-500' },
-              { label: 'Live Active Users', value: stats?.liveActiveUsersCount || 0, trend: 'REAL-TIME', up: true, icon: TrendingUp, bg: 'bg-emerald-50', color: 'text-emerald-500' }
+              { label: 'Live Active Users', value: stats?.liveActiveUsersCount || 0, trend: 'REAL-TIME', up: true, icon: TrendingUp, bg: 'bg-emerald-50', color: 'text-emerald-500' },
+              { label: 'Diabetic Readings', value: stats?.categoryStats?.find(c => c._id === 'glucose')?.count || 0, trend: '+2.5%', up: true, icon: Activity, bg: 'bg-red-50', color: 'text-red-600' }
             ].map((stat, i) => (
               <motion.div
                 key={i}
@@ -317,15 +318,15 @@ export default function UserActivity() {
                 </div>
                 <div className="flex items-center justify-between pt-5 border-t border-slate-50">
                   <div className={`flex items-center gap-1.5 text-[11px] font-black ${stat.up ? 'text-emerald-500' : 'text-rose-500'}`}>
-                    {stat.up ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-                    {stat.trend} <span className="text-slate-300 font-bold ml-1 uppercase">WEEKLY</span>
+                    {/* {stat.up ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
+                    {stat.trend} <span className="text-slate-300 font-bold ml-1 uppercase">WEEKLY</span> */}
                   </div>
-                  <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" />
+                  {/* <ChevronRight className="w-4 h-4 text-slate-200 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all" /> */}
                 </div>
               </motion.div>
             ))}
 
-            {/* Integrated Gender Card - Matches Stat Card Size */}
+            {/* Gender Card - Same size as stat cards */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -334,20 +335,20 @@ export default function UserActivity() {
               className="bg-white p-7 rounded-[2.5rem] border border-white shadow-[0_20px_50px_-20px_rgba(0,0,0,0.08)] group transition-all duration-500 flex flex-col justify-between cursor-default hover:shadow-[0_30px_60px_-20px_rgba(79,70,229,0.2)]"
             >
               <div>
-                <h3 className="text-xl font-black text-slate-800 tracking-tight leading-none mb-1">Gender</h3>
-                <p className="text-slate-400 text-[9px] font-bold uppercase tracking-wider mb-6">User Mix</p>
+                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5">Gender</h3>
+                <p className="text-slate-400 text-[9px] font-bold uppercase tracking-wider mb-4">User Mix</p>
 
-                <div className="space-y-4">
+                <div className="space-y-2">
                   {genderData.map((d, i) => (
                     <div 
                       key={i} 
-                      className="flex flex-col gap-1.5 cursor-default hover:opacity-80 transition-opacity"
+                      className="flex flex-col gap-1 cursor-default hover:opacity-80 transition-opacity"
                     >
                       <div className="flex items-center justify-between px-0.5">
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{d.name}</span>
-                        <span className="text-[10px] font-black text-slate-900 tabular-nums">{d.value}</span>
+                        <span className="text-[8px] font-black text-slate-400 uppercase tracking-widest">{d.name}</span>
+                        <span className="text-[9px] font-black text-slate-900 tabular-nums">{d.value}</span>
                       </div>
-                      <div className="h-1 w-full bg-slate-50 rounded-full overflow-hidden shadow-inner">
+                      <div className="h-0.5 w-full bg-slate-50 rounded-full overflow-hidden shadow-inner">
                         <motion.div
                           initial={{ width: 0 }}
                           animate={{ width: stats?.totalLogs > 0 ? `${(d.value / Math.max(1, genderData.reduce((acc, curr) => acc + curr.value, 0))) * 100}%` : '0%' }}
@@ -359,8 +360,8 @@ export default function UserActivity() {
                   ))}
                 </div>
               </div>
-              <div className="mt-4 pt-4 border-t border-slate-50">
-                <p className="text-[8px] font-bold text-slate-300 uppercase tracking-[0.1em] leading-relaxed italic">Click to view details</p>
+              <div className="mt-2 pt-3 border-t border-slate-50">
+                {/* <p className="text-[8px] font-bold text-slate-300 uppercase tracking-[0.1em] leading-relaxed italic">Click to view</p> */}
               </div>
             </motion.div>
           </div>
@@ -374,7 +375,7 @@ export default function UserActivity() {
               </div>
             </div>
 
-            <div className="w-full relative h-[380px]">
+            <div className="w-full relative h-[240px]">
               {statsLoading ? (
                 <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/5 backdrop-blur-sm rounded-[2rem]">
                   <RefreshCcw className="w-8 h-8 text-indigo-500 animate-spin mb-3 opacity-50" />

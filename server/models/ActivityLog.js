@@ -13,7 +13,7 @@ const activityLogSchema = new mongoose.Schema({
   },
   category: {
     type: String,
-    enum: ['authentication', 'diagnostics', 'nutrition', 'fitness', 'medical', 'system'],
+    enum: ['authentication', 'diagnostics', 'nutrition', 'fitness', 'medical', 'glucose', 'system'],
     default: 'system'
   },
   metadata: {

@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { protect } = require('../middleware/auth');
 const HealthMetric = require('../models/HealthMetric');
+const ActivityLog = require('../models/ActivityLog');
 const cache = require('../utils/cache');
 
 // Helper function to add timeout to all queries for Vercel compatibility
@@ -64,6 +65,28 @@ router.post('/', protect, async (req, res) => {
         console.log('Saving metric to database...');
         const savedMetric = await metric.save({ maxTimeMS: 30000 });
         console.log('Metric saved successfully:', savedMetric._id);
+
+        // Log activity for glucose readings
+        if (type === 'blood_sugar') {
+            try {
+                await ActivityLog.create({
+                    user: req.user._id,
+                    action: `Logged glucose reading: ${value} ${unit}`,
+                    category: 'glucose',
+                    metadata: {
+                        metricType: type,
+                        value,
+                        unit,
+                        readingContext,
+                        notes
+                    },
+                    timestamp: new Date()
+                });
+            } catch (activityErr) {
+                console.error('Error logging activity:', activityErr.message);
+                // Don't fail the request if activity logging fails
+            }
+        }
 
         // Clear dashboard cache to show latest values
         await cache.delete(`dashboard:${req.user._id}`);

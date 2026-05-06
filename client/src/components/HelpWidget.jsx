@@ -90,7 +90,7 @@ export default function HelpWidget() {
                         <div className="bg-emerald-600 text-white p-6 flex items-center justify-between">
                             <div>
                                 <h3 className="text-lg font-bold">Contact Support</h3>
-                                <p className="text-emerald-100 text-xs mt-1">We'll get back to you soon</p>
+                                <p className="text-emerald-100 text-xs mt-1">Report issues or ask for help</p>
                             </div>
                             <button
                                 onClick={() => setIsOpen(false)}
@@ -160,7 +160,7 @@ export default function HelpWidget() {
                             <div className="bg-emerald-600 text-white p-6 flex items-center justify-between">
                                 <div>
                                     <h3 className="text-lg font-bold">Contact Support</h3>
-                                    <p className="text-emerald-100 text-xs mt-1">We'll get back to you soon</p>
+                                    <p className="text-emerald-100 text-xs mt-1">Report issues or ask for help</p>
                                 </div>
                                 <button
                                     onClick={() => setIsOpen(false)}

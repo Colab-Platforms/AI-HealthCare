@@ -300,4 +300,28 @@ export const supportService = {
   respondToTicket: (ticketId, data) => api.patch(`support/${ticketId}/respond`, data)
 };
 
+export const metricsService = {
+  // Log a new metric
+  logMetric: (data) => api.post('metrics', data),
+  
+  // Get metrics by type
+  getMetricsByType: (type, params) => api.get(`metrics/${type}`, { params }),
+  getBloodSugar: (params) => api.get('metrics/blood_sugar', { params }),
+  getHba1c: (params) => api.get('metrics/hba1c', { params }),
+  getWeight: (params) => api.get('metrics/weight', { params }),
+  getBloodPressure: (params) => api.get('metrics/blood_pressure', { params }),
+  getHeartRate: (params) => api.get('metrics/heart_rate', { params }),
+  
+  // Get summary
+  getSummary: (types) => api.get('metrics/summary/latest', { params: { types: types.join(',') } }),
+  
+  // Get analysis
+  getGlucoseAnalysis: () => api.get('metrics/analysis/glucose'),
+  getWeightAnalysis: () => api.get('metrics/analysis/weight'),
+  
+  // Get trends
+  getGlucoseTrends: (days) => api.get('metrics/trends/glucose', { params: { days } }),
+  getWeightTrends: (days) => api.get('metrics/trends/weight', { params: { days } })
+};
+
 export default api;
