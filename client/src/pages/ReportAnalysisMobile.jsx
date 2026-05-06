@@ -55,6 +55,15 @@ export default function ReportAnalysisMobile() {
     const [selectedMetric, setSelectedMetric] = useState(null);
     const [showMetricModal, setShowMetricModal] = useState(false);
 
+    const handleFailedReport = (failedReport, fallbackMessage = null) => {
+        const message =
+            failedReport?.aiAnalysis?.summary ||
+            fallbackMessage ||
+            'Report analysis failed. Please upload a valid medical report.';
+        toast.error(message);
+        navigate('/reports', { replace: true });
+    };
+
     const t = (text) => {
         if (!isHindi || !text) return text;
         return hindiCache[text] || text;
@@ -117,38 +126,70 @@ export default function ReportAnalysisMobile() {
         const fetchReport = async () => {
             try {
                 const { data } = await healthService.getReport(id);
+                if (data.report?.status === 'failed') {
+                    handleFailedReport(data.report);
+                    return;
+                }
+
                 setReport(data.report);
-                if (data.report.status === 'processing') {
+                if (data.report?.status === 'processing') {
                     if (!pendingAnalysisIds.includes(id)) addPendingAnalysis(id);
                 }
             } catch (error) {
-                toast.error('Failed to load report');
+                if (error.response?.status === 404) {
+                    toast.error('Report analysis failed because the uploaded file is not a valid medical report.');
+                    navigate('/reports', { replace: true });
+                    return;
+                }
+                toast.error(error.response?.data?.message || 'Failed to load report');
             } finally {
                 setLoading(false);
             }
         };
         fetchReport();
-    }, [id, addPendingAnalysis]);
+    }, [id, addPendingAnalysis, navigate]);
 
     useEffect(() => {
         if (report?.status === 'processing' && !pendingAnalysisIds.includes(id)) {
             const fetchUpdated = async () => {
-                const { data } = await healthService.getReport(id);
-                setReport(data.report);
+                try {
+                    const { data } = await healthService.getReport(id);
+                    if (data.report?.status === 'failed') {
+                        handleFailedReport(data.report);
+                        return;
+                    }
+                    setReport(data.report);
+                } catch (error) {
+                    if (error.response?.status === 404) {
+                        toast.error('Report analysis failed because the uploaded file is not a valid medical report.');
+                        navigate('/reports', { replace: true });
+                    }
+                }
             };
             fetchUpdated();
         }
-    }, [pendingAnalysisIds, id, report?.status]);
+    }, [pendingAnalysisIds, id, report?.status, navigate]);
 
     useEffect(() => {
         if (dataRefreshTrigger > 0) {
             const fetchUpdated = async () => {
-                const { data } = await healthService.getReport(id);
-                setReport(data.report);
+                try {
+                    const { data } = await healthService.getReport(id);
+                    if (data.report?.status === 'failed') {
+                        handleFailedReport(data.report);
+                        return;
+                    }
+                    setReport(data.report);
+                } catch (error) {
+                    if (error.response?.status === 404) {
+                        toast.error('Report analysis failed because the uploaded file is not a valid medical report.');
+                        navigate('/reports', { replace: true });
+                    }
+                }
             };
             fetchUpdated();
         }
-    }, [dataRefreshTrigger, id]);
+    }, [dataRefreshTrigger, id, navigate]);
 
     const handleShare = () => {
         const shareText = `Check out my ${report?.reportType} health report analysis! Health Score: ${report?.aiAnalysis?.healthScore}/100`;

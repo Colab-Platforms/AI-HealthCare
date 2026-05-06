@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import api from '../services/api';
 import { FileText, Activity, Apple, Heart, AlertTriangle, ArrowLeft, Sparkles, Droplets, ChevronDown, ChevronUp, Dumbbell, TrendingUp, TrendingDown } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 export default function ReportDetailsEnhanced() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [report, setReport] = useState(null);
   const [allReports, setAllReports] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -26,7 +27,11 @@ export default function ReportDetailsEnhanced() {
         const reportsResponse = await api.get('health/reports');
         setAllReports(reportsResponse.data || []);
       } catch (error) {
-        toast.error('Failed to load report');
+        const msg = error.response?.data?.message || 'Failed to load report';
+        toast.error(msg);
+        if (error.response?.status === 404) {
+          navigate('/reports');
+        }
         console.error('Error fetching report:', error);
       } finally {
         setLoading(false);

@@ -6,6 +6,7 @@ const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 // 🚨 USER SPECIFIC MODEL - Updated to valid Anthropic model IDs for 2026
 const CLAUDE_MODEL = 'claude-sonnet-4-6'; 
 const CLAUDE_HAIKU_MODEL = 'claude-4-haiku-latest';
+const FALLBACK_HAIKU_MODEL = 'claude-3-5-haiku-latest';
 
 // Export for other services
 exports.CLAUDE_MODEL = CLAUDE_MODEL;
@@ -56,6 +57,19 @@ const makeAnthropicRequest = async (messages, maxTokens = 4096, modelOverride = 
     throw new Error('Invalid response');
   } catch (error) {
     const errorMsg = error.response?.data?.error?.message || error.message;
+    const selectedModel = modelOverride || CLAUDE_MODEL;
+    const modelMissing = /model/i.test(errorMsg);
+
+    // Retry with a safer fallback if the selected model is unavailable.
+    if (modelMissing && selectedModel === CLAUDE_HAIKU_MODEL) {
+      console.warn(`⚠️ Anthropic model unavailable (${selectedModel}). Retrying with ${FALLBACK_HAIKU_MODEL}...`);
+      return makeAnthropicRequest(messages, maxTokens, FALLBACK_HAIKU_MODEL);
+    }
+    if (modelMissing && selectedModel === FALLBACK_HAIKU_MODEL) {
+      console.warn(`⚠️ Anthropic model unavailable (${selectedModel}). Retrying with ${CLAUDE_MODEL}...`);
+      return makeAnthropicRequest(messages, maxTokens, CLAUDE_MODEL);
+    }
+
     console.error('❌ Anthropic Error:', errorMsg);
     throw new Error(`AI Analysis Failed: ${errorMsg}`);
   }
@@ -94,6 +108,70 @@ IMPORTANT: Deficiency "severity" MUST be one of: "mild", "moderate", "severe".
 IMPORTANT: The "doctorSummary" MUST be written like a real doctor talking to the patient. Do NOT write bullet points — write flowing, conversational paragraphs with Markdown bolding for emphasis. Be warm, professional, and thorough.
 IMPORTANT: The "doctorAdvice" array MUST consist of 3-5 specific, actionable points derived directly from the user's specific bio-marker results. Include the "why" for each advice based on their clinical data. Avoid generic advice.`;
 
+const MEDICAL_REPORT_VALIDATOR_PROMPT = `You are a strict gatekeeper for a healthcare app.
+Task: Decide if the uploaded content is a REAL medical/healthcare report/document (examples: lab test report, radiology report, prescription, discharge summary, clinical notes, pathology report, etc).
+
+Rules:
+- If it is NOT a medical/healthcare report, respond with JSON ONLY:
+  {"isMedical": false, "detected": "<what this document most likely is>", "message": "This file does not contains any medical report please upload correct medical report for analyze. It looks like: <what this document most likely is>."}
+- If it IS a medical/healthcare report, respond with JSON ONLY:
+  {"isMedical": true}
+
+Be conservative: only return true when you're confident it's a medical/healthcare document. Do not include any extra keys, text, or explanation outside JSON.`;
+
+const validateMedicalReport = async (reportText, fileData = null) => {
+  try {
+    const userContent = [];
+    if (reportText && reportText.trim()) {
+      userContent.push({ type: 'text', text: `Extracted Text:\n${reportText.substring(0, 50000)}` });
+    }
+
+    if (fileData && fileData.buffer) {
+      const mimetype = fileData.mimetype || 'image/jpeg';
+
+      if (mimetype === 'application/pdf') {
+        userContent.push({
+          type: 'document',
+          source: {
+            type: 'base64',
+            media_type: 'application/pdf',
+            data: fileData.buffer.toString('base64')
+          }
+        });
+      } else if (mimetype.startsWith('image/')) {
+        userContent.push({
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: mimetype,
+            data: fileData.buffer.toString('base64')
+          }
+        });
+      }
+    }
+
+    const messages = [
+      { role: 'system', content: MEDICAL_REPORT_VALIDATOR_PROMPT },
+      { role: 'user', content: userContent.length ? userContent : [{ type: 'text', text: 'No extracted text provided.' }] }
+    ];
+
+    const content = await makeAnthropicRequest(messages, 400, CLAUDE_HAIKU_MODEL);
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) return { isMedical: true };
+    const parsed = robustJsonParse(jsonMatch[0]);
+    if (typeof parsed?.isMedical === 'boolean') return parsed;
+    return { isMedical: true };
+  } catch (e) {
+    // Fail-closed: prevent non-medical analysis when validator is unavailable.
+    return {
+      isMedical: false,
+      message:
+        'Unable to validate this upload as a medical report right now. Please re-upload a clear medical report (lab, prescription, radiology, or discharge summary).'
+    };
+  }
+};
+exports.validateMedicalReport = validateMedicalReport;
+
 exports.analyzeHealthReport = async (reportText, user = {}, fileData = null, reportType = 'general') => {
   try {
     let userContext = `User: ${user.name || 'Patient'}. Type: ${reportType}`;
@@ -130,11 +208,23 @@ exports.analyzeHealthReport = async (reportText, user = {}, fileData = null, rep
       }
     }
 
+    const validation = await validateMedicalReport(reportText, fileData);
+    if (validation && validation.isMedical === false) {
+      throw new Error(
+        validation.message ||
+          'This file does not contains any medical report please upload correct medical report for analyze.'
+      );
+    }
+
     const messages = [{ role: 'system', content: HEALTH_ANALYSIS_PROMPT }, { role: 'user', content: userContent }];
     const content = await makeAnthropicRequest(messages, 8000); 
 
     const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('AI format invalid');
+    if (!jsonMatch) {
+      throw new Error(
+        'Unable to read this as a structured medical report. Please upload a clear medical report (lab, prescription, radiology, or discharge summary).'
+      );
+    }
     return robustJsonParse(jsonMatch[0]);
   } catch (error) {
     throw error;
