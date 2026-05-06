@@ -55,15 +55,13 @@ const connectDB = async () => {
     cached.conn = null;
     cached.promise = null;
 
-    // Don't exit in serverless environment
-    if (process.env.VERCEL) {
-      throw error;
-    } else {
-      console.error(`\n📋 To fix this, you need MongoDB running. Options:`);
-      console.error(`   1. Install MongoDB locally: https://www.mongodb.com/try/download/community`);
-      console.error(`   2. Use MongoDB Atlas (free): https://www.mongodb.com/cloud/atlas`);
-      process.exit(1);
-    }
+    // Never crash the process on transient DB failures.
+    // Let callers (middleware/routes) return a 503 while the app stays up.
+    console.error(`\n📋 DB is currently unavailable. Options:`);
+    console.error(`   1. Ensure your MongoDB Atlas IP access list allows this network`);
+    console.error(`   2. Ensure DNS/SRV is not blocked (or use a non-SRV Mongo URI)`);
+    console.error(`   3. Or run MongoDB locally: https://www.mongodb.com/try/download/community`);
+    throw error;
   }
 };
 
