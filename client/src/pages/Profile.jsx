@@ -785,7 +785,7 @@ export default function Profile() {
                   </button>
 
                  {/* Customer Support */}
-                 <button 
+                 {/* <button 
                    onClick={() => toast('Customer Support coming soon', { icon: '🎧' })}
                    className="w-full px-8 py-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group"
                  >
@@ -796,7 +796,7 @@ export default function Profile() {
                        <span className="text-[15px] font-black text-[#1a1a1a] tracking-tight">Customer Support</span>
                     </div>
                     <ChevronRight size={18} className="text-slate-300" />
-                 </button>
+                 </button> */}
               </div>
 
            {/* Logout Section - Fixed at the bottom of the card */}
