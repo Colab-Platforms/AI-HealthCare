@@ -49,7 +49,7 @@ export const AuthProvider = ({ children }) => {
 
     const isEmail = emailOrPhone.includes('@');
     const payload = isEmail ? { email: emailOrPhone, password } : { phone: emailOrPhone, password };
-    const { data } = await api.post('auth/login', payload);
+    const { data } = await api.post('auth/login', payload, { skipAutoLogout: true });
 
     // Set new token and user data
     localStorage.setItem('token', data.token);
