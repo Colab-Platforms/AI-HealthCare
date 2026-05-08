@@ -613,6 +613,101 @@ export default function UserActivity() {
           </div>
         </div>
 
+        {/* Feature Usage Analytics - Graphical */}
+        <div className="bg-white p-9 rounded-[3rem] border border-white shadow-[0_25px_60px_-25px_rgba(0,0,0,0.1)] hover:shadow-[0_40px_80px_-30px_rgba(0,10,0,0.08)] transition-all duration-500">
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h3 className="text-2xl font-black text-slate-800 tracking-tight">Feature Usage Analytics</h3>
+              <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mt-1">Platform Feature Adoption & Usage Patterns</p>
+            </div>
+          </div>
+
+          {stats?.categoryStats && stats.categoryStats.length > 0 ? (
+            <>
+              {/* Bar Chart */}
+              <div className="h-80 w-full -ml-3 mb-8">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={stats.categoryStats.sort((a, b) => b.count - a.count)}
+                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      vertical={true}
+                      horizontal={true}
+                      stroke="#f1f5f9"
+                    />
+                    <XAxis
+                      dataKey="_id"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 9, fill: "#94a3b8", fontWeight: 600 }}
+                      dy={10}
+                      interval={0}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fontSize: 11, fill: "#94a3b8", fontWeight: 600 }}
+                    />
+                    <Tooltip
+                      cursor={{ fill: '#f8fafc', radius: 10 }}
+                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 40px -10px rgba(0,0,0,0.1)', padding: '12px' }}
+                      formatter={(value) => [`${value} actions`, 'Count']}
+                    />
+                    <Bar
+                      dataKey="count"
+                      fill="#6366f1"
+                      radius={[4, 4, 0, 0]}
+                      barSize={40}
+                      style={{ cursor: 'pointer' }}
+                    >
+                      {stats.categoryStats.map((entry, index) => {
+                        const colors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
+                        return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
+                      })}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Summary Stats */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-8 border-t border-slate-50">
+                <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/50 hover:bg-indigo-50 transition-colors">
+                  <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-2">Most Used Feature</p>
+                  <p className="text-sm text-slate-600">
+                    <span className="font-black text-indigo-600 capitalize">{stats.categoryStats[0]._id}</span>
+                    <span className="text-slate-500 ml-2">({stats.categoryStats[0].count} actions)</span>
+                  </p>
+                </div>
+                <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50 hover:bg-emerald-50 transition-colors">
+                  <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-2">Total Features</p>
+                  <p className="text-sm text-slate-600">
+                    <span className="font-black text-emerald-600">{stats.categoryStats.length}</span>
+                    <span className="text-slate-500 ml-2">categories tracked</span>
+                  </p>
+                </div>
+                <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50 hover:bg-blue-50 transition-colors">
+                  <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-2">Total Usage</p>
+                  <p className="text-sm text-slate-600">
+                    <span className="font-black text-blue-600">{stats.categoryStats.reduce((sum, c) => sum + c.count, 0)}</span>
+                    <span className="text-slate-500 ml-2">total actions</span>
+                  </p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-16 bg-slate-50 rounded-2xl border border-slate-100">
+              <Activity className="w-12 h-12 text-slate-300 mx-auto mb-3" />
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No Feature Data Available</p>
+              <p className="text-[9px] text-slate-500 mt-1">Adjust filters to view feature usage analytics</p>
+            </div>
+          )}
+        </div>
+
         {/* Bottom Row Area */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Clinical Intelligence Card */}

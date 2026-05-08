@@ -1,5 +1,6 @@
 const WearableData = require('../models/WearableData');
 const cache = require('../utils/cache');
+const { logActivity } = require('../utils/activityLogger');
 
 // Connect a new wearable device
 exports.connectDevice = async (req, res) => {
@@ -124,6 +125,15 @@ exports.syncDailyMetrics = async (req, res) => {
     wearable.lastSyncedAt = new Date();
     await wearable.save();
 
+    // Log fitness activity
+    await logActivity(req.user._id, 'LOG_FITNESS_METRICS', 'fitness', {
+      deviceType,
+      steps: metrics.steps,
+      caloriesBurned: metrics.caloriesBurned,
+      activeMinutes: metrics.activeMinutes,
+      distance: metrics.distance
+    });
+
     // Invalidate server-side dashboard cache so next fetch returns fresh data
     cache.delete(`dashboard:${req.user._id}`);
 
@@ -151,6 +161,14 @@ exports.addHeartRate = async (req, res) => {
     }
 
     await wearable.save();
+
+    // Log fitness activity
+    await logActivity(req.user._id, 'LOG_HEART_RATE', 'fitness', {
+      deviceType,
+      bpm,
+      type
+    });
+
     res.json(wearable);
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -216,6 +234,14 @@ exports.addSleepData = async (req, res) => {
     }
 
     await wearable.save();
+
+    // Log fitness activity
+    await logActivity(req.user._id, 'LOG_SLEEP_DATA', 'fitness', {
+      deviceType,
+      totalSleepMinutes: sleepData.totalSleepMinutes,
+      remSleepMinutes: sleepData.remSleepMinutes,
+      deepSleepMinutes: sleepData.deepSleepMinutes
+    });
 
     // Invalidate server-side dashboard cache so next fetch returns fresh data
     cache.delete(`dashboard:${req.user._id}`);

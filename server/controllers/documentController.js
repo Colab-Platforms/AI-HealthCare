@@ -2,6 +2,7 @@ const MedicalDocument = require('../models/MedicalDocument');
 const HealthReport = require('../models/HealthReport');
 const cloudinary = require('../services/cloudinary');
 const fs = require('fs');
+const { logActivity } = require('../utils/activityLogger');
 
 exports.uploadDocument = async (req, res) => {
     try {
@@ -31,6 +32,14 @@ exports.uploadDocument = async (req, res) => {
             originalName: req.file.originalname,
             mimetype: req.file.mimetype,
             size: req.file.size || (dataBuffer ? dataBuffer.length : 0)
+        });
+
+        // Log medical activity
+        await logActivity(req.user._id, 'UPLOAD_MEDICAL_DOCUMENT', 'medical', {
+            title,
+            category: category || 'other',
+            fileName: req.file.originalname,
+            fileSize: req.file.size
         });
 
         res.status(201).json({ message: 'Document stored securely', document: doc });
