@@ -1,30 +1,38 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight, X } from 'lucide-react';
-import api from '../services/api';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { ChevronRight, X } from "lucide-react";
+import api from "../services/api";
+import SEO from "../hooks/useSEO";
 
 const ONBOARDING_SCREENS = [
   {
-    image: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/340a5e6c11c24e2e1b9f9df487363c27f071a7c8.jpg?v=1775711007",
+    image:
+      "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/340a5e6c11c24e2e1b9f9df487363c27f071a7c8.jpg?v=1775711007",
     title: "Here Better Health Begins",
-    subtitle: "We interpret a broad spectrum of biomarkers to identify early signals and support timely, personalised care."
+    subtitle:
+      "We interpret a broad spectrum of biomarkers to identify early signals and support timely, personalised care.",
   },
   {
-    image: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/97ffcab42b7d104864d628c380fc51bb0ec68af1.png?v=1775711412",
+    image:
+      "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/97ffcab42b7d104864d628c380fc51bb0ec68af1.png?v=1775711412",
     title: "Measure Every Meal",
-    subtitle: "Refine your dietary habits with intelligent recommendations tailored to your body's needs."
+    subtitle:
+      "Refine your dietary habits with intelligent recommendations tailored to your body's needs.",
   },
   {
-    image: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/864b4ed77417a276749c9ad3b84c7a3567f97fb1.jpg?v=1775711430",
+    image:
+      "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/864b4ed77417a276749c9ad3b84c7a3567f97fb1.jpg?v=1775711430",
     title: "Track Your Movement",
-    subtitle: "Track steps, activity, and daily movement effortlessly"
+    subtitle: "Track steps, activity, and daily movement effortlessly",
   },
   {
-    image: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/9d4df035edb88c974c5598e76f8595590b856b83.png?v=1775711470",
+    image:
+      "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/9d4df035edb88c974c5598e76f8595590b856b83.png?v=1775711470",
     title: "Optimize Your Sleep",
-    subtitle: "Gain clarity into your rest quality and take simple steps to improve recovery over time."
-  }
+    subtitle:
+      "Gain clarity into your rest quality and take simple steps to improve recovery over time.",
+  },
 ];
 
 export default function Onboarding() {
@@ -33,29 +41,30 @@ export default function Onboarding() {
 
   const handleNext = () => {
     if (currentScreen < ONBOARDING_SCREENS.length - 1) {
-      setCurrentScreen(prev => prev + 1);
+      setCurrentScreen((prev) => prev + 1);
     } else {
       finishOnboarding();
     }
   };
 
   const finishOnboarding = async () => {
-    localStorage.setItem('has_seen_onboarding', 'true');
+    localStorage.setItem("has_seen_onboarding", "true");
     try {
       // Sync with database so they don't see it on other devices
-      await api.put('auth/profile', {
-        profile: { hasSeenMobileTour: true }
+      await api.put("auth/profile", {
+        profile: { hasSeenMobileTour: true },
       });
     } catch (e) {
-      console.error('Failed to sync tour status', e);
+      console.error("Failed to sync tour status", e);
     }
-    navigate('/dashboard');
+    navigate("/dashboard");
   };
 
   const screen = ONBOARDING_SCREENS[currentScreen];
 
   return (
     <div className="fixed inset-0 bg-white z-[9999] flex flex-col font-sans overflow-hidden">
+      <SEO pageName="onboarding" />
       {/* Skip Button */}
       <button
         onClick={finishOnboarding}
@@ -78,8 +87,11 @@ export default function Onboarding() {
             <img
               src={screen.image}
               alt={screen.title}
-              className={`w-full h-full object-cover transition-transform duration-700 ease-out ${currentScreen === 1 ? 'scale-125 -translate-x-[20%]' : 'scale-100 translate-x-0'
-                }`}
+              className={`w-full h-full object-cover transition-transform duration-700 ease-out ${
+                currentScreen === 1
+                  ? "scale-125 -translate-x-[20%]"
+                  : "scale-100 translate-x-0"
+              }`}
             />
             {/* Seamless Gradient Overlay to remove any "lines" */}
             <div className="absolute inset-0 bg-gradient-to-b from-transparent via-white/5 to-white" />
@@ -91,8 +103,9 @@ export default function Onboarding() {
           {ONBOARDING_SCREENS.map((_, i) => (
             <div
               key={i}
-              className={`h-1.5 rounded-full transition-all duration-300 ${i === currentScreen ? 'w-6 bg-[#6E6E6E]' : 'w-1.5 bg-[#D9D9D9]'
-                }`}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                i === currentScreen ? "w-6 bg-[#6E6E6E]" : "w-1.5 bg-[#D9D9D9]"
+              }`}
             />
           ))}
         </div>
@@ -110,8 +123,13 @@ export default function Onboarding() {
               transition={{ duration: 0.4, delay: 0.1 }}
               className="flex flex-col items-center gap-5 max-w-sm"
             >
-              <h1 className={`font-bold text-black leading-tight tracking-tight text-center ${currentScreen === 0 ? 'text-[24px] whitespace-nowrap' : 'text-[28px]'
-                }`}>
+              <h1
+                className={`font-bold text-black leading-tight tracking-tight text-center ${
+                  currentScreen === 0
+                    ? "text-[24px] whitespace-nowrap"
+                    : "text-[28px]"
+                }`}
+              >
                 {screen.title}
               </h1>
               <p className="text-[16px] font-medium text-slate-600 leading-relaxed text-center px-2">
@@ -127,7 +145,9 @@ export default function Onboarding() {
             onClick={handleNext}
             className="w-full h-[40px] bg-white border border-[#69A38D] rounded-[15px] text-black font-bold text-xl transition-all flex items-center justify-center active:scale-[0.98] shadow-sm hover:bg-slate-50"
           >
-            {currentScreen === ONBOARDING_SCREENS.length - 1 ? 'Get Started' : 'Next'}
+            {currentScreen === ONBOARDING_SCREENS.length - 1
+              ? "Get Started"
+              : "Next"}
           </button>
         </div>
       </div>

@@ -1,0 +1,114 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"
+        xmlns:image="http://www.google.com/schemas/sitemap-image/1.1"
+        xmlns:news="http://www.google.com/schemas/sitemap-news/0.9">
+  
+  <!-- Homepage - Highest Priority -->
+  <url>
+    <loc>https://take.health/</loc>
+    <lastmod>2024-05-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>1.0</priority>
+    <image:image>
+      <image:loc>https://take.health/og-home.jpg</image:loc>
+      <image:title>take.health - AI Healthcare Platform</image:title>
+    </image:image>
+  </url>
+
+  <!-- How It Works -->
+  <url>
+    <loc>https://take.health/how-it-works</loc>
+    <lastmod>2024-05-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.9</priority>
+  </url>
+
+  <!-- About Us -->
+  <url>
+    <loc>https://take.health/about</loc>
+    <lastmod>2024-05-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Features: Medical Report Analysis -->
+  <url>
+    <loc>https://take.health/</loc>
+    <lastmod>2024-05-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Features: Nutrition & Diet Plans -->
+  <url>
+    <loc>https://take.health/how-it-works</loc>
+    <lastmod>2024-05-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Features: Glucose Tracking -->
+  <url>
+    <loc>https://take.health/how-it-works</loc>
+    <lastmod>2024-05-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Features: Vitamin Deficiency Detection -->
+  <url>
+    <loc>https://take.health/how-it-works</loc>
+    <lastmod>2024-05-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Features: Food Safety -->
+  <url>
+    <loc>https://take.health/how-it-works</loc>
+    <lastmod>2024-05-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+
+  <!-- Login -->
+  <url>
+    <loc>https://take.health/login</loc>
+    <lastmod>2024-05-09</lastmod>
+    <changefreq>never</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Register -->
+  <url>
+    <loc>https://take.health/register</loc>
+    <lastmod>2024-05-09</lastmod>
+    <changefreq>never</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+  <!-- Privacy Policy -->
+  <url>
+    <loc>https://take.health/privacy-policy</loc>
+    <lastmod>2024-05-09</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- Terms and Conditions -->
+  <url>
+    <loc>https://take.health/terms-and-conditions</loc>
+    <lastmod>2024-05-09</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.6</priority>
+  </url>
+
+  <!-- Demo -->
+  <url>
+    <loc>https://take.health/demo</loc>
+    <lastmod>2024-05-09</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+
+</urlset>

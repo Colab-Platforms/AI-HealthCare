@@ -1,12 +1,15 @@
 import React from "react";
+import SEO from "../hooks/useSEO";
 import Navbar from "../components/landing/landing-components/Navbar";
 import Footer from "../components/landing/landing-components/Footer";
 
 const PrivacyPolicy = () => {
-  const pdfUrl = "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/take_health_privacy_policy.pdf?v=1776407816";
+  const pdfUrl =
+    "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/take_health_privacy_policy.pdf?v=1776407816";
 
   return (
     <div className="bg-landing-light-bg text-landing-text font-landing-body">
+      <SEO pageName="privacyPolicy" />
       <Navbar />
       <div className="">
         <div className="h-[350px] bg-landing-primary relative z-10 flex items-center justify-center text-center">
@@ -15,7 +18,8 @@ const PrivacyPolicy = () => {
               Privacy Policy
             </h1>
             <p className="text-sm lg:text-base text-white mt-4">
-              Your privacy is important to us. Please read our privacy policy carefully.
+              Your privacy is important to us. Please read our privacy policy
+              carefully.
             </p>
           </div>
         </div>

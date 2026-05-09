@@ -1,18 +1,49 @@
-import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
-import { useData } from '../context/DataContext';
-import api, { nutritionService, dietRecommendationService } from '../services/api';
+import { useState, useEffect, useRef } from "react";
+import { Link, useNavigate, useLocation } from "react-router-dom";
+import { useAuth } from "../context/AuthContext";
+import { useData } from "../context/DataContext";
+import api, {
+  nutritionService,
+  dietRecommendationService,
+} from "../services/api";
+import SEO from "../hooks/useSEO";
 import {
-  Heart, Clock, ArrowLeft, Flame, Target,
-  AlertCircle, Sparkles, CheckCircle, Lightbulb, X, UtensilsCrossed, Utensils,
-  ChevronLeft, ChevronRight, Calendar, Search, Filter, RefreshCw, Eye, ChefHat,
-  ArrowRight, Check, Zap, Info, Coffee, Sun, Activity, Mail, Plus, ArrowUpRight, Scale
-} from 'lucide-react';
-import toast from 'react-hot-toast';
-import { motion, AnimatePresence } from 'framer-motion';
-import FoodPreferences from '../components/FoodPreferences';
-import { ImageWithFallback } from '../components/ImageWithFallback';
+  Heart,
+  Clock,
+  ArrowLeft,
+  Flame,
+  Target,
+  AlertCircle,
+  Sparkles,
+  CheckCircle,
+  Lightbulb,
+  X,
+  UtensilsCrossed,
+  Utensils,
+  ChevronLeft,
+  ChevronRight,
+  Calendar,
+  Search,
+  Filter,
+  RefreshCw,
+  Eye,
+  ChefHat,
+  ArrowRight,
+  Check,
+  Zap,
+  Info,
+  Coffee,
+  Sun,
+  Activity,
+  Mail,
+  Plus,
+  ArrowUpRight,
+  Scale,
+} from "lucide-react";
+import toast from "react-hot-toast";
+import { motion, AnimatePresence } from "framer-motion";
+import FoodPreferences from "../components/FoodPreferences";
+import { ImageWithFallback } from "../components/ImageWithFallback";
 
 // --- UI Components ---
 const FoodDetailModal = ({ food, onClose, onLog, isLogged, isLoading }) => {
@@ -33,7 +64,7 @@ const FoodDetailModal = ({ food, onClose, onLog, isLogged, isLoading }) => {
         exit={{ scale: 0.9, opacity: 0, y: 20 }}
         className="relative w-full max-w-2xl bg-white rounded-[2.5rem] overflow-hidden shadow-2xl"
       >
-        <button 
+        <button
           onClick={onClose}
           className="absolute top-6 right-6 z-10 w-10 h-10 rounded-full bg-black/10 backdrop-blur-md flex items-center justify-center text-white hover:bg-black/20 transition-all"
         >
@@ -58,21 +89,50 @@ const FoodDetailModal = ({ food, onClose, onLog, isLogged, isLoading }) => {
           {/* Right: Details */}
           <div className="flex-1 p-6 md:p-10 overflow-y-auto">
             <div className="hidden md:block mb-6">
-              <h2 className="text-3xl font-black text-[#064e3b] tracking-tight">{food.name}</h2>
-              <p className="text-emerald-800/40 font-bold uppercase tracking-widest text-xs mt-1">Nutrition Protocol</p>
+              <h2 className="text-3xl font-black text-[#064e3b] tracking-tight">
+                {food.name}
+              </h2>
+              <p className="text-emerald-800/40 font-bold uppercase tracking-widest text-xs mt-1">
+                Nutrition Protocol
+              </p>
             </div>
 
             <div className="grid grid-cols-4 gap-2 mb-8">
               {[
-                { label: 'Calories', val: food.calories, unit: 'kcal', color: 'orange' },
-                { label: 'Protein', val: food.protein, unit: 'g', color: 'emerald' },
-                { label: 'Carbs', val: food.carbs, unit: 'g', color: 'blue' },
-                { label: 'Fats', val: food.fats, unit: 'g', color: 'amber' }
-              ].map(n => (
-                <div key={n.label} className={`p-3 rounded-2xl bg-${n.color}-50/50 border border-${n.color}-100 flex flex-col items-center justify-center`}>
-                  <span className={`text-[10px] font-black uppercase text-${n.color}-800/40 mb-1`}>{n.label}</span>
-                  <span className={`text-sm md:text-lg font-black text-${n.color}-700`}>{n.val || 0}</span>
-                  <span className={`text-[8px] font-bold text-${n.color}-600/60 uppercase`}>{n.unit}</span>
+                {
+                  label: "Calories",
+                  val: food.calories,
+                  unit: "kcal",
+                  color: "orange",
+                },
+                {
+                  label: "Protein",
+                  val: food.protein,
+                  unit: "g",
+                  color: "emerald",
+                },
+                { label: "Carbs", val: food.carbs, unit: "g", color: "blue" },
+                { label: "Fats", val: food.fats, unit: "g", color: "amber" },
+              ].map((n) => (
+                <div
+                  key={n.label}
+                  className={`p-3 rounded-2xl bg-${n.color}-50/50 border border-${n.color}-100 flex flex-col items-center justify-center`}
+                >
+                  <span
+                    className={`text-[10px] font-black uppercase text-${n.color}-800/40 mb-1`}
+                  >
+                    {n.label}
+                  </span>
+                  <span
+                    className={`text-sm md:text-lg font-black text-${n.color}-700`}
+                  >
+                    {n.val || 0}
+                  </span>
+                  <span
+                    className={`text-[8px] font-bold text-${n.color}-600/60 uppercase`}
+                  >
+                    {n.unit}
+                  </span>
                 </div>
               ))}
             </div>
@@ -80,29 +140,36 @@ const FoodDetailModal = ({ food, onClose, onLog, isLogged, isLoading }) => {
             <div className="space-y-6">
               <section>
                 <h4 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-emerald-800/40 mb-3">
-                  <Sparkles className="w-3.5 h-3.5 text-emerald-500" /> Key Benefits
+                  <Sparkles className="w-3.5 h-3.5 text-emerald-500" /> Key
+                  Benefits
                 </h4>
                 <p className="text-sm text-slate-600 leading-relaxed bg-emerald-50/30 p-4 rounded-2xl border border-emerald-50 italic font-medium">
-                  {food.benefits || "Highly nutritious and balanced for your current health profile."}
+                  {food.benefits ||
+                    "Highly nutritious and balanced for your current health profile."}
                 </p>
               </section>
 
               <section>
                 <h4 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-emerald-800/40 mb-3">
-                  <UtensilsCrossed className="w-3.5 h-3.5 text-emerald-500" /> Portion Guidance
+                  <UtensilsCrossed className="w-3.5 h-3.5 text-emerald-500" />{" "}
+                  Portion Guidance
                 </h4>
                 <div className="flex items-center gap-2 p-4 rounded-2xl bg-slate-50 border border-slate-100">
                   <Info className="w-4 h-4 text-slate-400" />
-                  <p className="text-sm font-bold text-slate-700">{food.portionSize || '1 standard serving size'}</p>
+                  <p className="text-sm font-bold text-slate-700">
+                    {food.portionSize || "1 standard serving size"}
+                  </p>
                 </div>
               </section>
 
               <section>
                 <h4 className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-emerald-800/40 mb-3">
-                  <Lightbulb className="w-3.5 h-3.5 text-emerald-500" /> Instructions
+                  <Lightbulb className="w-3.5 h-3.5 text-emerald-500" />{" "}
+                  Instructions
                 </h4>
                 <p className="text-sm text-slate-500 leading-relaxed font-medium">
-                  {food.description || "Consume as per the recommended time for optimal metabolic absorption and energy levels."}
+                  {food.description ||
+                    "Consume as per the recommended time for optimal metabolic absorption and energy levels."}
                 </p>
               </section>
             </div>
@@ -110,17 +177,20 @@ const FoodDetailModal = ({ food, onClose, onLog, isLogged, isLoading }) => {
             <button
               onClick={() => onLog(food)}
               disabled={isLogged || isLoading}
-              className={`w-full mt-10 py-5 rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl ${isLogged
-                ? 'bg-emerald-600 text-white shadow-emerald-200'
-                : 'bg-black text-white hover:bg-slate-800 shadow-slate-200'
-                } ${isLoading ? 'opacity-70 cursor-wait' : ''}`}
+              className={`w-full mt-10 py-5 rounded-[1.5rem] text-[11px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 shadow-xl ${
+                isLogged
+                  ? "bg-emerald-600 text-white shadow-emerald-200"
+                  : "bg-black text-white hover:bg-slate-800 shadow-slate-200"
+              } ${isLoading ? "opacity-70 cursor-wait" : ""}`}
             >
               {isLoading ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
               ) : isLogged ? (
-                <><Check className="w-4 h-4" /> Logged as Eaten</>
+                <>
+                  <Check className="w-4 h-4" /> Logged as Eaten
+                </>
               ) : (
-                'Log this Meal'
+                "Log this Meal"
               )}
             </button>
           </div>
@@ -132,27 +202,57 @@ const FoodDetailModal = ({ food, onClose, onLog, isLogged, isLoading }) => {
 
 // --- Constants & Helpers ---
 const Sunset = ({ className }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 2v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="M2 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="M12 18v2" /><path d="m17.66 17.66 1.41 1.41" /><path d="M20 12h2" /><path d="m19.07 4.93-1.41 1.41" /><path d="M2 18h20" /><path d="M16 18a4 4 0 0 0-8 0" />
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
+    <path d="M12 2v2" />
+    <path d="m4.93 4.93 1.41 1.41" />
+    <path d="M2 12h2" />
+    <path d="m6.34 17.66-1.41 1.41" />
+    <path d="M12 18v2" />
+    <path d="m17.66 17.66 1.41 1.41" />
+    <path d="M20 12h2" />
+    <path d="m19.07 4.93-1.41 1.41" />
+    <path d="M2 18h20" />
+    <path d="M16 18a4 4 0 0 0-8 0" />
   </svg>
 );
 
 const Moon = ({ className }) => (
-  <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+  <svg
+    className={className}
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+  >
     <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
   </svg>
 );
 
-const MEAL_ORDER = ['breakfast', 'lunch', 'dinner'];
+const MEAL_ORDER = ["breakfast", "lunch", "dinner"];
 const SECTION_INFO = {
-  breakfast: { label: 'Breakfast', time: '08:00 AM', emoji: '🍳', icon: Coffee },
-  lunch: { label: 'Lunch', time: '01:30 PM', emoji: '🥗', icon: Utensils },
-  dinner: { label: 'Dinner', time: '08:30 PM', emoji: '🌙', icon: Moon }
+  breakfast: {
+    label: "Breakfast",
+    time: "08:00 AM",
+    emoji: "🍳",
+    icon: Coffee,
+  },
+  lunch: { label: "Lunch", time: "01:30 PM", emoji: "🥗", icon: Utensils },
+  dinner: { label: "Dinner", time: "08:30 PM", emoji: "🌙", icon: Moon },
 };
 
 function getMealName(m) {
-  if (typeof m === 'string') return m;
-  return m?.name || 'Meal Item';
+  if (typeof m === "string") return m;
+  return m?.name || "Meal Item";
 }
 
 function getMealCalories(m) {
@@ -161,14 +261,25 @@ function getMealCalories(m) {
 
 // --- UI Components ---
 
-const MealSectionCard = ({ section, meals, loggedMeals, onOpenOptions, mealType }) => {
+const MealSectionCard = ({
+  section,
+  meals,
+  loggedMeals,
+  onOpenOptions,
+  mealType,
+}) => {
   const { label, time } = section;
-  const totalCalories = meals.reduce((acc, m) => acc + (getMealCalories(m) || 0), 0);
+  const totalCalories = meals.reduce(
+    (acc, m) => acc + (getMealCalories(m) || 0),
+    0,
+  );
   const itemCount = meals.length;
   const mainImage = meals[0]?.imageUrl;
-  
+
   // Check if all items in this section are logged (or if one is logged to show completion)
-  const isAnyLogged = meals.some(m => !!loggedMeals[`${mealType}-${getMealName(m)}`]);
+  const isAnyLogged = meals.some(
+    (m) => !!loggedMeals[`${mealType}-${getMealName(m)}`],
+  );
 
   return (
     <motion.div
@@ -179,27 +290,43 @@ const MealSectionCard = ({ section, meals, loggedMeals, onOpenOptions, mealType 
     >
       <div className="flex-1 pr-8 z-10 flex flex-col justify-between h-full">
         <div>
-          <h3 className="text-xl md:text-2xl font-black text-[#1a2e35] mb-2 md:mb-3 tracking-tight">{label}</h3>
-          
+          <h3 className="text-xl md:text-2xl font-black text-[#1a2e35] mb-2 md:mb-3 tracking-tight">
+            {label}
+          </h3>
+
           <div className="flex items-center gap-3 mb-3 md:mb-5">
             <div className="flex -space-x-3">
               {meals.slice(0, 3).map((m, i) => (
-                <div key={i} className="w-8 h-8 md:w-9 md:h-9 rounded-full border-2 border-white overflow-hidden shadow-sm">
-                  <ImageWithFallback src={m.imageUrl} query={getMealName(m)} alt={getMealName(m)} className="w-full h-full object-cover" />
+                <div
+                  key={i}
+                  className="w-8 h-8 md:w-9 md:h-9 rounded-full border-2 border-white overflow-hidden shadow-sm"
+                >
+                  <ImageWithFallback
+                    src={m.imageUrl}
+                    query={getMealName(m)}
+                    alt={getMealName(m)}
+                    className="w-full h-full object-cover"
+                  />
                 </div>
               ))}
             </div>
-            <span className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">{itemCount} items</span>
+            <span className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">
+              {itemCount} items
+            </span>
           </div>
 
           <div className="flex items-center gap-5 md:gap-6">
             <div className="flex items-center gap-1.5 text-slate-500">
               <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-500" />
-              <span className="text-[10px] md:text-xs font-black uppercase tracking-widest leading-none mt-0.5">{time}</span>
+              <span className="text-[10px] md:text-xs font-black uppercase tracking-widest leading-none mt-0.5">
+                {time}
+              </span>
             </div>
             <div className="flex items-center gap-1.5 text-slate-500">
               <Flame className="w-3.5 h-3.5 md:w-4 md:h-4 text-orange-500" />
-              <span className="text-[10px] md:text-xs font-black uppercase tracking-widest leading-none mt-0.5 text-orange-600/70">{totalCalories} Kcal</span>
+              <span className="text-[10px] md:text-xs font-black uppercase tracking-widest leading-none mt-0.5 text-orange-600/70">
+                {totalCalories} Kcal
+              </span>
             </div>
           </div>
         </div>
@@ -219,10 +346,10 @@ const MealSectionCard = ({ section, meals, loggedMeals, onOpenOptions, mealType 
 
       <div className="absolute right-0 top-0 bottom-0 w-2/5 md:w-5/12 pointer-events-none">
         <div className="w-full h-full relative">
-          <ImageWithFallback 
-            src={mainImage} 
+          <ImageWithFallback
+            src={mainImage}
             query={getMealName(meals[0])}
-            className="w-full h-full object-cover rounded-l-[50px] md:rounded-l-[80px]" 
+            className="w-full h-full object-cover rounded-l-[50px] md:rounded-l-[80px]"
           />
           <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white via-white/10 to-transparent" />
         </div>
@@ -231,7 +358,15 @@ const MealSectionCard = ({ section, meals, loggedMeals, onOpenOptions, mealType 
   );
 };
 
-const MealOptionsModal = ({ label, meals, loggedMeals, mealType, onClose, onLog, loggingMealId }) => {
+const MealOptionsModal = ({
+  label,
+  meals,
+  loggedMeals,
+  mealType,
+  onClose,
+  onLog,
+  loggingMealId,
+}) => {
   return (
     <div className="fixed inset-0 z-[160] flex items-center justify-center p-4">
       <motion.div
@@ -248,8 +383,10 @@ const MealOptionsModal = ({ label, meals, loggedMeals, mealType, onClose, onLog,
         className="relative w-full max-w-lg bg-[#F8F9F5] rounded-[2.5rem] shadow-2xl flex flex-col max-h-[85vh] overflow-hidden border border-white/50"
       >
         <div className="p-8 pb-4 flex items-center justify-between">
-          <h2 className="text-2xl font-black text-[#1a2e35] tracking-tight">{label} Options</h2>
-          <button 
+          <h2 className="text-2xl font-black text-[#1a2e35] tracking-tight">
+            {label} Options
+          </h2>
+          <button
             onClick={onClose}
             className="w-10 h-10 rounded-full bg-white shadow-md flex items-center justify-center text-slate-400 hover:text-black transition-all border border-slate-100"
           >
@@ -264,8 +401,8 @@ const MealOptionsModal = ({ label, meals, loggedMeals, mealType, onClose, onLog,
             const isLoading = loggingMealId === `${mealType}-${name}`;
 
             return (
-              <motion.div 
-                key={idx} 
+              <motion.div
+                key={idx}
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: idx * 0.05 }}
@@ -277,19 +414,31 @@ const MealOptionsModal = ({ label, meals, loggedMeals, mealType, onClose, onLog,
               >
                 <div className="flex gap-5">
                   <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden shrink-0 bg-slate-50 shadow-inner">
-                    <ImageWithFallback src={meal.imageUrl} query={name} className="w-full h-full object-cover" />
+                    <ImageWithFallback
+                      src={meal.imageUrl}
+                      query={name}
+                      className="w-full h-full object-cover"
+                    />
                   </div>
                   <div className="flex-1 py-1">
-                    <h3 className="text-base md:text-lg font-bold text-[#1a2e35] mb-2 leading-tight">{name}</h3>
+                    <h3 className="text-base md:text-lg font-bold text-[#1a2e35] mb-2 leading-tight">
+                      {name}
+                    </h3>
                     <div className="flex flex-col gap-2 mt-auto">
                       <div className="flex items-start gap-1.5 w-fit max-w-full">
-                        <Scale className="w-3.5 h-3.5 text-[#69A38D] mt-0.5 shrink-0" strokeWidth={2.5} />
+                        <Scale
+                          className="w-3.5 h-3.5 text-[#69A38D] mt-0.5 shrink-0"
+                          strokeWidth={2.5}
+                        />
                         <span className="text-[10px] md:text-sm font-black uppercase tracking-tight text-[#69A38D] leading-tight break-words">
-                          {meal.portionSize || '1 Serving'}
+                          {meal.portionSize || "1 Serving"}
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <Flame className="w-3.5 h-3.5 text-orange-400 shrink-0" strokeWidth={2.5} />
+                        <Flame
+                          className="w-3.5 h-3.5 text-orange-400 shrink-0"
+                          strokeWidth={2.5}
+                        />
                         <span className="text-[10px] md:text-sm font-black uppercase tracking-tight text-slate-400">
                           {getMealCalories(meal)} Kcal
                         </span>
@@ -305,17 +454,21 @@ const MealOptionsModal = ({ label, meals, loggedMeals, mealType, onClose, onLog,
                   }}
                   disabled={isLogged || isLoading}
                   className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 text-xs font-black uppercase tracking-[0.1em] transition-all ${
-                    isLogged 
-                      ? 'bg-emerald-600 text-white shadow-emerald-100' 
-                      : 'bg-[#719685] text-white hover:bg-[#5f8171] shadow-lg shadow-[#719685]/10'
-                  } ${isLoading ? 'opacity-70 cursor-wait' : ''}`}
+                    isLogged
+                      ? "bg-emerald-600 text-white shadow-emerald-100"
+                      : "bg-[#719685] text-white hover:bg-[#5f8171] shadow-lg shadow-[#719685]/10"
+                  } ${isLoading ? "opacity-70 cursor-wait" : ""}`}
                 >
                   {isLoading ? (
                     <RefreshCw className="w-4 h-4 animate-spin" />
                   ) : isLogged ? (
-                    <><Check className="w-4 h-4" /> Logged as Eaten</>
+                    <>
+                      <Check className="w-4 h-4" /> Logged as Eaten
+                    </>
                   ) : (
-                    <><Plus className="w-4 h-4" /> Log Meal</>
+                    <>
+                      <Plus className="w-4 h-4" /> Log Meal
+                    </>
                   )}
                 </button>
               </motion.div>
@@ -329,17 +482,17 @@ const MealOptionsModal = ({ label, meals, loggedMeals, mealType, onClose, onLog,
 
 export default function DietPlan() {
   const { user } = useAuth();
-  const { 
-    invalidateCache, 
-    fetchDietPlan, 
+  const {
+    invalidateCache,
+    fetchDietPlan,
     setDietPlan,
-    fetchNutritionLogs, 
+    fetchNutritionLogs,
     fetchHealthGoals,
     addPendingDietPlan,
     pendingDietPlanIds,
     healthGoals,
     dietPlan,
-    dataRefreshTrigger 
+    dataRefreshTrigger,
   } = useData();
   const navigate = useNavigate();
   const location = useLocation();
@@ -351,7 +504,7 @@ export default function DietPlan() {
 
   const [showPreferences, setShowPreferences] = useState(false);
   const [showRegenOptions, setShowRegenOptions] = useState(false);
-  const [prefMode, setPrefMode] = useState('save');
+  const [prefMode, setPrefMode] = useState("save");
   const [loggedMeals, setLoggedMeals] = useState({});
   const [loggingMealId, setLoggingMealId] = useState(null);
   const [selectedFood, setSelectedFood] = useState(null);
@@ -367,11 +520,15 @@ export default function DietPlan() {
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
-    if (params.get('autoGenerate') === 'true' && !generating && !location.state?.generated) {
+    if (
+      params.get("autoGenerate") === "true" &&
+      !generating &&
+      !location.state?.generated
+    ) {
       const timer = setTimeout(() => {
         generatePlan(true); // Auto-generate/update plan
         // Clear param to prevent loop
-        navigate('/diet-plan', { replace: true, state: { generated: true } });
+        navigate("/diet-plan", { replace: true, state: { generated: true } });
       }, 1000);
       return () => clearTimeout(timer);
     }
@@ -385,24 +542,23 @@ export default function DietPlan() {
         setLoading(true);
       }
 
-      const today = new Date().toISOString().split('T')[0];
+      const today = new Date().toISOString().split("T")[0];
       const [plan, logs, historyRes] = await Promise.all([
         fetchDietPlan(),
         fetchNutritionLogs(today),
         dietRecommendationService.getDietPlanHistory(),
-        fetchHealthGoals()
+        fetchHealthGoals(),
       ]);
 
       if (historyRes.data.success) setHistory(historyRes.data.history);
 
       const loggedMap = {};
-      (logs || []).forEach(log => {
+      (logs || []).forEach((log) => {
         const type = log.mealType;
         const name = log.name || log.foodItems?.[0]?.name;
         loggedMap[`${type}-${name}`] = true;
       });
       setLoggedMeals(loggedMap);
-
     } catch (err) {
       console.error("Error loading diet plan:", err);
     } finally {
@@ -413,28 +569,33 @@ export default function DietPlan() {
   const generatePlan = async (isRegenerate = false, usePreferences = true) => {
     // Check if user has set a fitness goal first
     if (!user?.nutritionGoal?.calorieGoal) {
-      toast.error('Please set your fitness goal first to generate a personalized diet plan.');
-      navigate('/profile?tab=goals');
+      toast.error(
+        "Please set your fitness goal first to generate a personalized diet plan.",
+      );
+      navigate("/profile?tab=goals");
       return;
     }
 
     setGenerating(true);
     try {
-      const { data } = await dietRecommendationService.generateDietPlan({ isRegenerate, usePreferences });
+      const { data } = await dietRecommendationService.generateDietPlan({
+        isRegenerate,
+        usePreferences,
+      });
       if (data.success) {
         if (data.backgroundProcessing) {
-          toast.success('AI generation started in background');
+          toast.success("AI generation started in background");
           addPendingDietPlan(data.dietPlan._id);
           // fetchDietPlan will update the global state
-          await fetchDietPlan(true); 
+          await fetchDietPlan(true);
         } else {
-          toast.success(isRegenerate ? 'Plan updated!' : 'New plan ready!');
-          invalidateCache(['diet_plan', 'dashboard']);
+          toast.success(isRegenerate ? "Plan updated!" : "New plan ready!");
+          invalidateCache(["diet_plan", "dashboard"]);
           loadInitialData();
         }
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to update plan');
+      toast.error(err.response?.data?.message || "Failed to update plan");
     } finally {
       setGenerating(false);
     }
@@ -447,11 +608,11 @@ export default function DietPlan() {
       if (data.success) {
         setDietPlan(data.dietPlan);
         setShowHistory(false);
-        toast.success('Loaded past plan');
+        toast.success("Loaded past plan");
       }
     } catch (err) {
       console.error("Error loading selected plan:", err);
-      toast.error('Failed to load selected plan');
+      toast.error("Failed to load selected plan");
     } finally {
       setLoading(false);
     }
@@ -465,58 +626,77 @@ export default function DietPlan() {
     try {
       setLoggingMealId(mealId);
       // Show analyzing toast
-      const analyzeToastId = toast.loading('Analyzing nutrition profile...', { duration: 4000 });
-
-      // 1. Analyze the food to get rich data (AI or Cache)
-      const { data: analysisRes } = await api.post('nutrition/analyze-food', {
-        foodDescription: mealName
+      const analyzeToastId = toast.loading("Analyzing nutrition profile...", {
+        duration: 4000,
       });
 
-      if (!analysisRes.success) throw new Error('Analysis failed');
+      // 1. Analyze the food to get rich data (AI or Cache)
+      const { data: analysisRes } = await api.post("nutrition/analyze-food", {
+        foodDescription: mealName,
+      });
+
+      if (!analysisRes.success) throw new Error("Analysis failed");
       const data = analysisRes.analysis;
 
       // 2. Log with rich data
-      // 2. Log with data from diet plan PREFERRED (for calorie goal consistency) 
+      // 2. Log with data from diet plan PREFERRED (for calorie goal consistency)
       // but enrich with AI analysis findings (benefits, alternatives)
-      const todayStr = new Date().toISOString().split('T')[0];
+      const todayStr = new Date().toISOString().split("T")[0];
       await nutritionService.logMeal({
         mealType: type,
-        foodItems: [{
-          name: mealName,
-          quantity: meal.portionSize || data.foodItem?.quantity || '1 serving',
-          nutrition: {
-            calories: meal.calories || data.foodItem?.nutrition?.calories || 200,
-            protein: meal.protein || data.foodItem?.nutrition?.protein || 10,
-            carbs: meal.carbs || data.foodItem?.nutrition?.carbs || 30,
-            fats: meal.fats || data.foodItem?.nutrition?.fats || 5
-          }
-        }],
+        foodItems: [
+          {
+            name: mealName,
+            quantity:
+              meal.portionSize || data.foodItem?.quantity || "1 serving",
+            nutrition: {
+              calories:
+                meal.calories || data.foodItem?.nutrition?.calories || 200,
+              protein: meal.protein || data.foodItem?.nutrition?.protein || 10,
+              carbs: meal.carbs || data.foodItem?.nutrition?.carbs || 30,
+              fats: meal.fats || data.foodItem?.nutrition?.fats || 5,
+            },
+          },
+        ],
         healthScore: data.healthScore || data.foodItem?.healthScore || 80,
         healthScore10: data.healthScore10 || data.foodItem?.healthScore10 || 8,
-        micronutrients: data.micronutrients || data.foodItem?.micronutrients || [],
-        enhancementTips: data.enhancementTips || data.foodItem?.enhancementTips || [],
-        healthBenefitsSummary: meal.benefits || data.healthBenefitsSummary || data.foodItem?.healthBenefitsSummary || '',
+        micronutrients:
+          data.micronutrients || data.foodItem?.micronutrients || [],
+        enhancementTips:
+          data.enhancementTips || data.foodItem?.enhancementTips || [],
+        healthBenefitsSummary:
+          meal.benefits ||
+          data.healthBenefitsSummary ||
+          data.foodItem?.healthBenefitsSummary ||
+          "",
         warnings: data.warnings || data.foodItem?.warnings || [],
         alternatives: data.alternatives || data.foodItem?.alternatives || [],
-        source: 'meal_plan',
-        date: todayStr
+        source: "meal_plan",
+        date: todayStr,
       });
 
       toast.dismiss(analyzeToastId);
-      toast.success('Meal logged! Keep it up 🚀');
-      setLoggedMeals(prev => ({ ...prev, [mealId]: true }));
-      invalidateCache(['dashboard', `logs_${todayStr}`, `nutrition_${todayStr}`]);
+      toast.success("Meal logged! Keep it up 🚀");
+      setLoggedMeals((prev) => ({ ...prev, [mealId]: true }));
+      invalidateCache([
+        "dashboard",
+        `logs_${todayStr}`,
+        `nutrition_${todayStr}`,
+      ]);
       loadInitialData(); // Refresh UI
     } catch (err) {
       console.error("Log meal error:", err);
-      toast.error('Failed to log meal');
+      toast.error("Failed to log meal");
     } finally {
       setLoggingMealId(null);
     }
   };
 
   // Use context's dietPlan status
-  const isCurrentlyGenerating = generating || (dietPlan?.status === 'generating') || (pendingDietPlanIds?.length > 0);
+  const isCurrentlyGenerating =
+    generating ||
+    dietPlan?.status === "generating" ||
+    pendingDietPlanIds?.length > 0;
   const showCraftingScreen = loading || isCurrentlyGenerating;
 
   if (showCraftingScreen) {
@@ -539,21 +719,27 @@ export default function DietPlan() {
 
         <div className="max-w-md w-full text-center space-y-6">
           <div className="space-y-2">
-            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Crafting Your Protocol</h2>
-            <p className="text-sm font-bold text-slate-400 uppercase tracking-[0.2em]">AI Generation in Progress</p>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+              Crafting Your Protocol
+            </h2>
+            <p className="text-sm font-bold text-slate-400 uppercase tracking-[0.2em]">
+              AI Generation in Progress
+            </p>
           </div>
 
           <div className="p-6 bg-emerald-50 border border-emerald-100 rounded-[2rem] shadow-sm">
             <p className="text-emerald-800 text-sm font-bold leading-relaxed mb-4 italic">
-              "We're analyzing your latest medical reports, BMI, and nutritional goals to create a scientifically optimized diet plan just for you."
+              "We're analyzing your latest medical reports, BMI, and nutritional
+              goals to create a scientifically optimized diet plan just for
+              you."
             </p>
             <div className="flex flex-col items-center gap-4">
               <div className="w-full bg-emerald-100/50 h-3 rounded-full overflow-hidden">
-                <motion.div 
+                <motion.div
                   initial={{ width: "10%" }}
                   animate={{ width: "95%" }}
                   transition={{ duration: 60, ease: "linear" }}
-                  className="bg-emerald-500 h-full shadow-[0_0_10px_rgba(16,185,129,0.5)]" 
+                  className="bg-emerald-500 h-full shadow-[0_0_10px_rgba(16,185,129,0.5)]"
                 />
               </div>
               <div className="flex items-center gap-2 text-emerald-600 text-[10px] font-black uppercase tracking-widest">
@@ -565,13 +751,21 @@ export default function DietPlan() {
 
           <div className="bg-white border border-slate-100 p-5 rounded-[2rem] shadow-xl">
             <p className="text-slate-500 text-xs font-medium leading-relaxed mb-4">
-              While our AI works, feel free to explore other areas of the platform. We'll send you an email and a notification the moment it's ready!
+              While our AI works, feel free to explore other areas of the
+              platform. We'll send you an email and a notification the moment
+              it's ready!
             </p>
             <div className="flex gap-2">
-              <Link to="/dashboard" className="flex-1 py-4 bg-black text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all">
+              <Link
+                to="/dashboard"
+                className="flex-1 py-4 bg-black text-white rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-800 transition-all"
+              >
                 Platform Tour
               </Link>
-              <Link to="/nutrition" className="flex-1 py-4 bg-slate-100 text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all">
+              <Link
+                to="/nutrition"
+                className="flex-1 py-4 bg-slate-100 text-slate-900 rounded-2xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-200 transition-all"
+              >
                 Food Tracker
               </Link>
             </div>
@@ -579,7 +773,9 @@ export default function DietPlan() {
 
           <div className="flex items-center justify-center gap-2 text-slate-300">
             <Mail className="w-4 h-4" />
-            <span className="text-[10px] font-bold uppercase tracking-widest leading-none mt-0.5">Notification will be sent to your inbox</span>
+            <span className="text-[10px] font-bold uppercase tracking-widest leading-none mt-0.5">
+              Notification will be sent to your inbox
+            </span>
           </div>
         </div>
       </div>
@@ -588,15 +784,32 @@ export default function DietPlan() {
 
   // --- Prioritize Profile Goals for Overview ---
   const dailyGoals = {
-    calories: user?.nutritionGoal?.calorieGoal || healthGoals?.dailyCalorieTarget || dietPlan?.nutritionGoals?.dailyCalorieTarget || 2100,
-    protein: user?.nutritionGoal?.proteinGoal || healthGoals?.macroTargets?.protein || dietPlan?.nutritionGoals?.macroTargets?.protein || 150,
-    carbs: user?.nutritionGoal?.carbsGoal || healthGoals?.macroTargets?.carbs || dietPlan?.nutritionGoals?.macroTargets?.carbs || 200,
-    fats: user?.nutritionGoal?.fatGoal || healthGoals?.macroTargets?.fats || healthGoals?.macroTargets?.fat || dietPlan?.nutritionGoals?.macroTargets?.fat || 65
+    calories:
+      user?.nutritionGoal?.calorieGoal ||
+      healthGoals?.dailyCalorieTarget ||
+      dietPlan?.nutritionGoals?.dailyCalorieTarget ||
+      2100,
+    protein:
+      user?.nutritionGoal?.proteinGoal ||
+      healthGoals?.macroTargets?.protein ||
+      dietPlan?.nutritionGoals?.macroTargets?.protein ||
+      150,
+    carbs:
+      user?.nutritionGoal?.carbsGoal ||
+      healthGoals?.macroTargets?.carbs ||
+      dietPlan?.nutritionGoals?.macroTargets?.carbs ||
+      200,
+    fats:
+      user?.nutritionGoal?.fatGoal ||
+      healthGoals?.macroTargets?.fats ||
+      healthGoals?.macroTargets?.fat ||
+      dietPlan?.nutritionGoals?.macroTargets?.fat ||
+      65,
   };
-
 
   return (
     <div className="min-h-screen bg-[#E9ECE4] pb-32 px-4 md:px-6 lg:px-12 pt-2 md:pt-8 relative">
+      <SEO pageName="dietPlan" />
       {/* Background elements */}
       <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-purple-100/20 rounded-full blur-[120px] pointer-events-none" />
 
@@ -605,38 +818,47 @@ export default function DietPlan() {
         <div className="hidden md:flex items-center gap-1.5 bg-white/60 backdrop-blur-md px-3 py-1.5 md:px-4 md:py-2 rounded-full border border-white/60 shadow-sm shrink-0">
           <Calendar className="w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-800/40" />
           <span className="text-xs md:text-sm font-medium text-emerald-800/60 whitespace-nowrap">
-            {new Date().toLocaleDateString('en-US', { weekday: 'short', day: 'numeric', month: 'short' })}
+            {new Date().toLocaleDateString("en-US", {
+              weekday: "short",
+              day: "numeric",
+              month: "short",
+            })}
           </span>
         </div>
         <button
           onClick={() => setShowHistory(true)}
           className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-6 md:py-2 bg-emerald-50/60 backdrop-blur-md rounded-full text-[10px] md:text-sm font-black text-[#064e3b] hover:bg-emerald-50 transition-all border border-emerald-200 shadow-sm shrink-0 uppercase tracking-tighter"
         >
-          <Clock className="w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-800/40" /> History
+          <Clock className="w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-800/40" />{" "}
+          History
         </button>
         <button
           onClick={() => {
-            setPrefMode('save');
+            setPrefMode("save");
             setShowPreferences(true);
           }}
           className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-6 md:py-2 bg-emerald-50/60 backdrop-blur-md rounded-full text-[10px] md:text-sm font-black text-[#064e3b] hover:bg-emerald-50 transition-all border border-emerald-200 shadow-sm shrink-0 uppercase tracking-tighter"
         >
-          <Filter className="w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-800/40" /> Preference
+          <Filter className="w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-800/40" />{" "}
+          Preference
         </button>
         <button
           onClick={() => setShowRegenOptions(true)}
           disabled={generating}
           className="flex items-center gap-1.5 px-3 py-1.5 md:px-6 md:py-2 bg-[#064e3b] text-emerald-50 rounded-full text-[10px] md:text-sm font-bold md:font-medium hover:bg-[#042f2e] transition-all shadow-lg border border-emerald-900/10 active:scale-95 disabled:opacity-50 shrink-0 uppercase tracking-tighter"
         >
-          <RefreshCw className={`w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-400 ${generating ? 'animate-spin' : ''}`} />
-          {generating ? 'Regenerating...' : 'Regen Plan'}
+          <RefreshCw
+            className={`w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-400 ${generating ? "animate-spin" : ""}`}
+          />
+          {generating ? "Regenerating..." : "Regen Plan"}
         </button>
-        {user?.profile?.isDiabetic === 'yes' && (
+        {user?.profile?.isDiabetic === "yes" && (
           <button
-            onClick={() => navigate('/nutrition')}
+            onClick={() => navigate("/nutrition")}
             className="flex items-center gap-1.5 px-3 py-1.5 md:px-6 md:py-2 bg-rose-50/80 text-rose-600 rounded-full text-[10px] md:text-sm font-black border border-rose-200 shadow-sm shrink-0 uppercase tracking-tighter"
           >
-            <Activity className="w-3 h-3 md:w-3.5 md:h-3.5 opacity-70" /> Nutrition
+            <Activity className="w-3 h-3 md:w-3.5 md:h-3.5 opacity-70" />{" "}
+            Nutrition
           </button>
         )}
       </div>
@@ -646,10 +868,14 @@ export default function DietPlan() {
           <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto mb-8 border border-white shadow-inner">
             <ChefHat className="w-10 h-10 text-slate-400" />
           </div>
-          <h2 className="text-3xl font-light text-slate-800 mb-4 tracking-tight">Personalized Nutrition Engine</h2>
+          <h2 className="text-3xl font-light text-slate-800 mb-4 tracking-tight">
+            Personalized Nutrition Engine
+          </h2>
           <p className="text-slate-500 mb-10 leading-relaxed text-lg">
-            Our AI will analyze your <span className="font-bold text-slate-800">Health Reports</span>, 
-            <span className="font-bold text-slate-800"> Fitness Goals</span>, and <span className="font-bold text-slate-800">BMI</span> 
+            Our AI will analyze your{" "}
+            <span className="font-bold text-slate-800">Health Reports</span>,
+            <span className="font-bold text-slate-800"> Fitness Goals</span>,
+            and <span className="font-bold text-slate-800">BMI</span>
             to curate a clinical-grade diet plan just for you.
           </p>
           <button
@@ -658,14 +884,17 @@ export default function DietPlan() {
             className="bg-black text-white px-10 py-5 rounded-[2rem] font-black uppercase tracking-[0.2em] text-xs shadow-2xl hover:bg-slate-800 transition-all disabled:opacity-50 active:scale-95 flex items-center justify-center gap-3 mx-auto"
           >
             <Sparkles className="w-4 h-4 text-emerald-400" />
-            {generating ? 'Synthesizing Data...' : 'Generate My Personalized Plan'}
+            {generating
+              ? "Synthesizing Data..."
+              : "Generate My Personalized Plan"}
           </button>
         </div>
       ) : (
         <div className="space-y-8 md:space-y-24">
-
           <div className="mt-8 space-y-6 md:space-y-10">
-            <h2 className="text-2xl md:text-3xl font-black text-[#1a2e35] px-2 mb-2 tracking-tight">Today's Plan</h2>
+            <h2 className="text-2xl md:text-3xl font-black text-[#1a2e35] px-2 mb-2 tracking-tight">
+              Today's Plan
+            </h2>
             <div className="grid grid-cols-1 gap-6 md:gap-8">
               {MEAL_ORDER.map((sectionId) => {
                 const section = SECTION_INFO[sectionId];
@@ -685,7 +914,6 @@ export default function DietPlan() {
               })}
             </div>
           </div>
-
         </div>
       )}
 
@@ -705,18 +933,23 @@ export default function DietPlan() {
       </AnimatePresence>
 
       {showPreferences && (
-        <FoodPreferences 
-          onClose={() => setShowPreferences(false)} 
+        <FoodPreferences
+          onClose={() => setShowPreferences(false)}
           mode={prefMode}
-          onGenerate={prefMode === 'regenerate' ? () => generatePlan(true) : null}
+          onGenerate={
+            prefMode === "regenerate" ? () => generatePlan(true) : null
+          }
         />
       )}
 
       {/* Regeneration Options Modal */}
       <AnimatePresence>
         {showRegenOptions && (
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[120] flex items-center justify-center p-4" onClick={() => setShowRegenOptions(false)}>
-            <motion.div 
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[120] flex items-center justify-center p-4"
+            onClick={() => setShowRegenOptions(false)}
+          >
+            <motion.div
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
@@ -724,8 +957,13 @@ export default function DietPlan() {
               className="bg-white rounded-3xl shadow-2xl p-6 max-w-sm w-full border border-slate-100"
             >
               <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-slate-800">Regenerate Plan</h3>
-                <button onClick={() => setShowRegenOptions(false)} className="text-slate-400 hover:text-black">
+                <h3 className="text-xl font-bold text-slate-800">
+                  Regenerate Plan
+                </h3>
+                <button
+                  onClick={() => setShowRegenOptions(false)}
+                  className="text-slate-400 hover:text-black"
+                >
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -739,23 +977,29 @@ export default function DietPlan() {
                   className="w-full flex flex-col items-start p-5 rounded-[2rem] border border-slate-100 hover:bg-emerald-50/50 hover:border-emerald-200 transition-all text-left group"
                 >
                   <span className="text-sm font-bold text-[#1a2e35] flex items-center gap-2 group-hover:text-[#69A38D]">
-                    <Sparkles className="w-4 h-4 text-[#69A38D]" /> Different Food
+                    <Sparkles className="w-4 h-4 text-[#69A38D]" /> Different
+                    Food
                   </span>
-                  <span className="text-xs text-slate-500 mt-2 font-medium">Generate completely new variety of healthy Indian meals</span>
+                  <span className="text-xs text-slate-500 mt-2 font-medium">
+                    Generate completely new variety of healthy Indian meals
+                  </span>
                 </button>
 
                 <button
                   onClick={() => {
                     setShowRegenOptions(false);
-                    setPrefMode('regenerate');
+                    setPrefMode("regenerate");
                     setShowPreferences(true);
                   }}
                   className="w-full flex flex-col items-start p-5 rounded-[2rem] border border-slate-100 hover:bg-emerald-50/50 hover:border-emerald-200 transition-all text-left group"
                 >
                   <span className="text-sm font-bold text-[#1a2e35] flex items-center gap-2 group-hover:text-[#69A38D]">
-                    <Utensils className="w-4 h-4 text-[#69A38D]" /> Based on Preferred Food
+                    <Utensils className="w-4 h-4 text-[#69A38D]" /> Based on
+                    Preferred Food
                   </span>
-                  <span className="text-xs text-slate-500 mt-2 font-medium">Update your favorites first, then generate a tailored plan</span>
+                  <span className="text-xs text-slate-500 mt-2 font-medium">
+                    Update your favorites first, then generate a tailored plan
+                  </span>
                 </button>
               </div>
             </motion.div>
@@ -782,10 +1026,17 @@ export default function DietPlan() {
             >
               <div className="p-8 border-b border-slate-50 flex items-center justify-between">
                 <div>
-                  <h3 className="text-2xl font-black text-slate-800 tracking-tight">Plan History</h3>
-                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">Previous generations</p>
+                  <h3 className="text-2xl font-black text-slate-800 tracking-tight">
+                    Plan History
+                  </h3>
+                  <p className="text-xs font-bold text-slate-400 uppercase tracking-widest mt-1">
+                    Previous generations
+                  </p>
                 </div>
-                <button onClick={() => setShowHistory(false)} className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-black transition-all">
+                <button
+                  onClick={() => setShowHistory(false)}
+                  className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 hover:text-black transition-all"
+                >
                   <X className="w-5 h-5" />
                 </button>
               </div>
@@ -796,12 +1047,16 @@ export default function DietPlan() {
                     <button
                       key={plan._id}
                       onClick={() => loadSelectedPlan(plan._id)}
-                      className={`w-full p-6 rounded-[2rem] border text-left transition-all flex items-center justify-between group shadow-sm ${dietPlan?._id === plan._id ? 'bg-[#69A38D] border-[#69A38D] shadow-emerald-200/50 ring-4 ring-emerald-500/10' : 'bg-white border-slate-100 hover:border-emerald-100 hover:bg-emerald-50/20'}`}
+                      className={`w-full p-6 rounded-[2rem] border text-left transition-all flex items-center justify-between group shadow-sm ${dietPlan?._id === plan._id ? "bg-[#69A38D] border-[#69A38D] shadow-emerald-200/50 ring-4 ring-emerald-500/10" : "bg-white border-slate-100 hover:border-emerald-100 hover:bg-emerald-50/20"}`}
                     >
                       <div>
                         <div className="flex items-center gap-2 mb-2">
-                        <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${dietPlan?._id === plan._id ? 'bg-white/20 text-white border border-white/20' : 'bg-white text-slate-800 border border-slate-100'}`}>
-                            {plan.inputData?.bmiGoal?.replace('_', ' ') || plan.fitnessGoal || 'General Health'}
+                          <div
+                            className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${dietPlan?._id === plan._id ? "bg-white/20 text-white border border-white/20" : "bg-white text-slate-800 border border-slate-100"}`}
+                          >
+                            {plan.inputData?.bmiGoal?.replace("_", " ") ||
+                              plan.fitnessGoal ||
+                              "General Health"}
                           </div>
                           {dietPlan?._id === plan._id && (
                             <div className="flex items-center gap-1.5 text-white/90 text-[9px] font-black uppercase tracking-widest bg-white/20 px-2 py-0.5 rounded-full backdrop-blur-md">
@@ -810,25 +1065,36 @@ export default function DietPlan() {
                             </div>
                           )}
                         </div>
-                        <p className={`text-base font-black ${dietPlan?._id === plan._id ? 'text-white' : 'text-[#1a2e35]'}`}>
-                          {new Date(plan.generatedAt || plan.createdAt).toLocaleDateString('en-US', {
-                            weekday: 'short',
-                            day: 'numeric',
-                            month: 'short',
-                            year: 'numeric'
+                        <p
+                          className={`text-base font-black ${dietPlan?._id === plan._id ? "text-white" : "text-[#1a2e35]"}`}
+                        >
+                          {new Date(
+                            plan.generatedAt || plan.createdAt,
+                          ).toLocaleDateString("en-US", {
+                            weekday: "short",
+                            day: "numeric",
+                            month: "short",
+                            year: "numeric",
                           })}
                         </p>
-                        <p className={`text-[10px] font-bold mt-1 ${dietPlan?._id === plan._id ? 'text-slate-400' : 'text-slate-400'}`}>
-                          {plan.nutritionGoals?.dailyCalorieTarget} kcal • {plan.foodType || 'Balanced'}
+                        <p
+                          className={`text-[10px] font-bold mt-1 ${dietPlan?._id === plan._id ? "text-slate-400" : "text-slate-400"}`}
+                        >
+                          {plan.nutritionGoals?.dailyCalorieTarget} kcal •{" "}
+                          {plan.foodType || "Balanced"}
                         </p>
                       </div>
-                      <ChevronRight className={`w-5 h-5 transition-transform group-hover:translate-x-1 ${dietPlan?._id === plan._id ? 'text-white' : 'text-slate-300'}`} />
+                      <ChevronRight
+                        className={`w-5 h-5 transition-transform group-hover:translate-x-1 ${dietPlan?._id === plan._id ? "text-white" : "text-slate-300"}`}
+                      />
                     </button>
                   ))
                 ) : (
                   <div className="py-20 text-center">
                     <Clock className="w-12 h-12 text-slate-100 mx-auto mb-4" />
-                    <p className="text-sm font-bold text-slate-400">No past plans found</p>
+                    <p className="text-sm font-bold text-slate-400">
+                      No past plans found
+                    </p>
                   </div>
                 )}
               </div>
@@ -849,12 +1115,16 @@ export default function DietPlan() {
             onLog={(food) => {
               handleLogMeal(food, selectedFoodType);
             }}
-            isLogged={!!loggedMeals[`${selectedFoodType}-${getMealName(selectedFood)}`]}
-            isLoading={loggingMealId === `${selectedFoodType}-${getMealName(selectedFood)}`}
+            isLogged={
+              !!loggedMeals[`${selectedFoodType}-${getMealName(selectedFood)}`]
+            }
+            isLoading={
+              loggingMealId ===
+              `${selectedFoodType}-${getMealName(selectedFood)}`
+            }
           />
         )}
       </AnimatePresence>
-
     </div>
   );
 }

@@ -1,4 +1,5 @@
 import { useNavigate } from "react-router-dom";
+import SEO from "../hooks/useSEO";
 import { ArrowLeft, Home } from "lucide-react";
 
 export default function NotFound() {
@@ -6,6 +7,7 @@ export default function NotFound() {
 
   return (
     <div className="min-h-screen bg-[#faf9f8] flex items-center justify-center px-4 py-12">
+      <SEO pageName="notFound" />
       <div className="max-w-md w-full text-center">
         {/* 404 Text */}
         <div className="mb-8">

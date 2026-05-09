@@ -5,6 +5,7 @@ import LogGlucoseModal from "../components/LogGlucoseModal";
 import LogHba1cModal from "../components/LogHba1cModal";
 import LogWeightModal from "../components/LogWeightModal";
 import api from "../services/api";
+import SEO from "../hooks/useSEO";
 import {
   ResponsiveContainer,
   LineChart,
@@ -59,7 +60,7 @@ const GlucoseLog = () => {
       const [glucoseRes, hba1cRes, weightRes] = await Promise.all([
         api.get("metrics/blood_sugar?limit=50"),
         api.get("metrics/hba1c?limit=50"),
-        api.get("metrics/weight?limit=50")
+        api.get("metrics/weight?limit=50"),
       ]);
 
       setGlucoseHistory(glucoseRes.data);
@@ -245,18 +246,16 @@ const GlucoseLog = () => {
     else if (timeRange === "Month") cutoff.setMonth(now.getMonth() - 1);
     else if (timeRange === "3 Months") cutoff.setMonth(now.getMonth() - 3);
 
-    let filtered = sorted.filter(
-      (item) => new Date(item.recordedAt) >= cutoff,
-    );
+    let filtered = sorted.filter((item) => new Date(item.recordedAt) >= cutoff);
 
     // Filter by context if applicable
     // Filter by context if applicable
     if (trendType === "blood_sugar" && glucoseFilterContext !== "all") {
-      filtered = filtered.filter(item => {
+      filtered = filtered.filter((item) => {
         if (!item.readingContext) return false;
         // Handle both hyphen and underscore versions (before-meal vs before_meal)
-        const normalizedItemContext = item.readingContext.replace('_', '-');
-        const normalizedFilterContext = glucoseFilterContext.replace('_', '-');
+        const normalizedItemContext = item.readingContext.replace("_", "-");
+        const normalizedFilterContext = glucoseFilterContext.replace("_", "-");
         return normalizedItemContext === normalizedFilterContext;
       });
     }
@@ -296,7 +295,7 @@ const GlucoseLog = () => {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-28 pt-1 md:pt-0">
-
+      <SEO pageName="glucoseLog" />
       <div className="px-3 md:px-4 pt-1 pb-4 space-y-6 max-w-7xl mx-auto">
         <p className="text-center text-gray-500 text-sm">
           {status === "stable"
@@ -511,22 +510,31 @@ const GlucoseLog = () => {
                     const data = getGraphData();
                     const filtered = data.filter((d) => d.day !== "N/A");
                     if (filtered.length === 0) return "0%";
-                    const normal = filtered.filter((d) =>
-                      trendType === "blood_sugar"
-                        ? d.value >= 70 && d.value <= 130
-                        : trendType === "hba1c"
-                          ? d.value < 7
-                          : true, // weight doesn't have a simple 'normal'
+                    const normal = filtered.filter(
+                      (d) =>
+                        trendType === "blood_sugar"
+                          ? d.value >= 70 && d.value <= 130
+                          : trendType === "hba1c"
+                            ? d.value < 7
+                            : true, // weight doesn't have a simple 'normal'
                     ).length;
                     return Math.round((normal / filtered.length) * 100) + "%";
                   })()}{" "}
                   <span className="text-sm font-bold text-slate-800">
-                    {trendType === "blood_sugar" ? "normal" : trendType === "hba1c" ? "goal" : "recorded"}
+                    {trendType === "blood_sugar"
+                      ? "normal"
+                      : trendType === "hba1c"
+                        ? "goal"
+                        : "recorded"}
                   </span>
                 </div>
               </div>
               <div className="text-xs font-semibold text-slate-400">
-                {timeRange === "Week" ? "Last 7 days" : timeRange === "Month" ? "Last 30 days" : "Last 90 days"}
+                {timeRange === "Week"
+                  ? "Last 7 days"
+                  : timeRange === "Month"
+                    ? "Last 30 days"
+                    : "Last 90 days"}
               </div>
             </div>
 
@@ -602,35 +610,45 @@ const GlucoseLog = () => {
                   onClick={() => setGlucoseFilterContext("fasting")}
                   className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${glucoseFilterContext === "fasting" ? "bg-[#1e293b] text-white" : "bg-slate-50 text-slate-400"}`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-sm rotate-45 ${glucoseFilterContext === "fasting" ? "bg-white" : "bg-slate-300"}`} />{" "}
+                  <span
+                    className={`w-1.5 h-1.5 rounded-sm rotate-45 ${glucoseFilterContext === "fasting" ? "bg-white" : "bg-slate-300"}`}
+                  />{" "}
                   Fasting
                 </button>
                 <button
                   onClick={() => setGlucoseFilterContext("before-meal")}
                   className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${glucoseFilterContext === "before-meal" ? "bg-[#1e293b] text-white" : "bg-slate-50 text-slate-400"}`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-sm ${glucoseFilterContext === "before-meal" ? "bg-white" : "bg-slate-300"}`} />{" "}
+                  <span
+                    className={`w-1.5 h-1.5 rounded-sm ${glucoseFilterContext === "before-meal" ? "bg-white" : "bg-slate-300"}`}
+                  />{" "}
                   Pre-meal
                 </button>
                 <button
                   onClick={() => setGlucoseFilterContext("after-meal")}
                   className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${glucoseFilterContext === "after-meal" ? "bg-[#1e293b] text-white" : "bg-slate-50 text-slate-400"}`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-sm rotate-45 ${glucoseFilterContext === "after-meal" ? "bg-white" : "bg-slate-300"}`} />{" "}
+                  <span
+                    className={`w-1.5 h-1.5 rounded-sm rotate-45 ${glucoseFilterContext === "after-meal" ? "bg-white" : "bg-slate-300"}`}
+                  />{" "}
                   Post-meal
                 </button>
                 <button
                   onClick={() => setGlucoseFilterContext("bedtime")}
                   className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${glucoseFilterContext === "bedtime" ? "bg-slate-800 text-white" : "bg-slate-50 text-slate-400"}`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${glucoseFilterContext === "bedtime" ? "bg-white" : "bg-slate-300"}`} />{" "}
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${glucoseFilterContext === "bedtime" ? "bg-white" : "bg-slate-300"}`}
+                  />{" "}
                   Bedtime
                 </button>
                 <button
                   onClick={() => setGlucoseFilterContext("random")}
                   className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1 transition-all ${glucoseFilterContext === "random" ? "bg-slate-800 text-white" : "bg-slate-50 text-slate-400"}`}
                 >
-                  <span className={`w-1.5 h-1.5 rounded-full ${glucoseFilterContext === "random" ? "bg-white" : "bg-slate-300"}`} />{" "}
+                  <span
+                    className={`w-1.5 h-1.5 rounded-full ${glucoseFilterContext === "random" ? "bg-white" : "bg-slate-300"}`}
+                  />{" "}
                   Random
                 </button>
               </div>
@@ -639,22 +657,39 @@ const GlucoseLog = () => {
             {/* Quick Status Info below graph */}
             <div className="mt-6 pt-4 border-t border-gray-100">
               {recentReadings.length > 0 ? (
-                <div className={`p-4 rounded-2xl flex items-center gap-3 ${recentReadings[0].value >= 70 && recentReadings[0].value <= 130
-                  ? "bg-slate-50 text-slate-700 border border-slate-100"
-                  : "bg-slate-900 text-white"
-                  }`}>
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${recentReadings[0].value >= 70 && recentReadings[0].value <= 130
-                    ? "bg-emerald-100"
-                    : recentReadings[0].value > 130
-                      ? "bg-red-100"
-                      : "bg-orange-100"
-                    }`}>
+                <div
+                  className={`p-4 rounded-2xl flex items-center gap-3 ${
+                    recentReadings[0].value >= 70 &&
+                    recentReadings[0].value <= 130
+                      ? "bg-slate-50 text-slate-700 border border-slate-100"
+                      : "bg-slate-900 text-white"
+                  }`}
+                >
+                  <div
+                    className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                      recentReadings[0].value >= 70 &&
+                      recentReadings[0].value <= 130
+                        ? "bg-emerald-100"
+                        : recentReadings[0].value > 130
+                          ? "bg-red-100"
+                          : "bg-orange-100"
+                    }`}
+                  >
                     <Activity className="w-5 h-5" />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold uppercase tracking-tight">Your Last Reading is {recentReadings[0].value >= 70 && recentReadings[0].value <= 130 ? 'Good' : recentReadings[0].value > 130 ? 'High' : 'Low'}</h4>
+                    <h4 className="text-sm font-bold uppercase tracking-tight">
+                      Your Last Reading is{" "}
+                      {recentReadings[0].value >= 70 &&
+                      recentReadings[0].value <= 130
+                        ? "Good"
+                        : recentReadings[0].value > 130
+                          ? "High"
+                          : "Low"}
+                    </h4>
                     <p className="text-xs opacity-80 font-medium">
-                      {recentReadings[0].value >= 70 && recentReadings[0].value <= 130
+                      {recentReadings[0].value >= 70 &&
+                      recentReadings[0].value <= 130
                         ? "You're doing great! Keep following your current routine."
                         : recentReadings[0].value > 130
                           ? "This is above your target range. Check your AI analysis for details."
@@ -663,7 +698,9 @@ const GlucoseLog = () => {
                   </div>
                 </div>
               ) : (
-                <p className="text-xs text-center text-slate-400 font-medium italic">Log your first reading to see status analysis</p>
+                <p className="text-xs text-center text-slate-400 font-medium italic">
+                  Log your first reading to see status analysis
+                </p>
               )}
             </div>
           </div>
@@ -691,10 +728,21 @@ const GlucoseLog = () => {
             {aiAnalysis ? (
               <div className="space-y-4">
                 <div className="flex items-start gap-4 p-4 rounded-2xl bg-gray-50 border border-gray-100">
-                  <div className={`mt-1 w-3 h-3 rounded-full flex-shrink-0 ${aiAnalysis.statusColor === 'green' ? 'bg-green-500 text-green-500' : aiAnalysis.statusColor === 'yellow' ? 'bg-yellow-500 text-yellow-500' : aiAnalysis.statusColor === 'orange' ? 'bg-orange-500 text-orange-500' : 'bg-red-500 text-red-500'}`} />
+                  <div
+                    className={`mt-1 w-3 h-3 rounded-full flex-shrink-0 ${aiAnalysis.statusColor === "green" ? "bg-green-500 text-green-500" : aiAnalysis.statusColor === "yellow" ? "bg-yellow-500 text-yellow-500" : aiAnalysis.statusColor === "orange" ? "bg-orange-500 text-orange-500" : "bg-red-500 text-red-500"}`}
+                  />
                   <div>
                     <h4 className="text-sm font-bold text-slate-800 mb-1">
-                      Status: <span className={aiAnalysis.statusColor === 'green' ? 'text-black' : 'text-slate-600'}>{aiAnalysis.status}</span>
+                      Status:{" "}
+                      <span
+                        className={
+                          aiAnalysis.statusColor === "green"
+                            ? "text-black"
+                            : "text-slate-600"
+                        }
+                      >
+                        {aiAnalysis.status}
+                      </span>
                     </h4>
                     <p className="text-sm text-slate-600 leading-relaxed">
                       {aiAnalysis.analysis}
@@ -704,20 +752,33 @@ const GlucoseLog = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="p-4 rounded-2xl border border-slate-100 bg-white">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Potential Cause</p>
-                    <p className="text-sm font-semibold text-slate-800">{aiAnalysis.spikeCause}</p>
+                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">
+                      Potential Cause
+                    </p>
+                    <p className="text-sm font-semibold text-slate-800">
+                      {aiAnalysis.spikeCause}
+                    </p>
                   </div>
                   <div className="p-4 rounded-2xl bg-black">
-                    <p className="text-[10px] font-bold text-white/60 uppercase tracking-wider mb-1">Immediate Action</p>
-                    <p className="text-sm font-bold text-white">{aiAnalysis.immediateAction}</p>
+                    <p className="text-[10px] font-bold text-white/60 uppercase tracking-wider mb-1">
+                      Immediate Action
+                    </p>
+                    <p className="text-sm font-bold text-white">
+                      {aiAnalysis.immediateAction}
+                    </p>
                   </div>
                 </div>
 
                 <div className="p-4 rounded-2xl border border-emerald-50 bg-emerald-50/20">
-                  <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider mb-2">AI Insights & Tips</p>
+                  <p className="text-[11px] font-bold text-emerald-600 uppercase tracking-wider mb-2">
+                    AI Insights & Tips
+                  </p>
                   <ul className="space-y-2">
                     {aiAnalysis.recommendations?.map((tip, i) => (
-                      <li key={i} className="flex items-start gap-2 text-xs text-slate-600">
+                      <li
+                        key={i}
+                        className="flex items-start gap-2 text-xs text-slate-600"
+                      >
                         <span className="text-emerald-500 mt-0.5">•</span>
                         {tip}
                       </li>
@@ -726,10 +787,14 @@ const GlucoseLog = () => {
                 </div>
 
                 <p className="text-[11px] italic text-slate-400 text-center pb-2">
-                  Generated by AI based on your overall data and daily food logs.
+                  Generated by AI based on your overall data and daily food
+                  logs.
                 </p>
                 <div className="flex justify-center pt-2">
-                  <button onClick={fetchAiAnalysis} className="text-[10px] font-bold text-black hover:text-slate-600 uppercase tracking-widest flex items-center gap-1 opacity-60 hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={fetchAiAnalysis}
+                    className="text-[10px] font-bold text-black hover:text-slate-600 uppercase tracking-widest flex items-center gap-1 opacity-60 hover:opacity-100 transition-opacity"
+                  >
                     <Activity className="w-3 h-3" /> Re-analyze Trends
                   </button>
                 </div>
@@ -737,7 +802,10 @@ const GlucoseLog = () => {
             ) : (
               !aiLoading && (
                 <div className="text-center py-6">
-                  <p className="text-sm text-slate-500 mb-4 font-medium italic">No recent analysis found. Log readings for automatic analysis.</p>
+                  <p className="text-sm text-slate-500 mb-4 font-medium italic">
+                    No recent analysis found. Log readings for automatic
+                    analysis.
+                  </p>
                   <button
                     onClick={fetchAiAnalysis}
                     className="px-8 py-3 bg-black text-white rounded-full text-xs font-black uppercase tracking-widest shadow-xl shadow-black/20 hover:scale-105 transition-all"
@@ -751,7 +819,9 @@ const GlucoseLog = () => {
             {aiLoading && !aiAnalysis && (
               <div className="py-12 flex flex-col items-center justify-center">
                 <div className="w-12 h-12 border-4 border-slate-100 border-t-black rounded-full animate-spin mb-4" />
-                <p className="text-sm font-medium text-slate-500">AI is analyzing your readings and food logs...</p>
+                <p className="text-sm font-medium text-slate-500">
+                  AI is analyzing your readings and food logs...
+                </p>
               </div>
             )}
           </div>
@@ -771,7 +841,13 @@ const GlucoseLog = () => {
           return (
             <div className="bg-white/70 backdrop-blur-sm rounded-3xl border border-white/60 shadow-sm p-4 sm:p-6 !mt-6">
               <h3 className="text-sm font-bold text-slate-800 mb-3">
-                Recent {trendType === "blood_sugar" ? "Glucose" : trendType === "hba1c" ? "HbA1c" : "Weight"} Logs
+                Recent{" "}
+                {trendType === "blood_sugar"
+                  ? "Glucose"
+                  : trendType === "hba1c"
+                    ? "HbA1c"
+                    : "Weight"}{" "}
+                Logs
               </h3>
               <div className="space-y-2">
                 {currentLogs.slice(0, 5).map((reading, index) => {
@@ -835,7 +911,7 @@ const GlucoseLog = () => {
         onClose={() => setShowWeightModal(false)}
         onSave={handleLogWeight}
       />
-    </div >
+    </div>
   );
 };
 
