@@ -13,13 +13,37 @@ export function SEO({ pageName, overrides = {} }) {
   const pageSeo = getPageSeo(pageName);
   const seo = { ...pageSeo, ...overrides };
 
+  const resolveOpenGraphImage = (image) => {
+    if (typeof image !== "string") return null;
+
+    const trimmedImage = image.trim();
+    if (!trimmedImage) return null;
+
+    if (trimmedImage.includes("undefined") || trimmedImage.includes("null")) {
+      return null;
+    }
+
+    try {
+      new URL(trimmedImage);
+      return trimmedImage;
+    } catch {
+      if (trimmedImage.startsWith("/")) {
+        return `${seoConfig.base.baseURL}${trimmedImage}`;
+      }
+
+      return null;
+    }
+  };
+
   // Update document title for accessibility
   useEffect(() => {
     document.title = seo.title || seoConfig.base.siteName;
   }, [seo.title]);
 
   const openGraphImage =
-    overrides?.image || seo.image || `${seoConfig.base.baseURL}/og-default.jpg`;
+    resolveOpenGraphImage(overrides?.image) ||
+    resolveOpenGraphImage(seo.image) ||
+    `${seoConfig.base.baseURL}/assets/logos/logo-icon.png`;
 
   return (
     <Helmet>
@@ -76,7 +100,7 @@ export function SEO({ pageName, overrides = {} }) {
           "@type": "Organization",
           name: seoConfig.base.siteName,
           url: seoConfig.base.baseURL,
-          logo: `${seoConfig.base.baseURL}/logo.png`,
+          logo: `${seoConfig.base.baseURL}/assets/logos/logo-icon.png`,
           description: seoConfig.base.description,
           contactPoint: {
             "@type": "ContactPoint",
