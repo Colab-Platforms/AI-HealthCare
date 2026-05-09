@@ -94,7 +94,7 @@ export default function App() {
           />
         </Routes>
       </Suspense>
-      
+
       {/* Help Widget - Show for authenticated users except on landing page */}
       {user && location.pathname !== "/" && <HelpWidget />}
     </div>
