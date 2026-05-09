@@ -1,4 +1,5 @@
 import { lazy, Suspense } from "react";
+import SEO from "../hooks/useSEO";
 import Hero from "../components/landing/landing-components/Hero";
 import NavbarOld from "../components/landing/landing-components/NavbarOld";
 
@@ -28,6 +29,7 @@ const Demo = lazy(
 const LandingPage = () => {
   return (
     <section className="bg-landing-light-bg text-landing-text font-landing-body relative">
+      <SEO pageName="home" />
       <NavbarOld />
       <Hero />
       <Suspense fallback={<div className="h-20" />}>

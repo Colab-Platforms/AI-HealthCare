@@ -1,8 +1,18 @@
-import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { healthService } from '../services/api';
-import { Pill, ArrowLeft, Upload, AlertCircle, CheckCircle, Info, ChevronDown, FileText } from 'lucide-react';
-import GenericSkeleton from '../components/skeletons/GenericSkeleton';
+import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
+import { healthService } from "../services/api";
+import {
+  Pill,
+  ArrowLeft,
+  Upload,
+  AlertCircle,
+  CheckCircle,
+  Info,
+  ChevronDown,
+  FileText,
+} from "lucide-react";
+import GenericSkeleton from "../components/skeletons/GenericSkeleton";
+import SEO from "../hooks/useSEO";
 
 export default function Supplements() {
   const [reports, setReports] = useState([]);
@@ -17,7 +27,7 @@ export default function Supplements() {
 
   useEffect(() => {
     if (selectedReportId) {
-      const report = reports.find(r => r._id === selectedReportId);
+      const report = reports.find((r) => r._id === selectedReportId);
       setSelectedReport(report);
       extractSupplementsFromReport(report);
     }
@@ -33,7 +43,7 @@ export default function Supplements() {
         setSelectedReportId(data[0]._id);
       }
     } catch (error) {
-      console.error('Failed to fetch reports:', error);
+      console.error("Failed to fetch reports:", error);
     } finally {
       setLoading(false);
     }
@@ -47,19 +57,21 @@ export default function Supplements() {
 
     const allSupplements = [];
     if (report.aiAnalysis?.supplementRecommendations) {
-      Object.entries(report.aiAnalysis.supplementRecommendations).forEach(([category, suppList]) => {
-        if (Array.isArray(suppList)) {
-          suppList.forEach(supp => {
-            allSupplements.push({
-              ...supp,
-              category,
-              reportId: report._id,
-              reportType: report.reportType,
-              reportDate: report.createdAt
+      Object.entries(report.aiAnalysis.supplementRecommendations).forEach(
+        ([category, suppList]) => {
+          if (Array.isArray(suppList)) {
+            suppList.forEach((supp) => {
+              allSupplements.push({
+                ...supp,
+                category,
+                reportId: report._id,
+                reportType: report.reportType,
+                reportDate: report.createdAt,
+              });
             });
-          });
-        }
-      });
+          }
+        },
+      );
     }
     setSupplements(allSupplements);
   };
@@ -73,7 +85,10 @@ export default function Supplements() {
     return (
       <div className="max-w-4xl mx-auto space-y-6 animate-fade-in px-4 pt-2 md:pt-8 shadow-sm">
         <div className="flex items-center gap-4 mb-6">
-          <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-black font-medium transition-colors">
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center gap-2 text-slate-400 hover:text-black font-medium transition-colors"
+          >
             <ArrowLeft className="w-4 h-4" /> Back to Dashboard
           </Link>
         </div>
@@ -82,9 +97,12 @@ export default function Supplements() {
           <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <Pill className="w-10 h-10 text-black" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-800 mb-3">No Supplement Recommendations Yet</h2>
+          <h2 className="text-2xl font-bold text-slate-800 mb-3">
+            No Supplement Recommendations Yet
+          </h2>
           <p className="text-slate-600 mb-6 max-w-md mx-auto">
-            Upload your health report to get personalized supplement recommendations based on your deficiencies and health conditions.
+            Upload your health report to get personalized supplement
+            recommendations based on your deficiencies and health conditions.
           </p>
           <Link
             to="/upload"
@@ -103,7 +121,10 @@ export default function Supplements() {
     return (
       <div className="max-w-4xl mx-auto space-y-6 animate-fade-in px-4 pt-2 md:pt-8 shadow-sm">
         <div className="flex items-center gap-4 mb-6">
-          <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-black font-medium transition-colors">
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center gap-2 text-slate-400 hover:text-black font-medium transition-colors"
+          >
             <ArrowLeft className="w-4 h-4" /> Back to Dashboard
           </Link>
         </div>
@@ -113,13 +134,18 @@ export default function Supplements() {
           <div className="flex justify-end">
             <div className="relative">
               <select
-                value={selectedReportId || ''}
+                value={selectedReportId || ""}
                 onChange={(e) => setSelectedReportId(e.target.value)}
                 className="appearance-none px-4 py-3 pr-10 bg-white border-2 border-slate-200 rounded-xl text-sm font-medium text-slate-800 hover:border-black focus:border-black focus:outline-none cursor-pointer transition-colors"
               >
-                {reports.map(report => (
+                {reports.map((report) => (
                   <option key={report._id} value={report._id}>
-                    {report.reportType} - {new Date(report.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    {report.reportType} -{" "}
+                    {new Date(report.createdAt).toLocaleDateString("en-US", {
+                      month: "short",
+                      day: "numeric",
+                      year: "numeric",
+                    })}
                   </option>
                 ))}
               </select>
@@ -132,12 +158,18 @@ export default function Supplements() {
           <div className="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="w-10 h-10 text-black" />
           </div>
-          <h2 className="text-2xl font-bold text-slate-800 mb-3">No Supplements Needed</h2>
+          <h2 className="text-2xl font-bold text-slate-800 mb-3">
+            No Supplements Needed
+          </h2>
           <p className="text-slate-600 mb-6 max-w-md mx-auto">
-            Great news! This report doesn't show any deficiencies that require supplements. Keep maintaining your healthy lifestyle!
+            Great news! This report doesn't show any deficiencies that require
+            supplements. Keep maintaining your healthy lifestyle!
           </p>
           {reports.length > 1 ? (
-            <p className="text-sm text-slate-500">Try selecting a different report above to view its supplement recommendations.</p>
+            <p className="text-sm text-slate-500">
+              Try selecting a different report above to view its supplement
+              recommendations.
+            </p>
           ) : (
             <Link
               to="/dashboard"
@@ -162,30 +194,41 @@ export default function Supplements() {
 
   return (
     <div className="w-full mx-auto space-y-6 animate-fade-in px-4 pt-2 md:pt-8 pb-20 shadow-sm">
+      <SEO pageName="supplements" />
       {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <Link to="/dashboard" className="inline-flex items-center gap-2 text-slate-400 hover:text-cyan-400 font-medium transition-colors mb-2">
+          <Link
+            to="/dashboard"
+            className="inline-flex items-center gap-2 text-slate-400 hover:text-cyan-400 font-medium transition-colors mb-2"
+          >
             <ArrowLeft className="w-4 h-4" /> Back to Dashboard
           </Link>
           <h1 className="text-3xl font-bold text-slate-800 flex items-center gap-3">
             <Pill className="w-8 h-8 text-black" />
             Supplement Recommendations
           </h1>
-          <p className="text-slate-600 mt-2">Based on your selected health report</p>
+          <p className="text-slate-600 mt-2">
+            Based on your selected health report
+          </p>
         </div>
 
         {/* Report Selector */}
         {reports.length > 1 && (
           <div className="relative">
             <select
-              value={selectedReportId || ''}
+              value={selectedReportId || ""}
               onChange={(e) => setSelectedReportId(e.target.value)}
               className="appearance-none px-4 py-3 pr-10 bg-white border-2 border-slate-200 rounded-xl text-sm font-medium text-slate-800 hover:border-black focus:border-black focus:outline-none cursor-pointer transition-colors"
             >
-              {reports.map(report => (
+              {reports.map((report) => (
                 <option key={report._id} value={report._id}>
-                  {report.reportType} - {new Date(report.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  {report.reportType} -{" "}
+                  {new Date(report.createdAt).toLocaleDateString("en-US", {
+                    month: "short",
+                    day: "numeric",
+                    year: "numeric",
+                  })}
                 </option>
               ))}
             </select>
@@ -202,12 +245,20 @@ export default function Supplements() {
             <h2 className="text-xl font-bold">{selectedReport.reportType}</h2>
           </div>
           <p className="text-white/80 text-sm">
-            Report Date: {new Date(selectedReport.createdAt).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}
+            Report Date:{" "}
+            {new Date(selectedReport.createdAt).toLocaleDateString("en-US", {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            })}
           </p>
           {supplements.length > 0 && (
             <div className="mt-4 inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-lg">
               <Pill className="w-5 h-5" />
-              <span className="text-sm">{supplements.length} Supplement{supplements.length !== 1 ? 's' : ''} Recommended</span>
+              <span className="text-sm">
+                {supplements.length} Supplement
+                {supplements.length !== 1 ? "s" : ""} Recommended
+              </span>
             </div>
           )}
         </div>
@@ -217,14 +268,23 @@ export default function Supplements() {
       <div className="bg-slate-50 border-2 border-slate-200 rounded-xl p-4 flex items-start gap-3">
         <Info className="w-5 h-5 text-black flex-shrink-0 mt-0.5" />
         <div className="text-sm text-slate-800">
-          <p className="font-semibold mb-1 uppercase tracking-widest text-[10px]">Important Information</p>
-          <p>These recommendations are based on your selected health report. Always consult with a healthcare provider before starting any new supplements.</p>
+          <p className="font-semibold mb-1 uppercase tracking-widest text-[10px]">
+            Important Information
+          </p>
+          <p>
+            These recommendations are based on your selected health report.
+            Always consult with a healthcare provider before starting any new
+            supplements.
+          </p>
         </div>
       </div>
 
       {/* Supplements by Category */}
       {Object.entries(groupedSupplements).map(([category, suppList]) => (
-        <div key={category} className="bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-sm">
+        <div
+          key={category}
+          className="bg-white rounded-2xl border-2 border-slate-200 p-6 shadow-sm"
+        >
           <h2 className="text-xl font-bold text-black mb-4 flex items-center gap-2">
             <Pill className="w-6 h-6" />
             {category}
@@ -232,12 +292,22 @@ export default function Supplements() {
 
           <div className="space-y-4">
             {suppList.map((supp, idx) => (
-              <div key={idx} className="p-5 bg-slate-50 rounded-xl border-2 border-slate-100">
+              <div
+                key={idx}
+                className="p-5 bg-slate-50 rounded-xl border-2 border-slate-100"
+              >
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex-1">
-                    <h3 className="text-lg font-bold text-slate-800 mb-1">{supp.name}</h3>
+                    <h3 className="text-lg font-bold text-slate-800 mb-1">
+                      {supp.name}
+                    </h3>
                     <p className="text-xs text-slate-500">
-                      From {supp.reportType} • {new Date(supp.reportDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                      From {supp.reportType} •{" "}
+                      {new Date(supp.reportDate).toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })}
                     </p>
                   </div>
                   {supp.frequency && (
@@ -250,13 +320,17 @@ export default function Supplements() {
                 <div className="grid md:grid-cols-2 gap-4 mb-3">
                   {supp.dosage && (
                     <div>
-                      <p className="text-xs text-slate-600 font-semibold mb-1">Dosage</p>
+                      <p className="text-xs text-slate-600 font-semibold mb-1">
+                        Dosage
+                      </p>
                       <p className="text-sm text-slate-800">{supp.dosage}</p>
                     </div>
                   )}
                   {supp.timing && (
                     <div>
-                      <p className="text-xs text-slate-600 font-semibold mb-1">Timing</p>
+                      <p className="text-xs text-slate-600 font-semibold mb-1">
+                        Timing
+                      </p>
                       <p className="text-sm text-slate-800">{supp.timing}</p>
                     </div>
                   )}
@@ -264,7 +338,9 @@ export default function Supplements() {
 
                 {supp.whyItHelps && (
                   <div className="mb-3">
-                    <p className="text-xs text-slate-600 font-semibold mb-1">Why It Helps</p>
+                    <p className="text-xs text-slate-600 font-semibold mb-1">
+                      Why It Helps
+                    </p>
                     <p className="text-sm text-slate-700">{supp.whyItHelps}</p>
                   </div>
                 )}
@@ -288,9 +364,11 @@ export default function Supplements() {
           Disclaimer
         </h3>
         <p className="text-sm text-slate-600">
-          These supplement recommendations are generated based on your health reports and are for informational purposes only.
-          They should not replace professional medical advice. Always consult with a qualified healthcare provider before starting
-          any new supplements, especially if you have existing medical conditions or are taking medications.
+          These supplement recommendations are generated based on your health
+          reports and are for informational purposes only. They should not
+          replace professional medical advice. Always consult with a qualified
+          healthcare provider before starting any new supplements, especially if
+          you have existing medical conditions or are taking medications.
         </p>
       </div>
     </div>
