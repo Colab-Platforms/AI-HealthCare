@@ -156,8 +156,8 @@ const Potential = () => {
         className="flex justify-center text-center items-center relative z-10 pb-6"
       >
         <h2 className="font-landing-title text-2xl md:text-4xl font-semibold">
-          <span className="text-landing-primary-hover block italic font-semibold my-2">
-            PHI
+          <span className="text-landing-primary-hover block  font-semibold my-2">
+            Personal Health Intelligence
           </span>
           Track. Adapt. Win.
         </h2>

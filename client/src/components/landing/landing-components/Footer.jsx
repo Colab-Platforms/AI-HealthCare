@@ -24,10 +24,10 @@ const Footer = () => {
     {
       title: "Platform",
       items: [
-        { name: "Home", link: "#" },
-        { name: "About us", link: "#" },
-        { name: "How it works", link: "#" },
-        { name: "FAQ", link: "#" },
+        { name: "Home", link: "/" },
+        { name: "About us", link: "/about" },
+        { name: "How it works", link: "/how-it-works" },
+        // { name: "FAQ", link: "#" },
       ],
     },
     {
