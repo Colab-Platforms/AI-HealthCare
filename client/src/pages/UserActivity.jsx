@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { activityService } from '../services/api';
 import ActivityDetailModal from '../components/ActivityDetailModal';
+import LiveUsersModal from '../components/LiveUsersModal';
 import {
   Activity, Search, Filter, Calendar,
   ChevronLeft, ChevronRight, RefreshCcw,
@@ -50,6 +51,7 @@ export default function UserActivity() {
   // Modal state
   const [modalOpen, setModalOpen] = useState(false);
   const [modalTitle, setModalTitle] = useState('');
+  const [showLiveUsersModal, setShowLiveUsersModal] = useState(false);
   const [modalFilterData, setModalFilterData] = useState(null);
 
   const [exporting, setExporting] = useState(false);
@@ -215,6 +217,10 @@ export default function UserActivity() {
         filterData={modalFilterData}
         title={modalTitle}
       />
+      <LiveUsersModal 
+        isOpen={showLiveUsersModal}
+        onClose={() => setShowLiveUsersModal(false)}
+      />
       <div className="max-w-[1600px] mx-auto px-4 md:px-8 py-8 space-y-10">
 
         {/* Premium System Toolbar with Glassmorphism */}
@@ -298,7 +304,7 @@ export default function UserActivity() {
               { label: 'Total User Actions', value: stats?.totalLogs || 0, trend: `${stats?.trend >= 0 ? '+' : ''}${stats?.trend || 0}%`, up: (stats?.trend || 0) >= 0, icon: Zap, bg: 'bg-indigo-50', color: 'text-indigo-600' },
               { label: 'Login/Logout Events', value: stats?.categoryStats?.find(c => c._id === 'authentication')?.count || 0, trend: '+0.0%', up: true, icon: Shield, bg: 'bg-blue-50', color: 'text-blue-500' },
               { label: 'Health Reports Processed', value: stats?.categoryStats?.find(c => c._id === 'diagnostics')?.count || 0, trend: '-0.3%', up: false, icon: Activity, bg: 'bg-rose-50', color: 'text-rose-500' },
-              { label: 'Live Active Users', value: stats?.liveActiveUsersCount || 0, trend: 'REAL-TIME', up: true, icon: TrendingUp, bg: 'bg-emerald-50', color: 'text-emerald-500' },
+              { label: 'Live Active Users', value: stats?.liveActiveUsersCount || 0, trend: 'REAL-TIME', up: true, icon: TrendingUp, bg: 'bg-emerald-50', color: 'text-emerald-500', isClickable: true },
               { label: 'Diabetic Readings', value: stats?.categoryStats?.find(c => c._id === 'glucose')?.count || 0, trend: '+2.5%', up: true, icon: Activity, bg: 'bg-red-50', color: 'text-red-600' }
             ].map((stat, i) => (
               <motion.div
@@ -307,7 +313,8 @@ export default function UserActivity() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
                 whileHover={{ y: -5 }}
-                className="bg-white p-7 rounded-[2.5rem] border border-white shadow-[0_20px_50px_-20px_rgba(0,0,0,0.08)] group transition-all duration-500 flex flex-col justify-between cursor-default hover:shadow-[0_30px_60px_-20px_rgba(79,70,229,0.2)]"
+                onClick={() => stat.isClickable && setShowLiveUsersModal(true)}
+                className={`bg-white p-7 rounded-[2.5rem] border border-white shadow-[0_20px_50px_-20px_rgba(0,0,0,0.08)] group transition-all duration-500 flex flex-col justify-between ${stat.isClickable ? 'cursor-pointer' : 'cursor-default'} hover:shadow-[0_30px_60px_-20px_rgba(79,70,229,0.2)]`}
               >
                 <div className="flex flex-col items-center justify-center text-center">
                   <div className={`w-16 h-16 rounded-2xl ${stat.bg} ${stat.color} flex items-center justify-center transition-all duration-500 group-hover:scale-110 group-hover:rotate-3 shadow-sm mb-4`}>
@@ -613,7 +620,7 @@ export default function UserActivity() {
           </div>
         </div>
 
-        {/* Feature Usage Analytics - Graphical */}
+        {/* Feature Usage Analytics - Table Format */}
         <div className="bg-white p-9 rounded-[3rem] border border-white shadow-[0_25px_60px_-25px_rgba(0,0,0,0.1)] hover:shadow-[0_40px_80px_-30px_rgba(0,10,0,0.08)] transition-all duration-500">
           <div className="flex items-center justify-between mb-8">
             <div>
@@ -624,62 +631,97 @@ export default function UserActivity() {
 
           {stats?.categoryStats && stats.categoryStats.length > 0 ? (
             <>
-              {/* Bar Chart */}
-              <div className="h-80 w-full -ml-3 mb-8">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={stats.categoryStats.sort((a, b) => b.count - a.count)}
-                    margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
-                  >
-                    <CartesianGrid
-                      strokeDasharray="3 3"
-                      vertical={true}
-                      horizontal={true}
-                      stroke="#f1f5f9"
-                    />
-                    <XAxis
-                      dataKey="_id"
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 9, fill: "#94a3b8", fontWeight: 600 }}
-                      dy={10}
-                      interval={0}
-                      angle={-45}
-                      textAnchor="end"
-                      height={80}
-                    />
-                    <YAxis
-                      axisLine={false}
-                      tickLine={false}
-                      tick={{ fontSize: 11, fill: "#94a3b8", fontWeight: 600 }}
-                    />
-                    <Tooltip
-                      cursor={{ fill: '#f8fafc', radius: 10 }}
-                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 20px 40px -10px rgba(0,0,0,0.1)', padding: '12px' }}
-                      formatter={(value) => [`${value} actions`, 'Count']}
-                    />
-                    <Bar
-                      dataKey="count"
-                      fill="#6366f1"
-                      radius={[4, 4, 0, 0]}
-                      barSize={40}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      {stats.categoryStats.map((entry, index) => {
-                        const colors = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899'];
-                        return <Cell key={`cell-${index}`} fill={colors[index % colors.length]} />;
-                      })}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+              {/* Table */}
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b-2 border-slate-200">
+                      <th className="text-left py-4 px-4 font-black text-slate-700 text-sm uppercase tracking-wider">Feature</th>
+                      <th className="text-right py-4 px-4 font-black text-slate-700 text-sm uppercase tracking-wider">Actions</th>
+                      <th className="text-right py-4 px-4 font-black text-slate-700 text-sm uppercase tracking-wider">Percentage</th>
+                      <th className="text-center py-4 px-4 font-black text-slate-700 text-sm uppercase tracking-wider">Usage</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.categoryStats.sort((a, b) => b.count - a.count).map((cat, idx) => {
+                      const total = stats.categoryStats.reduce((sum, c) => sum + c.count, 0);
+                      const percentage = Math.round((cat.count / total) * 100);
+                      const colors = ['bg-indigo-600', 'bg-emerald-600', 'bg-amber-600', 'bg-rose-600', 'bg-purple-600', 'bg-cyan-600', 'bg-pink-600'];
+                      const displayNames = {
+                        'authentication': 'Login/Signup',
+                        'nutrition': 'Meal Logs',
+                        'diagnostics': 'Report Uploads',
+                        'glucose': 'Blood Sugar',
+                        'fitness': 'Fitness',
+                        'medical': 'Medical',
+                        'system': 'System'
+                      };
+
+                      return (
+                        <motion.tr
+                          key={cat._id}
+                          initial={{ opacity: 0, x: -20 }}
+                          animate={{ opacity: 1, x: 0 }}
+                          transition={{ delay: idx * 0.05 }}
+                          className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
+                        >
+                          {/* Feature Name */}
+                          <td className="py-4 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-3 h-3 rounded-full ${colors[idx % colors.length]}`} />
+                              <span className="font-bold text-slate-900 capitalize">{displayNames[cat._id] || cat._id}</span>
+                            </div>
+                          </td>
+
+                          {/* Action Count */}
+                          <td className="py-4 px-4 text-right">
+                            <span className="font-black text-slate-900 text-lg">{cat.count}</span>
+                          </td>
+
+                          {/* Percentage */}
+                          <td className="py-4 px-4 text-right">
+                            <span className="font-bold text-slate-700">{percentage}%</span>
+                          </td>
+
+                          {/* Progress Bar */}
+                          <td className="py-4 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-32 h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <motion.div
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${percentage}%` }}
+                                  transition={{ duration: 0.8, ease: 'easeOut' }}
+                                  className={`h-full rounded-full ${colors[idx % colors.length]}`}
+                                />
+                              </div>
+                            </div>
+                          </td>
+                        </motion.tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
 
               {/* Summary Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-8 border-t border-slate-50">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 pt-8 border-t border-slate-50">
                 <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/50 hover:bg-indigo-50 transition-colors">
                   <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-2">Most Used Feature</p>
                   <p className="text-sm text-slate-600">
-                    <span className="font-black text-indigo-600 capitalize">{stats.categoryStats[0]._id}</span>
+                    <span className="font-black text-indigo-600">
+                      {(() => {
+                        const displayNames = {
+                          'authentication': 'Login/Signup',
+                          'nutrition': 'Meal Logs',
+                          'diagnostics': 'Report Uploads',
+                          'glucose': 'Blood Sugar',
+                          'fitness': 'Fitness',
+                          'medical': 'Medical',
+                          'system': 'System'
+                        };
+                        return displayNames[stats.categoryStats[0]._id] || stats.categoryStats[0]._id;
+                      })()}
+                    </span>
                     <span className="text-slate-500 ml-2">({stats.categoryStats[0].count} actions)</span>
                   </p>
                 </div>
@@ -765,15 +807,18 @@ export default function UserActivity() {
             </div>
 
             <div className="pt-8 border-t border-slate-50">
-              <div className="flex items-center justify-between bg-indigo-50/50 p-6 rounded-[2rem] border border-indigo-100/50 hover:bg-indigo-50 transition-colors cursor-default">
-                <div>
+              <button
+                onClick={() => setShowLiveUsersModal(true)}
+                className="w-full flex items-center justify-between bg-indigo-50/50 p-6 rounded-[2rem] border border-indigo-100/50 hover:bg-indigo-50 hover:border-indigo-200 transition-all cursor-pointer group"
+              >
+                <div className="text-left">
                   <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest mb-1">Live Active Users</p>
                   <p className="text-3xl font-black text-indigo-600 tabular-nums">{stats?.liveActiveUsersCount || 0}</p>
                 </div>
-                <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200 animate-pulse">
+                <div className="w-12 h-12 rounded-2xl bg-indigo-600 flex items-center justify-center shadow-lg shadow-indigo-200 animate-pulse group-hover:scale-110 transition-transform">
                   <TrendingUp className="w-6 h-6 text-white" />
                 </div>
-              </div>
+              </button>
             </div>
           </div>
 
