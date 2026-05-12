@@ -140,6 +140,7 @@ exports.getActivityStats = async (req, res) => {
     
     // Calculate Live Active Users (Currently active - last 5 minutes for real-time accuracy)
     // This matches how Clarity tracks "live" users
+    // IMPORTANT: Live users are ALWAYS real-time (last 5 minutes), NOT affected by date filters
     const liveUsersThreshold = new Date(now.getTime() - (5 * 60 * 1000)); // Last 5 minutes
     const liveActiveUsersCount = await ActivityLog.distinct('user', { 
       timestamp: { $gte: liveUsersThreshold } 
@@ -387,6 +388,64 @@ exports.exportActivityLogs = async (req, res) => {
     res.send(csvContent);
   } catch (error) {
     console.error('Error exporting activity logs:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get live active users (last 5 minutes)
+// @route   GET /api/activity/live-users
+exports.getLiveActiveUsers = async (req, res) => {
+  try {
+    const { page = 1, limit = 10 } = req.query;
+
+    // Get users active in last 5 minutes
+    const liveUsersThreshold = new Date(new Date().getTime() - (5 * 60 * 1000));
+    
+    // Get distinct users with their latest activity
+    const liveUsers = await ActivityLog.aggregate([
+      { $match: { timestamp: { $gte: liveUsersThreshold } } },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'user',
+          foreignField: '_id',
+          as: 'userData'
+        }
+      },
+      { $unwind: '$userData' },
+      {
+        $group: {
+          _id: '$user',
+          name: { $first: '$userData.name' },
+          email: { $first: '$userData.email' },
+          profilePicture: { $first: '$userData.profilePicture' },
+          lastActivity: { $max: '$timestamp' },
+          activityCount: { $sum: 1 }
+        }
+      },
+      { $sort: { lastActivity: -1 } },
+      { $skip: (page - 1) * limit },
+      { $limit: parseInt(limit) }
+    ]);
+
+    // Get total count
+    const totalUsers = await ActivityLog.aggregate([
+      { $match: { timestamp: { $gte: liveUsersThreshold } } },
+      { $group: { _id: '$user' } },
+      { $count: 'total' }
+    ]);
+
+    const total = totalUsers[0]?.total || 0;
+
+    res.json({
+      success: true,
+      liveUsers,
+      total,
+      pages: Math.ceil(total / limit),
+      currentPage: parseInt(page)
+    });
+  } catch (error) {
+    console.error('Error fetching live active users:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
