@@ -67,11 +67,14 @@ const NewStats = () => {
     <section className="container mx-auto pt-24 px-5 lg:px-20 overflow-hidden">
       <div className="flex flex-col lg:flex-row justify-center items-center text-center gap-6">
         <h2 className="font-landing-title text-2xl md:text-4xl font-semibold">
-          Unlock Peak Human Performance with{" "}
-          <span className="text-landing-primary-hover block italic font-semibold my-2">
-            PHI
+          Unlock Peak Human Performance{" "}
+          <span className="block mt-2">
+            with{" "}
+            <span className="text-landing-primary-hover font-semibold">
+              AI-Powered PHI
+            </span>
           </span>
-          <span className="font-landing-title italic font-normal">
+          <span className="font-landing-title font-normal text-2xl">
             (Personal Health Intelligence)
           </span>
         </h2>

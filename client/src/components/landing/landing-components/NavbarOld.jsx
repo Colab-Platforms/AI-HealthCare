@@ -11,13 +11,14 @@ const NavbarOld = () => {
     { to: "/", label: "Home" },
     { to: "/about", label: "About Us" },
     { to: "/how-it-works", label: "How It Works" },
-    { to: "#", label: "FAQ" },
+    // { to: "#", label: "FAQ" },
   ];
 
   const brandTextClass = "text-landing-light-bg hover:text-white";
   const linkClass = `${brandTextClass} uppercase font-landing-accent cursor-pointer transition`;
-  const ctaButtonClass= "px-6 py-1.5 bg-landing-primary text-white uppercase font-landing-accent rounded-full hover:bg-landing-primary-hover transition tracking-wider"
-  const menuButtonClass = "text-white hover:text-white transition"
+  const ctaButtonClass =
+    "px-6 py-1.5 bg-landing-primary text-white uppercase font-landing-accent rounded-full hover:bg-landing-primary-hover transition tracking-wider";
+  const menuButtonClass = "text-white hover:text-white transition";
   const logoSrc = "/landing/logo.png";
 
   return (
@@ -100,9 +101,7 @@ const NavbarOld = () => {
 
       {isMenuOpen && (
         <div className="absolute top-full left-0 right-0 px-5 lg:hidden z-50">
-          <div
-            className={`rounded-2xl backdrop-blur-sm p-5 bg-black/20`}
-          >
+          <div className={`rounded-2xl backdrop-blur-sm p-5 bg-black/20`}>
             <ul className="flex flex-col gap-4">
               {navLinks.map((link) => (
                 <Link
