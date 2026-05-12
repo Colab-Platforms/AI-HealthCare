@@ -69,7 +69,7 @@ export default function App() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Lightweight Public Routes */}
-          <Route path="/" element={<LandingPage />} />
+          <Route path="/" element={<NewLandingPage />} />
           <Route path="/old-landing" element={<LandingPage />} />
           <Route path="/about" element={<AboutUs />} />
           <Route path="/login" element={getLoginRedirect()} />
