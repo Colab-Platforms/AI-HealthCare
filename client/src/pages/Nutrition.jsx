@@ -825,15 +825,6 @@ function Nutrition() {
 
   // stopVoiceCapture is now handled by the hook
 
-  return (
-    <div className="w-full min-h-screen bg-gradient-to-b from-[#F2F5EC] to-[#E5EBE0] dark:from-[#161719] dark:to-[#161719] pb-32 animate-fade-in">
-      <SEO pageName="nutrition" />
-      <div className="max-w-[1200px] mx-auto px-4 pt-6 space-y-6">
-        {/* Main content will continue here */}
-      </div>
-    </div>
-  );
-
   const handleDeleteMeal = async (logId) => {
     try {
       const confirmDelete = window.confirm(
