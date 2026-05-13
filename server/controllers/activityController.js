@@ -449,3 +449,161 @@ exports.getLiveActiveUsers = async (req, res) => {
     res.status(500).json({ success: false, message: error.message });
   }
 };
+
+// @desc    Get feature stats with user breakdown (paginated)
+// @route   GET /api/activity/feature-stats
+exports.getFeatureStats = async (req, res) => {
+  try {
+    const { category, startDate, endDate, featureId, page = 1, limit = 5 } = req.query;
+    
+    // Convert to integers
+    const pageNum = parseInt(page);
+    const limitNum = parseInt(limit);
+    
+    console.log('🔍 getFeatureStats called:', { featureId, pageNum, limitNum, startDate, endDate });
+    
+    // Build match query
+    const matchQuery = {};
+    if (category) matchQuery.category = category;
+    if (startDate || endDate) {
+      matchQuery.timestamp = {};
+      if (startDate) matchQuery.timestamp.$gte = new Date(startDate);
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        matchQuery.timestamp.$lte = end;
+      }
+    }
+
+    // If specific feature requested, get user breakdown with pagination
+    if (featureId) {
+      matchQuery.category = featureId;
+
+      // Get total count of UNIQUE USERS (not total activities)
+      const uniqueUserCount = await ActivityLog.aggregate([
+        { $match: matchQuery },
+        {
+          $group: {
+            _id: '$user'
+          }
+        },
+        {
+          $count: 'total'
+        }
+      ]);
+
+      const totalCount = uniqueUserCount.length > 0 ? uniqueUserCount[0].total : 0;
+      const totalPages = Math.ceil(totalCount / limitNum);
+      const skip = (pageNum - 1) * limitNum;
+
+      console.log('📊 Pagination calc:', { totalCount, totalPages, skip, pageNum, limitNum });
+
+      // Get paginated user breakdown with populated user data
+      const userBreakdown = await ActivityLog.aggregate([
+        { $match: matchQuery },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'user',
+            foreignField: '_id',
+            as: 'userData'
+          }
+        },
+        { $unwind: { path: '$userData', preserveNullAndEmptyArrays: true } },
+        {
+          $group: {
+            _id: '$user',
+            userName: { $first: '$userData.name' },
+            userEmail: { $first: '$userData.email' },
+            count: { $sum: 1 },
+            lastUsed: { $max: '$timestamp' }
+          }
+        },
+        { $sort: { count: -1 } },
+        { $skip: skip },
+        { $limit: limitNum }
+      ]);
+
+      console.log('✅ User breakdown fetched:', { count: userBreakdown.length, totalPages, data: userBreakdown });
+
+      return res.json({
+        success: true,
+        feature: featureId,
+        totalCount,
+        totalPages,
+        currentPage: pageNum,
+        limit: limitNum,
+        userBreakdown
+      });
+    }
+
+    // Get all features with top 3 users each
+    const featureStats = await ActivityLog.aggregate([
+      { $match: matchQuery },
+      {
+        $group: {
+          _id: '$category',
+          totalCount: { $sum: 1 },
+          users: {
+            $push: {
+              userId: '$user',
+              timestamp: '$timestamp'
+            }
+          }
+        }
+      },
+      {
+        $addFields: {
+          // Count unique users
+          uniqueUsers: { $size: { $setUnion: ['$users.userId'] } }
+        }
+      },
+      { $sort: { totalCount: -1 } }
+    ]);
+
+    // Transform to include user details for top users
+    const enrichedStats = await Promise.all(
+      featureStats.map(async (feature) => {
+        // Get top 3 users for this feature with populated user data
+        const topUserDetails = await ActivityLog.aggregate([
+          { $match: { category: feature._id, ...matchQuery } },
+          {
+            $lookup: {
+              from: 'users',
+              localField: 'user',
+              foreignField: '_id',
+              as: 'userData'
+            }
+          },
+          { $unwind: { path: '$userData', preserveNullAndEmptyArrays: true } },
+          {
+            $group: {
+              _id: '$user',
+              userName: { $first: '$userData.name' },
+              userEmail: { $first: '$userData.email' },
+              count: { $sum: 1 },
+              lastUsed: { $max: '$timestamp' }
+            }
+          },
+          { $sort: { count: -1 } },
+          { $limit: 3 }
+        ]);
+
+        return {
+          _id: feature._id,
+          count: feature.totalCount,
+          uniqueUsers: feature.uniqueUsers,
+          topUsers: topUserDetails
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      categoryStats: enrichedStats
+    });
+  } catch (error) {
+    console.error('Get feature stats error:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};

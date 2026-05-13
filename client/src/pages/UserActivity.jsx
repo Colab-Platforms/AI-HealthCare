@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { activityService } from '../services/api';
 import ActivityDetailModal from '../components/ActivityDetailModal';
 import LiveUsersModal from '../components/LiveUsersModal';
+import FeatureUsageAnalytics from '../components/FeatureUsageAnalytics';
 import {
   Activity, Search, Filter, Calendar,
   ChevronLeft, ChevronRight, RefreshCcw,
@@ -620,135 +621,8 @@ export default function UserActivity() {
           </div>
         </div>
 
-        {/* Feature Usage Analytics - Table Format */}
-        <div className="bg-white p-9 rounded-[3rem] border border-white shadow-[0_25px_60px_-25px_rgba(0,0,0,0.1)] hover:shadow-[0_40px_80px_-30px_rgba(0,10,0,0.08)] transition-all duration-500">
-          <div className="flex items-center justify-between mb-8">
-            <div>
-              <h3 className="text-2xl font-black text-slate-800 tracking-tight">Feature Usage Analytics</h3>
-              <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mt-1">Platform Feature Adoption & Usage Patterns</p>
-            </div>
-          </div>
-
-          {stats?.categoryStats && stats.categoryStats.length > 0 ? (
-            <>
-              {/* Table */}
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b-2 border-slate-200">
-                      <th className="text-left py-4 px-4 font-black text-slate-700 text-sm uppercase tracking-wider">Feature</th>
-                      <th className="text-right py-4 px-4 font-black text-slate-700 text-sm uppercase tracking-wider">Actions</th>
-                      <th className="text-right py-4 px-4 font-black text-slate-700 text-sm uppercase tracking-wider">Percentage</th>
-                      <th className="text-center py-4 px-4 font-black text-slate-700 text-sm uppercase tracking-wider">Usage</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {stats.categoryStats.sort((a, b) => b.count - a.count).map((cat, idx) => {
-                      const total = stats.categoryStats.reduce((sum, c) => sum + c.count, 0);
-                      const percentage = Math.round((cat.count / total) * 100);
-                      const colors = ['bg-indigo-600', 'bg-emerald-600', 'bg-amber-600', 'bg-rose-600', 'bg-purple-600', 'bg-cyan-600', 'bg-pink-600'];
-                      const displayNames = {
-                        'authentication': 'Login/Signup',
-                        'nutrition': 'Meal Logs',
-                        'diagnostics': 'Report Uploads',
-                        'glucose': 'Blood Sugar',
-                        'fitness': 'Fitness',
-                        'medical': 'Medical',
-                        'system': 'System'
-                      };
-
-                      return (
-                        <motion.tr
-                          key={cat._id}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: idx * 0.05 }}
-                          className="border-b border-slate-100 hover:bg-slate-50 transition-colors"
-                        >
-                          {/* Feature Name */}
-                          <td className="py-4 px-4">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-3 h-3 rounded-full ${colors[idx % colors.length]}`} />
-                              <span className="font-bold text-slate-900 capitalize">{displayNames[cat._id] || cat._id}</span>
-                            </div>
-                          </td>
-
-                          {/* Action Count */}
-                          <td className="py-4 px-4 text-right">
-                            <span className="font-black text-slate-900 text-lg">{cat.count}</span>
-                          </td>
-
-                          {/* Percentage */}
-                          <td className="py-4 px-4 text-right">
-                            <span className="font-bold text-slate-700">{percentage}%</span>
-                          </td>
-
-                          {/* Progress Bar */}
-                          <td className="py-4 px-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-32 h-2 bg-slate-100 rounded-full overflow-hidden">
-                                <motion.div
-                                  initial={{ width: 0 }}
-                                  animate={{ width: `${percentage}%` }}
-                                  transition={{ duration: 0.8, ease: 'easeOut' }}
-                                  className={`h-full rounded-full ${colors[idx % colors.length]}`}
-                                />
-                              </div>
-                            </div>
-                          </td>
-                        </motion.tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Summary Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8 pt-8 border-t border-slate-50">
-                <div className="p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100/50 hover:bg-indigo-50 transition-colors">
-                  <p className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-2">Most Used Feature</p>
-                  <p className="text-sm text-slate-600">
-                    <span className="font-black text-indigo-600">
-                      {(() => {
-                        const displayNames = {
-                          'authentication': 'Login/Signup',
-                          'nutrition': 'Meal Logs',
-                          'diagnostics': 'Report Uploads',
-                          'glucose': 'Blood Sugar',
-                          'fitness': 'Fitness',
-                          'medical': 'Medical',
-                          'system': 'System'
-                        };
-                        return displayNames[stats.categoryStats[0]._id] || stats.categoryStats[0]._id;
-                      })()}
-                    </span>
-                    <span className="text-slate-500 ml-2">({stats.categoryStats[0].count} actions)</span>
-                  </p>
-                </div>
-                <div className="p-4 bg-emerald-50/50 rounded-2xl border border-emerald-100/50 hover:bg-emerald-50 transition-colors">
-                  <p className="text-[9px] font-black text-emerald-400 uppercase tracking-widest mb-2">Total Features</p>
-                  <p className="text-sm text-slate-600">
-                    <span className="font-black text-emerald-600">{stats.categoryStats.length}</span>
-                    <span className="text-slate-500 ml-2">categories tracked</span>
-                  </p>
-                </div>
-                <div className="p-4 bg-blue-50/50 rounded-2xl border border-blue-100/50 hover:bg-blue-50 transition-colors">
-                  <p className="text-[9px] font-black text-blue-400 uppercase tracking-widest mb-2">Total Usage</p>
-                  <p className="text-sm text-slate-600">
-                    <span className="font-black text-blue-600">{stats.categoryStats.reduce((sum, c) => sum + c.count, 0)}</span>
-                    <span className="text-slate-500 ml-2">total actions</span>
-                  </p>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-16 bg-slate-50 rounded-2xl border border-slate-100">
-              <Activity className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">No Feature Data Available</p>
-              <p className="text-[9px] text-slate-500 mt-1">Adjust filters to view feature usage analytics</p>
-            </div>
-          )}
-        </div>
+        {/* Feature Usage Analytics - Expandable with User Breakdown */}
+        <FeatureUsageAnalytics stats={stats} filters={filters} />
 
         {/* Bottom Row Area */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

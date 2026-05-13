@@ -270,7 +270,8 @@ export const activityService = {
   getLogs: (params) => api.get('activity', { params }),
   getStats: (params) => api.get('activity/stats', { params }),
   getLiveUsers: (params) => api.get('activity/live-users', { params }),
-  exportLogs: (params) => api.get('activity/export', { params, responseType: 'blob' })
+  exportLogs: (params) => api.get('activity/export', { params, responseType: 'blob' }),
+  getFeatureStats: (params) => api.get('activity/feature-stats', { params })
 };
 
 export const subscriptionService = {

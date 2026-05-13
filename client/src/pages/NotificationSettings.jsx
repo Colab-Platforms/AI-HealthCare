@@ -18,8 +18,19 @@ export default function NotificationSettings() {
   const fetchPreferences = async () => {
     try {
       setLoading(true);
-      const { data } = await notificationPreferenceService.getPreferences();
-      setPreferences(data.preferences);
+      // ⏸️ NOTIFICATION SYSTEM DISABLED - Commented out for later enablement
+      // const { data } = await notificationPreferenceService.getPreferences();
+      // setPreferences(data.preferences);
+      
+      // For now, set default preferences
+      setPreferences({
+        mealReminders: { breakfast: '08:00', lunch: '12:00', snack: '15:00', dinner: '19:00', enabled: true },
+        sleepReminder: { time: '22:00', targetSleepHours: 8, enabled: true },
+        macroUpdate: { time: '20:00', enabled: true },
+        dietAdherence: { time: '18:00', enabled: true },
+        healthInsights: { time: '09:00', enabled: true },
+        glucoseAlerts: { lowThreshold: 70, highThreshold: 180, enabled: true }
+      });
       setHasChanges(false);
     } catch (error) {
       console.error('Failed to fetch preferences:', error);

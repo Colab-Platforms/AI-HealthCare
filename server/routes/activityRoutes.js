@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { getActivityLogs, getActivityStats, exportActivityLogs, getLiveActiveUsers } = require('../controllers/activityController');
+const { getActivityLogs, getActivityStats, exportActivityLogs, getLiveActiveUsers, getFeatureStats } = require('../controllers/activityController');
 const { protect, authorize } = require('../middleware/auth');
 
 // All activity routes are admin-only
@@ -10,5 +10,6 @@ router.get('/', getActivityLogs);
 router.get('/stats', getActivityStats);
 router.get('/live-users', getLiveActiveUsers);
 router.get('/export', exportActivityLogs);
+router.get('/feature-stats', getFeatureStats);
 
 module.exports = router;
