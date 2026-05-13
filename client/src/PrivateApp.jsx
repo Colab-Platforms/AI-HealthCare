@@ -38,6 +38,7 @@ const AdminReports = lazy(() => import("./pages/AdminReports"));
 const AdminFoodCache = lazy(() => import("./pages/AdminFoodCache"));
 const AdminActivity = lazy(() => import("./pages/UserActivity"));
 const AdminSupport = lazy(() => import("./pages/AdminSupport"));
+const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 
 const StepTracker = lazy(() => import("./pages/StepTracker"));
 const FoodSafety = lazy(() => import("./pages/FoodSafety"));
@@ -476,6 +477,18 @@ export default function PrivateApp() {
                   </ProtectedRoute>
                 }
               />
+              
+              {/* 🔴 COMMENTED OUT: Notification settings disabled for now */}
+              {/* <Route
+                path="/notification-settings"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <NotificationSettings />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              /> */}
 
               {/* Admin Routes */}
               <Route

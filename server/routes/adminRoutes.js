@@ -9,7 +9,7 @@ const {
   getDietPlanTemplates, createDietPlanTemplate, updateDietPlanTemplate, approveDietPlanTemplate, deleteDietPlanTemplate,
   getAllDoctors, approveDoctor, rejectDoctor, createDoctor, updateDoctor, deleteDoctor, toggleDoctorVisibility,
   getAllCachedFoods, createCachedFood, updateCachedFood, deleteCachedFood, bulkCreateCachedFood, clearAllCachedFoods,
-  deleteUser
+  deleteUser, getFilteredUsers
 } = require('../controllers/adminController');
 const { getDoctorScheduleOverview } = require('../controllers/doctorController');
 
@@ -31,6 +31,7 @@ router.get('/stats', getReportStats);
 
 // User Management
 router.get('/users', getAllUsers);
+router.get('/users/filter/advanced', getFilteredUsers);
 router.get('/users/:id', getUserDetails);
 router.patch('/users/:id/status', updateUserStatus);
 router.patch('/users/:id/role', updateUserRole);

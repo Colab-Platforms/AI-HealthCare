@@ -260,6 +260,7 @@ try {
     },
     { path: "/api/users", module: "./routes/userRoutes" },
     { path: "/api/notifications", module: "./routes/notificationRoutes" },
+    { path: "/api/notification-preferences", module: "./routes/notificationPreferenceRoutes" },
     { path: "/api/chat", module: "./routes/chatHistoryRoutes" },
     { path: "/api/translate", module: "./routes/translateRoutes" },
     { path: "/api/food-safety", module: "./routes/foodSafetyRoutes" },

@@ -46,7 +46,9 @@ const patientNavItems = [
   { path: "/upload", icon: Brain, label: "AI Analyzer" },
   { path: "/medical-vault", icon: ShieldCheck, label: "Medical Records" },
   { path: "/nutrition", icon: Utensils, label: "Nutrition" },
-  { path: "/diet-plan", icon: FileText, label: "Diet Plan" }
+  { path: "/diet-plan", icon: FileText, label: "Diet Plan" },
+  // 🔴 COMMENTED OUT: Notification settings disabled for now
+  // { path: "/notification-settings", icon: Bell, label: "Notifications" }
 ];
 
 const doctorNavItems = [

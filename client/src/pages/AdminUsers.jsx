@@ -34,18 +34,40 @@ export default function AdminUsers() {
   const [userDetail, setUserDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
+  
+  // Advanced filters
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
+  const [advancedFilters, setAdvancedFilters] = useState({
+    ageMin: '',
+    ageMax: '',
+    gender: 'all',
+    isDiabetic: 'all',
+    dietaryPreference: 'all',
+    isActive: 'all',
+    role: 'all',
+    startDate: '',
+    endDate: ''
+  });
 
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const { data } = await adminService.getUsers({
+      const queryParams = {
         page,
         limit: 12,
-        role: roleFilter,
         search,
-        startDate,
-        endDate,
-      });
+        ageMin: advancedFilters.ageMin,
+        ageMax: advancedFilters.ageMax,
+        gender: advancedFilters.gender !== 'all' ? advancedFilters.gender : undefined,
+        isDiabetic: advancedFilters.isDiabetic !== 'all' ? advancedFilters.isDiabetic : undefined,
+        dietaryPreference: advancedFilters.dietaryPreference !== 'all' ? advancedFilters.dietaryPreference : undefined,
+        isActive: advancedFilters.isActive !== 'all' ? advancedFilters.isActive : undefined,
+        role: advancedFilters.role !== 'all' ? advancedFilters.role : roleFilter,
+        startDate: advancedFilters.startDate,
+        endDate: advancedFilters.endDate
+      };
+      
+      const { data } = await adminService.getUsers(queryParams);
       setUsers(data.users || []);
       setTotal(data.total || 0);
       setPages(data.pages || 1);
@@ -65,7 +87,7 @@ export default function AdminUsers() {
   useEffect(() => {
     const timer = setTimeout(fetchUsers, 400);
     return () => clearTimeout(timer);
-  }, [page, roleFilter, search, startDate, endDate]);
+  }, [page, search, advancedFilters]);
 
   const handleUpdateRole = async (userId, newRole) => {
     setUpdating(true);
@@ -154,7 +176,7 @@ export default function AdminUsers() {
   return (
     <div className="p-6 md:p-8 space-y-8 w-full max-w-[1600px] mx-auto font-sans">
       <SEO pageName="adminUsers" />
-      {/* Header */}
+      {/* Header with Search and Advanced Button */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">User Registry</h1>
@@ -163,91 +185,218 @@ export default function AdminUsers() {
           </p>
         </div>
 
-        <div className="flex bg-white p-1 rounded-xl border border-slate-100 shadow-sm overflow-x-auto whitespace-nowrap">
-          {["", "user", "admin", "superadmin"].map((role) => (
-            <button
-              key={role}
-              onClick={() => {
-                setRoleFilter(role);
-                setPage(1);
-              }}
-              className={`px-4 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-widest transition-all ${roleFilter === role ? "bg-slate-800 text-white" : "text-slate-400 hover:text-slate-800"}`}
-            >
-              {role === ""
-                ? "All"
-                : role === "user"
-                  ? "Users"
-                  : role === "admin"
-                    ? "Admins"
-                    : "Superadmins"}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Search & Date Filter */}
-      <div className="flex flex-col lg:flex-row gap-4 items-center">
-        <div className="relative flex-1 w-full">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-          <input
-            type="text"
-            placeholder="Search by username or email..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-11 pr-4 py-3 bg-white border border-slate-100 rounded-2xl text-sm focus:border-blue-500 outline-none shadow-sm transition-all"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 w-full lg:w-auto overflow-x-auto no-scrollbar py-1">
-          <div className="flex flex-col">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1">
-              From
-            </span>
+        <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 sm:flex-none sm:w-64">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
-              type="date"
-              value={startDate}
-              onChange={(e) => {
-                setStartDate(e.target.value);
-                setPage(1);
-              }}
-              className="px-3 py-2 bg-white border border-slate-100 rounded-xl text-xs font-bold text-slate-600 focus:border-blue-500 outline-none shadow-sm transition-all cursor-pointer"
+              type="text"
+              placeholder="Search by name or email..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full pl-11 pr-4 py-2.5 bg-white border border-slate-100 rounded-lg text-sm focus:border-blue-500 outline-none shadow-sm transition-all"
             />
           </div>
 
-          <div className="mt-4 text-slate-300">
-            <ChevronRight className="w-4 h-4" />
-          </div>
-
-          <div className="flex flex-col">
-            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest ml-1 mb-1">
-              To Date
-            </span>
-            <input
-              type="date"
-              value={endDate}
-              onChange={(e) => {
-                setEndDate(e.target.value);
-                setPage(1);
-              }}
-              className="px-3 py-2 bg-white border border-slate-100 rounded-xl text-xs font-bold text-slate-600 focus:border-blue-500 outline-none shadow-sm transition-all cursor-pointer"
-            />
-          </div>
-
-          {(startDate || endDate) && (
-            <button
-              onClick={() => {
-                setStartDate("");
-                setEndDate("");
-                setPage(1);
-              }}
-              className="mt-4 p-2 bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-800 rounded-xl transition-all shadow-sm"
-              title="Clear Date Filters"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
+          <button
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            className="px-4 py-2.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg transition-all shadow-sm font-bold text-xs uppercase whitespace-nowrap"
+            title="Toggle Advanced Filters"
+          >
+            Advanced
+          </button>
         </div>
       </div>
+
+      {/* Advanced Filters Panel */}
+      {showAdvancedFilters && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -10 }}
+          className="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm"
+        >
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+            {/* Age Min */}
+            <div>
+              <label className="block text-[9px] font-bold text-slate-600 uppercase mb-1">Age Min</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="Min"
+                value={advancedFilters.ageMin}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '' || /^\d+$/.test(val)) {
+                    setAdvancedFilters({ ...advancedFilters, ageMin: val });
+                    setPage(1);
+                  }
+                }}
+                className="w-full px-2 py-1.5 border border-slate-200 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Age Max */}
+            <div>
+              <label className="block text-[9px] font-bold text-slate-600 uppercase mb-1">Age Max</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                placeholder="Max"
+                value={advancedFilters.ageMax}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  if (val === '' || /^\d+$/.test(val)) {
+                    setAdvancedFilters({ ...advancedFilters, ageMax: val });
+                    setPage(1);
+                  }
+                }}
+                className="w-full px-2 py-1.5 border border-slate-200 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Gender */}
+            <div>
+              <label className="block text-[9px] font-bold text-slate-600 uppercase mb-1">Gender</label>
+              <select
+                value={advancedFilters.gender}
+                onChange={(e) => {
+                  setAdvancedFilters({ ...advancedFilters, gender: e.target.value });
+                  setPage(1);
+                }}
+                className="w-full px-2 py-1.5 border border-slate-200 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All</option>
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+
+            {/* Diabetic Status */}
+            <div>
+              <label className="block text-[9px] font-bold text-slate-600 uppercase mb-1">Diabetic</label>
+              <select
+                value={advancedFilters.isDiabetic}
+                onChange={(e) => {
+                  setAdvancedFilters({ ...advancedFilters, isDiabetic: e.target.value });
+                  setPage(1);
+                }}
+                className="w-full px-2 py-1.5 border border-slate-200 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All</option>
+                <option value="yes">Yes</option>
+                <option value="no">No</option>
+              </select>
+            </div>
+
+            {/* Dietary Preference */}
+            <div>
+              <label className="block text-[9px] font-bold text-slate-600 uppercase mb-1">Diet</label>
+              <select
+                value={advancedFilters.dietaryPreference}
+                onChange={(e) => {
+                  setAdvancedFilters({ ...advancedFilters, dietaryPreference: e.target.value });
+                  setPage(1);
+                }}
+                className="w-full px-2 py-1.5 border border-slate-200 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All</option>
+                <option value="vegetarian">Vegetarian</option>
+                <option value="non-vegetarian">Non-Veg</option>
+                <option value="vegan">Vegan</option>
+                <option value="eggetarian">Eggetarian</option>
+              </select>
+            </div>
+
+            {/* Role */}
+            <div>
+              <label className="block text-[9px] font-bold text-slate-600 uppercase mb-1">Role</label>
+              <select
+                value={advancedFilters.role}
+                onChange={(e) => {
+                  setAdvancedFilters({ ...advancedFilters, role: e.target.value });
+                  setPage(1);
+                }}
+                className="w-full px-2 py-1.5 border border-slate-200 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All</option>
+                <option value="user">User</option>
+                <option value="patient">Patient</option>
+                <option value="doctor">Doctor</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+
+            {/* Active Status */}
+            <div>
+              <label className="block text-[9px] font-bold text-slate-600 uppercase mb-1">Status</label>
+              <select
+                value={advancedFilters.isActive}
+                onChange={(e) => {
+                  setAdvancedFilters({ ...advancedFilters, isActive: e.target.value });
+                  setPage(1);
+                }}
+                className="w-full px-2 py-1.5 border border-slate-200 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All</option>
+                <option value="true">Active</option>
+                <option value="false">Inactive</option>
+              </select>
+            </div>
+
+            {/* Start Date */}
+            <div>
+              <label className="block text-[9px] font-bold text-slate-600 uppercase mb-1">From</label>
+              <input
+                type="date"
+                value={advancedFilters.startDate}
+                onChange={(e) => {
+                  setAdvancedFilters({ ...advancedFilters, startDate: e.target.value });
+                  setPage(1);
+                }}
+                className="w-full px-2 py-1.5 border border-slate-200 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* End Date */}
+            <div>
+              <label className="block text-[9px] font-bold text-slate-600 uppercase mb-1">To</label>
+              <input
+                type="date"
+                value={advancedFilters.endDate}
+                onChange={(e) => {
+                  setAdvancedFilters({ ...advancedFilters, endDate: e.target.value });
+                  setPage(1);
+                }}
+                className="w-full px-2 py-1.5 border border-slate-200 rounded text-xs focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+            </div>
+
+            {/* Reset Button */}
+            <div className="flex items-end">
+              <button
+                onClick={() => {
+                  setAdvancedFilters({
+                    ageMin: '',
+                    ageMax: '',
+                    gender: 'all',
+                    isDiabetic: 'all',
+                    dietaryPreference: 'all',
+                    isActive: 'all',
+                    role: 'all',
+                    startDate: '',
+                    endDate: ''
+                  });
+                  setPage(1);
+                }}
+                className="w-full px-2 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded text-xs transition-colors"
+              >
+                Reset
+              </button>
+            </div>
+          </div>
+        </motion.div>
+      )}
 
       {/* Simple Tabular Layout */}
       <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden min-h-[400px]">
@@ -264,6 +413,15 @@ export default function AdminUsers() {
                     Username
                   </th>
                   <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    Age
+                  </th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    Gender
+                  </th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                    Diabetic
+                  </th>
+                  <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                     Authority
                   </th>
                   <th className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
@@ -278,7 +436,7 @@ export default function AdminUsers() {
                 {users.length === 0 ? (
                   <tr>
                     <td
-                      colSpan="4"
+                      colSpan="7"
                       className="px-6 py-20 text-center text-slate-400 text-sm font-medium"
                     >
                       No users found in database
@@ -304,6 +462,25 @@ export default function AdminUsers() {
                             </p>
                           </div>
                         </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-sm font-bold text-slate-700">
+                          {u.profile?.age || '-'}
+                        </p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="text-sm font-bold text-slate-700 capitalize">
+                          {u.profile?.gender || '-'}
+                        </p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <span className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${
+                          u.profile?.isDiabetic === 'yes'
+                            ? "bg-red-50 text-red-600 border-red-100"
+                            : "bg-green-50 text-green-600 border-green-100"
+                        }`}>
+                          {u.profile?.isDiabetic === 'yes' ? 'Yes' : 'No'}
+                        </span>
                       </td>
                       <td className="px-6 py-4">
                         <span

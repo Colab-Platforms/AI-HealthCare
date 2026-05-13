@@ -160,6 +160,14 @@ export const notificationService = {
   clearAll: () => api.delete('notifications')
 };
 
+export const notificationPreferenceService = {
+  getPreferences: () => api.get('notification-preferences'),
+  updatePreferences: (data) => api.put('notification-preferences', data),
+  updateMealTime: (mealType, time) => api.put('notification-preferences/meal-time', { mealType, time }),
+  updateSleepSchedule: (time, targetSleepHours) => api.put('notification-preferences/sleep-schedule', { time, targetSleepHours }),
+  toggleNotificationType: (type, enabled) => api.put('notification-preferences/toggle', { type, enabled })
+};
+
 export const doctorService = {
   // Public (for patients)
   getAll: (params) => api.get('doctors', { params }),
@@ -210,6 +218,7 @@ export const adminService = {
 
   // Users
   getUsers: (params) => api.get('admin/users', { params }),
+  getFilteredUsers: (queryString) => api.get(`admin/users/filter/advanced${queryString}`),
   getUserDetails: (id) => api.get(`admin/users/${id}`),
   updateUserStatus: (id, isActive) => api.patch(`admin/users/${id}/status`, { isActive }),
   updateUserRole: (id, role) => api.patch(`admin/users/${id}/role`, { role }),

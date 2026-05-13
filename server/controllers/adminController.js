@@ -15,8 +15,24 @@ const Otp = require('../models/Otp');
 // User Management
 exports.getAllUsers = async (req, res) => {
   try {
-    const { role, status, search, page = 1, limit = 20, startDate, endDate } = req.query;
+    const { 
+      role, 
+      status, 
+      search, 
+      page = 1, 
+      limit = 20, 
+      startDate, 
+      endDate,
+      ageMin,
+      ageMax,
+      gender,
+      isDiabetic,
+      dietaryPreference,
+      isActive
+    } = req.query;
+    
     const filter = {};
+    
     if (role) {
       if (role === 'user') {
         filter.role = { $in: ['user', 'patient'] };
@@ -24,6 +40,7 @@ exports.getAllUsers = async (req, res) => {
         filter.role = role;
       }
     }
+    
     if (status === 'active') filter.isActive = true;
     if (status === 'inactive') filter.isActive = false;
 
@@ -45,6 +62,29 @@ exports.getAllUsers = async (req, res) => {
         end.setHours(23, 59, 59, 999);
         filter.createdAt.$lte = end;
       }
+    }
+
+    // Add advanced filters
+    if (ageMin || ageMax) {
+      filter['profile.age'] = {};
+      if (ageMin) filter['profile.age'].$gte = parseInt(ageMin);
+      if (ageMax) filter['profile.age'].$lte = parseInt(ageMax);
+    }
+
+    if (gender && gender !== 'all') {
+      filter['profile.gender'] = gender;
+    }
+
+    if (isDiabetic && isDiabetic !== 'all') {
+      filter['profile.isDiabetic'] = isDiabetic;
+    }
+
+    if (dietaryPreference && dietaryPreference !== 'all') {
+      filter['profile.dietaryPreference'] = dietaryPreference;
+    }
+
+    if (isActive !== undefined && isActive !== 'all') {
+      filter.isActive = isActive === 'true';
     }
 
     const users = await User.find(filter)
@@ -603,5 +643,131 @@ exports.clearAllCachedFoods = async (req, res) => {
     res.json({ message: 'Global food database cleared successfully', count: result.deletedCount });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+
+// Advanced user filtering with multiple criteria
+exports.getFilteredUsers = async (req, res) => {
+  try {
+    const {
+      ageMin,
+      ageMax,
+      gender,
+      activityLevel,
+      isDiabetic,
+      role,
+      isActive,
+      dietaryPreference,
+      search,
+      startDate,
+      endDate,
+      page = 1,
+      limit = 20,
+      sortBy = 'createdAt',
+      sortOrder = -1
+    } = req.query;
+
+    // Build filter object
+    const filter = {};
+
+    // Age range filter
+    if (ageMin || ageMax) {
+      filter['profile.age'] = {};
+      if (ageMin) filter['profile.age'].$gte = parseInt(ageMin);
+      if (ageMax) filter['profile.age'].$lte = parseInt(ageMax);
+    }
+
+    // Gender filter
+    if (gender && gender !== 'all') {
+      filter['profile.gender'] = gender;
+    }
+
+    // Activity level filter
+    if (activityLevel && activityLevel !== 'all') {
+      filter['profile.activityLevel'] = activityLevel;
+    }
+
+    // Diabetic status filter
+    if (isDiabetic && isDiabetic !== 'all') {
+      filter['profile.isDiabetic'] = isDiabetic;
+    }
+
+    // Role filter
+    if (role && role !== 'all') {
+      filter.role = role;
+    }
+
+    // Active status filter
+    if (isActive !== undefined && isActive !== 'all') {
+      filter.isActive = isActive === 'true';
+    }
+
+    // Dietary preference filter
+    if (dietaryPreference && dietaryPreference !== 'all') {
+      filter['profile.dietaryPreference'] = dietaryPreference;
+    }
+
+    // Search filter (name or email)
+    if (search) {
+      filter.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Date range filter
+    if (startDate || endDate) {
+      filter.createdAt = {};
+      if (startDate) {
+        filter.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        filter.createdAt.$lte = end;
+      }
+    }
+
+    // Calculate pagination
+    const skip = (parseInt(page) - 1) * parseInt(limit);
+
+    // Execute query
+    const users = await User.find(filter)
+      .select('name email profile.age profile.gender profile.activityLevel profile.isDiabetic role isActive createdAt')
+      .sort({ [sortBy]: parseInt(sortOrder) })
+      .skip(skip)
+      .limit(parseInt(limit))
+      .lean();
+
+    // Get total count for pagination
+    const total = await User.countDocuments(filter);
+
+    res.json({
+      success: true,
+      data: users,
+      pagination: {
+        total,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        pages: Math.ceil(total / parseInt(limit))
+      },
+      appliedFilters: {
+        ageMin: ageMin ? parseInt(ageMin) : null,
+        ageMax: ageMax ? parseInt(ageMax) : null,
+        gender: gender || null,
+        activityLevel: activityLevel || null,
+        isDiabetic: isDiabetic || null,
+        role: role || null,
+        isActive: isActive || null,
+        dietaryPreference: dietaryPreference || null,
+        search: search || null,
+        startDate: startDate || null,
+        endDate: endDate || null
+      }
+    });
+  } catch (error) {
+    console.error('Get filtered users error:', error);
+    res.status(500).json({ success: false, message: 'Failed to get filtered users', error: error.message });
   }
 };
