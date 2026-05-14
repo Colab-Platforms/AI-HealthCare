@@ -14,6 +14,7 @@ import LandingPage from "./pages/LandingPage";
 import NewLandingPage from "./pages/NewLandingPage";
 import HelpWidget from "./components/HelpWidget";
 import DiabetesLanding from "./pages/DiabetesLanding";
+import WeightLossLanding from "./pages/WeightLossLanding";
 
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const HowItWorks = lazy(() => import("./pages/HowItWorks"));
@@ -72,6 +73,7 @@ export default function App() {
           {/* Lightweight Public Routes */}
           <Route path="/" element={<NewLandingPage />} />
           <Route path="/diabetes-landing" element={<DiabetesLanding />} />
+          <Route path="/weight-loss-landing" element={<WeightLossLanding />} />
           <Route path="/old-landing" element={<LandingPage />} />
           <Route path="/about" element={<AboutUs />} />
           <Route path="/login" element={getLoginRedirect()} />
@@ -113,7 +115,8 @@ export default function App() {
           "/demo",
         ];
         const isPublicPage = publicPaths.some(
-          (p) => location.pathname === p || location.pathname.startsWith(p + "/")
+          (p) =>
+            location.pathname === p || location.pathname.startsWith(p + "/"),
         );
         return user && !isPublicPage ? <HelpWidget /> : null;
       })()}
