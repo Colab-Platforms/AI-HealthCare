@@ -19,7 +19,7 @@ const Hero = () => {
               bg-cover bg-center md:bg-top-left flex overflow-hidden
             "
           >
-            <div className="absolute inset-0 bg-black/30" />
+            <div className="absolute inset-0 bg-black/40" />
             <div className="container mx-auto px-3 md:px-16 lg:px-32 relative z-10">
               <div className="text-white absolute bottom-8 md:bottom-20 left-5 right-[5px] md:right-0 md:left-20 z-10">
                 <h1 className="text-2xl md:text-5xl font-bold !leading-tight mb-5">
@@ -36,6 +36,11 @@ const Hero = () => {
                 </Link>
               </div>
             </div>
+            <img
+              src="/weight-loss/hero/1.1.webp"
+              alt="main3"
+              className="w-[18%] hidden lg:block  top-36 absolute right-0 left-[16.5rem]"
+            />
           </section>
         </div>
 
