@@ -28,7 +28,10 @@ const Hero = () => {
                     Free Weight Loss Management.
                   </span>
                 </h1>
-                <Link className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold">
+                <Link
+                  to={"/register"}
+                  className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold"
+                >
                   Start Your Transformation
                 </Link>
               </div>
@@ -52,7 +55,10 @@ const Hero = () => {
                   We Analyze. We Personalize.{" "}
                   <span className="font-medium md:block">You Just Follow.</span>
                 </h1>
-                <Link className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold">
+                <Link
+                  to={"/register"}
+                  className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold"
+                >
                   Start Your Transformation
                 </Link>
               </div>
@@ -78,7 +84,10 @@ const Hero = () => {
                     6 Months Is All It Takes.
                   </span>
                 </h1>
-                <Link className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold">
+                <Link
+                  to={"/register"}
+                  className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold"
+                >
                   Start Your Transformation
                 </Link>
               </div>
@@ -107,7 +116,10 @@ const Hero = () => {
                   We Help You Move Right{" "}
                   <span className="font-medium block">for Better Results</span>
                 </h1>
-                <Link className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold">
+                <Link
+                  to={"/register"}
+                  className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold"
+                >
                   Start Your Transformation
                 </Link>
               </div>

@@ -29,7 +29,10 @@ const Hero = () => {
                     Program At No Cost
                   </span>
                 </h1>
-                <Link className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold">
+                <Link
+                  className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold"
+                  to={"/register"}
+                >
                   Get Started Free
                 </Link>
               </div>
@@ -60,7 +63,10 @@ const Hero = () => {
                     Get Detailed Health Insights.
                   </span>
                 </h1>
-                <Link className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold">
+                <Link
+                  to={"/register"}
+                  className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold"
+                >
                   Get Started Free
                 </Link>
               </div>
@@ -101,7 +107,10 @@ const Hero = () => {
                     Personalized Plans
                   </span>
                 </h1>
-                <Link className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold">
+                <Link
+                  to={"/register"}
+                  className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold"
+                >
                   Get Started Free
                 </Link>
               </div>
@@ -142,7 +151,10 @@ const Hero = () => {
                     for Better Health Every Day
                   </span>
                 </h1>
-                <Link className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold">
+                <Link
+                  to={"/register"}
+                  className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold"
+                >
                   Get Started Free
                 </Link>
               </div>
