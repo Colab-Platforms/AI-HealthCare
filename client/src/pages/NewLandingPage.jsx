@@ -2,6 +2,7 @@ import { lazy, Suspense } from "react";
 import Hero from "../components/landing/landing-components/Hero";
 import NavbarOld from "../components/landing/landing-components/NavbarOld";
 import { useInViewport } from "../hooks/useInViewport";
+import SEO from "../hooks/useSEO";
 
 // ─── Lazy imports ──────────────────────────────────────────────────────────────
 const NewStats = lazy(
@@ -47,6 +48,7 @@ const LazySection = ({ children, minHeight = "200px", rootMargin = "300px 0px" }
 const NewLandingPage = () => {
   return (
     <section className="bg-landing-light-bg text-landing-text font-landing-body relative">
+      <SEO pageName="home" />
       {/* Above-the-fold: loaded eagerly, no gate needed */}
       <NavbarOld />
       <Hero />
