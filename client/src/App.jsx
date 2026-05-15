@@ -1,4 +1,5 @@
 import { useEffect, Suspense, lazy } from "react";
+import SmoothScrollLayout from "./components/SmoothScrollLayout";
 import {
   Routes,
   Route,
@@ -71,10 +72,10 @@ export default function App() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Lightweight Public Routes */}
-          <Route path="/" element={<NewLandingPage />} />
-          <Route path="/diabetes-landing" element={<DiabetesLanding />} />
-          <Route path="/weight-loss-landing" element={<WeightLossLanding />} />
-          <Route path="/old-landing" element={<LandingPage />} />
+          <Route path="/" element={<SmoothScrollLayout><NewLandingPage /></SmoothScrollLayout>} />
+          <Route path="/diabetes-landing" element={<SmoothScrollLayout><DiabetesLanding /></SmoothScrollLayout>} />
+          <Route path="/weight-loss-landing" element={<SmoothScrollLayout><WeightLossLanding /></SmoothScrollLayout>} />
+          <Route path="/old-landing" element={<SmoothScrollLayout><LandingPage /></SmoothScrollLayout>} />
           <Route path="/about" element={<AboutUs />} />
           <Route path="/login" element={getLoginRedirect()} />
           <Route path="/register" element={<Register />} />
