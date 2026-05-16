@@ -6,7 +6,7 @@ import {
   LayoutDashboard, MessageSquare, Utensils, FileText, MoreVertical,
   Settings, LogOut, Heart, Watch, X, Calendar, ScanLine,
   Activity, Bell, Plus, Scale, Droplets, Moon, Footprints,
-  Apple, Sparkles, Trophy, BarChart3, ArrowRight, ShieldCheck
+  Apple, Sparkles, Trophy, BarChart3, ArrowRight, ShieldCheck, Wind
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
@@ -330,6 +330,13 @@ export default function MobileBottomNav() {
                         <Footprints size={18} className="text-orange-500" />
                       </div>
                       <span style={{ color: '#1A2138', fontSize: '12.71px', fontFamily: 'Poppins', fontWeight: '700', lineHeight: '19.06px', wordWrap: 'break-word' }}>Steps</span>
+                    </button>
+
+                    <button onClick={() => closeDrawerAndNavigate('/smoke-tracker')} className="flex items-center gap-3.5 bg-white p-3.5 rounded-[22px] shadow-sm border border-white/80 hover:bg-slate-50 active:scale-95 transition-all group">
+                      <div className="bg-rose-50 w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                        <Wind size={18} className="text-rose-400" />
+                      </div>
+                      <span style={{ color: '#1A2138', fontSize: '12.71px', fontFamily: 'Poppins', fontWeight: '700', lineHeight: '19.06px', wordWrap: 'break-word' }}>Smoke</span>
                     </button>
                   </div>
                 </div>
