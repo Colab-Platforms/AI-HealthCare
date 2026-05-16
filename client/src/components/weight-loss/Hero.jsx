@@ -84,9 +84,9 @@ const Hero = () => {
             <div className="container mx-auto px-3 md:px-16 lg:px-32 relative z-10">
               <div className="text-white absolute bottom-8 md:bottom-20 left-5 md:left-20 z-10">
                 <h1 className="text-2xl md:text-5xl font-bold !leading-tight  mb-5 text-balance">
-                  Lose the Weight{" "}
+                  Stop Starting Over.
                   <span className="font-medium block">
-                    6 Months Is All It Takes.
+                    Start Transforming with Take health.
                   </span>
                 </h1>
                 <Link
