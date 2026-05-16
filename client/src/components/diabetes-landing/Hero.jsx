@@ -20,7 +20,10 @@ const Hero = () => {
             "
           >
             <div className="absolute inset-0 bg-black/30" />
-            <div className="container mx-auto px-3 md:px-16 lg:px-32 relative z-10">
+            <div
+              className="container mx-auto px-3 md
+            :px-16 lg:px-32 relative z-10"
+            >
               <div className="text-white absolute bottom-8 md:top-40 left-5 md:left-20 z-10">
                 <h1 className="text-2xl md:text-7xl font-bold !leading-tight md:mb-10 mb-5 text-balance">
                   India's 1st Diabetes{" "}

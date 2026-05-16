@@ -80,6 +80,8 @@ import { getFoodImage } from "../services/imageService";
 import api, { nutritionService } from "../services/api";
 import { ImageWithFallback } from "../components/ImageWithFallback";
 import SEO from "../hooks/useSEO";
+import SmokeTrackerCard from "../components/SmokeTrackerCard";
+import StepMiniCard from "../components/StepCounter";
 
 const DashedGauge = ({ value, max = 2400, mode = "Macro" }) => {
   const percentage = max > 0 ? Math.min((value / max) * 100, 100) : 0;
@@ -2877,6 +2879,16 @@ export default function DashboardEnhanced() {
                 tasks remaining
               </p>
             </div>
+          </motion.div>
+        </div>
+
+        {/* Lifestyle Tracker Cards Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-4 md:px-0 mt-4 mb-6">
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9 }}>
+            <StepMiniCard />
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.0 }}>
+            <SmokeTrackerCard />
           </motion.div>
         </div>
 
