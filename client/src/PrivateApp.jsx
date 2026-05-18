@@ -41,6 +41,7 @@ const AdminSupport = lazy(() => import("./pages/AdminSupport"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 
 const StepTracker = lazy(() => import("./pages/StepTracker"));
+const SmokeTracker = lazy(() => import("./pages/SmokeTracker"));
 const FoodSafety = lazy(() => import("./pages/FoodSafety"));
 const CompleteAnalysis = lazy(() => import("./pages/CompleteAnalysis"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
@@ -425,6 +426,24 @@ export default function PrivateApp() {
                   >
                     <Layout>
                       <StepTracker />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/smoke-tracker"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={[
+                      "user",
+                      "patient",
+                      "client",
+                      "admin",
+                      "doctor",
+                    ]}
+                  >
+                    <Layout>
+                      <SmokeTracker />
                     </Layout>
                   </ProtectedRoute>
                 }

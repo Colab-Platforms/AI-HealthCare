@@ -11,7 +11,8 @@ const NavbarOld = () => {
     { to: "/", label: "Home" },
     { to: "/about", label: "About Us" },
     { to: "/how-it-works", label: "How It Works" },
-    // { to: "#", label: "FAQ" },
+    { to: "/weight-loss", label: "Weight Loss" },
+    { to: "/diabetes", label: "Diabetes Management" },
   ];
 
   const brandTextClass = "text-landing-light-bg hover:text-white";

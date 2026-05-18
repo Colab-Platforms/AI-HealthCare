@@ -1,4 +1,5 @@
 import { useEffect, Suspense, lazy } from "react";
+import SmoothScrollLayout from "./components/SmoothScrollLayout";
 import {
   Routes,
   Route,
@@ -14,6 +15,7 @@ import LandingPage from "./pages/LandingPage";
 import NewLandingPage from "./pages/NewLandingPage";
 import HelpWidget from "./components/HelpWidget";
 import DiabetesLanding from "./pages/DiabetesLanding";
+import WeightLossLanding from "./pages/WeightLossLanding";
 
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const HowItWorks = lazy(() => import("./pages/HowItWorks"));
@@ -70,9 +72,38 @@ export default function App() {
       <Suspense fallback={<PageLoader />}>
         <Routes>
           {/* Lightweight Public Routes */}
-          <Route path="/" element={<NewLandingPage />} />
-          <Route path="/diabetes-landing" element={<DiabetesLanding />} />
-          <Route path="/old-landing" element={<LandingPage />} />
+          <Route
+            path="/"
+            element={
+              <SmoothScrollLayout>
+                <NewLandingPage />
+              </SmoothScrollLayout>
+            }
+          />
+          <Route
+            path="/diabetes"
+            element={
+              <SmoothScrollLayout>
+                <DiabetesLanding />
+              </SmoothScrollLayout>
+            }
+          />
+          <Route
+            path="/weight-loss"
+            element={
+              <SmoothScrollLayout>
+                <WeightLossLanding />
+              </SmoothScrollLayout>
+            }
+          />
+          <Route
+            path="/old-landing"
+            element={
+              <SmoothScrollLayout>
+                <LandingPage />
+              </SmoothScrollLayout>
+            }
+          />
           <Route path="/about" element={<AboutUs />} />
           <Route path="/login" element={getLoginRedirect()} />
           <Route path="/register" element={<Register />} />
@@ -113,7 +144,8 @@ export default function App() {
           "/demo",
         ];
         const isPublicPage = publicPaths.some(
-          (p) => location.pathname === p || location.pathname.startsWith(p + "/")
+          (p) =>
+            location.pathname === p || location.pathname.startsWith(p + "/"),
         );
         return user && !isPublicPage ? <HelpWidget /> : null;
       })()}

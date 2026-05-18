@@ -20,16 +20,21 @@ const Hero = () => {
             "
           >
             <div className="absolute inset-0 bg-black/30" />
-            <div className="container mx-auto px-3 md:px-16 lg:px-32 relative z-10">
+            <div
+              className="container mx-auto px-3 md
+            :px-16 lg:px-32 relative z-10"
+            >
               <div className="text-white absolute bottom-8 md:top-40 left-5 md:left-20 z-10">
                 <h1 className="text-2xl md:text-7xl font-bold !leading-tight md:mb-10 mb-5 text-balance">
                   India's 1st Diabetes{" "}
-                  <span className="font-medium">Reversal </span>
                   <span className="font-medium md:block">
-                    Program At No Cost
+                    Reversal Tool At No Cost
                   </span>
                 </h1>
-                <Link className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold">
+                <Link
+                  className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold"
+                  to={"/register"}
+                >
                   Get Started Free
                 </Link>
               </div>
@@ -60,7 +65,10 @@ const Hero = () => {
                     Get Detailed Health Insights.
                   </span>
                 </h1>
-                <Link className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold">
+                <Link
+                  to={"/register"}
+                  className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold"
+                >
                   Get Started Free
                 </Link>
               </div>
@@ -101,7 +109,10 @@ const Hero = () => {
                     Personalized Plans
                   </span>
                 </h1>
-                <Link className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold">
+                <Link
+                  to={"/register"}
+                  className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold"
+                >
                   Get Started Free
                 </Link>
               </div>
@@ -142,7 +153,10 @@ const Hero = () => {
                     for Better Health Every Day
                   </span>
                 </h1>
-                <Link className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold">
+                <Link
+                  to={"/register"}
+                  className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold"
+                >
                   Get Started Free
                 </Link>
               </div>
