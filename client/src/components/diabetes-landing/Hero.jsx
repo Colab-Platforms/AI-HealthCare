@@ -27,7 +27,9 @@ const Hero = () => {
               <div className="text-white absolute bottom-8 md:top-40 left-5 md:left-20 z-10">
                 <h1 className="text-2xl md:text-7xl font-bold !leading-tight md:mb-10 mb-5 text-balance">
                   India's 1st Diabetes{" "}
-                  <span className="font-medium md:block">Reversal Tool</span>
+                  <span className="font-medium md:block">
+                    Reversal Tool At No Cost
+                  </span>
                 </h1>
                 <Link
                   className="bg-white rounded-full text-landing-text md:px-10 md:py-4 px-5 py-2 inline-block font-semibold"
