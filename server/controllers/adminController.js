@@ -219,9 +219,13 @@ exports.deleteUser = async (req, res) => {
 // Report Oversight
 exports.getAllReports = async (req, res) => {
   try {
-    const { status, page = 1, limit = 20 } = req.query;
+    const { status, page = 1, limit = 20, userId } = req.query;
     const filter = {};
     if (status) filter.status = status;
+    if (userId) {
+      // userId is already the user ID from frontend
+      filter.user = userId;
+    }
 
     const reports = await HealthReport.find(filter)
       .populate('user', 'name email')
@@ -234,6 +238,45 @@ exports.getAllReports = async (req, res) => {
     res.json({ reports, total, page: parseInt(page), pages: Math.ceil(total / limit) });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// Get unique users who have reports (for autocomplete)
+exports.getUniqueReportUsers = async (req, res) => {
+  try {
+    // Get all unique users who have reports
+    const users = await HealthReport.aggregate([
+      {
+        $group: {
+          _id: '$user'
+        }
+      },
+      {
+        $lookup: {
+          from: 'users',
+          localField: '_id',
+          foreignField: '_id',
+          as: 'userData'
+        }
+      },
+      {
+        $unwind: '$userData'
+      },
+      {
+        $project: {
+          _id: '$userData._id',
+          name: '$userData.name',
+          email: '$userData.email'
+        }
+      },
+      {
+        $sort: { name: 1 }
+      }
+    ]);
+
+    res.json({ success: true, users });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 

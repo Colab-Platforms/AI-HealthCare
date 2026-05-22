@@ -3,7 +3,7 @@ const router = express.Router();
 const { protect, authorize } = require('../middleware/auth');
 const {
   getAllUsers, getUserDetails, updateUserStatus, updateUserRole, impersonateUser,
-  getAllReports, getReportStats,
+  getAllReports, getReportStats, getUniqueReportUsers,
   getDeficiencyRules, createDeficiencyRule, updateDeficiencyRule, deleteDeficiencyRule,
   getSupplementMappings, createSupplementMapping, updateSupplementMapping, deleteSupplementMapping,
   getDietPlanTemplates, createDietPlanTemplate, updateDietPlanTemplate, approveDietPlanTemplate, deleteDietPlanTemplate,
@@ -40,6 +40,7 @@ router.delete('/users/:id', deleteUser);
 
 // Report Oversight
 router.get('/reports', getAllReports);
+router.get('/reports/users/unique', getUniqueReportUsers);
 
 // Deficiency Rules
 router.get('/deficiency-rules', getDeficiencyRules);

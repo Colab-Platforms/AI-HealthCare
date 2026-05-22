@@ -1089,7 +1089,7 @@ export default function Profile() {
                       </div>
                     ))}
                     <button
-                      onClick={() => navigate("/all-reports")}
+                      onClick={() => navigate("/medical-vault")}
                       className="w-full py-2 text-[9px] font-black text-[#69A38D] uppercase tracking-widest text-center"
                     >
                       Open Vault →

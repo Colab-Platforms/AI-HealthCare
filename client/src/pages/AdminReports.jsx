@@ -10,6 +10,7 @@ import {
   CheckCircle,
   Clock,
   Download,
+  X,
 } from "lucide-react";
 import api from "../services/api";
 import toast from "react-hot-toast";
@@ -22,13 +23,30 @@ export default function AdminReports() {
   const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState("");
+  const [userFilterText, setUserFilterText] = useState(""); // Display text
+  const [userFilterId, setUserFilterId] = useState(""); // User ID for API
   const [selectedReport, setSelectedReport] = useState(null);
+  const [userSuggestions, setUserSuggestions] = useState([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [allUsers, setAllUsers] = useState([]);
+
+  // Fetch all unique users for autocomplete
+  const fetchUniqueUsers = async () => {
+    try {
+      const { data } = await api.get("admin/reports/users/unique");
+      const uniqueUsers = data.users || [];
+      setAllUsers(uniqueUsers);
+    } catch (err) {
+      console.error("Failed to load users:", err);
+    }
+  };
 
   const fetchReports = async () => {
     setLoading(true);
     try {
       const params = new URLSearchParams({ page, limit: 15 });
       if (statusFilter) params.append("status", statusFilter);
+      if (userFilterId) params.append("userId", userFilterId); // Use ID for API
       const { data } = await api.get(`admin/reports?${params}`);
       setReports(data.reports || []);
       setTotal(data.total || 0);
@@ -40,9 +58,50 @@ export default function AdminReports() {
     }
   };
 
+  // Handle user search input
+  const handleUserSearch = (value) => {
+    setUserFilterText(value);
+    setPage(1);
+    
+    if (value.trim() === "") {
+      setUserSuggestions([]);
+      setShowSuggestions(false);
+      setUserFilterId(""); // Clear ID filter
+      return;
+    }
+
+    // Filter unique users based on input (search by name or email)
+    const filtered = allUsers.filter(user =>
+      user.name.toLowerCase().includes(value.toLowerCase()) ||
+      user.email.toLowerCase().includes(value.toLowerCase())
+    );
+
+    setUserSuggestions(filtered);
+    setShowSuggestions(true);
+  };
+
+  // Handle user selection from suggestions
+  const handleSelectUser = (user) => {
+    setUserFilterId(user._id); // Store user ID for filtering
+    setShowSuggestions(false);
+  };
+
+  // Clear user filter
+  const clearUserFilter = () => {
+    setUserFilterText("");
+    setUserFilterId("");
+    setUserSuggestions([]);
+    setShowSuggestions(false);
+    setPage(1);
+  };
+
+  useEffect(() => {
+    fetchUniqueUsers();
+  }, []);
+
   useEffect(() => {
     fetchReports();
-  }, [page, statusFilter]);
+  }, [page, statusFilter, userFilterId]);
 
   const getStatusBadge = (status) => {
     const map = {
@@ -86,21 +145,89 @@ export default function AdminReports() {
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white/80 backdrop-blur-xl rounded-2xl p-4 border border-white/50 shadow-sm flex gap-3"
+          className="bg-white/80 backdrop-blur-xl rounded-2xl p-4 border border-white/50 shadow-sm flex flex-col md:flex-row gap-6 justify-between items-center relative z-40"
         >
+          {/* Status Filter */}
           <select
             value={statusFilter}
             onChange={(e) => {
               setStatusFilter(e.target.value);
               setPage(1);
             }}
-            className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none"
+            className="px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none w-full md:w-48"
           >
             <option value="">All Status</option>
             <option value="completed">Completed</option>
             <option value="failed">Failed</option>
             <option value="processing">Processing</option>
           </select>
+
+          {/* User Autocomplete Filter */}
+          <div className="relative w-full md:w-64">
+            <div className="flex items-center gap-2">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Search user by name or email..."
+                  value={userFilterText}
+                  onChange={(e) => handleUserSearch(e.target.value)}
+                  onFocus={() => userFilterText && setShowSuggestions(true)}
+                  className="w-full pl-10 pr-10 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                />
+                {userFilterText && (
+                  <button
+                    onClick={clearUserFilter}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-slate-200 rounded-lg transition-colors"
+                  >
+                    <X className="w-4 h-4 text-slate-400" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* Autocomplete Suggestions */}
+            {showSuggestions && userSuggestions.length > 0 && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-lg z-[9999] max-h-64 overflow-y-auto"
+              >
+                {userSuggestions.map((user) => (
+                  <button
+                    key={user._id}
+                    onClick={() => {
+                      setUserFilterText(user.name); // Display name in input
+                      handleSelectUser(user); // Pass user object to handler
+                    }}
+                    className="w-full px-4 py-3 text-left hover:bg-slate-50 border-b border-slate-100 last:border-b-0 transition-colors flex items-center gap-3"
+                  >
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white text-xs font-bold">
+                      {user.name?.[0]?.toUpperCase() || "?"}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-slate-900 truncate">
+                        {user.name}
+                      </p>
+                      <p className="text-xs text-slate-500 truncate">
+                        {user.email}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </motion.div>
+            )}
+
+            {showSuggestions && userSuggestions.length === 0 && userFilterText && (
+              <motion.div
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="absolute top-full left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-lg z-[9999] p-4 text-center"
+              >
+                <p className="text-sm text-slate-500">No users found</p>
+              </motion.div>
+            )}
+          </div>
         </motion.div>
 
         {/* Reports Table */}
