@@ -20,7 +20,9 @@ const {
   getDailyProgress,
   getVitalsInsights,
   processReportBG,
-  getHealthDNA
+  getHealthDNA,
+  saveSmokeLog,
+  getSmokeLog
 } = require('../controllers/healthController');
 const { protect } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -41,6 +43,11 @@ router.post('/ai-chat', protect, aiChat);
 router.post('/metric-info', protect, getMetricInfo);
 router.post('/challenge', protect, saveChallengeData);
 router.get('/challenge', protect, getChallengeData);
+
+// Smoke Logging Sync Routes
+router.post('/smoke-log', protect, saveSmokeLog);
+router.get('/smoke-log', protect, getSmokeLog);
+
 
 // Daily Progress Synchronization Routes
 router.post('/daily-progress', protect, syncDailyProgress);

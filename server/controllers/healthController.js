@@ -526,13 +526,16 @@ exports.deleteReport = async (req, res) => {
 
 exports.aiChat = async (req, res) => {
   try {
-    const { query, conversationHistory } = req.body;
-    if (!query) return res.status(400).json({ message: 'Query is required' });
+    const { query, conversationHistory, message, chatHistory } = req.body;
+    const finalQuery = query || message;
+    if (!finalQuery) return res.status(400).json({ message: 'Query or message is required' });
+    const finalHistory = conversationHistory || chatHistory || [];
+    
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
     const latestReport = await HealthReport.findOne({ user: req.user._id, status: 'completed' }).sort({ createdAt: -1 });
     let systemPrompt = `Helpful medical AI. User: ${req.user.name}. Context: ${latestReport?.aiAnalysis?.summary || 'None'}`;
-    const userMessages = (conversationHistory || []).slice(-5).map(m => ({ role: m.role, content: m.content }));
-    userMessages.push({ role: 'user', content: query });
+    const userMessages = finalHistory.slice(-5).map(m => ({ role: m.role, content: m.content }));
+    userMessages.push({ role: 'user', content: finalQuery });
     const { CLAUDE_MODEL } = require('../services/aiService');
     const response = await axios.post('https://api.anthropic.com/v1/messages', { 
       model: CLAUDE_MODEL, 
@@ -552,6 +555,7 @@ exports.aiChat = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
 
 exports.saveChallengeData = async (req, res) => {
   try {
@@ -670,3 +674,28 @@ exports.getVitalsInsights = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+exports.saveSmokeLog = async (req, res) => {
+  try {
+    const { smokeLog } = req.body;
+    const user = await User.findById(req.user._id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    user.smokeLog = smokeLog;
+    user.markModified('smokeLog');
+    await user.save();
+    res.json({ success: true, smokeLog: user.smokeLog });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getSmokeLog = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('smokeLog');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json({ success: true, smokeLog: user.smokeLog || {} });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
