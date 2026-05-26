@@ -675,15 +675,55 @@ exports.getVitalsInsights = async (req, res) => {
   }
 };
 
+const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+const toPlainSmokeLog = (raw) => {
+  if (!raw) return {};
+  if (raw instanceof Map) return Object.fromEntries(raw);
+  if (typeof raw.toObject === 'function') return raw.toObject();
+  return typeof raw === 'object' ? { ...raw } : {};
+};
+
+const sanitizeSmokeLog = (raw) => {
+  const input = toPlainSmokeLog(raw);
+  const out = {};
+
+  for (const [key, val] of Object.entries(input)) {
+    if (!DATE_KEY_RE.test(key) || !val || typeof val !== 'object') continue;
+
+    const sessions = Array.isArray(val.sessions)
+      ? val.sessions.slice(0, 200).map((s) => ({
+          time: String(s?.time || new Date().toISOString()),
+          count: Math.max(1, Number(s?.count) || 1),
+          trigger: s?.trigger ? String(s.trigger) : null,
+          id: s?.id ? String(s.id) : String(s?.time || Date.now())
+        }))
+      : [];
+
+    const countFromSessions = sessions.reduce((sum, s) => sum + (s.count || 1), 0);
+    const count = Math.max(0, Number(val.count) || countFromSessions);
+
+    out[key] = {
+      count,
+      resistedCount: Math.max(0, Number(val.resistedCount) || 0),
+      sessions
+    };
+  }
+
+  return out;
+};
+
 exports.saveSmokeLog = async (req, res) => {
   try {
-    const { smokeLog } = req.body;
-    const user = await User.findById(req.user._id);
+    const smokeLog = sanitizeSmokeLog(req.body?.smokeLog);
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: { smokeLog } },
+      { new: true, runValidators: false }
+    ).select('smokeLog');
+
     if (!user) return res.status(404).json({ message: 'User not found' });
-    user.smokeLog = smokeLog;
-    user.markModified('smokeLog');
-    await user.save();
-    res.json({ success: true, smokeLog: user.smokeLog });
+    res.json({ success: true, smokeLog: toPlainSmokeLog(user.smokeLog) });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -693,7 +733,7 @@ exports.getSmokeLog = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('smokeLog');
     if (!user) return res.status(404).json({ message: 'User not found' });
-    res.json({ success: true, smokeLog: user.smokeLog || {} });
+    res.json({ success: true, smokeLog: sanitizeSmokeLog(user.smokeLog) });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
