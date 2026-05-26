@@ -14,8 +14,9 @@ import { useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import api from "../services/api";
 import SEO from "../hooks/useSEO";
+import useSmokeLog from "../hooks/useSmokeLog";
+import { getTodayKey, getLast7Days } from "../utils/smokeLog";
 
-const LOG_KEY = "takehealth_smoke_log";
 const AI_INSIGHT_KEY = "takehealth_smoke_ai_insight";
 
 const loadAiInsight = () => {
@@ -24,24 +25,6 @@ const loadAiInsight = () => {
 
 const saveAiInsight = (val) => {
   localStorage.setItem(AI_INSIGHT_KEY, val);
-};
-
-const getTodayKey = () => {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-};
-
-const loadLog = () => {
-  try {
-    return JSON.parse(localStorage.getItem(LOG_KEY) || "{}");
-  } catch {
-    return {};
-  }
-};
-
-const saveLog = (l) => {
-  localStorage.setItem(LOG_KEY, JSON.stringify(l));
-  window.dispatchEvent(new Event("storage"));
 };
 
 const TRIGGERS = [
@@ -106,7 +89,7 @@ const ChartTooltip = ({ active, payload }) =>
 
 export default function SmokeTracker() {
   const navigate = useNavigate();
-  const [log, setLog] = useState(loadLog);
+  const { log, persistLog, loading: logLoading } = useSmokeLog();
   
   // Interactive UI States
   const [showTriggerRow, setShowTriggerRow] = useState(false);
@@ -128,45 +111,7 @@ export default function SmokeTracker() {
   const todayCount = todayEntry.count;
   const todayResisted = todayEntry.resistedCount || 0;
 
-  // 1. Sync & Hydration with Database
-  useEffect(() => {
-    const fetchLogs = async () => {
-      try {
-        const response = await api.get("health/smoke-log");
-        if (response.data && response.data.smokeLog) {
-          setLog(response.data.smokeLog);
-          saveLog(response.data.smokeLog);
-        }
-      } catch (err) {
-        console.error("Failed to load smoke logs from DB:", err);
-      }
-    };
-    fetchLogs();
-  }, []);
-
-  const syncWithServer = async (updatedLog) => {
-    try {
-      await api.post("health/smoke-log", { smokeLog: updatedLog });
-    } catch (err) {
-      console.error("Failed to sync smoke logs to DB:", err);
-    }
-  };
-
-  // Compute 7-day logs
-  const days7 = useMemo(() => {
-    return Array.from({ length: 7 }, (_, i) => {
-      const d = new Date();
-      d.setDate(d.getDate() - (6 - i));
-      const k = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-      return {
-        k,
-        label: d.toLocaleDateString("en-US", { weekday: "short" }),
-        count: log[k]?.count || 0,
-        resistedCount: log[k]?.resistedCount || 0,
-        isToday: i === 6
-      };
-    });
-  }, [log]);
+  const days7 = useMemo(() => getLast7Days(log), [log]);
 
   const past6 = useMemo(() => days7.slice(0, 6).filter((d) => d.count > 0), [days7]);
   const avg = useMemo(() => {
@@ -242,7 +187,7 @@ export default function SmokeTracker() {
   const logOne = useCallback(() => {
     const now = new Date().toISOString();
     const sessionId = now;
-    setLog((prev) => {
+    persistLog((prev) => {
       const u = { ...prev };
       const t = u[today] || { count: 0, sessions: [], resistedCount: 0 };
       u[today] = {
@@ -250,8 +195,6 @@ export default function SmokeTracker() {
         resistedCount: t.resistedCount || 0,
         sessions: [...t.sessions, { time: now, count: 1, trigger: null, id: sessionId }]
       };
-      saveLog(u);
-      syncWithServer(u);
       return u;
     });
     setLastSessionId(sessionId);
@@ -261,11 +204,11 @@ export default function SmokeTracker() {
 
     const msg = AWARENESS_MESSAGES[Math.floor(Math.random() * AWARENESS_MESSAGES.length)];
     toast(msg, { icon: "○", style: { fontSize: "12px", fontWeight: "600" } });
-  }, [today]);
+  }, [today, persistLog]);
 
   // Undo the last logged cigarette
   const undo = useCallback(() => {
-    setLog((prev) => {
+    persistLog((prev) => {
       const u = { ...prev };
       const t = u[today];
       if (!t || t.count === 0) return prev;
@@ -276,17 +219,15 @@ export default function SmokeTracker() {
         resistedCount: t.resistedCount || 0,
         sessions
       };
-      saveLog(u);
-      syncWithServer(u);
       return u;
     });
     setShowTriggerRow(false);
     toast("Removed last cigarette log", { icon: "↩" });
-  }, [today]);
+  }, [today, persistLog]);
 
   // Tag a trigger to the last logged cigarette
   const tagTrigger = useCallback((triggerId) => {
-    setLog((prev) => {
+    persistLog((prev) => {
       const u = { ...prev };
       const t = u[today];
       if (!t) return prev;
@@ -294,26 +235,22 @@ export default function SmokeTracker() {
         s.id === lastSessionId ? { ...s, trigger: triggerId } : s
       );
       u[today] = { ...t, sessions };
-      saveLog(u);
-      syncWithServer(u);
       return u;
     });
     setShowTriggerRow(false);
     const label = TRIGGERS.find((t) => t.id === triggerId)?.label || "";
     toast(`Tagged as: ${label}`, { icon: "✓" });
-  }, [today, lastSessionId]);
+  }, [today, lastSessionId, persistLog]);
 
   // Log a successfully resisted craving victory
   const logVictory = useCallback(() => {
-    setLog((prev) => {
+    persistLog((prev) => {
       const u = { ...prev };
       const t = u[today] || { count: 0, sessions: [], resistedCount: 0 };
       u[today] = {
         ...t,
         resistedCount: (t.resistedCount || 0) + 1
       };
-      saveLog(u);
-      syncWithServer(u);
       return u;
     });
     toast.success("Urge Surfed successfully! 🏆", {
@@ -323,7 +260,7 @@ export default function SmokeTracker() {
         fontWeight: 'bold'
       }
     });
-  }, [today]);
+  }, [today, persistLog]);
 
   // Handle trigger reason selection & route instantly to message or game
   const handleSelectReason = (triggerId) => {
@@ -504,20 +441,20 @@ export default function SmokeTracker() {
         <div className="bg-white border border-slate-100 rounded-[2rem] p-5 shadow-sm">
           <div className="flex justify-between items-center mb-4">
             <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider">7-Day Logging History</h3>
-            {avg && <span className="text-[10px] font-bold text-slate-400">Average: {avg}/day</span>}
+            {avg != null && <span className="text-[10px] font-bold text-slate-400">Average: {avg}/day</span>}
           </div>
-          <div className="h-40 w-full">
+          <div className={`h-40 w-full transition-opacity ${logLoading ? "opacity-40" : ""}`}>
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={days7} margin={{ top: 10, right: 5, left: -30, bottom: 0 }}>
                 <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 10, fontWeight: "bold" }} dy={8} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: "#94a3b8", fontSize: 9 }} width={28} />
                 <Tooltip content={<ChartTooltip />} cursor={{ fill: "rgba(0,0,0,0.02)", radius: 8 }} />
-                {avg && <ReferenceLine y={avg} stroke="#94a3b8" strokeDasharray="3 3" strokeWidth={1} />}
+                {avg != null && <ReferenceLine y={avg} stroke="#94a3b8" strokeDasharray="3 3" strokeWidth={1} />}
                 <Bar dataKey="count" radius={[6, 6, 6, 6]} maxBarSize={22}>
                   {days7.map((d, i) => (
                     <Cell key={i} fill={
                       d.count === 0 ? "#f1f5f9"
-                        : d.isToday ? (avg && d.count < avg ? "#10b981" : "#f43f5e")
+                        : d.isToday ? (avg != null && d.count < avg ? "#10b981" : "#f43f5e")
                           : "#94a3b8"
                     } />
                   ))}
