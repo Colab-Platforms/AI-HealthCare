@@ -91,7 +91,9 @@ const PERSONAL_MOTIVATIONS = {
 const WEB_GAMES = [
   { id: "2048", name: "2048 Puzzle", url: "https://gabrielecirulli.github.io/2048/", description: "Slide tiles to merge matching numbers and reach the 2048 block!" },
   { id: "trex", name: "T-Rex Runner", url: "https://wayou.github.io/t-rex-runner/", description: "Jump obstacles as the running dinosaur!" },
-  { id: "hextris", name: "Hextris Spinner", url: "https://hextris.github.io/hextris/", description: "Spin the hexagon to match colored blocks!" }
+  { id: "hextris", name: "Hextris Spinner", url: "https://hextris.github.io/hextris/", description: "Spin the hexagon to match colored blocks!" },
+  { id: "tetris", name: "Tetris Blocks", url: "https://chvin.github.io/react-tetris/", description: "Rotate and stack falling blocks to clear lines!" },
+  { id: "flappy", name: "Flappy Bird", url: "https://flappybird.io/", description: "Tap to fly through pipes and chase a new high score!" },
 ];
 
 const ChartTooltip = ({ active, payload }) =>
