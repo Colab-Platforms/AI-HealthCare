@@ -283,6 +283,7 @@ export default function CompleteAnalysis() {
         steps: Math.round(day.steps || 0),
         sleep: parseFloat(Number(day.sleep || 0).toFixed(1)),
         water: Math.round(day.water || 0),
+        alcohol: Math.round(day.alcohol || 0),
         calories: Math.round(day.calories || 0),
         weight: day.weight ? parseFloat(Number(day.weight).toFixed(1)) : 0,
         dayLabel: days[d.getDay()],

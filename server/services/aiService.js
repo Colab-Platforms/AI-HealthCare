@@ -75,6 +75,8 @@ const makeAnthropicRequest = async (messages, maxTokens = 4096, modelOverride = 
   }
 };
 
+exports.makeAnthropicRequest = makeAnthropicRequest;
+
 const HEALTH_ANALYSIS_PROMPT = `Analyze this health report as an expert medical AI. You MUST extract EVERY SINGLE health marker, lab result, and medical observation found in the report text without exception.
 STRUCTURE:
 {

@@ -2,11 +2,12 @@ const express = require('express');
 const router = express.Router();
 const axios = require('axios');
 const { protect } = require('../middleware/auth');
+const User = require('../models/User');
 const HealthMetric = require('../models/HealthMetric');
 const FoodLog = require('../models/FoodLog');
-const DailyProgress = require('../models/DailyProgress');
 const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
 const cache = require('../utils/cache');
+const { buildAlcoholContextForAI, buildSmokeContextForAI } = require('../utils/alcoholLog');
 
 // AI Chat endpoint - Requires authentication for personalized context
 router.post('/chat', protect, async (req, res) => {
@@ -38,7 +39,7 @@ User Context:
 - Chronic Conditions: ${profile.chronicConditions?.length > 0 ? profile.chronicConditions.join(', ') : 'None reported'}
 - Diabetic: ${(profile.isDiabetic === 'yes' || (medical.conditions && medical.conditions.some(c => c.toLowerCase().includes('diabet')))) ? 'Yes' : 'No'}
 - Current Medications: ${medical.currentMedications?.length > 0 ? medical.currentMedications.join(', ') : 'None reported'}
-- Lifestyle: Smoker: ${lifestyle.smoker ? 'Yes' : 'No'}, Stress: ${lifestyle.stressLevel || 'N/A'}, Sleep: ${lifestyle.sleepHours || 'N/A'} hours
+- Lifestyle: Smoker: ${lifestyle.smoker ? 'Yes' : 'No'} (${lifestyle.smokingFrequency || 'N/A'}), Alcohol: ${lifestyle.alcohol ? 'Yes' : 'No'} (${lifestyle.alcoholFrequency || 'N/A'}), Stress: ${lifestyle.stressLevel || 'N/A'}, Sleep: ${lifestyle.sleepHours || 'N/A'} hours
 - Fitness Goals: ${goals.goal || 'General health improvement'} (Target: ${goals.targetWeight || 'N/A'} kg)
 
 Your role is to:
@@ -79,8 +80,17 @@ IMPORTANT FORMATTING RULES - Follow these strictly:
     let recentDietContext = '';
     let activityContext = '';
     let dietPlanContext = '';
+    let behaviorContext = '';
+
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
 
     try {
+      const userLogs = await User.findById(user._id).select('alcoholLog smokeLog profile.lifestyle');
+      if (userLogs) {
+        behaviorContext = `\n[Behavior Trackers]\n- ${buildAlcoholContextForAI(userLogs.alcoholLog, userLogs.profile?.lifestyle || lifestyle)}\n- ${buildSmokeContextForAI(userLogs.smokeLog)}`;
+      }
+
       // 1. Fetch All Recent Vitals (Weight, Sugar, BP, etc)
       const recentMetrics = await HealthMetric.find({ userId: user._id })
         .sort({ recordedAt: -1 })
@@ -139,8 +149,9 @@ ${recentVitalsContext}
 ${activityContext}
 ${dietPlanContext}
 ${recentDietContext}
+${behaviorContext}
 
-Crucial Instruction: Directly utilize the real-time activity, nutrition page, and diet plan values provided above when giving advice, comparing their current progress against their goals.`;
+Crucial Instruction: Directly utilize the real-time activity, nutrition page, diet plan, and behavior tracker values provided above when giving advice. For alcohol, reference only the user's logged patterns — no medical advice, diagnoses, or treatment claims. Use reflective, non-judgmental language.`;
 
     if (isDiabetic) {
       systemPrompt += `\n\nSPECIAL ABILITY: SMART GLYCEMIC RESPONSE PREDICTOR + MEAL COACH

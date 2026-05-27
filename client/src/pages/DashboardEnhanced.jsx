@@ -81,6 +81,8 @@ import api, { nutritionService } from "../services/api";
 import { ImageWithFallback } from "../components/ImageWithFallback";
 import SEO from "../hooks/useSEO";
 import SmokeTrackerCard from "../components/SmokeTrackerCard";
+import AlcoholTrackerCard from "../components/AlcoholTrackerCard";
+import { features } from "../config/features";
 import StepMiniCard from "../components/StepCounter";
 
 const DashedGauge = ({ value, max = 2400, mode = "Macro" }) => {
@@ -2890,6 +2892,11 @@ export default function DashboardEnhanced() {
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.0 }}>
             <SmokeTrackerCard />
           </motion.div>
+          {features.alcoholTracker && (
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.05 }}>
+              <AlcoholTrackerCard />
+            </motion.div>
+          )}
         </div>
 
         {/* Vitals Log Modal - Unified Bottom Sheet for Weight, Steps, Sleep, Water */}

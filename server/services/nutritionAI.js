@@ -165,12 +165,16 @@ class NutritionAI {
     return this._parseResponse(await this.makeAIRequest(payload));
   }
 
-  async analyzeGlucoseTrends(userProfile, glucoseReadings, foodLogs, hba1cReadings = []) {
+  async analyzeGlucoseTrends(userProfile, glucoseReadings, foodLogs, hba1cReadings = [], alcoholSummary = null) {
+    const alcoholNote = alcoholSummary
+      ? `Alcohol tracker (last 7d): today ${alcoholSummary.today} drinks, avg ${alcoholSummary.avg7 ?? 'n/a'}, binge pattern: ${alcoholSummary.bingePattern ? 'yes' : 'no'}. Factor alcohol into hypoglycemia and variability risk.`
+      : '';
     const prompt = `Analyze current glucose trends and food impact. 
     User Profile: ${JSON.stringify(userProfile)}
     Recent Glucose Readings: ${JSON.stringify(glucoseReadings)}
     Today's Food Logs: ${JSON.stringify(foodLogs)}
     Recent HbA1c: ${JSON.stringify(hba1cReadings)}
+    ${alcoholNote}
 
     Return ONLY a JSON object with this exact structure:
     {

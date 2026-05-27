@@ -884,6 +884,35 @@ paths:
       responses:
         '200': { description: Saved }
 
+  /health/alcohol-log:
+    get:
+      tags: [Dashboard]
+      summary: Get alcohol moderation tracker log
+      responses:
+        '200':
+          description: Alcohol log
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:    { type: boolean }
+                  alcoholLog: { type: object, additionalProperties: true }
+    post:
+      tags: [Dashboard]
+      summary: Save alcohol moderation tracker log
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [alcoholLog]
+              properties:
+                alcoholLog: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Saved }
+
   # =========================================================================
   # HEALTH METRICS
   # =========================================================================

@@ -6,8 +6,9 @@ import {
   LayoutDashboard, MessageSquare, Utensils, FileText, MoreVertical,
   Settings, LogOut, Heart, Watch, X, Calendar, ScanLine,
   Activity, Bell, Plus, Scale, Droplets, Moon, Footprints,
-  Apple, Sparkles, Trophy, BarChart3, ArrowRight, ShieldCheck, Wind
+  Apple, Sparkles, Trophy, BarChart3, ArrowRight, ShieldCheck, Wind, Wine
 } from 'lucide-react';
+import { features } from '../config/features';
 import { motion, AnimatePresence } from 'framer-motion';
 import toast from 'react-hot-toast';
 
@@ -338,6 +339,15 @@ export default function MobileBottomNav() {
                       </div>
                       <span style={{ color: '#1A2138', fontSize: '12.71px', fontFamily: 'Poppins', fontWeight: '700', lineHeight: '19.06px', wordWrap: 'break-word' }}>Smoke</span>
                     </button>
+
+                    {features.alcoholTracker && (
+                      <button onClick={() => closeDrawerAndNavigate('/alcohol-tracker')} className="flex items-center gap-3.5 bg-white p-3.5 rounded-[22px] shadow-sm border border-white/80 hover:bg-slate-50 active:scale-95 transition-all group">
+                        <div className="bg-amber-50 w-9 h-9 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform">
+                          <Wine size={18} className="text-amber-600" />
+                        </div>
+                        <span style={{ color: '#1A2138', fontSize: '12.71px', fontFamily: 'Poppins', fontWeight: '700', lineHeight: '19.06px', wordWrap: 'break-word' }}>Alcohol</span>
+                      </button>
+                    )}
                   </div>
                 </div>
 

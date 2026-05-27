@@ -22,7 +22,9 @@ const {
   processReportBG,
   getHealthDNA,
   saveSmokeLog,
-  getSmokeLog
+  getSmokeLog,
+  saveAlcoholLog,
+  getAlcoholLog
 } = require('../controllers/healthController');
 const { protect } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -47,6 +49,10 @@ router.get('/challenge', protect, getChallengeData);
 // Smoke Logging Sync Routes
 router.post('/smoke-log', protect, saveSmokeLog);
 router.get('/smoke-log', protect, getSmokeLog);
+
+// Alcohol Logging Sync Routes
+router.post('/alcohol-log', protect, saveAlcoholLog);
+router.get('/alcohol-log', protect, getAlcoholLog);
 
 
 // Daily Progress Synchronization Routes
