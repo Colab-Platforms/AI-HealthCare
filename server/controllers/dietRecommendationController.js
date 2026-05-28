@@ -147,6 +147,10 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       }
     }
 
+    const { getAlcoholSummary, buildAlcoholContextForAI } = require('../utils/alcoholLog');
+    const alcoholSummary = getAlcoholSummary(user.alcoholLog || {});
+    const lifestyle = user.profile?.lifestyle || {};
+
     // Prepare user data for AI
     const userData = {
       age: user.profile?.age || 25,
@@ -182,7 +186,10 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
         carbs: nutritionGoals.carbsGoal,
         fats: nutritionGoals.fatGoal
       },
-      foodPreferences: user.foodPreferences || {} // Pass food preferences to AI
+      foodPreferences: user.foodPreferences || {}, // Pass food preferences to AI
+      lifestyle,
+      alcoholSummary,
+      alcoholContext: buildAlcoholContextForAI(user.alcoholLog, lifestyle)
     };
 
     // Generate AI-powered diet plan
@@ -309,7 +316,9 @@ async function processDietInternal(userId, dietPlanId, userData, promptEx) {
         fitnessGoals: userData.fitnessGoals,
         medicalConditions: userData.medicalConditions,
         allergies: userData.allergies,
-        hasReports: userData.hasReports
+        hasReports: userData.hasReports,
+        lifestyle: userData.lifestyle,
+        alcoholSummary: userData.alcoholSummary
       },
       nutritionGoals: {
         dailyCalorieTarget: userData.nutritionGoals.dailyCalories,
@@ -792,6 +801,10 @@ exports.generateDietAfterReport = async (userId) => {
         r.aiAnalysis.deficiencies.forEach(d => deficiencies.push({ nutrient: d.name || d, severity: d.severity || 'detected' }));
       }
     });
+    const { getAlcoholSummary, buildAlcoholContextForAI } = require('../utils/alcoholLog');
+    const alcoholSummary = getAlcoholSummary(user.alcoholLog || {});
+    const lifestyle = user.profile?.lifestyle || {};
+
     const userData = {
       age: user.profile?.age || 25,
       gender: user.profile?.gender || 'male',
@@ -811,7 +824,10 @@ exports.generateDietAfterReport = async (userId) => {
         carbs: nutritionGoals.carbsGoal,
         fats: nutritionGoals.fatGoal
       },
-      foodPreferences: user.foodPreferences || {}
+      foodPreferences: user.foodPreferences || {},
+      lifestyle,
+      alcoholSummary,
+      alcoholContext: buildAlcoholContextForAI(user.alcoholLog, lifestyle)
     };
 
     // Deactivate old plans

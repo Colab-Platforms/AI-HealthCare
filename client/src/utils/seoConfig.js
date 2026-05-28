@@ -164,6 +164,28 @@ export const seoConfig = {
       noindex: true,
     },
 
+    smokeTracker: {
+      title: "Smoke Log & Habit Awareness | take.health",
+      description:
+        "Log cigarettes, spot triggers, and track your smoking patterns over time with take.health.",
+      keywords:
+        "smoke tracker, smoking log, habit awareness, quit smoking support, trigger tracking",
+      path: "/smoke-tracker",
+      canonical: `${baseURL}/smoke-tracker`,
+      noindex: true,
+    },
+
+    alcoholTracker: {
+      title: "Drink Log & Pattern Awareness | take.health",
+      description:
+        "Log drinks, tag situations, and see your weekly drinking patterns from your own data.",
+      keywords:
+        "alcohol tracker, drink log, pattern awareness, mindful drinking, habit tracking",
+      path: "/alcohol-tracker",
+      canonical: `${baseURL}/alcohol-tracker`,
+      noindex: true,
+    },
+
     aiChat: {
       title: "AI Health Assistant | take.health",
       description:
