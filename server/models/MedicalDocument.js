@@ -13,7 +13,11 @@ const medicalDocumentSchema = new mongoose.Schema({
     fileUrl: { type: String, required: true }, // The secure Cloudinary URL
     originalName: { type: String },
     mimetype: { type: String },
-    size: { type: Number }
+    size: { type: Number },
+    hospital: { type: String, default: '' },
+    doctorName: { type: String, default: '' },
+    isFavorite: { type: Boolean, default: false },
+    tags: [{ type: String }]
 }, { timestamps: true });
 
 medicalDocumentSchema.index({ userId: 1, category: 1 });

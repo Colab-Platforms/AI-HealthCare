@@ -37,6 +37,8 @@ const uploadImage = async (imageData, folder = 'food_scans') => {
             use_filename: true,
             unique_filename: true,
             resource_type: 'auto',
+            type: 'upload',
+            access_mode: 'public',  // Explicitly set to public
         };
 
         // If imageData is a buffer, we need to use upload_stream
@@ -77,7 +79,62 @@ const uploadImage = async (imageData, folder = 'food_scans') => {
     }
 };
 
+/**
+ * Generate a private download URL for a Cloudinary file
+ * This URL can be used by the client to download directly from Cloudinary
+ * without going through the server (removes server as bottleneck)
+ * 
+ * @param {string} publicId - The Cloudinary public ID of the file
+ * @param {number} expirationHours - How long the URL is valid (default: 24 hours)
+ * @returns {string} - A signed URL that can be used for direct download
+ */
+const generatePrivateDownloadUrl = (publicId, expirationHours = 24) => {
+    try {
+        if (!publicId) {
+            console.warn('☁️ generatePrivateDownloadUrl called with no publicId');
+            return null;
+        }
+
+        // Calculate expiration timestamp (in seconds, as Cloudinary expects)
+        const expirationTime = Math.floor(Date.now() / 1000) + (expirationHours * 3600);
+
+        // Generate signed URL using Cloudinary's URL builder
+        const url = cloudinary.url(publicId, {
+            sign_url: true,
+            type: 'private',
+            resource_type: 'auto',
+            secure: true,
+            expires_at: expirationTime,
+            flags: 'attachment'  // Force download instead of preview
+        });
+
+        console.log('☁️ Generated private download URL for:', publicId);
+        return url;
+    } catch (error) {
+        console.error('☁️ Error generating private URL:', error.message);
+        return null;
+    }
+};
+
+/**
+ * Extract public ID from a Cloudinary URL
+ * @param {string} cloudinaryUrl - Full Cloudinary URL
+ * @returns {string} - Public ID (path without extension)
+ */
+const extractPublicId = (cloudinaryUrl) => {
+    try {
+        // URL format: https://res.cloudinary.com/{cloud_name}/image/upload/v{version}/{public_id}.{ext}
+        const match = cloudinaryUrl.match(/\/upload\/(?:v\d+\/)?(.+?)(?:\.\w+)?$/);
+        return match ? match[1] : null;
+    } catch (error) {
+        console.error('☁️ Error extracting public ID:', error.message);
+        return null;
+    }
+};
+
 module.exports = {
     uploadImage,
-    cloudinary
+    cloudinary,
+    generatePrivateDownloadUrl,
+    extractPublicId
 };
