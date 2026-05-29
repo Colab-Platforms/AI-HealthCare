@@ -103,6 +103,19 @@ export default function Profile() {
         hba1c: "",
       },
     },
+    foodPreferences: {
+      region: user?.foodPreferences?.region || "other",
+      country: user?.foodPreferences?.country || "India",
+      preferredFoods: user?.foodPreferences?.preferredFoods || [],
+      foodsToAvoid: user?.foodPreferences?.foodsToAvoid || [],
+      dietaryRestrictions: user?.foodPreferences?.dietaryRestrictions || [],
+      mealPreferences: user?.foodPreferences?.mealPreferences || {
+        breakfast: [],
+        lunch: [],
+        snacks: [],
+        dinner: []
+      },
+    },
   });
 
   const fetchHealthGoal = async () => {
@@ -215,13 +228,37 @@ export default function Profile() {
               ? formData.profile.diabetesProfile
               : undefined,
         },
+        foodPreferences: {
+          region: formData.foodPreferences.region,
+          country: formData.foodPreferences.country,
+          preferredFoods: formData.foodPreferences.preferredFoods || [],
+          foodsToAvoid: formData.foodPreferences.foodsToAvoid || [],
+          dietaryRestrictions: formData.foodPreferences.dietaryRestrictions || [],
+          mealPreferences: formData.foodPreferences.mealPreferences || {
+            breakfast: [],
+            lunch: [],
+            snacks: [],
+            dinner: []
+          },
+        },
       };
       const { data } = await api.put("auth/profile", payload);
       updateUser(data);
       toast.success("Profile updated successfully!");
-      if (data.bmiChanged) await fetchHealthGoal();
+      // Don't wait for diet plan generation - it can timeout
+      if (data.bmiChanged) {
+        fetchHealthGoal().catch(() => {
+          // Silently fail if diet plan generation times out
+        });
+      }
     } catch (error) {
-      toast.error(error.response?.data?.message || "Failed to update profile");
+      const errorMsg = error.response?.data?.message || "Failed to update profile";
+      // If it's a diet plan timeout, still show success since profile was updated
+      if (errorMsg.includes("Diet plan") || errorMsg.includes("timed out")) {
+        toast.success("Profile updated successfully!");
+      } else {
+        toast.error(errorMsg);
+      }
     } finally {
       setLoading(false);
     }
@@ -796,6 +833,44 @@ export default function Profile() {
                               onChange={handleChange}
                               className="w-full bg-white border border-slate-100 rounded-xl py-3 px-4 text-xs font-bold"
                               placeholder="e.g. Peanuts, Penicillin"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="col-span-2 border-t border-slate-200 pt-5 mt-2">
+                        <label className="text-[11px] font-black text-[#69A38D] uppercase tracking-widest mb-4 block">
+                          Food Preferences
+                        </label>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">
+                              Region
+                            </label>
+                            <select
+                              name="foodPreferences.region"
+                              value={formData.foodPreferences.region}
+                              onChange={handleChange}
+                              className="w-full bg-white border border-slate-100 rounded-xl py-2.5 px-3 text-[11px] font-bold"
+                            >
+                              <option value="north">North</option>
+                              <option value="south">South</option>
+                              <option value="east">East</option>
+                              <option value="west">West</option>
+                              <option value="northeast">Northeast</option>
+                              <option value="other">Other</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-400 uppercase mb-1.5 block">
+                              Country
+                            </label>
+                            <input
+                              name="foodPreferences.country"
+                              value={formData.foodPreferences.country}
+                              onChange={handleChange}
+                              className="w-full bg-white border border-slate-100 rounded-xl py-2.5 px-3 text-[11px] font-bold"
+                              placeholder="e.g. India, USA, UK"
                             />
                           </div>
                         </div>

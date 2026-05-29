@@ -251,10 +251,13 @@ export default function UploadReport() {
     try {
       setLoadingReports(true);
       const { data } = await healthService.getReports();
-      setAllReports(data || []);
+      
+      // Handle both old format (array) and new format (organized object)
+      const allReportsArray = Array.isArray(data) ? data : (data.all || []);
+      setAllReports(allReportsArray);
 
-      if (data && data.length > 0) {
-        const processing = data.find((r) => r.status === "processing");
+      if (allReportsArray && allReportsArray.length > 0) {
+        const processing = allReportsArray.find((r) => r.status === "processing");
         if (processing) {
           setIsProcessing(true);
           setProcessingReportId(processing._id);
@@ -264,10 +267,10 @@ export default function UploadReport() {
         }
       }
 
-      if (data && data.length >= 2) {
-        setSelectedReports([data[0]._id, data[1]._id]);
-      } else if (data && data.length === 1) {
-        setSelectedReports([data[0]._id]);
+      if (allReportsArray && allReportsArray.length >= 2) {
+        setSelectedReports([allReportsArray[0]._id, allReportsArray[1]._id]);
+      } else if (allReportsArray && allReportsArray.length === 1) {
+        setSelectedReports([allReportsArray[0]._id]);
       }
     } catch (error) {
       console.error("Failed to fetch reports", error);
