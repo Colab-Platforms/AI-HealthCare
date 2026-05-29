@@ -742,11 +742,11 @@ export default function MedicalVault() {
         </div>
 
         {/* Mid Options: Date Filter / Mobile drawer toggle */}
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+        <div className="flex flex-wrap items-center gap-2 md:gap-3 w-full md:w-auto">
           {/* Date Range Picker */}
-          <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-[18px] px-4 py-2.5 shadow-sm">
-            <Calendar className="w-4 h-4 text-[#5B8C6F]" />
-            <div className="flex items-center gap-1.5">
+          <div className="flex flex-col md:flex-row items-center gap-2 md:gap-1.5 bg-white border border-slate-200 rounded-[18px] px-3 md:px-4 py-2 md:py-2.5 shadow-sm w-full md:w-auto">
+            <Calendar className="w-4 h-4 text-[#5B8C6F] hidden md:block" />
+            <div className="flex items-center gap-1.5 w-full md:w-auto">
               <input
                 type="date"
                 value={customStartDate}
@@ -754,10 +754,11 @@ export default function MedicalVault() {
                   setCustomStartDate(e.target.value);
                   setFilterDateRange('custom');
                 }}
-                className="bg-transparent border-0 p-0 text-xs font-black uppercase tracking-wider text-slate-700 outline-none focus:ring-0 cursor-pointer w-28 text-center"
+                className="bg-transparent border-0 p-1 md:p-0 text-xs font-black uppercase tracking-wider text-slate-700 outline-none focus:ring-0 cursor-pointer flex-1 md:flex-none md:w-28 text-center"
                 placeholder="Start date"
               />
-              <span className="text-slate-300 text-xs">—</span>
+              <span className="text-slate-300 text-xs hidden md:inline">—</span>
+              <span className="text-slate-300 text-xs md:hidden">to</span>
               <input
                 type="date"
                 value={customEndDate}
@@ -765,7 +766,7 @@ export default function MedicalVault() {
                   setCustomEndDate(e.target.value);
                   setFilterDateRange('custom');
                 }}
-                className="bg-transparent border-0 p-0 text-xs font-black uppercase tracking-wider text-slate-700 outline-none focus:ring-0 cursor-pointer w-28 text-center"
+                className="bg-transparent border-0 p-1 md:p-0 text-xs font-black uppercase tracking-wider text-slate-700 outline-none focus:ring-0 cursor-pointer flex-1 md:flex-none md:w-28 text-center"
                 placeholder="End date"
               />
             </div>
@@ -777,7 +778,7 @@ export default function MedicalVault() {
                   setFilterDateRange('all');
                   toast.success('Date range cleared');
                 }}
-                className="p-1 hover:bg-slate-100 rounded-full text-slate-400 transition-colors"
+                className="p-1 hover:bg-slate-100 rounded-full text-slate-400 transition-colors ml-auto md:ml-0"
                 title="Clear date range"
               >
                 <X className="w-3 h-3" />

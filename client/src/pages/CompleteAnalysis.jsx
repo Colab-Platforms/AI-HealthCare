@@ -48,7 +48,7 @@ import toast from "react-hot-toast";
 import SEO from "../hooks/useSEO";
 
 const glassCard =
-  "bg-white/80 backdrop-blur-2xl border border-white/50 rounded-[32px] shadow-[0_8px_30px_rgb(0,0,0,0.04)]";
+  "bg-white border border-slate-100/80 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300";
 
 export default function CompleteAnalysis() {
   const navigate = useNavigate();
@@ -311,16 +311,19 @@ export default function CompleteAnalysis() {
     );
   }
 
+  const cardStyle =
+    "bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow transition-all duration-300";
+
   return (
-    <div className="min-h-screen bg-[#F9FCF3] pt-6 pb-24 px-4 md:px-8 max-w-[1400px] mx-auto space-y-8 font-sans">
+    <div className="min-h-screen bg-[#FAFBF8] pt-6 pb-24 px-4 md:px-8 max-w-[1400px] mx-auto space-y-6 font-sans">
       <SEO pageName="completeAnalysis" />
 
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 w-full">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full border-b border-slate-200/60 pb-5">
         <div>
-          <h1 className="text-3xl md:text-5xl font-black text-[#011B1D] tracking-tight mb-2">
+          <h1 className="text-2xl font-bold text-[#011B1D] tracking-tight">
             Daily Breakdown
           </h1>
-          <p className="text-emerald-800/40 font-bold uppercase tracking-[0.2em] text-[10px]">
+          <p className="text-xs text-slate-500 font-normal mt-0.5">
             Holistic Performance Metrics
           </p>
         </div>
@@ -330,22 +333,22 @@ export default function CompleteAnalysis() {
           <div className="relative">
             <button
               onClick={() => setShowRangeDropdown(!showRangeDropdown)}
-              className="flex items-center gap-2 px-6 py-3 bg-white border border-slate-100 rounded-2xl text-[10px] font-black uppercase tracking-widest text-[#011B1D] hover:shadow-lg transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:shadow-sm transition-all"
             >
-              <Filter className="w-3 h-3 text-emerald-500" />
+              <Filter className="w-3.5 h-3.5 text-slate-500" />
               Range: {activeRange}
               <ChevronDown
-                className={`w-3 h-3 transition-transform ${showRangeDropdown ? "rotate-180" : ""}`}
+                className={`w-3.5 h-3.5 text-slate-400 transition-transform ${showRangeDropdown ? "rotate-180" : ""}`}
               />
             </button>
 
             <AnimatePresence>
               {showRangeDropdown && (
                 <motion.div
-                  initial={{ opacity: 0, y: 10 }}
+                  initial={{ opacity: 0, y: 5 }}
                   animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: 10 }}
-                  className="absolute top-full right-0 mt-3 w-40 bg-white/95 backdrop-blur-md border border-slate-100 rounded-2xl shadow-2xl z-[100] overflow-hidden p-2"
+                  exit={{ opacity: 0, y: 5 }}
+                  className="absolute top-full right-0 mt-2 w-36 bg-white border border-slate-100 rounded-xl shadow-lg z-[100] overflow-hidden p-1"
                 >
                   {["7d", "30d", "90d"].map((range) => (
                     <button
@@ -354,10 +357,10 @@ export default function CompleteAnalysis() {
                         setActiveRange(range);
                         setShowRangeDropdown(false);
                       }}
-                      className={`w-full text-left px-4 py-3 text-[10px] font-black rounded-xl uppercase tracking-widest transition-colors ${
+                      className={`w-full text-left px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
                         activeRange === range
-                          ? "bg-[#064e3b] text-white shadow-md"
-                          : "text-emerald-800/60 hover:bg-emerald-50"
+                          ? "bg-slate-900 text-white shadow-sm"
+                          : "text-slate-600 hover:bg-slate-50"
                       }`}
                     >
                       {range} Duration
@@ -370,9 +373,9 @@ export default function CompleteAnalysis() {
 
           <button
             onClick={handleRefresh}
-            className="p-3 bg-white border border-slate-100 rounded-2xl text-emerald-800/40 hover:text-emerald-600 hover:shadow-lg transition-all shadow-sm"
+            className="p-2 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-50 hover:shadow-sm transition-all shadow-sm"
           >
-            <RefreshCw className="w-4 h-4" />
+            <RefreshCw className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -380,309 +383,286 @@ export default function CompleteAnalysis() {
       {/* --- CONDITIONAL DIABETES HERO --- */}
       {isDiabetic && (
         <motion.div
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`${glassCard} p-6 md:p-8 overflow-hidden bg-gradient-to-br from-white to-emerald-50/30`}
+          className={`${glassCard} p-5 bg-gradient-to-br from-white to-emerald-50/10 space-y-5`}
         >
-          <div className="flex flex-col gap-8">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="flex items-center gap-4">
-                <div className="w-16 h-16 rounded-[24px] bg-[#064e3b] text-white flex items-center justify-center shadow-2xl shadow-emerald-200">
-                  <Brain className="w-8 h-8" />
-                </div>
-                <div>
-                  <h3 className="text-3xl font-black text-[#011B1D] tracking-tight">
-                    Diabetes Care
-                  </h3>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                    <span className="text-[11px] font-black text-emerald-800/40 uppercase tracking-[0.2em]">
-                      Clinical Priority Monitoring
-                    </span>
-                  </div>
-                </div>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-emerald-800 text-white flex items-center justify-center shadow-md shadow-emerald-800/10">
+                <Brain className="w-5 h-5" />
               </div>
-
-              <div className="flex gap-4">
-                <div className="px-6 py-4 bg-white rounded-[24px] border border-emerald-100 shadow-sm min-w-[140px]">
-                  <span className="text-[10px] font-black text-emerald-800/40 uppercase tracking-widest block mb-1">
-                    Glucose
-                  </span>
-                  <span className="text-3xl font-black text-[#011B1D]">
-                    {dashboardData?.vitals?.glucose?.value || "--"}{" "}
-                    <small className="text-xs opacity-30">mg/dL</small>
-                  </span>
-                </div>
-                <div className="px-6 py-4 bg-white rounded-[24px] border border-emerald-100 shadow-sm min-w-[140px]">
-                  <span className="text-[10px] font-black text-emerald-800/40 uppercase tracking-widest block mb-1">
-                    HbA1c
-                  </span>
-                  <span className="text-3xl font-black text-[#011B1D]">
-                    {dashboardData?.vitals?.hba1c?.value || "--"}{" "}
-                    <small className="text-xs opacity-30">%</small>
+              <div>
+                <h3 className="text-base font-bold text-slate-800">
+                  Diabetes Care
+                </h3>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+                  <span className="text-[10px] font-medium text-slate-400 uppercase tracking-wider">
+                    Clinical Priority Monitoring
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h4 className="text-[11px] font-black text-[#011B1D] uppercase tracking-widest">
-                  Glycemic Stability Map
-                </h4>
-                <div className="flex bg-[#F1F5F9] p-1.5 rounded-2xl border border-slate-200">
-                  <button
-                    onClick={() => setVitalsMode("glucose")}
-                    className={`px-6 py-2 text-[10px] font-black rounded-xl transition-all ${vitalsMode === "glucose" ? "bg-white text-[#064e3b] shadow-lg shadow-emerald-100" : "text-slate-400 hover:text-slate-600"}`}
-                  >
-                    GLUCOSE
-                  </button>
-                  <button
-                    onClick={() => setVitalsMode("hba1c")}
-                    className={`px-6 py-2 text-[10px] font-black rounded-xl transition-all ${vitalsMode === "hba1c" ? "bg-white text-[#064e3b] shadow-lg shadow-emerald-100" : "text-slate-400 hover:text-slate-600"}`}
-                  >
-                    HBA1C
-                  </button>
-                </div>
+            <div className="flex gap-3">
+              <div className="px-3.5 py-2 bg-slate-50/60 rounded-xl border border-slate-100 min-w-[110px]">
+                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-0.5">
+                  Glucose
+                </span>
+                <span className="text-lg font-bold text-slate-800">
+                  {dashboardData?.vitals?.glucose?.value || "--"}{" "}
+                  <small className="text-xs font-normal text-slate-400">mg/dL</small>
+                </span>
               </div>
+              <div className="px-3.5 py-2 bg-slate-50/60 rounded-xl border border-slate-100 min-w-[110px]">
+                <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-0.5">
+                  HbA1c
+                </span>
+                <span className="text-lg font-bold text-slate-800">
+                  {dashboardData?.vitals?.hba1c?.value || "--"}{" "}
+                  <small className="text-xs font-normal text-slate-400">%</small>
+                </span>
+              </div>
+            </div>
+          </div>
 
-              <div className="h-[350px] w-full bg-white/40 rounded-[32px] border border-emerald-100 p-6">
-                {vitalsMode === "glucose" ? (
-                  processedGlucoseData.length === 0 ? (
-                    <div className="h-full flex flex-col items-center justify-center opacity-30 italic">
-                      <Activity className="w-12 h-12 mb-2" />
-                      <span className="text-sm font-black uppercase tracking-widest">
-                        No Glucose history detected
-                      </span>
-                    </div>
-                  ) : (
-                    <ResponsiveContainer width="100%" height="100%">
-                      <LineChart
-                        data={processedGlucoseData}
-                        margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
-                      >
-                        <CartesianGrid
-                          strokeDasharray="3 3"
-                          vertical={false}
-                          stroke="#E2E8F0"
-                          opacity={0.3}
-                        />
-                        <XAxis
-                          dataKey="name"
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{
-                            fontSize: 11,
-                            fill: "#64748b",
-                            fontWeight: 800,
-                          }}
-                        />
-                        <YAxis
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{
-                            fontSize: 11,
-                            fill: "#64748b",
-                            fontWeight: 800,
-                          }}
-                          domain={["auto", "auto"]}
-                        />
-                        <Tooltip
-                          contentStyle={{
-                            borderRadius: "24px",
-                            border: "none",
-                            boxShadow: "0 20px 50px rgba(0,0,0,0.1)",
-                            fontWeight: 900,
-                          }}
-                        />
-                        <ReferenceLine
-                          y={100}
-                          stroke="#10b981"
-                          strokeDasharray="5 5"
-                          opacity={0.5}
-                        />
-                        <Line
-                          type="stepAfter"
-                          name="Fasting"
-                          dataKey="fasting"
-                          stroke="#9333ea"
-                          strokeWidth={5}
-                          dot={{
-                            r: 5,
-                            fill: "#9333ea",
-                            strokeWidth: 3,
-                            stroke: "#fff",
-                          }}
-                          connectNulls
-                        />
-                        <Line
-                          type="stepAfter"
-                          name="Pre-Meal"
-                          dataKey="preMeal"
-                          stroke="#2563eb"
-                          strokeWidth={5}
-                          dot={{
-                            r: 5,
-                            fill: "#2563eb",
-                            strokeWidth: 3,
-                            stroke: "#fff",
-                          }}
-                          connectNulls
-                        />
-                        <Line
-                          type="stepAfter"
-                          name="Post-Meal"
-                          dataKey="postMeal"
-                          stroke="#ea580c"
-                          strokeWidth={5}
-                          dot={{
-                            r: 5,
-                            fill: "#ea580c",
-                            strokeWidth: 3,
-                            stroke: "#fff",
-                          }}
-                          connectNulls
-                        />
-                        <Line
-                          type="stepAfter"
-                          name="Random"
-                          dataKey="random"
-                          stroke="#059669"
-                          strokeWidth={5}
-                          dot={{
-                            r: 5,
-                            fill: "#059669",
-                            strokeWidth: 3,
-                            stroke: "#fff",
-                          }}
-                          connectNulls
-                        />
-                        <Legend
-                          wrapperStyle={{
-                            fontSize: "11px",
-                            fontWeight: 900,
-                            textTransform: "uppercase",
-                            paddingTop: "30px",
-                          }}
-                        />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  )
-                ) : processedHbA1cData.length === 0 ? (
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider">
+                Glycemic Stability Map
+              </h4>
+              <div className="flex bg-slate-100 p-0.5 rounded-lg border border-slate-200 self-start sm:self-auto">
+                <button
+                  onClick={() => setVitalsMode("glucose")}
+                  className={`px-4 py-1.5 text-[10px] font-bold rounded-md transition-all ${vitalsMode === "glucose" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                >
+                  GLUCOSE
+                </button>
+                <button
+                  onClick={() => setVitalsMode("hba1c")}
+                  className={`px-4 py-1.5 text-[10px] font-bold rounded-md transition-all ${vitalsMode === "hba1c" ? "bg-white text-slate-800 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                >
+                  HBA1C
+                </button>
+              </div>
+            </div>
+
+            <div className="h-[260px] w-full bg-slate-50/30 rounded-xl border border-slate-100 p-4">
+              {vitalsMode === "glucose" ? (
+                processedGlucoseData.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center opacity-30 italic">
-                    <Activity className="w-12 h-12 mb-2" />
-                    <span className="text-sm font-black uppercase tracking-widest">
-                      No HbA1c history detected
+                    <Activity className="w-10 h-10 mb-2 text-slate-400" />
+                    <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                      No Glucose history detected
                     </span>
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart
-                      data={processedHbA1cData}
-                      margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                      data={processedGlucoseData}
+                      margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
+                      barGap={2}
                     >
                       <CartesianGrid
                         strokeDasharray="3 3"
                         vertical={false}
-                        stroke="#E2E8F0"
-                        opacity={0.3}
+                        stroke="#f1f5f9"
                       />
                       <XAxis
-                        dataKey="month"
+                        dataKey="name"
                         axisLine={false}
                         tickLine={false}
                         tick={{
-                          fontSize: 11,
+                          fontSize: 9,
                           fill: "#64748b",
-                          fontWeight: 800,
+                          fontWeight: 500,
                         }}
+                        dy={5}
                       />
                       <YAxis
                         axisLine={false}
                         tickLine={false}
                         tick={{
-                          fontSize: 11,
+                          fontSize: 9,
                           fill: "#64748b",
-                          fontWeight: 800,
+                          fontWeight: 500,
                         }}
+                        width={30}
+                        domain={[0, "auto"]}
                       />
                       <Tooltip
-                        cursor={{ fill: "#f8fafc" }}
+                        cursor={{ fill: "#f8fafc", radius: 8 }}
                         contentStyle={{
-                          borderRadius: "24px",
-                          border: "none",
-                          boxShadow: "0 20px 50px rgba(0,0,0,0.1)",
-                          fontWeight: 900,
+                          borderRadius: "12px",
+                          border: "1px solid #f1f5f9",
+                          boxShadow: "0 10px 15px -3px rgba(0,0,0,0.05)",
+                          padding: "8px 12px",
+                          fontSize: "11px",
                         }}
                       />
                       <Bar
-                        dataKey="value"
-                        name="HbA1c Level"
-                        radius={[15, 15, 0, 0]}
-                        barSize={40}
-                      >
-                        {processedHbA1cData.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={entry.value < 6.5 ? "#10b981" : "#f43f5e"}
-                          />
-                        ))}
-                      </Bar>
+                        dataKey="fasting"
+                        name="Fasting"
+                        fill="#9333ea"
+                        radius={[3, 3, 0, 0]}
+                        barSize={8}
+                        style={{ cursor: "pointer" }}
+                      />
+                      <Bar
+                        dataKey="preMeal"
+                        name="Pre-Meal"
+                        fill="#2563eb"
+                        radius={[3, 3, 0, 0]}
+                        barSize={8}
+                        style={{ cursor: "pointer" }}
+                      />
+                      <Bar
+                        dataKey="postMeal"
+                        name="Post-Meal"
+                        fill="#ea580c"
+                        radius={[3, 3, 0, 0]}
+                        barSize={8}
+                        style={{ cursor: "pointer" }}
+                      />
+                      <Bar
+                        dataKey="random"
+                        name="Random"
+                        fill="#059669"
+                        radius={[3, 3, 0, 0]}
+                        barSize={8}
+                        style={{ cursor: "pointer" }}
+                      />
                       <Legend
                         wrapperStyle={{
-                          fontSize: "11px",
-                          fontWeight: 900,
+                          fontSize: "9px",
+                          fontWeight: 600,
                           textTransform: "uppercase",
-                          paddingTop: "30px",
+                          paddingTop: "10px",
                         }}
                       />
                     </BarChart>
                   </ResponsiveContainer>
-                )}
+                )
+              ) : processedHbA1cData.length === 0 ? (
+                <div className="h-full flex flex-col items-center justify-center opacity-30 italic">
+                  <Activity className="w-10 h-10 mb-2 text-slate-400" />
+                  <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">
+                    No HbA1c history detected
+                  </span>
+                </div>
+              ) : (
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={processedHbA1cData}
+                    margin={{ top: 10, right: 10, left: -20, bottom: 5 }}
+                    barGap={2}
+                  >
+                    <CartesianGrid
+                      strokeDasharray="3 3"
+                      vertical={false}
+                      stroke="#f1f5f9"
+                    />
+                    <XAxis
+                      dataKey="month"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{
+                        fontSize: 9,
+                        fill: "#64748b",
+                        fontWeight: 500,
+                      }}
+                      dy={5}
+                    />
+                    <YAxis
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{
+                        fontSize: 9,
+                        fill: "#64748b",
+                        fontWeight: 500,
+                      }}
+                      width={30}
+                      domain={[0, "auto"]}
+                    />
+                    <Tooltip
+                      cursor={{ fill: "#f8fafc", radius: 8 }}
+                      contentStyle={{
+                        borderRadius: "12px",
+                        border: "1px solid #f1f5f9",
+                        boxShadow: "0 10px 15px -3px rgba(0,0,0,0.05)",
+                        padding: "8px 12px",
+                        fontSize: "11px",
+                      }}
+                    />
+                    <Bar
+                      dataKey="value"
+                      name="HbA1c Level"
+                      radius={[3, 3, 0, 0]}
+                      barSize={8}
+                      style={{ cursor: "pointer" }}
+                    >
+                      {processedHbA1cData.map((entry, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={entry.value < 6.5 ? "#10b981" : "#f43f5e"}
+                        />
+                      ))}
+                    </Bar>
+                    <Legend
+                      wrapperStyle={{
+                        fontSize: "9px",
+                        fontWeight: 600,
+                        textTransform: "uppercase",
+                        paddingTop: "10px",
+                      }}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
+            </div>
+          </div>
+
+          {diabetesAnalysis && (
+            <div className="p-4 bg-emerald-50/40 rounded-xl border border-emerald-100/50 flex items-start gap-3 mt-4">
+              <div className="w-8 h-8 rounded-lg bg-emerald-100/80 flex items-center justify-center flex-shrink-0 text-emerald-700 shadow-sm">
+                <Sparkles className="w-4 h-4 text-emerald-700" />
+              </div>
+              <div>
+                <h4 className="text-[10px] font-bold text-emerald-800 uppercase tracking-wider mb-0.5">
+                  AI Clinical Insight
+                </h4>
+                <p className="text-xs font-medium text-slate-700 leading-relaxed italic">
+                  "{diabetesAnalysis.analysis}"
+                </p>
               </div>
             </div>
-
-            {diabetesAnalysis && (
-              <div className="p-8 bg-[#064e3b]/5 rounded-[32px] border border-emerald-100 flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0">
-                  <Sparkles className="w-5 h-5 text-amber-600" />
-                </div>
-                <div>
-                  <h4 className="text-[12px] font-black text-[#011B1D] uppercase tracking-[0.2em] mb-2">
-                    AI Clinical Insight
-                  </h4>
-                  <p className="text-base font-bold text-[#011B1D]/70 leading-relaxed italic">
-                    "{diabetesAnalysis.analysis}"
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
+          )}
         </motion.div>
       )}
 
       {/* --- PREMIUM BREAKDOWN GRID --- */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {/* 1. STEPS CARD */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
+          initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className={`${glassCard} p-8 relative group overflow-hidden bg-white hover:shadow-2xl transition-all duration-500`}
+          className={`${glassCard} p-5 relative group overflow-hidden bg-white hover:scale-[1.01]`}
         >
-          <div className="flex justify-between items-start mb-8">
-            <div className="flex items-center gap-5">
-              <div className="w-16 h-16 rounded-[24px] bg-[#FFF5EF] flex items-center justify-center text-[#FF7A2F] shadow-sm group-hover:scale-110 transition-transform">
-                <Footprints className="w-9 h-9" />
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#FFF5EF] text-[#FF7A2F] flex items-center justify-center shadow-sm">
+                <Footprints className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-2xl font-black text-[#011B1D]">Steps</h4>
-                <p className="text-lg font-black text-[#011B1D]/60 mt-1">
+                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Steps</h4>
+                <p className="text-lg font-bold text-slate-900 mt-0.5">
                   {Math.round(
                     wearableData?.todayMetrics?.steps ||
                       dashboardData?.vitals?.steps?.value ||
                       0,
                   ).toLocaleString()}{" "}
-                  <span className="text-[#011B1D]/20 font-bold tracking-tight">
+                  <span className="text-slate-400 font-normal text-xs">
                     / {dashboardData?.goals?.steps || 10000}
                   </span>
                 </p>
@@ -690,7 +670,7 @@ export default function CompleteAnalysis() {
             </div>
             {(wearableData?.todayMetrics?.steps ||
               dashboardData?.vitals?.steps?.value) && (
-              <div className="px-4 py-2 bg-[#FFF5EF] text-[#FF7A2F] text-[12px] font-black rounded-xl border border-[#FF7A2F]/10">
+              <div className="px-2 py-1 bg-[#FFF5EF] text-[#FF7A2F] text-[10px] font-bold rounded-lg border border-[#FF7A2F]/10">
                 {Math.round(
                   ((wearableData?.todayMetrics?.steps ||
                     dashboardData?.vitals?.steps?.value ||
@@ -698,16 +678,17 @@ export default function CompleteAnalysis() {
                     (dashboardData?.goals?.steps || 10000)) *
                     100,
                 )}
-                % Target
+                %
               </div>
             )}
           </div>
 
-          <div className="h-[220px] w-full">
+          <div className="h-[140px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={multiDayData}
-                margin={{ top: 0, right: 0, left: -40, bottom: 0 }}
+                margin={{ top: 10, right: 5, left: -25, bottom: 5 }}
+                barGap={2}
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
@@ -718,23 +699,32 @@ export default function CompleteAnalysis() {
                   dataKey="dayLabel"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 13, fill: "#64748B", fontWeight: 900 }}
+                  tick={{ fontSize: 9, fill: "#94a3b8", fontWeight: 500 }}
+                  dy={5}
                 />
-                <YAxis hide domain={[0, "dataMax + 2000"]} />
+                <YAxis 
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 9, fill: "#94a3b8", fontWeight: 500 }}
+                  width={25}
+                  domain={[0, "auto"]}
+                />
                 <Tooltip
-                  cursor={{ fill: "rgba(255, 122, 47, 0.05)" }}
+                  cursor={{ fill: "#f8fafc", radius: 8 }}
                   contentStyle={{
-                    borderRadius: "24px",
-                    border: "none",
-                    boxShadow: "0 20px 50px rgba(0,0,0,0.1)",
-                    fontWeight: 900,
+                    borderRadius: "12px",
+                    border: "1px solid #f1f5f9",
+                    boxShadow: "0 10px 15px -3px rgba(0,0,0,0.05)",
+                    padding: "8px 12px",
+                    fontSize: "11px",
                   }}
                 />
                 <Bar
                   dataKey="steps"
                   fill="#FF7A2F"
-                  radius={[10, 10, 0, 0]}
-                  barSize={36}
+                  radius={[3, 3, 0, 0]}
+                  barSize={8}
+                  style={{ cursor: "pointer" }}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -743,19 +733,19 @@ export default function CompleteAnalysis() {
 
         {/* 2. SLEEP CARD */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
+          initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.1 }}
-          className={`${glassCard} p-8 relative overflow-hidden bg-white hover:shadow-2xl transition-all duration-500`}
+          className={`${glassCard} p-5 relative group overflow-hidden bg-white hover:scale-[1.01]`}
         >
-          <div className="flex justify-between items-start mb-8">
-            <div className="flex items-center gap-5">
-              <div className="w-16 h-16 rounded-[24px] bg-[#F5F3FF] flex items-center justify-center text-[#8B5CF6] shadow-sm">
-                <Moon className="w-9 h-9" />
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#F5F3FF] text-[#8B5CF6] flex items-center justify-center shadow-sm">
+                <Moon className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-2xl font-black text-[#011B1D]">Sleep</h4>
-                <p className="text-lg font-black text-[#011B1D]/60 mt-1">
+                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sleep</h4>
+                <p className="text-lg font-bold text-slate-900 mt-0.5">
                   {(() => {
                     const todayStr = new Date().toISOString().split("T")[0];
                     let wearableHours = 0;
@@ -782,48 +772,59 @@ export default function CompleteAnalysis() {
 
                     return "0.0";
                   })()}{" "}
-                  <span className="text-[#011B1D]/20 font-bold">
+                  <span className="text-slate-400 font-normal text-xs">
                     / {dashboardData?.goals?.sleep || 8.0} hrs
                   </span>
                 </p>
               </div>
             </div>
-            <div className="px-4 py-2 bg-[#F5F3FF] text-[#8B5CF6] text-[12px] font-black rounded-xl border border-[#8B5CF6]/10">
+            <div className="px-2 py-1 bg-[#F5F3FF] text-[#8B5CF6] text-[10px] font-bold rounded-lg border border-[#8B5CF6]/10">
               Avg. Flow
             </div>
           </div>
 
-          <div className="h-[220px] w-full">
+          <div className="h-[140px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={multiDayData}
-                margin={{ top: 0, right: 0, left: -40, bottom: 0 }}
+                margin={{ top: 10, right: 5, left: -25, bottom: 5 }}
+                barGap={2}
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
-                  stroke="#F1F5F9"
+                  stroke="#f1f5f9"
                 />
                 <XAxis
                   dataKey="dayLabel"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 13, fill: "#64748B", fontWeight: 900 }}
+                  tick={{ fontSize: 9, fill: "#94a3b8", fontWeight: 500 }}
+                  dy={5}
                 />
-                <YAxis hide domain={[0, 10]} />
+                <YAxis 
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 9, fill: "#94a3b8", fontWeight: 500 }}
+                  width={25}
+                  domain={[0, "auto"]}
+                />
                 <Tooltip
+                  cursor={{ fill: "#f8fafc", radius: 8 }}
                   contentStyle={{
-                    borderRadius: "24px",
-                    border: "none",
-                    boxShadow: "0 20px 50px rgba(0,0,0,0.1)",
-                    fontWeight: 900,
+                    borderRadius: "12px",
+                    border: "1px solid #f1f5f9",
+                    boxShadow: "0 10px 15px -3px rgba(0,0,0,0.05)",
+                    padding: "8px 12px",
+                    fontSize: "11px",
                   }}
                 />
                 <Bar
                   dataKey="sleep"
                   fill="#8B5CF6"
-                  radius={[10, 10, 0, 0]}
-                  barSize={36}
+                  radius={[3, 3, 0, 0]}
+                  barSize={8}
+                  style={{ cursor: "pointer" }}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -832,25 +833,25 @@ export default function CompleteAnalysis() {
 
         {/* 3. CALORIES CARD */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
+          initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2 }}
-          className={`${glassCard} p-8 relative overflow-hidden bg-white hover:shadow-2xl transition-all duration-500`}
+          className={`${glassCard} p-5 relative group overflow-hidden bg-white hover:scale-[1.01]`}
         >
-          <div className="flex justify-between items-start mb-8">
-            <div className="flex items-center gap-5">
-              <div className="w-16 h-16 rounded-[24px] bg-[#ECFDF5] flex items-center justify-center text-[#10B981] shadow-sm">
-                <Flame className="w-9 h-9" />
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#ECFDF5] text-[#10B981] flex items-center justify-center shadow-sm">
+                <Flame className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-2xl font-black text-[#011B1D]">Calories</h4>
-                <p className="text-lg font-black text-[#011B1D]/60 mt-1">
+                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Calories</h4>
+                <p className="text-lg font-bold text-slate-900 mt-0.5">
                   {Math.round(
                     nutritionData?.totalCalories ||
                       dashboardData?.vitals?.calories?.value ||
                       0,
                   ).toLocaleString()}{" "}
-                  <span className="text-[#011B1D]/20 font-bold">
+                  <span className="text-slate-400 font-normal text-xs">
                     / {dashboardData?.goals?.calories || 2000}
                   </span>
                 </p>
@@ -858,7 +859,7 @@ export default function CompleteAnalysis() {
             </div>
             {(nutritionData?.totalCalories ||
               dashboardData?.vitals?.calories?.value) && (
-              <div className="px-4 py-2 bg-[#ECFDF5] text-[#10B981] text-[12px] font-black rounded-xl border border-[#10B981]/10">
+              <div className="px-2 py-1 bg-[#ECFDF5] text-[#10B981] text-[10px] font-bold rounded-lg border border-[#10B981]/10">
                 {Math.round(
                   ((nutritionData?.totalCalories ||
                     dashboardData?.vitals?.calories?.value ||
@@ -866,42 +867,53 @@ export default function CompleteAnalysis() {
                     (dashboardData?.goals?.calories || 2000)) *
                     100,
                 )}
-                % Target
+                %
               </div>
             )}
           </div>
 
-          <div className="h-[220px] w-full">
+          <div className="h-[140px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={multiDayData}
-                margin={{ top: 0, right: 0, left: -40, bottom: 0 }}
+                margin={{ top: 10, right: 5, left: -25, bottom: 5 }}
+                barGap={2}
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
-                  stroke="#F1F5F9"
+                  stroke="#f1f5f9"
                 />
                 <XAxis
                   dataKey="fullLabel"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 11, fill: "#64748B", fontWeight: 900 }}
+                  tick={{ fontSize: 9, fill: "#94a3b8", fontWeight: 500 }}
+                  dy={5}
                 />
-                <YAxis hide domain={[0, "dataMax + 500"]} />
+                <YAxis 
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 9, fill: "#94a3b8", fontWeight: 500 }}
+                  width={25}
+                  domain={[0, "auto"]}
+                />
                 <Tooltip
+                  cursor={{ fill: "#f8fafc", radius: 8 }}
                   contentStyle={{
-                    borderRadius: "24px",
-                    border: "none",
-                    boxShadow: "0 20px 50px rgba(0,0,0,0.1)",
-                    fontWeight: 900,
+                    borderRadius: "12px",
+                    border: "1px solid #f1f5f9",
+                    boxShadow: "0 10px 15px -3px rgba(0,0,0,0.05)",
+                    padding: "8px 12px",
+                    fontSize: "11px",
                   }}
                 />
                 <Bar
                   dataKey="calories"
                   fill="#10B981"
-                  radius={[10, 10, 0, 0]}
-                  barSize={30}
+                  radius={[3, 3, 0, 0]}
+                  barSize={8}
+                  style={{ cursor: "pointer" }}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -910,23 +922,22 @@ export default function CompleteAnalysis() {
 
         {/* 4. HYDRATION CARD */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
+          initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3 }}
-          className={`${glassCard} p-8 relative overflow-hidden bg-white hover:shadow-2xl transition-all duration-500`}
+          className={`${glassCard} p-5 relative group overflow-hidden bg-white hover:scale-[1.01]`}
         >
-          <div className="flex justify-between items-start mb-8">
-            <div className="flex items-center gap-5">
-              <div className="w-16 h-16 rounded-[24px] bg-[#EFF6FF] flex items-center justify-center text-[#3B82F6] shadow-sm">
-                <Droplets className="w-9 h-9" />
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#EFF6FF] text-[#3B82F6] flex items-center justify-center shadow-sm">
+                <Droplets className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-2xl font-black text-[#011B1D]">
+                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider font-sans">
                   Hydration
                 </h4>
-                <p className="text-lg font-black text-[#011B1D]/60 mt-1">
+                <p className="text-lg font-bold text-slate-900 mt-0.5">
                   {(() => {
-                    // Use the same consolidated logic as the graph for consistency
                     const todayData = multiDayData.find((d) =>
                       d.date?.startsWith(
                         new Date().toISOString().split("T")[0],
@@ -941,49 +952,60 @@ export default function CompleteAnalysis() {
                         0,
                     );
                   })()}{" "}
-                  <span className="text-[#011B1D]/20 font-bold">
+                  <span className="text-slate-400 font-normal text-xs">
                     / {dashboardData?.goals?.water || 8} glasses
                   </span>
                 </p>
               </div>
             </div>
-            <div className="px-4 py-2 bg-[#EFF6FF] text-[#3B82F6] text-[12px] font-black rounded-xl border border-[#3B82F6]/10">
+            <div className="px-2 py-1 bg-[#EFF6FF] text-[#3B82F6] text-[10px] font-bold rounded-lg border border-[#3B82F6]/10">
               On Pace
             </div>
           </div>
 
-          <div className="h-[220px] w-full">
+          <div className="h-[140px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={multiDayData}
-                margin={{ top: 0, right: 0, left: -40, bottom: 0 }}
+                margin={{ top: 10, right: 5, left: -25, bottom: 5 }}
+                barGap={2}
               >
                 <CartesianGrid
                   strokeDasharray="3 3"
                   vertical={false}
-                  stroke="#F1F5F9"
+                  stroke="#f1f5f9"
                 />
                 <XAxis
                   dataKey="dayLabel"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 13, fill: "#64748B", fontWeight: 900 }}
+                  tick={{ fontSize: 9, fill: "#94a3b8", fontWeight: 500 }}
+                  dy={5}
                 />
-                <YAxis hide />
+                <YAxis 
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 9, fill: "#94a3b8", fontWeight: 500 }}
+                  width={25}
+                  domain={[0, "auto"]}
+                />
                 <Tooltip
+                  cursor={{ fill: "#f8fafc", radius: 8 }}
                   formatter={(value) => [`${value} glasses`, "Total Intake"]}
                   contentStyle={{
-                    borderRadius: "24px",
-                    border: "none",
-                    boxShadow: "0 20px 50px rgba(0,0,0,0.1)",
-                    fontWeight: 900,
+                    borderRadius: "12px",
+                    border: "1px solid #f1f5f9",
+                    boxShadow: "0 10px 15px -3px rgba(0,0,0,0.05)",
+                    padding: "8px 12px",
+                    fontSize: "11px",
                   }}
                 />
                 <Bar
                   dataKey="water"
                   fill="#3B82F6"
-                  radius={[10, 10, 0, 0]}
-                  barSize={36}
+                  radius={[3, 3, 0, 0]}
+                  barSize={8}
+                  style={{ cursor: "pointer" }}
                 />
               </BarChart>
             </ResponsiveContainer>
@@ -992,38 +1014,38 @@ export default function CompleteAnalysis() {
 
         {/* 5. WEIGHT JOURNEY CARD */}
         <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
+          initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.4 }}
-          className={`${glassCard} p-8 relative overflow-hidden xl:col-span-2 bg-white hover:shadow-2xl transition-all duration-500`}
+          className={`${glassCard} p-5 relative group overflow-hidden md:col-span-2 bg-white hover:scale-[1.01]`}
         >
-          <div className="flex justify-between items-start mb-8">
-            <div className="flex items-center gap-5">
-              <div className="w-16 h-16 rounded-[24px] bg-[#F8FAFC] flex items-center justify-center text-[#475569] shadow-sm">
-                <Scale className="w-9 h-9" />
+          <div className="flex justify-between items-start mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-lg bg-[#F8FAFC] text-[#475569] flex items-center justify-center shadow-sm">
+                <Scale className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-2xl font-black text-[#011B1D]">
+                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   Weight Journey
                 </h4>
-                <p className="text-lg font-black text-[#011B1D]/60 mt-1">
+                <p className="text-lg font-bold text-slate-900 mt-0.5">
                   {dashboardData?.vitals?.weight?.value || "--"}{" "}
-                  <span className="text-[#011B1D]/20 font-bold">lbs</span>
+                  <span className="text-slate-400 font-normal text-xs">lbs</span>
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <div className="px-4 py-2 bg-emerald-50 text-emerald-600 text-[12px] font-black rounded-xl border border-emerald-100 flex items-center gap-1.5">
-                <TrendingDown className="w-3.5 h-3.5" /> -3.0 lbs
+              <div className="px-2 py-1 bg-emerald-50 text-emerald-600 text-[10px] font-bold rounded-lg border border-emerald-100 flex items-center gap-1">
+                <TrendingDown className="w-3 h-3" /> -3.0 lbs
               </div>
             </div>
           </div>
 
-          <div className="h-[220px] w-full">
+          <div className="h-[140px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
                 data={multiDayData}
-                margin={{ top: 10, right: 0, left: -40, bottom: 0 }}
+                margin={{ top: 10, right: 5, left: -25, bottom: 5 }}
               >
                 <defs>
                   <linearGradient id="weightGrad" x1="0" y1="0" x2="0" y2="1">
@@ -1035,7 +1057,7 @@ export default function CompleteAnalysis() {
                   dataKey="dateNum"
                   axisLine={false}
                   tickLine={false}
-                  tick={{ fontSize: 13, fill: "#94A3B8", fontWeight: 900 }}
+                  tick={{ fontSize: 9, fill: "#94A3B8", fontWeight: 500 }}
                   ticks={
                     activeRange === "7d"
                       ? undefined
@@ -1045,24 +1067,25 @@ export default function CompleteAnalysis() {
                 <YAxis hide domain={["dataMin - 5", "dataMax + 5"]} />
                 <Tooltip
                   contentStyle={{
-                    borderRadius: "24px",
-                    border: "none",
-                    boxShadow: "0 20px 50px rgba(0,0,0,0.1)",
-                    fontWeight: 900,
+                    borderRadius: "12px",
+                    border: "1px solid #f1f5f9",
+                    boxShadow: "0 10px 15px -3px rgba(0,0,0,0.05)",
+                    padding: "8px 12px",
+                    fontSize: "11px",
                   }}
                 />
                 <Area
                   type="monotone"
                   dataKey="weight"
                   stroke="#4F46E5"
-                  strokeWidth={5}
+                  strokeWidth={3}
                   fill="url(#weightGrad)"
                   dot={
                     activeRange === "7d"
                       ? {
-                          r: 6,
+                          r: 4,
                           fill: "#4F46E5",
-                          strokeWidth: 4,
+                          strokeWidth: 2,
                           stroke: "#fff",
                         }
                       : false
