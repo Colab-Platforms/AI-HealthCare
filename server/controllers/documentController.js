@@ -177,6 +177,74 @@ exports.deleteDocument = async (req, res) => {
 };
 
 /**
+ * Generate a private download URL for a document
+ * Instead of proxying the file through the server, this generates a signed URL
+ * that the client can use to download directly from Cloudinary.
+ * This removes the server as a bottleneck and scales much better.
+ */
+exports.getDocumentDownloadUrl = async (req, res) => {
+    try {
+        const docId = req.params.id;
+        const isReport = req.query.type === 'report';
+        let fileUrl = null;
+        let filename = 'document';
+
+        if (isReport) {
+            const report = await HealthReport.findOne({ _id: docId, user: req.user._id });
+            if (!report) return res.status(404).json({ message: 'Report not found' });
+            fileUrl = report.originalFile?.cloudinaryUrl || report.originalFile?.path;
+            filename = report.originalFile?.filename || 'report';
+        } else {
+            const document = await MedicalDocument.findOne({ _id: docId, userId: req.user._id });
+            if (!document) return res.status(404).json({ message: 'Document not found' });
+            fileUrl = document.fileUrl;
+            filename = document.originalName || document.title || 'document';
+        }
+
+        if (!fileUrl) {
+            return res.status(404).json({ message: 'No file URL found for this document' });
+        }
+
+        // Extract public ID and extension from Cloudinary URL
+        const regex = /res\.cloudinary\.com\/[^\/]+\/([^\/]+)\/([^\/]+)\/(?:v\d+\/)?(.+?)(?:\.([^.]+))?$/;
+        const match = fileUrl.match(regex);
+
+        if (!match) {
+            console.error('❌ Could not parse Cloudinary URL:', fileUrl);
+            return res.status(400).json({ message: 'Invalid file URL format' });
+        }
+
+        const resourceType = match[1]; // e.g. 'image'
+        const publicId = match[3];      // e.g. 'fitcure/medical_documents/file_d4gl9f'
+        const ext = match[4] || 'pdf';  // e.g. 'pdf'
+
+        try {
+            const { cloudinary } = require('../services/cloudinary');
+            
+            // Generate a private download URL (valid for 24 hours)
+            const downloadUrl = cloudinary.utils.private_download_url(publicId, ext, {
+                resource_type: resourceType,
+                type: 'upload',
+                expires_at: Math.round(Date.now() / 1000) + (24 * 3600) // 24 hours
+            });
+
+            console.log('✅ Generated private download URL for:', filename);
+            res.json({ 
+                downloadUrl,
+                filename,
+                expiresIn: '24 hours'
+            });
+        } catch (err) {
+            console.error('❌ Error generating private URL:', err.message);
+            return res.status(500).json({ message: 'Failed to generate download URL' });
+        }
+    } catch (error) {
+        console.error('❌ Error in getDocumentDownloadUrl:', error.message);
+        res.status(500).json({ message: 'Failed to generate download URL: ' + error.message });
+    }
+};
+
+/**
  * Proxy endpoint to fetch a document file from Cloudinary and stream it to the client.
  * This bypasses 401 Unauthorized errors that occur when the browser tries to directly 
  * access Cloudinary URLs with restricted access modes (e.g., authenticated delivery).

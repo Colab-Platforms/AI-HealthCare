@@ -111,30 +111,57 @@ export default function MedicalVault() {
     localStorage.setItem('recently_viewed_docs', JSON.stringify(recentlyViewedIds));
   }, [recentlyViewedIds]);
 
-  // Download file via proxy
+  // Download file via private URL (optimized - no server bottleneck)
   const handleDownload = async (doc, e) => {
     if (e) {
       e.stopPropagation();
       e.preventDefault();
     }
-    const toastId = toast.loading('Downloading file...');
+    const toastId = toast.loading('Generating download link...');
     try {
-      const response = await api.get(`/documents/${doc._id}/file${doc.isAnalyzedReport ? '?type=report' : ''}`, {
-        responseType: 'blob'
-      });
-      const url = window.URL.createObjectURL(new Blob([response.data]));
+      // Get the private download URL from the server (lightweight, no file transfer)
+      const { data } = await api.get(`/documents/${doc._id}/download-url${doc.isAnalyzedReport ? '?type=report' : ''}`);
+      
+      toast.dismiss(toastId);
+      
+      // Open the download URL directly - browser handles the download
+      // This is much faster because the file goes directly from Cloudinary to the browser
       const link = document.createElement('a');
-      link.href = url;
+      link.href = data.downloadUrl;
       link.setAttribute('download', doc.originalName || doc.title || 'document');
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.URL.revokeObjectURL(url);
-      toast.dismiss(toastId);
+      
+      toast.success('Download started');
     } catch (error) {
       console.error("Download error", error);
       toast.dismiss(toastId);
-      toast.error('Failed to download file');
+      
+      // Fallback to proxy endpoint if private URL generation fails
+      if (error.response?.status === 400 || error.response?.status === 500) {
+        toast.loading('Using alternative download method...');
+        try {
+          const response = await api.get(`/documents/${doc._id}/file${doc.isAnalyzedReport ? '?type=report' : ''}`, {
+            responseType: 'blob'
+          });
+          const url = window.URL.createObjectURL(new Blob([response.data]));
+          const fallbackLink = document.createElement('a');
+          fallbackLink.href = url;
+          fallbackLink.setAttribute('download', doc.originalName || doc.title || 'document');
+          document.body.appendChild(fallbackLink);
+          fallbackLink.click();
+          fallbackLink.remove();
+          window.URL.revokeObjectURL(url);
+          toast.dismiss();
+          toast.success('Download started');
+        } catch (fallbackError) {
+          toast.dismiss();
+          toast.error('Failed to download file');
+        }
+      } else {
+        toast.error('Failed to generate download link');
+      }
     }
   };
 
