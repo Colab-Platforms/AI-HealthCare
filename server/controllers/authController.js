@@ -423,6 +423,16 @@ exports.updateProfile = async (req, res) => {
         };
       }
 
+      // Handle foodPreferences update
+      if (req.body.foodPreferences) {
+        user.foodPreferences = {
+          ...user.foodPreferences,
+          ...req.body.foodPreferences,
+          lastUpdated: new Date()
+        };
+        user.markModified('foodPreferences');
+      }
+
       const newHeight = user.profile?.height;
       const newWeight = user.profile?.weight;
       let bmiChanged = false;

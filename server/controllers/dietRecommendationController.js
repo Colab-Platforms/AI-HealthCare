@@ -156,6 +156,8 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       currentBMI: currentBMI.toFixed(1),
       bmiGoal: bmiGoal,
       targetWeight: targetWeight,
+      region: user.foodPreferences?.region || 'other',  // ← Region
+      country: user.foodPreferences?.country || 'India',  // ← Country
       dietaryPreference: user.profile?.dietaryPreference || 'non-vegetarian',
       activityLevel: user.profile?.activityLevel || 'moderately_active',
       fitnessGoals: user.profile?.fitnessGoals || [],
@@ -225,11 +227,29 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
 
     await dietPlan.save();
 
-    // Prepare prompt extension for variety
+    // Prepare prompt extension for variety and region/country
     const isRegenerate = req.body?.isRegenerate || false;
+    const region = user.foodPreferences?.region || 'other';
+    const country = user.foodPreferences?.country || 'India';
+    
     let promptEx = isRegenerate
       ? 'IMPORTANT: This is a REGENERATION request. You MUST provide COMPLETELY NEW and DIFFERENT meal options. Every single meal option must be fresh and unique.'
       : '';
+    
+    // Add region and country-specific instructions
+    if (country === 'India') {
+      if (region !== 'other') {
+        promptEx += `\nREGION FOCUS: Prioritize ${region} Indian cuisine and regional specialties. Include traditional ${region} dishes.`;
+      } else {
+        promptEx += '\nCUISINE: Focus on diverse Indian cuisine from all regions.';
+      }
+    } else {
+      // For other countries
+      promptEx += `\nCOUNTRY FOCUS: User is from ${country}. Suggest cuisine popular in ${country} that aligns with their dietary preferences.`;
+      if (region !== 'other') {
+        promptEx += `\nREGION PREFERENCE: User prefers ${region} style cuisine if available in ${country}.`;
+      }
+    }
     
     if (avoidMealsList.length > 0) {
       promptEx += `\nCRITICAL: DO NOT suggest any of these meals which were in the previous plan: ${avoidMealsList.join(', ')}. Provide a completely different menu.`;
@@ -840,3 +860,4 @@ exports.generateDietAfterReport = async (userId) => {
     console.error(`[AutoDiet] Failed for user ${userId}:`, error.message);
   }
 };
+

@@ -219,14 +219,39 @@ exports.uploadReport = async (req, res) => {
     try { cloudinaryUrl = await cloudinary.uploadImage(dataBuffer, 'health_reports'); }
     catch (e) { console.error('Cloudinary fail:', e.message); }
 
-    const report = await HealthReport.create({
+    const isPastReport = req.body.isPastReport === 'true' || req.body.isPastReport === true;
+    const isPrescription = req.body.isPrescription === 'true' || req.body.isPrescription === true;
+
+    const reportData = {
       user: req.user._id,
       reportType: req.body.reportType || 'general',
       originalFile: { filename: req.file.originalname, path: cloudinaryUrl, mimetype: req.file.mimetype, cloudinaryUrl },
       extractedText,
       status: 'processing',
+      isPastReport,
+      isPrescription,
+      reportDate: req.body.reportDate ? new Date(req.body.reportDate) : new Date(),
       aiAnalysis: { summary: 'Analysis in progress...', healthScore: 0 }
-    });
+    };
+
+    // Add prescription details if it's a prescription
+    if (isPrescription) {
+      reportData.prescriptionDetails = {
+        doctorName: req.body.doctorName || '',
+        clinicName: req.body.clinicName || '',
+        prescriptionDate: req.body.reportDate ? new Date(req.body.reportDate) : new Date(),
+        notes: req.body.notes || ''
+      };
+    }
+
+    // Add notes if provided
+    if (req.body.notes) {
+      reportData.pastLabDetails = {
+        notes: req.body.notes
+      };
+    }
+
+    const report = await HealthReport.create(reportData);
 
     await cache.delete(`reports:${req.user._id}`);
     
@@ -234,7 +259,9 @@ exports.uploadReport = async (req, res) => {
     await logActivity(req.user._id, 'UPLOAD_REPORT', 'diagnostics', { 
       reportType: req.body.reportType || 'general',
       fileName: req.file.originalname,
-      reportId: report._id
+      reportId: report._id,
+      isPastReport,
+      isPrescription
     }, req);
 
     // Respond to client
@@ -251,10 +278,12 @@ exports.uploadReport = async (req, res) => {
         userId: req.user._id,
         reportId: report._id,
         fileMimetype: req.file.mimetype,
-        extractedText
+        extractedText,
+        isPastReport,
+        isPrescription
       }, baseUrl);
     } else {
-      setImmediate(() => processReportInternal(req.user._id, report._id, req.file.mimetype, extractedText, dataBuffer));
+      setImmediate(() => processReportInternal(req.user._id, report._id, req.file.mimetype, extractedText, dataBuffer, isPastReport, isPrescription));
     }
 
   } catch (error) {
@@ -270,10 +299,21 @@ exports.getReports = async (req, res) => {
     if (cached) return res.json(cached);
 
     const reports = await withTimeout(
-      HealthReport.find({ user: req.user._id, status: { $ne: 'failed' } }).sort({ createdAt: -1 }).limit(50)
+      HealthReport.find({ user: req.user._id, status: { $ne: 'failed' } })
+        .sort({ reportDate: -1, createdAt: -1 })
+        .limit(100)
     );
-    await cache.set(cacheKey, reports, 180);
-    res.json(reports);
+    
+    // Organize reports by type
+    const organized = {
+      currentReports: reports.filter(r => !r.isPastReport && !r.isPrescription),
+      pastReports: reports.filter(r => r.isPastReport),
+      prescriptions: reports.filter(r => r.isPrescription),
+      all: reports
+    };
+
+    await cache.set(cacheKey, organized, 180);
+    res.json(organized);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

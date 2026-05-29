@@ -9,6 +9,28 @@ const healthReportSchema = new mongoose.Schema({
   originalFile: { filename: String, path: String, mimetype: String },
   extractedText: String,
   reportDate: { type: Date, description: 'Date mentioned in the report (Reported On)' },
+  // New fields for past medical history
+  isPastReport: { type: Boolean, default: false, description: 'Whether this is a past/previous lab report' },
+  isPrescription: { type: Boolean, default: false, description: 'Whether this is a prescription document' },
+  prescriptionDetails: {
+    doctorName: String,
+    clinicName: String,
+    prescriptionDate: Date,
+    medications: [{
+      name: String,
+      dosage: String,
+      frequency: String,
+      duration: String,
+      reason: String
+    }],
+    notes: String
+  },
+  pastLabDetails: {
+    labName: String,
+    testDate: Date,
+    testResults: mongoose.Schema.Types.Mixed,
+    notes: String
+  },
   aiAnalysis: {
     summary: String,
     keyFindings: [String],

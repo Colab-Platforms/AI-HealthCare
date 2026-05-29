@@ -68,8 +68,23 @@ class DietRecommendationAI {
   }
 
   async generatePersonalizedDietPlan(userData, promptExtension = '') {
-    const { age, gender, weight, height, currentBMI, bmiGoal, activityLevel, nutritionGoals, medicalConditions, allergies, diabetesInfo } = userData;
+    const { age, gender, weight, height, currentBMI, bmiGoal, activityLevel, nutritionGoals, medicalConditions, allergies, diabetesInfo, region, country } = userData;
     const isDiabetic = !!diabetesInfo;
+    
+    // Build region/country specific instructions
+    let regionCountryInstructions = '';
+    if (country === 'India') {
+      if (region && region !== 'other') {
+        regionCountryInstructions = `\n- REGION FOCUS: Prioritize ${region} Indian cuisine and regional specialties. Include traditional ${region} dishes.`;
+      } else {
+        regionCountryInstructions = '\n- CUISINE: Focus on diverse Indian cuisine from all regions.';
+      }
+    } else {
+      regionCountryInstructions = `\n- COUNTRY FOCUS: User is from ${country}. Suggest cuisine popular in ${country} that aligns with their dietary preferences.`;
+      if (region && region !== 'other') {
+        regionCountryInstructions += `\n- REGION PREFERENCE: User prefers ${region} style cuisine if available in ${country}.`;
+      }
+    }
     
     const prompt = `Indian Clinical Nutritionist. Generate a 100% accurate JSON meal plan.
 STRUCTURE:
@@ -88,12 +103,12 @@ USER DATA:
 - Medical Conditions: ${medicalConditions?.join(', ') || 'None'}
 - Allergies: ${allergies?.join(', ') || 'None'}
 - Diabetes Status: ${isDiabetic ? `Positive (${diabetesInfo.diabetesType})` : 'Negative'}
-- Macro Targets: Protein ${nutritionGoals?.protein}g, Carbs ${nutritionGoals?.carbs}g, Fats ${nutritionGoals?.fats}g
+- Macro Targets: Protein ${nutritionGoals?.protein}g, Carbs ${nutritionGoals?.carbs}g, Fats ${nutritionGoals?.fats}g${regionCountryInstructions}
 
 REQUIREMENTS:
 1. CRITICAL: The SUM of Calories, Protein, Carbs, and Fats across NO MORE than one option from each meal (Breakfast + Lunch + Dinner) MUST strictly align with the USER'S Macro Targets provided.
 2. PRECISE PORTIONS: Use measurements like "1.5 Bowl (250g)", "2 Medium Roti (80g)", etc., in "portionSize". The portion must explain BOTH the visual quantity (bowl/piece) AND the approximate weight (grams) if applicable.
-3. Focus on varied Indian cuisine.
+3. Focus on varied cuisine based on user's region and country preferences.
 4. Output 1-2 options per meal.
 5. ${promptExtension}
 
@@ -102,7 +117,7 @@ JSON output ONLY. Exact mathematical alignment with macro goals is mandatory.`;
     try {
       const aiResponse = await this.makeAIRequest({
         max_tokens: 4000,
-        system: "Expert Clinical Dietitian. Generate varied, scientifically accurate Indian meal plans. Never repeat the same plan for different users. Variety is prioritized.",
+        system: "Expert Clinical Dietitian. Generate varied, scientifically accurate meal plans based on user's region and country preferences. Never repeat the same plan for different users. Variety is prioritized.",
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7 // Increased for variety
       });

@@ -97,6 +97,8 @@ const userSchema = new mongoose.Schema({
     lastUpdated: Date
   },
   foodPreferences: {
+    region: { type: String, enum: ['north', 'south', 'east', 'west', 'northeast', 'other'], default: 'other' },
+    country: { type: String, default: 'India' },
     preferredFoods: [String], // Foods user likes to eat
     foodsToAvoid: [String], // Foods user wants to avoid
     dietaryRestrictions: [String], // Allergies, intolerances, religious restrictions
