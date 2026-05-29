@@ -154,6 +154,16 @@ const userSchema = new mongoose.Schema({
   loginCount: {
     type: Number,
     default: 1
+  },
+  /** Daily smoke log keyed by YYYY-MM-DD (count, sessions, resistedCount). */
+  smokeLog: {
+    type: mongoose.Schema.Types.Mixed,
+    default: () => ({})
+  },
+  /** Daily alcohol log keyed by YYYY-MM-DD (count, units, sessions, cravingEvents). */
+  alcoholLog: {
+    type: mongoose.Schema.Types.Mixed,
+    default: () => ({})
   }
 }, { timestamps: true, strict: false });
 

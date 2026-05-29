@@ -16,6 +16,11 @@ const queueService = require('../services/queueService');
 const HealthMetric = require('../models/HealthMetric');
 const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
 const { logActivity } = require('../utils/activityLogger');
+const {
+  sanitizeAlcoholLog,
+  toPlainAlcoholLog,
+  getAlcoholSummary
+} = require('../utils/alcoholLog');
 
 const withTimeout = (query, timeoutMs = 45000) => {
   return query.maxTimeMS(timeoutMs);
@@ -487,6 +492,10 @@ exports.getDashboardData = async (req, res) => {
     ninetyDaysAgo.setUTCDate(ninetyDaysAgo.getUTCDate() - 89);
     const historySummary = await NutritionSummary.find({ userId: req.user._id, date: { $gte: ninetyDaysAgo, $lte: targetDate } }).sort({ date: 1 });
 
+    const userWithLogs = await User.findById(req.user._id).select('alcoholLog smokeLog profile.lifestyle');
+    const alcoholPlain = toPlainAlcoholLog(userWithLogs?.alcoholLog);
+    const alcoholSummary = getAlcoholSummary(alcoholPlain);
+
     const WearableData = require('../models/WearableData');
     const HealthMetric = require('../models/HealthMetric');
     const wearables = await withTimeout(WearableData.find({ user: req.user._id }));
@@ -506,7 +515,17 @@ exports.getDashboardData = async (req, res) => {
         const currentDayWeightLogs = weightMetrics.filter(m => new Date(m.recordedAt).toISOString().split('T')[0] === dStr);
         let dayWeight = history[i-1]?.weight || req.user.profile?.weight || 70;
         if (currentDayWeightLogs.length > 0) dayWeight = currentDayWeightLogs[currentDayWeightLogs.length - 1].value;
-        history.push({ date: dStr, calories: dStr === todayStr ? realTimeTotals.calories : (nutrition?.totalCalories || 0), steps, sleep, weight: dayWeight, water: dStr === todayStr ? (finalNutrition.waterIntake || 0) : (nutrition?.waterIntake || 0) });
+        const alcoholDay = alcoholPlain[dStr];
+        history.push({
+          date: dStr,
+          calories: dStr === todayStr ? realTimeTotals.calories : (nutrition?.totalCalories || 0),
+          steps,
+          sleep,
+          weight: dayWeight,
+          water: dStr === todayStr ? (finalNutrition.waterIntake || 0) : (nutrition?.waterIntake || 0),
+          alcohol: alcoholDay?.count || 0,
+          alcoholUnits: alcoholDay?.units || 0
+        });
     }
 
     const latestGlucose = await HealthMetric.findOne({ userId: req.user._id, type: 'blood_sugar' }).sort({ recordedAt: -1 });
@@ -518,7 +537,11 @@ exports.getDashboardData = async (req, res) => {
       healthScores, latestAnalysis: latestReport?.aiAnalysis, latestReportId: latestReport?._id, processingReport, latestComparison,
       totalReports: await HealthReport.countDocuments({ user: req.user._id }), recentReports: reports.slice(0, 5), reportTypeCounts, history,
       stepsToday: history[history.length-1]?.steps || 0, sleepToday: history[history.length-1]?.sleep || 0,
-      goals: { steps: 10000, sleep: 8, weight: req.user.nutritionGoal?.targetWeight || 70, calories: calorieGoal, protein: req.user.nutritionGoal?.proteinGoal || 150, carbs: req.user.nutritionGoal?.carbsGoal || 200, fats: req.user.nutritionGoal?.fatGoal || 65 },
+      goals: { steps: 10000, sleep: 8, water: 8, weight: req.user.nutritionGoal?.targetWeight || 70, calories: calorieGoal, protein: req.user.nutritionGoal?.proteinGoal || 150, carbs: req.user.nutritionGoal?.carbsGoal || 200, fats: req.user.nutritionGoal?.fatGoal || 65 },
+      alcoholToday: alcoholSummary.today,
+      alcoholTodayUnits: alcoholSummary.todayUnits,
+      alcohol7DayAvg: alcoholSummary.avg7,
+      alcoholSummary,
       streakDays: req.user.streakDays || 0,
       vitals: { 
         glucose: latestGlucose ? { value: latestGlucose.value, recordedAt: latestGlucose.recordedAt } : null, 
@@ -566,32 +589,44 @@ exports.deleteReport = async (req, res) => {
 
 exports.aiChat = async (req, res) => {
   try {
-    const { query, conversationHistory } = req.body;
-    if (!query) return res.status(400).json({ message: 'Query is required' });
+    const { query, conversationHistory, message, chatHistory } = req.body;
+    const finalQuery = query || message;
+    if (!finalQuery) return res.status(400).json({ success: false, message: 'Query or message is required' });
+
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
+    if (!anthropicKey || !String(anthropicKey).startsWith('sk-ant')) {
+      return res.status(503).json({
+        success: false,
+        message: 'AI coach is not configured on the server',
+        code: 'AI_NOT_CONFIGURED'
+      });
+    }
+
+    const finalHistory = conversationHistory || chatHistory || [];
     const latestReport = await HealthReport.findOne({ user: req.user._id, status: 'completed' }).sort({ createdAt: -1 });
-    let systemPrompt = `Helpful medical AI. User: ${req.user.name}. Context: ${latestReport?.aiAnalysis?.summary || 'None'}`;
-    const userMessages = (conversationHistory || []).slice(-5).map(m => ({ role: m.role, content: m.content }));
-    userMessages.push({ role: 'user', content: query });
-    const { CLAUDE_MODEL } = require('../services/aiService');
-    const response = await axios.post('https://api.anthropic.com/v1/messages', { 
-      model: CLAUDE_MODEL, 
-      system: systemPrompt, 
-      messages: userMessages, 
-      max_tokens: 1500 
-    }, { 
-      headers: { 
-        'x-api-key': anthropicKey, 
-        'anthropic-version': '2023-06-01', 
-        'Content-Type': 'application/json' 
-      }, 
-      timeout: 45000 
-    });
-    res.json({ success: true, response: response.data.content[0].text });
+    const systemPrompt = `Helpful health awareness assistant for ${req.user.name}. Context from latest report: ${latestReport?.aiAnalysis?.summary || 'None'}. Reply in plain text only — no markdown, no asterisks, no hashtags.`;
+
+    const { makeAnthropicRequest, CLAUDE_HAIKU_MODEL } = require('../services/aiService');
+    const messages = [
+      { role: 'system', content: systemPrompt },
+      ...finalHistory.slice(-5).map((m) => ({
+        role: m.role === 'assistant' ? 'assistant' : 'user',
+        content: String(m.content || '')
+      })),
+      { role: 'user', content: finalQuery }
+    ];
+
+    const text = await makeAnthropicRequest(messages, 600, CLAUDE_HAIKU_MODEL);
+    if (!text || !String(text).trim()) {
+      return res.status(502).json({ success: false, message: 'Empty response from AI' });
+    }
+    res.json({ success: true, response: text.trim() });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('aiChat error:', error.message);
+    res.status(500).json({ success: false, message: error.message || 'AI request failed' });
   }
 };
+
 
 exports.saveChallengeData = async (req, res) => {
   try {
@@ -670,6 +705,8 @@ exports.getHealthDNA = async (req, res) => {
     });
 
     // 3. Prepare Trends for AI
+    const alcoholSummary = getAlcoholSummary(req.user.alcoholLog || {});
+
     const trends = {
       vitals: vitals.map(v => ({ type: v.type, value: v.value, unit: v.unit, date: v.recordedAt })),
       nutritionAverages: nutrition.reduce((acc, n) => {
@@ -677,7 +714,8 @@ exports.getHealthDNA = async (req, res) => {
         acc.protein += n.totalProtein || 0;
         acc.water += n.waterIntake || 0;
         return acc;
-      }, { calories: 0, protein: 0, water: 0 })
+      }, { calories: 0, protein: 0, water: 0 }),
+      alcohol: alcoholSummary
     };
     if (nutrition.length > 0) {
       trends.nutritionAverages.calories /= nutrition.length;
@@ -710,3 +748,95 @@ exports.getVitalsInsights = async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 };
+
+const DATE_KEY_RE = /^\d{4}-\d{2}-\d{2}$/;
+
+const toPlainSmokeLog = (raw) => {
+  if (!raw) return {};
+  if (raw instanceof Map) return Object.fromEntries(raw);
+  if (typeof raw.toObject === 'function') return raw.toObject();
+  return typeof raw === 'object' ? { ...raw } : {};
+};
+
+const sanitizeSmokeLog = (raw) => {
+  const input = toPlainSmokeLog(raw);
+  const out = {};
+
+  for (const [key, val] of Object.entries(input)) {
+    if (!DATE_KEY_RE.test(key) || !val || typeof val !== 'object') continue;
+
+    const sessions = Array.isArray(val.sessions)
+      ? val.sessions.slice(0, 200).map((s) => ({
+          time: String(s?.time || new Date().toISOString()),
+          count: Math.max(1, Number(s?.count) || 1),
+          trigger: s?.trigger ? String(s.trigger) : null,
+          id: s?.id ? String(s.id) : String(s?.time || Date.now())
+        }))
+      : [];
+
+    const countFromSessions = sessions.reduce((sum, s) => sum + (s.count || 1), 0);
+    const count = Math.max(0, Number(val.count) || countFromSessions);
+
+    out[key] = {
+      count,
+      resistedCount: Math.max(0, Number(val.resistedCount) || 0),
+      sessions
+    };
+  }
+
+  return out;
+};
+
+exports.saveSmokeLog = async (req, res) => {
+  try {
+    const smokeLog = sanitizeSmokeLog(req.body?.smokeLog);
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: { smokeLog } },
+      { new: true, runValidators: false }
+    ).select('smokeLog');
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json({ success: true, smokeLog: toPlainSmokeLog(user.smokeLog) });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getSmokeLog = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('smokeLog');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json({ success: true, smokeLog: sanitizeSmokeLog(user.smokeLog) });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.saveAlcoholLog = async (req, res) => {
+  try {
+    const alcoholLog = sanitizeAlcoholLog(req.body?.alcoholLog);
+    const user = await User.findByIdAndUpdate(
+      req.user._id,
+      { $set: { alcoholLog } },
+      { new: true, runValidators: false }
+    ).select('alcoholLog');
+
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    await cache.delete(`dashboard:${req.user._id}`);
+    res.json({ success: true, alcoholLog: toPlainAlcoholLog(user.alcoholLog) });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.getAlcoholLog = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('alcoholLog');
+    if (!user) return res.status(404).json({ message: 'User not found' });
+    res.json({ success: true, alcoholLog: sanitizeAlcoholLog(user.alcoholLog) });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+

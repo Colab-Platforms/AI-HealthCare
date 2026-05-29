@@ -74,11 +74,10 @@ const HealthScoreCard = ({ selectedDate = new Date() }) => {
         const waterIntake = parseInt(localStorage.getItem(`waterIntake_${dateStr}`) || '0');
         const hydrationScore = Math.min((waterIntake / 8), 1) * 10;
 
-        // 5. Stress (20 points)
+        // 5. Stress / moderation (20 points) — alcohol from dashboard when available
         let stressScore = 15;
         if (sleepScore < 15) stressScore -= 5;
         if (nutritionAdherence < 15) stressScore -= 5;
-
         const totalScore = Math.round(nutritionAdherence + sleepScore + hydrationScore + stressScore);
 
         return {

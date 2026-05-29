@@ -6,6 +6,7 @@ const HealthReport = require('../models/HealthReport');
 const WearableData = require('../models/WearableData');
 const emailService = require('../services/emailService');
 const videoService = require('../services/videoService');
+const { getAlcoholSummary } = require('../utils/alcoholLog');
 
 exports.getAllDoctors = async (req, res) => {
   try {
@@ -431,6 +432,8 @@ exports.getPatientProfile = async (req, res) => {
       wearableSummary.avgSteps = stepsCount ? Math.round(totalSteps / stepsCount) : null;
     }
 
+    const alcoholSummary = getAlcoholSummary(patient.alcoholLog || {});
+
     res.json({
       patient: {
         _id: patient._id,
@@ -452,6 +455,7 @@ exports.getPatientProfile = async (req, res) => {
         createdAt: r.createdAt
       })),
       wearableSummary,
+      alcoholSummary,
       appointmentHistory: appointmentHistory.map(a => ({
         _id: a._id,
         date: a.date,

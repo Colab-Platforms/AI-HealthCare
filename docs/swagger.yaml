@@ -1,0 +1,4406 @@
+openapi: 3.0.3
+
+info:
+  title: FitCure / take.health API
+  version: 1.0.0
+  description: |
+    Production REST API for the **FitCure / take.health** AI healthcare platform.
+
+    This specification covers **every endpoint actually used by the web client
+    (`client/src`)** and verified against the live backend (`server/routes` +
+    `server/controllers`). Use it as the single source of truth when building
+    the Flutter mobile app or any third-party integration.
+
+    ## Highlights
+
+    * **Auth** — JWT Bearer, 30-day expiry, OTP-based registration, password
+      reset via 4-digit email code.
+    * **AI** — Lab-report analysis, food image scan, personalised diet plans,
+      glucose-trend insights, multilingual translation (Hindi default), AI
+      chat coach.
+    * **Health data** — Reports, glucose / HbA1c / weight / BP / HR metrics,
+      nutrition logs, water / weight tracking, wearable device sync.
+    * **Doctors** — Discovery, booking, video consultations, prescriptions,
+      reviews, full doctor workspace under `/doctors/me/*`.
+    * **Admin** — Full web-only dashboard suite (mobile clients can ignore).
+
+    See `README.md` next to this file for environment URLs, conventions,
+    Flutter codegen instructions, and known quirks.
+  termsOfService: https://take.health/terms
+  contact:
+    name: take.health Engineering
+    email: engineering@take.health
+  license:
+    name: Proprietary
+    url: https://take.health/license
+
+servers:
+  - url: https://api.take.health/api
+    description: Production
+  - url: https://{deployment}.vercel.app/api
+    description: Vercel preview / staging
+    variables:
+      deployment:
+        default: fitcure-staging
+        description: Vercel deployment slug
+  - url: http://localhost:5001/api
+    description: Local development
+  - url: http://{lanIp}:5001/api
+    description: LAN dev (testing from a physical phone)
+    variables:
+      lanIp:
+        default: 192.168.1.10
+        description: Your machine's LAN IP
+
+tags:
+  - name: System
+    description: Health-check, ping and diagnostics. Useful as a connectivity probe from mobile.
+  - name: Auth
+    description: Registration (with OTP), login, logout, password reset, profile retrieval.
+  - name: User Profile
+    description: Authenticated user profile, food preferences, subscription details.
+  - name: Health Reports
+    description: Upload lab reports → AI analysis → history, comparisons, per-report chat.
+  - name: Dashboard
+    description: Aggregated dashboard, Health DNA, daily progress, challenges, smoking log, AI chat.
+  - name: Health Metrics
+    description: Log and read glucose, HbA1c, weight, blood pressure, heart-rate readings.
+  - name: Nutrition
+    description: AI food analysis, meal logging, daily / weekly summaries, water & weight logs, goals.
+  - name: Quick Food Check
+    description: One-shot AI scan of a food (text or image) — does NOT log it as a meal.
+  - name: Diet Plan & Supplements
+    description: AI-generated personalised diet plans and supplement recommendations.
+  - name: Doctors
+    description: Public doctor discovery + patient-side booking and appointment management.
+  - name: Video Consultation
+    description: Start / end / summarise an appointment, submit a review, download prescription.
+  - name: Doctor Workspace
+    description: Endpoints under `/doctors/me/*`. Only callable by users with the `doctor` role.
+  - name: Wearables
+    description: Connect smart-watch / fitness device, sync daily metrics, heart-rate, sleep.
+  - name: Medical Documents
+    description: Secure cloud vault for prescriptions, scans, insurance, etc.
+  - name: AI Coach Chat
+    description: General-purpose AI health coach with conversation history.
+  - name: Notifications
+    description: In-app notifications inbox.
+  - name: Translation
+    description: AI-powered text translation (default target = Hindi).
+  - name: Food Safety
+    description: Curated food adulteration / safety database (no auth required).
+  - name: Support
+    description: User-side support ticket creation; admin response endpoints.
+  - name: Admin - Stats
+    description: Admin dashboard metrics. Requires `admin` role.
+  - name: Admin - Users
+    description: Admin user management. Requires `admin` role.
+  - name: Admin - Reports
+    description: Admin report oversight. Requires `admin` role.
+  - name: Admin - Doctors
+    description: Admin doctor management & approval workflow. Requires `admin` role.
+  - name: Admin - Diet & Supplements
+    description: Admin curation of diet templates, deficiency rules, supplement mappings.
+  - name: Admin - Food Cache
+    description: Admin curation of the global food intelligence cache.
+  - name: Admin - Activity Logs
+    description: User activity audit trail and live-user telemetry.
+
+# ---------------------------------------------------------------------------
+# Global security
+# ---------------------------------------------------------------------------
+security:
+  - bearerAuth: []
+
+# ---------------------------------------------------------------------------
+# Paths
+# ---------------------------------------------------------------------------
+paths:
+
+  # =========================================================================
+  # SYSTEM
+  # =========================================================================
+  /health-check:
+    get:
+      tags: [System]
+      summary: API & DB health probe
+      description: |
+        Lightweight liveness probe. Returns API info and current MongoDB
+        connection state. **Does NOT require authentication.**
+      security: []
+      responses:
+        '200':
+          description: API is up
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:      { type: string, example: ok }
+                  message:     { type: string, example: FitCure API }
+                  timestamp:   { type: string, format: date-time }
+                  environment: { type: string, example: production }
+                  dbConnected: { type: boolean }
+                  dbState:     { type: integer, description: Mongoose readyState (1 = connected) }
+
+  /ping:
+    get:
+      tags: [System]
+      summary: Simple ping
+      description: Returns `pong`. Use to validate the base URL from a Flutter app at startup.
+      security: []
+      responses:
+        '200':
+          description: Pong
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status: { type: string, example: pong }
+                  domain: { type: string, example: api.take.health }
+
+  /debug-connection:
+    get:
+      tags: [System]
+      summary: Deep DB diagnostics
+      description: Internal — returns the result of three sequential DB probes. **Do not call from mobile clients.**
+      security: []
+      responses:
+        '200': { description: All probes passed }
+        '503': { description: Connection failed }
+
+  # =========================================================================
+  # AUTH
+  # =========================================================================
+  /auth/register-otp:
+    post:
+      tags: [Auth]
+      summary: Request a registration OTP
+      description: |
+        Sends a **6-digit email OTP** that must be provided in the subsequent
+        `/auth/register` call. The OTP expires in 15 minutes.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email, example: jane@example.com }
+                name:  { type: string, example: Jane Doe }
+      responses:
+        '200':
+          description: OTP sent
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SuccessMessage' }
+        '400':
+          description: Email already registered or missing
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+
+  /auth/register:
+    post:
+      tags: [Auth]
+      summary: Register a new (patient) user
+      description: |
+        Final registration step. Requires the **6-digit OTP** obtained from
+        `/auth/register-otp`. On success returns the user object **with a JWT
+        token** — store it and use it as `Authorization: Bearer <token>`.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201':
+          description: User created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '400': { description: Validation error or invalid OTP }
+        '500': { description: Server error }
+
+  /auth/register/doctor:
+    post:
+      tags: [Auth]
+      summary: Register a doctor (pending approval)
+      description: |
+        Creates a user with `role=doctor` and an associated doctor profile in
+        `pending` approval status. The doctor cannot be booked until an admin
+        approves them.
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DoctorRegisterRequest' }
+      responses:
+        '201':
+          description: Doctor registered, awaiting approval
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '400': { description: Email already used }
+
+  /auth/login:
+    post:
+      tags: [Auth]
+      summary: Login with email **or** phone + password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [password]
+              properties:
+                email:    { type: string, format: email }
+                phone:    { type: string, example: "9876543210" }
+                password: { type: string, format: password, minLength: 6 }
+              description: Provide either `email` or `phone` — not both required.
+      responses:
+        '200':
+          description: Login successful
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+        '401': { description: Invalid credentials }
+        '403': { description: Account is deactivated }
+
+  /auth/logout:
+    post:
+      tags: [Auth]
+      summary: Logout (audit only)
+      description: Backend logs the logout activity. The client should still drop the JWT locally.
+      responses:
+        '200': { description: Logged out }
+
+  /auth/forgot-password:
+    post:
+      tags: [Auth]
+      summary: Send password-reset code
+      description: Emails a **4-digit numeric** code (valid 10 minutes).
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '200': { description: Code sent }
+        '404': { description: No account with that email }
+
+  /auth/verify-reset-code:
+    post:
+      tags: [Auth]
+      summary: Verify the password-reset code
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, code]
+              properties:
+                email: { type: string, format: email }
+                code:  { type: string, example: "1234" }
+      responses:
+        '200': { description: Code valid }
+        '400': { description: Invalid or expired code }
+
+  /auth/reset-password:
+    post:
+      tags: [Auth]
+      summary: Set a new password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, code, password]
+              properties:
+                email:    { type: string, format: email }
+                code:     { type: string, example: "1234" }
+                password: { type: string, format: password, minLength: 6 }
+      responses:
+        '200': { description: Password updated }
+        '400': { description: Invalid code or weak password }
+
+  /auth/profile:
+    get:
+      tags: [Auth]
+      summary: Get the authenticated user's profile
+      responses:
+        '200':
+          description: Current user
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+    put:
+      tags: [Auth]
+      summary: Update the authenticated user's profile
+      description: |
+        Sends a partial user document. Server merges `profile.*`, recalculates
+        BMI when height/weight change, and updates the associated `HealthGoal`
+        if a `nutritionGoal` is included.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:           { type: string }
+                phone:          { type: string }
+                profile:        { $ref: '#/components/schemas/UserProfile' }
+                nutritionGoal:  { $ref: '#/components/schemas/NutritionGoal' }
+      responses:
+        '200':
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/User'
+                  - type: object
+                    properties:
+                      bmiChanged: { type: boolean }
+                      newBmi:     { type: number, example: 23.4 }
+
+  /auth/upload-profile-picture:
+    post:
+      tags: [Auth]
+      summary: Upload / replace profile picture
+      description: |
+        Multipart upload. The image is stored on Cloudinary and the URL is set
+        on `user.profilePicture`.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [profilePicture]
+              properties:
+                profilePicture:
+                  type: string
+                  format: binary
+      responses:
+        '200':
+          description: Uploaded
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:        { type: string }
+                  profilePicture: { type: string, format: uri }
+
+  /auth/subscription:
+    get:
+      tags: [User Profile]
+      summary: Get my subscription status
+      responses:
+        '200':
+          description: Subscription block from the user document
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Subscription' }
+
+  # =========================================================================
+  # USER PREFERENCES
+  # =========================================================================
+  /users/food-preferences:
+    get:
+      tags: [User Profile]
+      summary: Get my food preferences
+      responses:
+        '200':
+          description: Stored preferences (empty object if never set)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { $ref: '#/components/schemas/FoodPreferences' }
+    post:
+      tags: [User Profile]
+      summary: Save / replace food preferences
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/FoodPreferences' }
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  message: { type: string }
+                  data:    { $ref: '#/components/schemas/FoodPreferences' }
+
+  # =========================================================================
+  # HEALTH REPORTS
+  # =========================================================================
+  /health/upload:
+    post:
+      tags: [Health Reports]
+      summary: Upload a lab report for AI analysis
+      description: |
+        Multipart upload (PDF, image, or text). Returns **immediately** with
+        `backgroundProcessing: true`; the AI runs in the background. Poll
+        `GET /health/reports/{id}/status` until `status === "completed"`.
+
+        Set a generous client timeout (≥ 150 s) — even though processing is
+        async, the validation step can take ~30 s.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [report]
+              properties:
+                report:
+                  type: string
+                  format: binary
+                  description: PDF / JPEG / PNG / TXT lab report
+                reportType:
+                  type: string
+                  example: blood
+                  description: Free-text category. Defaults to `general`.
+                manualText:
+                  type: string
+                  description: Optional plain text content (used when the file isn't a parseable PDF).
+      responses:
+        '201':
+          description: Report created, AI analysis enqueued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  report:               { $ref: '#/components/schemas/HealthReport' }
+                  backgroundProcessing: { type: boolean, example: true }
+        '400': { description: Not a medical report }
+
+  /health/reports:
+    get:
+      tags: [Health Reports]
+      summary: List my reports (latest 50)
+      description: Returns all non-failed reports sorted by `createdAt desc`.
+      responses:
+        '200':
+          description: Reports
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/HealthReport' }
+
+  /health/reports/{id}:
+    get:
+      tags: [Health Reports]
+      summary: Get a single report (with doctor recommendations)
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Report + matching recommended doctors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  report:              { $ref: '#/components/schemas/HealthReport' }
+                  recommendedDoctors:
+                    type: array
+                    items: { $ref: '#/components/schemas/Doctor' }
+        '404': { description: Report not found }
+    delete:
+      tags: [Health Reports]
+      summary: Delete a report
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200': { description: Deleted }
+        '404': { description: Not found }
+
+  /health/reports/{id}/status:
+    get:
+      tags: [Health Reports]
+      summary: Poll the AI processing status
+      description: |
+        Returns the current status of background analysis. Reports stuck in
+        `processing` for > 10 minutes are auto-marked `failed`.
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:           { type: string }
+                  status:       { type: string, enum: [pending, processing, completed, failed] }
+                  reportType:   { type: string }
+                  healthScore:  { type: number, example: 78 }
+                  summary:      { type: string }
+                  createdAt:    { type: string, format: date-time }
+
+  /health/reports/{id}/compare:
+    get:
+      tags: [Health Reports]
+      summary: Compare this report with the previous same-type report
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Comparison object
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  comparison:     { type: object, additionalProperties: true }
+                  currentReport:
+                    type: object
+                    properties:
+                      _id:         { type: string }
+                      reportType:  { type: string }
+                      createdAt:   { type: string, format: date-time }
+                      healthScore: { type: number }
+                  previousReport:
+                    type: object
+                    properties:
+                      _id:         { type: string }
+                      reportType:  { type: string }
+                      createdAt:   { type: string, format: date-time }
+                      healthScore: { type: number }
+        '404': { description: No previous report }
+
+  /health/reports/{id}/chat:
+    post:
+      tags: [Health Reports]
+      summary: Chat with AI about this specific report
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [message]
+              properties:
+                message:     { type: string, example: "What does my low Vitamin D mean?" }
+                chatHistory: { $ref: '#/components/schemas/ChatHistory' }
+      responses:
+        '200':
+          description: AI reply
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  response: { type: string }
+
+  /health/reports/{id}/reanalyze:
+    post:
+      tags: [Health Reports]
+      summary: Re-run AI analysis on an existing report
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Re-analysis scheduled
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string, example: Re-analysis started }
+                  status:  { type: string, example: processing }
+
+  /health/history:
+    get:
+      tags: [Health Reports]
+      summary: Get grouped report history
+      parameters:
+        - in: query
+          name: reportType
+          schema: { type: string }
+          description: Filter to a single report type (e.g. `blood`, `lipid`).
+      responses:
+        '200':
+          description: Reports grouped by `reportType`
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  history:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          _id:         { type: string }
+                          date:        { type: string, format: date-time }
+                          healthScore: { type: number }
+                          metrics:     { type: object, additionalProperties: true }
+                          keyFindings: { type: array, items: { type: string } }
+                  totalReports: { type: integer }
+
+  /health/report-comparison:
+    get:
+      tags: [Health Reports]
+      summary: List the last 10 completed reports (for comparison UI)
+      responses:
+        '200':
+          description: Reports list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  hasData: { type: boolean }
+                  reports:
+                    type: array
+                    items: { $ref: '#/components/schemas/HealthReport' }
+
+  # =========================================================================
+  # DASHBOARD & HEALTH DNA
+  # =========================================================================
+  /health/dashboard:
+    get:
+      tags: [Dashboard]
+      summary: Aggregated dashboard (cached 120 s)
+      description: |
+        Heavy aggregation endpoint. Combines reports, wearable history, food
+        logs, glucose readings and goals into a single payload that powers the
+        main dashboard screen.
+
+        **Do not poll** — the response is cached for 120 s.
+      responses:
+        '200':
+          description: Dashboard data
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Dashboard' }
+
+  /health/health-dna:
+    get:
+      tags: [Dashboard]
+      summary: Get my "Health DNA" personalised profile
+      description: AI-generated wellness identity. Cached server-side for 24 hours.
+      responses:
+        '200':
+          description: Health DNA
+          content:
+            application/json:
+              schema:
+                type: object
+                description: AI-generated DNA (shape is dynamic — render fields as returned).
+                additionalProperties: true
+
+  /health/daily-progress:
+    post:
+      tags: [Dashboard]
+      summary: Save / upsert a day's progress score
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [date, totalScore]
+              properties:
+                date:       { type: string, format: date, example: "2026-05-25" }
+                totalScore: { type: number, example: 87 }
+      responses:
+        '200': { description: Saved }
+
+  /health/daily-progress/{date}:
+    get:
+      tags: [Dashboard]
+      summary: Get a single day's progress
+      parameters:
+        - in: path
+          name: date
+          required: true
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Progress
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:  { type: boolean }
+                  progress:
+                    type: object
+                    nullable: true
+                    properties:
+                      userId:     { type: string }
+                      date:       { type: string }
+                      totalScore: { type: number }
+
+  /health/ai-chat:
+    post:
+      tags: [Dashboard, AI Coach Chat]
+      summary: Lightweight AI Q&A (also used by Smoke Tracker)
+      description: |
+        Direct Anthropic Claude call with the user's latest report summary as
+        context. Use this for short Q&A or specific tracker hints. For the
+        full conversational coach use `POST /chat`.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                query:                { type: string }
+                message:              { type: string, description: Alias for `query` }
+                conversationHistory:  { $ref: '#/components/schemas/ChatHistory' }
+                chatHistory:          { $ref: '#/components/schemas/ChatHistory' }
+              description: Provide either `query` or `message`.
+      responses:
+        '200':
+          description: AI reply
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:  { type: boolean }
+                  response: { type: string }
+
+  /health/metric-info:
+    post:
+      tags: [Dashboard]
+      summary: Get human-friendly explanation of a lab metric
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [metricName]
+              properties:
+                metricName:  { type: string, example: HDL Cholesterol }
+                metricValue: { type: string, example: "45 mg/dL" }
+                normalRange: { type: string, example: ">40 mg/dL (men)" }
+                unit:        { type: string, example: mg/dL }
+      responses:
+        '200':
+          description: AI explanation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  metricInfo:
+                    type: object
+                    additionalProperties: true
+
+  /health/challenge:
+    get:
+      tags: [Dashboard]
+      summary: Get 30-day challenge progress
+      responses:
+        '200':
+          description: Challenge data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  challengeData: { type: object, additionalProperties: true }
+                  streakDays:    { type: integer }
+    post:
+      tags: [Dashboard]
+      summary: Save 30-day challenge progress
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challengeData]
+              properties:
+                challengeData: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Saved }
+
+  /health/smoke-log:
+    get:
+      tags: [Dashboard]
+      summary: Get smoking-cessation tracker log
+      responses:
+        '200':
+          description: Smoke log
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:  { type: boolean }
+                  smokeLog: { type: object, additionalProperties: true }
+    post:
+      tags: [Dashboard]
+      summary: Save smoking-cessation tracker log
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [smokeLog]
+              properties:
+                smokeLog: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Saved }
+
+  /health/alcohol-log:
+    get:
+      tags: [Dashboard]
+      summary: Get alcohol moderation tracker log
+      responses:
+        '200':
+          description: Alcohol log
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:    { type: boolean }
+                  alcoholLog: { type: object, additionalProperties: true }
+    post:
+      tags: [Dashboard]
+      summary: Save alcohol moderation tracker log
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [alcoholLog]
+              properties:
+                alcoholLog: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Saved }
+
+  # =========================================================================
+  # HEALTH METRICS
+  # =========================================================================
+  /metrics:
+    post:
+      tags: [Health Metrics]
+      summary: Log a new health metric
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HealthMetricInput' }
+      responses:
+        '201':
+          description: Saved
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/HealthMetric' }
+        '400': { description: Missing required fields }
+
+  /metrics/{type}:
+    get:
+      tags: [Health Metrics]
+      summary: List metrics of a given type (latest first)
+      parameters:
+        - in: path
+          name: type
+          required: true
+          schema:
+            type: string
+            enum: [blood_sugar, hba1c, weight, blood_pressure, heart_rate]
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50, maximum: 500 }
+      responses:
+        '200':
+          description: Metrics
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/HealthMetric' }
+
+  /metrics/summary/latest:
+    get:
+      tags: [Health Metrics]
+      summary: Latest reading for each requested type
+      parameters:
+        - in: query
+          name: types
+          required: true
+          description: Comma-separated metric types.
+          schema:
+            type: string
+            example: heart_rate,blood_pressure,blood_sugar
+      responses:
+        '200':
+          description: Map of `type → latest reading`
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/HealthMetric'
+
+  /metrics/analysis/glucose:
+    get:
+      tags: [Health Metrics]
+      summary: AI-powered glucose-trend analysis (last 14 days)
+      description: |
+        Combines recent glucose readings, the latest HbA1c, and today's food
+        log to produce a structured AI insight. Result is **cached server-side
+        per data-hash** so token usage stays low.
+      responses:
+        '200':
+          description: AI analysis
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: object
+                    properties:
+                      status:           { type: string, example: "Mostly stable" }
+                      statusColor:      { type: string, enum: [gray, green, orange, red] }
+                      analysis:         { type: string }
+                      spikeCause:       { type: string }
+                      immediateAction:  { type: string }
+                      recommendations:  { type: array, items: { type: string } }
+
+  # =========================================================================
+  # NUTRITION
+  # =========================================================================
+  /nutrition/analyze-food:
+    post:
+      tags: [Nutrition]
+      summary: AI analyse a food (text or base64 image)
+      description: |
+        Used by the meal-logging flow to compute calories, macros,
+        micronutrients, warnings and alternatives **before** the user logs the
+        meal. The result is also stored in the global food cache for faster
+        future lookups.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                foodDescription:    { type: string, example: "2 rotis with dal" }
+                imageBase64:        { type: string, description: Base64 (no data URI prefix) }
+                additionalContext:  { type: string, example: "Quantity: 1 bowl. Prep: home-cooked" }
+              description: At least one of `foodDescription` / `imageBase64` is required.
+      responses:
+        '200':
+          description: Analysis
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:  { type: boolean }
+                  analysis: { $ref: '#/components/schemas/FoodAnalysis' }
+                  message:  { type: string }
+
+  /nutrition/quick-check:
+    post:
+      tags: [Quick Food Check]
+      summary: One-shot AI food check (image multipart **or** text JSON)
+      description: |
+        Same engine as `/nutrition/analyze-food` but persisted as a
+        `QuickFoodCheck` document and **not** counted in the daily meal log.
+        Used by the "Snap & Check" screen.
+
+        Accepts either multipart (image upload) or `application/json`.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              properties:
+                image:             { type: string, format: binary }
+                foodDescription:   { type: string }
+                additionalContext: { type: string }
+                quantity:          { type: string, example: "1 plate" }
+                prepMethod:        { type: string, example: "fried" }
+          application/json:
+            schema:
+              type: object
+              properties:
+                foodDescription:   { type: string }
+                imageBase64:       { type: string }
+                additionalContext: { type: string }
+                quantity:          { type: string }
+                prepMethod:        { type: string }
+      responses:
+        '200':
+          description: Saved food check
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { $ref: '#/components/schemas/QuickFoodCheck' }
+                  message: { type: string }
+
+  /nutrition/quick-checks/{id}:
+    delete:
+      tags: [Quick Food Check]
+      summary: Delete a Quick Food Check entry
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200': { description: Deleted }
+
+  /nutrition/quick-checks/history/date:
+    get:
+      tags: [Quick Food Check]
+      summary: Get all Quick Food Check entries for a given date
+      description: |
+        Returns every Quick Food Check the user performed on the supplied
+        date, plus the aggregated daily stats used by the dashboard widget.
+      parameters:
+        - in: query
+          name: date
+          required: true
+          schema: { type: string, format: date }
+          description: ISO date (YYYY-MM-DD). Defaults to *today* if omitted.
+      responses:
+        '200':
+          description: Daily history
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  stats:
+                    type: object
+                    properties:
+                      date:    { type: string, format: date }
+                      count:   { type: integer }
+                      checks:
+                        type: array
+                        items: { $ref: '#/components/schemas/QuickFoodCheck' }
+                      totals:
+                        type: object
+                        properties:
+                          calories: { type: number }
+                          protein:  { type: number }
+                          carbs:    { type: number }
+                          fat:      { type: number }
+
+  /nutrition/log-meal:
+    post:
+      tags: [Nutrition]
+      summary: Log a meal (added to daily totals)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LogMealRequest' }
+      responses:
+        '201':
+          description: Logged
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  foodLog: { $ref: '#/components/schemas/FoodLog' }
+
+  /nutrition/logs:
+    get:
+      tags: [Nutrition]
+      summary: List food logs for a specific date
+      parameters:
+        - in: query
+          name: date
+          required: false
+          schema: { type: string, format: date, example: "2026-05-25" }
+          description: Defaults to today (UTC).
+      responses:
+        '200':
+          description: Logs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  logs:
+                    type: array
+                    items: { $ref: '#/components/schemas/FoodLog' }
+
+  /nutrition/logs/today:
+    get:
+      tags: [Nutrition]
+      summary: List today's food logs
+      responses:
+        '200':
+          description: Logs
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  logs:
+                    type: array
+                    items: { $ref: '#/components/schemas/FoodLog' }
+
+  /nutrition/logs/{id}:
+    put:
+      tags: [Nutrition]
+      summary: Update an existing food log (e.g. change meal type)
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                mealType:  { type: string, enum: [breakfast, lunch, dinner, snack, midMorningSnack, eveningSnack] }
+                foodItems: { type: array, items: { $ref: '#/components/schemas/FoodItem' } }
+                notes:     { type: string }
+      responses:
+        '200':
+          description: Updated log
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/FoodLog' }
+    delete:
+      tags: [Nutrition]
+      summary: Delete a food log
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200': { description: Deleted }
+
+  /nutrition/summary/daily:
+    get:
+      tags: [Nutrition]
+      summary: Get daily nutrition summary
+      parameters:
+        - in: query
+          name: date
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Summary
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/NutritionSummary' }
+
+  /nutrition/summary/weekly:
+    get:
+      tags: [Nutrition]
+      summary: Get last-7-days nutrition summary
+      responses:
+        '200':
+          description: Weekly summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { type: array, items: { $ref: '#/components/schemas/NutritionSummary' } }
+
+  /nutrition/goals:
+    get:
+      tags: [Nutrition]
+      summary: Get my nutrition / health goal
+      responses:
+        '200':
+          description: Goal
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:     { type: boolean }
+                  healthGoal:  { $ref: '#/components/schemas/HealthGoal' }
+        '404': { description: No goal set }
+    put:
+      tags: [Nutrition]
+      summary: Upsert my nutrition / health goal
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/HealthGoalInput' }
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:    { type: boolean }
+                  healthGoal: { $ref: '#/components/schemas/HealthGoal' }
+                  message:    { type: string }
+
+  /nutrition/log-water:
+    post:
+      tags: [Nutrition]
+      summary: Log water intake (glasses)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [waterIntake]
+              properties:
+                waterIntake: { type: number, example: 6, description: Glasses (1 glass ≈ 250 ml) }
+                date:        { type: string, format: date, description: Defaults to today }
+      responses:
+        '200': { description: Saved }
+
+  /nutrition/log-weight:
+    post:
+      tags: [Nutrition]
+      summary: Log body-weight
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [weight]
+              properties:
+                weight: { type: number, example: 71.4 }
+                notes:  { type: string }
+                date:   { type: string, format: date }
+      responses:
+        '200':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:    { type: boolean }
+                  message:    { type: string }
+                  metric:     { $ref: '#/components/schemas/HealthMetric' }
+                  healthGoal: { $ref: '#/components/schemas/HealthGoal' }
+
+  /nutrition/food-image:
+    get:
+      tags: [Nutrition]
+      summary: Resolve a food name to a cover image URL
+      description: Used by the diet-plan UI to display nice thumbnails next to suggested foods.
+      parameters:
+        - in: query
+          name: foodName
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Image URL
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:  { type: boolean }
+                  imageUrl: { type: string, format: uri }
+                  source:   { type: string, example: BingThumb }
+
+  # =========================================================================
+  # DIET PLAN & SUPPLEMENTS
+  # =========================================================================
+  /diet-recommendations/diet-plan/generate:
+    post:
+      tags: [Diet Plan & Supplements]
+      summary: Generate a personalised AI diet plan
+      description: |
+        Kicks off background generation. Poll
+        `/diet-recommendations/diet-plan/{planId}/status` until
+        `status === "completed"`, then fetch via `/diet-plan/active` or
+        `/diet-plan/{planId}`.
+
+        Body is optional — server uses the latest user profile + reports if no
+        overrides are sent.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              description: Optional overrides; all fields fallback to user profile.
+              properties:
+                dietaryPreference: { type: string, enum: [vegetarian, vegan, non-vegetarian, eggetarian] }
+                allergies:         { type: array, items: { type: string } }
+                fitnessGoals:      { type: array, items: { type: string } }
+      responses:
+        '202':
+          description: Plan generation queued
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:    { type: boolean }
+                  message:    { type: string }
+                  dietPlanId: { type: string }
+
+  /diet-recommendations/diet-plan/active:
+    get:
+      tags: [Diet Plan & Supplements]
+      summary: Get the active diet plan (or `null`)
+      responses:
+        '200':
+          description: Plan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:  { type: boolean }
+                  dietPlan:
+                    allOf:
+                      - $ref: '#/components/schemas/PersonalizedDietPlan'
+                    nullable: true
+                    description: "`null` when the user has no active plan."
+
+  /diet-recommendations/diet-plan/history:
+    get:
+      tags: [Diet Plan & Supplements]
+      summary: List the last 10 generated plans
+      responses:
+        '200':
+          description: History
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  history:
+                    type: array
+                    items: { $ref: '#/components/schemas/PersonalizedDietPlan' }
+
+  /diet-recommendations/diet-plan/{planId}:
+    get:
+      tags: [Diet Plan & Supplements]
+      summary: Get a specific diet plan
+      parameters:
+        - $ref: '#/components/parameters/PlanIdParam'
+      responses:
+        '200':
+          description: Plan
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:  { type: boolean }
+                  dietPlan: { $ref: '#/components/schemas/PersonalizedDietPlan' }
+        '404': { description: Not found }
+
+  /diet-recommendations/diet-plan/{planId}/status:
+    get:
+      tags: [Diet Plan & Supplements]
+      summary: Poll diet-plan generation status
+      parameters:
+        - $ref: '#/components/parameters/PlanIdParam'
+      responses:
+        '200':
+          description: Status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:     { type: boolean }
+                  status:      { type: string, enum: [pending, generating, completed, failed] }
+                  generatedAt: { type: string, format: date-time }
+
+  /diet-recommendations/diet-plan/{planId}/rate:
+    post:
+      tags: [Diet Plan & Supplements]
+      summary: Rate a diet plan (1 – 5) with optional feedback
+      parameters:
+        - $ref: '#/components/parameters/PlanIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rating]
+              properties:
+                rating:   { type: integer, minimum: 1, maximum: 5 }
+                feedback: { type: string }
+      responses:
+        '200': { description: Thanks }
+
+  /diet-recommendations/supplements/generate:
+    post:
+      tags: [Diet Plan & Supplements]
+      summary: Generate AI supplement recommendations from latest reports
+      responses:
+        '200':
+          description: Recommendations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:         { type: boolean }
+                  message:         { type: string }
+                  recommendations:
+                    allOf:
+                      - $ref: '#/components/schemas/SupplementRecommendation'
+                    nullable: true
+                    description: "`null` when no deficiencies were detected."
+
+  /diet-recommendations/supplements/active:
+    get:
+      tags: [Diet Plan & Supplements]
+      summary: Get the active supplement recommendation set
+      responses:
+        '200':
+          description: Recommendations
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:         { type: boolean }
+                  recommendations:
+                    allOf:
+                      - $ref: '#/components/schemas/SupplementRecommendation'
+                    nullable: true
+                    description: "`null` when no active supplement recommendations exist."
+
+  /diet-recommendations/supplements/{recommendationId}/track:
+    post:
+      tags: [Diet Plan & Supplements]
+      summary: Log that a supplement was taken
+      parameters:
+        - in: path
+          name: recommendationId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [supplementName]
+              properties:
+                supplementName: { type: string }
+                dosage:         { type: string }
+                notes:          { type: string }
+      responses:
+        '200': { description: Tracked }
+
+  # =========================================================================
+  # DOCTORS
+  # =========================================================================
+  /doctors:
+    get:
+      tags: [Doctors]
+      summary: List approved doctors
+      security: []
+      parameters:
+        - in: query
+          name: specialization
+          schema: { type: string }
+        - in: query
+          name: available
+          schema: { type: string, enum: ['true', 'false'] }
+      responses:
+        '200':
+          description: Doctors
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Doctor' }
+
+  /doctors/recommended:
+    get:
+      tags: [Doctors]
+      summary: Get doctors recommended for a list of specializations
+      parameters:
+        - in: query
+          name: specializations
+          required: true
+          description: Comma-separated list (e.g. `cardiology,endocrinology`)
+          schema: { type: string }
+      responses:
+        '200':
+          description: Doctors
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Doctor' }
+
+  /doctors/{id}:
+    get:
+      tags: [Doctors]
+      summary: Get a single approved doctor
+      security: []
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Doctor
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Doctor' }
+        '404': { description: Not found }
+
+  /doctors/book:
+    post:
+      tags: [Doctors]
+      summary: Book an appointment
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [doctorId, date, timeSlot]
+              properties:
+                doctorId:       { type: string }
+                date:           { type: string, format: date }
+                timeSlot:       { type: string, example: "10:30 AM" }
+                type:           { type: string, enum: [video, phone, in-person], default: video }
+                symptoms:       { type: string }
+                healthReportId: { type: string, nullable: true }
+      responses:
+        '201':
+          description: Booked
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Appointment' }
+        '400': { description: Slot already taken }
+
+  /doctors/appointments:
+    get:
+      tags: [Doctors]
+      summary: List my appointments (as patient)
+      responses:
+        '200':
+          description: Appointments
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Appointment' }
+
+  /doctors/appointments/{appointmentId}:
+    get:
+      tags: [Doctors, Video Consultation]
+      summary: Get appointment details (includes video-room info)
+      parameters:
+        - $ref: '#/components/parameters/AppointmentIdParam'
+      responses:
+        '200':
+          description: Appointment
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Appointment' }
+        '403': { description: You are not patient or doctor on this appointment }
+
+  /doctors/appointments/{appointmentId}/start:
+    post:
+      tags: [Video Consultation]
+      summary: Start a consultation (sets status `in-progress`)
+      parameters:
+        - $ref: '#/components/parameters/AppointmentIdParam'
+      responses:
+        '200':
+          description: Started
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:     { type: string }
+                  appointment: { $ref: '#/components/schemas/Appointment' }
+
+  /doctors/appointments/{appointmentId}/end:
+    post:
+      tags: [Video Consultation]
+      summary: End a consultation (records prescription + follow-up)
+      parameters:
+        - $ref: '#/components/parameters/AppointmentIdParam'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                notes:        { type: string }
+                prescription:
+                  type: array
+                  items: { $ref: '#/components/schemas/Prescription' }
+                followUpDate: { type: string, format: date-time }
+      responses:
+        '200':
+          description: Ended
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:     { type: string }
+                  appointment: { $ref: '#/components/schemas/Appointment' }
+
+  /doctors/appointments/{appointmentId}/summary:
+    get:
+      tags: [Video Consultation]
+      summary: Get a friendly consultation summary
+      parameters:
+        - $ref: '#/components/parameters/AppointmentIdParam'
+      responses:
+        '200':
+          description: Summary
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  id:             { type: string }
+                  doctor:
+                    type: object
+                    properties:
+                      name:           { type: string }
+                      specialization: { type: string }
+                      image:          { type: string, nullable: true }
+                  date:            { type: string, format: date-time }
+                  duration:        { type: string, example: "32 minutes" }
+                  diagnosis:       { type: string }
+                  prescription:
+                    type: array
+                    items: { $ref: '#/components/schemas/Prescription' }
+                  recommendations: { type: array, items: { type: string } }
+                  followUp:
+                    type: object
+                    nullable: true
+                    properties:
+                      date: { type: string, format: date-time }
+                      type: { type: string }
+                  notes:            { type: string }
+                  reviewSubmitted:  { type: boolean }
+
+  /doctors/appointments/{appointmentId}/review:
+    post:
+      tags: [Video Consultation]
+      summary: Submit a review for the doctor (patient only)
+      parameters:
+        - $ref: '#/components/parameters/AppointmentIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [rating]
+              properties:
+                rating: { type: integer, minimum: 1, maximum: 5 }
+                review: { type: string }
+      responses:
+        '200': { description: Review submitted }
+
+  /doctors/appointments/{appointmentId}/prescription:
+    get:
+      tags: [Video Consultation]
+      summary: Download a prescription (binary blob)
+      parameters:
+        - $ref: '#/components/parameters/AppointmentIdParam'
+      responses:
+        '200':
+          description: PDF / binary
+          content:
+            application/pdf:
+              schema:
+                type: string
+                format: binary
+
+  /doctors/{doctorId}/available-slots:
+    get:
+      tags: [Doctors]
+      summary: Get a doctor's available time slots for the next 7 days
+      security: []
+      parameters:
+        - in: path
+          name: doctorId
+          required: true
+          schema: { type: string }
+        - in: query
+          name: date
+          schema: { type: string, format: date }
+          description: Filter to a single date.
+      responses:
+        '200':
+          description: Slots
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  doctorId:             { type: string }
+                  doctorName:           { type: string }
+                  timezone:             { type: string, example: Asia/Kolkata }
+                  slotsByDate:
+                    type: object
+                    additionalProperties:
+                      type: array
+                      items: { $ref: '#/components/schemas/TimeSlot' }
+                  totalAvailableSlots:  { type: integer }
+
+  /doctors/{doctorId}/check-slot:
+    get:
+      tags: [Doctors]
+      summary: Check if a specific slot is available
+      security: []
+      parameters:
+        - in: path
+          name: doctorId
+          required: true
+          schema: { type: string }
+        - in: query
+          name: date
+          required: true
+          schema: { type: string, format: date }
+        - in: query
+          name: timeSlot
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Availability
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  available:        { type: boolean }
+                  timeSlot:         { type: string }
+                  date:             { type: string }
+                  currentBookings:  { type: integer }
+                  maxBookings:      { type: integer }
+                  reason:           { type: string, nullable: true }
+
+  # =========================================================================
+  # DOCTOR WORKSPACE
+  # =========================================================================
+  /doctors/me/dashboard:
+    get:
+      tags: [Doctor Workspace]
+      summary: Doctor dashboard
+      responses:
+        '200':
+          description: Dashboard
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DoctorDashboard' }
+
+  /doctors/me/profile:
+    get:
+      tags: [Doctor Workspace]
+      summary: My doctor profile
+      responses:
+        '200':
+          description: Doctor profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Doctor' }
+    put:
+      tags: [Doctor Workspace]
+      summary: Update my doctor profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                phone:           { type: string }
+                hospital:        { type: string }
+                consultationFee: { type: number }
+                bio:             { type: string }
+                isAvailable:     { type: boolean }
+                availability:    { $ref: '#/components/schemas/Availability' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Doctor' }
+
+  /doctors/me/appointments:
+    get:
+      tags: [Doctor Workspace]
+      summary: My appointments (as doctor)
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string, enum: [scheduled, confirmed, in-progress, completed, cancelled, no-show] }
+        - in: query
+          name: date
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Appointments
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Appointment' }
+
+  /doctors/me/appointments/{appointmentId}:
+    patch:
+      tags: [Doctor Workspace]
+      summary: Update an appointment (status / notes / prescription)
+      parameters:
+        - $ref: '#/components/parameters/AppointmentIdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                status:       { type: string }
+                notes:        { type: string }
+                prescription:
+                  type: array
+                  items: { $ref: '#/components/schemas/Prescription' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Appointment' }
+
+  /doctors/me/availability:
+    get:
+      tags: [Doctor Workspace]
+      summary: Get my availability schedule
+      responses:
+        '200':
+          description: Availability
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  availability: { $ref: '#/components/schemas/Availability' }
+    put:
+      tags: [Doctor Workspace]
+      summary: Replace my availability schedule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                settings:
+                  type: object
+                  properties:
+                    startTime:    { type: string, example: "09:00" }
+                    endTime:      { type: string, example: "18:00" }
+                    slotDuration: { type: integer, example: 30 }
+                blockedSlots:
+                  type: object
+                  description: "Map of `YYYY-MM-DD → array of HH:mm strings`"
+                  additionalProperties:
+                    type: array
+                    items: { type: string }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:      { type: string }
+                  availability: { $ref: '#/components/schemas/Availability' }
+
+  /doctors/me/generate-slots:
+    post:
+      tags: [Doctor Workspace]
+      summary: Force-regenerate 7-day time slots
+      responses:
+        '200':
+          description: Slots
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  slots:   { type: object, additionalProperties: true }
+
+  /doctors/patient/{patientId}:
+    get:
+      tags: [Doctor Workspace]
+      summary: Get a patient's full profile (for consultation)
+      parameters:
+        - in: path
+          name: patientId
+          required: true
+          schema: { type: string }
+        - in: query
+          name: appointmentId
+          schema: { type: string }
+          description: Required for authorization — must belong to the requesting doctor.
+      responses:
+        '200':
+          description: Patient profile
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PatientFullProfile' }
+        '403': { description: Not authorised for this patient }
+
+  /doctors/{doctorId}/appointments:
+    get:
+      tags: [Doctor Workspace]
+      summary: Get appointments by doctor ID (admin-style view)
+      parameters:
+        - in: path
+          name: doctorId
+          required: true
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { type: string }
+      responses:
+        '200':
+          description: Appointments
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Appointment' }
+
+  # =========================================================================
+  # WEARABLES
+  # =========================================================================
+  /wearables/connect:
+    post:
+      tags: [Wearables]
+      summary: Connect a wearable device
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deviceType]
+              properties:
+                deviceType: { type: string, enum: [fitbit, apple_watch, garmin, samsung, xiaomi, other] }
+                deviceName: { type: string }
+      responses:
+        '201':
+          description: Connected
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WearableData' }
+
+  /wearables/disconnect/{deviceType}:
+    post:
+      tags: [Wearables]
+      summary: Disconnect a wearable device
+      parameters:
+        - in: path
+          name: deviceType
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Disconnected }
+        '404': { description: Not found }
+
+  /wearables/devices:
+    get:
+      tags: [Wearables]
+      summary: List my connected (or previously connected) devices
+      responses:
+        '200':
+          description: Devices
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/WearableData' }
+
+  /wearables/sync:
+    post:
+      tags: [Wearables]
+      summary: Sync (or upsert) daily metrics for a device
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [metrics]
+              properties:
+                deviceType: { type: string, default: other }
+                isAdditive:
+                  type: boolean
+                  description: When `true`, server **adds** to existing values for that date instead of replacing.
+                metrics:
+                  type: object
+                  properties:
+                    date:           { type: string, format: date }
+                    steps:          { type: number }
+                    caloriesBurned: { type: number }
+                    activeMinutes:  { type: number }
+                    distance:       { type: number, description: "km" }
+                    floorsClimbed:  { type: number }
+      responses:
+        '200':
+          description: Updated device document
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WearableData' }
+
+  /wearables/heart-rate:
+    post:
+      tags: [Wearables]
+      summary: Log a heart-rate reading
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [deviceType, bpm]
+              properties:
+                deviceType: { type: string }
+                bpm:        { type: number, example: 72 }
+                type:       { type: string, enum: [resting, active, peak, cardio], default: resting }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WearableData' }
+
+  /wearables/sleep:
+    post:
+      tags: [Wearables]
+      summary: Log sleep data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [sleepData]
+              properties:
+                deviceType: { type: string, default: other }
+                sleepData:
+                  type: object
+                  properties:
+                    date:               { type: string, format: date }
+                    totalSleepMinutes:  { type: number }
+                    deepSleepMinutes:   { type: number }
+                    lightSleepMinutes:  { type: number }
+                    remSleepMinutes:    { type: number }
+                    awakeMinutes:       { type: number }
+                    sleepScore:         { type: number }
+                    bedTime:            { type: string, format: date-time }
+                    wakeTime:           { type: string, format: date-time }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WearableData' }
+
+  /wearables/dashboard:
+    get:
+      tags: [Wearables]
+      summary: Aggregated wearable dashboard
+      responses:
+        '200':
+          description: Dashboard
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /wearables/demo-data:
+    post:
+      tags: [Wearables]
+      summary: Inject demo wearable data (for first-run onboarding)
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                deviceType: { type: string, default: other }
+      responses:
+        '200':
+          description: Demo data generated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/WearableData' }
+
+  # =========================================================================
+  # MEDICAL DOCUMENTS
+  # =========================================================================
+  /documents:
+    get:
+      tags: [Medical Documents]
+      summary: List my documents (vault + analysed lab reports)
+      parameters:
+        - in: query
+          name: category
+          schema:
+            type: string
+            enum: [all, prescription, lab_report, scan, discharge_summary, vaccination, insurance, other]
+        - in: query
+          name: search
+          schema: { type: string }
+      responses:
+        '200':
+          description: Documents
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  documents:
+                    type: array
+                    items: { $ref: '#/components/schemas/MedicalDocument' }
+    post:
+      tags: [Medical Documents]
+      summary: Upload a medical document
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [document, title]
+              properties:
+                document:     { type: string, format: binary }
+                title:        { type: string }
+                category:     { type: string, enum: [prescription, lab_report, scan, discharge_summary, vaccination, insurance, other] }
+                documentDate: { type: string, format: date }
+                notes:        { type: string }
+      responses:
+        '201':
+          description: Saved
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:  { type: string }
+                  document: { $ref: '#/components/schemas/MedicalDocument' }
+
+  /documents/{id}:
+    delete:
+      tags: [Medical Documents]
+      summary: Delete a document
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200': { description: Deleted }
+
+  # =========================================================================
+  # AI COACH CHAT
+  # =========================================================================
+  /chat:
+    post:
+      tags: [AI Coach Chat]
+      summary: Full conversational AI health coach
+      description: |
+        Heavy AI endpoint that injects the user's profile, latest reports,
+        today's nutrition, today's activity and active diet plan into the
+        prompt. Use for the dedicated chat screen.
+
+        For the diabetes-specific glycemic predictor behaviour see the
+        backend system prompt — it is automatically activated when the user
+        profile indicates diabetes.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:               { type: string, example: "I just ate 2 rotis with dal — how will my sugar respond?" }
+                conversationHistory: { $ref: '#/components/schemas/ChatHistory' }
+                userReports:
+                  type: array
+                  items: { type: object, additionalProperties: true }
+                  description: Optional — server fetches if omitted.
+      responses:
+        '200':
+          description: AI reply
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:   { type: boolean }
+                  response:  { type: string }
+                  timestamp: { type: string, format: date-time }
+                  mode:      { type: string, enum: [ai, fallback] }
+
+  /chat/history:
+    get:
+      tags: [AI Coach Chat]
+      summary: Get my chat history
+      responses:
+        '200':
+          description: Messages
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:  { type: boolean }
+                  messages: { $ref: '#/components/schemas/ChatHistory' }
+    post:
+      tags: [AI Coach Chat]
+      summary: Append messages to chat history (capped at 100)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [messages]
+              properties:
+                messages: { $ref: '#/components/schemas/ChatHistory' }
+      responses:
+        '200': { description: Saved }
+    delete:
+      tags: [AI Coach Chat]
+      summary: Wipe my chat history
+      responses:
+        '200': { description: Cleared }
+
+  # =========================================================================
+  # NOTIFICATIONS
+  # =========================================================================
+  /notifications:
+    get:
+      tags: [Notifications]
+      summary: List my notifications (latest 50)
+      responses:
+        '200':
+          description: Notifications
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:     { type: boolean }
+                  notifications:
+                    type: array
+                    items: { $ref: '#/components/schemas/Notification' }
+                  unreadCount: { type: integer }
+    delete:
+      tags: [Notifications]
+      summary: Clear all my notifications
+      responses:
+        '200': { description: Cleared }
+
+  /notifications/unread-count:
+    get:
+      tags: [Notifications]
+      summary: Unread count (lightweight)
+      description: Optimised for polling — does **not** trigger auto-logout on 401.
+      responses:
+        '200':
+          description: Count
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:     { type: boolean }
+                  unreadCount: { type: integer }
+
+  /notifications/{id}/read:
+    put:
+      tags: [Notifications]
+      summary: Mark a notification as read
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:      { type: boolean }
+                  notification: { $ref: '#/components/schemas/Notification' }
+
+  /notifications/mark-all-read:
+    put:
+      tags: [Notifications]
+      summary: Mark all as read
+      responses:
+        '200': { description: Done }
+
+  /notifications/{id}:
+    delete:
+      tags: [Notifications]
+      summary: Delete a single notification
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200': { description: Deleted }
+
+  # =========================================================================
+  # TRANSLATION
+  # =========================================================================
+  /translate:
+    post:
+      tags: [Translation]
+      summary: AI translation (default target = Hindi)
+      description: '**No authentication required.** Translates lab-report text, AI explanations, etc.'
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text:           { type: string, example: "Your cholesterol is borderline high." }
+                targetLanguage: { type: string, default: hi, example: hi }
+      responses:
+        '200':
+          description: Translated text
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  translatedText: { type: string }
+
+  # =========================================================================
+  # FOOD SAFETY
+  # =========================================================================
+  /food-safety/all:
+    get:
+      tags: [Food Safety]
+      summary: List the full food-safety database
+      security: []
+      responses:
+        '200':
+          description: Records
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/FoodSafetyRecord' }
+
+  /food-safety/search:
+    get:
+      tags: [Food Safety]
+      summary: Search the food-safety database
+      security: []
+      parameters:
+        - in: query
+          name: query
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Records
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:
+                    type: array
+                    items: { $ref: '#/components/schemas/FoodSafetyRecord' }
+
+  /food-safety/{name}:
+    get:
+      tags: [Food Safety]
+      summary: Get safety record for a specific food
+      security: []
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          description: Record
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  data:    { $ref: '#/components/schemas/FoodSafetyRecord' }
+        '404': { description: Not found }
+
+  # =========================================================================
+  # SUPPORT
+  # =========================================================================
+  /support:
+    post:
+      tags: [Support]
+      summary: Create a support ticket
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [subject, message]
+              properties:
+                subject:    { type: string }
+                message:    { type: string }
+                category:   { type: string, enum: [bug, feature_request, general_help, account_issue, other], default: general_help }
+                attachments:
+                  type: array
+                  items: { type: string, format: uri }
+      responses:
+        '200':
+          description: Created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  ticket:  { $ref: '#/components/schemas/SupportTicket' }
+    get:
+      tags: [Admin - Users]
+      summary: '**Admin** — list all tickets'
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string, enum: [open, in_progress, resolved, closed] }
+        - in: query
+          name: category
+          schema: { type: string }
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Tickets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:     { type: boolean }
+                  tickets:
+                    type: array
+                    items: { $ref: '#/components/schemas/SupportTicket' }
+                  total:       { type: integer }
+                  pages:       { type: integer }
+
+  /support/my-tickets:
+    get:
+      tags: [Support]
+      summary: List my tickets
+      responses:
+        '200':
+          description: Tickets
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  tickets:
+                    type: array
+                    items: { $ref: '#/components/schemas/SupportTicket' }
+
+  /support/{ticketId}/respond:
+    patch:
+      tags: [Admin - Users]
+      summary: '**Admin** — respond to a ticket'
+      parameters:
+        - in: path
+          name: ticketId
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [response]
+              properties:
+                response: { type: string }
+                status:   { type: string, enum: [open, in_progress, resolved, closed], default: in_progress }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success: { type: boolean }
+                  ticket:  { $ref: '#/components/schemas/SupportTicket' }
+
+  # =========================================================================
+  # ADMIN - STATS
+  # =========================================================================
+  /admin/stats:
+    get:
+      tags: [Admin - Stats]
+      summary: Aggregated admin dashboard stats
+      responses:
+        '200':
+          description: Stats
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  stats:
+                    type: object
+                    properties:
+                      totalReports:     { type: integer }
+                      completedReports: { type: integer }
+                      failedReports:    { type: integer }
+                      totalUsers:       { type: integer }
+                      activeUsers:      { type: integer }
+                      uniqueUsers:      { type: integer }
+                      repeatUsers:      { type: integer }
+                      reportGrowth:     { type: array, items: { type: object } }
+                      userGrowth:       { type: array, items: { type: object } }
+                      distribution:     { type: array, items: { type: object } }
+                  recentReports:
+                    type: array
+                    items: { $ref: '#/components/schemas/HealthReport' }
+
+  # =========================================================================
+  # ADMIN - USERS
+  # =========================================================================
+  /admin/users:
+    get:
+      tags: [Admin - Users]
+      summary: List users (paginated, searchable)
+      parameters:
+        - in: query
+          name: role
+          schema: { type: string }
+        - in: query
+          name: status
+          schema: { type: string, enum: [active, inactive] }
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: startDate
+          schema: { type: string, format: date }
+        - in: query
+          name: endDate
+          schema: { type: string, format: date }
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Paginated users
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  users: { type: array, items: { $ref: '#/components/schemas/User' } }
+                  total: { type: integer }
+                  page:  { type: integer }
+                  pages: { type: integer }
+
+  /admin/users/{id}:
+    get:
+      tags: [Admin - Users]
+      summary: Get user details + recent activity
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: User details
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  user:        { $ref: '#/components/schemas/User' }
+                  activity:    { type: array, items: { type: object, additionalProperties: true } }
+                  reportCount: { type: integer }
+
+  /admin/users/{id}/status:
+    patch:
+      tags: [Admin - Users]
+      summary: Activate / deactivate a user
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [isActive]
+              properties:
+                isActive: { type: boolean }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+
+  /admin/users/{id}/role:
+    patch:
+      tags: [Admin - Users]
+      summary: Change a user's role
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [role]
+              properties:
+                role: { type: string, enum: [user, admin, superadmin, patient, client, doctor] }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/User' }
+
+  /admin/users/{id}/impersonate:
+    post:
+      tags: [Admin - Users]
+      summary: Generate an impersonation JWT
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: User + impersonation token
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/AuthResponse' }
+
+  '/admin/users/{id}#delete':
+    parameters:
+      - $ref: '#/components/parameters/IdParam'
+
+  /admin/reports:
+    get:
+      tags: [Admin - Reports]
+      summary: List reports (paginated)
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string, enum: [pending, processing, completed, failed] }
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Reports
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  reports: { type: array, items: { $ref: '#/components/schemas/HealthReport' } }
+                  total:   { type: integer }
+                  page:    { type: integer }
+                  pages:   { type: integer }
+
+  /admin/deficiency-rules:
+    get:
+      tags: [Admin - Diet & Supplements]
+      summary: List deficiency rules
+      responses:
+        '200':
+          description: Rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/DeficiencyRule' }
+    post:
+      tags: [Admin - Diet & Supplements]
+      summary: Create a deficiency rule
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeficiencyRule' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeficiencyRule' }
+
+  /admin/deficiency-rules/{id}:
+    put:
+      tags: [Admin - Diet & Supplements]
+      summary: Update a deficiency rule
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/DeficiencyRule' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/DeficiencyRule' }
+    delete:
+      tags: [Admin - Diet & Supplements]
+      summary: Delete a deficiency rule
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200': { description: Deleted }
+
+  /admin/supplements:
+    get:
+      tags: [Admin - Diet & Supplements]
+      summary: List supplement mappings
+      responses:
+        '200':
+          description: Mappings
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/SupplementMapping' }
+    post:
+      tags: [Admin - Diet & Supplements]
+      summary: Create a supplement mapping
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SupplementMapping' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SupplementMapping' }
+
+  /admin/supplements/{id}:
+    put:
+      tags: [Admin - Diet & Supplements]
+      summary: Update a supplement mapping
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/SupplementMapping' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SupplementMapping' }
+    delete:
+      tags: [Admin - Diet & Supplements]
+      summary: Delete a supplement mapping
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200': { description: Deleted }
+
+  /admin/diet-plans:
+    get:
+      tags: [Admin - Diet & Supplements]
+      summary: List diet plan templates
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string, enum: [draft, pending, approved, rejected] }
+      responses:
+        '200':
+          description: Templates
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { type: object, additionalProperties: true }
+    post:
+      tags: [Admin - Diet & Supplements]
+      summary: Create a diet plan template
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '201': { description: Created }
+
+  /admin/diet-plans/{id}:
+    put:
+      tags: [Admin - Diet & Supplements]
+      summary: Update a diet plan template
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { type: object, additionalProperties: true }
+      responses:
+        '200': { description: Updated }
+    delete:
+      tags: [Admin - Diet & Supplements]
+      summary: Delete a diet plan template
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200': { description: Deleted }
+
+  /admin/diet-plans/{id}/approve:
+    patch:
+      tags: [Admin - Diet & Supplements]
+      summary: Approve / reject a diet plan template
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, enum: [approved, rejected] }
+      responses:
+        '200': { description: Updated }
+
+  /admin/doctors:
+    get:
+      tags: [Admin - Doctors]
+      summary: List doctors (admin view)
+      parameters:
+        - in: query
+          name: status
+          schema: { type: string, enum: [pending, approved, rejected] }
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Doctors
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  doctors:
+                    type: array
+                    items: { $ref: '#/components/schemas/Doctor' }
+                  total:   { type: integer }
+                  pending: { type: integer }
+                  page:    { type: integer }
+                  pages:   { type: integer }
+    post:
+      tags: [Admin - Doctors]
+      summary: Create a doctor (admin-bypass approval flow)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Doctor' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Doctor' }
+
+  /admin/doctors/{id}:
+    put:
+      tags: [Admin - Doctors]
+      summary: Update doctor
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/Doctor' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Doctor' }
+    delete:
+      tags: [Admin - Doctors]
+      summary: Delete doctor
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200': { description: Deleted }
+
+  /admin/doctors/{id}/approve:
+    patch:
+      tags: [Admin - Doctors]
+      summary: Approve a doctor (lists them publicly)
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200': { description: Approved }
+
+  /admin/doctors/{id}/reject:
+    patch:
+      tags: [Admin - Doctors]
+      summary: Reject a doctor
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                reason: { type: string }
+      responses:
+        '200': { description: Rejected }
+
+  /admin/doctors/{id}/visibility:
+    patch:
+      tags: [Admin - Doctors]
+      summary: Toggle doctor `isAvailable`
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Doctor' }
+
+  /admin/doctors/{id}/schedule-overview:
+    get:
+      tags: [Admin - Doctors]
+      summary: Get schedule utilisation stats for a doctor
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200':
+          description: Stats
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /admin/food-cache:
+    get:
+      tags: [Admin - Food Cache]
+      summary: List cached foods (admin food intelligence)
+      parameters:
+        - in: query
+          name: search
+          schema: { type: string }
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+      responses:
+        '200':
+          description: Cached foods
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  foods:
+                    type: array
+                    items: { $ref: '#/components/schemas/QuickFoodCheck' }
+                  total: { type: integer }
+                  page:  { type: integer }
+                  pages: { type: integer }
+    post:
+      tags: [Admin - Food Cache]
+      summary: Add a single cached food
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/QuickFoodCheck' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QuickFoodCheck' }
+
+  /admin/food-cache/bulk:
+    post:
+      tags: [Admin - Food Cache]
+      summary: Bulk-insert cached foods
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [foods]
+              properties:
+                foods:
+                  type: array
+                  items: { $ref: '#/components/schemas/QuickFoodCheck' }
+      responses:
+        '201':
+          description: Inserted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message: { type: string }
+                  count:   { type: integer }
+
+  /admin/food-cache/clear-all:
+    delete:
+      tags: [Admin - Food Cache]
+      summary: Wipe the entire food cache
+      responses:
+        '200': { description: Cleared }
+
+  /admin/food-cache/{id}:
+    put:
+      tags: [Admin - Food Cache]
+      summary: Update a cached food
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/QuickFoodCheck' }
+      responses:
+        '200':
+          description: Updated
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/QuickFoodCheck' }
+    delete:
+      tags: [Admin - Food Cache]
+      summary: Delete a cached food
+      parameters:
+        - $ref: '#/components/parameters/IdParam'
+      responses:
+        '200': { description: Deleted }
+
+  # =========================================================================
+  # ADMIN - ACTIVITY
+  # =========================================================================
+  /activity:
+    get:
+      tags: [Admin - Activity Logs]
+      summary: List activity logs
+      parameters:
+        - $ref: '#/components/parameters/PageParam'
+        - $ref: '#/components/parameters/LimitParam'
+        - in: query
+          name: category
+          schema: { type: string, enum: [authentication, diagnostics, nutrition, fitness, medical, glucose, system] }
+        - in: query
+          name: action
+          schema: { type: string }
+        - in: query
+          name: userId
+          schema: { type: string }
+        - in: query
+          name: search
+          schema: { type: string }
+        - in: query
+          name: startDate
+          schema: { type: string, format: date }
+        - in: query
+          name: endDate
+          schema: { type: string, format: date }
+        - in: query
+          name: hour
+          schema: { type: integer, minimum: 0, maximum: 23 }
+      responses:
+        '200':
+          description: Logs (paginated)
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  logs:
+                    type: array
+                    items: { $ref: '#/components/schemas/ActivityLog' }
+                  total: { type: integer }
+                  page:  { type: integer }
+                  pages: { type: integer }
+
+  /activity/stats:
+    get:
+      tags: [Admin - Activity Logs]
+      summary: Aggregated activity stats
+      parameters:
+        - in: query
+          name: startDate
+          schema: { type: string, format: date }
+        - in: query
+          name: endDate
+          schema: { type: string, format: date }
+      responses:
+        '200':
+          description: Stats
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /activity/live-users:
+    get:
+      tags: [Admin - Activity Logs]
+      summary: Currently online / recently active users
+      responses:
+        '200':
+          description: Live users
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+
+  /activity/export:
+    get:
+      tags: [Admin - Activity Logs]
+      summary: Export activity logs as CSV
+      parameters:
+        - in: query
+          name: startDate
+          schema: { type: string, format: date }
+        - in: query
+          name: endDate
+          schema: { type: string, format: date }
+        - in: query
+          name: category
+          schema: { type: string }
+      responses:
+        '200':
+          description: CSV blob
+          content:
+            text/csv:
+              schema:
+                type: string
+                format: binary
+
+# ---------------------------------------------------------------------------
+# Components
+# ---------------------------------------------------------------------------
+components:
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Standard JWT issued by `/auth/login` or `/auth/register`. Include in
+        every protected request:
+
+        `Authorization: Bearer <token>`
+
+  parameters:
+    IdParam:
+      in: path
+      name: id
+      required: true
+      schema: { type: string, example: "664b2c1e9d4d61a8c1f7d2a3" }
+      description: MongoDB ObjectId.
+    AppointmentIdParam:
+      in: path
+      name: appointmentId
+      required: true
+      schema: { type: string }
+    PlanIdParam:
+      in: path
+      name: planId
+      required: true
+      schema: { type: string }
+    PageParam:
+      in: query
+      name: page
+      schema: { type: integer, default: 1, minimum: 1 }
+    LimitParam:
+      in: query
+      name: limit
+      schema: { type: integer, default: 20, minimum: 1, maximum: 100 }
+
+  schemas:
+
+    Error:
+      type: object
+      properties:
+        message: { type: string, example: "Invalid credentials" }
+        error:   { type: string, description: "Only present in dev environment" }
+
+    SuccessMessage:
+      type: object
+      properties:
+        success: { type: boolean, example: true }
+        message: { type: string, example: "Operation successful" }
+
+    # ---------------- Auth & User ----------------
+    RegisterRequest:
+      type: object
+      required: [name, email, phone, password, otp]
+      properties:
+        name:     { type: string, example: "Jane Doe" }
+        email:    { type: string, format: email }
+        phone:    { type: string, example: "9876543210", description: 10 digits }
+        password: { type: string, format: password, minLength: 6 }
+        otp:      { type: string, example: "123456", description: 6-digit code from /auth/register-otp }
+        role:     { type: string, enum: [user, doctor], default: user }
+        profile:  { $ref: '#/components/schemas/UserProfile' }
+        nutritionGoal: { $ref: '#/components/schemas/NutritionGoal' }
+
+    DoctorRegisterRequest:
+      type: object
+      required: [name, email, phone, password, specialization, experience, licenseNumber]
+      properties:
+        name:             { type: string }
+        email:            { type: string, format: email }
+        phone:            { type: string }
+        password:         { type: string, format: password, minLength: 6 }
+        specialization:   { type: string, example: "Endocrinology" }
+        qualifications:   { type: array, items: { type: string }, example: ["MBBS", "MD"] }
+        experience:       { type: number, example: 7 }
+        hospital:         { type: string }
+        licenseNumber:    { type: string }
+        consultationFee:  { type: number, example: 500 }
+        bio:              { type: string }
+
+    AuthResponse:
+      type: object
+      properties:
+        _id:             { type: string }
+        name:            { type: string }
+        email:           { type: string, format: email }
+        phone:           { type: string }
+        role:            { type: string, enum: [user, admin, superadmin, patient, client, doctor] }
+        profile:         { $ref: '#/components/schemas/UserProfile' }
+        nutritionGoal:   { $ref: '#/components/schemas/NutritionGoal' }
+        foodPreferences: { $ref: '#/components/schemas/FoodPreferences' }
+        subscription:    { $ref: '#/components/schemas/Subscription' }
+        healthMetrics:
+          type: object
+          properties:
+            bmi:         { type: number }
+            healthScore: { type: number }
+            lastCheckup: { type: string, format: date-time }
+        doctorProfile:
+          type: object
+          nullable: true
+          properties:
+            _id:            { type: string }
+            approvalStatus: { type: string, enum: [pending, approved, rejected] }
+            specialization: { type: string }
+            isListed:       { type: boolean }
+        token:           { type: string, description: JWT token — store securely }
+
+    UserProfile:
+      type: object
+      properties:
+        age:                 { type: integer, example: 32 }
+        gender:              { type: string, enum: [male, female, other] }
+        dietaryPreference:   { type: string, enum: [vegetarian, non-vegetarian, vegan, eggetarian] }
+        height:              { type: number, description: "cm" }
+        weight:              { type: number, description: "kg" }
+        bloodGroup:          { type: string, example: "O+" }
+        allergies:           { type: array, items: { type: string } }
+        chronicConditions:   { type: array, items: { type: string } }
+        isDiabetic:          { type: string, enum: [yes, no] }
+        avatar:              { type: string, format: uri }
+        activityLevel:       { type: string, enum: [sedentary, lightly_active, moderately_active, moderate, very_active, extremely_active] }
+        medicalHistory:
+          type: object
+          properties:
+            conditions:         { type: array, items: { type: string } }
+            surgeries:          { type: array, items: { type: string } }
+            familyHistory:      { type: array, items: { type: string } }
+            currentMedications: { type: array, items: { type: string } }
+        lifestyle:
+          type: object
+          properties:
+            smoker:             { type: boolean }
+            smokingFrequency:   { type: string }
+            alcohol:            { type: boolean }
+            alcoholFrequency:   { type: string }
+            sleepHours:         { type: number }
+            stressLevel:        { type: string, enum: [low, moderate, high] }
+            waterIntake:        { type: number }
+        diabetesProfile:
+          type: object
+          properties:
+            type:               { type: string, enum: [Type 1, Type 2, Prediabetes, Gestational] }
+            diagnosisYear:      { type: integer }
+            status:             { type: string, enum: [Controlled, Uncontrolled, Newly diagnosed] }
+            hba1c:              { type: number }
+            glucoseMonitoring:  { type: string }
+            fastingGlucose:     { type: string }
+            postMealGlucose:    { type: string }
+            testingFrequency:   { type: string }
+            onMedication:       { type: boolean }
+            medicationType:     { type: array, items: { type: string } }
+            insulinTiming:      { type: string }
+            recentDosageChange: { type: boolean }
+        dietPreferences:
+          type: object
+          properties:
+            cuisinePreference: { type: string }
+            mealsPerDay:       { type: string }
+            restrictions:      { type: array, items: { type: string } }
+        fitnessProfile:
+          type: object
+          properties:
+            exercisePreference: { type: array, items: { type: string } }
+            primaryGoal:        { type: string }
+            timeframe:          { type: string }
+            biggestChallenge:   { type: string }
+        hasSeenMobileTour:   { type: boolean }
+
+    NutritionGoal:
+      type: object
+      properties:
+        goal:           { type: string, enum: [weight_loss, weight_gain, muscle_gain, maintain, maintenance, health_improvement, general_health, disease_management] }
+        targetWeight:   { type: number }
+        weeklyGoal:     { type: number, description: "kg / week (0.25, 0.5, 1)" }
+        calorieGoal:    { type: integer }
+        proteinGoal:    { type: integer }
+        carbsGoal:      { type: integer }
+        fatGoal:        { type: integer }
+        autoCalculated: { type: boolean }
+        lastUpdated:    { type: string, format: date-time }
+
+    FoodPreferences:
+      type: object
+      properties:
+        preferredFoods:        { type: array, items: { type: string } }
+        foodsToAvoid:          { type: array, items: { type: string } }
+        dietaryRestrictions:   { type: array, items: { type: string } }
+        mealPreferences:
+          type: object
+          properties:
+            breakfast: { type: array, items: { type: string } }
+            lunch:     { type: array, items: { type: string } }
+            snacks:    { type: array, items: { type: string } }
+            dinner:    { type: array, items: { type: string } }
+        lastUpdated: { type: string, format: date-time }
+
+    Subscription:
+      type: object
+      properties:
+        plan:      { type: string, enum: [free, basic, premium] }
+        status:    { type: string, enum: [active, inactive, expired] }
+        startDate: { type: string, format: date-time }
+        endDate:   { type: string, format: date-time }
+        autoRenew: { type: boolean }
+
+    User:
+      type: object
+      properties:
+        _id:             { type: string }
+        name:            { type: string }
+        email:           { type: string, format: email }
+        phone:           { type: string }
+        role:            { type: string }
+        isActive:        { type: boolean }
+        isEmailVerified: { type: boolean }
+        profilePicture:  { type: string, format: uri }
+        profile:         { $ref: '#/components/schemas/UserProfile' }
+        nutritionGoal:   { $ref: '#/components/schemas/NutritionGoal' }
+        foodPreferences: { $ref: '#/components/schemas/FoodPreferences' }
+        subscription:    { $ref: '#/components/schemas/Subscription' }
+        healthMetrics:
+          type: object
+          properties:
+            bmi:         { type: number }
+            healthScore: { type: number, minimum: 0, maximum: 100 }
+            lastCheckup: { type: string, format: date-time }
+        streakDays:      { type: integer }
+        loginCount:      { type: integer }
+        createdAt:       { type: string, format: date-time }
+        updatedAt:       { type: string, format: date-time }
+
+    # ---------------- Reports ----------------
+    HealthReport:
+      type: object
+      properties:
+        _id:              { type: string }
+        user:             { type: string }
+        reportType:       { type: string }
+        patientName:      { type: string }
+        patientAge:       { type: integer }
+        patientGender:    { type: string }
+        originalFile:
+          type: object
+          properties:
+            filename:       { type: string }
+            path:           { type: string }
+            mimetype:       { type: string }
+            cloudinaryUrl:  { type: string, format: uri }
+        reportDate:       { type: string, format: date-time }
+        aiAnalysis:       { $ref: '#/components/schemas/AIAnalysis' }
+        comparison:
+          type: object
+          properties:
+            previousReportId:   { type: string }
+            previousReportDate: { type: string, format: date-time }
+            data:               { type: object, additionalProperties: true }
+        status:           { type: string, enum: [pending, processing, completed, failed] }
+        createdAt:        { type: string, format: date-time }
+        updatedAt:        { type: string, format: date-time }
+
+    AIAnalysis:
+      type: object
+      properties:
+        summary:       { type: string }
+        keyFindings:   { type: array, items: { type: string } }
+        riskFactors:   { type: array, items: { type: string } }
+        healthScore:   { type: number, minimum: 0, maximum: 100 }
+        metrics:       { type: object, additionalProperties: true }
+        deficiencies:
+          type: array
+          items:
+            type: object
+            properties:
+              name:         { type: string }
+              severity:     { type: string, enum: [mild, moderate, severe, low, high, mild-moderate, moderate-severe] }
+              currentValue: { type: string }
+              normalRange:  { type: string }
+              symptoms:     { type: array, items: { type: string } }
+        supplements:
+          type: array
+          items:
+            type: object
+            properties:
+              category:      { type: string }
+              reason:        { type: string }
+              generalDosage: { type: string }
+              note:          { type: string }
+        dietPlan:      { type: object, additionalProperties: true }
+        fitnessPlan:   { type: object, additionalProperties: true }
+        recommendations:
+          type: object
+          properties:
+            immediate:  { type: array, items: { type: string } }
+            shortTerm:  { type: array, items: { type: string } }
+            longTerm:   { type: array, items: { type: string } }
+            lifestyle:  { type: array, items: { type: string } }
+            tests:      { type: array, items: { type: string } }
+        doctorConsultation:
+          type: object
+          properties:
+            recommended:     { type: boolean }
+            urgency:         { type: string, enum: [low, medium, moderate, high, urgent] }
+            specializations: { type: array, items: { type: string } }
+            reason:          { type: string }
+        overallTrend:  { type: string }
+
+    Dashboard:
+      type: object
+      properties:
+        user:             { $ref: '#/components/schemas/User' }
+        healthScores:
+          type: array
+          items:
+            type: object
+            properties:
+              date:  { type: string, format: date-time }
+              score: { type: number }
+              type:  { type: string }
+        latestAnalysis:     { $ref: '#/components/schemas/AIAnalysis' }
+        latestReportId:     { type: string }
+        processingReport:   { $ref: '#/components/schemas/HealthReport' }
+        latestComparison:   { type: object, additionalProperties: true }
+        totalReports:       { type: integer }
+        recentReports:
+          type: array
+          items: { $ref: '#/components/schemas/HealthReport' }
+        reportTypeCounts:   { type: object, additionalProperties: { type: integer } }
+        history:
+          type: array
+          description: 90-day daily history (oldest → newest)
+          items:
+            type: object
+            properties:
+              date:     { type: string, format: date }
+              calories: { type: number }
+              steps:    { type: number }
+              sleep:    { type: number }
+              weight:   { type: number }
+              water:    { type: number }
+        stepsToday:         { type: number }
+        sleepToday:         { type: number }
+        goals:
+          type: object
+          properties:
+            steps:    { type: number }
+            sleep:    { type: number }
+            weight:   { type: number }
+            calories: { type: number }
+            protein:  { type: number }
+            carbs:    { type: number }
+            fats:     { type: number }
+        streakDays:         { type: integer }
+        vitals:
+          type: object
+          properties:
+            glucose:
+              type: object
+              nullable: true
+              properties:
+                value:      { type: number }
+                recordedAt: { type: string, format: date-time }
+            hba1c:
+              type: object
+              nullable: true
+              properties:
+                value:      { type: number }
+                recordedAt: { type: string, format: date-time }
+        nutritionData:
+          type: object
+          properties:
+            totalCalories: { type: number }
+            calorieGoal:   { type: number }
+            protein:       { type: number }
+            carbs:         { type: number }
+            totalFats:     { type: number }
+            todayLogs:
+              type: array
+              items: { $ref: '#/components/schemas/FoodLog' }
+
+    # ---------------- Metrics ----------------
+    HealthMetric:
+      type: object
+      properties:
+        _id:            { type: string }
+        userId:         { type: string }
+        type:           { type: string, enum: [blood_sugar, hba1c, weight, blood_pressure, heart_rate] }
+        value:          { type: number, example: 110 }
+        unit:           { type: string, example: "mg/dL" }
+        readingContext: { type: string, example: "fasting" }
+        systolic:       { type: number }
+        diastolic:      { type: number }
+        recordedAt:     { type: string, format: date-time }
+        notes:          { type: string }
+        createdAt:      { type: string, format: date-time }
+        updatedAt:      { type: string, format: date-time }
+
+    HealthMetricInput:
+      type: object
+      required: [type, value, unit]
+      properties:
+        type:           { type: string, enum: [blood_sugar, hba1c, weight, blood_pressure, heart_rate] }
+        value:          { type: number }
+        unit:           { type: string }
+        readingContext: { type: string }
+        systolic:       { type: number }
+        diastolic:      { type: number }
+        recordedAt:     { type: string, format: date-time }
+        notes:          { type: string }
+
+    # ---------------- Nutrition ----------------
+    FoodItem:
+      type: object
+      required: [name]
+      properties:
+        name:        { type: string }
+        description: { type: string }
+        quantity:    { type: string, example: "1 cup" }
+        nutrition:   { $ref: '#/components/schemas/Nutrition' }
+
+    Nutrition:
+      type: object
+      properties:
+        calories: { type: number }
+        protein:  { type: number }
+        carbs:    { type: number }
+        fats:     { type: number }
+        fiber:    { type: number }
+        sugar:    { type: number }
+        sodium:   { type: number }
+        vitamins:
+          type: object
+          properties:
+            vitaminA:   { type: number }
+            vitaminC:   { type: number }
+            vitaminD:   { type: number }
+            vitaminB12: { type: number }
+            iron:       { type: number }
+            calcium:    { type: number }
+
+    LogMealRequest:
+      type: object
+      required: [mealType, foodItems]
+      properties:
+        mealType:
+          type: string
+          enum: [breakfast, lunch, dinner, snack, midMorningSnack, eveningSnack]
+        foodItems:
+          type: array
+          items: { $ref: '#/components/schemas/FoodItem' }
+        imageUrl:               { type: string, format: uri }
+        notes:                  { type: string }
+        timestamp:              { type: string, format: date-time }
+        healthScore:            { type: number }
+        healthScore10:          { type: number }
+        micronutrients:
+          type: array
+          items:
+            type: object
+            properties:
+              name:       { type: string }
+              value:      { type: string }
+              percentage: { type: number }
+        enhancementTips:
+          type: array
+          items:
+            type: object
+            properties:
+              name:    { type: string }
+              benefit: { type: string }
+        healthBenefitsSummary:  { type: string }
+        warnings:               { type: array, items: { type: string } }
+        alternatives:
+          type: array
+          items:
+            type: object
+            properties:
+              name:        { type: string }
+              description: { type: string }
+              benefits:    { type: string }
+        source:                 { type: string, enum: [manual, ai_vision, meal_plan] }
+
+    FoodLog:
+      type: object
+      properties:
+        _id:                    { type: string }
+        userId:                 { type: string }
+        mealType:               { type: string }
+        foodItems:
+          type: array
+          items: { $ref: '#/components/schemas/FoodItem' }
+        totalNutrition:         { $ref: '#/components/schemas/Nutrition' }
+        healthScore:            { type: number }
+        healthScore10:          { type: number }
+        micronutrients:         { type: array, items: { type: object, additionalProperties: true } }
+        enhancementTips:        { type: array, items: { type: object, additionalProperties: true } }
+        healthBenefitsSummary:  { type: string }
+        warnings:               { type: array, items: { type: string } }
+        alternatives:           { type: array, items: { type: object, additionalProperties: true } }
+        imageUrl:               { type: string }
+        aiAnalysis:             { type: string }
+        notes:                  { type: string }
+        source:                 { type: string, enum: [manual, ai_vision, meal_plan] }
+        timestamp:              { type: string, format: date-time }
+        createdAt:              { type: string, format: date-time }
+        updatedAt:              { type: string, format: date-time }
+
+    NutritionSummary:
+      type: object
+      properties:
+        _id:              { type: string }
+        userId:           { type: string }
+        date:             { type: string, format: date-time }
+        totalCalories:    { type: number }
+        totalProtein:     { type: number }
+        totalCarbs:       { type: number }
+        totalFats:        { type: number }
+        totalFiber:       { type: number }
+        totalSugar:       { type: number }
+        totalSodium:      { type: number }
+        waterIntake:      { type: number, description: glasses }
+        mealsCount:       { type: integer }
+        vitaminsConsumed: { type: object, additionalProperties: { type: number } }
+
+    FoodAnalysis:
+      type: object
+      additionalProperties: true
+      properties:
+        foodItem:
+          type: object
+          properties:
+            name:      { type: string }
+            quantity:  { type: string }
+            nutrition: { $ref: '#/components/schemas/Nutrition' }
+        nutrition:           { $ref: '#/components/schemas/Nutrition' }
+        totalNutrition:      { $ref: '#/components/schemas/Nutrition' }
+        analysis:            { type: string }
+        healthScore:         { type: number, minimum: 0, maximum: 100 }
+        healthScore10:       { type: number, minimum: 0, maximum: 10 }
+        micronutrients:
+          type: array
+          items:
+            type: object
+            properties:
+              name:       { type: string }
+              value:      { type: string }
+              percentage: { type: number }
+        enhancementTips:
+          type: array
+          items:
+            type: object
+            properties:
+              name:    { type: string }
+              benefit: { type: string }
+        benefits:
+          type: array
+          items:
+            type: object
+            properties:
+              name:    { type: string }
+              benefit: { type: string }
+        warnings:            { type: array, items: { type: string } }
+        alternatives:
+          type: array
+          items:
+            type: object
+            properties:
+              name:        { type: string }
+              description: { type: string }
+              benefits:    { type: string }
+        imageUrl:           { type: string, format: uri }
+
+    QuickFoodCheck:
+      type: object
+      properties:
+        _id:                   { type: string }
+        userId:                { type: string }
+        foodName:              { type: string }
+        searchDescription:     { type: string }
+        quantity:              { type: string }
+        calories:              { type: number }
+        protein:               { type: number }
+        carbs:                 { type: number }
+        fats:                  { type: number }
+        nutrition:             { $ref: '#/components/schemas/Nutrition' }
+        healthScore:           { type: number, minimum: 0, maximum: 100 }
+        healthScore10:         { type: number, minimum: 0, maximum: 10 }
+        isHealthy:             { type: boolean }
+        analysis:              { type: string }
+        micronutrients:        { type: array, items: { type: object, additionalProperties: true } }
+        enhancementTips:       { type: array, items: { type: object, additionalProperties: true } }
+        warnings:              { type: array, items: { type: string } }
+        benefits:              { type: array, items: { type: object, additionalProperties: true } }
+        healthBenefitsSummary: { type: string }
+        alternatives:          { type: array, items: { type: object, additionalProperties: true } }
+        imageUrl:              { type: string }
+        scanType:              { type: string, enum: [text, image] }
+        timestamp:             { type: string, format: date-time }
+        createdAt:             { type: string, format: date-time }
+
+    HealthGoal:
+      type: object
+      properties:
+        _id:                  { type: string }
+        userId:               { type: string }
+        goalType:             { type: string, enum: [weight_loss, weight_gain, muscle_gain, maintain, maintenance, health_improvement, general_health, disease_management] }
+        currentWeight:        { type: number }
+        targetWeight:         { type: number }
+        height:               { type: number }
+        age:                  { type: integer }
+        gender:               { type: string, enum: [male, female, other] }
+        activityLevel:        { type: string }
+        targetDate:           { type: string, format: date }
+        bmr:                  { type: number }
+        tdee:                 { type: number }
+        dailyCalorieTarget:   { type: number }
+        macroTargets:
+          type: object
+          properties:
+            protein: { type: number }
+            carbs:   { type: number }
+            fats:    { type: number }
+        startWeight:          { type: number }
+        startDate:            { type: string, format: date-time }
+        weeklyWeightLogs:
+          type: array
+          items:
+            type: object
+            properties:
+              weight: { type: number }
+              date:   { type: string, format: date-time }
+              notes:  { type: string }
+        dietaryPreference:    { type: string }
+        allergies:            { type: array, items: { type: string } }
+        dislikedFoods:        { type: array, items: { type: string } }
+        isActive:             { type: boolean }
+        isDiabetic:           { type: boolean }
+
+    HealthGoalInput:
+      type: object
+      properties:
+        goalType:         { type: string, enum: [weight_loss, weight_gain, muscle_gain, maintain, maintenance, health_improvement, general_health, disease_management] }
+        currentWeight:    { type: number }
+        targetWeight:     { type: number }
+        height:           { type: number }
+        age:              { type: integer }
+        gender:           { type: string, enum: [male, female, other] }
+        activityLevel:    { type: string }
+        weeklyGoal:       { type: number }
+        weightGoal:       { type: number, description: "Alias used by mobile flows" }
+        dietaryPreference: { type: string }
+        allergies:        { type: array, items: { type: string } }
+        isDiabetic:       { type: boolean }
+
+    # ---------------- Diet Plan & Supplements ----------------
+    PersonalizedDietPlan:
+      type: object
+      properties:
+        _id:              { type: string }
+        userId:           { type: string }
+        generatedAt:      { type: string, format: date-time }
+        validUntil:       { type: string, format: date-time }
+        isActive:         { type: boolean }
+        status:           { type: string, enum: [pending, generating, completed, failed] }
+        inputData:        { type: object, additionalProperties: true }
+        labReportInsights:
+          type: array
+          items:
+            type: object
+            properties:
+              parameter: { type: string }
+              value:     { type: string }
+              unit:      { type: string }
+              status:    { type: string }
+              reportId:  { type: string }
+        nutritionGoals:
+          type: object
+          properties:
+            dailyCalorieTarget: { type: number }
+            macroTargets:
+              type: object
+              properties:
+                protein: { type: number }
+                carbs:   { type: number }
+                fats:    { type: number }
+        dailyCalorieTarget: { type: number }
+        macroTargets:
+          type: object
+          properties:
+            protein: { type: number }
+            carbs:   { type: number }
+            fats:    { type: number }
+        mealPlan:
+          type: object
+          properties:
+            breakfast:        { type: array, items: { $ref: '#/components/schemas/MealItem' } }
+            midMorningSnack:  { type: array, items: { $ref: '#/components/schemas/MealItem' } }
+            lunch:            { type: array, items: { $ref: '#/components/schemas/MealItem' } }
+            eveningSnack:     { type: array, items: { $ref: '#/components/schemas/MealItem' } }
+            dinner:           { type: array, items: { $ref: '#/components/schemas/MealItem' } }
+        keyFoods:
+          type: array
+          items:
+            type: object
+            properties:
+              name:      { type: string }
+              reason:    { type: string }
+              frequency: { type: string }
+        deficiencyCorrections:
+          type: array
+          items:
+            type: object
+            properties:
+              deficiency:      { type: string }
+              indianFoods:     { type: array, items: { type: string } }
+              mealSuggestions: { type: array, items: { type: string } }
+        lifestyleRecommendations: { type: array, items: { type: string } }
+        avoidFoods:
+          type: array
+          items:
+            type: object
+            properties:
+              food:   { type: string }
+              reason: { type: string }
+        avoidSuggestions: { type: array, items: { type: string } }
+        userRating:       { type: integer, minimum: 1, maximum: 5 }
+        userFeedback:     { type: string }
+
+    MealItem:
+      type: object
+      properties:
+        name:         { type: string }
+        description:  { type: string }
+        portionSize:  { type: string }
+        calories:     { type: number }
+        protein:      { type: number }
+        carbs:        { type: number }
+        fats:         { type: number }
+        benefits:     { type: string }
+
+    SupplementRecommendation:
+      type: object
+      properties:
+        _id:             { type: string }
+        userId:          { type: string }
+        generatedAt:     { type: string, format: date-time }
+        deficiencies:
+          type: array
+          items:
+            type: object
+            properties:
+              nutrient: { type: string }
+              severity: { type: string }
+              labValue: { type: string }
+              reportId: { type: string }
+        recommendations:
+          type: array
+          items:
+            type: object
+            properties:
+              name:               { type: string }
+              dosage:             { type: string }
+              frequency:          { type: string }
+              duration:           { type: string }
+              naturalSources:     { type: array, items: { type: string } }
+              cautions:           { type: array, items: { type: string } }
+              interactions:       { type: array, items: { type: string } }
+        isActive:        { type: boolean }
+        userTrackingLogs:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+
+    # ---------------- Doctors / Appointments ----------------
+    Doctor:
+      type: object
+      properties:
+        _id:              { type: string }
+        user:             { type: object, additionalProperties: true }
+        name:             { type: string }
+        email:            { type: string, format: email }
+        phone:            { type: string }
+        specialization:   { type: string }
+        qualifications:   { type: array, items: { type: string } }
+        experience:       { type: number }
+        hospital:         { type: string }
+        licenseNumber:    { type: string }
+        consultationFee:  { type: number }
+        availability:     { $ref: '#/components/schemas/Availability' }
+        rating:           { type: number, minimum: 0, maximum: 5 }
+        totalReviews:     { type: integer }
+        approvalStatus:   { type: string, enum: [pending, approved, rejected] }
+        approvedAt:       { type: string, format: date-time }
+        rejectionReason:  { type: string }
+        isAvailable:      { type: boolean }
+        isListed:         { type: boolean }
+        bio:              { type: string }
+        profileImage:     { type: string, format: uri }
+        documents:
+          type: array
+          items:
+            type: object
+            properties:
+              name: { type: string }
+              url:  { type: string, format: uri }
+              type: { type: string, enum: [license, degree, certificate, other] }
+        createdAt:        { type: string, format: date-time }
+        updatedAt:        { type: string, format: date-time }
+
+    Availability:
+      type: object
+      properties:
+        settings:
+          type: object
+          properties:
+            startTime:    { type: string, example: "09:00" }
+            endTime:      { type: string, example: "18:00" }
+            slotDuration: { type: integer, example: 30 }
+        blockedSlots:
+          type: object
+          description: "Map of `YYYY-MM-DD → array of HH:mm strings`"
+          additionalProperties:
+            type: array
+            items: { type: string }
+        timezone:   { type: string, example: "Asia/Kolkata" }
+
+    TimeSlot:
+      type: object
+      properties:
+        timeSlot:     { type: string, example: "10:30 AM" }
+        time:         { type: string, example: "10:30" }
+        available:    { type: integer, example: 1 }
+        status:       { type: string, enum: [available, blocked, passed, booked] }
+        maxBookings:  { type: integer }
+
+    Appointment:
+      type: object
+      properties:
+        _id:              { type: string }
+        patient:          { type: object, additionalProperties: true }
+        doctor:           { type: object, additionalProperties: true }
+        healthReport:     { type: string, nullable: true }
+        date:             { type: string, format: date-time }
+        timeSlot:         { type: string }
+        type:             { type: string, enum: [video, phone, in-person] }
+        status:           { type: string, enum: [scheduled, confirmed, in-progress, completed, cancelled, no-show] }
+        symptoms:         { type: string }
+        notes:            { type: string }
+        prescription:
+          type: array
+          items: { $ref: '#/components/schemas/Prescription' }
+        diagnosis:        { type: string }
+        recommendations:  { type: array, items: { type: string } }
+        fee:              { type: number }
+        videoRoom:
+          type: object
+          nullable: true
+          properties:
+            roomId: { type: string }
+            type:   { type: string, enum: [agora, webrtc] }
+            config: { type: object, additionalProperties: true }
+        startedAt:        { type: string, format: date-time }
+        endedAt:          { type: string, format: date-time }
+        followUpDate:     { type: string, format: date-time }
+        rating:           { type: integer, minimum: 1, maximum: 5 }
+        review:           { type: string }
+        reviewSubmitted:  { type: boolean }
+        createdAt:        { type: string, format: date-time }
+        updatedAt:        { type: string, format: date-time }
+
+    Prescription:
+      type: object
+      properties:
+        medication:    { type: string, example: Metformin }
+        dosage:        { type: string, example: "500 mg" }
+        duration:      { type: string, example: "30 days" }
+        instructions:  { type: string }
+
+    DoctorDashboard:
+      type: object
+      properties:
+        doctor:
+          type: object
+          properties:
+            _id:             { type: string }
+            name:            { type: string }
+            specialization:  { type: string }
+            approvalStatus:  { type: string }
+            isListed:        { type: boolean }
+            rating:          { type: number }
+            totalReviews:    { type: integer }
+            consultationFee: { type: number }
+        stats:
+          type: object
+          properties:
+            todayAppointments:     { type: integer }
+            upcomingAppointments:  { type: integer }
+            completedAppointments: { type: integer }
+            totalPatients:         { type: integer }
+        todaySchedule:
+          type: array
+          items: { $ref: '#/components/schemas/Appointment' }
+        upcomingSchedule:
+          type: array
+          items: { $ref: '#/components/schemas/Appointment' }
+        recentPatients:
+          type: array
+          items: { $ref: '#/components/schemas/Appointment' }
+
+    PatientFullProfile:
+      type: object
+      properties:
+        patient:           { $ref: '#/components/schemas/User' }
+        healthSummary:
+          type: object
+          nullable: true
+          additionalProperties: true
+        healthReports:
+          type: array
+          items:
+            type: object
+            properties:
+              _id:                { type: string }
+              reportType:         { type: string }
+              status:             { type: string }
+              healthScore:        { type: number }
+              deficienciesCount:  { type: integer }
+              createdAt:          { type: string, format: date-time }
+        wearableSummary:
+          type: object
+          nullable: true
+          additionalProperties: true
+        appointmentHistory:
+          type: array
+          items: { $ref: '#/components/schemas/Appointment' }
+
+    # ---------------- Wearables ----------------
+    WearableData:
+      type: object
+      properties:
+        _id:           { type: string }
+        user:          { type: string }
+        deviceType:    { type: string, enum: [fitbit, apple_watch, garmin, samsung, xiaomi, other] }
+        deviceName:    { type: string }
+        isConnected:   { type: boolean }
+        lastSyncedAt:  { type: string, format: date-time }
+        dailyMetrics:
+          type: array
+          items:
+            type: object
+            properties:
+              date:           { type: string, format: date-time }
+              steps:          { type: number }
+              caloriesBurned: { type: number }
+              activeMinutes:  { type: number }
+              distance:       { type: number }
+              floorsClimbed:  { type: number }
+        heartRate:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp: { type: string, format: date-time }
+              bpm:       { type: number }
+              type:      { type: string, enum: [resting, active, peak, cardio] }
+        sleepData:
+          type: array
+          items:
+            type: object
+            properties:
+              date:               { type: string, format: date-time }
+              totalSleepMinutes:  { type: number }
+              deepSleepMinutes:   { type: number }
+              lightSleepMinutes:  { type: number }
+              remSleepMinutes:    { type: number }
+              awakeMinutes:       { type: number }
+              sleepScore:         { type: number }
+              bedTime:            { type: string, format: date-time }
+              wakeTime:           { type: string, format: date-time }
+        bloodOxygen:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp:  { type: string, format: date-time }
+              percentage: { type: number }
+        stressLevels:
+          type: array
+          items:
+            type: object
+            properties:
+              timestamp: { type: string, format: date-time }
+              level:     { type: number, minimum: 0, maximum: 100 }
+              category:  { type: string, enum: [low, medium, high] }
+        weeklySummary:
+          type: object
+          properties:
+            avgSteps:           { type: number }
+            avgHeartRate:       { type: number }
+            avgSleepHours:      { type: number }
+            avgCaloriesBurned:  { type: number }
+            totalActiveMinutes: { type: number }
+
+    # ---------------- Documents ----------------
+    MedicalDocument:
+      type: object
+      properties:
+        _id:               { type: string }
+        userId:            { type: string }
+        title:             { type: string }
+        category:          { type: string, enum: [prescription, lab_report, scan, discharge_summary, vaccination, insurance, other] }
+        documentDate:      { type: string, format: date-time }
+        notes:             { type: string }
+        fileUrl:           { type: string, format: uri }
+        originalName:      { type: string }
+        mimetype:          { type: string }
+        size:              { type: integer }
+        isAnalyzedReport:  { type: boolean, description: "True when this row was projected from a HealthReport, not the documents collection." }
+        status:            { type: string }
+        createdAt:         { type: string, format: date-time }
+
+    # ---------------- AI Chat ----------------
+    ChatMessage:
+      type: object
+      required: [role, content]
+      properties:
+        role:    { type: string, enum: [user, assistant] }
+        content: { type: string }
+
+    ChatHistory:
+      type: array
+      items: { $ref: '#/components/schemas/ChatMessage' }
+
+    # ---------------- Notifications ----------------
+    Notification:
+      type: object
+      properties:
+        _id:        { type: string }
+        userId:     { type: string }
+        type:
+          type: string
+          enum: [food_reminder, sleep_reminder, macro_update, diet_adherence, health_insight, report_comparison, goal_progress]
+        title:      { type: string }
+        message:    { type: string }
+        icon:       { type: string }
+        priority:   { type: string, enum: [low, medium, high] }
+        read:       { type: boolean }
+        actionUrl:  { type: string }
+        metadata:   { type: object, additionalProperties: true }
+        expiresAt:  { type: string, format: date-time }
+        createdAt:  { type: string, format: date-time }
+
+    # ---------------- Support ----------------
+    SupportTicket:
+      type: object
+      properties:
+        _id:           { type: string }
+        user:          { type: object, additionalProperties: true }
+        subject:       { type: string }
+        message:       { type: string }
+        category:      { type: string, enum: [bug, feature_request, general_help, account_issue, other] }
+        status:        { type: string, enum: [open, in_progress, resolved, closed] }
+        priority:      { type: string, enum: [low, medium, high, urgent] }
+        attachments:   { type: array, items: { type: string } }
+        adminResponse: { type: string }
+        respondedAt:   { type: string, format: date-time }
+        resolvedAt:    { type: string, format: date-time }
+        createdAt:     { type: string, format: date-time }
+        updatedAt:     { type: string, format: date-time }
+
+    # ---------------- Food Safety ----------------
+    FoodSafetyRecord:
+      type: object
+      properties:
+        _id:               { type: string }
+        foodName:          { type: string }
+        commonAdulterants: { type: array, items: { type: string } }
+        detectionMethods:  { type: array, items: { type: string } }
+        healthRisks:       { type: array, items: { type: string } }
+        preventionTips:    { type: array, items: { type: string } }
+        source:            { type: string }
+        lastUpdated:       { type: string, format: date-time }
+
+    # ---------------- Admin curation ----------------
+    DeficiencyRule:
+      type: object
+      properties:
+        _id:           { type: string }
+        name:          { type: string }
+        labParameter:  { type: string }
+        operator:      { type: string, enum: [lt, lte, gt, gte, eq] }
+        threshold:     { type: number }
+        severity:      { type: string, enum: [mild, moderate, severe] }
+        unit:          { type: string }
+        symptoms:      { type: array, items: { type: string } }
+        notes:         { type: string }
+
+    SupplementMapping:
+      type: object
+      properties:
+        _id:         { type: string }
+        deficiency:  { type: string }
+        supplements:
+          type: array
+          items:
+            type: object
+            properties:
+              name:           { type: string }
+              dosage:         { type: string }
+              frequency:      { type: string }
+              naturalSources: { type: array, items: { type: string } }
+
+    ActivityLog:
+      type: object
+      properties:
+        _id:       { type: string }
+        user:      { type: object, additionalProperties: true }
+        action:    { type: string }
+        category:  { type: string, enum: [authentication, diagnostics, nutrition, fitness, medical, glucose, system] }
+        metadata:  { type: object, additionalProperties: true }
+        ipAddress: { type: string }
+        userAgent: { type: string }
+        timestamp: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }

@@ -29,6 +29,11 @@ export default defineConfig({
         changeOrigin: true,
         rewrite: (path) => path
       },
+      // Interactive Swagger UI (backend serves /api-docs)
+      '/api-docs': {
+        target: 'http://localhost:5001',
+        changeOrigin: true
+      },
       '/uploads': {
         target: 'http://localhost:5001',
         changeOrigin: true

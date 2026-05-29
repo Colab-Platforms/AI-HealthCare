@@ -1,43 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { motion } from 'framer-motion';
 import { Wind, ChevronRight, TrendingDown, TrendingUp, Minus } from 'lucide-react';
 import { Link } from 'react-router-dom';
-
-const STORAGE_KEY = "takehealth_smoke_log";
-
-function getTodayKey() {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
-
-function loadData() {
-  try {
-    const log = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-    const todayKey = getTodayKey();
-    const today = log[todayKey]?.count || 0;
-    const past = Object.entries(log)
-      .filter(([k]) => k !== todayKey)
-      .sort((a,b) => b[0].localeCompare(a[0]))
-      .slice(0,6)
-      .filter(([,v]) => v.count > 0);
-    const avg = past.length > 0
-      ? Math.round(past.reduce((s,[,v]) => s + v.count, 0) / past.length)
-      : null;
-    return { today, avg };
-  } catch { return { today: 0, avg: null }; }
-}
+import useSmokeLog from '../hooks/useSmokeLog';
+import { getSmokeSummary } from '../utils/smokeLog';
 
 export default function SmokeTrackerCard() {
-  const [data, setData] = useState(loadData);
-
-  useEffect(() => {
-    const h = () => setData(loadData());
-    window.addEventListener("storage", h);
-    return () => window.removeEventListener("storage", h);
-  }, []);
-
-  const { today, avg } = data;
-  const diff = avg !== null ? today - avg : null;
+  const { log, loading } = useSmokeLog();
+  const { today, diff, avg } = getSmokeSummary(log);
   const smokeFree = today === 0;
 
   return (
@@ -64,22 +34,24 @@ export default function SmokeTrackerCard() {
           </div>
 
           <div className="flex items-end gap-3 mb-3">
-            <span className="text-4xl font-black text-black leading-none">{today}</span>
+            <span className="text-4xl font-black text-black leading-none">
+              {loading ? '—' : today}
+            </span>
             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pb-1">
-              {smokeFree ? "Smoke free today 🌿" : "smoked today"}
+              {loading ? 'Syncing…' : smokeFree ? "Smoke free today 🌿" : "smoked today"}
             </span>
           </div>
 
-          {diff !== null ? (
+          {!loading && diff !== null ? (
             <div className={`flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest ${diff < 0 ? 'text-emerald-500' : diff > 0 ? 'text-rose-500' : 'text-slate-400'}`}>
               {diff < 0 ? <TrendingDown className="w-3.5 h-3.5" /> : diff > 0 ? <TrendingUp className="w-3.5 h-3.5" /> : <Minus className="w-3.5 h-3.5" />}
               <span>
                 {diff === 0 ? `At avg (${avg}/day)` : diff < 0 ? `${Math.abs(diff)} below avg (${avg}/day)` : `${diff} above avg (${avg}/day)`}
               </span>
             </div>
-          ) : (
+          ) : !loading ? (
             <p className="text-[10px] font-bold text-slate-400">Log daily to see your trend</p>
-          )}
+          ) : null}
         </div>
       </motion.div>
     </Link>

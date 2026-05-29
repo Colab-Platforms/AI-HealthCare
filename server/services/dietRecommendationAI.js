@@ -68,8 +68,15 @@ class DietRecommendationAI {
   }
 
   async generatePersonalizedDietPlan(userData, promptExtension = '') {
-    const { age, gender, weight, height, currentBMI, bmiGoal, activityLevel, nutritionGoals, medicalConditions, allergies, diabetesInfo, region, country } = userData;
+    const { age, gender, weight, height, currentBMI, bmiGoal, activityLevel, nutritionGoals, medicalConditions, allergies, diabetesInfo, alcoholContext, alcoholSummary, lifestyle } = userData;
     const isDiabetic = !!diabetesInfo;
+    const alcoholLine = alcoholContext || 'No alcohol tracker data';
+    const elevatedNote = alcoholSummary?.bingePattern || (alcoholSummary?.today >= 3)
+      ? 'User logged several drinks recently — prefer lighter dinner options and avoid suggesting alcohol pairings; do not make medical claims.'
+      : '';
+    const diabeticAlcoholNote = isDiabetic
+      ? 'Diabetic user: do not suggest alcohol; keep meals steady and practical without medical claims about glucose and alcohol.'
+      : '';
     
     // Build region/country specific instructions
     let regionCountryInstructions = '';
@@ -103,14 +110,18 @@ USER DATA:
 - Medical Conditions: ${medicalConditions?.join(', ') || 'None'}
 - Allergies: ${allergies?.join(', ') || 'None'}
 - Diabetes Status: ${isDiabetic ? `Positive (${diabetesInfo.diabetesType})` : 'Negative'}
-- Macro Targets: Protein ${nutritionGoals?.protein}g, Carbs ${nutritionGoals?.carbs}g, Fats ${nutritionGoals?.fats}g${regionCountryInstructions}
+- Alcohol / Lifestyle: ${alcoholLine}
+- Profile alcohol flag: ${lifestyle?.alcohol ? `Yes (${lifestyle.alcoholFrequency || 'unspecified'})` : 'No or not set'}
+- Macro Targets: Protein ${nutritionGoals?.protein}g, Carbs ${nutritionGoals?.carbs}g, Fats ${nutritionGoals?.fats}g
 
 REQUIREMENTS:
 1. CRITICAL: The SUM of Calories, Protein, Carbs, and Fats across NO MORE than one option from each meal (Breakfast + Lunch + Dinner) MUST strictly align with the USER'S Macro Targets provided.
 2. PRECISE PORTIONS: Use measurements like "1.5 Bowl (250g)", "2 Medium Roti (80g)", etc., in "portionSize". The portion must explain BOTH the visual quantity (bowl/piece) AND the approximate weight (grams) if applicable.
 3. Focus on varied cuisine based on user's region and country preferences.
 4. Output 1-2 options per meal.
-5. ${promptExtension}
+5. If alcohol intake is elevated per user log, prefer lighter dinners and fewer empty calories — no medical claims.
+6. ${elevatedNote} ${diabeticAlcoholNote}
+7. ${promptExtension}
 
 JSON output ONLY. Exact mathematical alignment with macro goals is mandatory.`;
 

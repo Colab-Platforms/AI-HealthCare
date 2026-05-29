@@ -171,7 +171,9 @@ router.get('/analysis/glucose', protect, async (req, res) => {
 
         // If no cached version or data has changed, generate new analysis
         console.log('🚀 AI Analysis: Generating fresh analysis via Claude API');
-        const result = await nutritionAI.analyzeGlucoseTrends(user, glucoseReadings, foodLogs, hba1cReadings);
+        const { getAlcoholSummary } = require('../utils/alcoholLog');
+        const alcoholSummary = getAlcoholSummary(user.alcoholLog || {});
+        const result = await nutritionAI.analyzeGlucoseTrends(user, glucoseReadings, foodLogs, hba1cReadings, alcoholSummary);
 
         if (result && result.success) {
             // Fill defaults if some fields are missing from AI

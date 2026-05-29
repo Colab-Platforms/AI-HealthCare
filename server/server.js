@@ -26,7 +26,11 @@ const app = express();
 // Improved Database Middleware
 app.use(async (req, res, next) => {
   const skipPaths = ["/api/health-check", "/api/ping", "/api/debug-connection"];
-  if (skipPaths.some((p) => req.path === p || req.originalUrl === p))
+  // Skip DB lookup for the docs routes — they're pure file reads.
+  if (
+    req.path.startsWith("/api-docs") ||
+    skipPaths.some((p) => req.path === p || req.originalUrl === p)
+  )
     return next();
 
   try {
@@ -92,6 +96,14 @@ app.use(express.urlencoded({ limit: "50mb", extended: true }));
 if (!process.env.VERCEL) {
   const uploadsDir = path.join(__dirname, "uploads");
   app.use("/uploads", express.static(uploadsDir));
+}
+
+// 📘 Swagger / OpenAPI docs (interactive UI + raw JSON/YAML)
+try {
+  const { mountSwagger } = require("./config/swagger");
+  mountSwagger(app);
+} catch (err) {
+  console.error("[Server] Failed to mount Swagger UI:", err.message);
 }
 
 // Debug endpoint for diagnostic purposes
@@ -201,6 +213,9 @@ app.get("/api/health-check", async (req, res) => {
     connectionError,
   });
 });
+
+// Friendly redirects → interactive docs
+app.get(["/", "/docs"], (req, res) => res.redirect("/api-docs"));
 
 // 🛠️ Global Request Logger (For Debugging 404s)
 app.use((req, res, next) => {
@@ -347,6 +362,7 @@ if (process.env.VERCEL) {
   const PORT = process.env.PORT || 5001;
   const server = app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on port ${PORT}`);
+    console.log(`📘 Interactive API docs: http://localhost:${PORT}/api-docs`);
     if (process.env.RAILWAY_ENVIRONMENT_ID) {
       console.log(
         `🚂 Railway deployment detected: ${process.env.RAILWAY_PUBLIC_DOMAIN || "Ready"}`,
