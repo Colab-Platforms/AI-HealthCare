@@ -292,14 +292,18 @@ export const nutritionService = {
 };
 
 export const dietRecommendationService = {
-  generateDietPlan: (data) => api.post('diet-recommendations/diet-plan/generate', data),
+  generateDietPlan: (data) => api.post('diet-recommendations/diet-plan/generate', data, {
+    timeout: 180000 // 180 seconds (3 minutes) for AI diet plan generation
+  }),
   getActiveDietPlan: (config) => api.get('diet-recommendations/diet-plan/active', config),
 
   getDietPlanHistory: () => api.get('diet-recommendations/diet-plan/history'),
   getDietPlanById: (planId) => api.get(`diet-recommendations/diet-plan/${planId}`),
   getDietPlanStatus: (planId) => api.get(`diet-recommendations/diet-plan/${planId}/status`),
   rateDietPlan: (planId, rating) => api.post(`diet-recommendations/diet-plan/${planId}/rate`, { rating }),
-  generateSupplements: () => api.post('diet-recommendations/supplements/generate'),
+  generateSupplements: () => api.post('diet-recommendations/supplements/generate', {}, {
+    timeout: 120000 // 120 seconds for supplement generation
+  }),
   getActiveSupplements: () => api.get('diet-recommendations/supplements/active'),
   trackSupplementUsage: (recommendationId, data) => api.post(`diet-recommendations/supplements/${recommendationId}/track`, data)
 };

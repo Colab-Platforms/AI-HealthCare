@@ -68,7 +68,7 @@ class DietRecommendationAI {
   }
 
   async generatePersonalizedDietPlan(userData, promptExtension = '') {
-    const { age, gender, weight, height, currentBMI, bmiGoal, activityLevel, nutritionGoals, medicalConditions, allergies, diabetesInfo, alcoholContext, alcoholSummary, lifestyle } = userData;
+    const { age, gender, weight, height, currentBMI, bmiGoal, activityLevel, nutritionGoals, medicalConditions, allergies, diabetesInfo, alcoholContext, alcoholSummary, lifestyle, country, region } = userData;
     const isDiabetic = !!diabetesInfo;
     const alcoholLine = alcoholContext || 'No alcohol tracker data';
     const elevatedNote = alcoholSummary?.bingePattern || (alcoholSummary?.today >= 3)
@@ -80,16 +80,19 @@ class DietRecommendationAI {
     
     // Build region/country specific instructions
     let regionCountryInstructions = '';
-    if (country === 'India') {
-      if (region && region !== 'other') {
-        regionCountryInstructions = `\n- REGION FOCUS: Prioritize ${region} Indian cuisine and regional specialties. Include traditional ${region} dishes.`;
+    const userCountry = country || 'India';
+    const userRegion = region || 'other';
+    
+    if (userCountry === 'India') {
+      if (userRegion && userRegion !== 'other') {
+        regionCountryInstructions = `\n- REGION FOCUS: Prioritize ${userRegion} Indian cuisine and regional specialties. Include traditional ${userRegion} dishes.`;
       } else {
         regionCountryInstructions = '\n- CUISINE: Focus on diverse Indian cuisine from all regions.';
       }
     } else {
-      regionCountryInstructions = `\n- COUNTRY FOCUS: User is from ${country}. Suggest cuisine popular in ${country} that aligns with their dietary preferences.`;
-      if (region && region !== 'other') {
-        regionCountryInstructions += `\n- REGION PREFERENCE: User prefers ${region} style cuisine if available in ${country}.`;
+      regionCountryInstructions = `\n- COUNTRY FOCUS: User is from ${userCountry}. Suggest cuisine popular in ${userCountry} that aligns with their dietary preferences.`;
+      if (userRegion && userRegion !== 'other') {
+        regionCountryInstructions += `\n- REGION PREFERENCE: User prefers ${userRegion} style cuisine if available in ${userCountry}.`;
       }
     }
     
