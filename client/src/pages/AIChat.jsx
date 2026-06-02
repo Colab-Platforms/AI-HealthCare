@@ -88,9 +88,17 @@ export default function AIChat() {
     const fetchUserReports = async () => {
       try {
         const { data } = await api.get("health/reports");
-        setUserReports(data.reports || data || []);
+        // Ensure we always set an array
+        if (Array.isArray(data.reports)) {
+          setUserReports(data.reports);
+        } else if (Array.isArray(data)) {
+          setUserReports(data);
+        } else {
+          setUserReports([]);
+        }
       } catch (error) {
         console.error("Failed to load reports:", error);
+        setUserReports([]);
       }
     };
     fetchUserReports();

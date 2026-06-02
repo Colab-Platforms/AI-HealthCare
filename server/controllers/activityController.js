@@ -450,6 +450,65 @@ exports.getLiveActiveUsers = async (req, res) => {
   }
 };
 
+// @desc    Get DAU (Daily Active Users) and MAU (Monthly Active Users)
+// @route   GET /api/activity/dau-mau
+exports.getDauMau = async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    const now = new Date();
+    
+    // Determine the period based on query parameters
+    let todayStart, periodStart, periodEnd;
+    
+    if (startDate && endDate) {
+      // Use provided date range
+      periodStart = new Date(startDate);
+      periodEnd = new Date(endDate);
+      periodEnd.setHours(23, 59, 59, 999);
+      todayStart = new Date(periodEnd);
+      todayStart.setHours(0, 0, 0, 0);
+    } else {
+      // Default behavior
+      todayStart = new Date(now);
+      todayStart.setHours(0, 0, 0, 0);
+      periodStart = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)); // 30 days
+      periodEnd = now;
+    }
+    
+    // DAU: Unique users active in the period
+    const dauCount = await ActivityLog.distinct('user', {
+      timestamp: { $gte: todayStart, $lte: periodEnd }
+    }).then(users => users.length);
+
+    // MAU: Unique users active in the entire period
+    const mauCount = await ActivityLog.distinct('user', {
+      timestamp: { $gte: periodStart, $lte: periodEnd }
+    }).then(users => users.length);
+
+    // WAU: Unique users active in last 7 days of period
+    const sevenDaysAgoFromPeriod = new Date(periodEnd.getTime() - (7 * 24 * 60 * 60 * 1000));
+    const wauCount = await ActivityLog.distinct('user', {
+      timestamp: { $gte: sevenDaysAgoFromPeriod, $lte: periodEnd }
+    }).then(users => users.length);
+
+    // Calculate retention: DAU/MAU ratio
+    const retention = mauCount > 0 ? Math.round((dauCount / mauCount) * 100) : 0;
+
+    res.json({
+      success: true,
+      metrics: {
+        dau: dauCount,        // Daily Active Users
+        mau: mauCount,        // Monthly Active Users
+        wau: wauCount,        // Weekly Active Users
+        retention: retention  // Retention percentage (DAU/MAU)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching DAU/MAU:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // @desc    Get feature stats with user breakdown (paginated)
 // @route   GET /api/activity/feature-stats
 exports.getFeatureStats = async (req, res) => {

@@ -214,7 +214,7 @@ export const wearableService = {
 
 export const adminService = {
   // Stats
-  getStats: () => api.get('admin/stats'),
+  getStats: (params) => api.get('admin/stats', { params }),
 
   // Users
   getUsers: (params) => api.get('admin/users', { params }),
@@ -271,7 +271,8 @@ export const activityService = {
   getStats: (params) => api.get('activity/stats', { params }),
   getLiveUsers: (params) => api.get('activity/live-users', { params }),
   exportLogs: (params) => api.get('activity/export', { params, responseType: 'blob' }),
-  getFeatureStats: (params) => api.get('activity/feature-stats', { params })
+  getFeatureStats: (params) => api.get('activity/feature-stats', { params }),
+  getDauMau: (params) => api.get('activity/dau-mau', { params })
 };
 
 export const subscriptionService = {
@@ -312,7 +313,67 @@ export const supportService = {
   createTicket: (data) => api.post('support', data),
   getMyTickets: () => api.get('support/my-tickets'),
   getAllTickets: (params) => api.get('support', { params }),
-  respondToTicket: (ticketId, data) => api.patch(`support/${ticketId}/respond`, data)
+  respondToTicket: (ticketId, data) => api.patch(`support/${ticketId}/respond`, data),
+  aiChat: (data, onChunk) => {
+    return new Promise((resolve, reject) => {
+      const token = localStorage.getItem('token');
+      const xhr = new XMLHttpRequest();
+      const baseURL = api.defaults.baseURL;
+      let lastProcessedLength = 0; // Track last processed position
+      
+      xhr.open('POST', `${baseURL}/support/ai-chat`, true);
+      xhr.setRequestHeader('Content-Type', 'application/json');
+      if (token) {
+        xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+      }
+
+      xhr.onopen = () => {
+        console.log('Stream connection opened');
+      };
+
+      xhr.onprogress = () => {
+        const response = xhr.responseText;
+        // Only process new data since last time
+        const newData = response.slice(lastProcessedLength);
+        lastProcessedLength = response.length;
+        
+        const lines = newData.split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const json = JSON.parse(line.slice(6));
+              if (json.chunk) {
+                console.log('Chunk received:', json.chunk);
+                onChunk(json.chunk);
+              } else if (json.done) {
+                console.log('Stream completed');
+              } else if (json.error) {
+                console.error('Stream error:', json.error);
+                reject(new Error(json.error));
+              }
+            } catch (e) {
+              console.error('Parse error:', e);
+            }
+          }
+        }
+      };
+
+      xhr.onerror = () => {
+        reject(new Error('Network error'));
+      };
+
+      xhr.onload = () => {
+        if (xhr.status === 200) {
+          resolve({ data: { success: true } });
+        } else {
+          reject(new Error(`HTTP ${xhr.status}`));
+        }
+      };
+
+      xhr.send(JSON.stringify(data));
+    });
+  }
 };
 
 export const metricsService = {

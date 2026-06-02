@@ -54,14 +54,21 @@ export default function AdminSupport() {
         category: filters.category,
       };
 
+      console.log('Fetching tickets with params:', params);
       const res = await supportService.getAllTickets(params);
+      console.log('Tickets response:', res);
+      
       if (res.data?.success) {
         setTickets(res.data.tickets || []);
         setTotalPages(res.data.pages || 1);
         setTotalCount(res.data.total || 0);
+      } else {
+        console.error('API response not successful:', res.data);
+        toast.error(res.data?.message || "Failed to fetch tickets");
       }
     } catch (error) {
-      toast.error("Failed to fetch tickets");
+      console.error('Error fetching tickets:', error);
+      toast.error(error.response?.data?.message || "Failed to fetch tickets");
     } finally {
       setLoading(false);
     }
@@ -139,12 +146,13 @@ export default function AdminSupport() {
                 Support Tickets
               </h2>
               <p className="text-slate-400 text-[8px] font-bold uppercase tracking-wider">
-                {totalCount} Total
+                {`${totalCount} Tickets`}
               </p>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+          {/* Controls */}
+          <div className="flex items-center gap-2">
             <button
               onClick={fetchTickets}
               disabled={loading}
@@ -326,120 +334,120 @@ export default function AdminSupport() {
                 <div>
                   <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">
                     Subject
-                  </p>
-                  <p className="text-base font-black text-slate-900">
-                    {selectedTicket.subject}
-                  </p>
-                </div>
+                      </p>
+                      <p className="text-base font-black text-slate-900">
+                        {selectedTicket.subject}
+                      </p>
+                    </div>
 
-                <div>
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                    Message
-                  </p>
-                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
-                    <p className="text-sm text-slate-700 whitespace-pre-wrap">
-                      {selectedTicket.message}
-                    </p>
+                    <div>
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                        Message
+                      </p>
+                      <div className="bg-slate-50 p-3 rounded-xl border border-slate-100">
+                        <p className="text-sm text-slate-700 whitespace-pre-wrap">
+                          {selectedTicket.message}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                          Category
+                        </p>
+                        <p
+                          className={`inline-block px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${getCategoryColor(selectedTicket.category)}`}
+                        >
+                          {selectedTicket.category.replace(/_/g, " ")}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                          From
+                        </p>
+                        <p className="text-sm font-bold text-slate-900">
+                          {selectedTicket.user?.name}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                        Email
+                      </p>
+                      <p className="text-sm text-slate-600">
+                        {selectedTicket.user?.email}
+                      </p>
+                    </div>
+
+                    <div>
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">
+                        Created
+                      </p>
+                      <p className="text-sm text-slate-600">
+                        {new Date(selectedTicket.createdAt).toLocaleString()}
+                      </p>
+                    </div>
                   </div>
-                </div>
 
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                      Category
+                  {/* Status Update Section */}
+                  <div className="border-t border-slate-200 pt-4">
+                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2">
+                      Update Status
                     </p>
-                    <p
-                      className={`inline-block px-2.5 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest ${getCategoryColor(selectedTicket.category)}`}
+                    <select
+                      value={newStatus}
+                      onChange={(e) => setNewStatus(e.target.value)}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
                     >
-                      {selectedTicket.category.replace(/_/g, " ")}
-                    </p>
+                      <option value="open">Open</option>
+                      <option value="in_progress">In Progress</option>
+                      <option value="resolved">Resolved</option>
+                      <option value="closed">Closed</option>
+                    </select>
                   </div>
-                  <div>
-                    <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                      From
-                    </p>
-                    <p className="text-sm font-bold text-slate-900">
-                      {selectedTicket.user?.name}
-                    </p>
+
+                  {/* Admin Response */}
+                  {selectedTicket.adminResponse && (
+                    <div className="bg-green-50 border border-green-200 rounded-xl p-3.5">
+                      <p className="text-[8px] font-black text-green-600 uppercase tracking-widest mb-1.5">
+                        Previous Response
+                      </p>
+                      <p className="text-sm text-green-900 whitespace-pre-wrap mb-1.5">
+                        {selectedTicket.adminResponse}
+                      </p>
+                      <p className="text-[7px] text-green-600">
+                        Responded:{" "}
+                        {new Date(selectedTicket.respondedAt).toLocaleString()}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Response Form */}
+                  <div className="space-y-2.5 border-t border-slate-200 pt-4">
+                    <div>
+                      <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1.5 block">
+                        Your Response
+                      </label>
+                      <textarea
+                        value={responseText}
+                        onChange={(e) => setResponseText(e.target.value)}
+                        placeholder="Type your response here..."
+                        rows="4"
+                        className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-600 focus:border-transparent text-sm resize-none"
+                      />
+                    </div>
+
+                    <button
+                      onClick={handleRespond}
+                      disabled={responding || !responseText.trim()}
+                      className="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-black text-sm uppercase tracking-wider hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    >
+                      <Send className="w-4 h-4" />
+                      {responding ? "Updating..." : "Update Ticket"}
+                    </button>
                   </div>
-                </div>
-
-                <div>
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                    Email
-                  </p>
-                  <p className="text-sm text-slate-600">
-                    {selectedTicket.user?.email}
-                  </p>
-                </div>
-
-                <div>
-                  <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-1">
-                    Created
-                  </p>
-                  <p className="text-sm text-slate-600">
-                    {new Date(selectedTicket.createdAt).toLocaleString()}
-                  </p>
-                </div>
-              </div>
-
-              {/* Status Update Section */}
-              <div className="border-t border-slate-200 pt-4">
-                <p className="text-[8px] font-black text-slate-400 uppercase tracking-widest mb-2">
-                  Update Status
-                </p>
-                <select
-                  value={newStatus}
-                  onChange={(e) => setNewStatus(e.target.value)}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl text-sm font-bold text-slate-900 focus:ring-2 focus:ring-indigo-600 focus:border-transparent"
-                >
-                  <option value="open">Open</option>
-                  <option value="in_progress">In Progress</option>
-                  <option value="resolved">Resolved</option>
-                  <option value="closed">Closed</option>
-                </select>
-              </div>
-
-              {/* Admin Response */}
-              {selectedTicket.adminResponse && (
-                <div className="bg-green-50 border border-green-200 rounded-xl p-3.5">
-                  <p className="text-[8px] font-black text-green-600 uppercase tracking-widest mb-1.5">
-                    Previous Response
-                  </p>
-                  <p className="text-sm text-green-900 whitespace-pre-wrap mb-1.5">
-                    {selectedTicket.adminResponse}
-                  </p>
-                  <p className="text-[7px] text-green-600">
-                    Responded:{" "}
-                    {new Date(selectedTicket.respondedAt).toLocaleString()}
-                  </p>
-                </div>
-              )}
-
-              {/* Response Form */}
-              <div className="space-y-2.5 border-t border-slate-200 pt-4">
-                <div>
-                  <label className="text-[8px] font-black text-slate-600 uppercase tracking-widest mb-1.5 block">
-                    Your Response
-                  </label>
-                  <textarea
-                    value={responseText}
-                    onChange={(e) => setResponseText(e.target.value)}
-                    placeholder="Type your response here..."
-                    rows="4"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-600 focus:border-transparent text-sm resize-none"
-                  />
-                </div>
-
-                <button
-                  onClick={handleRespond}
-                  disabled={responding || !responseText.trim()}
-                  className="w-full bg-indigo-600 text-white py-2.5 rounded-xl font-black text-sm uppercase tracking-wider hover:bg-indigo-700 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-                >
-                  <Send className="w-4 h-4" />
-                  {responding ? "Updating..." : "Update Ticket"}
-                </button>
-              </div>
             </div>
           </motion.div>
         </div>

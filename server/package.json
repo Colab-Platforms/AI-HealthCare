@@ -9,6 +9,7 @@
     "test:alcohol": "node tests/alcoholLog.test.js"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.100.1",
     "@upstash/qstash": "^2.10.1",
     "agora-token": "^2.0.5",
     "axios": "^1.6.2",

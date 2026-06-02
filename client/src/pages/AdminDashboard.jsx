@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { adminService } from "../services/api";
+import { adminService, activityService } from "../services/api";
 import {
   Users,
   FileText,
@@ -12,6 +12,7 @@ import {
   TrendingUp,
   ArrowUpRight,
   ArrowDownRight,
+  Zap,
 } from "lucide-react";
 import {
   AreaChart,
@@ -32,17 +33,29 @@ import SEO from "../hooks/useSEO";
 
 export default function AdminDashboard() {
   const [stats, setStats] = useState(null);
+  const [dauMau, setDauMau] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [startDate, setStartDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 30);
+    return date.toISOString().split("T")[0];
+  });
+  const [endDate, setEndDate] = useState(new Date().toISOString().split("T")[0]);
   const navigate = useNavigate();
 
   useEffect(() => {
     fetchStats();
-  }, []);
+  }, [startDate, endDate]);
 
   const fetchStats = async () => {
     try {
-      const { data } = await adminService.getStats();
-      setStats(data);
+      const params = { startDate, endDate };
+      const [statsRes, dauMauRes] = await Promise.all([
+        adminService.getStats(params),
+        activityService.getDauMau(params)
+      ]);
+      setStats(statsRes.data);
+      setDauMau(dauMauRes.data.metrics);
     } catch (error) {
       toast.error("Failed to load stats");
     } finally {
@@ -94,14 +107,30 @@ export default function AdminDashboard() {
       bg: "bg-blue-50",
       trend: 12.5,
     },
-    // { label: 'Unique Users', value: stats?.stats?.uniqueUsers || 0, icon: ShieldCheck, color: 'text-indigo-600', bg: 'bg-indigo-50' },
     {
-      label: "Repeat Users",
-      value: stats?.stats?.repeatUsers || 0,
-      icon: Clock,
-      color: "text-rose-600",
-      bg: "bg-rose-50",
+      label: "Daily Active Users",
+      value: dauMau?.dau || 0,
+      icon: Zap,
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+      trend: dauMau?.retention || 0,
+      subtitle: "Today's active users"
     },
+    {
+      label: "Monthly Active Users",
+      value: dauMau?.mau || 0,
+      icon: Activity,
+      color: "text-purple-600",
+      bg: "bg-purple-50",
+      subtitle: "Last 30 days"
+    },
+    // {
+    //   label: "Repeat Users",
+    //   value: stats?.stats?.repeatUsers || 0,
+    //   icon: Clock,
+    //   color: "text-rose-600",
+    //   bg: "bg-rose-50",
+    // },
     {
       label: "Total Reports",
       value: stats?.stats?.totalReports || 0,
@@ -110,25 +139,94 @@ export default function AdminDashboard() {
       bg: "bg-emerald-50",
       trend: 8.2,
     },
-    {
-      label: "Completion Rate",
-      value: `${((stats?.stats?.completedReports / stats?.stats?.totalReports) * 100 || 0).toFixed(1)}%`,
-      icon: Activity,
-      color: "text-orange-600",
-      bg: "bg-orange-50",
-      trend: 2.4,
-    },
-    // { label: 'IQ Cache', value: stats?.stats?.totalCachedFoods || 0, icon: Utensils, color: 'text-purple-600', bg: 'bg-purple-50' }
+    // {
+    //   label: "Completion Rate",
+    //   value: `${((stats?.stats?.completedReports / stats?.stats?.totalReports) * 100 || 0).toFixed(1)}%`,
+    //   icon: Activity,
+    //   color: "text-orange-600",
+    //   bg: "bg-orange-50",
+    //   trend: 2.4,
+    // },
+  ];
+
+  const systemHubs = [
+    { label: "Manage Users", path: "/admin/users", icon: Users },
+    { label: "User Intelligence", path: "/admin/activity", icon: Activity },
+    { label: "Food DB", path: "/admin/food-cache", icon: Utensils },
+    { label: "Health Reports", path: "/admin/reports", icon: FileText },
   ];
 
   return (
     <div className="p-6 md:p-8 space-y-8 w-full mx-auto">
       <SEO pageName="adminDashboard" />
-      <div>
-        <h1 className="text-2xl font-bold text-slate-800">Admin Overview</h1>
-        <p className="text-slate-500 text-sm">
-          System performance and user engagement metrics
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Admin Overview</h1>
+          <p className="text-slate-500 text-sm">
+            System performance and user engagement metrics
+          </p>
+        </div>
+
+        {/* Date Range Filter - Center */}
+        <div className="flex items-center gap-4">
+          {/* From Date */}
+          <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-2.5 shadow-sm border border-slate-100 hover:border-slate-200 transition-all">
+            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h18M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="text-sm font-semibold text-slate-700 bg-transparent focus:outline-none cursor-pointer appearance-none w-32"
+              style={{ 
+                colorScheme: 'light',
+                boxShadow: 'none',
+                border: 'none'
+              }}
+            />
+          </div>
+
+          {/* Arrow Separator */}
+          <svg className="w-5 h-5 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+          </svg>
+
+          {/* To Date */}
+          <div className="flex items-center gap-2 bg-white rounded-xl px-4 py-2.5 shadow-sm border border-slate-100 hover:border-slate-200 transition-all">
+            <svg className="w-4 h-4 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h18M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="text-sm font-semibold text-slate-700 bg-transparent focus:outline-none cursor-pointer appearance-none w-32"
+              style={{ 
+                colorScheme: 'light',
+                boxShadow: 'none',
+                border: 'none'
+              }}
+            />
+          </div>
+        </div>
+
+        {/* Chips - Right */}
+        <div className="flex flex-wrap gap-2 justify-end">
+          {systemHubs.map((hub, i) => (
+            <motion.button
+              key={i}
+              onClick={() => navigate(hub.path)}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.05 }}
+              className="px-4 py-2 bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100 border border-blue-200 rounded-full text-xs font-bold text-blue-700 flex items-center gap-2 transition-all hover:shadow-md hover:scale-105"
+            >
+              <hub.icon className="w-3.5 h-3.5" />
+              {hub.label}
+            </motion.button>
+          ))}
+        </div>
       </div>
 
       {/* Stats Cards - Expanded for new metrics */}
@@ -145,7 +243,7 @@ export default function AdminDashboard() {
               <div className={`p-3 rounded-xl ${stat.bg}`}>
                 <stat.icon className={`w-5 h-5 ${stat.color}`} />
               </div>
-              {stat.trend && (
+              {stat.trend && stat.trend > 0 && (
                 <div className="flex items-center gap-1 px-2 py-0.5 bg-emerald-50 text-emerald-600 rounded-full text-[10px] font-bold">
                   <ArrowUpRight className="w-3 h-3" /> {stat.trend}%
                 </div>
@@ -158,6 +256,9 @@ export default function AdminDashboard() {
               <p className="text-2xl font-black text-slate-800 tracking-tight">
                 {stat.value}
               </p>
+              {stat.subtitle && (
+                <p className="text-[9px] text-slate-400 mt-1">{stat.subtitle}</p>
+              )}
             </div>
           </motion.div>
         ))}
@@ -317,66 +418,8 @@ export default function AdminDashboard() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Quick Actions */}
-        <div className="lg:col-span-2 space-y-6">
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden text-sm">
-            <div className="px-6 py-4 border-b border-slate-50 flex items-center justify-between bg-slate-50/50">
-              <h3 className="font-bold text-slate-700 uppercase tracking-wider text-xs flex items-center gap-2">
-                <BarChart3 className="w-4 h-4" /> System Hub
-              </h3>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-px bg-slate-50">
-              {[
-                {
-                  label: "Manage Users",
-                  desc: "Verify and update user roles",
-                  path: "/admin/users",
-                  icon: Users,
-                },
-                {
-                  label: "User Intelligence",
-                  desc: "Monitor live activity logs",
-                  path: "/admin/activity",
-                  icon: Activity,
-                },
-                {
-                  label: "Food DB",
-                  desc: "Manage Food Database",
-                  path: "/admin/food-cache",
-                  icon: Utensils,
-                },
-                {
-                  label: "Health Reports",
-                  desc: "Review patient report analysis",
-                  path: "/admin/reports",
-                  icon: FileText,
-                },
-              ].map((action, i) => (
-                <button
-                  key={i}
-                  onClick={() => navigate(action.path)}
-                  className="bg-white p-6 hover:bg-slate-50 transition-colors flex items-start gap-4 group"
-                >
-                  <div className="p-2.5 bg-slate-50 rounded-lg group-hover:bg-white transition-colors">
-                    <action.icon className="w-5 h-5 text-slate-400 group-hover:text-blue-600" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-bold text-slate-800 group-hover:text-blue-600 transition-colors">
-                      {action.label}
-                    </p>
-                    <p className="text-xs text-slate-400 mt-0.5">
-                      {action.desc}
-                    </p>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-slate-300 ml-auto self-center group-hover:text-blue-600 group-hover:translate-x-1 transition-all" />
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
         {/* System Health / Status */}
-        <div className="space-y-6">
+        {/* <div className="space-y-6">
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-6 text-white shadow-xl relative overflow-hidden">
             <div className="relative z-10 space-y-4">
               <div className="flex items-center justify-between">
@@ -431,7 +474,7 @@ export default function AdminDashboard() {
               ))}
             </div>
           </div>
-        </div>
+        </div> */}
       </div>
     </div>
   );

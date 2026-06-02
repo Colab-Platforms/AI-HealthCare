@@ -1,12 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const { createTicket, getMyTickets, getAllTickets, respondToTicket } = require('../controllers/supportController');
+const { createTicket, getMyTickets, getAllTickets, respondToTicket, aiChat } = require('../controllers/supportController');
 const { protect, authorize } = require('../middleware/auth');
 
 // User routes
 router.use(protect);
 router.post('/', createTicket);
 router.get('/my-tickets', getMyTickets);
+router.post('/ai-chat', aiChat);
 
 // Admin routes
 router.use(authorize('admin', 'superadmin'));

@@ -282,26 +282,47 @@ exports.getUniqueReportUsers = async (req, res) => {
 
 exports.getReportStats = async (req, res) => {
   try {
-    const totalReports = await HealthReport.countDocuments();
-    const completedReports = await HealthReport.countDocuments({ status: 'completed' });
-    const failedReports = await HealthReport.countDocuments({ status: 'failed' });
-    const totalUsers = await User.countDocuments({ role: { $in: ['patient', 'user'] } });
-    const activeUsers = await User.countDocuments({ role: { $in: ['patient', 'user'] }, isActive: true });
-    const AllUsers = await User.countDocuments({ role: 'user' });
-    const repeatUsers = await User.countDocuments({ role: 'user', loginCount: { $gt: 1 } });
+    const { startDate, endDate } = req.query;
+    
+    // Build date filter
+    const dateFilter = {};
+    if (startDate || endDate) {
+      dateFilter.createdAt = {};
+      if (startDate) {
+        dateFilter.createdAt.$gte = new Date(startDate);
+      }
+      if (endDate) {
+        const end = new Date(endDate);
+        end.setHours(23, 59, 59, 999);
+        dateFilter.createdAt.$lte = end;
+      }
+    }
+
+    const totalReports = await HealthReport.countDocuments(dateFilter);
+    const completedReports = await HealthReport.countDocuments({ ...dateFilter, status: 'completed' });
+    const failedReports = await HealthReport.countDocuments({ ...dateFilter, status: 'failed' });
+    const totalUsers = await User.countDocuments({ role: { $in: ['patient', 'user'] }, ...dateFilter });
+    const activeUsers = await User.countDocuments({ role: { $in: ['patient', 'user'] }, isActive: true, ...dateFilter });
+    const AllUsers = await User.countDocuments({ role: 'user', ...dateFilter });
+    const repeatUsers = await User.countDocuments({ role: 'user', loginCount: { $gt: 1 }, ...dateFilter });
     const uniqueUsers = AllUsers;
 
-    const recentReports = await HealthReport.find()
+    const recentReports = await HealthReport.find(dateFilter)
       .populate('user', 'name')
       .sort({ createdAt: -1 })
       .limit(10);
 
-    // Growth Data (last 7 days)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    // Growth Data - Use provided date range or last 7 days
+    let startDateForGrowth;
+    if (startDate) {
+      startDateForGrowth = new Date(startDate);
+    } else {
+      startDateForGrowth = new Date();
+      startDateForGrowth.setDate(startDateForGrowth.getDate() - 7);
+    }
 
     const reportGrowth = await HealthReport.aggregate([
-      { $match: { createdAt: { $gte: sevenDaysAgo } } },
+      { $match: { createdAt: { $gte: startDateForGrowth, ...(endDate ? { $lte: new Date(endDate) } : {}) } } },
       {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
@@ -312,7 +333,7 @@ exports.getReportStats = async (req, res) => {
     ]);
 
     const userGrowth = await User.aggregate([
-      { $match: { createdAt: { $gte: sevenDaysAgo }, role: { $in: ['patient', 'user'] } } },
+      { $match: { createdAt: { $gte: startDateForGrowth, ...(endDate ? { $lte: new Date(endDate) } : {}) }, role: { $in: ['patient', 'user'] } } },
       {
         $group: {
           _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
@@ -324,6 +345,7 @@ exports.getReportStats = async (req, res) => {
 
     // Classification Distribution
     const distribution = await HealthReport.aggregate([
+      { $match: dateFilter },
       { $group: { _id: { $ifNull: ["$reportType", "General"] }, value: { $sum: 1 } } },
       { $project: { name: "$_id", value: 1, _id: 0 } }
     ]);
