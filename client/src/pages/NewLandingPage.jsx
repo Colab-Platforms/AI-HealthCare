@@ -1,45 +1,24 @@
-import { lazy, Suspense } from "react";
 import Hero from "../components/landing/landing-components/Hero";
 import NavbarOld from "../components/landing/landing-components/NavbarOld";
+import NewStats from "../components/landing/landing-components/NewStats";
+import ImgPointer from "../components/landing/landing-components/ImgPointer";
+import Potential from "../components/landing/landing-components/Potential";
+import CTA from "../components/landing/landing-components/CTA";
+import Testimonials from "../components/landing/landing-components/Testimonials";
+import FAQs from "../components/landing/landing-components/FAQs";
+import Footer from "../components/landing/landing-components/Footer";
 import { useInViewport } from "../hooks/useInViewport";
 import SEO from "../hooks/useSEO";
 
-// ─── Lazy imports ──────────────────────────────────────────────────────────────
-const NewStats = lazy(
-  () => import("../components/landing/landing-components/NewStats"),
-);
-const ImgPointer = lazy(
-  () => import("../components/landing/landing-components/ImgPointer"),
-);
-const Potential = lazy(
-  () => import("../components/landing/landing-components/Potential"),
-);
-const CTA = lazy(
-  () => import("../components/landing/landing-components/CTA"),
-);
-const Testimonials = lazy(
-  () => import("../components/landing/landing-components/Testimonials"),
-);
-const FAQs = lazy(
-  () => import("../components/landing/landing-components/FAQs"),
-);
-const Footer = lazy(
-  () => import("../components/landing/landing-components/Footer"),
-);
-
 // ─── IntersectionObserver-gated section wrapper ────────────────────────────────
-// 'minHeight' reserves layout space so the page doesn't jump when the component mounts.
+// 'minHeight' reserves layout space so the page doesn't jump when sections appear.
 // 'rootMargin' controls how early (in px) before the section enters the viewport
-// we start loading — 300px gives a comfortable pre-load buffer.
+// we start rendering — 300px gives a comfortable pre-load buffer.
 const LazySection = ({ children, minHeight = "200px", rootMargin = "300px 0px" }) => {
   const [ref, hasEntered] = useInViewport(rootMargin);
   return (
     <div ref={ref} style={{ minHeight: hasEntered ? undefined : minHeight }}>
-      {hasEntered && (
-        <Suspense fallback={<div style={{ minHeight }} />}>
-          {children}
-        </Suspense>
-      )}
+      {hasEntered && children}
     </div>
   );
 };

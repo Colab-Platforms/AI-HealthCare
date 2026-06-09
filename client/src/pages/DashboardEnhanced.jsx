@@ -347,7 +347,7 @@ const DiabetesMonitor = ({ onLog }) => {
             Biological markers tracking
           </p>
         </div>
-        <button className="flex items-center gap-2 bg-[#FAFBF8] px-6 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-widest border border-[#f0f0ea] shadow-sm hover:shadow-md transition-all">
+        <button onClick={() => navigate("/diabetes")} className="flex items-center gap-2 bg-[#FAFBF8] px-6 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-widest border border-[#f0f0ea] shadow-sm hover:shadow-md transition-all">
           <Plus className="w-4 h-4" />
           Log Reading
         </button>

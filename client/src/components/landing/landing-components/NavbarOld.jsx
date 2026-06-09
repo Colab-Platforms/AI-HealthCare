@@ -25,7 +25,7 @@ const NavbarOld = () => {
     { to: "/about", label: "About Us" },
     { to: "/how-it-works", label: "How It Works" },
     { to: "/weight-loss", label: "Weight Loss" },
-    { to: "/diabetes", label: "Diabetes Management" },
+    { to: "/diabetes-landing", label: "Diabetes Management" },
   ];
 
   const brandTextClass = isScrolled

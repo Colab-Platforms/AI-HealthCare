@@ -109,20 +109,35 @@ export default function AIChat() {
       try {
         const { data } = await api.get("chat/history", { skipAutoLogout: true });
         if (data.success && data.messages && data.messages.length > 0) {
-          setMessages(data.messages);
-          setSearchHistory(data.messages);
+          console.log(`✅ Backend history loaded: ${data.messages.length} messages (v${data.version})`);
+          
+          // Deduplicate messages from backend
+          const deduped = deduplicateMessages(data.messages);
+          console.log(`🔍 After dedup: ${deduped.length} messages (removed ${data.messages.length - deduped.length} duplicates)`);
+          
+          setMessages(deduped);
+          setSearchHistory(deduped);
           localStorage.setItem(
             `chat_history_${user?.id}`,
-            JSON.stringify(data.messages),
+            JSON.stringify(deduped),
           );
+          console.log(`💾 localStorage synced with backend`);
           return;
         }
+        
+        console.log(`⚠️ No backend history, checking localStorage...`);
+        
         const savedMessages = localStorage.getItem(`chat_history_${user?.id}`);
         if (savedMessages) {
           const parsed = JSON.parse(savedMessages);
-          setMessages(parsed);
-          setSearchHistory(parsed);
+          const deduped = deduplicateMessages(parsed);
+          console.log(`✅ localStorage loaded: ${deduped.length} messages (removed ${parsed.length - deduped.length} duplicates)`);
+          
+          setMessages(deduped);
+          setSearchHistory(deduped);
         } else {
+          console.log(`🆕 Fresh start - creating greeting`);
+          
           const greeting = generateGreetingWithReports();
           setMessages([
             { role: "assistant", content: greeting, timestamp: new Date() },
@@ -130,12 +145,18 @@ export default function AIChat() {
         }
       } catch (error) {
         console.error("Failed to load chat history:", error);
+        
         const savedMessages = localStorage.getItem(`chat_history_${user?.id}`);
         if (savedMessages) {
           const parsed = JSON.parse(savedMessages);
-          setMessages(parsed);
-          setSearchHistory(parsed);
+          const deduped = deduplicateMessages(parsed);
+          console.log(`⚠️ Fallback to localStorage: ${deduped.length} messages`);
+          
+          setMessages(deduped);
+          setSearchHistory(deduped);
         } else {
+          console.log(`🆕 Error fallback - creating greeting`);
+          
           const greeting = generateGreetingWithReports();
           setMessages([
             { role: "assistant", content: greeting, timestamp: new Date() },
@@ -186,19 +207,35 @@ export default function AIChat() {
     return () => clearInterval(interval);
   };
 
+  const deduplicateMessages = (msgs) => {
+    const seen = new Map();
+    msgs.forEach(msg => {
+      const key = msg.id || `${msg.role}:${msg.content}:${new Date(msg.timestamp).getTime()}`;
+      if (!seen.has(key)) {
+        seen.set(key, msg);
+      }
+    });
+    return Array.from(seen.values());
+  };
+
   const saveChatToBackend = async (updatedMessages) => {
     try {
       const newMessages = updatedMessages.slice(-2);
-      await api.post("chat/history", { messages: newMessages }, { skipAutoLogout: true });
+      await api.post("chat/history", { messages: newMessages });
       localStorage.setItem(
         `chat_history_${user?.id}`,
         JSON.stringify(updatedMessages),
       );
+      console.log(`💾 localStorage updated with ${updatedMessages.length} messages`);
+      
     } catch (error) {
+      console.error('❌ Backend save failed:', error.response?.data || error.message);
+      // Still save to localStorage even if backend fails
       localStorage.setItem(
         `chat_history_${user?.id}`,
         JSON.stringify(updatedMessages),
       );
+      console.log(`⚠️ localStorage fallback saved (${updatedMessages.length} messages)`);
     }
   };
 
@@ -228,16 +265,32 @@ export default function AIChat() {
     e.preventDefault();
     if (!input.trim() || loading) return;
 
-    const userMessage = { role: "user", content: input, timestamp: new Date() };
-    setMessages((prev) => [...prev, userMessage]);
+    // Create user message
+    const userMessage = { 
+      role: "user", 
+      content: input, 
+      timestamp: new Date(),
+      id: `${Date.now()}-user`
+    };
+
+    // Create updated array with user message (FIX: Don't use stale messages)
+    const updatedMessages = [...messages, userMessage];
+    console.log(`📨 User sent: "${input.substring(0, 50)}..." | Total messages: ${updatedMessages.length}`);
+    
+    setMessages(updatedMessages);
+    setSearchHistory(updatedMessages); // SYNC: Keep searchHistory in sync
+
     const currentInput = input;
     setInput("");
     setLoading(true);
 
     try {
+      // FIX: Use updatedMessages instead of old messages variable
+      console.log(`🔄 Sending to AI with ${updatedMessages.length} messages in history`);
+      
       const { data } = await api.post("chat", {
         query: currentInput,
-        conversationHistory: messages.slice(-10),
+        conversationHistory: updatedMessages.slice(-10),
         userReports: userReports.map((r) => ({
           type: r.reportType,
           date: r.uploadDate,
@@ -248,22 +301,38 @@ export default function AIChat() {
 
       if (data.success && data.response) {
         const cleanedResponse = formatResponse(data.response);
-        streamResponse(cleanedResponse, () => {
-          const aiResponse = {
+        console.log(`🤖 AI responded (${cleanedResponse.length} chars)`);
+        
+        // FIX: Use function form of setState to get latest state
+        setMessages((currentMessages) => {
+          const aiMessage = {
             role: "assistant",
             content: cleanedResponse,
             timestamp: new Date(),
+            id: `${Date.now()}-ai`
           };
-          const updatedMessages = [...messages, userMessage, aiResponse];
-          setMessages(updatedMessages);
-          setSearchHistory((prev) => [...prev, userMessage, aiResponse]);
+          
+          const finalMessages = [...currentMessages, aiMessage];
+          console.log(`💬 Final conversation: ${finalMessages.length} total messages`);
+          
+          setSearchHistory(finalMessages); // SYNC: Keep searchHistory in sync
           setStreamingText("");
-          saveChatToBackend(updatedMessages);
+          
+          // Save to backend (async, don't wait)
+          console.log(`🔐 Starting backend save...`);
+          saveChatToBackend(finalMessages).catch(error => {
+            console.warn('Save to backend failed, will retry:', error);
+          });
+          
+          return finalMessages;
         });
       }
     } catch (error) {
       console.error("AI Chat error:", error);
       toast.error("Connection lost. Please try again.");
+      // Revert if API fails
+      setMessages(messages);
+      setSearchHistory(messages); // SYNC: Keep searchHistory in sync
     } finally {
       setLoading(false);
     }
@@ -549,13 +618,11 @@ export default function AIChat() {
         <div className="flex-1 overflow-y-auto p-4 space-y-2">
           <button
             onClick={() => {
+              const greeting = generateGreetingWithReports();
               setMessages([
-                {
-                  role: "assistant",
-                  content: generateGreetingWithReports(),
-                  timestamp: new Date(),
-                },
+                { role: "assistant", content: greeting, timestamp: new Date() },
               ]);
+              setSearchHistory([]); // CRITICAL: Clear search history for new session
               setSidebarOpen(false);
             }}
             className="w-full p-4 bg-black text-white rounded-2xl border border-black font-black uppercase text-[10px] tracking-widest hover:bg-slate-900 transition-all flex items-center justify-center gap-2"
@@ -569,15 +636,29 @@ export default function AIChat() {
             </p>
             {searchHistory.filter((m) => m.role === "user").length > 0 ? (
               <div className="space-y-2">
-                {searchHistory
-                  .filter((m) => m.role === "user")
-                  .slice(-6)
-                  .reverse()
-                  .map((msg, idx) => (
+                {(() => {
+                  // FIX: Deduplicate user messages by ID, then show last 6
+                  const userMessages = searchHistory.filter((m) => m.role === "user");
+                  const seen = new Set();
+                  const uniqueMessages = [];
+                  
+                  // Iterate in reverse to keep most recent
+                  for (let i = userMessages.length - 1; i >= 0; i--) {
+                    const msg = userMessages[i];
+                    const key = msg.id || `${msg.role}:${msg.content}:${new Date(msg.timestamp).getTime()}`;
+                    if (!seen.has(key)) {
+                      seen.add(key);
+                      uniqueMessages.push(msg);
+                      if (uniqueMessages.length === 6) break;
+                    }
+                  }
+                  
+                  return uniqueMessages.map((msg, idx) => (
                     <div
-                      key={idx}
+                      key={msg.id || idx}
                       onClick={() => {
-                        setMessages(searchHistory);
+                        // Just set the input to the previous query, don't load old messages
+                        setInput(msg.content);
                         setSidebarOpen(false);
                       }}
                       className="p-3.5 bg-white rounded-2xl border border-slate-100 text-[11px] font-bold text-slate-600 flex items-center gap-3 cursor-pointer hover:bg-slate-50 hover:border-slate-200 transition-all shadow-sm shadow-black/[0.01]"
@@ -585,7 +666,8 @@ export default function AIChat() {
                       <MessageSquare className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                       <span className="truncate flex-1">{msg.content}</span>
                     </div>
-                  ))}
+                  ));
+                })()}
               </div>
             ) : (
               <div className="p-4 bg-white rounded-2xl border border-slate-100 text-[11px] font-bold text-slate-500 italic text-center">
