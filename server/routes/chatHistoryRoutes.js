@@ -5,13 +5,22 @@ const { protect } = require('../middleware/auth');
 const chatHistoryService = require('../services/chatHistoryService');
 const { Receiver } = require('@upstash/qstash');
 
+function getAuthenticatedUserId(req) {
+  if (!req?.user) return null;
+  if (req.user._id) return req.user._id.toString();
+  if (req.user.id) return req.user.id.toString();
+  if (req.user.userId) return req.user.userId.toString();
+  return null;
+}
+
 /**
  * GET /api/chat/history
  * Get user's chat history with Redis caching
  */
 router.get('/history', protect, async (req, res) => {
   try {
-    const history = await chatHistoryService.getHistory(req.user.userId);
+    const userId = getAuthenticatedUserId(req);
+    const history = await chatHistoryService.getHistory(userId);
     
     res.json({
       success: true,
@@ -61,8 +70,10 @@ router.post('/history', protect, async (req, res) => {
       });
     }
 
+    const userId = getAuthenticatedUserId(req);
+
     // Validate userId
-    if (!req.user || !req.user.userId) {
+    if (!userId) {
       return res.status(401).json({
         success: false,
         message: 'User not authenticated',
@@ -72,7 +83,7 @@ router.post('/history', protect, async (req, res) => {
 
     // Save messages
     const result = await chatHistoryService.saveMessages(
-      req.user.userId,
+      userId,
       messages
     );
 
@@ -134,8 +145,17 @@ router.post('/queue/save-chat-history', async (req, res) => {
  */
 router.delete('/history', protect, async (req, res) => {
   try {
-    await ChatHistory.findOneAndDelete({ userId: req.user.userId });
-    await chatHistoryService.invalidateCache(req.user.userId);
+    const userId = getAuthenticatedUserId(req);
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        message: 'User not authenticated',
+        errorType: 'AUTH_ERROR'
+      });
+    }
+
+    await ChatHistory.findOneAndDelete({ userId });
+    await chatHistoryService.invalidateCache(userId);
 
     res.json({
       success: true,
@@ -151,3 +171,4 @@ router.delete('/history', protect, async (req, res) => {
 });
 
 module.exports = router;
+module.exports.getAuthenticatedUserId = getAuthenticatedUserId;

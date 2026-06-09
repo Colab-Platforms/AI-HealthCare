@@ -192,19 +192,20 @@ export default function AIChat() {
   const streamResponse = (text, callback) => {
     setStreaming(true);
     setStreamingText("");
-    const words = text.split(" ");
+
     let index = 0;
-    const interval = setInterval(() => {
-      if (index < words.length) {
-        index++;
-        setStreamingText(words.slice(0, index).join(" "));
+    const interval = window.setInterval(() => {
+      if (index < text.length) {
+        index += 1;
+        setStreamingText(text.slice(0, index));
       } else {
-        clearInterval(interval);
+        window.clearInterval(interval);
         setStreaming(false);
         callback();
       }
-    }, 25);
-    return () => clearInterval(interval);
+    }, 18);
+
+    return () => window.clearInterval(interval);
   };
 
   const deduplicateMessages = (msgs) => {
@@ -221,7 +222,7 @@ export default function AIChat() {
   const saveChatToBackend = async (updatedMessages) => {
     try {
       const newMessages = updatedMessages.slice(-2);
-      await api.post("chat/history", { messages: newMessages });
+      await api.post("chat/history", { messages: newMessages }, { skipAutoLogout: true });
       localStorage.setItem(
         `chat_history_${user?.id}`,
         JSON.stringify(updatedMessages),
@@ -265,6 +266,8 @@ export default function AIChat() {
     e.preventDefault();
     if (!input.trim() || loading) return;
 
+    const previousMessages = [...messages];
+
     // Create user message
     const userMessage = { 
       role: "user", 
@@ -274,7 +277,7 @@ export default function AIChat() {
     };
 
     // Create updated array with user message (FIX: Don't use stale messages)
-    const updatedMessages = [...messages, userMessage];
+    const updatedMessages = [...previousMessages, userMessage];
     console.log(`📨 User sent: "${input.substring(0, 50)}..." | Total messages: ${updatedMessages.length}`);
     
     setMessages(updatedMessages);
@@ -297,42 +300,43 @@ export default function AIChat() {
           analysis: r.analysis,
           metrics: r.metrics,
         })),
-      });
+      }, { skipAutoLogout: true });
 
       if (data.success && data.response) {
         const cleanedResponse = formatResponse(data.response);
         console.log(`🤖 AI responded (${cleanedResponse.length} chars)`);
-        
-        // FIX: Use function form of setState to get latest state
-        setMessages((currentMessages) => {
-          const aiMessage = {
-            role: "assistant",
-            content: cleanedResponse,
-            timestamp: new Date(),
-            id: `${Date.now()}-ai`
-          };
-          
-          const finalMessages = [...currentMessages, aiMessage];
-          console.log(`💬 Final conversation: ${finalMessages.length} total messages`);
-          
-          setSearchHistory(finalMessages); // SYNC: Keep searchHistory in sync
-          setStreamingText("");
-          
-          // Save to backend (async, don't wait)
-          console.log(`🔐 Starting backend save...`);
-          saveChatToBackend(finalMessages).catch(error => {
-            console.warn('Save to backend failed, will retry:', error);
+
+        streamResponse(cleanedResponse, () => {
+          setMessages((currentMessages) => {
+            const aiMessage = {
+              role: "assistant",
+              content: cleanedResponse,
+              timestamp: new Date(),
+              id: `${Date.now()}-ai`
+            };
+
+            const finalMessages = [...currentMessages, aiMessage];
+            console.log(`💬 Final conversation: ${finalMessages.length} total messages`);
+
+            setSearchHistory(finalMessages); // SYNC: Keep searchHistory in sync
+            setStreamingText("");
+
+            // Save to backend (async, don't wait)
+            console.log(`🔐 Starting backend save...`);
+            saveChatToBackend(finalMessages).catch((error) => {
+              console.warn('Save to backend failed, will retry:', error);
+            });
+
+            return finalMessages;
           });
-          
-          return finalMessages;
         });
       }
     } catch (error) {
       console.error("AI Chat error:", error);
       toast.error("Connection lost. Please try again.");
       // Revert if API fails
-      setMessages(messages);
-      setSearchHistory(messages); // SYNC: Keep searchHistory in sync
+      setMessages(previousMessages);
+      setSearchHistory(previousMessages); // SYNC: Keep searchHistory in sync
     } finally {
       setLoading(false);
     }
