@@ -1,6 +1,5 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import Marquee from "react-fast-marquee";
 
 const NewStats = () => {
   const [cards, setCards] = useState([
@@ -221,17 +220,12 @@ const NewStats = () => {
                 </p>
               </div>
 
-              <div className="absolute bottom-10 md:bottom-15 left-0 w-full">
-                <Marquee
-                  speed={30}
-                  gradient={false}
-                  pauseOnHover={false}
-                  autoFill={true}
-                >
+              <div className="absolute bottom-10 md:bottom-15 left-0 w-full px-4">
+                <div className="flex overflow-x-auto gap-3 justify-center scrollbar-hide pb-2">
                   {marqueeItems.map((item) => (
                     <div
                       key={item.id}
-                      className="w-20 h-20 bg-white/30 rounded-full backdrop-blur-sm flex items-center justify-center mx-2"
+                      className="w-20 h-20 bg-white/30 rounded-full backdrop-blur-sm flex items-center justify-center mx-2 flex-shrink-0"
                     >
                       <img
                         loading="lazy"
@@ -242,7 +236,7 @@ const NewStats = () => {
                       />
                     </div>
                   ))}
-                </Marquee>
+                </div>
               </div>
             </div>
           </div>

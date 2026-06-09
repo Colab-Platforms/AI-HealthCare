@@ -81,7 +81,7 @@ export default function App() {
             }
           />
           <Route
-            path="/diabetes"
+            path="/diabetes-landing"
             element={
               <SmoothScrollLayout>
                 <DiabetesLanding />

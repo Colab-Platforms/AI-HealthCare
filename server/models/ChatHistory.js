@@ -1,6 +1,11 @@
 const mongoose = require('mongoose');
 
 const chatMessageSchema = new mongoose.Schema({
+  id: {
+    type: String,
+    unique: false,
+    sparse: true
+  },
   role: {
     type: String,
     enum: ['user', 'assistant'],
@@ -24,6 +29,10 @@ const chatHistorySchema = new mongoose.Schema({
     index: true
   },
   messages: [chatMessageSchema],
+  version: {
+    type: Number,
+    default: 1
+  },
   lastUpdated: {
     type: Date,
     default: Date.now
