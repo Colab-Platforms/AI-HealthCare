@@ -2998,7 +2998,7 @@ export default function DashboardEnhanced() {
                 </div>
 
                 {/* Dynamic Content Mapping */}
-                <div className="flex-1 overflow-y-auto lg:overflow-visible pb-24 lg:pb-12 pt-0 md:pt-4 px-0 md:px-0 max-w-7xl mx-auto w-full">
+                <div className="flex-1 overflow-y-auto pb-24 lg:pb-12 pt-0 md:pt-4 px-0 md:px-0 max-w-7xl mx-auto w-full">
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={activeLogTab}

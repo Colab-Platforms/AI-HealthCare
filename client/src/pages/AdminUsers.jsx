@@ -1,10 +1,7 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Users,
   Search,
-  ChevronLeft,
-  ChevronRight,
   UserCheck,
   UserX,
   Eye,
@@ -12,7 +9,6 @@ import {
   Mail,
   Smartphone,
   Award,
-  Shield,
   Activity,
   ExternalLink,
   Trash2,
@@ -20,20 +16,20 @@ import {
 import { adminService } from "../services/api";
 import toast from "react-hot-toast";
 import SEO from "../hooks/useSEO";
+import { useAuth } from "../context/AuthContext";
 
 export default function AdminUsers() {
+  const { isSuperAdmin } = useAuth();
+  
   const [users, setUsers] = useState([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pages, setPages] = useState(1);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
-  const [roleFilter, setRoleFilter] = useState("");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
   const [userDetail, setUserDetail] = useState(null);
-  const [detailLoading, setDetailLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
+  const [detailLoading, setDetailLoading] = useState(false);
   
   // Advanced filters
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
@@ -62,7 +58,7 @@ export default function AdminUsers() {
         isDiabetic: advancedFilters.isDiabetic !== 'all' ? advancedFilters.isDiabetic : undefined,
         dietaryPreference: advancedFilters.dietaryPreference !== 'all' ? advancedFilters.dietaryPreference : undefined,
         isActive: advancedFilters.isActive !== 'all' ? advancedFilters.isActive : undefined,
-        role: advancedFilters.role !== 'all' ? advancedFilters.role : roleFilter,
+        role: advancedFilters.role !== 'all' ? advancedFilters.role : undefined,
         startDate: advancedFilters.startDate,
         endDate: advancedFilters.endDate
       };
@@ -324,6 +320,7 @@ export default function AdminUsers() {
                 <option value="patient">Patient</option>
                 <option value="doctor">Doctor</option>
                 <option value="admin">Admin</option>
+                <option value="superadmin">Super Admin</option>
               </select>
             </div>
 
@@ -486,7 +483,7 @@ export default function AdminUsers() {
                         <span
                           className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider border ${
                             u.role === "superadmin"
-                              ? "bg-purple-50 text-purple-600 border-purple-100"
+                              ? "bg-orange-50 text-orange-600 border-orange-100"
                               : u.role === "admin"
                                 ? "bg-red-50 text-red-600 border-red-100"
                                 : u.role === "user" || u.role === "patient"
@@ -526,22 +523,26 @@ export default function AdminUsers() {
                           >
                             <Eye className="w-4 h-4" />
                           </button>
-                          <button
-                            onClick={() => handleToggleStatus(u)}
-                            className={`p-2 rounded-lg transition-all ${u.isActive ? "text-slate-400 hover:text-red-600 hover:bg-red-50" : "text-emerald-400 hover:text-white hover:bg-emerald-500"}`}
-                          >
-                            {u.isActive ? (
-                              <UserX className="w-4 h-4" />
-                            ) : (
-                              <UserCheck className="w-4 h-4" />
-                            )}
-                          </button>
-                          <button
-                            onClick={() => handleDeleteUser(u._id, u.name)}
-                            className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
+                          {isSuperAdmin() && (
+                            <>
+                              <button
+                                onClick={() => handleToggleStatus(u)}
+                                className={`p-2 rounded-lg transition-all ${u.isActive ? "text-slate-400 hover:text-red-600 hover:bg-red-50" : "text-emerald-400 hover:text-white hover:bg-emerald-500"}`}
+                              >
+                                {u.isActive ? (
+                                  <UserX className="w-4 h-4" />
+                                ) : (
+                                  <UserCheck className="w-4 h-4" />
+                                )}
+                              </button>
+                              <button
+                                onClick={() => handleDeleteUser(u._id, u.name)}
+                                className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -629,27 +630,35 @@ export default function AdminUsers() {
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                     Authority Control
                   </p>
-                  <div className="grid grid-cols-3 gap-3">
-                    {["user", "admin", "superadmin"].map((r) => (
-                      <button
-                        key={r}
-                        onClick={() => handleUpdateRole(userDetail._id, r)}
-                        disabled={
-                          userDetail.role === r ||
-                          (userDetail.role === "patient" && r === "user") ||
-                          updating
-                        }
-                        className={`py-3 rounded-2xl text-xs font-bold border transition-all ${
-                          userDetail.role === r ||
-                          (userDetail.role === "patient" && r === "user")
-                            ? "bg-slate-900 text-white border-slate-900 shadow-lg scale-105"
-                            : "bg-white text-slate-500 border-slate-100 hover:border-slate-300 hover:bg-slate-50"
-                        }`}
-                      >
-                        {r.charAt(0).toUpperCase() + r.slice(1)}
-                      </button>
-                    ))}
-                  </div>
+                  {isSuperAdmin() ? (
+                    <div className="grid grid-cols-3 gap-3">
+                      {["user", "admin", "superadmin"].map((r) => (
+                        <button
+                          key={r}
+                          onClick={() => handleUpdateRole(userDetail._id, r)}
+                          disabled={
+                            userDetail.role === r ||
+                            (userDetail.role === "patient" && r === "user") ||
+                            updating
+                          }
+                          className={`py-3 rounded-2xl text-xs font-bold border transition-all ${
+                            userDetail.role === r ||
+                            (userDetail.role === "patient" && r === "user")
+                              ? "bg-slate-900 text-white border-slate-900 shadow-lg scale-105"
+                              : "bg-white text-slate-500 border-slate-100 hover:border-slate-300 hover:bg-slate-50"
+                          }`}
+                        >
+                          {r.charAt(0).toUpperCase() + r.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="p-4 bg-slate-50 rounded-2xl border border-slate-200">
+                      <p className="text-xs text-slate-500 font-bold">
+                        Only Super Admins can modify user roles. Current role: <span className="text-slate-700">{userDetail.role === "patient" ? "user" : userDetail.role}</span>
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-4">
@@ -878,29 +887,33 @@ export default function AdminUsers() {
               </div>
 
               <div className="p-6 bg-slate-50 border-t border-slate-100 flex gap-4">
-                <button
-                  onClick={() => handleImpersonate(userDetail._id)}
-                  className="flex-1 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm transition-all shadow-sm hover:bg-black flex items-center justify-center gap-2"
-                >
-                  <ExternalLink className="w-4 h-4" /> Login as this User
-                </button>
-                <button
-                  onClick={() => handleToggleStatus(userDetail)}
-                  className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all shadow-sm border ${userDetail.isActive ? "bg-white text-red-600 border-red-50 hover:bg-red-50" : "bg-emerald-600 text-white hover:bg-emerald-700"}`}
-                >
-                  {userDetail.isActive
-                    ? "Suspend Identity"
-                    : "Restore Identity"}
-                </button>
-                <button
-                  onClick={() =>
-                    handleDeleteUser(userDetail._id, userDetail.name)
-                  }
-                  className="px-4 py-3 bg-red-600 text-white rounded-xl font-bold text-sm transition-all shadow-sm hover:bg-red-700"
-                  title="Delete User Permanently"
-                >
-                  <Trash2 className="w-5 h-5" />
-                </button>
+                {isSuperAdmin() ? (
+                  <>
+                    <button
+                      onClick={() => handleImpersonate(userDetail._id)}
+                      className="flex-1 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm transition-all shadow-sm hover:bg-black flex items-center justify-center gap-2"
+                    >
+                      <ExternalLink className="w-4 h-4" /> Login as this User
+                    </button>
+                    <button
+                      onClick={() => handleToggleStatus(userDetail)}
+                      className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all shadow-sm border ${userDetail.isActive ? "bg-white text-red-600 border-red-50 hover:bg-red-50" : "bg-emerald-600 text-white hover:bg-emerald-700"}`}
+                    >
+                      {userDetail.isActive ? "Suspend Identity" : "Restore Identity"}
+                    </button>
+                    <button
+                      onClick={() => handleDeleteUser(userDetail._id, userDetail.name)}
+                      className="px-4 py-3 bg-red-600 text-white rounded-xl font-bold text-sm transition-all shadow-sm hover:bg-red-700"
+                      title="Delete User Permanently"
+                    >
+                      <Trash2 className="w-5 h-5" />
+                    </button>
+                  </>
+                ) : (
+                  <p className="text-xs text-slate-500 font-bold py-3">
+                    Super Admin access required to perform actions on this user.
+                  </p>
+                )}
               </div>
             </motion.div>
           </div>

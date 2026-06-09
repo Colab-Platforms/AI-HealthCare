@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Activity,
@@ -73,35 +73,36 @@ export default function CompleteAnalysis() {
     user?.profile?.isDiabetic === "yes" ||
     (user?.profile?.medicalHistory?.conditions || []).includes("diabetes");
 
+  const isFirstLoad = useRef(!dashboardData);
+
   const fetchData = useCallback(async () => {
     try {
-      setLoading(true);
-      // Force refresh (bypass cache) to show real-time daily data
-      await fetchDashboard(true);
+      // Only show full-page spinner on first load — silent refresh if data exists
+      if (isFirstLoad.current) setLoading(true);
 
-      // Fetch metrics regardless of isDiabetic flag to be safe, but only if user exists
-      if (user?._id) {
-        const [glucoseRes, hba1cRes, analysisRes] = await Promise.all([
-          api
-            .get("metrics/blood_sugar", { params: { limit: 100 } })
-            .catch(() => ({ data: [] })),
-          api
-            .get("metrics/hba1c", { params: { limit: 20 } })
-            .catch(() => ({ data: [] })),
-          api.get("metrics/analysis/glucose").catch(() => null),
-        ]);
+      const metricsPromise = user?._id
+        ? Promise.all([
+            api.get("metrics/blood_sugar", { params: { limit: 100 } }).catch(() => ({ data: [] })),
+            api.get("metrics/hba1c", { params: { limit: 20 } }).catch(() => ({ data: [] })),
+            api.get("metrics/analysis/glucose").catch(() => null),
+          ])
+        : Promise.resolve(null);
 
-        console.log("Fetched Vitals:", {
-          glucose: glucoseRes.data.length,
-          hba1c: hba1cRes.data.length,
-        });
+      // Run dashboard refresh and metrics in parallel — was sequential
+      const [, metricsResult] = await Promise.all([
+        fetchDashboard(true),
+        metricsPromise,
+      ]);
 
+      if (metricsResult) {
+        const [glucoseRes, hba1cRes, analysisRes] = metricsResult;
         setGlucoseLogs(Array.isArray(glucoseRes.data) ? glucoseRes.data : []);
         setHba1cLogs(Array.isArray(hba1cRes.data) ? hba1cRes.data : []);
         if (analysisRes?.data?.success) {
           setDiabetesAnalysis(analysisRes.data.data);
         }
       }
+      isFirstLoad.current = false;
     } catch (error) {
       console.error("Failed to fetch analysis data:", error);
       toast.error("Could not load complete analysis");
@@ -114,29 +115,6 @@ export default function CompleteAnalysis() {
     fetchData();
   }, [fetchData]);
 
-  // Real-time synchronization when dashboard data updates in context
-  useEffect(() => {
-    if (isDiabetic && dashboardData) {
-      // Re-fetch diabetic specific logs to match the context update
-      const syncDiabeticLogs = async () => {
-        try {
-          const [glucoseRes, hba1cRes] = await Promise.all([
-            api
-              .get("metrics/blood_sugar", { params: { limit: 100 } })
-              .catch(() => ({ data: [] })),
-            api
-              .get("metrics/hba1c", { params: { limit: 20 } })
-              .catch(() => ({ data: [] })),
-          ]);
-          setGlucoseLogs(Array.isArray(glucoseRes.data) ? glucoseRes.data : []);
-          setHba1cLogs(Array.isArray(hba1cRes.data) ? hba1cRes.data : []);
-        } catch (e) {
-          console.error("Sync error:", e);
-        }
-      };
-      syncDiabeticLogs();
-    }
-  }, [dashboardData, isDiabetic]);
 
   const handleRefresh = () => {
     fetchData();

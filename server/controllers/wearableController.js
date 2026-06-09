@@ -92,6 +92,13 @@ exports.syncDailyMetrics = async (req, res) => {
     }
     const targetDateString = targetDate.toISOString().split('T')[0];
 
+    // Coerce all numeric fields to numbers before saving
+    if (metrics.steps !== undefined) metrics.steps = Number(metrics.steps) || 0;
+    if (metrics.caloriesBurned !== undefined) metrics.caloriesBurned = Number(metrics.caloriesBurned) || 0;
+    if (metrics.activeMinutes !== undefined) metrics.activeMinutes = Number(metrics.activeMinutes) || 0;
+    if (metrics.distance !== undefined) metrics.distance = Number(metrics.distance) || 0;
+    if (metrics.floorsClimbed !== undefined) metrics.floorsClimbed = Number(metrics.floorsClimbed) || 0;
+
     // Check if entry for this date exists
     const existingIndex = wearable.dailyMetrics.findIndex(m => {
       const d = new Date(m.date);
@@ -206,6 +213,13 @@ exports.addSleepData = async (req, res) => {
     }
     const targetDateString = targetDate.toISOString().split('T')[0];
 
+    // Coerce all numeric fields to numbers before saving
+    if (sleepData.totalSleepMinutes !== undefined) sleepData.totalSleepMinutes = Number(sleepData.totalSleepMinutes) || 0;
+    if (sleepData.deepSleepMinutes !== undefined) sleepData.deepSleepMinutes = Number(sleepData.deepSleepMinutes) || 0;
+    if (sleepData.lightSleepMinutes !== undefined) sleepData.lightSleepMinutes = Number(sleepData.lightSleepMinutes) || 0;
+    if (sleepData.remSleepMinutes !== undefined) sleepData.remSleepMinutes = Number(sleepData.remSleepMinutes) || 0;
+    if (sleepData.awakeMinutes !== undefined) sleepData.awakeMinutes = Number(sleepData.awakeMinutes) || 0;
+
     const existingIndex = wearable.sleepData.findIndex(s => {
       const d = new Date(s.date);
       return d.getUTCFullYear() === targetDate.getUTCFullYear() &&
@@ -286,11 +300,20 @@ exports.getWearableDashboard = async (req, res) => {
       );
 
       if (todayData) {
-        dashboard.todayMetrics = dashboard.todayMetrics || { steps: 0, caloriesBurned: 0, activeMinutes: 0, distance: 0 };
+        dashboard.todayMetrics = dashboard.todayMetrics || { steps: 0, caloriesBurned: 0, activeMinutes: 0, distance: 0, sleep: 0 };
         dashboard.todayMetrics.steps += todayData.steps || 0;
         dashboard.todayMetrics.caloriesBurned += todayData.caloriesBurned || 0;
         dashboard.todayMetrics.activeMinutes += todayData.activeMinutes || 0;
         dashboard.todayMetrics.distance += todayData.distance || 0;
+      }
+
+      // Aggregate today's sleep from sleepData array
+      const todaySleep = wearable.sleepData.find(
+        s => new Date(s.date).toISOString().split('T')[0] === targetDateString
+      );
+      if (todaySleep) {
+        dashboard.todayMetrics = dashboard.todayMetrics || { steps: 0, caloriesBurned: 0, activeMinutes: 0, distance: 0, sleep: 0 };
+        dashboard.todayMetrics.sleep = (dashboard.todayMetrics.sleep || 0) + (todaySleep.totalSleepMinutes || 0);
       }
 
       // Get recent heart rate (last 10 readings)
@@ -300,7 +323,11 @@ exports.getWearableDashboard = async (req, res) => {
 
       // Get recent sleep data (last 7 days)
       if (wearable.sleepData.length) {
-        dashboard.recentSleep.push(...wearable.sleepData.slice(-7));
+        const weekAgoDate = new Date();
+        weekAgoDate.setDate(weekAgoDate.getDate() - 7);
+        weekAgoDate.setUTCHours(0, 0, 0, 0);
+        const recentSleep = wearable.sleepData.filter(s => new Date(s.date) >= weekAgoDate);
+        dashboard.recentSleep.push(...recentSleep);
       }
 
       // Get weekly trend

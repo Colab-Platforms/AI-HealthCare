@@ -447,30 +447,49 @@ exports.getDashboardData = async (req, res) => {
     const cached = await cache.get(cacheKey);
     if (cached) return res.json(cached);
 
-    const reports = await HealthReport.find({ user: req.user._id, status: { $in: ['completed', 'processing'] } }).sort({ createdAt: -1 }).limit(10);
-    const processingReport = reports.find(r => r.status === 'processing');
-    const completedReports = reports.filter(r => r.status === 'completed');
-    const healthScores = completedReports.map(r => ({ date: r.createdAt, score: r.aiAnalysis?.healthScore || 0, type: r.reportType })).reverse();
-    const latestReport = completedReports[0];
-
-    const reportTypeCounts = {};
-    reports.forEach(r => { reportTypeCounts[r.reportType] = (reportTypeCounts[r.reportType] || 0) + 1; });
-
-    let latestComparison = null;
-    if (latestReport && latestReport.comparison && latestReport.comparison.data) {
-      latestComparison = { ...latestReport.comparison.data, previousReportDate: latestReport.comparison.previousReportDate, currentReportDate: latestReport.createdAt };
-    }
-
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
     const targetDate = new Date(todayStr);
     targetDate.setUTCHours(0, 0, 0, 0);
     const tomorrow = new Date(targetDate);
     tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
+    const ninetyDaysAgo = new Date(targetDate);
+    ninetyDaysAgo.setUTCDate(ninetyDaysAgo.getUTCDate() - 89);
 
-    const todayLogsArr = await FoodLog.find({ userId: req.user._id, timestamp: { $gte: targetDate, $lt: tomorrow } });
+    const WearableData = require('../models/WearableData');
+
+    // Run ALL 10 independent DB queries in parallel (was sequential — ~1000ms saved on Atlas)
+    const [
+      reports, todayLogsArr, nutritionDoc, historySummary,
+      userWithLogs, wearables, weightMetrics,
+      latestGlucose, latestHbA1c, totalReports,
+    ] = await Promise.all([
+      HealthReport.find({ user: req.user._id, status: { $in: ['completed', 'processing'] } }).sort({ createdAt: -1 }).limit(10).lean(),
+      FoodLog.find({ userId: req.user._id, timestamp: { $gte: targetDate, $lt: tomorrow } }).lean(),
+      NutritionSummary.findOne({ userId: req.user._id, date: targetDate }).lean(),
+      NutritionSummary.find({ userId: req.user._id, date: { $gte: ninetyDaysAgo, $lte: targetDate } }).sort({ date: 1 }).lean(),
+      User.findById(req.user._id).select('alcoholLog smokeLog profile.lifestyle').lean(),
+      withTimeout(WearableData.find({ user: req.user._id }).lean()),
+      withTimeout(HealthMetric.find({ userId: req.user._id, type: 'weight', recordedAt: { $gte: ninetyDaysAgo, $lte: targetDate } }).sort({ recordedAt: 1 }).lean()),
+      HealthMetric.findOne({ userId: req.user._id, type: 'blood_sugar' }).sort({ recordedAt: -1 }).lean(),
+      HealthMetric.findOne({ userId: req.user._id, type: 'hba1c' }).sort({ recordedAt: -1 }).lean(),
+      HealthReport.countDocuments({ user: req.user._id }),
+    ]);
+
+    // Process reports
+    const processingReport = reports.find(r => r.status === 'processing');
+    const completedReports = reports.filter(r => r.status === 'completed');
+    const healthScores = completedReports.map(r => ({ date: r.createdAt, score: r.aiAnalysis?.healthScore || 0, type: r.reportType })).reverse();
+    const latestReport = completedReports[0];
+    const reportTypeCounts = {};
+    reports.forEach(r => { reportTypeCounts[r.reportType] = (reportTypeCounts[r.reportType] || 0) + 1; });
+    const latestComparison = latestReport?.comparison?.data
+      ? { ...latestReport.comparison.data, previousReportDate: latestReport.comparison.previousReportDate, currentReportDate: latestReport.createdAt }
+      : null;
+
+    // Nutrition totals
     const realTimeTotals = todayLogsArr.reduce((acc, log) => {
-      const nut = log.totalNutrition || { calories: 0, protein: 0, carbs: 0, fats: 0 };
+      const nut = log.totalNutrition || {};
       acc.calories += Number(nut.calories) || 0;
       acc.protein += Number(nut.protein) || 0;
       acc.carbs += Number(nut.carbs) || 0;
@@ -478,76 +497,79 @@ exports.getDashboardData = async (req, res) => {
       return acc;
     }, { calories: 0, protein: 0, carbs: 0, fats: 0 });
 
-    const nutritionDoc = await NutritionSummary.findOne({ userId: req.user._id, date: targetDate });
-    const nutritionDataSummary = nutritionDoc ? nutritionDoc.toObject() : { waterIntake: 0 };
-    const finalNutrition = { 
-      totalCalories: realTimeTotals.calories, 
-      totalProtein: realTimeTotals.protein, 
-      totalCarbs: realTimeTotals.carbs, 
-      totalFats: realTimeTotals.fats, 
-      ...nutritionDataSummary 
+    const finalNutrition = {
+      totalCalories: realTimeTotals.calories,
+      totalProtein: realTimeTotals.protein,
+      totalCarbs: realTimeTotals.carbs,
+      totalFats: realTimeTotals.fats,
+      ...(nutritionDoc || { waterIntake: 0 }),
     };
 
-    const ninetyDaysAgo = new Date(targetDate);
-    ninetyDaysAgo.setUTCDate(ninetyDaysAgo.getUTCDate() - 89);
-    const historySummary = await NutritionSummary.find({ userId: req.user._id, date: { $gte: ninetyDaysAgo, $lte: targetDate } }).sort({ date: 1 });
-
-    const userWithLogs = await User.findById(req.user._id).select('alcoholLog smokeLog profile.lifestyle');
     const alcoholPlain = toPlainAlcoholLog(userWithLogs?.alcoholLog);
     const alcoholSummary = getAlcoholSummary(alcoholPlain);
 
-    const WearableData = require('../models/WearableData');
-    const HealthMetric = require('../models/HealthMetric');
-    const wearables = await withTimeout(WearableData.find({ user: req.user._id }));
-    const weightMetrics = await withTimeout(HealthMetric.find({ userId: req.user._id, type: 'weight', recordedAt: { $gte: ninetyDaysAgo, $lte: targetDate } }).sort({ recordedAt: 1 }));
-    
-    const history = [];
-    for (let i = 0; i < 90; i++) {
-        const d = new Date(ninetyDaysAgo); d.setUTCDate(d.getUTCDate() + i); const dStr = d.toISOString().split('T')[0];
-        const nutrition = historySummary.find(h => h.date.toISOString().split('T')[0] === dStr);
-        let steps = 0, sleep = 0;
-        for (const w of wearables) {
-            const daily = w.dailyMetrics?.find(m => m.date && new Date(m.date).toISOString().split('T')[0] === dStr);
-            if (daily) steps += daily.steps || 0;
-            const sleepDay = w.sleepData?.find(s => s.date && new Date(s.date).toISOString().split('T')[0] === dStr);
-            if (sleepDay) sleep += (sleepDay.totalSleepMinutes || 0) / 60;
+    // Pre-build O(N) lookup Maps — eliminates O(90 × wearables × entries) nested search
+    const nutritionByDate = {};
+    historySummary.forEach(h => { nutritionByDate[h.date.toISOString().split('T')[0]] = h; });
+
+    const weightByDate = {};
+    weightMetrics.forEach(m => { weightByDate[new Date(m.recordedAt).toISOString().split('T')[0]] = m.value; });
+
+    const stepsByDate = {};
+    const sleepByDate = {};
+    for (const w of wearables) {
+      w.dailyMetrics?.forEach(m => {
+        if (m.date) {
+          const d = new Date(m.date).toISOString().split('T')[0];
+          stepsByDate[d] = (stepsByDate[d] || 0) + (m.steps || 0);
         }
-        const currentDayWeightLogs = weightMetrics.filter(m => new Date(m.recordedAt).toISOString().split('T')[0] === dStr);
-        let dayWeight = history[i-1]?.weight || req.user.profile?.weight || 70;
-        if (currentDayWeightLogs.length > 0) dayWeight = currentDayWeightLogs[currentDayWeightLogs.length - 1].value;
-        const alcoholDay = alcoholPlain[dStr];
-        history.push({
-          date: dStr,
-          calories: dStr === todayStr ? realTimeTotals.calories : (nutrition?.totalCalories || 0),
-          steps,
-          sleep,
-          weight: dayWeight,
-          water: dStr === todayStr ? (finalNutrition.waterIntake || 0) : (nutrition?.waterIntake || 0),
-          alcohol: alcoholDay?.count || 0,
-          alcoholUnits: alcoholDay?.units || 0
-        });
+      });
+      w.sleepData?.forEach(s => {
+        if (s.date) {
+          const d = new Date(s.date).toISOString().split('T')[0];
+          sleepByDate[d] = (sleepByDate[d] || 0) + (s.totalSleepMinutes || 0) / 60;
+        }
+      });
     }
 
-    const latestGlucose = await HealthMetric.findOne({ userId: req.user._id, type: 'blood_sugar' }).sort({ recordedAt: -1 });
-    const latestHbA1c = await HealthMetric.findOne({ userId: req.user._id, type: 'hba1c' }).sort({ recordedAt: -1 });
+    // Build 90-day history — O(90) flat loop instead of O(90 × N × M)
+    const history = [];
+    let lastKnownWeight = req.user.profile?.weight || 70;
+    for (let i = 0; i < 90; i++) {
+      const d = new Date(ninetyDaysAgo);
+      d.setUTCDate(d.getUTCDate() + i);
+      const dStr = d.toISOString().split('T')[0];
+      if (weightByDate[dStr]) lastKnownWeight = weightByDate[dStr];
+      const nutrition = nutritionByDate[dStr];
+      const alcoholDay = alcoholPlain[dStr];
+      history.push({
+        date: dStr,
+        calories: dStr === todayStr ? realTimeTotals.calories : (nutrition?.totalCalories || 0),
+        steps: stepsByDate[dStr] || 0,
+        sleep: sleepByDate[dStr] || 0,
+        weight: lastKnownWeight,
+        water: dStr === todayStr ? (finalNutrition.waterIntake || 0) : (nutrition?.waterIntake || 0),
+        alcohol: alcoholDay?.count || 0,
+        alcoholUnits: alcoholDay?.units || 0,
+      });
+    }
 
     const calorieGoal = req.user.nutritionGoal?.calorieGoal || 2100;
     const dashboardData = {
       user: { ...req.user.toObject(), password: undefined },
       healthScores, latestAnalysis: latestReport?.aiAnalysis, latestReportId: latestReport?._id, processingReport, latestComparison,
-      totalReports: await HealthReport.countDocuments({ user: req.user._id }), recentReports: reports.slice(0, 5), reportTypeCounts, history,
-      stepsToday: history[history.length-1]?.steps || 0, sleepToday: history[history.length-1]?.sleep || 0,
+      totalReports, recentReports: reports.slice(0, 5), reportTypeCounts, history,
+      stepsToday: history[history.length - 1]?.steps || 0,
+      sleepToday: history[history.length - 1]?.sleep || 0,
       goals: { steps: 10000, sleep: 8, water: 8, weight: req.user.nutritionGoal?.targetWeight || 70, calories: calorieGoal, protein: req.user.nutritionGoal?.proteinGoal || 150, carbs: req.user.nutritionGoal?.carbsGoal || 200, fats: req.user.nutritionGoal?.fatGoal || 65 },
-      alcoholToday: alcoholSummary.today,
-      alcoholTodayUnits: alcoholSummary.todayUnits,
-      alcohol7DayAvg: alcoholSummary.avg7,
-      alcoholSummary,
+      alcoholToday: alcoholSummary.today, alcoholTodayUnits: alcoholSummary.todayUnits,
+      alcohol7DayAvg: alcoholSummary.avg7, alcoholSummary,
       streakDays: req.user.streakDays || 0,
-      vitals: { 
-        glucose: latestGlucose ? { value: latestGlucose.value, recordedAt: latestGlucose.recordedAt } : null, 
-        hba1c: latestHbA1c ? { value: latestHbA1c.value, recordedAt: latestHbA1c.recordedAt } : null 
+      vitals: {
+        glucose: latestGlucose ? { value: latestGlucose.value, recordedAt: latestGlucose.recordedAt } : null,
+        hba1c: latestHbA1c ? { value: latestHbA1c.value, recordedAt: latestHbA1c.recordedAt } : null,
       },
-      nutritionData: { totalCalories: finalNutrition.totalCalories || 0, calorieGoal, protein: finalNutrition.totalProtein || 0, carbs: finalNutrition.totalCarbs || 0, totalFats: finalNutrition.totalFats || 0, todayLogs: todayLogsArr || [] }
+      nutritionData: { totalCalories: finalNutrition.totalCalories || 0, calorieGoal, protein: finalNutrition.totalProtein || 0, carbs: finalNutrition.totalCarbs || 0, totalFats: finalNutrition.totalFats || 0, todayLogs: todayLogsArr || [] },
     };
 
     try {
@@ -555,7 +577,7 @@ exports.getDashboardData = async (req, res) => {
       notificationService.triggerUserStartupNotifications(req.user).catch(e => {});
     } catch (e) {}
 
-    await cache.set(cacheKey, dashboardData, 120);
+    await cache.set(cacheKey, dashboardData, 300);
     res.json(dashboardData);
   } catch (error) {
     res.status(500).json({ message: error.message });

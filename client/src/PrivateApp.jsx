@@ -117,6 +117,7 @@ export default function PrivateApp() {
                       "client",
                       "admin",
                       "doctor",
+                      "superadmin",
                     ]}
                   >
                     <Layout>
@@ -135,6 +136,7 @@ export default function PrivateApp() {
                       "client",
                       "admin",
                       "doctor",
+                      "superadmin",
                     ]}
                   >
                     <Layout>
@@ -153,6 +155,7 @@ export default function PrivateApp() {
                       "client",
                       "admin",
                       "doctor",
+                      "superadmin",
                     ]}
                   >
                     <Layout>
@@ -171,6 +174,7 @@ export default function PrivateApp() {
                       "client",
                       "admin",
                       "doctor",
+                      "superadmin",
                     ]}
                   >
                     <Layout>
@@ -189,6 +193,7 @@ export default function PrivateApp() {
                       "client",
                       "admin",
                       "doctor",
+                      "superadmin",
                     ]}
                   >
                     <Layout>
@@ -207,6 +212,7 @@ export default function PrivateApp() {
                       "client",
                       "admin",
                       "doctor",
+                      "superadmin",
                     ]}
                   >
                     <Layout>
@@ -225,6 +231,7 @@ export default function PrivateApp() {
                       "client",
                       "admin",
                       "doctor",
+                      "superadmin",
                     ]}
                   >
                     <Layout>
@@ -243,6 +250,7 @@ export default function PrivateApp() {
                       "client",
                       "admin",
                       "doctor",
+                      "superadmin",
                     ]}
                   >
                     <Layout>
@@ -261,6 +269,7 @@ export default function PrivateApp() {
                       "client",
                       "admin",
                       "doctor",
+                      "superadmin",
                     ]}
                   >
                     <Layout>
@@ -279,6 +288,7 @@ export default function PrivateApp() {
                       "client",
                       "admin",
                       "doctor",
+                      "superadmin",
                     ]}
                   >
                     <Layout>
@@ -297,6 +307,7 @@ export default function PrivateApp() {
                       "client",
                       "admin",
                       "doctor",
+                      "superadmin",
                     ]}
                   >
                     <Layout>
@@ -315,6 +326,7 @@ export default function PrivateApp() {
                       "client",
                       "admin",
                       "doctor",
+                      "superadmin",
                     ]}
                   >
                     <Layout>
@@ -333,6 +345,7 @@ export default function PrivateApp() {
                       "client",
                       "admin",
                       "doctor",
+                      "superadmin",
                     ]}
                   >
                     <Layout>
@@ -351,6 +364,7 @@ export default function PrivateApp() {
                       "client",
                       "admin",
                       "doctor",
+                      "superadmin",
                     ]}
                   >
                     <Layout>
@@ -369,6 +383,7 @@ export default function PrivateApp() {
                       "client",
                       "admin",
                       "doctor",
+                      "superadmin",
                     ]}
                   >
                     <Layout>
@@ -387,6 +402,7 @@ export default function PrivateApp() {
                       "client",
                       "admin",
                       "doctor",
+                      "superadmin",
                     ]}
                   >
                     <Layout>
@@ -405,6 +421,7 @@ export default function PrivateApp() {
                       "client",
                       "admin",
                       "doctor",
+                      "superadmin",
                     ]}
                   >
                     <Layout>
@@ -423,6 +440,7 @@ export default function PrivateApp() {
                       "client",
                       "admin",
                       "doctor",
+                      "superadmin",
                     ]}
                   >
                     <Layout>
@@ -441,6 +459,7 @@ export default function PrivateApp() {
                       "client",
                       "admin",
                       "doctor",
+                      "superadmin",
                     ]}
                   >
                     <Layout>
@@ -459,6 +478,7 @@ export default function PrivateApp() {
                       "client",
                       "admin",
                       "doctor",
+                      "superadmin",
                     ]}
                   >
                     <Layout>
@@ -477,6 +497,7 @@ export default function PrivateApp() {
                       "client",
                       "admin",
                       "doctor",
+                      "superadmin",
                     ]}
                   >
                     <Layout>
@@ -495,6 +516,7 @@ export default function PrivateApp() {
                       "client",
                       "admin",
                       "doctor",
+                      "superadmin",
                     ]}
                   >
                     <Layout>

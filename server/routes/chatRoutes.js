@@ -86,57 +86,43 @@ IMPORTANT FORMATTING RULES - Follow these strictly:
     startOfDay.setHours(0, 0, 0, 0);
 
     try {
-      const userLogs = await User.findById(user._id).select('alcoholLog smokeLog profile.lifestyle');
+      const [userLogs, recentMetrics, dashboardCache, todaysLogs, activePlan] = await Promise.all([
+        User.findById(user._id).select('alcoholLog smokeLog profile.lifestyle').lean(),
+        HealthMetric.find({ userId: user._id }).sort({ recordedAt: -1 }).limit(10).lean(),
+        cache.get(`dashboard:${user._id}`),
+        FoodLog.find({ userId: user._id, timestamp: { $gte: startOfDay } }).lean(),
+        PersonalizedDietPlan.findOne({ userId: user._id, isActive: true }).select('dailyTargets').lean()
+      ]);
+
       if (userLogs) {
         behaviorContext = `\n[Behavior Trackers]\n- ${buildAlcoholContextForAI(userLogs.alcoholLog, userLogs.profile?.lifestyle || lifestyle)}\n- ${buildSmokeContextForAI(userLogs.smokeLog)}`;
       }
 
-      // 1. Fetch All Recent Vitals (Weight, Sugar, BP, etc)
-      const recentMetrics = await HealthMetric.find({ userId: user._id })
-        .sort({ recordedAt: -1 })
-        .limit(10);
-
-      if (recentMetrics && recentMetrics.length > 0) {
+      if (recentMetrics?.length > 0) {
         recentVitalsContext = `\n[Recent Logged Vitals/Health Metrics]\n` + recentMetrics.map(m => `- ${m.type}: ${m.value} ${m.unit} on ${m.recordedAt ? new Date(m.recordedAt).toLocaleDateString() : 'recent'}`).join('\n');
       }
 
-      // 2. Fetch Activity Log & Dashboard Progress natively from Cache
-      const dashboardCache = await cache.get(`dashboard:${user._id}`);
       if (dashboardCache) {
-          const totalSteps = dashboardCache.stepsToday || 0;
-          const totalWater = dashboardCache.nutritionData?.waterIntake || 0;
-          const totalSleep = dashboardCache.sleepToday || 0;
-          const activeCalories = dashboardCache.todayMetrics?.caloriesBurned || 0;
-          activityContext = `\n[Today's Activity Log & Progress]\n- Steps: ${totalSteps}/${dashboardCache.goals?.steps || 10000}\n- Water: ${totalWater}/${dashboardCache.goals?.water || 8} glasses\n- Sleep: ${totalSleep}/${dashboardCache.goals?.sleep || 8} hours\n- Activity Calories Burned: ${activeCalories} kcal`;
+        activityContext = `\n[Today's Activity Log & Progress]\n- Steps: ${dashboardCache.stepsToday || 0}/${dashboardCache.goals?.steps || 10000}\n- Water: ${dashboardCache.nutritionData?.waterIntake || 0}/${dashboardCache.goals?.water || 8} glasses\n- Sleep: ${dashboardCache.sleepToday || 0}/${dashboardCache.goals?.sleep || 8} hours\n- Activity Calories Burned: ${dashboardCache.todayMetrics?.caloriesBurned || 0} kcal`;
       } else {
-          activityContext = `\n[Today's Activity Log & Progress]\n- Steps: 0\n- Water: 0\n- Sleep: 0\n(Activity log waiting for sync)`;
+        activityContext = `\n[Today's Activity Log & Progress]\n- Steps: 0\n- Water: 0\n- Sleep: 0\n(Activity log waiting for sync)`;
       }
 
-      // 3. Fetch Today's Diet & Nutrition
-      const todaysLogs = await FoodLog.find({
-          userId: user._id,
-          timestamp: { $gte: startOfDay }
-      });
-
-      if (todaysLogs && todaysLogs.length > 0) {
-         let totalCal = 0, totalCarb = 0, totalProtein = 0, totalFat = 0;
-         const items = [];
-         todaysLogs.forEach(log => {
-             totalCal += log.totalNutrition?.calories || 0;
-             totalCarb += log.totalNutrition?.carbs || 0;
-             totalProtein += log.totalNutrition?.protein || 0;
-             totalFat += log.totalNutrition?.fats || 0;
-             if (log.foodItems) {
-                 log.foodItems.forEach(fi => items.push(`${fi.quantity} ${fi.name}`));
-             }
-         });
-         recentDietContext = `\n[Today's Nutrition Consumed]\n- Calories: ${Math.round(totalCal)} kcal\n- Carbs: ${Math.round(totalCarb)}g, Protein: ${Math.round(totalProtein)}g, Fats: ${Math.round(totalFat)}g\n- Actual Foods Consumed Today: ${items.join(', ')}`;
+      if (todaysLogs?.length > 0) {
+        let totalCal = 0, totalCarb = 0, totalProtein = 0, totalFat = 0;
+        const items = [];
+        todaysLogs.forEach(log => {
+          totalCal += log.totalNutrition?.calories || 0;
+          totalCarb += log.totalNutrition?.carbs || 0;
+          totalProtein += log.totalNutrition?.protein || 0;
+          totalFat += log.totalNutrition?.fats || 0;
+          log.foodItems?.forEach(fi => items.push(`${fi.quantity} ${fi.name}`));
+        });
+        recentDietContext = `\n[Today's Nutrition Consumed]\n- Calories: ${Math.round(totalCal)} kcal\n- Carbs: ${Math.round(totalCarb)}g, Protein: ${Math.round(totalProtein)}g, Fats: ${Math.round(totalFat)}g\n- Actual Foods Consumed Today: ${items.join(', ')}`;
       }
 
-      // 4. Fetch User's Active Diet Plan
-      const activePlan = await PersonalizedDietPlan.findOne({ userId: user._id, isActive: true });
-      if (activePlan && activePlan.dailyTargets) {
-          dietPlanContext = `\n[Current Assigned Diet Plan Targets]\n- Target Calories: ${activePlan.dailyTargets.calories || 'N/A'} kcal\n- Target Macros -> C: ${activePlan.dailyTargets.macros?.carbs || 0}g, P: ${activePlan.dailyTargets.macros?.protein || 0}g, F: ${activePlan.dailyTargets.macros?.fats || 0}g`;
+      if (activePlan?.dailyTargets) {
+        dietPlanContext = `\n[Current Assigned Diet Plan Targets]\n- Target Calories: ${activePlan.dailyTargets.calories || 'N/A'} kcal\n- Target Macros -> C: ${activePlan.dailyTargets.macros?.carbs || 0}g, P: ${activePlan.dailyTargets.macros?.protein || 0}g, F: ${activePlan.dailyTargets.macros?.fats || 0}g`;
       }
     } catch (err) {
       console.error("Error fetching comprehensive context for AI Coach:", err);

@@ -87,7 +87,7 @@ export default function AIChat() {
   useEffect(() => {
     const fetchUserReports = async () => {
       try {
-        const { data } = await api.get("health/reports");
+        const { data } = await api.get("health/reports", { skipAutoLogout: true });
         // Ensure we always set an array
         if (Array.isArray(data.reports)) {
           setUserReports(data.reports);
@@ -107,7 +107,7 @@ export default function AIChat() {
   useEffect(() => {
     const loadChatHistory = async () => {
       try {
-        const { data } = await api.get("chat/history");
+        const { data } = await api.get("chat/history", { skipAutoLogout: true });
         if (data.success && data.messages && data.messages.length > 0) {
           setMessages(data.messages);
           setSearchHistory(data.messages);
@@ -171,24 +171,25 @@ export default function AIChat() {
   const streamResponse = (text, callback) => {
     setStreaming(true);
     setStreamingText("");
+    const words = text.split(" ");
     let index = 0;
     const interval = setInterval(() => {
-      if (index <= text.length) {
-        setStreamingText(text.substring(0, index));
+      if (index < words.length) {
         index++;
+        setStreamingText(words.slice(0, index).join(" "));
       } else {
         clearInterval(interval);
         setStreaming(false);
         callback();
       }
-    }, 10);
+    }, 25);
     return () => clearInterval(interval);
   };
 
   const saveChatToBackend = async (updatedMessages) => {
     try {
       const newMessages = updatedMessages.slice(-2);
-      await api.post("chat/history", { messages: newMessages });
+      await api.post("chat/history", { messages: newMessages }, { skipAutoLogout: true });
       localStorage.setItem(
         `chat_history_${user?.id}`,
         JSON.stringify(updatedMessages),
@@ -204,7 +205,7 @@ export default function AIChat() {
   const clearChat = async () => {
     if (confirm("Are you sure you want to clear your conversation history?")) {
       try {
-        await api.delete("chat/history");
+        await api.delete("chat/history", { skipAutoLogout: true });
         localStorage.removeItem(`chat_history_${user?.id}`);
         const greeting = generateGreetingWithReports();
         setMessages([

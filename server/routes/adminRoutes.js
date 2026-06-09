@@ -23,8 +23,8 @@ router.get('/open-ping', (req, res) => {
   res.json({ status: 'admin-router-found', msg: 'Successfully reached the admin router! If /users 404s, its an auth issue.' });
 });
 
-// All routes require admin role
-router.use(protect, authorize('admin'));
+// All routes require admin or superadmin role
+router.use(protect, authorize('admin', 'superadmin'));
 
 // Dashboard & Stats
 router.get('/stats', getReportStats);
@@ -33,10 +33,10 @@ router.get('/stats', getReportStats);
 router.get('/users', getAllUsers);
 router.get('/users/filter/advanced', getFilteredUsers);
 router.get('/users/:id', getUserDetails);
-router.patch('/users/:id/status', updateUserStatus);
-router.patch('/users/:id/role', updateUserRole);
-router.post('/users/:id/impersonate', impersonateUser);
-router.delete('/users/:id', deleteUser);
+router.patch('/users/:id/status', authorize('superadmin'), updateUserStatus);
+router.patch('/users/:id/role', authorize('superadmin'), updateUserRole);
+router.post('/users/:id/impersonate', authorize('superadmin'), impersonateUser);
+router.delete('/users/:id', authorize('superadmin'), deleteUser);
 
 // Report Oversight
 router.get('/reports', getAllReports);
