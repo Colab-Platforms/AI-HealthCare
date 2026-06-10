@@ -66,6 +66,12 @@ export default function AIChat() {
   const [loaderMessageIndex, setLoaderMessageIndex] = useState(0);
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
+  const streamIntervalRef = useRef(null);
+
+  const resolveUserId = (currentUser) =>
+    currentUser?._id || currentUser?.id || currentUser?.userId || null;
+
+  const userId = resolveUserId(user);
 
   const isDiabetic =
     user?.profile?.isDiabetic === "yes" ||
@@ -83,6 +89,15 @@ export default function AIChat() {
     }
     return () => clearInterval(interval);
   }, [loading]);
+
+  useEffect(() => {
+    return () => {
+      if (streamIntervalRef.current) {
+        clearInterval(streamIntervalRef.current);
+        streamIntervalRef.current = null;
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const fetchUserReports = async () => {
@@ -118,7 +133,7 @@ export default function AIChat() {
           setMessages(deduped);
           setSearchHistory(deduped);
           localStorage.setItem(
-            `chat_history_${user?.id}`,
+            `chat_history_${userId}`,
             JSON.stringify(deduped),
           );
           console.log(`💾 localStorage synced with backend`);
@@ -127,7 +142,7 @@ export default function AIChat() {
         
         console.log(`⚠️ No backend history, checking localStorage...`);
         
-        const savedMessages = localStorage.getItem(`chat_history_${user?.id}`);
+        const savedMessages = localStorage.getItem(`chat_history_${userId}`);
         if (savedMessages) {
           const parsed = JSON.parse(savedMessages);
           const deduped = deduplicateMessages(parsed);
@@ -146,7 +161,7 @@ export default function AIChat() {
       } catch (error) {
         console.error("Failed to load chat history:", error);
         
-        const savedMessages = localStorage.getItem(`chat_history_${user?.id}`);
+        const savedMessages = localStorage.getItem(`chat_history_${userId}`);
         if (savedMessages) {
           const parsed = JSON.parse(savedMessages);
           const deduped = deduplicateMessages(parsed);
@@ -164,7 +179,7 @@ export default function AIChat() {
         }
       }
     };
-    if (user) loadChatHistory();
+    if (userId) loadChatHistory();
 
     if (location.state?.initialQuery) {
       setInput(location.state.initialQuery);
@@ -173,7 +188,7 @@ export default function AIChat() {
         if (form) form.requestSubmit();
       }, 500);
     }
-  }, [user?.id, location.state, user?.name]);
+  }, [userId, location.state?.initialQuery, user?.name]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -190,22 +205,44 @@ export default function AIChat() {
   };
 
   const streamResponse = (text, callback) => {
+    if (streamIntervalRef.current) {
+      clearInterval(streamIntervalRef.current);
+      streamIntervalRef.current = null;
+    }
+
     setStreaming(true);
     setStreamingText("");
 
+    if (!text) {
+      setStreaming(false);
+      callback();
+      return;
+    }
+
+    const characters = Array.from(text);
     let index = 0;
-    const interval = window.setInterval(() => {
-      if (index < text.length) {
+
+    const tick = () => {
+      if (index < characters.length) {
         index += 1;
-        setStreamingText(text.slice(0, index));
+        setStreamingText(characters.slice(0, index).join(""));
       } else {
-        window.clearInterval(interval);
+        if (streamIntervalRef.current) {
+          clearInterval(streamIntervalRef.current);
+          streamIntervalRef.current = null;
+        }
         setStreaming(false);
         callback();
       }
-    }, 18);
+    };
 
-    return () => window.clearInterval(interval);
+    streamIntervalRef.current = window.setInterval(tick, 16);
+    return () => {
+      if (streamIntervalRef.current) {
+        clearInterval(streamIntervalRef.current);
+        streamIntervalRef.current = null;
+      }
+    };
   };
 
   const deduplicateMessages = (msgs) => {
@@ -224,7 +261,7 @@ export default function AIChat() {
       const newMessages = updatedMessages.slice(-2);
       await api.post("chat/history", { messages: newMessages }, { skipAutoLogout: true });
       localStorage.setItem(
-        `chat_history_${user?.id}`,
+        `chat_history_${userId}`,
         JSON.stringify(updatedMessages),
       );
       console.log(`💾 localStorage updated with ${updatedMessages.length} messages`);
@@ -233,7 +270,7 @@ export default function AIChat() {
       console.error('❌ Backend save failed:', error.response?.data || error.message);
       // Still save to localStorage even if backend fails
       localStorage.setItem(
-        `chat_history_${user?.id}`,
+        `chat_history_${userId}`,
         JSON.stringify(updatedMessages),
       );
       console.log(`⚠️ localStorage fallback saved (${updatedMessages.length} messages)`);
@@ -244,7 +281,7 @@ export default function AIChat() {
     if (confirm("Are you sure you want to clear your conversation history?")) {
       try {
         await api.delete("chat/history", { skipAutoLogout: true });
-        localStorage.removeItem(`chat_history_${user?.id}`);
+        localStorage.removeItem(`chat_history_${userId}`);
         const greeting = generateGreetingWithReports();
         setMessages([
           { role: "assistant", content: greeting, timestamp: new Date() },
@@ -252,7 +289,7 @@ export default function AIChat() {
         setSearchHistory([]);
         toast.success("Conversation history wiped");
       } catch (error) {
-        localStorage.removeItem(`chat_history_${user?.id}`);
+        localStorage.removeItem(`chat_history_${userId}`);
         const greeting = generateGreetingWithReports();
         setMessages([
           { role: "assistant", content: greeting, timestamp: new Date() },
@@ -777,7 +814,7 @@ export default function AIChat() {
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <div className="relative w-full md:w-auto flex flex-col bg-transparent text-slate-800 py-1 w-full max-w-none">
+                <div className="relative w-full md:w-auto flex flex-col bg-transparent text-slate-800 py-1 max-w-none">
                   {streamingText ? (
                     <div className="text-sm leading-relaxed font-medium whitespace-pre-wrap flex items-center">
                       {renderFormattedText(streamingText)}

@@ -20,12 +20,17 @@ class EmailService {
 
     try {
       console.log(`📧 Sending email to ${to}: ${subject}`);
-      const data = await this.resend.emails.send({
+      const { data, error } = await this.resend.emails.send({
         from: process.env.FROM_EMAIL || 'onboarding@resend.dev',
         to,
         subject,
         html,
       });
+
+      if (error) {
+        console.error('❌ Email Service: Failed to send email via Resend:', error.message);
+        return { success: false, error: error.message };
+      }
 
       console.log('✅ Email sent successfully:', data.id);
       return { success: true, data };

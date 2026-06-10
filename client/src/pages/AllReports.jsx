@@ -40,7 +40,9 @@ export default function AllReports() {
   const fetchAllReports = async () => {
     try {
       const { data } = await healthService.getReports();
-      setReports(data || []);
+      // Backend returns organized object, so extract the 'all' array
+      const reportsArray = Array.isArray(data) ? data : (data?.all || []);
+      setReports(reportsArray);
     } catch (error) {
       toast.error("Failed to load reports");
     } finally {
