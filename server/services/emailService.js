@@ -5,14 +5,22 @@ class EmailService {
     if (process.env.SMTP_USER && process.env.SMTP_PASS) {
       this.transporter = nodemailer.createTransport({
         host: process.env.SMTP_HOST || 'smtp.gmail.com',
-        port: parseInt(process.env.SMTP_PORT) || 587,
-        secure: false,
+        port: 465, // Use 465 for SSL (more reliable than 587 on Render)
+        secure: true, // true for port 465
         auth: {
           user: process.env.SMTP_USER,
           pass: process.env.SMTP_PASS,
         },
+        pool: {
+          maxConnections: 1,
+          maxMessages: 3,
+          rateDelta: 10000,
+          rateLimit: 3
+        },
+        connectionTimeout: 10000,
+        socketTimeout: 10000,
       });
-      console.log('✅ Email Service: Gmail SMTP initialized');
+      console.log('✅ Email Service: Gmail SMTP initialized (Port 465 SSL)');
     } else {
       console.warn('⚠️ Email Service: SMTP_USER or SMTP_PASS missing. Emails will not be sent.');
     }
@@ -37,6 +45,13 @@ class EmailService {
       return { success: true, data: info };
     } catch (error) {
       console.error('❌ Email Service: Failed to send email via SMTP:', error.message);
+      console.error('Error details:', error.code, error.syscall);
+      
+      // Log for debugging
+      if (error.code === 'ECONNREFUSED' || error.code === 'ECONNRESET') {
+        console.error('⚠️ Connection error - possibly blocked by Render firewall or Gmail security');
+      }
+      
       return { success: false, error: error.message };
     }
   }
