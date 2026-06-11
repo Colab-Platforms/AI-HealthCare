@@ -164,11 +164,46 @@ export default function AllReports() {
     fetchAllDocuments();
   }, []);
 
+  // Load preview when document details are opened
+  useEffect(() => {
+    if (!isDetailsOpen || !selectedDoc) {
+      setPreviewBlobUrl(null);
+      return;
+    }
+
+    const loadPreview = async () => {
+      if (!selectedDoc.fileUrl) return;
+      
+      setPreviewLoading(true);
+      try {
+        const response = await api.get(`/documents/${selectedDoc._id}/file`, {
+          responseType: 'blob',
+        });
+        const url = window.URL.createObjectURL(new Blob([response.data]));
+        setPreviewBlobUrl(url);
+      } catch (error) {
+        console.error('Failed to load preview:', error);
+        setPreviewBlobUrl(null);
+      } finally {
+        setPreviewLoading(false);
+      }
+    };
+
+    loadPreview();
+
+    return () => {
+      if (previewBlobUrl) {
+        window.URL.revokeObjectURL(previewBlobUrl);
+      }
+    };
+  }, [selectedDoc, isDetailsOpen]);
+
   const fetchAllDocuments = async () => {
     try {
       setLoading(true);
-      const { data } = await healthService.getReports();
-      setDocuments(Array.isArray(data) ? data : (data?.all || []));
+      const { data } = await api.get("/documents");
+      // getDocuments returns { documents: [...] }
+      setDocuments(Array.isArray(data?.documents) ? data.documents : []);
     } catch (error) {
       toast.error("Failed to load reports");
       setDocuments([]);
@@ -382,6 +417,7 @@ export default function AllReports() {
       setTimeout(() => {
         setIsUploadOpen(false);
         resetUploadForm();
+        fetchAllDocuments(); // Refresh the documents list
         navigate(`/reports/${data.report._id}`);
       }, 800);
     } catch (error) {

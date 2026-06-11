@@ -309,12 +309,18 @@ exports.getReports = async (req, res) => {
         .limit(100)
     );
     
+    // Add isAnalyzedReport flag for frontend (HealthReport documents are always analyzed)
+    const reportsWithFlag = reports.map(r => ({
+      ...r.toObject(),
+      isAnalyzedReport: true
+    }));
+    
     // Organize reports by type
     const organized = {
-      currentReports: reports.filter(r => !r.isPastReport && !r.isPrescription),
-      pastReports: reports.filter(r => r.isPastReport),
-      prescriptions: reports.filter(r => r.isPrescription),
-      all: reports
+      currentReports: reportsWithFlag.filter(r => !r.isPastReport && !r.isPrescription),
+      pastReports: reportsWithFlag.filter(r => r.isPastReport),
+      prescriptions: reportsWithFlag.filter(r => r.isPrescription),
+      all: reportsWithFlag
     };
 
     await cache.set(cacheKey, organized, 180);
@@ -340,7 +346,13 @@ exports.getReportById = async (req, res) => {
       recommendedDoctors = doctors.map(doc => ({ ...doc.toObject(), user: { name: doc.name, email: doc.email } }));
     }
 
-    res.json({ report, recommendedDoctors });
+    // Add isAnalyzedReport flag for frontend consistency
+    const reportWithFlag = {
+      ...report.toObject(),
+      isAnalyzedReport: true
+    };
+
+    res.json({ report: reportWithFlag, recommendedDoctors });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

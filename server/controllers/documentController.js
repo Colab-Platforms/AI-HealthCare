@@ -79,6 +79,12 @@ exports.getDocuments = async (req, res) => {
         // 1. Fetch from MedicalDocument
         const documents = await MedicalDocument.find(query).sort({ documentDate: -1, createdAt: -1 });
         
+        // Add isAnalyzedReport flag for frontend (MedicalDocument = vault documents, not analyzed)
+        const vaultDocs = documents.map(doc => ({
+            ...doc.toObject(),
+            isAnalyzedReport: false
+        }));
+        
         // 2. Fetch from HealthReport if category is 'all' or 'lab_report'
         let reports = [];
         if (!category || category === 'all' || category === 'lab_report' || category === 'prescription') {
@@ -118,7 +124,7 @@ exports.getDocuments = async (req, res) => {
         }
 
         // Merge and sort
-        const combined = [...documents, ...reports].sort((a, b) => 
+        const combined = [...vaultDocs, ...reports].sort((a, b) => 
             new Date(b.documentDate) - new Date(a.documentDate)
         );
 
