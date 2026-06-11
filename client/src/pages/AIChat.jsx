@@ -66,6 +66,7 @@ export default function AIChat() {
   const [loaderMessageIndex, setLoaderMessageIndex] = useState(0);
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
   const isDiabetic =
     user?.profile?.isDiabetic === "yes" ||
@@ -106,65 +107,49 @@ export default function AIChat() {
 
   useEffect(() => {
     const loadChatHistory = async () => {
+      // OPTIMIZATION: Load from localStorage FIRST (instant)
+      const savedMessages = localStorage.getItem(`chat_history_${user?._id}`);
+      if (savedMessages) {
+        try {
+          const parsed = JSON.parse(savedMessages);
+          const deduped = deduplicateMessages(parsed);
+          console.log(`✅ localStorage loaded instantly: ${deduped.length} messages`);
+          
+          setMessages(deduped);
+          setSearchHistory(deduped);
+          
+          // Sync with backend in background (no await, fire and forget)
+          syncChatHistoryWithBackend(deduped);
+          return;
+        } catch (e) {
+          console.error("localStorage parse error:", e);
+        }
+      }
+
+      // If no localStorage, fetch from backend
       try {
         const { data } = await api.get("chat/history", { skipAutoLogout: true });
         if (data.success && data.messages && data.messages.length > 0) {
-          console.log(`✅ Backend history loaded: ${data.messages.length} messages (v${data.version})`);
+          console.log(`✅ Backend history loaded: ${data.messages.length} messages`);
           
-          // Deduplicate messages from backend
           const deduped = deduplicateMessages(data.messages);
-          console.log(`🔍 After dedup: ${deduped.length} messages (removed ${data.messages.length - deduped.length} duplicates)`);
-          
           setMessages(deduped);
           setSearchHistory(deduped);
-          localStorage.setItem(
-            `chat_history_${user?.id}`,
-            JSON.stringify(deduped),
-          );
-          console.log(`💾 localStorage synced with backend`);
+          localStorage.setItem(`chat_history_${user?._id}`, JSON.stringify(deduped));
+          console.log(`💾 localStorage synced`);
           return;
         }
-        
-        console.log(`⚠️ No backend history, checking localStorage...`);
-        
-        const savedMessages = localStorage.getItem(`chat_history_${user?.id}`);
-        if (savedMessages) {
-          const parsed = JSON.parse(savedMessages);
-          const deduped = deduplicateMessages(parsed);
-          console.log(`✅ localStorage loaded: ${deduped.length} messages (removed ${parsed.length - deduped.length} duplicates)`);
-          
-          setMessages(deduped);
-          setSearchHistory(deduped);
-        } else {
-          console.log(`🆕 Fresh start - creating greeting`);
-          
-          const greeting = generateGreetingWithReports();
-          setMessages([
-            { role: "assistant", content: greeting, timestamp: new Date() },
-          ]);
-        }
       } catch (error) {
-        console.error("Failed to load chat history:", error);
-        
-        const savedMessages = localStorage.getItem(`chat_history_${user?.id}`);
-        if (savedMessages) {
-          const parsed = JSON.parse(savedMessages);
-          const deduped = deduplicateMessages(parsed);
-          console.log(`⚠️ Fallback to localStorage: ${deduped.length} messages`);
-          
-          setMessages(deduped);
-          setSearchHistory(deduped);
-        } else {
-          console.log(`🆕 Error fallback - creating greeting`);
-          
-          const greeting = generateGreetingWithReports();
-          setMessages([
-            { role: "assistant", content: greeting, timestamp: new Date() },
-          ]);
-        }
+        console.error("Backend load failed:", error);
       }
+
+      // Fallback: Show greeting
+      console.log(`🆕 Fresh start`);
+      const greeting = generateGreetingWithReports();
+      setMessages([{ role: "assistant", content: greeting, timestamp: new Date() }]);
     };
-    if (user) loadChatHistory();
+
+    if (user?._id) loadChatHistory();
 
     if (location.state?.initialQuery) {
       setInput(location.state.initialQuery);
@@ -173,7 +158,7 @@ export default function AIChat() {
         if (form) form.requestSubmit();
       }, 500);
     }
-  }, [user?.id, location.state, user?.name]);
+  }, [user?._id, location.state, user?.name]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -189,25 +174,6 @@ export default function AIChat() {
     return greeting;
   };
 
-  const streamResponse = (text, callback) => {
-    setStreaming(true);
-    setStreamingText("");
-
-    let index = 0;
-    const interval = window.setInterval(() => {
-      if (index < text.length) {
-        index += 1;
-        setStreamingText(text.slice(0, index));
-      } else {
-        window.clearInterval(interval);
-        setStreaming(false);
-        callback();
-      }
-    }, 18);
-
-    return () => window.clearInterval(interval);
-  };
-
   const deduplicateMessages = (msgs) => {
     const seen = new Map();
     msgs.forEach(msg => {
@@ -219,12 +185,22 @@ export default function AIChat() {
     return Array.from(seen.values());
   };
 
+  // Background sync with backend (non-blocking)
+  const syncChatHistoryWithBackend = async (messages) => {
+    try {
+      // Just verify backend has the data, don't wait for response
+      api.get("chat/history", { skipAutoLogout: true }).catch(() => {
+        // Silently fail if backend is slow - we already have localStorage
+      });
+    } catch (_) {}
+  };
+
   const saveChatToBackend = async (updatedMessages) => {
     try {
       const newMessages = updatedMessages.slice(-2);
       await api.post("chat/history", { messages: newMessages }, { skipAutoLogout: true });
       localStorage.setItem(
-        `chat_history_${user?.id}`,
+        `chat_history_${user?._id}`,
         JSON.stringify(updatedMessages),
       );
       console.log(`💾 localStorage updated with ${updatedMessages.length} messages`);
@@ -233,7 +209,7 @@ export default function AIChat() {
       console.error('❌ Backend save failed:', error.response?.data || error.message);
       // Still save to localStorage even if backend fails
       localStorage.setItem(
-        `chat_history_${user?.id}`,
+        `chat_history_${user?._id}`,
         JSON.stringify(updatedMessages),
       );
       console.log(`⚠️ localStorage fallback saved (${updatedMessages.length} messages)`);
@@ -244,7 +220,7 @@ export default function AIChat() {
     if (confirm("Are you sure you want to clear your conversation history?")) {
       try {
         await api.delete("chat/history", { skipAutoLogout: true });
-        localStorage.removeItem(`chat_history_${user?.id}`);
+        localStorage.removeItem(`chat_history_${user?._id}`);
         const greeting = generateGreetingWithReports();
         setMessages([
           { role: "assistant", content: greeting, timestamp: new Date() },
@@ -252,7 +228,7 @@ export default function AIChat() {
         setSearchHistory([]);
         toast.success("Conversation history wiped");
       } catch (error) {
-        localStorage.removeItem(`chat_history_${user?.id}`);
+        localStorage.removeItem(`chat_history_${user?._id}`);
         const greeting = generateGreetingWithReports();
         setMessages([
           { role: "assistant", content: greeting, timestamp: new Date() },
@@ -262,83 +238,146 @@ export default function AIChat() {
     }
   };
 
+  // Abort any in-flight stream when the component unmounts
+  useEffect(() => {
+    return () => abortControllerRef.current?.abort();
+  }, []);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!input.trim() || loading) return;
 
     const previousMessages = [...messages];
 
-    // Create user message
-    const userMessage = { 
-      role: "user", 
-      content: input, 
+    const userMessage = {
+      role: "user",
+      content: input,
       timestamp: new Date(),
       id: `${Date.now()}-user`
     };
 
-    // Create updated array with user message (FIX: Don't use stale messages)
     const updatedMessages = [...previousMessages, userMessage];
-    console.log(`📨 User sent: "${input.substring(0, 50)}..." | Total messages: ${updatedMessages.length}`);
-    
     setMessages(updatedMessages);
-    setSearchHistory(updatedMessages); // SYNC: Keep searchHistory in sync
+    setSearchHistory(updatedMessages);
 
     const currentInput = input;
     setInput("");
+    // Abort any in-flight stream before starting a new one
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = new AbortController();
+    setStreaming(false);
+    setStreamingText("");
     setLoading(true);
 
     try {
-      // FIX: Use updatedMessages instead of old messages variable
-      console.log(`🔄 Sending to AI with ${updatedMessages.length} messages in history`);
-      
-      const { data } = await api.post("chat", {
-        query: currentInput,
-        conversationHistory: updatedMessages.slice(-10),
-        userReports: userReports.map((r) => ({
-          type: r.reportType,
-          date: r.uploadDate,
-          analysis: r.analysis,
-          metrics: r.metrics,
-        })),
-      }, { skipAutoLogout: true });
+      const response = await fetch(`${api.defaults.baseURL}/chat`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("token")}`,
+        },
+        body: JSON.stringify({
+          query: currentInput,
+          conversationHistory: updatedMessages.slice(-10),
+          userReports: userReports.map((r) => ({
+            type: r.reportType,
+            date: r.uploadDate,
+            analysis: r.analysis,
+            metrics: r.metrics,
+          })),
+        }),
+        signal: abortControllerRef.current.signal,
+      });
 
-      if (data.success && data.response) {
-        const cleanedResponse = formatResponse(data.response);
-        console.log(`🤖 AI responded (${cleanedResponse.length} chars)`);
+      if (!response.ok || !response.body) throw new Error(`HTTP ${response.status}`);
 
-        streamResponse(cleanedResponse, () => {
-          setMessages((currentMessages) => {
-            const aiMessage = {
-              role: "assistant",
-              content: cleanedResponse,
-              timestamp: new Date(),
-              id: `${Date.now()}-ai`
-            };
+      // First token arriving — switch loading spinner to streaming bubble
+      setLoading(false);
+      setStreaming(true);
 
-            const finalMessages = [...currentMessages, aiMessage];
-            console.log(`💬 Final conversation: ${finalMessages.length} total messages`);
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = "";
+      let fullText = "";
+      let streamDone = false;
+      let tokenCount = 0;
+      const startTime = Date.now();
 
-            setSearchHistory(finalMessages); // SYNC: Keep searchHistory in sync
-            setStreamingText("");
+      console.log('🔄 Starting to read stream...');
 
-            // Save to backend (async, don't wait)
-            console.log(`🔐 Starting backend save...`);
-            saveChatToBackend(finalMessages).catch((error) => {
-              console.warn('Save to backend failed, will retry:', error);
-            });
+      while (!streamDone) {
+        const { done, value } = await reader.read();
+        if (done) break;
 
-            return finalMessages;
-          });
-        });
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const raw = line.slice(6).trim();
+          if (raw === "[DONE]") { 
+            streamDone = true; 
+            break; 
+          }
+          try {
+            const parsed = JSON.parse(raw);
+            if (parsed.token) {
+              // Split large tokens into individual words for smoother streaming
+              const words = parsed.token.split(/(\s+)/);
+              
+              for (const word of words) {
+                if (!word) continue; // Skip empty strings
+                
+                tokenCount++;
+                fullText += word;
+                const elapsed = Date.now() - startTime;
+                // console.log(`📝 Token ${tokenCount}: "${word.substring(0, 20)}" (${elapsed}ms) | Total: ${fullText.length} chars`);
+                
+                // Update immediately for each word
+                setStreamingText(fullText);
+                
+                // Small delay between words for visual effect (optional)
+                await new Promise(resolve => setTimeout(resolve, 2));
+              }
+            }
+          } catch (e) {
+            console.error('Parse error:', e);
+          }
+        }
       }
+      
+      const totalTime = Date.now() - startTime;
+      // console.log(`✅ Stream complete: ${tokenCount} tokens in ${totalTime}ms`);
+      
+      // Final update
+      setStreamingText(fullText);
+
+      // Apply cleanup formatting once on the complete text, then commit
+      const cleanedResponse = formatResponse(fullText);
+      const aiMessage = {
+        role: "assistant",
+        content: cleanedResponse,
+        timestamp: new Date(),
+        id: `${Date.now()}-ai`,
+      };
+      setStreamingText("");
+      setStreaming(false);
+      setMessages((currentMessages) => {
+        const finalMessages = [...currentMessages, aiMessage];
+        setSearchHistory(finalMessages);
+        saveChatToBackend(finalMessages).catch(console.warn);
+        return finalMessages;
+      });
     } catch (error) {
+      if (error.name === "AbortError") return; // intentional — new request is taking over
+      setLoading(false);
+      setStreaming(false);
+      setStreamingText("");
       console.error("AI Chat error:", error);
       toast.error("Connection lost. Please try again.");
-      // Revert if API fails
       setMessages(previousMessages);
-      setSearchHistory(previousMessages); // SYNC: Keep searchHistory in sync
-    } finally {
-      setLoading(false);
+      setSearchHistory(previousMessages);
     }
   };
 
@@ -601,8 +640,9 @@ export default function AIChat() {
       {/* Sidebar - Desktop */}
       <div
         className={`fixed md:relative inset-y-0 left-0 w-80 bg-slate-50 border-r border-slate-100 flex flex-col z-[60] transition-transform duration-500 ease-in-out md:translate-x-0 ${sidebarOpen ? "translate-x-0" : "-translate-x-full"}`}
+        style={{ height: "100vh", maxHeight: "100vh" }}
       >
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white">
+        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-white flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 bg-black rounded-xl flex items-center justify-center shadow-lg shadow-black/10">
               <History className="w-5 h-5 text-white" />
@@ -629,7 +669,7 @@ export default function AIChat() {
               setSearchHistory([]); // CRITICAL: Clear search history for new session
               setSidebarOpen(false);
             }}
-            className="w-full p-4 bg-black text-white rounded-2xl border border-black font-black uppercase text-[10px] tracking-widest hover:bg-slate-900 transition-all flex items-center justify-center gap-2"
+            className="w-full p-4 bg-black text-white rounded-2xl border border-black font-black uppercase text-[10px] tracking-widest hover:bg-slate-900 transition-all flex items-center justify-center gap-2 flex-shrink-0"
           >
             + New Session
           </button>
@@ -661,8 +701,9 @@ export default function AIChat() {
                     <div
                       key={msg.id || idx}
                       onClick={() => {
-                        // Just set the input to the previous query, don't load old messages
-                        setInput(msg.content);
+                        // Load the full chat history, not just set input
+                        setMessages(searchHistory);
+                        setInput("");
                         setSidebarOpen(false);
                       }}
                       className="p-3.5 bg-white rounded-2xl border border-slate-100 text-[11px] font-bold text-slate-600 flex items-center gap-3 cursor-pointer hover:bg-slate-50 hover:border-slate-200 transition-all shadow-sm shadow-black/[0.01]"
@@ -681,7 +722,7 @@ export default function AIChat() {
           </div>
         </div>
 
-        <div className="p-4 border-t border-slate-100 bg-white">
+        <div className="p-4 border-t border-slate-100 bg-white flex-shrink-0">
           <button
             onClick={clearChat}
             className="w-full p-4 flex items-center justify-center gap-2 text-rose-500 hover:bg-rose-50 rounded-2xl transition-all font-black uppercase text-[10px] tracking-widest"
@@ -698,13 +739,13 @@ export default function AIChat() {
         />
       )}
 
-      {/* Main Chat Interface - uses fixed input on mobile */}
+      {/* Main Chat Interface */}
       <div
         className="flex-1 flex flex-col relative bg-transparent"
-        style={{ height: "100%", minHeight: 0 }}
+        style={{ height: "100vh", maxHeight: "100vh", minHeight: 0 }}
       >
         {/* Mobile Sidebar Toggle Header */}
-        <div className="md:hidden flex items-center justify-start px-4 py-3 bg-white/90 backdrop-blur-md border-b border-slate-100 z-20 sticky top-0 shadow-sm shadow-black/[0.02]">
+        <div className="md:hidden flex items-center justify-start px-4 py-3 bg-white/90 backdrop-blur-md border-b border-slate-100 z-20 sticky top-0 shadow-sm shadow-black/[0.02] flex-shrink-0">
           <button
             onClick={() => setSidebarOpen(true)}
             className="p-2 bg-slate-100 hover:bg-slate-200 rounded-xl transition-all active:scale-95 flex items-center justify-center gap-2"
@@ -713,11 +754,11 @@ export default function AIChat() {
           </button>
         </div>
 
-        {/* Message Viewport - scrollable, with bottom padding for the fixed input dock */}
+        {/* Message Viewport - scrollable content only */}
         <div
           ref={chatContainerRef}
-          className="flex-1 overflow-y-auto px-6 pt-4 pb-44 md:pb-8 space-y-8 scroll-smooth flex flex-col z-10"
-          style={{ minHeight: 0 }}
+          className="flex-1 overflow-y-auto px-6 pt-4 pb-4 space-y-8 scroll-smooth flex flex-col z-10"
+          style={{ minHeight: 0, overflowY: "auto" }}
         >
           {messages.map((msg, i) => (
             <div
@@ -777,7 +818,7 @@ export default function AIChat() {
                     className="w-full h-full object-cover"
                   />
                 </div>
-                <div className="relative w-full md:w-auto flex flex-col bg-transparent text-slate-800 py-1 w-full max-w-none">
+                <div className="relative w-full md:w-auto flex flex-col bg-transparent text-slate-800 py-1 max-w-none">
                   {streamingText ? (
                     <div className="text-sm leading-relaxed font-medium whitespace-pre-wrap flex items-center">
                       {renderFormattedText(streamingText)}
@@ -822,8 +863,8 @@ export default function AIChat() {
           <div ref={messagesEndRef} />
         </div>
 
-        {/* Input Dock - FIXED at the bottom of viewport on mobile, flex-end on desktop */}
-        <div className="fixed bottom-0 left-0 right-0 md:relative md:bottom-auto px-4 md:px-6 py-4 md:py-6 bg-white border-t border-slate-100 z-40">
+        {/* Input Dock - FIXED at the bottom, does NOT scroll */}
+        <div className="flex-shrink-0 px-4 md:px-6 py-4 md:py-6 bg-white border-t border-slate-100 z-40">
           <div className="max-w-4xl mx-auto relative">
             <form onSubmit={handleSubmit} className="relative group w-full">
               <div className="relative bg-white border border-slate-200 focus-within:border-slate-300 rounded-[2rem] p-2 flex items-center gap-2 transition-all shadow-lg shadow-black/[0.03]">

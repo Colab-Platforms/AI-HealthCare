@@ -44,7 +44,11 @@ class ChatHistoryService {
       if (this.redisAvailable && this.redis) {
         try {
           const cacheKey = `chat:${userId}`;
-          const cached = await this.redis.get(cacheKey);
+          // Add 5 second timeout for Redis
+          const cached = await Promise.race([
+            this.redis.get(cacheKey),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Redis timeout')), 5000))
+          ]);
           if (cached) {
             console.log(`✓ Cache hit for user ${userId}`);
             return JSON.parse(cached);
@@ -56,8 +60,12 @@ class ChatHistoryService {
 
       console.log(`📚 Fetching from MongoDB for user ${userId}`);
 
-      // Fall back to MongoDB
-      let history = await ChatHistory.findOne({ userId }).lean();
+      // Fall back to MongoDB with 10 second timeout
+      let history = await Promise.race([
+        ChatHistory.findOne({ userId }).lean(),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('MongoDB timeout')), 10000))
+      ]);
+      
       if (!history) {
         history = { userId, messages: [], version: 0 };
       }
@@ -75,6 +83,11 @@ class ChatHistoryService {
       return history;
     } catch (error) {
       console.error('getHistory error:', error);
+      // Return empty history on timeout instead of throwing
+      if (error.message.includes('timeout')) {
+        console.warn('Timeout fetching chat history, returning empty');
+        return { userId, messages: [], version: 0 };
+      }
       throw error;
     }
   }

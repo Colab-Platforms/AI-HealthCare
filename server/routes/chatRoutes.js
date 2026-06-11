@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const axios = require('axios');
+const Anthropic = require('@anthropic-ai/sdk');
 const { protect } = require('../middleware/auth');
 const User = require('../models/User');
 const HealthMetric = require('../models/HealthMetric');
@@ -16,13 +16,37 @@ router.post('/chat', protect, async (req, res) => {
     const user = req.user;
 
     if (!query || query.trim().length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: 'Query is required'
-      });
+      return res.status(400).json({ success: false, message: 'Query is required' });
     }
 
-    console.log(`AI Chat request from ${user.name} for query: ${query.substring(0, 50)}`);
+    // SSE headers — from this point all responses stream
+    res.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.flushHeaders();
+
+    const sendToken = (t) => {
+      if (!res.writableEnded) {
+        res.write(`data: ${JSON.stringify({ token: t })}\n\n`);
+        // Critical: flush after each token to ensure immediate transmission
+        if (res.flush) res.flush();
+      }
+    };
+    const finishStream = () => {
+      if (!res.writableEnded) {
+        res.write('data: [DONE]\n\n');
+        if (res.flush) res.flush();
+        res.end();
+      }
+    };
+    const fallbackStream = (text) => {
+      text.split(/(\s+)/).forEach(t => {
+        sendToken(t);
+      });
+      finishStream();
+    };
 
     // Prepare system prompt with comprehensive user context
     const profile = user.profile || {};
@@ -169,62 +193,54 @@ Make the meal feedback immediate, clear, highly actionable, and always use these
 
     messages.push({ role: 'user', content: processedQuery });
 
-    let aiResponse = null;
-
-    // Try Anthropic Direct API first
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
-    if (!aiResponse && anthropicKey && anthropicKey.startsWith('sk-ant')) {
+    if (anthropicKey?.startsWith('sk-ant')) {
       try {
-        const response = await axios.post(
-          'https://api.anthropic.com/v1/messages',
-          {
-            model: 'claude-sonnet-4-6',
-            system: systemPrompt,
-            messages: messages,
-            temperature: 0.7,
-            max_tokens: 1500
-          },
-          {
-            headers: {
-              'x-api-key': anthropicKey,
-              'anthropic-version': '2023-06-01',
-              'Content-Type': 'application/json'
-            },
-            timeout: 30000
-          }
-        );
+        const client = new Anthropic({ apiKey: anthropicKey });
+        const stream = client.messages.stream({
+          model: 'claude-sonnet-4-6',
+          system: systemPrompt,
+          messages,
+          temperature: 0.7,
+          max_tokens: 1500
+        });
 
-        if (response.data && response.data.content && response.data.content[0]) {
-          aiResponse = response.data.content[0].text;
+        // Abort stream if client disconnects mid-response
+        req.on('close', () => stream.abort());
+
+        let tokenCount = 0;
+        for await (const event of stream) {
+          if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
+            tokenCount++;
+            const token = event.delta.text;
+            // console.log(`📝 Backend Token ${tokenCount}: "${token.substring(0, 30)}" | Length: ${token.length}`);
+            sendToken(token);
+            // Small delay to ensure token transmission
+            await new Promise(resolve => setImmediate(resolve));
+          }
         }
-      } catch (error) {
-        console.error('Anthropic Direct failed:', error.message);
+        // console.log(`✅ Backend sent ${tokenCount} tokens total`);
+
+        finishStream();
+        return;
+      } catch (err) {
+        if (err.name !== 'APIUserAbortError') {
+          console.error('Anthropic streaming failed:', err.message);
+        }
+        // Fall through to fallback
       }
     }
 
-    // If API failed, use intelligent fallback
-    if (!aiResponse) {
-      aiResponse = generateIntelligentResponse(query, user.name);
-    }
-
-    res.json({
-      success: true,
-      response: aiResponse,
-      timestamp: new Date().toISOString(),
-      mode: aiResponse.includes('⚠️') ? 'fallback' : 'ai'
-    });
+    fallbackStream(generateIntelligentResponse(processedQuery, user.name));
 
   } catch (error) {
     console.error('AI Chat error:', error.message);
-    const userName = req.user?.name || 'there';
-    const fallbackResponse = generateIntelligentResponse(req.body.query, userName);
-
-    res.json({
-      success: true,
-      response: fallbackResponse,
-      timestamp: new Date().toISOString(),
-      mode: 'fallback'
-    });
+    if (!res.writableEnded) {
+      const fallbackText = generateIntelligentResponse(req.body.query, req.user?.name || 'there');
+      fallbackText.split(/(\s+)/).forEach((t) => res.write(`data: ${JSON.stringify({ token: t })}\n\n`));
+      res.write('data: [DONE]\n\n');
+      res.end();
+    }
   }
 });
 
