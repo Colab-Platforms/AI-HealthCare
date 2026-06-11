@@ -828,7 +828,6 @@ export default function AIChat() {
                   />
                 </div>
                 <div className="relative w-full md:w-auto flex flex-col bg-transparent text-slate-800 py-1 max-w-none">
-                <div className="relative w-full md:w-auto flex flex-col bg-transparent text-slate-800 py-1 max-w-none">
                   {streamingText ? (
                     <div className="text-sm leading-relaxed font-medium whitespace-pre-wrap flex items-center">
                       {renderFormattedText(streamingText)}
