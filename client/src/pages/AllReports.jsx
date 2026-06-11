@@ -164,12 +164,14 @@ export default function AllReports() {
     fetchAllDocuments();
   }, []);
 
-  const fetchAllReports = async () => {
+  const fetchAllDocuments = async () => {
     try {
+      setLoading(true);
       const { data } = await healthService.getReports();
-      setReports(data || []);
+      setDocuments(Array.isArray(data) ? data : (data?.all || []));
     } catch (error) {
       toast.error("Failed to load reports");
+      setDocuments([]);
     } finally {
       setLoading(false);
     }
