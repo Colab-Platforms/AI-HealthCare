@@ -86,6 +86,15 @@ export default function AIChat() {
   }, [loading]);
 
   useEffect(() => {
+    return () => {
+      if (streamIntervalRef.current) {
+        clearInterval(streamIntervalRef.current);
+        streamIntervalRef.current = null;
+      }
+    };
+  }, []);
+
+  useEffect(() => {
     const fetchUserReports = async () => {
       try {
         const { data } = await api.get("health/reports", { skipAutoLogout: true });
@@ -818,6 +827,7 @@ export default function AIChat() {
                     className="w-full h-full object-cover"
                   />
                 </div>
+                <div className="relative w-full md:w-auto flex flex-col bg-transparent text-slate-800 py-1 max-w-none">
                 <div className="relative w-full md:w-auto flex flex-col bg-transparent text-slate-800 py-1 max-w-none">
                   {streamingText ? (
                     <div className="text-sm leading-relaxed font-medium whitespace-pre-wrap flex items-center">

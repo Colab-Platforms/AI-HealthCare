@@ -164,93 +164,12 @@ export default function AllReports() {
     fetchAllDocuments();
   }, []);
 
-  useEffect(() => {
-    localStorage.setItem("favorite_reports_ids", JSON.stringify(favoriteReportIds));
-  }, [favoriteReportIds]);
-
-  useEffect(() => {
-    localStorage.setItem("recently_viewed_docs", JSON.stringify(recentlyViewedIds));
-  }, [recentlyViewedIds]);
-
-  // Preview blob for vault docs
-  useEffect(() => {
-    let objectUrl = null;
-    if (selectedDoc && !selectedDoc.isAnalyzedReport) {
-      const isPdf =
-        selectedDoc.fileUrl?.toLowerCase().includes(".pdf") ||
-        selectedDoc.mimetype?.includes("pdf");
-      if (isPdf) {
-        const fetchPreview = async () => {
-          setPreviewLoading(true);
-          try {
-            const response = await api.get(`/documents/${selectedDoc._id}/file`, {
-              responseType: "blob",
-            });
-            objectUrl = window.URL.createObjectURL(
-              new Blob([response.data], { type: "application/pdf" })
-            );
-            setPreviewBlobUrl(objectUrl);
-          } catch {
-            setPreviewBlobUrl(null);
-          } finally {
-            setPreviewLoading(false);
-          }
-        };
-        fetchPreview();
-      } else {
-        setPreviewBlobUrl(selectedDoc.fileUrl || null);
-      }
-    } else {
-      setPreviewBlobUrl(null);
-    }
-    return () => {
-      if (objectUrl) window.URL.revokeObjectURL(objectUrl);
-    };
-  }, [selectedDoc]);
-
-  const fetchAllDocuments = async () => {
-    setLoading(true);
+  const fetchAllReports = async () => {
     try {
-      const [reportsRes, vaultRes] = await Promise.allSettled([
-        healthService.getReports(),
-        api.get("/documents"),
-      ]);
-
-      // getReports returns { currentReports, pastReports, prescriptions, all }
-      // Use .all to get every report with full aiAnalysis data
-      const aiReportsRaw =
-        reportsRes.status === "fulfilled"
-          ? reportsRes.value.data?.all || []
-          : [];
-      const aiReports = aiReportsRaw.map((r) => ({
-        ...r,
-        isAnalyzedReport: true,
-        title:
-          (r.originalFile?.filename || "").replace(/\.[^/.]+$/, "") ||
-          r.reportType ||
-          "Health Report",
-        category: "ai_report",
-        documentDate: r.reportDate || r.createdAt,
-      }));
-
-      // /documents already embeds simplified AI reports — filter them out to avoid duplicates
-      const allDocs =
-        vaultRes.status === "fulfilled"
-          ? vaultRes.value.data?.documents || []
-          : [];
-      const vaultDocs = allDocs
-        .filter((d) => !d.isAnalyzedReport)
-        .map((d) => ({ ...d, isAnalyzedReport: false }));
-
-      const merged = [...aiReports, ...vaultDocs].sort(
-        (a, b) =>
-          new Date(b.documentDate || b.createdAt) -
-          new Date(a.documentDate || a.createdAt)
-      );
-      setDocuments(merged);
-    } catch (err) {
-      console.error("fetchAllDocuments error:", err);
-      toast.error("Failed to load medical records");
+      const { data } = await healthService.getReports();
+      setReports(data || []);
+    } catch (error) {
+      toast.error("Failed to load reports");
     } finally {
       setLoading(false);
     }

@@ -1,36 +1,57 @@
-const { Resend } = require('resend');
-const fs = require('fs');
+const nodemailer = require('nodemailer');
 
 class EmailService {
   constructor() {
-    this.apiKey = process.env.RESEND_API_KEY;
-    if (this.apiKey) {
-      this.resend = new Resend(this.apiKey);
-      console.log('✅ Email Service: Resend API initialized');
+    if (process.env.SMTP_USER && process.env.SMTP_PASS) {
+      this.transporter = nodemailer.createTransport({
+        host: process.env.SMTP_HOST || 'smtp.gmail.com',
+        port: 465, // Use 465 for SSL (more reliable than 587 on Render)
+        secure: true, // true for port 465
+        auth: {
+          user: process.env.SMTP_USER,
+          pass: process.env.SMTP_PASS,
+        },
+        pool: {
+          maxConnections: 1,
+          maxMessages: 3,
+          rateDelta: 10000,
+          rateLimit: 3
+        },
+        connectionTimeout: 10000,
+        socketTimeout: 10000,
+      });
+      console.log('✅ Email Service: Gmail SMTP initialized (Port 465 SSL)');
     } else {
-      console.warn('⚠️ Email Service: RESEND_API_KEY is missing. Emails will fail to send on Production.');
+      console.warn('⚠️ Email Service: SMTP_USER or SMTP_PASS missing. Emails will not be sent.');
     }
   }
 
   async sendEmail({ to, subject, html }) {
-    if (!this.resend) {
-      console.error('❌ Email Service: No Resend API key found');
-      return { success: false, error: 'API key missing' };
+    if (!this.transporter) {
+      console.error('❌ Email Service: No SMTP credentials found');
+      return { success: false, error: 'SMTP credentials missing' };
     }
 
     try {
       console.log(`📧 Sending email to ${to}: ${subject}`);
-      const data = await this.resend.emails.send({
-        from: process.env.FROM_EMAIL || 'onboarding@resend.dev',
+      const info = await this.transporter.sendMail({
+        from: process.env.FROM_EMAIL || process.env.SMTP_USER,
         to,
         subject,
         html,
       });
 
-      console.log('✅ Email sent successfully:', data.id);
-      return { success: true, data };
+      console.log('✅ Email sent successfully:', info.messageId);
+      return { success: true, data: info };
     } catch (error) {
-      console.error('❌ Email Service: Failed to send email via Resend:', error.message);
+      console.error('❌ Email Service: Failed to send email via SMTP:', error.message);
+      console.error('Error details:', error.code, error.syscall);
+      
+      // Log for debugging
+      if (error.code === 'ECONNREFUSED' || error.code === 'ECONNRESET') {
+        console.error('⚠️ Connection error - possibly blocked by Render firewall or Gmail security');
+      }
+      
       return { success: false, error: error.message };
     }
   }
