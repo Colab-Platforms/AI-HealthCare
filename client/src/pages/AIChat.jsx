@@ -67,6 +67,7 @@ export default function AIChat() {
   const messagesEndRef = useRef(null);
   const chatContainerRef = useRef(null);
   const abortControllerRef = useRef(null);
+  const streamIntervalRef = useRef(null);
 
   const isDiabetic =
     user?.profile?.isDiabetic === "yes" ||
