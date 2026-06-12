@@ -17,7 +17,8 @@ const medicalDocumentSchema = new mongoose.Schema({
     hospital: { type: String, default: '' },
     doctorName: { type: String, default: '' },
     isFavorite: { type: Boolean, default: false },
-    tags: [{ type: String }]
+    tags: [{ type: String }],
+    isEncrypted: { type: Boolean, default: false }
 }, { timestamps: true });
 
 medicalDocumentSchema.index({ userId: 1, category: 1 });

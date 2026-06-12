@@ -132,8 +132,27 @@ const extractPublicId = (cloudinaryUrl) => {
     }
 };
 
+const uploadRaw = async (buffer, folder = 'medical_documents') => {
+    return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+            {
+                folder: `fitcure/${folder}`,
+                unique_filename: true,
+                resource_type: 'raw', // skip type detection, store as-is
+                type: 'upload',
+            },
+            (error, result) => {
+                if (error) reject(error);
+                else resolve(result.secure_url);
+            }
+        );
+        stream.end(buffer);
+    });
+};
+
 module.exports = {
     uploadImage,
+    uploadRaw,
     cloudinary,
     generatePrivateDownloadUrl,
     extractPublicId

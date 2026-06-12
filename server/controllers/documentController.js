@@ -1,8 +1,9 @@
 const MedicalDocument = require('../models/MedicalDocument');
 const HealthReport = require('../models/HealthReport');
-const cloudinary = require('../services/cloudinary');
+const cloudinaryService = require('../services/cloudinary');
 const fs = require('fs');
 const { logActivity } = require('../utils/activityLogger');
+const { encrypt, decrypt } = require('../utils/encryption');
 
 exports.uploadDocument = async (req, res) => {
     try {
@@ -13,10 +14,12 @@ exports.uploadDocument = async (req, res) => {
         if (!title) return res.status(400).json({ message: 'Title is required' });
 
         const dataBuffer = req.file.buffer || (req.file.path ? fs.readFileSync(req.file.path) : null);
-        
+
+        const encryptedBuffer = encrypt(dataBuffer);
+        // Wrap as base64 data URI so Cloudinary stores it as a raw file without type detection
         let cloudinaryUrl = null;
         try {
-            cloudinaryUrl = await cloudinary.uploadImage(dataBuffer, 'medical_documents');
+            cloudinaryUrl = await cloudinaryService.uploadRaw(encryptedBuffer, 'medical_documents');
         } catch (e) {
             console.error('Cloudinary fail:', e.message);
             return res.status(500).json({ message: 'Failed to upload document to cloud storage' });
@@ -46,7 +49,8 @@ exports.uploadDocument = async (req, res) => {
             hospital: hospital || '',
             doctorName: doctorName || '',
             isFavorite: isFavorite === 'true' || isFavorite === true,
-            tags: parsedTags
+            tags: parsedTags,
+            isEncrypted: true
         });
 
         // Log medical activity
@@ -203,6 +207,14 @@ exports.getDocumentDownloadUrl = async (req, res) => {
         } else {
             const document = await MedicalDocument.findOne({ _id: docId, userId: req.user._id });
             if (!document) return res.status(404).json({ message: 'Document not found' });
+            // Encrypted vault docs must go through server proxy for decryption
+            if (document.isEncrypted) {
+                return res.json({
+                    downloadUrl: `/api/documents/${docId}/file`,
+                    filename: document.originalName || document.title || 'document',
+                    expiresIn: 'session'
+                });
+            }
             fileUrl = document.fileUrl;
             filename = document.originalName || document.title || 'document';
         }
@@ -225,7 +237,7 @@ exports.getDocumentDownloadUrl = async (req, res) => {
         const ext = match[4] || 'pdf';  // e.g. 'pdf'
 
         try {
-            const { cloudinary } = require('../services/cloudinary');
+            const { cloudinary } = cloudinaryService;
             
             // Generate a private download URL (valid for 24 hours)
             const downloadUrl = cloudinary.utils.private_download_url(publicId, ext, {
@@ -291,7 +303,7 @@ exports.getDocumentFile = async (req, res) => {
         // This bypasses ALL CDN delivery restrictions because it goes through api.cloudinary.com
         if (fileUrl.includes('res.cloudinary.com')) {
             try {
-                const { cloudinary } = require('../services/cloudinary');
+                const { cloudinary } = cloudinaryService;
                 // Extract: resource_type, public_id, extension from the Cloudinary URL
                 const regex = /res\.cloudinary\.com\/[^\/]+\/([^\/]+)\/([^\/]+)\/(?:v\d+\/)?(.+?)(?:\.([^.]+))?$/;
                 const match = fileUrl.match(regex);
@@ -319,11 +331,31 @@ exports.getDocumentFile = async (req, res) => {
         }
 
         console.log('📥 Fetching file via proxy...');
-        
+
         const response = await axios.get(fetchUrl, fetchOptions);
 
         console.log('✅ File fetched successfully, streaming to client');
-        
+
+        // Collect stream into buffer to decrypt if needed
+        const needsDecrypt = !isReport && (await MedicalDocument.findOne({ _id: req.params.id, userId: req.user._id }))?.isEncrypted;
+        if (needsDecrypt) {
+            const chunks = [];
+            response.data.on('data', chunk => chunks.push(chunk));
+            response.data.on('end', () => {
+                try {
+                    const decrypted = decrypt(Buffer.concat(chunks));
+                    res.setHeader('Content-Type', mimetype);
+                    res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(filename)}"`);
+                    res.setHeader('Content-Length', decrypted.length);
+                    res.end(decrypted);
+                } catch (e) {
+                    console.error('❌ Decryption failed:', e.message);
+                    res.status(500).json({ message: 'Failed to decrypt document' });
+                }
+            });
+            return;
+        }
+
         res.setHeader('Content-Type', mimetype);
         res.setHeader('Content-Disposition', `inline; filename="${encodeURIComponent(filename)}"`);
         if (response.headers['content-length']) {

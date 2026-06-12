@@ -668,6 +668,10 @@ exports.saveChallengeData = async (req, res) => {
     const user = await User.findById(req.user._id);
     user.challengeData = challengeData;
     user.markModified('challengeData');
+    // Set start date on first save if not already set
+    if (!user.challengeStartDate) {
+      user.challengeStartDate = new Date();
+    }
     await user.save();
     res.json({ success: true });
   } catch (error) {
@@ -678,7 +682,11 @@ exports.saveChallengeData = async (req, res) => {
 exports.getChallengeData = async (req, res) => {
   try {
     const user = await User.findById(req.user._id).select('challengeData streakDays challengeStartDate');
-    res.json({ challengeData: user.challengeData || {}, streakDays: user.streakDays || 0 });
+    res.json({
+      challengeData: user.challengeData || {},
+      streakDays: user.streakDays || 0,
+      challengeStartDate: user.challengeStartDate || null,
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

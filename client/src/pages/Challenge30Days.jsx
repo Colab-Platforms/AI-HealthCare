@@ -115,18 +115,24 @@ export default function Challenge30Days() {
     try {
       const response = await api.get("health/challenge");
       const data = response.data.challengeData || {};
-      const startDate = response.data.challengeStartDate;
+      let startDate = response.data.challengeStartDate;
+
+      // If no start date exists yet, initialize to today
+      if (!startDate) {
+        startDate = new Date().toISOString();
+        await api.post("health/challenge", { challengeData: data });
+      }
 
       setChallengeData(data);
       setStreak(response.data.streakDays || 0);
-      if (startDate) setChallengeStartDate(startDate);
+      setChallengeStartDate(startDate);
 
       localStorage.setItem("challenge30Days", JSON.stringify(data));
       localStorage.setItem(
         "challenge30DaysStreak",
         response.data.streakDays || 0,
       );
-      if (startDate) localStorage.setItem("challengeStartDate", startDate);
+      localStorage.setItem("challengeStartDate", startDate);
     } catch (error) {
       console.error("Failed to load challenge data:", error);
     } finally {
