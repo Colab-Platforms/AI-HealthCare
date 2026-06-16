@@ -23,80 +23,76 @@ class NotificationService {
     }
 
     startSchedulers() {
-        // 🔴 COMMENTED OUT: Notification system disabled for now
-        // Will be enabled later with proper testing
-        
-        // ✅ OPTIMIZED: Check every minute for user-specific notification times
-        // This respects each user's personal preferences and timezone
-        
-        // const job = cron.schedule('* * * * *', () => {
-        //     console.log(`⏰ Checking for user-specific notifications at ${new Date().toISOString()}`);
-        //     this.checkAndSendUserNotifications();
-        // });
-        // this.cronJobs.push(job);
-
-        // Check on startup for any pending notifications
+        // ✅ Local/always-on dev convenience: check every minute for user-specific
+        // notification times. On Vercel this never runs (serverless has no persistent
+        // process) — production relies on an Upstash QStash Schedule hitting
+        // POST /api/notifications/cron-tick instead (see routes/notificationRoutes.js).
         if (!process.env.VERCEL) {
-            // setTimeout(() => this.generateStartupNotifications(), 5000);
-            console.log('🔔 Notification scheduler disabled - will enable later');
+            const job = cron.schedule('* * * * *', () => {
+                this.checkAndSendUserNotifications();
+            });
+            this.cronJobs.push(job);
+            console.log('🔔 Notification scheduler enabled (node-cron, local mode)');
         }
     }
 
-    // 🔴 COMMENTED OUT: User-specific notification checking
-    // ✅ NEW: Check each user's preferences and send notifications at their specific times
+    // ✅ Check each user's preferences and send notifications once their preferred
+    // time has passed for today. Uses >= instead of === so this stays correct
+    // regardless of how often the caller ticks (every minute locally via node-cron,
+    // every few minutes in production via QStash) — the per-type "already sent
+    // today" check inside each sendUser* method prevents duplicates.
     async checkAndSendUserNotifications() {
-        // DISABLED FOR NOW - Will implement later
-        // try {
-        //     const preferences = await this.getPreferencesWithCache();
-        //     const now = new Date();
-        //     const currentHour = now.getHours();
-        //     const currentMinute = now.getMinutes();
-        //     const currentTime = `${String(currentHour).padStart(2, '0')}:${String(currentMinute).padStart(2, '0')}`;
+        try {
+            const preferences = await this.getPreferencesWithCache();
+            const now = new Date();
+            const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-        //     for (const [userId, pref] of preferences) {
-        //         try {
-        //             // Check meal reminders
-        //             if (pref.mealReminders?.enabled) {
-        //                 if (pref.mealReminders.breakfast === currentTime) {
-        //                     await this.sendUserMealReminder(userId, 'breakfast');
-        //                 }
-        //                 if (pref.mealReminders.lunch === currentTime) {
-        //                     await this.sendUserMealReminder(userId, 'lunch');
-        //                 }
-        //                 if (pref.mealReminders.snack === currentTime) {
-        //                     await this.sendUserMealReminder(userId, 'snack');
-        //                 }
-        //                 if (pref.mealReminders.dinner === currentTime) {
-        //                     await this.sendUserMealReminder(userId, 'dinner');
-        //                 }
-        //             }
+            for (const [userId, pref] of preferences) {
+                try {
+                    const user = { _id: userId };
 
-        //             // Check sleep reminder
-        //             if (pref.sleepReminder?.enabled && pref.sleepReminder.time === currentTime) {
-        //                 await this.sendUserSleepReminder(userId, pref.sleepReminder.targetSleepHours);
-        //             }
+                    // Meal reminders
+                    if (pref.mealReminders?.enabled) {
+                        if (pref.mealReminders.breakfast && currentTime >= pref.mealReminders.breakfast) {
+                            await this.sendUserMealReminder(user, 'breakfast');
+                        }
+                        if (pref.mealReminders.lunch && currentTime >= pref.mealReminders.lunch) {
+                            await this.sendUserMealReminder(user, 'lunch');
+                        }
+                        if (pref.mealReminders.snack && currentTime >= pref.mealReminders.snack) {
+                            await this.sendUserMealReminder(user, 'snack');
+                        }
+                        if (pref.mealReminders.dinner && currentTime >= pref.mealReminders.dinner) {
+                            await this.sendUserMealReminder(user, 'dinner');
+                        }
+                    }
 
-        //             // Check macro update
-        //             if (pref.macroUpdate?.enabled && pref.macroUpdate.time === currentTime) {
-        //                 await this.sendUserMacroUpdate(userId);
-        //             }
+                    // Sleep reminder
+                    if (pref.sleepReminder?.enabled && pref.sleepReminder.time && currentTime >= pref.sleepReminder.time) {
+                        await this.sendUserSleepReminder(user, pref.sleepReminder.targetSleepHours);
+                    }
 
-        //             // Check diet adherence
-        //             if (pref.dietAdherence?.enabled && pref.dietAdherence.time === currentTime) {
-        //                 await this.sendUserDietAdherence(userId);
-        //             }
+                    // Macro update
+                    if (pref.macroUpdate?.enabled && pref.macroUpdate.time && currentTime >= pref.macroUpdate.time) {
+                        await this.sendUserMacroUpdate(userId);
+                    }
 
-        //             // Check health insights
-        //             if (pref.healthInsights?.enabled && pref.healthInsights.time === currentTime) {
-        //                 await this.sendUserHealthInsight(userId);
-        //             }
-        //         } catch (error) {
-        //             console.error(`Error processing notifications for user ${userId}:`, error.message);
-        //         }
-        //     }
-        // } catch (error) {
-        //     console.error('Error in checkAndSendUserNotifications:', error.message);
-        // }
+                    // Diet adherence
+                    if (pref.dietAdherence?.enabled && pref.dietAdherence.time && currentTime >= pref.dietAdherence.time) {
+                        await this.sendUserDietAdherence(userId);
+                    }
+
+                    // Health insights
+                    if (pref.healthInsights?.enabled && pref.healthInsights.time && currentTime >= pref.healthInsights.time) {
+                        await this.sendUserHealthInsight(userId);
+                    }
+                } catch (error) {
+                    console.error(`Error processing notifications for user ${userId}:`, error.message);
+                }
+            }
+        } catch (error) {
+            console.error('Error in checkAndSendUserNotifications:', error.message);
+        }
     }
 
     // ✅ OPTIMIZED: Get preferences with caching

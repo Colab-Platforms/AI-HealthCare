@@ -610,11 +610,6 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
       nutritionData: { totalCalories: finalNutrition.totalCalories || 0, calorieGoal, protein: finalNutrition.totalProtein || 0, carbs: finalNutrition.totalCarbs || 0, totalFats: finalNutrition.totalFats || 0, todayLogs: todayLogsArr || [] },
     };
 
-    try {
-      const notificationService = require('../services/notificationService');
-      notificationService.triggerUserStartupNotifications(reqUser).catch(e => {});
-    } catch (e) {}
-
     await cache.set(cacheKey, dashboardData, 300);
     return dashboardData;
 }
