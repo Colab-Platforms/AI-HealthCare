@@ -844,6 +844,13 @@ exports.updateHealthGoal = async (req, res) => {
     });
   } catch (error) {
     console.error('Update health goal error:', error);
+    if (error.name === 'ValidationError' || error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Please make sure weight, height, age and gender are filled in correctly before saving your goal.',
+        error: error.message
+      });
+    }
     res.status(500).json({
       success: false,
       message: 'Failed to update health goal',

@@ -266,6 +266,19 @@ export default function Profile() {
 
   const handleGoalSubmit = async (e) => {
     e.preventDefault();
+
+    const currentWeight = parseFloat(formData.profile.weight);
+    const height = parseFloat(formData.profile.height);
+    const age = parseInt(formData.profile.age);
+    const gender = formData.profile.gender;
+
+    if (!currentWeight || !height || !age || !gender) {
+      toast.error(
+        "Please fill your weight, height, age and gender in Personal Info before setting a goal.",
+      );
+      return;
+    }
+
     setGoalLoading(true);
     try {
       const targetDate = new Date();
@@ -276,11 +289,11 @@ export default function Profile() {
       const payload = {
         ...goalFormData,
         targetDate,
-        currentWeight: parseFloat(formData.profile.weight),
+        currentWeight,
         targetWeight: parseFloat(goalFormData.targetWeight),
-        height: parseFloat(formData.profile.height),
-        age: parseInt(formData.profile.age),
-        gender: formData.profile.gender,
+        height,
+        age,
+        gender,
         isDiabetic: formData.profile.isDiabetic === "yes",
       };
       const { data } = await api.put("nutrition/goals", payload);
