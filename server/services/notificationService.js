@@ -153,7 +153,7 @@ class NotificationService {
             });
 
             if (!existingReminder) {
-                const mealNames = { breakfast: '🌅 Breakfast', lunch: '☀️ Lunch', snack: '🍎 Snack', dinner: '🌙 Dinner' };
+                const mealNames = { breakfast: 'Breakfast', lunch: 'Lunch', snack: 'Snack', dinner: 'Dinner' };
                 const mealMessages = {
                     breakfast: 'Start your day right! Log your breakfast.',
                     lunch: 'Time for lunch! Don\'t forget to log it.',
@@ -166,7 +166,7 @@ class NotificationService {
                     type: 'food_reminder',
                     title: `${mealNames[mealType]} Reminder`,
                     message: mealMessages[mealType],
-                    icon: mealType === 'breakfast' ? '🌅' : mealType === 'lunch' ? '☀️' : mealType === 'snack' ? '🍎' : '🌙',
+                    icon: '',
                     priority: 'medium',
                     actionUrl: '/nutrition',
                     metadata: { mealType },
@@ -191,9 +191,9 @@ class NotificationService {
             await Notification.create({
                 userId: user._id,
                 type: 'sleep_reminder',
-                title: '😴 Sleep Tracking Reminder',
+                title: 'Sleep Tracking Reminder',
                 message: `Time to wind down! Aim for ${targetSleepHours} hours of sleep. Don't forget to log your sleep hours.`,
-                icon: '🌙',
+                icon: '',
                 priority: 'medium',
                 actionUrl: '/dashboard',
                 metadata: { reminderType: 'sleep', targetHours: targetSleepHours },
@@ -222,17 +222,13 @@ class NotificationService {
                 const carbsPct = summary.carbsGoal ? Math.round((summary.totalCarbs / summary.carbsGoal) * 100) : 0;
                 const fatsPct = summary.fatsGoal ? Math.round((summary.totalFats / summary.fatsGoal) * 100) : 0;
 
-                let statusEmoji = '📊';
                 let statusMsg = '';
 
                 if (calPct >= 80 && calPct <= 110) {
-                    statusEmoji = '✅';
                     statusMsg = 'You\'re on track with your calorie goal!';
                 } else if (calPct < 50) {
-                    statusEmoji = '⚠️';
                     statusMsg = `You've only consumed ${calPct}% of your daily calories. Try to eat more balanced meals.`;
                 } else if (calPct > 110) {
-                    statusEmoji = '🔴';
                     statusMsg = `You've exceeded your calorie goal by ${calPct - 100}%. Consider lighter options for remaining meals.`;
                 } else {
                     statusMsg = `You've consumed ${calPct}% of your daily calories. Keep it up!`;
@@ -241,9 +237,9 @@ class NotificationService {
                 await Notification.create({
                     userId,
                     type: 'macro_update',
-                    title: `${statusEmoji} Daily Macro Check`,
-                    message: `${statusMsg}\n🥩 Protein: ${summary.totalProtein}g/${summary.proteinGoal || '?'}g (${protPct}%) | 🍞 Carbs: ${summary.totalCarbs}g/${summary.carbsGoal || '?'}g (${carbsPct}%) | 🥑 Fats: ${summary.totalFats}g/${summary.fatsGoal || '?'}g (${fatsPct}%)`,
-                    icon: statusEmoji,
+                    title: 'Daily Macro Check',
+                    message: `${statusMsg}\nProtein: ${summary.totalProtein}g/${summary.proteinGoal || '?'}g (${protPct}%) | Carbs: ${summary.totalCarbs}g/${summary.carbsGoal || '?'}g (${carbsPct}%) | Fats: ${summary.totalFats}g/${summary.fatsGoal || '?'}g (${fatsPct}%)`,
+                    icon: '',
                     priority: calPct < 50 || calPct > 120 ? 'high' : 'low',
                     actionUrl: '/nutrition',
                     metadata: {
@@ -301,28 +297,24 @@ class NotificationService {
                 ).length;
 
                 let message = '';
-                let icon = '📋';
                 let priority = 'low';
 
                 if (mealsLogged === 0) {
                     message = 'You haven\'t logged any meals today. Your personalized diet plan is waiting for you!';
-                    icon = '🍽️';
                     priority = 'medium';
                 } else if (matchCount > 0) {
                     message = `Great job! ${matchCount} of your logged foods match your recommended diet plan. Keep following your personalized nutrition!`;
-                    icon = '🌟';
                 } else {
                     message = `You've logged ${mealsLogged} meal(s) today. Try to include more foods from your personalized diet plan for optimal results.`;
-                    icon = '💡';
                     priority = 'medium';
                 }
 
                 await Notification.create({
                     userId,
                     type: 'diet_adherence',
-                    title: `${icon} Diet Plan Adherence`,
+                    title: 'Diet Plan Adherence',
                     message,
-                    icon,
+                    icon: '',
                     priority,
                     actionUrl: '/diet-plan',
                     metadata: { mealsLogged, matchCount, totalRecommended: recommendedFoods.length },
@@ -346,11 +338,11 @@ class NotificationService {
         if (!existingInsight) {
             // Generate a random health insight based on user data
             const insights = [
-                { title: '💧 Hydration Tip', message: 'Remember to drink enough water throughout the day. Aim for 8-10 glasses daily!' },
-                { title: '🚶 Movement Reminder', message: 'Try to take a short walk today. Even 10 minutes of movement can boost your mood!' },
-                { title: '🧘 Stress Management', message: 'Take a few minutes to practice deep breathing or meditation to reduce stress.' },
-                { title: '🥗 Nutrition Tip', message: 'Include more colorful vegetables in your meals for better nutrition!' },
-                { title: '😴 Sleep Quality', message: 'Maintain a consistent sleep schedule for better health and energy levels.' }
+                { title: 'Hydration Tip', message: 'Remember to drink enough water throughout the day. Aim for 8-10 glasses daily!' },
+                { title: 'Movement Reminder', message: 'Try to take a short walk today. Even 10 minutes of movement can boost your mood!' },
+                { title: 'Stress Management', message: 'Take a few minutes to practice deep breathing or meditation to reduce stress.' },
+                { title: 'Nutrition Tip', message: 'Include more colorful vegetables in your meals for better nutrition!' },
+                { title: 'Sleep Quality', message: 'Maintain a consistent sleep schedule for better health and energy levels.' }
             ];
 
             const randomInsight = insights[Math.floor(Math.random() * insights.length)];
@@ -360,7 +352,7 @@ class NotificationService {
                 type: 'health_insight',
                 title: randomInsight.title,
                 message: randomInsight.message,
-                icon: '💡',
+                icon: '',
                 priority: 'low',
                 actionUrl: '/dashboard',
                 metadata: { insightType: 'daily_tip' },
@@ -398,10 +390,10 @@ class NotificationService {
 
                     if (!existingReminder) {
                         const mealNames = {
-                            breakfast: '🌅 Breakfast',
-                            lunch: '☀️ Lunch',
-                            snack: '🍎 Snack',
-                            dinner: '🌙 Dinner'
+                            breakfast: 'Breakfast',
+                            lunch: 'Lunch',
+                            snack: 'Snack',
+                            dinner: 'Dinner'
                         };
 
                         const mealMessages = {
@@ -416,7 +408,7 @@ class NotificationService {
                             type: 'food_reminder',
                             title: `${mealNames[mealType]} Reminder`,
                             message: mealMessages[mealType],
-                            icon: mealType === 'breakfast' ? '🌅' : mealType === 'lunch' ? '☀️' : mealType === 'snack' ? '🍎' : '🌙',
+                            icon: '',
                             priority: 'medium',
                             actionUrl: '/nutrition',
                             metadata: { mealType },
@@ -448,9 +440,9 @@ class NotificationService {
                     await Notification.create({
                         userId: user._id,
                         type: 'sleep_reminder',
-                        title: '😴 Sleep Tracking Reminder',
+                        title: 'Sleep Tracking Reminder',
                         message: 'Time to wind down! Don\'t forget to log your sleep hours for better health insights.',
-                        icon: '🌙',
+                        icon: '',
                         priority: 'medium',
                         actionUrl: '/dashboard',
                         metadata: { reminderType: 'sleep' },
@@ -484,17 +476,13 @@ class NotificationService {
                     const carbsPct = summary.carbsGoal ? Math.round((summary.totalCarbs / summary.carbsGoal) * 100) : 0;
                     const fatsPct = summary.fatsGoal ? Math.round((summary.totalFats / summary.fatsGoal) * 100) : 0;
 
-                    let statusEmoji = '📊';
                     let statusMsg = '';
 
                     if (calPct >= 80 && calPct <= 110) {
-                        statusEmoji = '✅';
                         statusMsg = 'You\'re on track with your calorie goal!';
                     } else if (calPct < 50) {
-                        statusEmoji = '⚠️';
                         statusMsg = `You've only consumed ${calPct}% of your daily calories. Try to eat more balanced meals.`;
                     } else if (calPct > 110) {
-                        statusEmoji = '🔴';
                         statusMsg = `You've exceeded your calorie goal by ${calPct - 100}%. Consider lighter options for remaining meals.`;
                     } else {
                         statusMsg = `You've consumed ${calPct}% of your daily calories. Keep it up!`;
@@ -503,9 +491,9 @@ class NotificationService {
                     await Notification.create({
                         userId: summary.userId,
                         type: 'macro_update',
-                        title: `${statusEmoji} Daily Macro Check`,
-                        message: `${statusMsg}\n🥩 Protein: ${summary.totalProtein}g/${summary.proteinGoal || '?'}g (${protPct}%) | 🍞 Carbs: ${summary.totalCarbs}g/${summary.carbsGoal || '?'}g (${carbsPct}%) | 🥑 Fats: ${summary.totalFats}g/${summary.fatsGoal || '?'}g (${fatsPct}%)`,
-                        icon: statusEmoji,
+                        title: 'Daily Macro Check',
+                        message: `${statusMsg}\nProtein: ${summary.totalProtein}g/${summary.proteinGoal || '?'}g (${protPct}%) | Carbs: ${summary.totalCarbs}g/${summary.carbsGoal || '?'}g (${carbsPct}%) | Fats: ${summary.totalFats}g/${summary.fatsGoal || '?'}g (${fatsPct}%)`,
+                        icon: '',
                         priority: calPct < 50 || calPct > 120 ? 'high' : 'low',
                         actionUrl: '/nutrition',
                         metadata: {
@@ -570,28 +558,24 @@ class NotificationService {
                     ).length;
 
                     let message = '';
-                    let icon = '📋';
                     let priority = 'low';
 
                     if (mealsLogged === 0) {
                         message = 'You haven\'t logged any meals today. Your personalized diet plan is waiting for you!';
-                        icon = '🍽️';
                         priority = 'medium';
                     } else if (matchCount > 0) {
                         message = `Great job! ${matchCount} of your logged foods match your recommended diet plan. Keep following your personalized nutrition!`;
-                        icon = '🌟';
                     } else {
                         message = `You've logged ${mealsLogged} meal(s) today. Try to include more foods from your personalized diet plan for optimal results.`;
-                        icon = '💡';
                         priority = 'medium';
                     }
 
                     await Notification.create({
                         userId: plan.userId,
                         type: 'diet_adherence',
-                        title: `${icon} Diet Plan Adherence`,
+                        title: 'Diet Plan Adherence',
                         message,
-                        icon,
+                        icon: '',
                         priority,
                         actionUrl: '/diet-plan',
                         metadata: { mealsLogged, matchCount, totalRecommended: recommendedFoods.length },
@@ -632,7 +616,7 @@ class NotificationService {
                 type,
                 title,
                 message,
-                icon: icon || '🔔',
+                icon: icon || '',
                 priority: priority || 'medium',
                 actionUrl,
                 metadata,

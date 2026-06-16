@@ -16,13 +16,14 @@ const notificationSchema = new mongoose.Schema({
             'diet_adherence',     // Whether following recommended diet
             'health_insight',     // General health insights
             'report_comparison',  // Report comparison available
-            'goal_progress'       // Progress toward fitness goal
+            'goal_progress',      // Progress toward fitness goal
+            'diet_ready'          // Personalized diet plan generated
         ],
         required: true
     },
     title: { type: String, required: true },
     message: { type: String, required: true },
-    icon: { type: String, default: '🔔' }, // Emoji icon
+    icon: { type: String, default: '' },
     priority: {
         type: String,
         enum: ['low', 'medium', 'high'],

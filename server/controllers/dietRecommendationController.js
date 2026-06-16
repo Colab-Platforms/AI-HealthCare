@@ -361,9 +361,9 @@ async function processDietInternal(userId, dietPlanId, userData, promptEx) {
     // Notifications & Email
     await notificationService.createNotification(userId, {
       type: 'diet_ready',
-      title: '🍽️ Diet Plan Ready!',
+      title: 'Diet Plan Ready!',
       message: 'Your personalized AI diet plan has been generated.',
-      icon: '🍽️',
+      icon: '',
       priority: 'high',
       actionUrl: '/diet-plan'
     });
