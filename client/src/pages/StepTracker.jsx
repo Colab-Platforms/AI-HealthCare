@@ -7,7 +7,10 @@ import {
   Target,
   Activity,
   Smartphone,
+  Plus,
+  Check,
 } from "lucide-react";
+import { wearableService } from "../services/api";
 import {
   BarChart,
   Bar,
@@ -86,11 +89,16 @@ export default function StepTracker() {
     debugInfo,
     requestPermission,
     updateGoal,
+    addSteps,
   } = usePedometer();
 
   const [dailyStepsHistory, setDailyStepsHistory] = useState([]);
   const [isEditingGoal, setIsEditingGoal] = useState(false);
   const [tempGoal, setTempGoal] = useState(dailyGoal);
+  const [isLoggingSteps, setIsLoggingSteps] = useState(false);
+  const [manualSteps, setManualSteps] = useState("");
+  const [logLoading, setLogLoading] = useState(false);
+  const [logSuccess, setLogSuccess] = useState(false);
 
   const caloriesBurned = Math.round(steps * 0.04);
   const distanceKm = (steps * 0.000762).toFixed(2);
@@ -122,6 +130,27 @@ export default function StepTracker() {
   const handleSaveGoal = () => {
     updateGoal(tempGoal);
     setIsEditingGoal(false);
+  };
+
+  const handleLogSteps = async () => {
+    const count = parseInt(manualSteps);
+    if (!count || count <= 0) return;
+    setLogLoading(true);
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      await wearableService.syncMetrics("other", { steps: count, date: today });
+      addSteps(count);
+      setLogSuccess(true);
+      setManualSteps("");
+      setTimeout(() => {
+        setLogSuccess(false);
+        setIsLoggingSteps(false);
+      }, 1200);
+    } catch (e) {
+      console.error("Failed to log steps", e);
+    } finally {
+      setLogLoading(false);
+    }
   };
 
   const CustomTooltip = ({ active, payload }) => {
@@ -383,6 +412,87 @@ export default function StepTracker() {
           </div>
         </div>
       </div>
+
+      {/* Log Steps FAB */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 w-full max-w-md px-6 pointer-events-none">
+        <motion.button
+          whileTap={{ scale: 0.95 }}
+          onClick={() => { setIsLoggingSteps(true); setManualSteps(""); setLogSuccess(false); }}
+          className="pointer-events-auto w-full py-4 rounded-[1.5rem] text-sm font-black uppercase tracking-widest shadow-2xl flex items-center justify-center gap-2.5"
+          style={{ background: "linear-gradient(135deg, #064e3b 0%, #10b981 100%)", color: "#fff" }}
+        >
+          <Plus className="w-5 h-5" />
+          Log Steps Manually
+        </motion.button>
+      </div>
+
+      <AnimatePresence>
+        {isLoggingSteps && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setIsLoggingSteps(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="bg-white w-full max-w-xs rounded-[2.5rem] p-8 relative z-10 shadow-2xl"
+            >
+              <div className="w-12 h-12 rounded-2xl flex items-center justify-center mb-4" style={{ background: "linear-gradient(135deg,#064e3b,#10b981)" }}>
+                <Footprints className="w-6 h-6 text-white" />
+              </div>
+              <h3 className="text-xl font-black text-black mb-1 tracking-tight">Log Steps</h3>
+              <p className="text-[11px] text-slate-400 font-bold uppercase tracking-widest mb-6">
+                Add to today's count
+              </p>
+
+              <div className="relative mb-6">
+                <input
+                  type="number"
+                  value={manualSteps}
+                  onChange={(e) => setManualSteps(e.target.value)}
+                  placeholder="e.g. 2000"
+                  className="w-full text-4xl font-black text-black border-b-4 border-slate-100 focus:border-emerald-500 transition-colors py-2 outline-none placeholder:text-slate-200"
+                  autoFocus
+                  onKeyDown={(e) => e.key === "Enter" && handleLogSteps()}
+                />
+                <span className="absolute right-0 bottom-3 text-[10px] font-black text-slate-300 uppercase tracking-widest">steps</span>
+              </div>
+
+              <div className="flex gap-2 mb-6">
+                {[500, 1000, 2000, 5000].map((preset) => (
+                  <button
+                    key={preset}
+                    onClick={() => setManualSteps(preset.toString())}
+                    className={`flex-1 py-2 rounded-xl text-[10px] font-black uppercase tracking-wider transition-all ${parseInt(manualSteps) === preset ? "bg-emerald-600 text-white shadow-md" : "bg-slate-50 text-slate-400 hover:bg-slate-100"}`}
+                  >
+                    {preset >= 1000 ? `${preset / 1000}k` : preset}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setIsLoggingSteps(false)}
+                  className="flex-1 py-4 text-xs font-black text-slate-400 uppercase tracking-widest hover:text-black transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleLogSteps}
+                  disabled={logLoading || logSuccess || !manualSteps}
+                  className="flex-1 py-4 text-xs font-black text-white uppercase tracking-widest rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+                  style={{ background: logSuccess ? "#10b981" : "linear-gradient(135deg,#064e3b,#10b981)" }}
+                >
+                  {logSuccess ? <><Check className="w-4 h-4" /> Logged!</> : logLoading ? "Saving…" : "Log Steps"}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       <AnimatePresence>
         {isEditingGoal && (

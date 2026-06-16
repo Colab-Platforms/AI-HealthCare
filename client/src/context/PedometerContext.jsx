@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useState, useEffect, useRef, useCallback } from 'react';
+import { wearableService } from '../services/api';
 
 const PedometerContext = createContext();
 
@@ -213,6 +214,31 @@ export const PedometerProvider = ({ children }) => {
         localStorage.setItem('takehealth_step_goal', newGoal.toString());
     };
 
+    // Allows manual step logging (e.g. from StepTracker page) to update local state immediately
+    const addSteps = useCallback((count) => {
+        const newTotal = stepsRef.current + count;
+        stepsRef.current = newTotal;
+        setSteps(newTotal);
+        persistSteps(newTotal);
+    }, []);
+
+    // Sync backend steps on mount — steps logged via Vitals modal go to wearables/sync
+    // but PedometerContext only reads device sensor + localStorage. Reconcile on init.
+    useEffect(() => {
+        const fetchBackendSteps = async () => {
+            try {
+                const res = await wearableService.getDashboard();
+                const backendSteps = res?.data?.todayMetrics?.steps || 0;
+                if (backendSteps > stepsRef.current) {
+                    stepsRef.current = backendSteps;
+                    setSteps(backendSteps);
+                    persistSteps(backendSteps);
+                }
+            } catch { /* silent — sensor data still works */ }
+        };
+        fetchBackendSteps();
+    }, []);
+
     useEffect(() => {
         startSensors();
         const handleVisibility = () => {
@@ -224,6 +250,15 @@ export const PedometerProvider = ({ children }) => {
                     setSteps(stored);
                 }
                 acquireWakeLock();
+                // Re-sync backend steps when tab becomes visible
+                wearableService.getDashboard().then(res => {
+                    const backendSteps = res?.data?.todayMetrics?.steps || 0;
+                    if (backendSteps > stepsRef.current) {
+                        stepsRef.current = backendSteps;
+                        setSteps(backendSteps);
+                        persistSteps(backendSteps);
+                    }
+                }).catch(() => {});
             }
         };
         document.addEventListener('visibilitychange', handleVisibility);
@@ -248,7 +283,8 @@ export const PedometerProvider = ({ children }) => {
             dailyGoal,
             debugInfo,
             requestPermission,
-            updateGoal
+            updateGoal,
+            addSteps
         }}>
             {children}
         </PedometerContext.Provider>

@@ -83,20 +83,14 @@ export default function Challenge30Days() {
     localStorage.setItem("challenge30DaysCurrentDay", currentDay);
   }, [currentDay]);
 
-  useEffect(() => {
-    if (challengeStartDate) {
-      const start = new Date(challengeStartDate);
-      start.setHours(0, 0, 0, 0);
-      const now = new Date();
-      now.setHours(0, 0, 0, 0);
-      const diffMs = now - start;
-      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
-
-      if (diffDays > 0 && diffDays <= 30) {
-        setCurrentDay(diffDays);
-      }
-    }
-  }, [challengeStartDate]);
+  const computeDayFromStart = (startDateStr) => {
+    const start = new Date(startDateStr);
+    start.setHours(0, 0, 0, 0);
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const diffMs = now - start;
+    return Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1;
+  };
 
   const loadChallengeData = async () => {
     setLoading(true);
@@ -121,6 +115,15 @@ export default function Challenge30Days() {
       if (!startDate) {
         startDate = new Date().toISOString();
         await api.post("health/challenge", { challengeData: data });
+      }
+
+      // Always recompute today's day-number from the start date, regardless
+      // of whether challengeStartDate state actually changes on this load
+      const diffDays = computeDayFromStart(startDate);
+      if (diffDays > 0 && diffDays <= 30) {
+        setCurrentDay(diffDays);
+      } else if (diffDays > 30) {
+        setCurrentDay(30);
       }
 
       setChallengeData(data);

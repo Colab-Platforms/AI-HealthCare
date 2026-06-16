@@ -776,13 +776,24 @@ function Nutrition() {
     try {
       const mappedMealType = mealTab.toLowerCase();
 
+      const rawNutrition = data.foodItem?.nutrition || data.nutrition || data.totalNutrition || {};
+      const safeNutrition = {
+        calories: Number(rawNutrition.calories) || 0,
+        protein: Number(rawNutrition.protein) || 0,
+        carbs: Number(rawNutrition.carbs) || 0,
+        fats: Number(rawNutrition.fats) || 0,
+        fiber: Number(rawNutrition.fiber) || 0,
+        sugar: Number(rawNutrition.sugar) || 0,
+        sodium: Number(rawNutrition.sodium) || 0,
+      };
+
       const logData = {
         mealType: mappedMealType,
         foodItems: [
           {
-            name: data._userInput || data.foodItem?.name || data.foodName,
+            name: data._userInput || data.foodItem?.name || data.foodName || data.name || "Food Item",
             quantity: data.foodItem?.quantity || data.quantity || "1 serving",
-            nutrition: data.foodItem?.nutrition || data.nutrition || {},
+            nutrition: safeNutrition,
           },
         ],
         healthScore: data.healthScore,

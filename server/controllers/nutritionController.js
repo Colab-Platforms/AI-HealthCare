@@ -389,6 +389,16 @@ exports.logMeal = async (req, res) => {
       });
     }
 
+    // Ensure every food item has the required fields before hitting Mongoose validation
+    foodItems.forEach((item, i) => {
+      if (!item.name) item.name = 'Food Item';
+      if (!item.nutrition) item.nutrition = {};
+      item.nutrition.calories = Number(item.nutrition.calories) || 0;
+      item.nutrition.protein  = Number(item.nutrition.protein)  || 0;
+      item.nutrition.carbs    = Number(item.nutrition.carbs)    || 0;
+      item.nutrition.fats     = Number(item.nutrition.fats)     || 0;
+    });
+
     // Sanitize metadata
     const sanitizedMicronutrients = sanitizeMicronutrients(micronutrients);
     const sanitizedTips = sanitizeTips(enhancementTips);

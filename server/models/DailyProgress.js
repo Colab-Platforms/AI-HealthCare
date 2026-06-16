@@ -16,6 +16,7 @@ const dailyProgressSchema = new mongoose.Schema({
     hydrationScore: { type: Number, default: 0 },
     stressScore: { type: Number, default: 0 },
     waterIntake: { type: Number, default: 0 },
+    completedTasks: { type: [Number], default: [] },
     updatedAt: { type: Date, default: Date.now }
 });
 

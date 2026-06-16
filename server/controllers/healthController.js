@@ -26,6 +26,10 @@ const withTimeout = (query, timeoutMs = 45000) => {
   return query.maxTimeMS(timeoutMs);
 };
 
+// Dedupe concurrent dashboard cache-misses for the same user (avoids N parallel
+// DB-query bursts when a user has multiple tabs/requests hitting an expired cache)
+const dashboardInFlight = new Map();
+
 /**
  * 🚀 BACKGROUND ANALYSIS PROCESSOR
  */
@@ -455,10 +459,30 @@ exports.getHealthHistory = async (req, res) => {
 
 exports.getDashboardData = async (req, res) => {
   try {
-    const cacheKey = `dashboard:${req.user._id}`;
+    const userId = req.user._id.toString();
+    const cacheKey = `dashboard:${userId}`;
     const cached = await cache.get(cacheKey);
     if (cached) return res.json(cached);
 
+    // If another request for this user is already rebuilding the cache, wait
+    // for it instead of firing another identical burst of DB queries
+    if (dashboardInFlight.has(userId)) {
+      return res.json(await dashboardInFlight.get(userId));
+    }
+    const buildPromise = buildDashboardData(req.user, userId, cacheKey);
+    dashboardInFlight.set(userId, buildPromise);
+    try {
+      const dashboardData = await buildPromise;
+      return res.json(dashboardData);
+    } finally {
+      dashboardInFlight.delete(userId);
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+async function buildDashboardData(reqUser, userId, cacheKey) {
     const today = new Date();
     const todayStr = today.toISOString().split('T')[0];
     const targetDate = new Date(todayStr);
@@ -476,16 +500,16 @@ exports.getDashboardData = async (req, res) => {
       userWithLogs, wearables, weightMetrics,
       latestGlucose, latestHbA1c, totalReports,
     ] = await Promise.all([
-      HealthReport.find({ user: req.user._id, status: { $in: ['completed', 'processing'] } }).sort({ createdAt: -1 }).limit(10).lean(),
-      FoodLog.find({ userId: req.user._id, timestamp: { $gte: targetDate, $lt: tomorrow } }).lean(),
-      NutritionSummary.findOne({ userId: req.user._id, date: targetDate }).lean(),
-      NutritionSummary.find({ userId: req.user._id, date: { $gte: ninetyDaysAgo, $lte: targetDate } }).sort({ date: 1 }).lean(),
-      User.findById(req.user._id).select('alcoholLog smokeLog profile.lifestyle').lean(),
-      withTimeout(WearableData.find({ user: req.user._id }).lean()),
-      withTimeout(HealthMetric.find({ userId: req.user._id, type: 'weight', recordedAt: { $gte: ninetyDaysAgo, $lte: targetDate } }).sort({ recordedAt: 1 }).lean()),
-      HealthMetric.findOne({ userId: req.user._id, type: 'blood_sugar' }).sort({ recordedAt: -1 }).lean(),
-      HealthMetric.findOne({ userId: req.user._id, type: 'hba1c' }).sort({ recordedAt: -1 }).lean(),
-      HealthReport.countDocuments({ user: req.user._id }),
+      HealthReport.find({ user: reqUser._id, status: { $in: ['completed', 'processing'] } }).sort({ createdAt: -1 }).limit(10).lean(),
+      FoodLog.find({ userId: reqUser._id, timestamp: { $gte: targetDate, $lt: tomorrow } }).lean(),
+      NutritionSummary.findOne({ userId: reqUser._id, date: targetDate }).lean(),
+      NutritionSummary.find({ userId: reqUser._id, date: { $gte: ninetyDaysAgo, $lte: targetDate } }).sort({ date: 1 }).lean(),
+      User.findById(reqUser._id).select('alcoholLog smokeLog profile.lifestyle').lean(),
+      withTimeout(WearableData.find({ user: reqUser._id }).lean()),
+      withTimeout(HealthMetric.find({ userId: reqUser._id, type: 'weight', recordedAt: { $gte: ninetyDaysAgo, $lte: targetDate } }).sort({ recordedAt: 1 }).lean()),
+      HealthMetric.findOne({ userId: reqUser._id, type: 'blood_sugar' }).sort({ recordedAt: -1 }).lean(),
+      HealthMetric.findOne({ userId: reqUser._id, type: 'hba1c' }).sort({ recordedAt: -1 }).lean(),
+      HealthReport.countDocuments({ user: reqUser._id }),
     ]);
 
     // Process reports
@@ -546,7 +570,7 @@ exports.getDashboardData = async (req, res) => {
 
     // Build 90-day history — O(90) flat loop instead of O(90 × N × M)
     const history = [];
-    let lastKnownWeight = req.user.profile?.weight || 70;
+    let lastKnownWeight = reqUser.profile?.weight || 70;
     for (let i = 0; i < 90; i++) {
       const d = new Date(ninetyDaysAgo);
       d.setUTCDate(d.getUTCDate() + i);
@@ -566,17 +590,19 @@ exports.getDashboardData = async (req, res) => {
       });
     }
 
-    const calorieGoal = req.user.nutritionGoal?.calorieGoal || 2100;
+    const calorieGoal = reqUser.nutritionGoal?.calorieGoal || 2100;
+    // Trim the user object sent to the frontend — strip password/version/internal fields
+    const { password, __v, ...trimmedUser } = reqUser.toObject();
     const dashboardData = {
-      user: { ...req.user.toObject(), password: undefined },
+      user: trimmedUser,
       healthScores, latestAnalysis: latestReport?.aiAnalysis, latestReportId: latestReport?._id, processingReport, latestComparison,
       totalReports, recentReports: reports.slice(0, 5), reportTypeCounts, history,
       stepsToday: history[history.length - 1]?.steps || 0,
       sleepToday: history[history.length - 1]?.sleep || 0,
-      goals: { steps: 10000, sleep: 8, water: 8, weight: req.user.nutritionGoal?.targetWeight || 70, calories: calorieGoal, protein: req.user.nutritionGoal?.proteinGoal || 150, carbs: req.user.nutritionGoal?.carbsGoal || 200, fats: req.user.nutritionGoal?.fatGoal || 65 },
+      goals: { steps: 10000, sleep: 8, water: 8, weight: reqUser.nutritionGoal?.targetWeight || 70, calories: calorieGoal, protein: reqUser.nutritionGoal?.proteinGoal || 150, carbs: reqUser.nutritionGoal?.carbsGoal || 200, fats: reqUser.nutritionGoal?.fatGoal || 65 },
       alcoholToday: alcoholSummary.today, alcoholTodayUnits: alcoholSummary.todayUnits,
       alcohol7DayAvg: alcoholSummary.avg7, alcoholSummary,
-      streakDays: req.user.streakDays || 0,
+      streakDays: reqUser.streakDays || 0,
       vitals: {
         glucose: latestGlucose ? { value: latestGlucose.value, recordedAt: latestGlucose.recordedAt } : null,
         hba1c: latestHbA1c ? { value: latestHbA1c.value, recordedAt: latestHbA1c.recordedAt } : null,
@@ -586,15 +612,12 @@ exports.getDashboardData = async (req, res) => {
 
     try {
       const notificationService = require('../services/notificationService');
-      notificationService.triggerUserStartupNotifications(req.user).catch(e => {});
+      notificationService.triggerUserStartupNotifications(reqUser).catch(e => {});
     } catch (e) {}
 
     await cache.set(cacheKey, dashboardData, 300);
-    res.json(dashboardData);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
+    return dashboardData;
+}
 
 exports.getMetricInfo = async (req, res) => {
   try {
@@ -704,8 +727,16 @@ exports.getReportComparison = async (req, res) => {
 
 exports.syncDailyProgress = async (req, res) => {
   try {
-    const { date, totalScore } = req.body;
-    await DailyProgress.findOneAndUpdate({ userId: req.user._id, date }, { totalScore }, { upsert: true });
+    const { date, totalScore, completedTasks } = req.body;
+    const update = { updatedAt: new Date() };
+    if (totalScore !== undefined) update.totalScore = totalScore;
+    if (completedTasks !== undefined) update.completedTasks = completedTasks;
+    await DailyProgress.findOneAndUpdate(
+      { userId: req.user._id, date },
+      update,
+      { upsert: true, new: true }
+    );
+    await cache.delete(`dashboard:${req.user._id}`);
     res.json({ success: true });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -839,6 +870,7 @@ exports.saveSmokeLog = async (req, res) => {
     ).select('smokeLog');
 
     if (!user) return res.status(404).json({ message: 'User not found' });
+    await cache.delete(`dashboard:${req.user._id}`);
     res.json({ success: true, smokeLog: toPlainSmokeLog(user.smokeLog) });
   } catch (error) {
     res.status(500).json({ message: error.message });

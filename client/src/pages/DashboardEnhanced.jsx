@@ -84,6 +84,7 @@ import SmokeTrackerCard from "../components/SmokeTrackerCard";
 import AlcoholTrackerCard from "../components/AlcoholTrackerCard";
 import { features } from "../config/features";
 import StepMiniCard from "../components/StepCounter";
+import useCarePlanTasks from "../hooks/useCarePlanTasks";
 
 const DashedGauge = ({ value, max = 2400, mode = "Macro" }) => {
   const percentage = max > 0 ? Math.min((value / max) * 100, 100) : 0;
@@ -1075,29 +1076,7 @@ export default function DashboardEnhanced() {
     }
   };
 
-  const [completedTasks, setCompletedTasks] = useState(() => {
-    const saved = localStorage.getItem("carePlanTasks");
-    if (!saved) return [];
-    try {
-      const { tasks, date } = JSON.parse(saved);
-      const today = new Date().toISOString().split("T")[0];
-      if (date === today) return tasks;
-      return []; // Reset for new day
-    } catch (e) {
-      return [];
-    }
-  });
-
-  useEffect(() => {
-    const today = new Date().toISOString().split("T")[0];
-    localStorage.setItem(
-      "carePlanTasks",
-      JSON.stringify({
-        tasks: completedTasks,
-        date: today,
-      }),
-    );
-  }, [completedTasks]);
+  const { completedTasks, toggleTask: toggleCarePlanTask } = useCarePlanTasks();
 
   const overallPerformanceInsight = useMemo(() => {
     if (!dashboardData) return [];
@@ -1669,7 +1648,7 @@ export default function DashboardEnhanced() {
             </div>
 
             {/* Dashed Gauge */}
-            <div className="flex justify-center mb-0 -mt-14 lg:-mt-16 relative z-10 w-full overflow-visible">
+            <div className="flex justify-center mb-0 mt-2 relative z-10 w-full overflow-visible">
               <DashedGauge
                 value={
                   nutritionData?.totalCalories ||
@@ -2723,13 +2702,7 @@ export default function DashboardEnhanced() {
                     <div
                       key={i}
                       className="flex items-center gap-4 group cursor-pointer"
-                      onClick={() => {
-                        setCompletedTasks((prev) =>
-                          prev.includes(i)
-                            ? prev.filter((t) => t !== i)
-                            : [...prev, i],
-                        );
-                      }}
+                      onClick={() => toggleCarePlanTask(i)}
                     >
                       <div
                         className={`w-5 h-5 rounded-full flex items-center justify-center border transition-colors flex-shrink-0 ${isCompleted ? "border-[#1a1a1a] bg-[#1a1a1a]" : "border-slate-300 group-hover:border-slate-400"}`}
