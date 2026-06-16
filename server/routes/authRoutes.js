@@ -7,17 +7,18 @@ const {
 } = require('../controllers/authController');
 const { protect, authorize } = require('../middleware/auth');
 const upload = require('../middleware/upload');
+const { authLimiter } = require('../middleware/rateLimit');
 
-router.post('/register', register);
-router.post('/register-otp', requestRegistrationOtp);
-router.post('/register/doctor', registerDoctor);
-router.post('/login', login);
+router.post('/register', authLimiter, register);
+router.post('/register-otp', authLimiter, requestRegistrationOtp);
+router.post('/register/doctor', authLimiter, registerDoctor);
+router.post('/login', authLimiter, login);
 router.post('/logout', protect, require('../controllers/authController').logout);
-router.post('/verify-email', verifyEmail);
-router.post('/resend-verify-code', resendVerificationCode);
-router.post('/forgot-password', require('../controllers/authController').forgotPassword);
-router.post('/verify-reset-code', require('../controllers/authController').verifyResetCode);
-router.post('/reset-password', require('../controllers/authController').resetPassword);
+router.post('/verify-email', authLimiter, verifyEmail);
+router.post('/resend-verify-code', authLimiter, resendVerificationCode);
+router.post('/forgot-password', authLimiter, require('../controllers/authController').forgotPassword);
+router.post('/verify-reset-code', authLimiter, require('../controllers/authController').verifyResetCode);
+router.post('/reset-password', authLimiter, require('../controllers/authController').resetPassword);
 router.get('/profile', protect, getProfile);
 router.put('/profile', protect, updateProfile);
 router.post('/upload-profile-picture', protect, upload.single('profilePicture'), uploadProfilePicture);

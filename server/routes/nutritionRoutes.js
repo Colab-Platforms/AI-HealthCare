@@ -2,16 +2,17 @@ const express = require('express');
 const router = express.Router();
 const nutritionController = require('../controllers/nutritionController');
 const { protect } = require('../middleware/auth');
+const { aiLimiter } = require('../middleware/rateLimit');
 
 // All routes require authentication
 router.use(protect);
 
 // Food Analysis
 const upload = require('../middleware/upload');
-router.post('/analyze-food', nutritionController.analyzeFood);
-router.post('/quick-check', upload.single('image'), nutritionController.quickFoodCheck);
+router.post('/analyze-food', aiLimiter, nutritionController.analyzeFood);
+router.post('/quick-check', aiLimiter, upload.single('image'), nutritionController.quickFoodCheck);
 router.post('/quick-check/save', nutritionController.saveQuickCheck);
-router.post('/get-alternatives', nutritionController.getHealthyAlternatives);
+router.post('/get-alternatives', aiLimiter, nutritionController.getHealthyAlternatives);
 
 // Health Goals - SPECIFIC ROUTES BEFORE PARAMETERIZED ROUTES
 router.post('/goals', nutritionController.setHealthGoal);

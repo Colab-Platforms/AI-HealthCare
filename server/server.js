@@ -23,6 +23,11 @@ if (!process.env.VERCEL) {
 
 const app = express();
 
+// App runs behind Vercel/Cloudflare — trust the first proxy hop so
+// express-rate-limit (and req.ip generally) sees the real client IP
+// from X-Forwarded-For instead of the proxy's IP for every request.
+app.set("trust proxy", 1);
+
 // Improved Database Middleware
 app.use(async (req, res, next) => {
   const skipPaths = ["/api/health-check", "/api/ping", "/api/debug-connection"];

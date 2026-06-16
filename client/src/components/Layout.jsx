@@ -35,7 +35,7 @@ import { useData } from "../context/DataContext";
 import TextSelectionPopup from "./TextSelectionPopup";
 import MobileBottomNav from "./MobileBottomNav";
 import PWAInstallPrompt from "./PWAInstallPrompt";
-import api from "../services/api";
+import api, { notificationService } from "../services/api";
 import NotificationPanel from "./NotificationPanel";
 import { useRef } from "react";
 
@@ -86,8 +86,24 @@ export default function Layout({
     calorieTarget: 2000,
   });
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const notificationTriggerRef = useRef(null);
+
+  // Poll unread notification count for the bell badge
+  useEffect(() => {
+    if (!user) return;
+    const fetchUnread = async () => {
+      try {
+        const { data } = await notificationService.getUnreadCount();
+        const count = typeof data?.unreadCount === 'object' ? data.unreadCount.unreadCount : data?.unreadCount;
+        setUnreadNotifCount(Number(count) || 0);
+      } catch {}
+    };
+    fetchUnread();
+    const interval = setInterval(fetchUnread, 60000);
+    return () => clearInterval(interval);
+  }, [user]);
 
   // Refresh user data on mount to get latest profile picture and data
   useEffect(() => {
@@ -450,12 +466,34 @@ export default function Layout({
               {location.pathname !== "/profile" && <div className="flex-1" />}
 
               {/* Bell icon on extreme right */}
-              <button
-                onClick={() => { }}
-                className="w-10 h-10 rounded-full bg-white/40 border border-white/20 flex items-center justify-center shadow-sm hover:bg-white/60 transition-all"
-              >
-                <Bell className="w-5 h-5 text-[#5B8C6F]" />
-              </button>
+              <div className="relative">
+                <button
+                  ref={notificationTriggerRef}
+                  onClick={() => setIsNotificationOpen((prev) => !prev)}
+                  className="relative w-10 h-10 rounded-full bg-white/40 border border-white/20 flex items-center justify-center shadow-sm hover:bg-white/60 transition-all"
+                >
+                  <Bell className="w-5 h-5 text-[#5B8C6F]" />
+                  {unreadNotifCount > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                      {unreadNotifCount > 9 ? "9+" : unreadNotifCount}
+                    </span>
+                  )}
+                </button>
+                <NotificationPanel
+                  isOpen={isNotificationOpen}
+                  onClose={() => {
+                    setIsNotificationOpen(false);
+                    notificationService
+                      .getUnreadCount()
+                      .then(({ data }) => {
+                        const count = typeof data?.unreadCount === 'object' ? data.unreadCount.unreadCount : data?.unreadCount;
+                        setUnreadNotifCount(Number(count) || 0);
+                      })
+                      .catch(() => {});
+                  }}
+                  triggerRef={notificationTriggerRef}
+                />
+              </div>
             </div>
           </header>
 

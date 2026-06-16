@@ -123,11 +123,15 @@ export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
         }
     };
 
-    const handleNotificationClick = async (notif) => {
-        if (!notif.read) {
-            await handleMarkAsRead(notif._id);
-        }
+    const handleNotificationClick = (notif) => {
+        // Expand immediately so "View Details" appears without delay —
+        // mark-as-read runs in the background instead of blocking the expand,
+        // which previously created a timing window where a second click could
+        // land on the still-collapsed row and re-collapse it before navigation.
         setExpandedId(prev => (prev === notif._id ? null : notif._id));
+        if (!notif.read) {
+            handleMarkAsRead(notif._id);
+        }
     };
 
     const handleActionClick = (notif, e) => {
