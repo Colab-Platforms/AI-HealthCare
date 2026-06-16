@@ -90,7 +90,13 @@ app.use(
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
-app.use(express.json({ limit: "50mb" }));
+app.use(express.json({
+  limit: "50mb",
+  // Capture exact raw bytes for webhook signature verification (QStash, etc.) —
+  // re-serializing req.body with JSON.stringify can produce a different string
+  // than what was actually sent (e.g. empty body becomes "{}"), breaking signatures.
+  verify: (req, res, buf) => { req.rawBody = buf.toString('utf8'); },
+}));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
 if (!process.env.VERCEL) {

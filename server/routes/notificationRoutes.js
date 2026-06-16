@@ -25,7 +25,7 @@ router.post('/cron-tick', async (req, res) => {
         });
         await receiver.verify({
             signature: req.headers['upstash-signature'],
-            body: JSON.stringify(req.body || {})
+            body: req.rawBody ?? ''
         });
 
         await notificationService.checkAndSendUserNotifications();
