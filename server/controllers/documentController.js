@@ -70,43 +70,40 @@ exports.uploadDocument = async (req, res) => {
 
 exports.getDocuments = async (req, res) => {
     try {
-        const { category, search } = req.query;
-        let query = { userId: req.user._id };
+        const { category, search, hospital, doctor, tags, dateFrom, dateTo } = req.query;
+        const page = Math.max(1, parseInt(req.query.page) || 1);
+        const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
 
-        if (category && category !== 'all') {
-            query.category = category;
+        // --- MedicalDocument query ---
+        let mdQuery = { userId: req.user._id };
+        if (category && category !== 'all' && category !== 'lab_report' && category !== 'prescription') {
+            mdQuery.category = category;
         }
-        if (search) {
-            query.title = { $regex: search, $options: 'i' };
+        if (search) mdQuery.title = { $regex: search, $options: 'i' };
+        if (hospital) mdQuery.hospital = { $regex: hospital, $options: 'i' };
+        if (doctor) mdQuery.doctorName = { $regex: doctor, $options: 'i' };
+        if (tags) {
+            const tagArr = tags.split(',').map(t => t.trim()).filter(Boolean);
+            if (tagArr.length) mdQuery.tags = { $all: tagArr };
+        }
+        if (dateFrom || dateTo) {
+            mdQuery.documentDate = {};
+            if (dateFrom) mdQuery.documentDate.$gte = new Date(dateFrom);
+            if (dateTo) { const d = new Date(dateTo); d.setHours(23, 59, 59, 999); mdQuery.documentDate.$lte = d; }
         }
 
-        // 1. Fetch from MedicalDocument
-        const documents = await MedicalDocument.find(query).sort({ documentDate: -1, createdAt: -1 });
-        
-        // Add isAnalyzedReport flag for frontend (MedicalDocument = vault documents, not analyzed)
-        const vaultDocs = documents.map(doc => ({
-            ...doc.toObject(),
-            isAnalyzedReport: false
-        }));
-        
-        // 2. Fetch from HealthReport if category is 'all' or 'lab_report'
+        const mdDocs = await MedicalDocument.find(mdQuery).sort({ documentDate: -1, createdAt: -1 });
+        const vaultDocs = mdDocs.map(doc => ({ ...doc.toObject(), isAnalyzedReport: false }));
+
+        // --- HealthReport query ---
         let reports = [];
         if (!category || category === 'all' || category === 'lab_report' || category === 'prescription') {
             const reportQuery = { user: req.user._id };
-            if (search) {
-                reportQuery['originalFile.filename'] = { $regex: search, $options: 'i' };
-            }
-            
-            // If filtering by prescription, only fetch reports where isPrescription is true
-            if (category === 'prescription') {
-                reportQuery.isPrescription = true;
-            } else if (category === 'lab_report') {
-                // If lab report, fetch non-prescription reports (or both if unspecified, but default is non-prescription)
-                reportQuery.isPrescription = { $ne: true };
-            }
+            if (search) reportQuery['originalFile.filename'] = { $regex: search, $options: 'i' };
+            if (category === 'prescription') reportQuery.isPrescription = true;
+            else if (category === 'lab_report') reportQuery.isPrescription = { $ne: true };
 
             const foundReports = await HealthReport.find(reportQuery).sort({ createdAt: -1 });
-            
             reports = foundReports.map(r => ({
                 _id: r._id,
                 userId: r.user,
@@ -117,22 +114,45 @@ exports.getDocuments = async (req, res) => {
                 fileUrl: r.originalFile?.cloudinaryUrl || r.originalFile?.path,
                 originalName: r.originalFile?.filename,
                 mimetype: r.originalFile?.mimetype,
-                size: 0, 
-                isAnalyzedReport: true, // Special flag for frontend behavior
+                size: 0,
+                isAnalyzedReport: true,
                 status: r.status,
                 hospital: r.prescriptionDetails?.clinicName || r.pastLabDetails?.labName || 'AI Health Lab',
                 doctorName: r.prescriptionDetails?.doctorName || 'AI Consultant',
-                isFavorite: false, // Will be supplemented by client-side favorites for AI reports
+                isFavorite: false,
                 tags: ['AI Analyzed', r.reportType || (r.isPrescription ? 'Prescription' : 'Lab Report')]
             }));
         }
 
-        // Merge and sort
-        const combined = [...vaultDocs, ...reports].sort((a, b) => 
+        // Merge + sort latest first
+        const combined = [...vaultDocs, ...reports].sort((a, b) =>
             new Date(b.documentDate) - new Date(a.documentDate)
         );
 
-        res.json({ documents: combined });
+        // Global stats (always across all unfiltered docs for accurate sidebar counts)
+        const [totalMd, totalHr, recentMd, recentHr] = await Promise.all([
+            MedicalDocument.countDocuments({ userId: req.user._id }),
+            HealthReport.countDocuments({ user: req.user._id }),
+            MedicalDocument.countDocuments({ userId: req.user._id, createdAt: { $gte: new Date(Date.now() - 7 * 86400000) } }),
+            HealthReport.countDocuments({ user: req.user._id, createdAt: { $gte: new Date(Date.now() - 7 * 86400000) } }),
+        ]);
+
+        const total = combined.length;
+        const pages = Math.ceil(total / limit) || 1;
+        const paginated = combined.slice((page - 1) * limit, page * limit);
+
+        res.json({
+            documents: paginated,
+            total,
+            page,
+            pages,
+            stats: {
+                total: totalMd + totalHr,
+                aiCount: totalHr,
+                vaultCount: totalMd,
+                recent: recentMd + recentHr,
+            }
+        });
     } catch (error) {
         res.status(500).json({ message: error.message });
     }

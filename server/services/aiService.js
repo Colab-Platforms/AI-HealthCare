@@ -35,7 +35,7 @@ const makeAnthropicRequest = async (messages, maxTokens = 4096, modelOverride = 
       ANTHROPIC_API_URL,
       {
         model: selectedModel,
-        system: systemMessage,
+        system: systemMessage ? [{ type: 'text', text: systemMessage, cache_control: { type: 'ephemeral' } }] : undefined,
         messages: filteredMessages,
         max_tokens: maxTokens || 4000,
         temperature: 0
@@ -44,6 +44,7 @@ const makeAnthropicRequest = async (messages, maxTokens = 4096, modelOverride = 
         headers: {
           'x-api-key': apiKey,
           'anthropic-version': '2023-06-01',
+          'anthropic-beta': 'prompt-caching-2024-07-31',
           'Content-Type': 'application/json',
           'Connection': 'close'
         },
@@ -124,32 +125,21 @@ Be conservative: only return true when you're confident it's a medical/healthcar
 const validateMedicalReport = async (reportText, fileData = null) => {
   try {
     const userContent = [];
-    if (reportText && reportText.trim()) {
-      userContent.push({ type: 'text', text: `Extracted Text:\n${reportText.substring(0, 50000)}` });
-    }
 
-    if (fileData && fileData.buffer) {
-      const mimetype = fileData.mimetype || 'image/jpeg';
-
-      if (mimetype === 'application/pdf') {
-        userContent.push({
-          type: 'document',
-          source: {
-            type: 'base64',
-            media_type: 'application/pdf',
-            data: fileData.buffer.toString('base64')
-          }
-        });
-      } else if (mimetype.startsWith('image/')) {
-        userContent.push({
-          type: 'image',
-          source: {
-            type: 'base64',
-            media_type: mimetype,
-            data: fileData.buffer.toString('base64')
-          }
-        });
-      }
+    // For PDFs: use extracted text only (no need to send full PDF for validation)
+    // For images: send the image since there may be no extracted text
+    if (fileData && fileData.buffer && fileData.mimetype?.startsWith('image/')) {
+      userContent.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: fileData.mimetype,
+          data: fileData.buffer.toString('base64')
+        }
+      });
+    } else if (reportText && reportText.trim()) {
+      // Cap at 3000 chars — enough to identify if it's a medical report
+      userContent.push({ type: 'text', text: `Extracted Text:\n${reportText.substring(0, 3000)}` });
     }
 
     const messages = [
@@ -178,36 +168,35 @@ exports.analyzeHealthReport = async (reportText, user = {}, fileData = null, rep
   try {
     let userContext = `User: ${user.name || 'Patient'}. Type: ${reportType}`;
     const userContent = [];
-    
-    if (reportText && reportText.trim()) {
+    const hasPdf = fileData?.buffer && fileData?.mimetype === 'application/pdf';
+    const hasImage = fileData?.buffer && fileData?.mimetype?.startsWith('image/');
+
+    // Always include context; only include extracted text if there's no file (text-only fallback)
+    if (!hasPdf && !hasImage && reportText && reportText.trim()) {
       userContent.push({ type: 'text', text: `${userContext}\n\nExtracted Text:\n${reportText.substring(0, 50000)}` });
     } else {
       userContent.push({ type: 'text', text: userContext });
     }
 
-    if (fileData && fileData.buffer) {
-      const mimetype = fileData.mimetype || 'image/jpeg';
-      
-      if (mimetype === 'application/pdf') {
-        // Use Anthropic PDF support (Beta/Claude 3+)
-        userContent.push({
-          type: 'document',
-          source: { 
-            type: 'base64', 
-            media_type: 'application/pdf', 
-            data: fileData.buffer.toString('base64') 
-          }
-        });
-      } else if (mimetype.startsWith('image/')) {
-        userContent.push({
-          type: 'image',
-          source: { 
-            type: 'base64', 
-            media_type: mimetype, 
-            data: fileData.buffer.toString('base64') 
-          }
-        });
-      }
+    if (hasPdf) {
+      // Send PDF directly — Claude reads it natively, no need to also send extracted text
+      userContent.push({
+        type: 'document',
+        source: {
+          type: 'base64',
+          media_type: 'application/pdf',
+          data: fileData.buffer.toString('base64')
+        }
+      });
+    } else if (hasImage) {
+      userContent.push({
+        type: 'image',
+        source: {
+          type: 'base64',
+          media_type: fileData.mimetype,
+          data: fileData.buffer.toString('base64')
+        }
+      });
     }
 
     const validation = await validateMedicalReport(reportText, fileData);

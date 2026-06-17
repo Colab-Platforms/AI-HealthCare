@@ -634,7 +634,138 @@ export default function ReportAnalysisMobile() {
           </div>
         </div>
 
-        {/* Processing or Doctor's Analysis */}
+        {/* Bio-Marker Metrics — moved to top for quick scan */}
+        {!isProcessing && metrics.length > 0 && (
+          <div className="flex flex-col gap-4">
+            {/* Header + filter tabs */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <h2 className="text-[20px] font-black text-[#1a2138] dark:text-white uppercase tracking-tight leading-none">
+                  {isHindi ? "स्वास्थ्य मेट्रिक्स" : "Bio-Markers"}
+                </h2>
+                <span className="bg-white/80 px-2.5 py-1 rounded-full border border-white text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  {metrics.length}
+                </span>
+              </div>
+            </div>
+
+            {/* Status summary strip */}
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: "Normal", count: normalCount, color: "text-[#69A38D]", bg: "bg-[#69A38D]/10", border: "border-[#69A38D]/20", icon: CheckCircle2 },
+                { label: "Caution", count: borderlineCount, color: "text-[#E88F4A]", bg: "bg-[#E88F4A]/10", border: "border-[#E88F4A]/20", icon: AlertCircle },
+                { label: "High", count: highCount, color: "text-[#EF4444]", bg: "bg-red-50", border: "border-red-100", icon: AlertTriangle },
+              ].map((stat, i) => (
+                <button
+                  key={i}
+                  onClick={() => setMetricTab(i === 0 ? "Normal" : i === 1 ? "Borderline" : "High")}
+                  className={`${stat.bg} border ${stat.border} rounded-[20px] p-3 flex flex-col items-center gap-1 transition-all active:scale-95`}
+                >
+                  <stat.icon size={18} className={stat.color} strokeWidth={2.5} />
+                  <span className={`text-[20px] font-black tracking-tighter ${stat.color} leading-none`}>{stat.count}</span>
+                  <span className={`text-[9px] font-black uppercase tracking-widest ${stat.color}`}>{stat.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Filter pills */}
+            <div className="flex bg-white/60 backdrop-blur-md rounded-full p-1.5 border border-white shadow-sm gap-1">
+              {["All", "Normal", "Borderline", "High"].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setMetricTab(tab)}
+                  className={`px-3 py-2 rounded-full text-[10px] font-black uppercase tracking-widest transition-all flex-1 text-center ${metricTab === tab ? "bg-[#69A38D] text-white shadow-md" : "text-[#64748b]"}`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            {/* Premium 2-col metric cards */}
+            <div className="grid grid-cols-2 gap-3 pb-2">
+              {filteredMetrics.map((metric, idx) => {
+                const isNormal = metric.status === "NORMAL" || metric.status === "GOOD";
+                const isWarning = ["BORDERLINE", "MODERATE", "LOW"].includes(metric.status);
+
+                const statusColor = isNormal ? "#69A38D" : isWarning ? "#E88F4A" : "#EF4444";
+                const colorClass = isNormal ? "text-[#69A38D]" : isWarning ? "text-[#E88F4A]" : "text-[#EF4444]";
+                const statusLabel = isNormal ? "Normal" : isWarning ? (metric.status === "LOW" ? "Low" : "Caution") : "High";
+                const StatusIcon = isNormal ? CheckCircle : isWarning ? AlertCircle : AlertTriangle;
+                const statusEmoji = isNormal ? "✓" : isWarning ? "!" : "↑";
+
+                const readableName = metric.name
+                  .replace(/([A-Z])/g, " $1")
+                  .replace(/^./, (s) => s.toUpperCase())
+                  .trim();
+
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => { setSelectedMetric(metric); setShowMetricModal(true); }}
+                    className="bg-white dark:bg-[#1e2235] rounded-[24px] p-4 shadow-[0_2px_16px_rgba(0,0,0,0.07)] cursor-pointer active:scale-[0.97] transition-all flex flex-col gap-3"
+                  >
+                    {/* Top: icon + status pill */}
+                    <div className="flex items-center justify-between">
+                      <div
+                        className="w-9 h-9 rounded-2xl flex items-center justify-center"
+                        style={{ backgroundColor: `${statusColor}18` }}
+                      >
+                        <StatusIcon size={16} strokeWidth={2.5} style={{ color: statusColor }} />
+                      </div>
+                      <span
+                        className="text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest"
+                        style={{ backgroundColor: `${statusColor}15`, color: statusColor }}
+                      >
+                        {statusLabel}
+                      </span>
+                    </div>
+
+                    {/* Metric name + normal range */}
+                    <div className="flex flex-col gap-0.5">
+                      <p className="text-[12.5px] font-black text-[#1a2138] dark:text-white leading-snug line-clamp-2">
+                        {readableName}
+                      </p>
+                      <p className="text-[9.5px] font-semibold text-slate-400 leading-tight line-clamp-1">
+                        {metric.normalRange || "—"}
+                      </p>
+                    </div>
+
+                    {/* Value — numeric gets large + colored, text gets small + dark */}
+                    {(() => {
+                      const val = metric.value;
+                      const isNumeric = val !== null && val !== undefined && val !== "" && !isNaN(Number(val));
+                      return isNumeric ? (
+                        <div className="flex items-baseline gap-1">
+                          <span className={`text-[28px] font-black tracking-tighter leading-none ${colorClass}`}>
+                            {val}
+                          </span>
+                          {metric.unit && (
+                            <span className="text-[10px] font-black text-slate-400 uppercase">
+                              {metric.unit}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="text-[13px] font-black text-[#1a2138] dark:text-white leading-snug line-clamp-2">
+                            {val ?? "—"}
+                          </span>
+                          {metric.unit && (
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">
+                              {metric.unit}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Doctor's Analysis — below metrics */}
         <div className="bg-white/60 backdrop-blur-xl rounded-[40px] p-6 shadow-[0_4px_25px_rgba(0,0,0,0.04)] border border-white">
           <div className="flex items-center gap-4 mb-6">
             <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-white flex items-center justify-center">
@@ -721,7 +852,7 @@ export default function ReportAnalysisMobile() {
               </div>
             )}
 
-            {/* Quick Summary Points */}
+            {/* Key Findings */}
             {aiAnalysis?.keyFindings?.length > 0 && (
               <div className="bg-white/80 rounded-[24px] p-5 border border-white">
                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">
@@ -743,144 +874,6 @@ export default function ReportAnalysisMobile() {
             )}
           </div>
         </div>
-
-        {/* Metrics */}
-        {!isProcessing && metrics.length > 0 && (
-          <div className="flex flex-col gap-6 pt-2">
-            <div className="flex flex-col gap-4">
-              <div className="flex items-center gap-3">
-                <h2 className="text-[22px] font-black text-[#1a2138] uppercase tracking-tight leading-none">
-                  {isHindi ? "स्वास्थ्य मेट्रिक्स" : "Bio-Marker Metrics"}
-                </h2>
-                <span className="bg-white/80 px-3 py-1 rounded-full border border-white text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  {metrics.length} Total
-                </span>
-              </div>
-              <div className="flex bg-white/60 backdrop-blur-md rounded-full p-1.5 border border-white overflow-x-auto no-scrollbar shadow-sm">
-                {["All", "Normal", "Borderline", "High"].map((tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setMetricTab(tab)}
-                    className={`px-4 py-2.5 rounded-full text-[11px] font-black uppercase tracking-widest transition-all shrink-0 flex-1 text-center ${metricTab === tab ? "bg-[#69A38D] text-white shadow-md" : "text-[#64748b] hover:text-[#69A38D]"}`}
-                  >
-                    {tab}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                {
-                  label: "Optimal",
-                  count: normalCount,
-                  color: "text-[#69A38D]",
-                  bg: "bg-[#69A38D]/10",
-                  icon: CheckCircle2,
-                },
-                {
-                  label: "Caution",
-                  count: borderlineCount,
-                  color: "text-[#E88F4A]",
-                  bg: "bg-[#E88F4A]/10",
-                  icon: AlertCircle,
-                },
-                {
-                  label: "Critical",
-                  count: highCount,
-                  color: "text-[#5D5589]",
-                  bg: "bg-[#5D5589]/10",
-                  icon: AlertTriangle,
-                },
-              ].map((stat, i) => (
-                <div
-                  key={i}
-                  className="bg-white/60 rounded-[30px] p-5 flex flex-col items-center border border-white gap-3 shadow-sm"
-                >
-                  <div
-                    className={`w-12 h-12 rounded-full ${stat.bg} ${stat.color} flex items-center justify-center shadow-sm`}
-                  >
-                    <stat.icon size={22} strokeWidth={2.5} />
-                  </div>
-                  <div className="text-center flex flex-col">
-                    <span className="text-[24px] font-black text-[#1a2138] tracking-tighter leading-none">
-                      {stat.count}
-                    </span>
-                    <span className="text-[9px] font-black text-[#64748b] uppercase tracking-widest">
-                      {stat.label}
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 pb-4">
-              {filteredMetrics.map((metric, idx) => {
-                const isNormal =
-                  metric.status === "NORMAL" || metric.status === "GOOD";
-                const isWarning = ["BORDERLINE", "MODERATE", "LOW"].includes(
-                  metric.status,
-                );
-                const colorClass = isNormal
-                  ? "text-[#69A38D]"
-                  : isWarning
-                    ? "text-[#E88F4A]"
-                    : "text-[#5D5589]";
-                const bgClass = isNormal
-                  ? "bg-[#69A38D]/10 border-[#69A38D]/20"
-                  : isWarning
-                    ? "bg-[#E88F4A]/10 border-[#E88F4A]/20"
-                    : "bg-[#5D5589]/10 border-[#5D5589]/20";
-
-                return (
-                  <div
-                    key={idx}
-                    onClick={() => {
-                      setSelectedMetric(metric);
-                      setShowMetricModal(true);
-                    }}
-                    className="bg-white/60 rounded-[32px] p-4 shadow-sm border border-white flex flex-col min-h-[150px] cursor-pointer hover:bg-white/80 transition-all"
-                  >
-                    <div className="flex items-start justify-between">
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center border ${bgClass} ${colorClass}`}
-                      >
-                        {isNormal ? (
-                          <CheckCircle2 size={14} strokeWidth={2.5} />
-                        ) : (
-                          <AlertCircle size={14} strokeWidth={2.5} />
-                        )}
-                      </div>
-                      <span
-                        className={`text-[8.5px] font-black px-2 py-1 rounded-full uppercase border ${bgClass} ${colorClass} tracking-widest`}
-                      >
-                        {metric.status}
-                      </span>
-                    </div>
-                    <div className="mt-3">
-                      <div className="text-[13px] font-black text-[#1a2138] uppercase tracking-tight leading-snug line-clamp-2">
-                        {metric.name.replace(/([A-Z])/g, " $1").trim()}
-                      </div>
-                      <div className="text-[9px] font-bold text-[#64748b] mt-0.5">
-                        TARGET: {metric.range}
-                      </div>
-                    </div>
-                    <div className="flex items-baseline gap-1 mt-auto">
-                      <span
-                        className={`text-[20px] font-black tracking-tighter ${colorClass}`}
-                      >
-                        {metric.value}
-                      </span>
-                      <span className="text-[9px] font-black text-slate-400 uppercase">
-                        {metric.unit}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
 
         {/* Deficiencies */}
         {!isProcessing && aiAnalysis?.deficiencies?.length > 0 && (

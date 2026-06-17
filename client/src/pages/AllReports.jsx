@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { healthService } from "../services/api";
@@ -9,7 +9,7 @@ import {
   Clock, Sparkles, Plus, X, FileImage, ShieldCheck, Download,
   Stethoscope, Pill, Syringe, FileSpreadsheet, Heart, Grid, List,
   ChevronDown, ChevronUp, LockKeyhole, FolderLock, Trash,
-  CheckCircle2, RefreshCw, Lock, Eye, Trash2
+  CheckCircle2, RefreshCw, Lock, Eye, Trash2, ChevronLeft, ChevronRight
 } from "lucide-react";
 import toast from "react-hot-toast";
 import SEO from "../hooks/useSEO";
@@ -99,6 +99,12 @@ export default function AllReports() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [viewMode, setViewMode] = useState("grid");
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalDocs, setTotalDocs] = useState(0);
+  const [globalStats, setGlobalStats] = useState({ total: 0, aiCount: 0, vaultCount: 0, recent: 0 });
+  const PAGE_SIZE = 10;
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(true);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
 
@@ -159,9 +165,58 @@ export default function AllReports() {
     JSON.parse(localStorage.getItem("recently_viewed_docs") || "[]")
   );
 
+  // fetchDocuments is a plain async fn — avoids stale-closure issues with useCallback
+  const fetchDocuments = async (page = 1, opts = {}) => {
+    try {
+      setLoading(true);
+      const params = new URLSearchParams();
+      params.set('page', page);
+      params.set('limit', PAGE_SIZE);
+
+      const activeSearch = opts.search !== undefined ? opts.search : search;
+      const activeTypes = opts.filterTypes !== undefined ? opts.filterTypes : filterTypes;
+      const activeHospital = opts.filterHospital !== undefined ? opts.filterHospital : filterHospital;
+      const activeDoctor = opts.filterDoctor !== undefined ? opts.filterDoctor : filterDoctor;
+      const activeTags = opts.selectedTags !== undefined ? opts.selectedTags : selectedTags;
+      const activeDateRange = opts.filterDateRange !== undefined ? opts.filterDateRange : filterDateRange;
+      const activeStartDate = opts.customStartDate !== undefined ? opts.customStartDate : customStartDate;
+      const activeEndDate = opts.customEndDate !== undefined ? opts.customEndDate : customEndDate;
+
+      if (activeSearch.trim()) params.set('search', activeSearch.trim());
+      if (activeTypes.length === 1) params.set('category', activeTypes[0]);
+      if (activeHospital.trim()) params.set('hospital', activeHospital.trim());
+      if (activeDoctor.trim()) params.set('doctor', activeDoctor.trim());
+      if (activeTags.length) params.set('tags', activeTags.join(','));
+      if (activeDateRange === 'custom') {
+        if (activeStartDate) params.set('dateFrom', activeStartDate);
+        if (activeEndDate) params.set('dateTo', activeEndDate);
+      } else if (activeDateRange !== 'all') {
+        const from = new Date();
+        if (activeDateRange === '30days') from.setDate(from.getDate() - 30);
+        else if (activeDateRange === '6months') from.setMonth(from.getMonth() - 6);
+        else if (activeDateRange === 'year') from.setFullYear(from.getFullYear() - 1);
+        params.set('dateFrom', from.toISOString().split('T')[0]);
+      }
+
+      const { data } = await api.get(`/documents?${params.toString()}`);
+      setDocuments(Array.isArray(data?.documents) ? data.documents : []);
+      setTotalDocs(data?.total || 0);
+      setTotalPages(data?.pages || 1);
+      setCurrentPage(data?.page || page);
+      if (data?.stats) setGlobalStats(data.stats);
+    } catch (error) {
+      toast.error("Failed to load reports");
+      setDocuments([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Initial load only
   useEffect(() => {
     window.scrollTo(0, 0);
-    fetchAllDocuments();
+    fetchDocuments(1);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Load preview when document details are opened
@@ -198,19 +253,22 @@ export default function AllReports() {
     };
   }, [selectedDoc, isDetailsOpen]);
 
-  const fetchAllDocuments = async () => {
-    try {
-      setLoading(true);
-      const { data } = await api.get("/documents");
-      // getDocuments returns { documents: [...] }
-      setDocuments(Array.isArray(data?.documents) ? data.documents : []);
-    } catch (error) {
-      toast.error("Failed to load reports");
-      setDocuments([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // Re-fetch when filters change (pass current values explicitly to avoid stale closures)
+  const isFirstFilterRender = useRef(true);
+  useEffect(() => {
+    if (isFirstFilterRender.current) { isFirstFilterRender.current = false; return; }
+    fetchDocuments(1, { filterTypes, filterHospital, filterDoctor, selectedTags, filterDateRange, customStartDate, customEndDate });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [filterTypes, filterHospital, filterDoctor, selectedTags, filterDateRange, customStartDate, customEndDate]);
+
+  // Debounce search — skip initial mount
+  const isFirstSearchRender = useRef(true);
+  useEffect(() => {
+    if (isFirstSearchRender.current) { isFirstSearchRender.current = false; return; }
+    const timer = setTimeout(() => fetchDocuments(1, { search }), 400);
+    return () => clearTimeout(timer);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
 
   const handleDownload = async (doc, e) => {
     if (e) { e.stopPropagation(); e.preventDefault(); }
@@ -263,7 +321,7 @@ export default function AllReports() {
       }
       toast.success("Record deleted");
       if (isDetailsOpen && selectedDoc?._id === doc._id) setIsDetailsOpen(false);
-      fetchAllDocuments();
+      fetchDocuments(currentPage);
     } catch {
       toast.error("Failed to delete record");
     }
@@ -287,7 +345,7 @@ export default function AllReports() {
         toast.success(nextFav ? "Added to favorites" : "Removed from favorites");
       } catch {
         toast.error("Failed to update favorite");
-        fetchAllDocuments();
+        fetchDocuments(currentPage);
       }
     }
   };
@@ -417,7 +475,7 @@ export default function AllReports() {
       setTimeout(() => {
         setIsUploadOpen(false);
         resetUploadForm();
-        fetchAllDocuments(); // Refresh the documents list
+        fetchDocuments(1); // Refresh from page 1 so new upload appears at top
         navigate(`/reports/${data.report._id}`);
       }, 800);
     } catch (error) {
@@ -467,7 +525,7 @@ export default function AllReports() {
       setTimeout(() => {
         setIsUploadOpen(false);
         resetUploadForm();
-        fetchAllDocuments();
+        fetchDocuments(currentPage);
       }, 1200);
     } catch (error) {
       clearInterval(progressInterval);
@@ -520,6 +578,7 @@ export default function AllReports() {
     setSelectedTags([]);
     setShowOnlyFavorites(false);
     setShowOnlyRecentlyViewed(false);
+    setCurrentPage(1);
     toast.success("Filters cleared");
   };
 
@@ -539,115 +598,27 @@ export default function AllReports() {
     };
   }, [documents]);
 
-  const stats = useMemo(() => {
-    const aiCount = documents.filter((d) => d.isAnalyzedReport).length;
-    const vaultCount = documents.filter((d) => !d.isAnalyzedReport).length;
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    const recent = documents.filter(
-      (d) => new Date(d.documentDate || d.createdAt) >= sevenDaysAgo
-    ).length;
-    return { total: documents.length, aiCount, vaultCount, recent };
-  }, [documents]);
+  // Stats come from server globalStats for accuracy across all pages
+  const stats = globalStats;
 
+  // Client-side filters only for localStorage-based preferences (favorites, recently viewed, file type)
+  // Search, category, hospital, doctor, tags, dateRange are handled server-side
   const filteredDocuments = useMemo(() => {
     return documents.filter((doc) => {
-      // Search
-      if (search) {
-        const q = search.toLowerCase();
-        const fields = [
-          doc.title,
-          doc.hospital,
-          doc.doctorName,
-          doc.notes,
-          ...(Array.isArray(doc.tags) ? doc.tags : []),
-        ];
-        if (!fields.some((f) => f?.toLowerCase().includes(q))) return false;
-      }
-
-      // Category type
-      if (filterTypes.length > 0 && !filterTypes.includes(doc.category)) return false;
-
-      // Date range
-      if (filterDateRange !== "all") {
-        const docDate = new Date(doc.documentDate || doc.createdAt);
-        const now = new Date();
-        if (filterDateRange === "30days") {
-          const limit = new Date();
-          limit.setDate(now.getDate() - 30);
-          if (docDate < limit) return false;
-        } else if (filterDateRange === "6months") {
-          const limit = new Date();
-          limit.setMonth(now.getMonth() - 6);
-          if (docDate < limit) return false;
-        } else if (filterDateRange === "year") {
-          const limit = new Date();
-          limit.setFullYear(now.getFullYear() - 1);
-          if (docDate < limit) return false;
-        } else if (filterDateRange === "custom" && customStartDate && customEndDate) {
-          const start = new Date(customStartDate);
-          const end = new Date(customEndDate);
-          end.setHours(23, 59, 59, 999);
-          if (docDate < start || docDate > end) return false;
-        }
-      }
-
-      // Hospital
-      if (filterHospital && !doc.hospital?.toLowerCase().includes(filterHospital.toLowerCase()))
-        return false;
-
-      // Doctor
-      if (filterDoctor && !doc.doctorName?.toLowerCase().includes(filterDoctor.toLowerCase()))
-        return false;
-
-      // File type (skip for AI reports)
       if (filterFileTypes.length > 0 && !doc.isAnalyzedReport) {
-        const isPdf =
-          doc.mimetype?.includes("pdf") ||
-          doc.fileUrl?.toLowerCase().includes(".pdf") ||
-          doc.originalName?.toLowerCase().includes(".pdf");
+        const isPdf = doc.mimetype?.includes("pdf") || doc.fileUrl?.toLowerCase().includes(".pdf") || doc.originalName?.toLowerCase().includes(".pdf");
         const isImage = doc.mimetype?.includes("image") || (!isPdf && doc.fileUrl);
-        let matchesType = false;
-        if (filterFileTypes.includes("pdf") && isPdf) matchesType = true;
-        if (filterFileTypes.includes("image") && isImage) matchesType = true;
-        if (!matchesType) return false;
+        if (filterFileTypes.includes("pdf") && !isPdf) return false;
+        if (filterFileTypes.includes("image") && !isImage) return false;
       }
-
-      // Tags
-      if (selectedTags.length > 0) {
-        if (!Array.isArray(doc.tags)) return false;
-        if (!selectedTags.every((t) => doc.tags.includes(t))) return false;
-      }
-
-      // Favorites
       if (showOnlyFavorites) {
-        const isFav = doc.isAnalyzedReport
-          ? favoriteReportIds.includes(doc._id)
-          : doc.isFavorite;
+        const isFav = doc.isAnalyzedReport ? favoriteReportIds.includes(doc._id) : doc.isFavorite;
         if (!isFav) return false;
       }
-
-      // Recently viewed
       if (showOnlyRecentlyViewed && !recentlyViewedIds.includes(doc._id)) return false;
-
       return true;
     });
-  }, [
-    documents,
-    search,
-    filterTypes,
-    filterDateRange,
-    customStartDate,
-    customEndDate,
-    filterHospital,
-    filterDoctor,
-    filterFileTypes,
-    selectedTags,
-    showOnlyFavorites,
-    showOnlyRecentlyViewed,
-    favoriteReportIds,
-    recentlyViewedIds,
-  ]);
+  }, [documents, filterFileTypes, showOnlyFavorites, showOnlyRecentlyViewed, favoriteReportIds, recentlyViewedIds]);
 
   const activeFilterCount =
     filterTypes.length +
@@ -1094,7 +1065,7 @@ export default function AllReports() {
               <div className="space-y-4">
                 <div className="flex justify-between items-center text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2">
                   <span>
-                    Showing {filteredDocuments.length} of {documents.length} Records
+                    Page {currentPage} of {totalPages} &nbsp;·&nbsp; {totalDocs} Total Records
                   </span>
                   {(activeFilterCount > 0 || search) && (
                     <button
@@ -1149,6 +1120,52 @@ export default function AllReports() {
                         }}
                       />
                     ))}
+                  </div>
+                )}
+
+                {/* Pagination */}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-center gap-2 pt-4">
+                    <button
+                      onClick={() => { fetchDocuments(currentPage - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      disabled={currentPage === 1}
+                      className="w-10 h-10 rounded-full bg-white border border-white shadow-sm flex items-center justify-center text-[#1a2138] disabled:opacity-30 hover:bg-[#69A38D] hover:text-white hover:border-[#69A38D] transition-all active:scale-95"
+                    >
+                      <ChevronLeft size={16} strokeWidth={2.5} />
+                    </button>
+
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                      .reduce((acc, p, idx, arr) => {
+                        if (idx > 0 && p - arr[idx - 1] > 1) acc.push('...');
+                        acc.push(p);
+                        return acc;
+                      }, [])
+                      .map((p, i) =>
+                        p === '...' ? (
+                          <span key={`ellipsis-${i}`} className="text-slate-300 font-black text-sm px-1">···</span>
+                        ) : (
+                          <button
+                            key={p}
+                            onClick={() => { fetchDocuments(p); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                            className={`w-10 h-10 rounded-full text-[12px] font-black transition-all active:scale-95 ${
+                              p === currentPage
+                                ? 'bg-[#1a2138] text-white shadow-md'
+                                : 'bg-white border border-white shadow-sm text-slate-500 hover:border-[#69A38D]/30 hover:text-[#69A38D]'
+                            }`}
+                          >
+                            {p}
+                          </button>
+                        )
+                      )}
+
+                    <button
+                      onClick={() => { fetchDocuments(currentPage + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                      disabled={currentPage === totalPages}
+                      className="w-10 h-10 rounded-full bg-white border border-white shadow-sm flex items-center justify-center text-[#1a2138] disabled:opacity-30 hover:bg-[#69A38D] hover:text-white hover:border-[#69A38D] transition-all active:scale-95"
+                    >
+                      <ChevronRight size={16} strokeWidth={2.5} />
+                    </button>
                   </div>
                 )}
               </div>
