@@ -177,7 +177,7 @@ export default function AdminAIUsage() {
     try {
       const [sumRes, budRes, timeRes, featRes, modRes, userRes, cacheRes] = await Promise.all([
         adminService.getUsageSummary({ period: p }),
-        adminService.getUsageBudget({ monthly: 97.79 }),
+        adminService.getUsageBudget({ monthly: 97.44 }),
         adminService.getUsageCostOverTime({ period: p, granularity: g }),
         adminService.getUsageByFeature({ period: p }),
         adminService.getUsageByModel({ period: p }),
