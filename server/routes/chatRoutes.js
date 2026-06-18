@@ -8,6 +8,7 @@ const FoodLog = require('../models/FoodLog');
 const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
 const cache = require('../utils/cache');
 const { buildAlcoholContextForAI, buildSmokeContextForAI } = require('../utils/alcoholLog');
+const UsageLog = require('../models/UsageLog');
 
 // AI Chat endpoint - Requires authentication for personalized context
 router.post('/chat', protect, async (req, res) => {
@@ -195,37 +196,55 @@ Make the meal feedback immediate, clear, highly actionable, and always use these
 
     const anthropicKey = process.env.ANTHROPIC_API_KEY;
     if (anthropicKey?.startsWith('sk-ant')) {
+      const AI_MODEL = 'claude-sonnet-4-6';
+      const startTime = Date.now();
       try {
         const client = new Anthropic({ apiKey: anthropicKey });
         const stream = client.messages.stream({
-          model: 'claude-sonnet-4-6',
+          model: AI_MODEL,
           system: systemPrompt,
           messages,
           temperature: 0.7,
           max_tokens: 1500
         });
 
-        // Abort stream if client disconnects mid-response
         req.on('close', () => stream.abort());
 
-        let tokenCount = 0;
         for await (const event of stream) {
           if (event.type === 'content_block_delta' && event.delta?.type === 'text_delta') {
-            tokenCount++;
-            const token = event.delta.text;
-            // console.log(`📝 Backend Token ${tokenCount}: "${token.substring(0, 30)}" | Length: ${token.length}`);
-            sendToken(token);
-            // Small delay to ensure token transmission
+            sendToken(event.delta.text);
             await new Promise(resolve => setImmediate(resolve));
           }
         }
-        // console.log(`✅ Backend sent ${tokenCount} tokens total`);
+
+        // Log usage after stream fully completes
+        const finalMsg = await stream.finalMessage();
+        const usage = finalMsg.usage || {};
+        UsageLog.create({
+          userId:           user._id,
+          feature:          'ai_chat',
+          model:            AI_MODEL,
+          inputTokens:      usage.input_tokens               || 0,
+          outputTokens:     usage.output_tokens              || 0,
+          cacheReadTokens:  usage.cache_read_input_tokens    || 0,
+          cacheWriteTokens: usage.cache_creation_input_tokens || 0,
+          durationMs:       Date.now() - startTime,
+          status:           'success',
+        }).catch(e => console.error('UsageLog save failed:', e.message));
 
         finishStream();
         return;
       } catch (err) {
         if (err.name !== 'APIUserAbortError') {
           console.error('Anthropic streaming failed:', err.message);
+          UsageLog.create({
+            userId:      user._id,
+            feature:     'ai_chat',
+            model:       AI_MODEL,
+            durationMs:  Date.now() - startTime,
+            status:      'error',
+            errorMessage: err.message?.substring(0, 300),
+          }).catch(() => {});
         }
         // Fall through to fallback
       }

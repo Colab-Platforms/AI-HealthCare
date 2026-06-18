@@ -4,7 +4,7 @@ const FoodLog = require('../models/FoodLog');
 const User = require('../models/User');
 const Doctor = require('../models/Doctor');
 const HealthGoal = require('../models/HealthGoal');
-const { analyzeHealthReport, validateMedicalReport, compareReports, chatAboutReport, generateMetricInfo, generateVitalsInsights } = require('../services/aiService');
+const { analyzeHealthReport, chatAboutReport, generateMetricInfo, generateVitalsInsights } = require('../services/aiService');
 const pdfParse = require('pdf-parse');
 const fs = require('fs');
 const NutritionSummary = require('../models/NutritionSummary');
@@ -55,6 +55,10 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
     aiAnalysis = await analyzeHealthReport(extractedText, userDoc, {
       buffer: dataBuffer,
       mimetype: fileMimetype
+    }, 'general', {
+      userId:   userId,
+      reportId: reportId,
+      feature:  'analyze_report',
     });
 
     const updatedReport = await HealthReport.findById(reportId);
@@ -100,11 +104,20 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
       }).sort({ createdAt: -1 });
 
       if (prev && prev.aiAnalysis) {
-        const comparisonData = await compareReports(updatedReport, prev);
+        const currentScore  = updatedReport.aiAnalysis?.healthScore || 0;
+        const previousScore = prev.aiAnalysis?.healthScore || 0;
+        const diff = currentScore - previousScore;
+        const overallTrend = diff > 3 ? 'improving' : diff < -3 ? 'declining' : 'stable';
+
         updatedReport.comparison = {
-          previousReportId: prev._id,
+          previousReportId:   prev._id,
           previousReportDate: prev.createdAt,
-          data: comparisonData
+          data: {
+            overallTrend,
+            scoreDiff:     diff,
+            currentScore,
+            previousScore,
+          }
         };
         await updatedReport.save();
       }
@@ -214,16 +227,7 @@ exports.uploadReport = async (req, res) => {
       extractedText = req.body.manualText || '';
     }
 
-    const validation = await validateMedicalReport(extractedText, {
-      buffer: dataBuffer,
-      mimetype: req.file.mimetype
-    });
-    if (validation && validation.isMedical === false) {
-      return res.status(400).json({
-        message: validation.message || 'This file does not contains any medical report please upload correct medical report for analyze.'
-      });
-    }
-
+    // Validation runs inside analyzeHealthReport — no separate call needed here
     let cloudinaryUrl = null;
     try { cloudinaryUrl = await cloudinary.uploadImage(dataBuffer, 'health_reports'); }
     catch (e) { console.error('Cloudinary fail:', e.message); }
@@ -431,7 +435,10 @@ exports.chatAboutReport = async (req, res) => {
     if (!message) return res.status(400).json({ message: 'Message is required' });
     const report = await HealthReport.findOne({ _id: req.params.id, user: req.user._id });
     if (!report) return res.status(404).json({ message: 'Report not found' });
-    const response = await chatAboutReport(report, message, chatHistory || []);
+    const response = await chatAboutReport(report, message, chatHistory || [], {
+      userId:   req.user._id,
+      reportId: report._id,
+    });
     res.json({ response });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -618,7 +625,9 @@ exports.getMetricInfo = async (req, res) => {
   try {
     const { metricName, metricValue, normalRange, unit } = req.body;
     if (!metricName) return res.status(400).json({ message: 'Metric name is required' });
-    const metricInfo = await generateMetricInfo(metricName, metricValue, normalRange, unit);
+    const metricInfo = await generateMetricInfo(metricName, metricValue, normalRange, unit, {
+      userId: req.user._id,
+    });
     res.json({ metricInfo });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -668,7 +677,10 @@ exports.aiChat = async (req, res) => {
       { role: 'user', content: finalQuery }
     ];
 
-    const text = await makeAnthropicRequest(messages, 600, CLAUDE_HAIKU_MODEL);
+    const text = await makeAnthropicRequest(messages, 600, CLAUDE_HAIKU_MODEL, {
+      feature: 'ai_chat',
+      userId:  req.user._id,
+    });
     if (!text || !String(text).trim()) {
       return res.status(502).json({ success: false, message: 'Empty response from AI' });
     }

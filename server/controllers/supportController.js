@@ -1,5 +1,6 @@
 const SupportTicket = require('../models/SupportTicket');
 const Anthropic = require('@anthropic-ai/sdk');
+const UsageLog = require('../models/UsageLog');
 
 // Initialize Claude client
 const client = new Anthropic({
@@ -137,7 +138,7 @@ exports.aiChat = async (req, res) => {
     res.setHeader('Connection', 'keep-alive');
 
     // Stream AI response
-    await streamAIChatResponse(message, res);
+    await streamAIChatResponse(message, res, req.user?._id);
   } catch (error) {
     console.error('AI Chat Error:', error);
     if (!res.headersSent) {
@@ -150,7 +151,9 @@ exports.aiChat = async (req, res) => {
 };
 
 // Helper function to stream AI responses using Claude
-async function streamAIChatResponse(userMessage, res) {
+async function streamAIChatResponse(userMessage, res, userId = null) {
+  const MODEL = 'claude-sonnet-4-6';
+  const startTime = Date.now();
   try {
     const systemPrompt = `You are a concise AI Assistant for the take.health platform. Keep ALL responses short - 2-3 sentences maximum unless specifically asked for details.
 
@@ -171,37 +174,48 @@ STRICT RULES:
 5. Redirect off-topic questions to platform features
 6. Be direct and brief`;
 
-    console.log('Starting Claude streaming with message:', userMessage);
-
     const stream = await client.messages.stream({
-      model: "claude-sonnet-4-6",
+      model: MODEL,
       max_tokens: 200,
       system: systemPrompt,
-      messages: [
-        {
-          role: "user",
-          content: userMessage
-        }
-      ]
+      messages: [{ role: 'user', content: userMessage }]
     });
 
-    // Send data in chunks as stream progresses
     for await (const chunk of stream) {
       if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
-        const text = chunk.delta.text;
-        // Send each chunk as Server-Sent Event
-        res.write(`data: ${JSON.stringify({ chunk: text })}\n\n`);
-        console.log('Sent chunk:', text);
+        res.write(`data: ${JSON.stringify({ chunk: chunk.delta.text })}\n\n`);
       }
     }
 
-    // Send end signal
+    // Get final message with usage stats after stream completes
+    const finalMsg = await stream.finalMessage();
+    const usage = finalMsg.usage || {};
+
+    // Fire-and-forget usage log
+    UsageLog.create({
+      userId,
+      feature:          'ai_chat',
+      model:            MODEL,
+      inputTokens:      usage.input_tokens              || 0,
+      outputTokens:     usage.output_tokens             || 0,
+      cacheReadTokens:  usage.cache_read_input_tokens   || 0,
+      cacheWriteTokens: usage.cache_creation_input_tokens || 0,
+      durationMs:       Date.now() - startTime,
+      status:           'success',
+    }).catch(e => console.error('UsageLog save failed:', e.message));
+
     res.write(`data: ${JSON.stringify({ done: true })}\n\n`);
     res.end();
-    console.log('Stream completed');
   } catch (error) {
-    console.error('Claude Streaming Error:', error);
-    console.error('Error message:', error.message);
+    console.error('Claude Streaming Error:', error.message);
+    UsageLog.create({
+      userId,
+      feature:    'ai_chat',
+      model:      MODEL,
+      durationMs: Date.now() - startTime,
+      status:     'error',
+      errorMessage: error.message?.substring(0, 300),
+    }).catch(() => {});
     res.write(`data: ${JSON.stringify({ error: error.message })}\n\n`);
     res.end();
   }

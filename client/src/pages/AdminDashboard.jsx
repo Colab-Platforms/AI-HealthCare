@@ -154,6 +154,7 @@ export default function AdminDashboard() {
     { label: "User Intelligence", path: "/admin/activity", icon: Activity },
     { label: "Food DB", path: "/admin/food-cache", icon: Utensils },
     { label: "Health Reports", path: "/admin/reports", icon: FileText },
+    { label: "AI Usage & Cost", path: "/admin/ai-usage", icon: Zap },
   ];
 
   return (

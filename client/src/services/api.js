@@ -263,7 +263,17 @@ export const adminService = {
   bulkCreateFoodCache: (data) => api.post('admin/food-cache/bulk', data),
   updateFoodCache: (id, data) => api.put(`admin/food-cache/${id}`, data),
   deleteFoodCache: (id) => api.delete(`admin/food-cache/${id}`),
-  clearFoodCache: () => api.delete('admin/food-cache/clear-all')
+  clearFoodCache: () => api.delete('admin/food-cache/clear-all'),
+
+  // AI Usage Tracking
+  getUsageSummary:     (params) => api.get('admin/usage/summary',        { params }),
+  getUsageCostOverTime:(params) => api.get('admin/usage/cost-over-time', { params }),
+  getUsageByFeature:   (params) => api.get('admin/usage/by-feature',     { params }),
+  getUsageByModel:     (params) => api.get('admin/usage/by-model',       { params }),
+  getUsageByUser:      (params) => api.get('admin/usage/by-user',        { params }),
+  getUsageLogs:        (params) => api.get('admin/usage/logs',           { params }),
+  getUsageCacheStats:  (params) => api.get('admin/usage/cache-stats',    { params }),
+  getUsageBudget:      (params) => api.get('admin/usage/budget',         { params }),
 };
 
 export const activityService = {

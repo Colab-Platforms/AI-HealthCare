@@ -1,8 +1,8 @@
 const axios = require('axios');
 const { robustJsonParse } = require('../utils/aiParser');
+const UsageLog = require('../models/UsageLog');
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
-// Using Claude Sonnet 4-6 as specified
 const CLAUDE_MODEL = 'claude-sonnet-4-6';
 
 class NutritionAI {
@@ -39,7 +39,7 @@ class NutritionAI {
         temperature: 0.4
       };
 
-      // Vision requests can be very slow - using 2-minute timeout
+      const startTime = Date.now();
       const resp = await axios.post(apiUrl, requestPayload, { headers, timeout: 120000 });
       const text = resp.data?.content?.[0]?.text;
 
@@ -48,11 +48,23 @@ class NutritionAI {
         throw new Error('No content in Anthropic response');
       }
 
+      const usage = resp.data?.usage || {};
+      UsageLog.create({
+        userId:           payload.userId || null,
+        feature:          'diet_plan',
+        model:            requestPayload.model,
+        inputTokens:      usage.input_tokens               || 0,
+        outputTokens:     usage.output_tokens              || 0,
+        cacheReadTokens:  usage.cache_read_input_tokens    || 0,
+        cacheWriteTokens: usage.cache_creation_input_tokens || 0,
+        durationMs:       Date.now() - startTime,
+        status:           'success',
+      }).catch(e => console.error('UsageLog save failed:', e.message));
+
       return text;
     } catch (err) {
       const errorMsg = err.response?.data?.error?.message || err.message;
       console.error('❌ [NutritionAI] API ERROR:', errorMsg);
-
       if (err.response?.data) {
         console.error('❌ [NutritionAI] Full API Error Data:', JSON.stringify(err.response.data));
       }

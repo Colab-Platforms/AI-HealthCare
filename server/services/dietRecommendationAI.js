@@ -1,5 +1,6 @@
 const axios = require('axios');
 const { robustJsonParse } = require('../utils/aiParser');
+const UsageLog = require('../models/UsageLog');
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 // 🚨 USER SPECIFIC MODEL - The user insists on using 'claude-sonnet-4-6'
@@ -15,7 +16,8 @@ class DietRecommendationAI {
     const apiKey = process.env.ANTHROPIC_API_KEY;
     const primaryModel = modelOverride || CLAUDE_MODEL;
     const MAX_RETRIES = 5;
-    const RETRY_DELAYS = [8000, 20000, 40000, 60000, 90000]; // 8s, 20s, 40s, 60s, 90s
+    const RETRY_DELAYS = [8000, 20000, 40000, 60000, 90000];
+    const startTime = Date.now();
 
     const headers = {
       'x-api-key': apiKey,
@@ -44,6 +46,18 @@ class DietRecommendationAI {
 
         if (response.data && response.data.content && response.data.content[0]) {
           if (attempt > 0) console.log(`✅ DietAI | Succeeded on attempt ${attempt + 1} with ${currentModel}`);
+          const usage = response.data?.usage || {};
+          UsageLog.create({
+            userId:           payload.userId || null,
+            feature:          'diet_plan',
+            model:            currentModel,
+            inputTokens:      usage.input_tokens               || 0,
+            outputTokens:     usage.output_tokens              || 0,
+            cacheReadTokens:  usage.cache_read_input_tokens    || 0,
+            cacheWriteTokens: usage.cache_creation_input_tokens || 0,
+            durationMs:       Date.now() - startTime,
+            status:           'success',
+          }).catch(e => console.error('UsageLog save failed:', e.message));
           return response.data.content[0].text;
         }
         throw new Error('Invalid response');

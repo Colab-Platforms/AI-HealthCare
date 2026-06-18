@@ -38,6 +38,7 @@ const AdminReports = lazy(() => import("./pages/AdminReports"));
 const AdminFoodCache = lazy(() => import("./pages/AdminFoodCache"));
 const AdminActivity = lazy(() => import("./pages/UserActivity"));
 const AdminSupport = lazy(() => import("./pages/AdminSupport"));
+const AdminAIUsage = lazy(() => import("./pages/AdminAIUsage"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 
 const StepTracker = lazy(() => import("./pages/StepTracker"));
@@ -607,6 +608,16 @@ export default function PrivateApp() {
                   <AdminRoute>
                     <Layout isAdmin>
                       <AdminSupport />
+                    </Layout>
+                  </AdminRoute>
+                }
+              />
+              <Route
+                path="/admin/ai-usage"
+                element={
+                  <AdminRoute>
+                    <Layout isAdmin>
+                      <AdminAIUsage />
                     </Layout>
                   </AdminRoute>
                 }

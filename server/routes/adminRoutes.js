@@ -12,6 +12,10 @@ const {
   deleteUser, getFilteredUsers
 } = require('../controllers/adminController');
 const { getDoctorScheduleOverview } = require('../controllers/doctorController');
+const {
+  getSummary, getCostOverTime, getByFeature, getByModel,
+  getByUser, getLogs, getCacheStats, getBudgetStatus
+} = require('../controllers/usageController');
 
 // 🏓 Internal Router Ping (Bypasses Auth for Debugging)
 router.get('/ping-internal', (req, res) => {
@@ -78,5 +82,15 @@ router.post('/food-cache', createCachedFood);
 router.put('/food-cache/:id', updateCachedFood);
 router.delete('/food-cache/clear-all', clearAllCachedFoods);
 router.delete('/food-cache/:id', deleteCachedFood);
+
+// Claude AI Usage & Cost Tracking
+router.get('/usage/summary',        getSummary);
+router.get('/usage/cost-over-time', getCostOverTime);
+router.get('/usage/by-feature',     getByFeature);
+router.get('/usage/by-model',       getByModel);
+router.get('/usage/by-user',        getByUser);
+router.get('/usage/logs',           getLogs);
+router.get('/usage/cache-stats',    getCacheStats);
+router.get('/usage/budget',         getBudgetStatus);
 
 module.exports = router;

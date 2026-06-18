@@ -1,4 +1,5 @@
 const axios = require('axios');
+const UsageLog = require('../models/UsageLog');
 
 // Simple Hindi translation mapping for common health terms
 const hindiTranslations = {
@@ -166,17 +167,14 @@ const translateWithAI = async (text, targetLanguage = 'hi') => {
       return targetLanguage === 'hi' ? translateToHindi(text) : text;
     }
 
+    const AI_MODEL = 'claude-sonnet-4-6';
+    const startTime = Date.now();
     const response = await axios.post(
       'https://api.anthropic.com/v1/messages',
       {
-        model: 'claude-sonnet-4-6',
+        model: AI_MODEL,
         system: `You are a medical translator. Translate the following medical text to ${targetLanguage === 'hi' ? 'Hindi' : 'English'} in simple, easy-to-understand language. Keep medical terms accurate. Return ONLY the translated text, nothing else.`,
-        messages: [
-          {
-            role: 'user',
-            content: text
-          }
-        ],
+        messages: [{ role: 'user', content: text }],
         temperature: 0.3,
         max_tokens: 1000
       },
@@ -191,12 +189,23 @@ const translateWithAI = async (text, targetLanguage = 'hi') => {
     );
 
     if (response.data && response.data.content && response.data.content[0]) {
+      const usage = response.data?.usage || {};
+      UsageLog.create({
+        userId:           null,
+        feature:          'translate',
+        model:            AI_MODEL,
+        inputTokens:      usage.input_tokens               || 0,
+        outputTokens:     usage.output_tokens              || 0,
+        cacheReadTokens:  usage.cache_read_input_tokens    || 0,
+        cacheWriteTokens: usage.cache_creation_input_tokens || 0,
+        durationMs:       Date.now() - startTime,
+        status:           'success',
+      }).catch(e => console.error('UsageLog save failed:', e.message));
       return response.data.content[0].text;
     }
     return targetLanguage === 'hi' ? translateToHindi(text) : text;
   } catch (error) {
     console.error('[TRANSLATION] AI translation failed:', error.message);
-    // Fallback to local translation
     return targetLanguage === 'hi' ? translateToHindi(text) : text;
   }
 };

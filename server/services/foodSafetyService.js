@@ -1,6 +1,7 @@
 const axios = require('axios');
 const FoodAdulteration = require('../models/FoodAdulteration');
 const { robustJsonParse } = require('../utils/aiParser');
+const UsageLog = require('../models/UsageLog');
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const CLAUDE_MODEL = 'claude-haiku-4-5-20251001'; // Matches other services in the project
@@ -65,6 +66,7 @@ const extractFoodSafetyInfo = async (newsResults) => {
 
   try {
     const apiKey = process.env.ANTHROPIC_API_KEY;
+    const startTime = Date.now();
     const response = await axios.post(
       ANTHROPIC_API_URL,
       {
@@ -82,6 +84,19 @@ const extractFoodSafetyInfo = async (newsResults) => {
         timeout: 60000
       }
     );
+
+    const usage = response.data?.usage || {};
+    UsageLog.create({
+      userId:           null,
+      feature:          'other',
+      model:            CLAUDE_MODEL,
+      inputTokens:      usage.input_tokens               || 0,
+      outputTokens:     usage.output_tokens              || 0,
+      cacheReadTokens:  usage.cache_read_input_tokens    || 0,
+      cacheWriteTokens: usage.cache_creation_input_tokens || 0,
+      durationMs:       Date.now() - startTime,
+      status:           'success',
+    }).catch(e => console.error('UsageLog save failed:', e.message));
 
     const content = response.data.content[0].text;
     

@@ -1,31 +1,34 @@
 const axios = require('axios');
 const { robustJsonParse } = require('../utils/aiParser');
+const UsageLog = require('../models/UsageLog');
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
-// 🚨 USER SPECIFIC MODEL - Updated to valid Anthropic model IDs for 2026
-const CLAUDE_MODEL = 'claude-sonnet-4-6'; 
+const CLAUDE_MODEL = 'claude-sonnet-4-6';
 const CLAUDE_HAIKU_MODEL = 'claude-4-haiku-latest';
 const FALLBACK_HAIKU_MODEL = 'claude-3-5-haiku-latest';
 
-// Export for other services
 exports.CLAUDE_MODEL = CLAUDE_MODEL;
 exports.CLAUDE_HAIKU_MODEL = CLAUDE_HAIKU_MODEL;
 
-const makeAnthropicRequest = async (messages, maxTokens = 4096, modelOverride = null) => {
+// Save usage log — fire-and-forget, never blocks the main response
+const saveUsageLog = (data) => {
+  UsageLog.create(data).catch(err =>
+    console.error('UsageLog save failed:', err.message)
+  );
+};
+
+const makeAnthropicRequest = async (messages, maxTokens = 4096, modelOverride = null, context = {}) => {
+  const selectedModel = modelOverride || CLAUDE_MODEL;
+  const startTime = Date.now();
+
   try {
     const apiKey = process.env.ANTHROPIC_API_KEY;
-    const selectedModel = modelOverride || CLAUDE_MODEL;
+    console.log(`🔄 Anthropic | Model: ${selectedModel} | MaxTokens: ${maxTokens} | Feature: ${context.feature || 'unknown'}`);
 
-    console.log(`🔄 Anthropic | Model: ${selectedModel} | Tokens: ${maxTokens}`);
-
-    // Filter messages for Anthropic structure
     let systemMessage = '';
     const filteredMessages = messages.filter(m => {
-      if (m.role === 'system') {
-        systemMessage = m.content;
-        return false;
-      }
+      if (m.role === 'system') { systemMessage = m.content; return false; }
       return true;
     });
 
@@ -52,24 +55,52 @@ const makeAnthropicRequest = async (messages, maxTokens = 4096, modelOverride = 
       }
     );
 
-    if (response.data && response.data.content && response.data.content[0]) {
-      return response.data.content[0].text;
-    }
+    const usage = response.data?.usage || {};
+    const durationMs = Date.now() - startTime;
+
+    console.log(`✅ Anthropic | in:${usage.input_tokens} out:${usage.output_tokens} cache_read:${usage.cache_read_input_tokens || 0} | ${durationMs}ms`);
+
+    // Log usage async — don't await
+    saveUsageLog({
+      userId:           context.userId   || null,
+      feature:          context.feature  || 'other',
+      reportId:         context.reportId || null,
+      model:            selectedModel,
+      inputTokens:      usage.input_tokens              || 0,
+      outputTokens:     usage.output_tokens             || 0,
+      cacheReadTokens:  usage.cache_read_input_tokens   || 0,
+      cacheWriteTokens: usage.cache_creation_input_tokens || 0,
+      durationMs,
+      status: 'success',
+    });
+
+    if (response.data?.content?.[0]) return response.data.content[0].text;
     throw new Error('Invalid response');
+
   } catch (error) {
     const errorMsg = error.response?.data?.error?.message || error.message;
-    const selectedModel = modelOverride || CLAUDE_MODEL;
     const modelMissing = /model/i.test(errorMsg);
 
-    // Retry with a safer fallback if the selected model is unavailable.
+    // Retry with fallback model
     if (modelMissing && selectedModel === CLAUDE_HAIKU_MODEL) {
-      console.warn(`⚠️ Anthropic model unavailable (${selectedModel}). Retrying with ${FALLBACK_HAIKU_MODEL}...`);
-      return makeAnthropicRequest(messages, maxTokens, FALLBACK_HAIKU_MODEL);
+      console.warn(`⚠️ Model unavailable (${selectedModel}). Retrying with ${FALLBACK_HAIKU_MODEL}...`);
+      return makeAnthropicRequest(messages, maxTokens, FALLBACK_HAIKU_MODEL, context);
     }
     if (modelMissing && selectedModel === FALLBACK_HAIKU_MODEL) {
-      console.warn(`⚠️ Anthropic model unavailable (${selectedModel}). Retrying with ${CLAUDE_MODEL}...`);
-      return makeAnthropicRequest(messages, maxTokens, CLAUDE_MODEL);
+      console.warn(`⚠️ Model unavailable (${selectedModel}). Retrying with ${CLAUDE_MODEL}...`);
+      return makeAnthropicRequest(messages, maxTokens, CLAUDE_MODEL, context);
     }
+
+    // Log failed call
+    saveUsageLog({
+      userId:    context.userId  || null,
+      feature:   context.feature || 'other',
+      reportId:  context.reportId || null,
+      model:     selectedModel,
+      durationMs: Date.now() - startTime,
+      status:    'error',
+      errorMessage: errorMsg.substring(0, 300),
+    });
 
     console.error('❌ Anthropic Error:', errorMsg);
     throw new Error(`AI Analysis Failed: ${errorMsg}`);
@@ -147,24 +178,22 @@ const validateMedicalReport = async (reportText, fileData = null) => {
       { role: 'user', content: userContent.length ? userContent : [{ type: 'text', text: 'No extracted text provided.' }] }
     ];
 
-    const content = await makeAnthropicRequest(messages, 400, CLAUDE_HAIKU_MODEL);
+    const content = await makeAnthropicRequest(messages, 400, CLAUDE_HAIKU_MODEL, { feature: 'validate_report' });
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) return { isMedical: true };
     const parsed = robustJsonParse(jsonMatch[0]);
     if (typeof parsed?.isMedical === 'boolean') return parsed;
     return { isMedical: true };
   } catch (e) {
-    // Fail-closed: prevent non-medical analysis when validator is unavailable.
     return {
       isMedical: false,
-      message:
-        'Unable to validate this upload as a medical report right now. Please re-upload a clear medical report (lab, prescription, radiology, or discharge summary).'
+      message: 'Unable to validate this upload as a medical report right now. Please re-upload a clear medical report (lab, prescription, radiology, or discharge summary).'
     };
   }
 };
 exports.validateMedicalReport = validateMedicalReport;
 
-exports.analyzeHealthReport = async (reportText, user = {}, fileData = null, reportType = 'general') => {
+exports.analyzeHealthReport = async (reportText, user = {}, fileData = null, reportType = 'general', context = {}) => {
   try {
     let userContext = `User: ${user.name || 'Patient'}. Type: ${reportType}`;
     const userContent = [];
@@ -208,7 +237,11 @@ exports.analyzeHealthReport = async (reportText, user = {}, fileData = null, rep
     }
 
     const messages = [{ role: 'system', content: HEALTH_ANALYSIS_PROMPT }, { role: 'user', content: userContent }];
-    const content = await makeAnthropicRequest(messages, 8000); 
+    const content = await makeAnthropicRequest(messages, 8000, null, {
+      feature: context.feature || 'analyze_report',
+      userId: user?._id || context.userId || null,
+      reportId: context.reportId || null,
+    });
 
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
@@ -222,26 +255,29 @@ exports.analyzeHealthReport = async (reportText, user = {}, fileData = null, rep
   }
 };
 
-exports.compareReports = async (currentReport, previousReport) => {
+exports.compareReports = async (currentReport, previousReport, context = {}) => {
   try {
     const prompt = `Compare: ${JSON.stringify(currentReport.aiAnalysis?.metrics)} and ${JSON.stringify(previousReport.aiAnalysis?.metrics)}. Return JSON {"overallTrend": "improving/declining"}`;
-    const content = await makeAnthropicRequest([{ role: 'user', content: prompt }], 1000, CLAUDE_HAIKU_MODEL);
+    const content = await makeAnthropicRequest([{ role: 'user', content: prompt }], 1000, CLAUDE_HAIKU_MODEL, { feature: 'compare_reports', ...context });
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     return jsonMatch ? robustJsonParse(jsonMatch[0]) : { overallTrend: 'stable' };
   } catch (e) { return { overallTrend: 'unknown' }; }
 };
 
-exports.chatWithReport = async (report, message, chatHistory) => {
+exports.chatWithReport = async (report, message, chatHistory, context = {}) => {
   try {
     const systemPrompt = `Assistant for report: ${report.aiAnalysis?.summary}`;
-    return await makeAnthropicRequest([{ role: 'system', content: systemPrompt }, ...chatHistory.slice(-4), { role: 'user', content: message }], 800, CLAUDE_HAIKU_MODEL);
+    return await makeAnthropicRequest(
+      [{ role: 'system', content: systemPrompt }, ...chatHistory.slice(-4), { role: 'user', content: message }],
+      800, CLAUDE_HAIKU_MODEL, { feature: 'chat_about_report', ...context }
+    );
   } catch (e) { return "Trouble analyzing right now."; }
 };
 
-exports.generateMetricInfo = async (metricName, metricValue, normalRange, unit) => {
+exports.generateMetricInfo = async (metricName, metricValue, normalRange, unit, context = {}) => {
   try {
-    const prompt = `Provide a professional medical explanation for the health metric "${metricName}" with a current value of ${metricValue} ${unit} (Normal Range: ${normalRange}). 
-    
+    const prompt = `Provide a professional medical explanation for the health metric "${metricName}" with a current value of ${metricValue} ${unit} (Normal Range: ${normalRange}).
+
     Return ONLY a JSON object with this structure:
     {
       "en": {
@@ -253,20 +289,20 @@ exports.generateMetricInfo = async (metricName, metricValue, normalRange, unit) 
         "actions": ["Action 1", "Action 2"]
       }
     }`;
-    
-    const content = await makeAnthropicRequest([{ role: 'user', content: prompt }], 1200, CLAUDE_HAIKU_MODEL);
+
+    const content = await makeAnthropicRequest([{ role: 'user', content: prompt }], 1200, CLAUDE_HAIKU_MODEL, { feature: 'metric_info', ...context });
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     return jsonMatch ? robustJsonParse(jsonMatch[0]) : null;
-  } catch (e) { 
+  } catch (e) {
     console.error('generateMetricInfo error:', e);
-    return null; 
+    return null;
   }
 };
 
-exports.generateVitalsInsights = async (metricType, history, user) => {
+exports.generateVitalsInsights = async (metricType, history, user, context = {}) => {
   try {
     const prompt = `Insights for ${metricType}: ${JSON.stringify(history)}. JSON {"analysis": ""}`;
-    const content = await makeAnthropicRequest([{ role: 'user', content: prompt }], 800, CLAUDE_HAIKU_MODEL);
+    const content = await makeAnthropicRequest([{ role: 'user', content: prompt }], 800, CLAUDE_HAIKU_MODEL, { feature: 'vitals_insights', userId: user?._id, ...context });
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     return jsonMatch ? robustJsonParse(jsonMatch[0]) : null;
   } catch (e) { return null; }
@@ -303,7 +339,9 @@ exports.generateHealthDNA = async (userData, metricsSummary, recentTrends) => {
       "healthStory": "A long-form, 200-word personalized narrative of their health journey based on all data. Mention improvements or areas of regression."
     }`;
     
-    const content = await makeAnthropicRequest([{ role: 'user', content: prompt }], 2500, CLAUDE_MODEL);
+    const content = await makeAnthropicRequest([{ role: 'user', content: prompt }], 2500, CLAUDE_MODEL, {
+      feature: 'health_dna',
+    });
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     return jsonMatch ? robustJsonParse(jsonMatch[0]) : null;
   } catch (e) {
