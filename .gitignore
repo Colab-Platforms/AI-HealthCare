@@ -47,4 +47,7 @@ coverage/
 # Misc
 .vercel
 
+# Firebase SW — merged into sw.js, this file is redundant
+client/public/firebase-messaging-sw.js
+
 /client/dist

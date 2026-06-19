@@ -13,6 +13,7 @@ const cache = require('../utils/cache');
 const cloudinary = require('../services/cloudinary');
 const emailService = require('../services/emailService');
 const queueService = require('../services/queueService');
+const { sendToUser } = require('../services/fcmService');
 const HealthMetric = require('../models/HealthMetric');
 const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
 const { logActivity } = require('../utils/activityLogger');
@@ -127,7 +128,14 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
     try { await emailService.sendReportAnalysisComplete(userDoc.email, userDoc.name, reportId); }
     catch (e) { console.warn('Email failed:', e.message); }
 
-    console.log(`✅ [BG] Analysis complete for ${reportId}`);
+    // FCM Push Notification
+    sendToUser(userId, {
+      title: 'Report Analysis Complete',
+      body: 'Your health report has been analyzed. Tap to view your results.',
+      data: { type: 'report_ready', actionUrl: `/reports/${reportId}` }
+    }).catch(e => console.warn('FCM report notification failed:', e.message));
+
+    console.log(`[BG] Analysis complete for ${reportId}`);
 
     // 🚀 Auto-trigger diet plan generation after successful report analysis
     try {
@@ -625,9 +633,19 @@ exports.getMetricInfo = async (req, res) => {
   try {
     const { metricName, metricValue, normalRange, unit } = req.body;
     if (!metricName) return res.status(400).json({ message: 'Metric name is required' });
+
+    // Cache key by metric + status (value doesn't matter for the explanation)
+    const cacheKey = `metricInfo:${metricName.toLowerCase().replace(/\s+/g, '_')}:${unit || 'na'}`;
+    const cached = cache.get(cacheKey);
+    if (cached) return res.json({ metricInfo: cached });
+
     const metricInfo = await generateMetricInfo(metricName, metricValue, normalRange, unit, {
       userId: req.user._id,
     });
+
+    // Cache for 7 days (604800s) — metric explanations don't change
+    if (metricInfo) cache.set(cacheKey, metricInfo, 604800);
+
     res.json({ metricInfo });
   } catch (error) {
     res.status(500).json({ message: error.message });

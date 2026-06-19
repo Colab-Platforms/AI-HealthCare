@@ -1,13 +1,15 @@
 import { useState } from 'react';
-import { ChevronDown, Users, TrendingUp, Clock } from 'lucide-react';
+import { ChevronDown, Users, TrendingUp, Clock, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { activityService } from '../services/api';
+import toast from 'react-hot-toast';
 
 export default function FeatureUsageAnalytics({ stats, filters }) {
   const [expandedFeature, setExpandedFeature] = useState(null);
   const [userBreakdownData, setUserBreakdownData] = useState({});
   const [loadingFeature, setLoadingFeature] = useState(null);
   const [userPagination, setUserPagination] = useState({});
+  const [exportingFeature, setExportingFeature] = useState(null);
 
   const displayNames = {
     'authentication': 'Security',
@@ -79,6 +81,50 @@ export default function FeatureUsageAnalytics({ stats, filters }) {
 
   const handlePageChange = async (featureId, newPage) => {
     await fetchUserBreakdown(featureId, newPage);
+  };
+
+  const handleExportCSV = async (featureId, featureName) => {
+    setExportingFeature(featureId);
+    try {
+      const response = await activityService.getFeatureStats({
+        featureId,
+        page: 1,
+        limit: 10000,
+        startDate: filters.startDate,
+        endDate: filters.endDate
+      });
+
+      const users = response.data.userBreakdown || [];
+      if (users.length === 0) {
+        toast.error('No data to export');
+        return;
+      }
+
+      const headers = ['Name', 'Email', 'Action Count', 'Last Used'];
+      const rows = users.map(u => [
+        `"${u.userName || 'Unknown'}"`,
+        `"${u.userEmail || 'N/A'}"`,
+        u.count,
+        `"${new Date(u.lastUsed).toLocaleDateString()}"`
+      ]);
+
+      const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `feature-${featureId}-users-${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success(`Exported ${users.length} users for ${featureName}`);
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Failed to export data');
+    } finally {
+      setExportingFeature(null);
+    }
   };
 
   if (!stats?.categoryStats || stats.categoryStats.length === 0) {
@@ -199,6 +245,18 @@ export default function FeatureUsageAnalytics({ stats, filters }) {
                     className="border-t border-slate-100 bg-slate-50/50"
                   >
                     <div className="p-6 space-y-3">
+                      {/* Export Button */}
+                      <div className="flex justify-end mb-2">
+                        <button
+                          onClick={() => handleExportCSV(feature._id, displayNames[feature._id] || feature._id)}
+                          disabled={exportingFeature === feature._id || isLoading}
+                          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-md hover:bg-indigo-700 hover:-translate-y-0.5 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                          <Download className={`w-3.5 h-3.5 ${exportingFeature === feature._id ? 'animate-spin' : ''}`} />
+                          {exportingFeature === feature._id ? 'Exporting...' : 'Export CSV'}
+                        </button>
+                      </div>
+
                       {isLoading ? (
                         <div className="flex items-center justify-center py-8">
                           <div className="w-6 h-6 border-3 border-slate-200 border-t-slate-900 rounded-full animate-spin" />

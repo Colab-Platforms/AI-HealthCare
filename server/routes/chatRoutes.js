@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Anthropic = require('@anthropic-ai/sdk');
 const { protect } = require('../middleware/auth');
+const { aiLimiter } = require('../middleware/rateLimit');
 const User = require('../models/User');
 const HealthMetric = require('../models/HealthMetric');
 const FoodLog = require('../models/FoodLog');
@@ -11,7 +12,7 @@ const { buildAlcoholContextForAI, buildSmokeContextForAI } = require('../utils/a
 const UsageLog = require('../models/UsageLog');
 
 // AI Chat endpoint - Requires authentication for personalized context
-router.post('/chat', protect, async (req, res) => {
+router.post('/chat', protect, aiLimiter, async (req, res) => {
   try {
     const { query, conversationHistory, userReports } = req.body;
     const user = req.user;

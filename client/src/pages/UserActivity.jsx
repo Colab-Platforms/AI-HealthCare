@@ -1,8 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useAuth } from '../context/AuthContext';
 import { activityService } from '../services/api';
 import ActivityDetailModal from '../components/ActivityDetailModal';
 import LiveUsersModal from '../components/LiveUsersModal';
 import FeatureUsageAnalytics from '../components/FeatureUsageAnalytics';
+import PlatformGrowthStats from '../components/PlatformGrowthStats';
 import {
   Activity, Search, Filter, Calendar,
   ChevronLeft, ChevronRight, RefreshCcw,
@@ -29,6 +31,7 @@ import {
 } from "recharts";
 
 export default function UserActivity() {
+  const { isSuperAdmin } = useAuth();
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
@@ -56,6 +59,7 @@ export default function UserActivity() {
   const [modalFilterData, setModalFilterData] = useState(null);
 
   const [exporting, setExporting] = useState(false);
+  const [exportingUsers, setExportingUsers] = useState(false);
 
   const openModal = (title, filterData) => {
     setModalTitle(title);
@@ -92,6 +96,28 @@ export default function UserActivity() {
       toast.error('Failed to download logs');
     } finally {
       setExporting(false);
+    }
+  };
+
+  // Export all registered users as CSV
+  const handleExportUsers = async () => {
+    setExportingUsers(true);
+    try {
+      const response = await activityService.exportUsers();
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `users-${new Date().toISOString().split('T')[0]}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      toast.success('Users data exported successfully!');
+    } catch (error) {
+      console.error('Export users error:', error);
+      toast.error('Failed to export users');
+    } finally {
+      setExportingUsers(false);
     }
   };
 
@@ -621,6 +647,9 @@ export default function UserActivity() {
           </div>
         </div>
 
+        {/* Platform Growth & User Metrics */}
+        <PlatformGrowthStats filters={filters} />
+
         {/* Feature Usage Analytics - Expandable with User Breakdown */}
         <FeatureUsageAnalytics stats={stats} filters={filters} />
 
@@ -704,15 +733,28 @@ export default function UserActivity() {
                   <h3 className="text-2xl font-black text-slate-800 tracking-tight">Interaction Feed</h3>
                   <p className="text-slate-400 text-xs font-bold uppercase tracking-wider mt-1">Encrypted Telemetry Sequence</p>
                 </div>
-                <button
-                  onClick={handleDownloadCSV}
-                  disabled={exporting || totalCount === 0}
-                  className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
-                  title={`Download all ${totalCount} records as CSV`}
-                >
-                  <Download className={`w-4 h-4 ${exporting ? 'animate-spin' : ''}`} />
-                  {exporting ? 'Exporting...' : `Export (${totalCount})`}
-                </button>
+                {isSuperAdmin() && (
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleExportUsers}
+                      disabled={exportingUsers}
+                      className="flex items-center gap-2 px-5 py-3 bg-emerald-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-emerald-200 hover:bg-emerald-700 hover:-translate-y-0.5 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="Export all registered users as CSV"
+                    >
+                      <Download className={`w-4 h-4 ${exportingUsers ? 'animate-spin' : ''}`} />
+                      {exportingUsers ? 'Exporting...' : 'Export Users'}
+                    </button>
+                    <button
+                      onClick={handleDownloadCSV}
+                      disabled={exporting || totalCount === 0}
+                      className="flex items-center gap-2 px-6 py-3 bg-indigo-600 text-white rounded-2xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-indigo-200 hover:bg-indigo-700 hover:-translate-y-0.5 transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={`Download all ${totalCount} activity records as CSV`}
+                    >
+                      <Download className={`w-4 h-4 ${exporting ? 'animate-spin' : ''}`} />
+                      {exporting ? 'Exporting...' : `Export Logs (${totalCount})`}
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Data Table */}

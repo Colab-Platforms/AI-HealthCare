@@ -392,6 +392,49 @@ exports.exportActivityLogs = async (req, res) => {
   }
 };
 
+// @desc    Export all registered users as CSV (Admin only)
+// @route   GET /api/activity/export-users
+exports.exportUsers = async (req, res) => {
+  try {
+    const users = await User.find({})
+      .select('name email phone role profile subscription createdAt isEmailVerified lastLogin')
+      .sort({ createdAt: -1 })
+      .lean();
+
+    const headers = [
+      'Name', 'Email', 'Phone', 'Role',
+      'Gender', 'Age', 'Goal', 'Plan',
+      'Email Verified', 'Signup Date', 'Last Login'
+    ];
+
+    const rows = users.map(u => [
+      u.name || '',
+      u.email || '',
+      u.phone || '',
+      u.role || 'user',
+      u.profile?.gender || '',
+      u.profile?.age || '',
+      u.profile?.goal || '',
+      u.subscription?.plan || 'free',
+      u.isEmailVerified ? 'Yes' : 'No',
+      u.createdAt ? new Date(u.createdAt).toISOString().split('T')[0] : '',
+      u.lastLogin ? new Date(u.lastLogin).toISOString().replace('T', ' ').split('.')[0] : '',
+    ]);
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="users-${new Date().toISOString().split('T')[0]}.csv"`);
+    res.send(csvContent);
+  } catch (error) {
+    console.error('Error exporting users:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 // @desc    Get live active users (last 5 minutes)
 // @route   GET /api/activity/live-users
 exports.getLiveActiveUsers = async (req, res) => {
@@ -456,51 +499,72 @@ exports.getDauMau = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
     const now = new Date();
-    
-    // Determine the period based on query parameters
+
     let todayStart, periodStart, periodEnd;
-    
+
     if (startDate && endDate) {
-      // Use provided date range
       periodStart = new Date(startDate);
       periodEnd = new Date(endDate);
       periodEnd.setHours(23, 59, 59, 999);
       todayStart = new Date(periodEnd);
       todayStart.setHours(0, 0, 0, 0);
     } else {
-      // Default behavior
       todayStart = new Date(now);
       todayStart.setHours(0, 0, 0, 0);
-      periodStart = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000)); // 30 days
+      periodStart = new Date(now.getTime() - (30 * 24 * 60 * 60 * 1000));
       periodEnd = now;
     }
-    
-    // DAU: Unique users active in the period
-    const dauCount = await ActivityLog.distinct('user', {
-      timestamp: { $gte: todayStart, $lte: periodEnd }
-    }).then(users => users.length);
 
-    // MAU: Unique users active in the entire period
-    const mauCount = await ActivityLog.distinct('user', {
-      timestamp: { $gte: periodStart, $lte: periodEnd }
-    }).then(users => users.length);
-
-    // WAU: Unique users active in last 7 days of period
     const sevenDaysAgoFromPeriod = new Date(periodEnd.getTime() - (7 * 24 * 60 * 60 * 1000));
-    const wauCount = await ActivityLog.distinct('user', {
-      timestamp: { $gte: sevenDaysAgoFromPeriod, $lte: periodEnd }
-    }).then(users => users.length);
 
-    // Calculate retention: DAU/MAU ratio
+    // Previous period for new-user growth comparison
+    const prevPeriodStart = new Date(periodStart.getTime() - (periodEnd - periodStart));
+    const prevPeriodEnd = new Date(periodStart);
+
+    const [
+      dauCount,
+      mauCount,
+      wauCount,
+      totalUsers,
+      newUsersInRange,
+      newUsersPrevRange,
+      signupTrend
+    ] = await Promise.all([
+      ActivityLog.distinct('user', { timestamp: { $gte: todayStart, $lte: periodEnd } }).then(u => u.length),
+      ActivityLog.distinct('user', { timestamp: { $gte: periodStart, $lte: periodEnd } }).then(u => u.length),
+      ActivityLog.distinct('user', { timestamp: { $gte: sevenDaysAgoFromPeriod, $lte: periodEnd } }).then(u => u.length),
+      User.countDocuments({ role: { $nin: ['admin', 'superadmin'] } }),
+      User.countDocuments({ createdAt: { $gte: periodStart, $lte: periodEnd }, role: { $nin: ['admin', 'superadmin'] } }),
+      User.countDocuments({ createdAt: { $gte: prevPeriodStart, $lte: prevPeriodEnd }, role: { $nin: ['admin', 'superadmin'] } }),
+      // Daily signup trend for the selected range
+      User.aggregate([
+        { $match: { createdAt: { $gte: periodStart, $lte: periodEnd }, role: { $nin: ['admin', 'superadmin'] } } },
+        {
+          $group: {
+            _id: { $dateToString: { format: '%Y-%m-%d', date: '$createdAt' } },
+            count: { $sum: 1 }
+          }
+        },
+        { $sort: { _id: 1 } }
+      ])
+    ]);
+
     const retention = mauCount > 0 ? Math.round((dauCount / mauCount) * 100) : 0;
+    const newUserGrowth = newUsersPrevRange > 0
+      ? Math.round(((newUsersInRange - newUsersPrevRange) / newUsersPrevRange) * 100)
+      : (newUsersInRange > 0 ? 100 : 0);
 
     res.json({
       success: true,
       metrics: {
-        dau: dauCount,        // Daily Active Users
-        mau: mauCount,        // Monthly Active Users
-        wau: wauCount,        // Weekly Active Users
-        retention: retention  // Retention percentage (DAU/MAU)
+        dau: dauCount,
+        mau: mauCount,
+        wau: wauCount,
+        retention,
+        totalUsers,
+        newUsersInRange,
+        newUserGrowth,
+        signupTrend
       }
     });
   } catch (error) {

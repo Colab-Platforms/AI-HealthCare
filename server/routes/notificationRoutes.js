@@ -6,7 +6,9 @@ const {
     markAsRead,
     markAllAsRead,
     deleteNotification,
-    clearAll
+    clearAll,
+    registerFCMToken,
+    deregisterFCMToken
 } = require('../controllers/notificationController');
 const { protect } = require('../middleware/auth');
 const { Receiver } = require('@upstash/qstash');
@@ -37,6 +39,26 @@ router.post('/cron-tick', async (req, res) => {
     }
 });
 
+// Test FCM push — superadmin only, remove after testing
+router.post('/test-push', protect, async (req, res) => {
+    try {
+        const { token, title, body } = req.body;
+        const { sendToToken, sendToUser } = require('../services/fcmService');
+
+        let result;
+        if (token) {
+            // Test with a specific FCM token
+            result = await sendToToken(token, { title: title || 'Test Push', body: body || 'FCM is working!' });
+        } else {
+            // Test with logged-in user's saved token
+            result = await sendToUser(req.user._id, { title: title || 'Test Push', body: body || 'FCM is working!' });
+        }
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ success: false, error: e.message });
+    }
+});
+
 // All routes below require authentication
 router.use(protect);
 
@@ -46,5 +68,7 @@ router.put('/:id/read', markAsRead);
 router.put('/mark-all-read', markAllAsRead);
 router.delete('/:id', deleteNotification);
 router.delete('/', clearAll);
+router.post('/register-token', registerFCMToken);
+router.post('/deregister-token', deregisterFCMToken);
 
 module.exports = router;

@@ -1,4 +1,5 @@
 const Notification = require('../models/Notification');
+const FCMToken = require('../models/FCMToken');
 
 // Get all notifications for current user
 exports.getNotifications = async (req, res) => {
@@ -89,6 +90,53 @@ exports.deleteNotification = async (req, res) => {
     } catch (error) {
         console.error('Delete notification error:', error);
         res.status(500).json({ success: false, message: 'Failed to delete notification' });
+    }
+};
+
+// Register FCM token for current user's device
+exports.registerFCMToken = async (req, res) => {
+    try {
+        const { token, platform = 'web', deviceLabel = 'Unknown Device' } = req.body;
+
+        if (!token || typeof token !== 'string' || token.trim().length < 20) {
+            return res.status(400).json({ success: false, message: 'Invalid FCM token' });
+        }
+
+        // Upsert: if token exists update lastUsedAt + reactivate, else create
+        await FCMToken.findOneAndUpdate(
+            { token: token.trim() },
+            {
+                userId: req.user._id,
+                platform,
+                deviceLabel,
+                isActive: true,
+                lastUsedAt: new Date()
+            },
+            { upsert: true, new: true }
+        );
+
+        res.json({ success: true, message: 'FCM token registered' });
+    } catch (error) {
+        console.error('Register FCM token error:', error);
+        res.status(500).json({ success: false, message: 'Failed to register token' });
+    }
+};
+
+// Deregister FCM token (on logout)
+exports.deregisterFCMToken = async (req, res) => {
+    try {
+        const { token } = req.body;
+        if (!token) return res.status(400).json({ success: false, message: 'Token required' });
+
+        await FCMToken.findOneAndUpdate(
+            { token, userId: req.user._id },
+            { isActive: false }
+        );
+
+        res.json({ success: true, message: 'FCM token deregistered' });
+    } catch (error) {
+        console.error('Deregister FCM token error:', error);
+        res.status(500).json({ success: false, message: 'Failed to deregister token' });
     }
 };
 

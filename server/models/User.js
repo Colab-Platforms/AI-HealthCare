@@ -5,6 +5,7 @@ const userSchema = new mongoose.Schema({
   name: { type: String, required: true, trim: true },
   email: { type: String, required: true, unique: true, lowercase: true },
   phone: { type: String, sparse: true },
+  fcmToken: { type: String, default: null }, // Android/iOS push notification token
   password: { type: String, required: true, minlength: 6 },
   role: { type: String, enum: ['user', 'admin', 'superadmin', 'patient', 'client', 'doctor'], default: 'user' },
   isActive: { type: Boolean, default: true },

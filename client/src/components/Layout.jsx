@@ -46,8 +46,7 @@ const patientNavItems = [
   { path: "/nutrition", icon: Utensils, label: "Nutrition" },
   { path: "/diet-plan", icon: FileText, label: "Diet Plan" },
   { path: "/glucose-log", icon: Droplet, label: "Glucose Tracking", isDiabeticOnly: true },
-  // 🔴 COMMENTED OUT: Notification settings disabled for now
-  // { path: "/notification-settings", icon: Bell, label: "Notifications" }
+  { path: "/notification-settings", icon: Bell, label: "Notifications" }
 ];
 
 const doctorNavItems = [

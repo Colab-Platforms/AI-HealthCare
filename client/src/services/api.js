@@ -281,8 +281,16 @@ export const activityService = {
   getStats: (params) => api.get('activity/stats', { params }),
   getLiveUsers: (params) => api.get('activity/live-users', { params }),
   exportLogs: (params) => api.get('activity/export', { params, responseType: 'blob' }),
+  exportUsers: () => api.get('activity/export-users', { responseType: 'blob' }),
   getFeatureStats: (params) => api.get('activity/feature-stats', { params }),
   getDauMau: (params) => api.get('activity/dau-mau', { params })
+};
+
+export const fcmService = {
+  registerToken: (token, platform = 'web', deviceLabel = '') =>
+    api.post('notifications/register-token', { token, platform, deviceLabel }),
+  deregisterToken: (token) =>
+    api.post('notifications/deregister-token', { token }),
 };
 
 export const subscriptionService = {

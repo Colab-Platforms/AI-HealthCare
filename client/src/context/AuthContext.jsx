@@ -1,5 +1,7 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import api from '../services/api';
+import { createContext, useContext, useState, useEffect, useRef } from 'react';
+import api, { fcmService } from '../services/api';
+import { requestNotificationPermission, onForegroundMessage } from '../services/firebase';
+import toast from 'react-hot-toast';
 
 const AuthContext = createContext({});
 
@@ -14,6 +16,7 @@ export const useAuth = () => {
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const fcmListenerSet = useRef(false);
 
   useEffect(() => {
     try {
@@ -22,6 +25,8 @@ export const AuthProvider = ({ children }) => {
       if (token && userData) {
         setUser(JSON.parse(userData));
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+        // Refresh FCM token on every app load (handles token rotation after reload)
+        setupFCM();
       }
     } catch (error) {
       localStorage.removeItem('token');
@@ -30,6 +35,32 @@ export const AuthProvider = ({ children }) => {
       setLoading(false);
     }
   }, []);
+
+  // Request permission + register FCM token with backend (non-blocking)
+  const setupFCM = async () => {
+    try {
+      const token = await requestNotificationPermission();
+      if (!token) return;
+
+      const deviceLabel = `${navigator.platform} — ${navigator.userAgent.split(') ')[0].split('(')[1] || 'Browser'}`;
+      await fcmService.registerToken(token, 'web', deviceLabel.slice(0, 100));
+
+      // Store token locally for deregistration on logout
+      localStorage.setItem('fcmToken', token);
+
+      // Listen for foreground notifications — only set once
+      if (!fcmListenerSet.current) {
+        onForegroundMessage((payload) => {
+          const { title, body } = payload.notification || {};
+          if (title) toast(body ? `${title}: ${body}` : title, { icon: '🔔', duration: 5000 });
+        });
+        fcmListenerSet.current = true;
+      }
+    } catch (e) {
+      // FCM failure must never block login
+      console.warn('FCM setup failed (non-critical):', e.message);
+    }
+  };
 
   const login = async (emailOrPhone, password) => {
     // Clear sensitive items instead of wiping all storage
@@ -62,11 +93,12 @@ export const AuthProvider = ({ children }) => {
       const userData = { ...data, ...profileResponse.data };
       localStorage.setItem('user', JSON.stringify(userData));
       setUser(userData);
+      setupFCM(); // non-blocking
       return userData;
     } catch (error) {
-      // Fallback to login response data if profile fetch fails
       localStorage.setItem('user', JSON.stringify(data));
       setUser(data);
+      setupFCM(); // non-blocking
       return data;
     }
   };
@@ -102,6 +134,7 @@ export const AuthProvider = ({ children }) => {
     localStorage.setItem('user', JSON.stringify(data));
     api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
     setUser(data);
+    setupFCM(); // non-blocking
     return data;
   };
 
@@ -133,11 +166,15 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      // Notify server to log activity
+      // Deregister FCM token before clearing auth
+      const fcmToken = localStorage.getItem('fcmToken');
+      if (fcmToken) {
+        fcmService.deregisterToken(fcmToken).catch(() => {});
+        localStorage.removeItem('fcmToken');
+      }
       await api.post('auth/logout').catch(err => console.warn('Logout log failed:', err.message));
     } catch (e) {}
 
-    // Logout should not wipe non-sensitive UI state like onboarding tour completion
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     sessionStorage.removeItem('token');

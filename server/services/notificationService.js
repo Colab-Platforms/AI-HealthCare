@@ -6,6 +6,7 @@ const FoodLog = require('../models/FoodLog');
 const User = require('../models/User');
 const HealthReport = require('../models/HealthReport');
 const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
+const { sendToUser } = require('./fcmService');
 
 class NotificationService {
     constructor() {
@@ -49,6 +50,18 @@ class NotificationService {
 
             for (const [userId, pref] of preferences) {
                 try {
+                    // Skip this user if they're in quiet hours (Do Not Disturb)
+                    if (pref.quietHours?.enabled) {
+                        const { startTime, endTime } = pref.quietHours;
+                        if (startTime && endTime) {
+                            // Handle overnight ranges e.g. 22:00 - 07:00
+                            const inQuietHours = startTime <= endTime
+                                ? currentTime >= startTime && currentTime < endTime
+                                : currentTime >= startTime || currentTime < endTime;
+                            if (inQuietHours) continue;
+                        }
+                    }
+
                     const user = { _id: userId };
 
                     // Meal reminders
@@ -161,17 +174,23 @@ class NotificationService {
                     dinner: 'Evening meal time! Log your dinner.'
                 };
 
+                const title = `${mealNames[mealType]} Reminder`;
+                const message = mealMessages[mealType];
+
                 await Notification.create({
                     userId: user._id,
                     type: 'food_reminder',
-                    title: `${mealNames[mealType]} Reminder`,
-                    message: mealMessages[mealType],
+                    title,
+                    message,
                     icon: '',
                     priority: 'medium',
                     actionUrl: '/nutrition',
                     metadata: { mealType },
                     expiresAt: tomorrow
                 });
+
+                sendToUser(user._id, { title, body: message, data: { type: 'food_reminder', actionUrl: '/nutrition' } })
+                    .catch(e => console.error('FCM meal reminder failed:', e.message));
             }
         }
     }
@@ -188,17 +207,23 @@ class NotificationService {
         });
 
         if (!existingReminder) {
+            const title = 'Sleep Tracking Reminder';
+            const message = `Time to wind down! Aim for ${targetSleepHours} hours of sleep. Don't forget to log your sleep hours.`;
+
             await Notification.create({
                 userId: user._id,
                 type: 'sleep_reminder',
-                title: 'Sleep Tracking Reminder',
-                message: `Time to wind down! Aim for ${targetSleepHours} hours of sleep. Don't forget to log your sleep hours.`,
+                title,
+                message,
                 icon: '',
                 priority: 'medium',
                 actionUrl: '/dashboard',
                 metadata: { reminderType: 'sleep', targetHours: targetSleepHours },
                 expiresAt: new Date(today.getTime() + 24 * 60 * 60 * 1000)
             });
+
+            sendToUser(user._id, { title, body: message, data: { type: 'sleep_reminder', actionUrl: '/dashboard' } })
+                .catch(e => console.error('FCM sleep reminder failed:', e.message));
         }
     }
 
@@ -234,11 +259,13 @@ class NotificationService {
                     statusMsg = `You've consumed ${calPct}% of your daily calories. Keep it up!`;
                 }
 
+                const macroMessage = `${statusMsg}\nProtein: ${summary.totalProtein}g/${summary.proteinGoal || '?'}g (${protPct}%) | Carbs: ${summary.totalCarbs}g/${summary.carbsGoal || '?'}g (${carbsPct}%) | Fats: ${summary.totalFats}g/${summary.fatsGoal || '?'}g (${fatsPct}%)`;
+
                 await Notification.create({
                     userId,
                     type: 'macro_update',
                     title: 'Daily Macro Check',
-                    message: `${statusMsg}\nProtein: ${summary.totalProtein}g/${summary.proteinGoal || '?'}g (${protPct}%) | Carbs: ${summary.totalCarbs}g/${summary.carbsGoal || '?'}g (${carbsPct}%) | Fats: ${summary.totalFats}g/${summary.fatsGoal || '?'}g (${fatsPct}%)`,
+                    message: macroMessage,
                     icon: '',
                     priority: calPct < 50 || calPct > 120 ? 'high' : 'low',
                     actionUrl: '/nutrition',
@@ -250,6 +277,9 @@ class NotificationService {
                     },
                     expiresAt: new Date(today.getTime() + 24 * 60 * 60 * 1000)
                 });
+
+                sendToUser(userId, { title: 'Daily Macro Check', body: statusMsg, data: { type: 'macro_update', actionUrl: '/nutrition' } })
+                    .catch(e => console.error('FCM macro update failed:', e.message));
             }
         }
     }
@@ -320,6 +350,9 @@ class NotificationService {
                     metadata: { mealsLogged, matchCount, totalRecommended: recommendedFoods.length },
                     expiresAt: tomorrow
                 });
+
+                sendToUser(userId, { title: 'Diet Plan Adherence', body: message, data: { type: 'diet_adherence', actionUrl: '/diet-plan' } })
+                    .catch(e => console.error('FCM diet adherence failed:', e.message));
             }
         }
     }
@@ -358,6 +391,9 @@ class NotificationService {
                 metadata: { insightType: 'daily_tip' },
                 expiresAt: new Date(today.getTime() + 24 * 60 * 60 * 1000)
             });
+
+            sendToUser(userId, { title: randomInsight.title, body: randomInsight.message, data: { type: 'health_insight', actionUrl: '/dashboard' } })
+                .catch(e => console.error('FCM health insight failed:', e.message));
         }
     }
 
@@ -611,7 +647,7 @@ class NotificationService {
     // Create a notification for a specific user (can be called from controllers)
     async createNotification(userId, { type, title, message, icon, priority, actionUrl, metadata, expiresAt }) {
         try {
-            return await Notification.create({
+            const notification = await Notification.create({
                 userId,
                 type,
                 title,
@@ -622,6 +658,12 @@ class NotificationService {
                 metadata,
                 expiresAt
             });
+
+            // Fire push notification — non-blocking, never fails the main flow
+            sendToUser(userId, { title, body: message, data: { type, actionUrl: actionUrl || '' } })
+                .catch(e => console.error('FCM push failed:', e.message));
+
+            return notification;
         } catch (error) {
             console.error('Error creating notification:', error);
             return null;

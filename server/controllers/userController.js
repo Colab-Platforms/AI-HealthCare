@@ -101,4 +101,17 @@ exports.analyzeFoodChoices = async (req, res) => {
   }
 };
 
+// Save FCM token — called by Android/iOS app on login/launch
+exports.saveFcmToken = async (req, res) => {
+  try {
+    const { token } = req.body;
+    if (!token) return res.status(400).json({ message: 'FCM token required' });
+
+    await User.findByIdAndUpdate(req.user._id, { fcmToken: token });
+    res.json({ success: true });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = exports;

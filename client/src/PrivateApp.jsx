@@ -539,8 +539,7 @@ export default function PrivateApp() {
                 }
               />
               
-              {/* 🔴 COMMENTED OUT: Notification settings disabled for now */}
-              {/* <Route
+              <Route
                 path="/notification-settings"
                 element={
                   <ProtectedRoute>
@@ -549,7 +548,7 @@ export default function PrivateApp() {
                     </Layout>
                   </ProtectedRoute>
                 }
-              /> */}
+              />
 
               {/* Admin Routes */}
               <Route

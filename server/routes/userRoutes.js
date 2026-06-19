@@ -11,4 +11,7 @@ router.get('/food-preferences', userController.getFoodPreferences);
 router.post('/food-preferences', userController.saveFoodPreferences);
 router.post('/analyze-food-choices', userController.analyzeFoodChoices);
 
+// FCM push token — Android/iOS app calls this on launch
+router.post('/fcm-token', userController.saveFcmToken);
+
 module.exports = router;
