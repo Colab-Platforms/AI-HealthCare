@@ -44,7 +44,7 @@ import { useRef } from "react";
 const patientNavItems = [
   { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
   { path: "/complete-analysis", icon: TrendingUp, label: "Analysis" },
-  { path: "/medical-vault", icon: ShieldCheck, label: "Medical Records" },
+  { path: "/reports", icon: ShieldCheck, label: "Medical Records" },
   { path: "/nutrition", icon: Utensils, label: "Nutrition" },
   { path: "/diet-plan", icon: FileText, label: "Diet Plan" },
   { path: "/glucose-log", icon: Droplet, label: "Glucose Tracking", isDiabeticOnly: true },

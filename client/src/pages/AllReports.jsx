@@ -638,9 +638,10 @@ export default function AllReports() {
   ];
 
   return (
-    <div className="w-full min-h-screen bg-gradient-to-b from-[#F2F5EC] to-[#E5EBE0] dark:from-[#161719] dark:to-[#161719] pb-32 relative overflow-x-hidden animate-in fade-in duration-500">
+    <div className="w-full min-h-screen pb-32 relative overflow-x-hidden" style={{ background: "linear-gradient(160deg, #eef6f0 0%, #f4f9f5 50%, #e8f3ec 100%)" }}>
       <SEO pageName="reports" />
-      <div className="absolute top-0 left-0 w-full h-[400px] bg-gradient-to-br from-white/40 dark:from-white/5 to-transparent pointer-events-none" />
+      <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-emerald-300/10 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+      <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-emerald-200/10 rounded-full blur-[100px] translate-x-1/2 pointer-events-none" />
 
       <div className="px-4 md:px-8 pt-6 max-w-7xl mx-auto relative z-10 space-y-6">
 
@@ -649,9 +650,9 @@ export default function AllReports() {
           <div className="flex flex-col gap-4">
             <button
               onClick={() => navigate("/dashboard")}
-              className="w-12 h-12 bg-white shadow-sm border border-white rounded-full flex items-center justify-center text-[#1a2138] hover:scale-105 transition-all self-start"
+              className="w-10 h-10 liquid-glass-inner rounded-2xl flex items-center justify-center text-[#1a1a1a] hover:scale-105 transition-all self-start"
             >
-              <ArrowLeft size={22} strokeWidth={2.5} />
+              <ArrowLeft size={18} strokeWidth={2.5} />
             </button>
             <div>
               <h1 className="text-[32px] font-black text-[#1a2138] dark:text-white tracking-tight leading-none uppercase">
@@ -664,7 +665,7 @@ export default function AllReports() {
           </div>
           <button
             onClick={() => setIsUploadOpen(true)}
-            className="px-7 py-4 bg-[#69A38D] text-white rounded-[24px] font-black hover:bg-[#528270] transition-all flex items-center gap-3 text-xs uppercase tracking-widest shadow-lg shadow-[#69A38D]/20 active:scale-95 shrink-0"
+            className="px-5 py-3 bg-[#5B8C6F] text-white rounded-[20px] font-black hover:bg-[#4a7b5e] transition-all flex items-center gap-2 text-[10px] uppercase tracking-widest shadow-lg shadow-[#5B8C6F]/25 active:scale-95 shrink-0"
           >
             <Plus size={18} strokeWidth={3} />
             <span className="hidden sm:inline">Upload Doc</span>
@@ -673,25 +674,22 @@ export default function AllReports() {
         </div>
 
         {/* Stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {statsData.map((stat, i) => (
-            <div
-              key={i}
-              className="bg-white/60 rounded-[32px] p-5 border border-white shadow-sm flex flex-col gap-3 group hover:bg-white/80 transition-all"
-            >
-              <div className={`w-10 h-10 rounded-2xl ${stat.bg} ${stat.color} flex items-center justify-center shadow-inner group-hover:scale-110 transition-transform`}>
-                <stat.icon size={20} strokeWidth={2.5} />
+            <div key={i} className="liquid-glass-inner rounded-[24px] p-4 flex items-center gap-3 group transition-all">
+              <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${stat.bg} group-hover:scale-110 transition-transform`}>
+                <stat.icon size={18} className={stat.color} strokeWidth={2.5} />
               </div>
-              <div className="flex flex-col">
-                <span className="text-[20px] font-black text-[#1a2138] tracking-tight">{stat.value}</span>
-                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{stat.label}</span>
+              <div className="flex flex-col min-w-0">
+                <span className="text-xl font-black text-[#1a1a1a] tracking-tight leading-none">{stat.value}</span>
+                <span className="text-[9px] font-bold text-[#a0a0a0] uppercase tracking-widest leading-tight mt-0.5">{stat.label}</span>
               </div>
             </div>
           ))}
         </div>
 
         {/* Search + View + Filter bar */}
-        <div className="w-full bg-white/60 backdrop-blur-sm border border-white p-3 rounded-[28px] shadow-sm flex items-center gap-3 flex-wrap md:flex-nowrap">
+        <div className="w-full liquid-glass p-3 rounded-[24px] flex items-center gap-3 flex-wrap md:flex-nowrap">
           <div className="relative flex-1 min-w-[180px]">
             <Search className="w-4 h-4 text-slate-400 absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
@@ -699,7 +697,7 @@ export default function AllReports() {
               placeholder="Search by name, hospital, doctor, tags..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-white/60 border border-white rounded-[20px] pl-11 pr-10 py-3 text-sm focus:outline-none focus:border-[#69A38D]/30 placeholder:text-slate-300 font-medium"
+              className="w-full bg-white/50 border border-white/80 rounded-[16px] pl-11 pr-10 py-3 text-sm focus:outline-none focus:border-[#5B8C6F]/40 placeholder:text-[#a0a0a0] font-medium text-[#1a1a1a]"
             />
             {search && (
               <button
@@ -770,7 +768,7 @@ export default function AllReports() {
                 animate={{ width: 268, opacity: 1 }}
                 exit={{ width: 0, opacity: 0 }}
                 transition={{ duration: 0.3, ease: "easeInOut" }}
-                className="hidden md:block shrink-0 sticky top-6 self-start max-h-[85vh] overflow-y-auto bg-white/60 backdrop-blur-xl border border-white rounded-[32px] p-5 space-y-5 shadow-sm"
+                className="hidden md:block shrink-0 sticky top-6 self-start max-h-[85vh] overflow-y-auto liquid-glass rounded-[24px] p-5 space-y-5"
               >
                 <div className="flex items-center justify-between border-b border-white/70 pb-3">
                   <span className="text-xs font-black uppercase tracking-wider text-[#1a2138] flex items-center gap-1.5">
@@ -1030,7 +1028,7 @@ export default function AllReports() {
                 {[1, 2, 3, 4, 5, 6].map((i) => <SkeletonCard key={i} />)}
               </div>
             ) : filteredDocuments.length === 0 ? (
-              <div className="bg-white/60 backdrop-blur-xl rounded-[40px] p-20 border border-white flex flex-col items-center justify-center text-center gap-8 shadow-sm">
+              <div className="liquid-glass rounded-[32px] p-16 flex flex-col items-center justify-center text-center gap-8">
                 <div className="w-24 h-24 rounded-[32px] bg-slate-50 flex items-center justify-center shadow-inner relative overflow-hidden group">
                   <div className="absolute inset-0 bg-[#69A38D]/5 blur group-hover:scale-150 transition-transform duration-700" />
                   <FileText size={48} className="text-slate-200 relative z-10" />
@@ -1100,7 +1098,7 @@ export default function AllReports() {
                     ))}
                   </div>
                 ) : (
-                  <div className="bg-white/60 backdrop-blur-xl border border-white rounded-[32px] overflow-hidden shadow-sm divide-y divide-white/50">
+                  <div className="liquid-glass rounded-[24px] overflow-hidden divide-y divide-white/40">
                     {filteredDocuments.map((doc) => (
                       <UnifiedListRow
                         key={doc._id}
@@ -1892,7 +1890,7 @@ function UnifiedGridCard({ doc, isFavorite, onFavorite, onDelete, onView, onDown
   const CatIcon = meta.icon;
 
   return (
-    <div className="bg-white/60 backdrop-blur-xl rounded-[40px] p-6 shadow-sm border border-white group relative hover:shadow-xl transition-all duration-500 overflow-hidden min-h-[240px] flex flex-col justify-between">
+    <div className="liquid-glass-inner rounded-[28px] p-5 group relative transition-all duration-300 overflow-hidden min-h-[220px] flex flex-col justify-between hover:shadow-lg">
       <div className="absolute top-0 right-0 w-32 h-32 bg-[#69A38D]/5 rounded-full blur-2xl -mr-16 -mt-16" />
 
       {/* Top row */}
@@ -1926,7 +1924,7 @@ function UnifiedGridCard({ doc, isFavorite, onFavorite, onDelete, onView, onDown
 
       {/* AI Health Score */}
       {doc.isAnalyzedReport && doc.aiAnalysis?.healthScore && (
-        <div className="bg-white/80 rounded-[24px] p-4 flex items-center justify-between border border-[#69A38D]/10 mt-4 relative z-10">
+        <div className="bg-white/70 rounded-[18px] p-3.5 flex items-center justify-between border border-white mt-3 relative z-10">
           <div className="flex flex-col">
             <span className="text-[8px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Impact Score</span>
             <div className="flex items-baseline gap-1.5">
@@ -1968,14 +1966,14 @@ function UnifiedGridCard({ doc, isFavorite, onFavorite, onDelete, onView, onDown
           <Link
             to={`/reports/${doc._id}`}
             onClick={() => onTrackView(doc._id)}
-            className="flex-1 py-4 bg-white border border-[#69A38D]/20 text-[#1a2138] rounded-[24px] font-black text-xs uppercase tracking-[0.2em] hover:bg-[#69A38D] hover:text-white transition-all flex items-center justify-center gap-3 active:scale-[0.98] shadow-sm"
+            className="flex-1 py-3.5 bg-white/70 border border-white text-[#1a1a1a] rounded-[18px] font-black text-[10px] uppercase tracking-[0.15em] hover:bg-[#5B8C6F] hover:text-white transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
           >
-            <Zap size={15} fill="currentColor" /> Explore
+            <Zap size={14} fill="currentColor" /> Explore
           </Link>
         ) : (
           <button
             onClick={onView}
-            className="flex-1 py-4 bg-white border border-[#69A38D]/20 text-[#1a2138] rounded-[24px] font-black text-xs uppercase tracking-[0.2em] hover:bg-[#69A38D] hover:text-white transition-all flex items-center justify-center gap-3 active:scale-[0.98] shadow-sm"
+            className="flex-1 py-3.5 bg-white/70 border border-white text-[#1a1a1a] rounded-[18px] font-black text-[10px] uppercase tracking-[0.15em] hover:bg-[#5B8C6F] hover:text-white transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
           >
             <Eye size={15} /> View
           </button>

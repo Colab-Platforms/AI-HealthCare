@@ -2073,10 +2073,10 @@ export default function DashboardEnhanced() {
                 </p>
               </div>
               <button
-                onClick={() => navigate("/upload")}
+                onClick={() => navigate("/reports")}
                 className="text-[10px] font-bold text-[#5B8C6F] uppercase tracking-wider flex items-center gap-1 hover:text-[#4a7b5e] transition-colors"
               >
-                Upload <Plus className="w-3 h-3" />
+                View <Plus className="w-3 h-3" />
               </button>
             </div>
 
