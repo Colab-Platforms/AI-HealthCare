@@ -52,6 +52,8 @@ import {
   ArrowRight,
   Lightbulb,
   Clock,
+  Cigarette,
+  Wine,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { Link, useNavigate, useLocation } from "react-router-dom";
@@ -1570,14 +1572,14 @@ export default function DashboardEnhanced() {
   console.log("Rendering Dashboard", { hasData: !!dashboardData, isDiabetic });
   return (
     <div className="min-h-screen text-[#1a1a1a] font-sans selection:bg-emerald-100 selection:text-emerald-900 overflow-x-hidden pb-20 relative"
-      style={{ background: "linear-gradient(135deg, #edfdf4 0%, #f0faf5 25%, #e8f8ef 50%, #f5fdf8 75%, #eafaf2 100%)" }}
+      style={{ background: "linear-gradient(135deg, #edfdf4 0%, #f0faf5 30%, #f0fdf8 60%, #ffffff 100%)" }}
     >
       <div className="fixed top-0 left-1/4 w-[600px] h-[600px] rounded-full pointer-events-none -z-0"
-        style={{ background: "radial-gradient(circle, rgba(16,185,129,0.12), transparent)", filter: "blur(80px)" }} />
+        style={{ background: "radial-gradient(circle, rgba(16,185,129,0.05), transparent)", filter: "blur(80px)" }} />
       <div className="fixed bottom-1/4 right-0 w-[500px] h-[500px] rounded-full pointer-events-none -z-0"
-        style={{ background: "radial-gradient(circle, rgba(52,211,153,0.10), transparent)", filter: "blur(100px)" }} />
+        style={{ background: "radial-gradient(circle, rgba(52,211,153,0.04), transparent)", filter: "blur(100px)" }} />
       <div className="fixed top-1/2 left-0 w-[400px] h-[400px] rounded-full pointer-events-none -z-0"
-        style={{ background: "radial-gradient(circle, rgba(110,231,183,0.08), transparent)", filter: "blur(80px)" }} />
+        style={{ background: "radial-gradient(circle, rgba(110,231,183,0.03), transparent)", filter: "blur(80px)" }} />
       <SEO pageName="dashboard" />
       {runTour && !isTourCompleted && (
         <Joyride
@@ -1622,22 +1624,25 @@ export default function DashboardEnhanced() {
           transition={{ delay: 0.12 }}
           className="px-4 md:px-0 mb-3"
         >
-          <div className="grid grid-cols-4 gap-2.5">
+          <div className="flex gap-2">
             {[
-              { label: "Log Meal", icon: UtensilsCrossed, color: "#059669", onClick: () => navigate("/nutrition", { state: { openLogMeal: true, mealType: "Breakfast" } }) },
-              { label: "Log Water", icon: GlassWater, color: "#0ea5e9", onClick: () => { setActiveLogTab("Water"); setIsLogVitalsOpen(true); } },
-              { label: "Log Sleep", icon: Moon, color: "#7c3aed", onClick: () => { setActiveLogTab("Sleep"); setIsLogVitalsOpen(true); } },
-              { label: "Upload Lab", icon: Upload, color: "#064e3b", onClick: () => navigate("/upload") },
+              { label: "Meal", icon: UtensilsCrossed, color: "#059669", onClick: () => navigate("/nutrition", { state: { openLogMeal: true, mealType: "Breakfast" } }) },
+              { label: "Water", icon: GlassWater, color: "#0ea5e9", onClick: () => { setActiveLogTab("Water"); setIsLogVitalsOpen(true); } },
+              { label: "Sleep", icon: Moon, color: "#7c3aed", onClick: () => { setActiveLogTab("Sleep"); setIsLogVitalsOpen(true); } },
+              { label: "Lab", icon: Upload, color: "#064e3b", onClick: () => navigate("/upload") },
+              // { label: "Steps", icon: Footprints, color: "#f59e0b", onClick: () => { setActiveLogTab("Steps"); setIsLogVitalsOpen(true); } },
+              { label: "Smoke", icon: Cigarette, color: "#6b7280", onClick: () => navigate("/smoke-tracker") },
+              ...(features.alcoholTracker ? [{ label: "Drinks", icon: Wine, color: "#dc2626", onClick: () => navigate("/alcohol-tracker") }] : []),
             ].map(({ label, icon: Icon, color, onClick }) => (
               <button
                 key={label}
                 onClick={onClick}
-                className="liquid-glass-btn flex flex-col items-center gap-2 py-3 px-2 rounded-[18px] transition-all active:scale-95"
+                className="liquid-glass-btn flex-1 flex flex-col items-center gap-1.5 py-2.5 px-1 rounded-[16px] md:rounded-[16px] aspect-square md:aspect-auto transition-all active:scale-95"
               >
-                <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: `${color}18`, border: `1px solid ${color}30` }}>
-                  <Icon className="w-5 h-5" style={{ color }} />
+                <div className="w-7 h-7 rounded-xl flex items-center justify-center" style={{ background: `${color}18`, border: `1px solid ${color}30` }}>
+                  <Icon className="w-3.5 h-3.5" style={{ color }} />
                 </div>
-                <span className="text-[10px] font-bold text-slate-700 leading-tight text-center">{label}</span>
+                <span className="text-[9px] font-bold text-slate-700 leading-tight text-center">{label}</span>
               </button>
             ))}
           </div>
@@ -2342,7 +2347,7 @@ export default function DashboardEnhanced() {
           </div>
 
           {loggedMeals.length > 0 ? (
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+            <div className="flex gap-3 overflow-x-auto snap-x snap-mandatory pb-2 -mx-4 px-4 md:mx-0 md:px-0 scrollbar-hide">
               {[...loggedMeals]
                 .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
                 .slice(0, 8)
@@ -2365,7 +2370,7 @@ export default function DashboardEnhanced() {
                       initial={{ opacity: 0, scale: 0.95 }}
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: idx * 0.05 }}
-                      className="liquid-glass rounded-[22px] overflow-hidden group cursor-pointer flex flex-col"
+                      className="liquid-glass rounded-[22px] overflow-hidden group cursor-pointer flex flex-col flex-shrink-0 w-[150px] snap-start"
                       onClick={() => navigate("/nutrition", { state: { prefillData: meal } })}
                     >
                       {/* Image */}
@@ -2409,7 +2414,7 @@ export default function DashboardEnhanced() {
                 initial={{ opacity: 0, scale: 0.95 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: Math.min(loggedMeals.length, 8) * 0.05 }}
-                className="liquid-glass-inner rounded-[22px] flex flex-col items-center justify-center p-4 cursor-pointer group min-h-[160px]"
+                className="liquid-glass-inner rounded-[22px] flex flex-col items-center justify-center p-4 cursor-pointer group flex-shrink-0 w-[150px] snap-start"
                 onClick={() => navigate("/nutrition", { state: { openLogMeal: true } })}
               >
                 <div className="w-10 h-10 rounded-2xl flex items-center justify-center mb-2 group-hover:scale-110 transition-transform"
@@ -2714,21 +2719,6 @@ export default function DashboardEnhanced() {
               </motion.div>
             );
           })()}
-        </div>
-
-        {/* Lifestyle Tracker Cards Row */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 px-4 md:px-0 mt-2 mb-6">
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9 }}>
-            <StepMiniCard />
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.0 }}>
-            <SmokeTrackerCard />
-          </motion.div>
-          {features.alcoholTracker && (
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.05 }} className="sm:col-span-2 lg:col-span-1">
-              <AlcoholTrackerCard />
-            </motion.div>
-          )}
         </div>
 
         {/* Vitals Log Modal - Unified Bottom Sheet for Weight, Steps, Sleep, Water */}

@@ -464,6 +464,8 @@ export default function Layout({
                     My Profile
                   </span>
                 </div>
+              ) : location.pathname === "/ai-chat" ? (
+                <div className="flex-1" />
               ) : (
                 <>
                   {/* AI search bar - full width */}

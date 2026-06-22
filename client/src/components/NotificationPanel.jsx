@@ -177,9 +177,9 @@ export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
             className="fixed md:absolute top-[60px] md:top-12 right-2 md:right-0 w-[calc(100vw-16px)] md:w-[400px] max-h-[80vh] z-[100] flex flex-col rounded-[28px] overflow-hidden"
             style={{
                 animation: 'slideDown 0.25s ease-out forwards',
-                background: 'rgba(237,253,244,0.82)',
-                backdropFilter: 'blur(48px) saturate(200%)',
-                WebkitBackdropFilter: 'blur(48px) saturate(200%)',
+                background: 'rgba(237,253,244,0.96)',
+                backdropFilter: 'blur(20px) saturate(180%)',
+                WebkitBackdropFilter: 'blur(20px) saturate(180%)',
                 border: '1px solid rgba(255,255,255,0.85)',
                 boxShadow: '0 20px 60px rgba(15,23,42,0.12), 0 4px 16px rgba(16,185,129,0.08), inset 0 1px 0 rgba(255,255,255,0.9)',
             }}
