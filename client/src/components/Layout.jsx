@@ -28,6 +28,8 @@ import {
   ShieldCheck,
   Sparkles,
   RefreshCw,
+  Menu,
+  X,
 } from "lucide-react";
 import { ArrowUp } from "lucide-react";
 import { useState, useEffect } from "react";
@@ -75,7 +77,7 @@ export default function Layout({
   const { pendingAnalysisIds, pendingDietPlanIds } = useData();
   const location = useLocation();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [healthData, setHealthData] = useState({
     healthScore: 0,
     caloriesConsumed: 0,
@@ -231,117 +233,131 @@ export default function Layout({
       )}
 
       <div className="flex-1 flex w-full h-full relative">
-        {/* Sidebar - Slide from RIGHT on mobile, sticky on desktop */}
+        {/* Sidebar - Liquid Glass Effect */}
         <aside
-          className={`fixed inset-y-0 right-0 lg:sticky lg:left-0 z-50 w-64 h-screen shrink-0 transform transition-transform duration-300 hidden lg:flex lg:flex-col bg-white border-r border-slate-100 ${sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"}`}
+          className={`fixed inset-y-0 left-0 z-50 h-screen shrink-0 flex flex-col lg:sticky lg:top-0 overflow-hidden
+            ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
+          `}
+          style={{
+            width: sidebarOpen ? "256px" : "64px",
+            transition: "width 0.35s cubic-bezier(0.4,0,0.2,1), transform 0.35s cubic-bezier(0.4,0,0.2,1)",
+            background: "linear-gradient(135deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.25) 100%)",
+            backdropFilter: "blur(32px) saturate(180%)",
+            WebkitBackdropFilter: "blur(32px) saturate(180%)",
+            borderRight: "1px solid rgba(255,255,255,0.5)",
+            boxShadow: "4px 0 24px rgba(16,185,129,0.08), inset 1px 0 0 rgba(255,255,255,0.6)",
+          }}
         >
-          <div className="flex flex-col h-full">
-            {/* Logo - Fixed at top */}
-            <div className="p-8 shrink-0 border-b border-slate-50">
-              <Link to={homeLink} className="flex items-center">
+          {/* Glass inner highlight */}
+          <div className="absolute inset-0 pointer-events-none rounded-r-none"
+            style={{
+              background: "linear-gradient(180deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.05) 60%, transparent 100%)",
+            }}
+          />
+
+          <div className="flex flex-col h-full relative z-10">
+            {/* Logo + Toggle button */}
+            <div className="p-4 shrink-0 flex items-center justify-between overflow-hidden"
+              style={{ borderBottom: "1px solid rgba(255,255,255,0.4)" }}
+            >
+              {/* Logo - hidden when collapsed on desktop */}
+              <Link to={homeLink} className={`flex items-center transition-all duration-300 overflow-hidden ${sidebarOpen ? "opacity-100 w-auto" : "opacity-0 w-0 lg:w-0"}`} onClick={() => { if(window.innerWidth < 1024) setSidebarOpen(false); }}>
                 <img
                   src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/logo_with_text-1.png?v=1774261099"
                   alt="take.health AI Platform"
-                  className="h-18 w-auto object-contain"
+                  className="h-16 w-auto object-contain"
                 />
               </Link>
+              {/* Toggle button - desktop & mobile close */}
+              <button
+                onClick={() => setSidebarOpen(prev => !prev)}
+                className="p-2 rounded-xl transition-all text-slate-500 hover:text-slate-800 shrink-0"
+                style={{ background: "rgba(255,255,255,0.4)" }}
+              >
+                {sidebarOpen ? <X className="w-4 h-4" /> : <Menu className="w-4 h-4" />}
+              </button>
             </div>
 
-            {/* Navigation - Scrollable middle section */}
-            <nav className="flex-1 p-6 space-y-2 overflow-y-auto">
-              {navItems.map(
-                ({
-                  path,
-                  icon: Icon,
-                  label,
-                  comingSoon,
-                  badge,
-                  isDiabeticOnly,
-                }) => {
-                  // Conditionally hide diabetes if not diabetic
-                  const isDiabetic = user?.profile?.isDiabetic === "yes";
-                  if (isDiabeticOnly && !isDiabetic) return null;
+            {/* Navigation */}
+            <nav className="flex-1 p-3 space-y-1 overflow-y-auto overflow-x-hidden">
+              {navItems.map(({ path, icon: Icon, label, comingSoon, badge, isDiabeticOnly }) => {
+                const isDiabetic = user?.profile?.isDiabetic === "yes";
+                if (isDiabeticOnly && !isDiabetic) return null;
+                const isActive = location.pathname === path;
 
-                  if (comingSoon) {
-                    return (
-                      <div
-                        key={path}
-                        className="flex items-center justify-between px-5 py-3.5 rounded-2xl transition-all cursor-not-allowed text-slate-400"
-                      >
-                        <div className="flex items-center gap-4">
-                          <Icon className="w-5 h-5 opacity-40" />
-                          <span className="text-sm font-bold tracking-tight">
-                            {label}
-                          </span>
-                        </div>
-                        {badge && (
-                          <span className="bg-slate-100 text-slate-500 text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">
-                            {badge}
-                          </span>
-                        )}
-                      </div>
-                    );
-                  }
-
-                  const isActive = location.pathname === path;
-
+                if (comingSoon) {
                   return (
-                    <Link
-                      key={path}
-                      to={path}
-                      onClick={() => setSidebarOpen(false)}
-                      className={`flex items-center justify-between px-5 py-3.5 rounded-2xl font-bold transition-all group ${isActive
-                        ? "bg-slate-900 text-white shadow-lg"
-                        : "text-slate-400 hover:text-black hover:bg-slate-50"
-                        }`}
-                    >
-                      <div className="flex items-center gap-4">
-                        <Icon
-                          className={`w-5 h-5 transition-colors ${isActive ? "text-white" : "text-slate-400 group-hover:text-black"}`}
-                        />
-                        <span className="text-sm tracking-tight">{label}</span>
-                      </div>
-                      {badge && !isActive && (
-                        <span className="bg-slate-100 text-slate-500 text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center">
-                          {badge}
-                        </span>
-                      )}
-                    </Link>
+                    <div key={path} className="flex items-center rounded-2xl cursor-not-allowed opacity-40 px-3 py-3 gap-3">
+                      <Icon className="w-5 h-5 text-slate-500 shrink-0" />
+                      <span className="text-sm font-bold text-slate-500 truncate overflow-hidden whitespace-nowrap"
+                        style={{ maxWidth: sidebarOpen ? "160px" : "0px", opacity: sidebarOpen ? 1 : 0, transition: "max-width 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease" }}>
+                        {label}
+                      </span>
+                    </div>
                   );
-                },
-              )}
+                }
+
+                return (
+                  <Link
+                    key={path}
+                    to={path}
+                    onClick={() => { if(window.innerWidth < 1024) setSidebarOpen(false); }}
+                    title={!sidebarOpen ? label : undefined}
+                    className={`flex items-center rounded-2xl font-bold transition-all duration-200 group ${
+                      sidebarOpen ? "px-4 py-3 gap-3 justify-start" : "px-0 py-3 justify-center"
+                    } ${isActive ? "text-white shadow-lg" : "text-slate-600 hover:text-slate-900"}`}
+                    style={isActive ? {
+                      background: "linear-gradient(135deg, rgba(5,150,105,0.85) 0%, rgba(16,185,129,0.9) 100%)",
+                      backdropFilter: "blur(8px)",
+                      boxShadow: "0 4px 16px rgba(5,150,105,0.3), inset 0 1px 0 rgba(255,255,255,0.2)",
+                    } : {}}
+                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "rgba(255,255,255,0.5)"; }}
+                    onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = ""; }}
+                  >
+                    <Icon className={`w-5 h-5 shrink-0 transition-colors ${isActive ? "text-white" : "text-slate-500 group-hover:text-slate-800"}`} />
+                    <span className="text-sm tracking-tight truncate overflow-hidden whitespace-nowrap"
+                      style={{ maxWidth: sidebarOpen ? "160px" : "0px", opacity: sidebarOpen ? 1 : 0, transition: "max-width 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease" }}>
+                      {label}
+                    </span>
+                    {badge && !isActive && (
+                      <span className="ml-auto bg-white/60 text-slate-600 text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center overflow-hidden whitespace-nowrap"
+                        style={{ maxWidth: sidebarOpen ? "20px" : "0px", opacity: sidebarOpen ? 1 : 0, transition: "max-width 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease" }}>
+                        {badge}
+                      </span>
+                    )}
+                  </Link>
+                );
+              })}
             </nav>
 
-            {/* User Footer - Fixed at bottom */}
-            <div className="p-6 shrink-0 border-t border-slate-50">
-              <div className="flex items-center gap-4 p-4 rounded-[1.25rem] bg-slate-50 hover:bg-slate-100 transition-all border border-slate-100">
+            {/* User Footer */}
+            <div className="p-3 shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.4)" }}>
+              <div className={`flex items-center p-2.5 rounded-2xl transition-all ${sidebarOpen ? "gap-3" : "justify-center"}`}
+                style={{ background: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.6)" }}
+              >
                 {user?.profilePicture ? (
-                  <img
-                    src={user.profilePicture}
-                    alt={user.name}
-                    className="w-10 h-10 rounded-xl object-cover shrink-0 shadow-lg"
-                  />
+                  <img src={user.profilePicture} alt={user.name} className="w-8 h-8 rounded-xl object-cover shrink-0 shadow-md" />
                 ) : (
-                  <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-black shadow-lg">
-                    <span className="font-black text-white">
-                      {user?.name?.[0]?.toUpperCase()}
-                    </span>
+                  <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-md"
+                    style={{ background: "linear-gradient(135deg, #059669, #10b981)" }}
+                  >
+                    <span className="font-black text-white text-sm">{user?.name?.[0]?.toUpperCase()}</span>
                   </div>
                 )}
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-black truncate text-black uppercase tracking-wider">
+                <div className="flex-1 min-w-0 overflow-hidden"
+                  style={{ maxWidth: sidebarOpen ? "140px" : "0px", opacity: sidebarOpen ? 1 : 0, transition: "max-width 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease" }}>
+                  <p className="text-xs font-black truncate text-slate-800 uppercase tracking-wider">
                     {isDoctor() ? `DR. ${user?.name}` : user?.name}
                   </p>
-                  <p className="text-[10px] truncate text-slate-500 font-bold lowercase">
-                    {user?.email}
-                  </p>
+                  <p className="text-[10px] truncate text-slate-500 font-medium">{user?.email}</p>
                 </div>
                 <button
                   onClick={handleLogout}
-                  className="p-2 rounded-xl transition-all shrink-0 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10"
+                  className="p-1.5 rounded-xl transition-all shrink-0 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 overflow-hidden"
                   title="Logout"
+                  style={{ maxWidth: sidebarOpen ? "32px" : "0px", opacity: sidebarOpen ? 1 : 0, padding: sidebarOpen ? undefined : 0, transition: "max-width 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease, padding 0.35s ease" }}
                 >
-                  <LogOut className="w-5 h-5" />
+                  <LogOut className="w-4 h-4" />
                 </button>
               </div>
             </div>
@@ -349,12 +365,18 @@ export default function Layout({
         </aside>
 
         {/* Mobile Overlay */}
-        {sidebarOpen && (
-          <div
-            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
-            onClick={() => setSidebarOpen(false)}
-          />
-        )}
+        <AnimatePresence>
+          {sidebarOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className="fixed inset-0 bg-black/40 backdrop-blur-sm z-40 lg:hidden"
+              onClick={() => setSidebarOpen(false)}
+            />
+          )}
+        </AnimatePresence>
 
         {/* Main Content - No left margin needed with sticky sidebar flow */}
         <div
@@ -366,130 +388,93 @@ export default function Layout({
           <div className="absolute top-1/2 right-0 w-[400px] h-[400px] bg-emerald-300/10 rounded-full blur-[100px] translate-x-1/2 pointer-events-none" />
           <div className="absolute bottom-0 left-1/4 w-[300px] h-[300px] bg-emerald-200/10 rounded-full blur-[80px] pointer-events-none" />
 
-          {/* Global Header - Fixed on mobile, Sticky on desktop */}
-          <header className="fixed top-0 inset-x-0 z-50 lg:sticky lg:inset-auto lg:top-0 bg-[#EBF0E6]/60 backdrop-blur-xl border-b border-emerald-100/30 shadow-sm transition-all duration-300">
-            <div className="flex items-center px-6 md:px-12 py-3 md:py-4 gap-4">
-              {/* Back Button for Profile & AI Chat */}
-              {(location.pathname === "/profile" ||
-                location.pathname === "/ai-chat") && (
-                  <button
-                    onClick={() => navigate("/dashboard")}
-                    className="w-10 h-10 rounded-full bg-white/40 border border-white/20 flex items-center justify-center shadow-sm hover:bg-white/60 transition-all mr-2"
-                  >
-                    <ArrowLeft
-                      size={20}
-                      className="text-[#1a2138]"
-                      strokeWidth={2.5}
-                    />
-                  </button>
-                )}
+          {/* Global Header */}
+          <header className="fixed top-0 inset-x-0 z-40 lg:sticky lg:inset-auto lg:top-0 transition-all duration-300"
+            style={{
+              background: "rgba(240,250,245,0.72)",
+              backdropFilter: "blur(36px) saturate(200%) brightness(1.04)",
+              WebkitBackdropFilter: "blur(36px) saturate(200%) brightness(1.04)",
+              borderBottom: "1px solid rgba(255,255,255,0.80)",
+              boxShadow: "0 2px 24px rgba(16,185,129,0.08), inset 0 1px 0 rgba(255,255,255,0.95)",
+            }}
+          >
+            <div className="flex items-center px-5 py-3 gap-4">
+              {/* Back Button */}
+              {(location.pathname === "/profile" || location.pathname === "/ai-chat") && (
+                <button
+                  onClick={() => navigate("/dashboard")}
+                  className="w-9 h-9 rounded-2xl flex items-center justify-center transition-all"
+                  style={{ background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.8)" }}
+                >
+                  <ArrowLeft size={18} className="text-slate-700" strokeWidth={2.5} />
+                </button>
+              )}
 
-              {/* Header Content - Conditional for Profile */}
               {location.pathname === "/profile" ? (
-                <div className="flex-1 flex justify-center items-center">
-                  <span
-                    style={{
-                      fontFamily: "Poppins, sans-serif",
-                      fontWeight: "700",
-                      fontSize: "18.29px",
-                      lineHeight: "27.43px",
-                      letterSpacing: "-0.46px",
-                      color: "#1a1a1a",
-                      width: "auto", // User gave 88 but auto is safer for centering
-                      height: "28px",
-                    }}
-                  >
+                <div className="flex-1 flex justify-center">
+                  <span className="font-bold text-lg text-slate-800" style={{ fontFamily: "Poppins, sans-serif", letterSpacing: "-0.4px" }}>
                     My Profile
                   </span>
                 </div>
               ) : (
-                <div className="flex items-center gap-4">
-                  {/* Profile Image - Now on Left */}
+                <>
+                  {/* Profile avatar + greeting */}
                   <button
                     onClick={() => navigate("/profile")}
-                    className="tour-profile rounded-full overflow-hidden border border-slate-100 shadow-sm hover:ring-4 hover:ring-slate-100 transition-all pointer-events-auto"
-                    style={{
-                      width: "43.93733596801758px",
-                      height: "43.93733596801758px",
-                      marginTop: "0px",
-                    }}
+                    className="tour-profile shrink-0 rounded-full overflow-hidden transition-all hover:ring-4 hover:ring-emerald-100"
+                    style={{ width: 42, height: 42, border: "2px solid rgba(255,255,255,0.9)", boxShadow: "0 2px 8px rgba(16,185,129,0.15)" }}
                   >
                     {user?.profilePicture ? (
-                      <img
-                        src={user.profilePicture}
-                        alt={user.name}
-                        className="w-full h-full object-cover"
-                      />
+                      <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" />
                     ) : (
-                      <div className="w-full h-full bg-black flex items-center justify-center text-xs font-black text-white uppercase">
+                      <div className="w-full h-full flex items-center justify-center text-xs font-black text-white"
+                        style={{ background: "linear-gradient(135deg, #059669, #10b981)" }}>
                         {user?.name?.[0] || "U"}
                       </div>
                     )}
                   </button>
 
-                  {/* Welcome Message - Now in Header */}
-                  <div className="flex flex-col">
-                    <span
-                      style={{
-                        fontFamily: "Poppins, sans-serif",
-                        fontWeight: "700",
-                        fontSize: "16px",
-                        lineHeight: "20.6px",
-                        letterSpacing: "-0.41px",
-                        color: "#1a1a1a",
-                      }}
-                    >
+                  <div className="flex flex-col min-w-0">
+                    <span className="font-bold text-[15px] text-slate-800 leading-tight" style={{ fontFamily: "Poppins, sans-serif", letterSpacing: "-0.3px" }}>
                       Hello {user?.name?.split(" ")[0] || "User"}!
                     </span>
-                    <span
-                      style={{
-                        fontFamily: "Poppins, sans-serif",
-                        fontWeight: "600",
-                        fontSize: "14px",
-                        lineHeight: "21.97px",
-                        letterSpacing: "0px",
-                        color: "#69A38D",
-                        width: "160.7889404296875px",
-                        height: "22px",
-                      }}
-                    >
-                      {getGreeting()}
-                    </span>
+                    <span className="text-[12px] font-semibold text-emerald-600 leading-tight">{getGreeting()}</span>
                   </div>
-                </div>
+
+                  <div className="flex-1" />
+
+                  {/* Right side actions */}
+                  <div className="flex items-center gap-2">
+                    {/* Bell */}
+                    <div className="relative">
+                      <button
+                        ref={notificationTriggerRef}
+                        onClick={() => setIsNotificationOpen(prev => !prev)}
+                        className="relative w-9 h-9 rounded-2xl flex items-center justify-center transition-all hover:scale-105"
+                        style={{ background: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.9)", boxShadow: "0 2px 8px rgba(16,185,129,0.1)" }}
+                      >
+                        <Bell className="w-4 h-4 text-emerald-700" />
+                        {unreadNotifCount > 0 && (
+                          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold flex items-center justify-center">
+                            {unreadNotifCount > 9 ? "9+" : unreadNotifCount}
+                          </span>
+                        )}
+                      </button>
+                      <NotificationPanel
+                        isOpen={isNotificationOpen}
+                        onClose={() => {
+                          setIsNotificationOpen(false);
+                          notificationService.getUnreadCount().then(({ data }) => {
+                            const count = typeof data?.unreadCount === 'object' ? data.unreadCount.unreadCount : data?.unreadCount;
+                            setUnreadNotifCount(Number(count) || 0);
+                          }).catch(() => {});
+                        }}
+                        triggerRef={notificationTriggerRef}
+                      />
+                    </div>
+                  </div>
+                </>
               )}
-
-              {location.pathname !== "/profile" && <div className="flex-1" />}
-
-              {/* Bell icon on extreme right */}
-              <div className="relative">
-                <button
-                  ref={notificationTriggerRef}
-                  onClick={() => setIsNotificationOpen((prev) => !prev)}
-                  className="relative w-10 h-10 rounded-full bg-white/40 border border-white/20 flex items-center justify-center shadow-sm hover:bg-white/60 transition-all"
-                >
-                  <Bell className="w-5 h-5 text-[#5B8C6F]" />
-                  {unreadNotifCount > 0 && (
-                    <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-                      {unreadNotifCount > 9 ? "9+" : unreadNotifCount}
-                    </span>
-                  )}
-                </button>
-                <NotificationPanel
-                  isOpen={isNotificationOpen}
-                  onClose={() => {
-                    setIsNotificationOpen(false);
-                    notificationService
-                      .getUnreadCount()
-                      .then(({ data }) => {
-                        const count = typeof data?.unreadCount === 'object' ? data.unreadCount.unreadCount : data?.unreadCount;
-                        setUnreadNotifCount(Number(count) || 0);
-                      })
-                      .catch(() => {});
-                  }}
-                  triggerRef={notificationTriggerRef}
-                />
-              </div>
             </div>
           </header>
 

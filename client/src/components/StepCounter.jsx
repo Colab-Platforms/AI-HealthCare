@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Footprints, Flame, ChevronRight, Activity } from 'lucide-react';
+import { Footprints, Flame, ChevronRight, Zap } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { usePedometer } from '../context/PedometerContext';
 
@@ -10,62 +10,101 @@ const StepMiniCard = () => {
     const progress = Math.min((steps / Math.max(dailyGoal, 1)) * 100, 100);
     const calories = Math.round(steps * 0.04);
     const goalMet = steps >= dailyGoal;
+    const distance = (steps * 0.0008).toFixed(1);
+
+    // SVG arc progress ring
+    const size = 64;
+    const stroke = 5;
+    const r = (size - stroke) / 2;
+    const circ = 2 * Math.PI * r;
+    const filled = circ * (progress / 100);
 
     return (
         <Link to="/step-tracker" className="block">
             <motion.div
-                whileHover={{ y: -5 }}
-                className="bg-white rounded-[2.5rem] p-5 border border-slate-100 shadow-sm hover:shadow-xl transition-all group overflow-hidden relative"
+                whileHover={{ y: -3, scale: 1.01 }}
+                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                className="relative rounded-[28px] overflow-hidden cursor-pointer"
+                style={{
+                    background: 'linear-gradient(135deg, #052e16 0%, #064e3b 50%, #065f46 100%)',
+                    boxShadow: '0 8px 32px rgba(6,78,59,0.45), 0 2px 8px rgba(0,0,0,0.2)',
+                }}
             >
-                {/* Decorative Background */}
-                <div className="absolute -right-4 -bottom-4 opacity-[0.03] rotate-12">
-                    <Footprints className="w-32 h-32 text-indigo-600" />
-                </div>
+                {/* Glow blob */}
+                <div className="absolute -top-8 -right-8 w-32 h-32 rounded-full opacity-30 blur-2xl"
+                    style={{ background: 'radial-gradient(circle, #34d399, transparent)' }} />
+                <div className="absolute -bottom-6 -left-6 w-24 h-24 rounded-full opacity-20 blur-2xl"
+                    style={{ background: 'radial-gradient(circle, #10b981, transparent)' }} />
 
-                <div className="relative z-10">
+                {/* Glass panel */}
+                <div className="relative z-10 p-5"
+                    style={{
+                        background: 'rgba(255,255,255,0.06)',
+                        backdropFilter: 'blur(12px)',
+                        WebkitBackdropFilter: 'blur(12px)',
+                        borderTop: '1px solid rgba(255,255,255,0.12)',
+                        borderLeft: '1px solid rgba(255,255,255,0.08)',
+                    }}
+                >
+                    {/* Header */}
                     <div className="flex justify-between items-start mb-4">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-2xl bg-indigo-50 flex items-center justify-center">
-                                <Activity className="w-5 h-5 text-indigo-500" />
-                            </div>
-                            <div>
-                                <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Pedometer</h3>
-                                <p className="text-sm font-black text-black uppercase tracking-tight">Step Counter</p>
-                            </div>
+                        <div>
+                            <p className="text-[9px] font-black text-emerald-300/60 uppercase tracking-[0.15em] leading-none mb-0.5">Pedometer</p>
+                            <p className="text-xs font-black text-white uppercase tracking-tight">Step Counter</p>
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                            <div className="w-8 h-8 rounded-full bg-slate-50 flex items-center justify-center text-slate-300 group-hover:bg-indigo-500 group-hover:text-white transition-all">
-                                <ChevronRight className="w-4 h-4" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                            <div className="w-7 h-7 rounded-full flex items-center justify-center"
+                                style={{ background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.1)' }}>
+                                <ChevronRight className="w-3.5 h-3.5 text-white/50" />
                             </div>
                         </div>
                     </div>
 
-                    <div className="flex items-end gap-3 mb-4">
-                        <span className="text-4xl font-black text-black leading-none">{steps.toLocaleString()}</span>
-                        <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest pb-1">Steps Today</span>
+                    {/* Main content: big number + arc */}
+                    <div className="flex items-center justify-between mb-4">
+                        <div>
+                            <p className="text-4xl font-black text-white leading-none tracking-tighter">
+                                {steps.toLocaleString()}
+                            </p>
+                            <p className="text-[9px] font-bold text-emerald-300/50 uppercase tracking-widest mt-1">Steps Today</p>
+                        </div>
+                        {/* SVG arc ring */}
+                        <div className="relative w-14 h-14 flex items-center justify-center">
+                            <svg width={size} height={size} className="-rotate-90">
+                                <circle cx={size / 2} cy={size / 2} r={r} fill="none"
+                                    stroke="rgba(255,255,255,0.1)" strokeWidth={stroke} />
+                                <motion.circle
+                                    cx={size / 2} cy={size / 2} r={r} fill="none"
+                                    stroke={goalMet ? '#34d399' : '#6ee7b7'}
+                                    strokeWidth={stroke}
+                                    strokeLinecap="round"
+                                    strokeDasharray={circ}
+                                    initial={{ strokeDashoffset: circ }}
+                                    animate={{ strokeDashoffset: circ - filled }}
+                                    transition={{ duration: 1, ease: 'easeOut' }}
+                                />
+                            </svg>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                {goalMet
+                                    ? <Zap className="w-4 h-4 text-emerald-400" />
+                                    : <Footprints className="w-4 h-4 text-emerald-300/60" />
+                                }
+                            </div>
+                        </div>
                     </div>
 
-                    {/* Progress Bar */}
-                    <div className="space-y-3">
-                        <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                            <motion.div
-                                initial={{ width: 0 }}
-                                animate={{ width: `${progress}%` }}
-                                transition={{ duration: 1, ease: 'easeOut' }}
-                                className={`h-full ${goalMet ? 'bg-gradient-to-r from-emerald-500 to-green-400' : 'bg-gradient-to-r from-indigo-500 to-purple-500'}`}
-                            />
+                    {/* Footer stats */}
+                    <div className="flex items-center justify-between pt-3"
+                        style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+                        <div className="flex items-center gap-1.5">
+                            <Flame className="w-3 h-3 text-orange-400" />
+                            <span className="text-[10px] font-black text-orange-400">{calories} Cal</span>
                         </div>
-
-                        <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-widest">
-                            <div className="flex items-center gap-1.5 text-orange-500">
-                                <Flame className="w-3.5 h-3.5" />
-                                <span>{calories} Cal</span>
-                            </div>
-                            <span className={goalMet ? 'text-emerald-500' : 'text-slate-400'}>
-                                {goalMet ? 'Goal Met!' : `${Math.round(progress)}% of ${dailyGoal >= 1000 ? `${(dailyGoal / 1000).toFixed(dailyGoal % 1000 === 0 ? 0 : 1)}k` : dailyGoal}`}
-                            </span>
-                        </div>
+                        <span className="text-[9px] font-bold text-white/30">{distance} km</span>
+                        <span className={`text-[9px] font-black uppercase tracking-wider ${goalMet ? 'text-emerald-400' : 'text-emerald-300/50'}`}>
+                            {goalMet ? 'Goal Met ✓' : `${Math.round(progress)}% of ${dailyGoal >= 1000 ? `${(dailyGoal / 1000).toFixed(dailyGoal % 1000 === 0 ? 0 : 1)}k` : dailyGoal}`}
+                        </span>
                     </div>
                 </div>
             </motion.div>

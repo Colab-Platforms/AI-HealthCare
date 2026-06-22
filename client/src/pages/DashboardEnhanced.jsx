@@ -410,7 +410,7 @@ const DiabetesMonitor = ({ onLog }) => {
         ].map((item, i) => (
           <div
             key={i}
-            className="bg-[#FAFBF8] rounded-[24px] p-6 lg:p-8 text-center border border-[#f0f0ea] hover:shadow-md transition-shadow"
+            className="liquid-glass-inner rounded-[24px] p-6 lg:p-8 text-center transition-shadow"
           >
             <p className="text-[10px] font-bold text-[#a0a0a0] uppercase tracking-wider mb-4">
               {item.label}
@@ -1447,7 +1447,15 @@ export default function DashboardEnhanced() {
 
   console.log("Rendering Dashboard", { hasData: !!dashboardData, isDiabetic });
   return (
-    <div className="min-h-screen bg-[linear-gradient(to_bottom,#F2F5EC_0%,#EFF2E9_25%,#EBF0E6_50%,#E8EDE3_75%,#E5EBE0_100%)] text-[#064e3b] font-sans selection:bg-emerald-100 selection:text-emerald-900 overflow-x-hidden pb-12">
+    <div className="min-h-screen text-[#1a1a1a] font-sans selection:bg-emerald-100 selection:text-emerald-900 overflow-x-hidden pb-20 relative"
+      style={{ background: "linear-gradient(135deg, #edfdf4 0%, #f0faf5 25%, #e8f8ef 50%, #f5fdf8 75%, #eafaf2 100%)" }}
+    >
+      <div className="fixed top-0 left-1/4 w-[600px] h-[600px] rounded-full pointer-events-none -z-0"
+        style={{ background: "radial-gradient(circle, rgba(16,185,129,0.12), transparent)", filter: "blur(80px)" }} />
+      <div className="fixed bottom-1/4 right-0 w-[500px] h-[500px] rounded-full pointer-events-none -z-0"
+        style={{ background: "radial-gradient(circle, rgba(52,211,153,0.10), transparent)", filter: "blur(100px)" }} />
+      <div className="fixed top-1/2 left-0 w-[400px] h-[400px] rounded-full pointer-events-none -z-0"
+        style={{ background: "radial-gradient(circle, rgba(110,231,183,0.08), transparent)", filter: "blur(80px)" }} />
       <SEO pageName="dashboard" />
       {runTour && !isTourCompleted && (
         <Joyride
@@ -1473,7 +1481,7 @@ export default function DashboardEnhanced() {
           }}
         />
       )}
-      <div className="max-w-7xl mx-auto px-0 md:px-8">
+      <div className="w-full px-0 md:px-6">
         {/* Header moved to Layout.jsx */}
 
         {/* AI Search Bar */}
@@ -1486,8 +1494,8 @@ export default function DashboardEnhanced() {
         >
           <div
             onClick={() => navigate("/ai-chat")}
-            className="w-full flex items-center gap-3 bg-gradient-to-r from-white/70 to-white/40 backdrop-blur-[2px] rounded-full px-4 border border-white/50 shadow-sm cursor-pointer hover:shadow-md transition-all relative"
-            style={{ height: "51.26px", opacity: 1 }}
+            className="liquid-glass w-full flex items-center gap-3 rounded-full px-4 cursor-pointer transition-all"
+            style={{ height: "51.26px" }}
           >
             <div
               className="absolute bg-[#588975] flex items-center justify-center shrink-0 border border-[#588975]/10"
@@ -1592,6 +1600,34 @@ export default function DashboardEnhanced() {
           </div>
         </motion.div>
 
+        {/* Quick Navigation Cards */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.12 }}
+          className="px-4 md:px-0 mb-3"
+        >
+          <div className="grid grid-cols-4 gap-2.5">
+            {[
+              { label: "Log Meal", icon: UtensilsCrossed, color: "#059669", onClick: () => navigate("/nutrition", { state: { openLogMeal: true, mealType: "Breakfast" } }) },
+              { label: "Log Water", icon: GlassWater, color: "#0ea5e9", onClick: () => { setActiveLogTab("Water"); setIsLogVitalsOpen(true); } },
+              { label: "Log Sleep", icon: Moon, color: "#7c3aed", onClick: () => { setActiveLogTab("Sleep"); setIsLogVitalsOpen(true); } },
+              { label: "Upload Lab", icon: Upload, color: "#064e3b", onClick: () => navigate("/upload") },
+            ].map(({ label, icon: Icon, color, onClick }) => (
+              <button
+                key={label}
+                onClick={onClick}
+                className="liquid-glass-btn flex flex-col items-center gap-2 py-3 px-2 rounded-[18px] transition-all active:scale-95"
+              >
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: `${color}18`, border: `1px solid ${color}30` }}>
+                  <Icon className="w-5 h-5" style={{ color }} />
+                </div>
+                <span className="text-[10px] font-bold text-slate-700 leading-tight text-center">{label}</span>
+              </button>
+            ))}
+          </div>
+        </motion.div>
+
         {/* Desktop Action Buttons */}
         <div className="hidden lg:flex items-center gap-3 mb-6">
           <button
@@ -1600,22 +1636,25 @@ export default function DashboardEnhanced() {
                 state: { openLogMeal: true, mealType: "Breakfast" },
               })
             }
-            className="flex items-center gap-2 px-6 py-2.5 bg-white/60 backdrop-blur-md rounded-full text-sm font-semibold text-[#1a1a1a] hover:bg-white transition-all border border-[#E5EBE0] shadow-sm"
+            className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-semibold text-white transition-all active:scale-95 whitespace-nowrap"
+            style={{ background: "linear-gradient(135deg, rgba(5,150,105,0.85) 0%, rgba(16,185,129,0.9) 100%)", boxShadow: "0 4px 20px rgba(5,150,105,0.35), 0 1px 0 rgba(255,255,255,0.25) inset" }}
           >
-            <UtensilsCrossed className="w-4 h-4 text-[#5B8C6F]" /> Log Meal
+            <UtensilsCrossed className="w-4 h-4 text-white" /> Log Meal
           </button>
           <button
             onClick={() => {
               setActiveLogTab("Sleep");
               setIsLogVitalsOpen(true);
             }}
-            className="flex items-center gap-2 px-6 py-2.5 bg-white/60 backdrop-blur-md rounded-full text-sm font-semibold text-[#1a1a1a] hover:bg-white transition-all border border-[#E5EBE0] shadow-sm"
+            className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-semibold text-white transition-all active:scale-95 whitespace-nowrap"
+            style={{ background: "linear-gradient(135deg, rgba(5,150,105,0.85) 0%, rgba(16,185,129,0.9) 100%)", boxShadow: "0 4px 20px rgba(5,150,105,0.35), 0 1px 0 rgba(255,255,255,0.25) inset" }}
           >
-            <Moon className="w-4 h-4 text-[#5B8C6F]" /> Log Sleep
+            <Moon className="w-4 h-4 text-white" /> Log Sleep
           </button>
           <button
             onClick={() => navigate("/upload")}
-            className="flex items-center gap-2 px-6 py-2.5 bg-[#1a1a1a] text-white rounded-full text-sm font-semibold hover:bg-black transition-all shadow-md"
+            className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-semibold text-white transition-all active:scale-95 whitespace-nowrap"
+            style={{ background: "linear-gradient(135deg, #052e16 0%, #064e3b 100%)", boxShadow: "0 4px 20px rgba(5,46,22,0.45), inset 0 1px 0 rgba(255,255,255,0.15)" }}
           >
             <Upload className="w-4 h-4" /> Upload Reports
           </button>
@@ -1631,7 +1670,7 @@ export default function DashboardEnhanced() {
           <motion.div
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            className="tour-nutrient-info w-full bg-white px-5 pb-5 pt-5 lg:px-8 lg:pb-8 lg:pt-8 border border-slate-100/80 shadow-[0_4px_24px_rgba(0,0,0,0.03)] flex flex-col relative overflow-hidden"
+            className="tour-nutrient-info liquid-glass-strong w-full px-5 pb-5 pt-5 lg:px-8 lg:pb-8 lg:pt-8 flex flex-col"
             style={{
               borderRadius: "29.29px",
               marginTop: "4px",
@@ -1665,7 +1704,7 @@ export default function DashboardEnhanced() {
             </div>
 
             {/* Protein / Carbs / Fats Row - Unified Card - Balanced */}
-            <div className="mt-2 mb-5 bg-[#FCF9EE] rounded-[18px] py-3 px-3 flex items-center justify-around gap-1 border border-[#f0f0ea]/30 shadow-sm overflow-hidden">
+            <div className="liquid-glass-inner mt-2 mb-5 rounded-[18px] py-3 px-3 flex items-center justify-around gap-1 overflow-hidden">
               <div className="flex items-center gap-2">
                 <img
                   src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_8.png?v=1775645708"
@@ -1850,7 +1889,7 @@ export default function DashboardEnhanced() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
-            className="tour-diet-plan w-full bg-white border border-[#f0f0ea] shadow-sm flex flex-col relative overflow-hidden"
+            className="tour-diet-plan liquid-glass-strong w-full flex flex-col"
             style={{
               minHeight: "400px",
               borderRadius: "29.29px",
@@ -1902,10 +1941,13 @@ export default function DashboardEnhanced() {
                     onClick={() => setActiveMealTab(tab.id)}
                     className={`transition-all whitespace-nowrap flex-1 h-[36px] rounded-full font-bold text-[11px] uppercase tracking-wider transition-all ${
                       activeMealTab === tab.id
-                        ? "bg-[#76B39D] text-white shadow-lg shadow-[#76B39D]/30 border-transparent"
+                        ? "text-white border-transparent"
                         : "bg-white text-[#8a8a8a] border border-[#f0f0ea] hover:bg-[#E8F3EE]"
                     }`}
-                    style={{ fontFamily: "Poppins, sans-serif" }}
+                    style={activeMealTab === tab.id
+                      ? { fontFamily: "Poppins, sans-serif", background: "linear-gradient(135deg, rgba(5,150,105,0.85) 0%, rgba(16,185,129,0.9) 100%)", boxShadow: "0 4px 12px rgba(5,150,105,0.3), inset 0 1px 0 rgba(255,255,255,0.2)" }
+                      : { fontFamily: "Poppins, sans-serif" }
+                    }
                   >
                     {tab.label}
                   </button>
@@ -1916,7 +1958,7 @@ export default function DashboardEnhanced() {
             {/* Meal Content Area */}
             <div className="flex-1 flex flex-col min-h-[220px] w-full">
               {!dietPlan || !dietPlan.mealPlan ? (
-                <div className="mx-5 my-4 flex flex-col items-center justify-center text-center bg-[#F9FAF5] rounded-[24px] border border-[#f0f0ea] py-10">
+                <div className="liquid-glass-inner mx-5 my-4 flex flex-col items-center justify-center text-center rounded-[24px] py-10">
                   <div className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-md mb-4 border border-[#E8F3EE]">
                     <Utensils className="w-7 h-7 text-[#76B39D]" />
                   </div>
@@ -1930,7 +1972,7 @@ export default function DashboardEnhanced() {
                     const meals = dietPlan.mealPlan[activeMealTab] || [];
                     if (meals.length === 0) {
                       return (
-                        <div className="mx-5 my-2 p-8 bg-[#F9FAF5] rounded-[24px] text-center border border-[#f0f0ea]">
+                        <div className="liquid-glass-inner mx-5 my-2 p-8 rounded-[24px] text-center">
                           <p className="text-[11px] font-bold text-[#a0a0a0] uppercase tracking-wider">
                             No meals logged for {activeMealTab}
                           </p>
@@ -1973,7 +2015,7 @@ export default function DashboardEnhanced() {
                                   />
                                 </div>
                                 {/* Content Card */}
-                                <div className="absolute bottom-0 left-0 w-full h-[126px] bg-[#F6F7F2] rounded-[22px] border border-[#ededdf] pt-[52px] px-4 pb-3 z-10 text-left">
+                                <div className="liquid-glass-inner absolute bottom-0 left-0 w-full h-[126px] rounded-[22px] pt-[52px] px-4 pb-3 z-10 text-left">
                                   <h4
                                     className="truncate font-bold text-[13px] text-[#1a1a1a] mb-1"
                                     style={{
@@ -2023,8 +2065,8 @@ export default function DashboardEnhanced() {
             <div className="px-5 pb-6 mt-auto">
               <button
                 onClick={() => navigate("/diet-plan")}
-                className="w-full h-[46px] bg-[#76B39D] text-white font-bold rounded-[18px] shadow-lg shadow-[#76B39D]/30 flex items-center justify-center gap-2 hover:bg-[#65a18b] active:scale-95 transition-all"
-                style={{ fontFamily: "Poppins, sans-serif", fontSize: "14px" }}
+                className="w-full h-[46px] text-white font-bold rounded-[18px] flex items-center justify-center gap-2 active:scale-95 transition-all"
+                style={{ background: "linear-gradient(135deg, rgba(5,150,105,0.9) 0%, rgba(16,185,129,0.95) 100%)", boxShadow: "0 4px 20px rgba(5,150,105,0.40), inset 0 1px 0 rgba(255,255,255,0.25)", fontFamily: "Poppins, sans-serif", fontSize: "14px" }}
               >
                 View Full Plan{" "}
                 <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
@@ -2037,7 +2079,7 @@ export default function DashboardEnhanced() {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.15 }}
-            className="tour-ai-insights w-full bg-white rounded-[24px] p-5 lg:p-8 border border-slate-100/80 shadow-[0_4px_24px_rgba(0,0,0,0.03)] flex flex-col relative overflow-hidden"
+            className="tour-ai-insights liquid-glass-strong w-full rounded-[29px] p-5 lg:p-8 flex flex-col"
             style={{
               marginTop: "4px",
             }}
@@ -2061,7 +2103,7 @@ export default function DashboardEnhanced() {
 
             <div className="flex-1 space-y-3 min-h-[180px] max-h-[300px] overflow-y-auto scrollbar-hide pr-1">
               {dashboardData?.processingReport ? (
-                <div className="flex flex-col items-center justify-center p-6 bg-[#FAFBF8] rounded-[24px] text-center border border-[#f0f0ea]">
+                <div className="liquid-glass-inner flex flex-col items-center justify-center p-6 rounded-[24px] text-center">
                   <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 border border-[#E8F3EE]">
                     <Clock className="w-6 h-6 text-[#5B8C6F] animate-spin" />
                   </div>
@@ -2080,7 +2122,7 @@ export default function DashboardEnhanced() {
                     ([key, val]) => (
                       <div
                         key={key}
-                        className="p-3 bg-[#FAFBF8] rounded-2xl border border-[#f0f0ea] flex items-center justify-between"
+                        className="liquid-glass-inner p-3 rounded-2xl flex items-center justify-between"
                       >
                         <div className="flex items-center gap-3">
                           <div className="w-8 h-8 rounded-xl bg-white border border-[#E8F3EE] flex items-center justify-center">
@@ -2118,7 +2160,7 @@ export default function DashboardEnhanced() {
                   )}
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center p-6 bg-[#FAFBF8] rounded-[24px] text-center border border-[#f0f0ea] h-full">
+                <div className="liquid-glass-inner flex flex-col items-center justify-center p-6 rounded-[24px] text-center h-full">
                   <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 border border-[#E8F3EE]">
                     <Upload className="w-6 h-6 text-[#5B8C6F]" />
                   </div>
@@ -2130,7 +2172,8 @@ export default function DashboardEnhanced() {
                   </p>
                   <button
                     onClick={() => navigate("/upload")}
-                    className="px-5 py-2 bg-[#5B8C6F] text-white rounded-full text-[9px] font-bold uppercase tracking-widest shadow-lg shadow-[#5B8C6F]/10 hover:scale-[1.02] transition-all"
+                    className="px-5 py-2 text-white rounded-full text-[9px] font-bold uppercase tracking-widest hover:scale-[1.02] transition-all"
+                    style={{ background: "linear-gradient(135deg, rgba(5,150,105,0.85) 0%, rgba(16,185,129,0.9) 100%)", boxShadow: "0 4px 12px rgba(5,150,105,0.3)" }}
                   >
                     Upload Now
                   </button>
@@ -2160,7 +2203,7 @@ export default function DashboardEnhanced() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="mx-4 lg:mx-0 bg-white border border-[#f0f0ea] rounded-[32px] p-5 lg:p-8 shadow-[0_4px_24px_rgba(0,0,0,0.02)] relative overflow-hidden mt-4 mb-4"
+            className="liquid-glass-strong mx-4 lg:mx-0 rounded-[28px] p-5 lg:p-8 mt-4 mb-4"
           >
             <div className="relative z-10">
               <div className="flex flex-row items-center justify-between mb-6">
@@ -2184,7 +2227,7 @@ export default function DashboardEnhanced() {
                 {!dashboardData?.latestAnalysis &&
                 !dashboardData?.vitals?.glucose &&
                 !dashboardData?.vitals?.hba1c ? (
-                  <div className="col-span-2 bg-[#FAFBF8] border border-[#f0f0ea] rounded-[24px] p-8 text-center flex flex-col items-center justify-center">
+                  <div className="col-span-2 liquid-glass-inner rounded-[24px] p-8 text-center flex flex-col items-center justify-center">
                     <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-3 border border-[#E8F3EE]">
                       <Sparkles className="w-6 h-6 text-[#5B8C6F]" />
                     </div>
@@ -2233,7 +2276,7 @@ export default function DashboardEnhanced() {
                     ].map((stat) => (
                       <div
                         key={stat.label}
-                        className="bg-[#FAFBF8] border border-[#f0f0ea] shadow-sm rounded-[24px] p-5 lg:p-7 flex flex-col items-center justify-center group hover:bg-white hover:shadow-md transition-all"
+                        className="liquid-glass-inner rounded-[24px] p-5 lg:p-7 flex flex-col items-center justify-center group transition-all"
                       >
                         <span className="text-[#a0a0a0] text-[10px] font-bold uppercase tracking-widest mb-2">
                           {stat.label}
@@ -2322,7 +2365,7 @@ export default function DashboardEnhanced() {
                   return (
                     <div
                       key={idx}
-                      className="bg-white shadow-sm flex flex-col flex-none snap-start group cursor-pointer border border-[#f0f0ea]/50"
+                      className="liquid-glass flex flex-col flex-none snap-start group cursor-pointer"
                       style={{
                         width: "calc(50% - 6px)",
                         minHeight: "220px",
@@ -2369,7 +2412,8 @@ export default function DashboardEnhanced() {
                         </p>
 
                         <button
-                          className="w-full h-[32px] bg-[#76B39D] rounded-xl flex items-center justify-center active:scale-95 transition-all shadow-sm group-hover:bg-[#65a18b] mt-2"
+                          className="w-full h-[32px] rounded-xl flex items-center justify-center active:scale-95 transition-all mt-2"
+                          style={{ background: "linear-gradient(135deg, rgba(5,150,105,0.85) 0%, rgba(16,185,129,0.9) 100%)", boxShadow: "0 2px 8px rgba(5,150,105,0.25)" }}
                           onClick={(e) => {
                             e.stopPropagation();
                             navigate("/nutrition");
@@ -2385,7 +2429,7 @@ export default function DashboardEnhanced() {
                 })
             ) : (
               <div
-                className="w-full flex-none flex flex-col items-center justify-center p-8 bg-[#FAFBF8] rounded-[32px] border border-[#f0f0ea] text-center"
+                className="liquid-glass-inner w-full flex-none flex flex-col items-center justify-center p-8 rounded-[32px] text-center"
                 style={{ height: "208.24px" }}
               >
                 <Utensils className="w-8 h-8 text-[#5B8C6F] mb-3" />
@@ -2394,7 +2438,8 @@ export default function DashboardEnhanced() {
                 </h3>
                 <button
                   onClick={() => navigate("/nutrition")}
-                  className="px-6 py-2 bg-[#5B8C6F] text-white rounded-xl text-[9px] font-bold uppercase tracking-widest shadow-md transition-all"
+                  className="px-6 py-2 text-white rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all"
+                  style={{ background: "linear-gradient(135deg, rgba(5,150,105,0.85) 0%, rgba(16,185,129,0.9) 100%)", boxShadow: "0 4px 12px rgba(5,150,105,0.3)" }}
                 >
                   Log First Meal
                 </button>
@@ -2445,7 +2490,7 @@ export default function DashboardEnhanced() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.7 }}
-            className="bg-white rounded-[28px] p-4 lg:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden flex flex-col h-full border border-slate-100/50"
+            className="liquid-glass-strong rounded-[28px] p-4 lg:p-6 flex flex-col"
           >
             <div className="flex items-center justify-between mb-6 shrink-0">
               <div className="flex items-center gap-2">
@@ -2562,7 +2607,7 @@ export default function DashboardEnhanced() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.8 }}
-            className="bg-white rounded-[28px] p-4 lg:p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-100/50 flex flex-col"
+            className="liquid-glass-strong rounded-[28px] p-4 lg:p-6 flex flex-col"
           >
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-3">
@@ -2891,7 +2936,8 @@ export default function DashboardEnhanced() {
                 animate={{ y: 0 }}
                 exit={{ y: "100%" }}
                 transition={{ type: "spring", damping: 30, stiffness: 300 }}
-                className="fixed bottom-0 left-0 w-full h-[90vh] bg-[#FAFAFA] rounded-t-[40px] shadow-[0_-20px_60px_rgba(15,23,42,0.15)] z-[71] flex flex-col border-t border-white overflow-hidden"
+                className="fixed bottom-0 left-0 w-full h-[90vh] rounded-t-[40px] z-[71] flex flex-col overflow-hidden"
+                style={{ background: "rgba(235,253,244,0.85)", backdropFilter: "blur(48px) saturate(200%)", WebkitBackdropFilter: "blur(48px) saturate(200%)", borderTop: "1px solid rgba(255,255,255,0.90)", boxShadow: "0 -20px 60px rgba(15,23,42,0.15), inset 0 1px 0 rgba(255,255,255,0.95)" }}
               >
                 <div className="absolute top-2 left-1/2 -translate-x-1/2 w-12 h-1.5 bg-white/20 rounded-full z-20" />
 
@@ -2971,7 +3017,7 @@ export default function DashboardEnhanced() {
                 </div>
 
                 {/* Dynamic Content Mapping */}
-                <div className="flex-1 overflow-y-auto pb-24 lg:pb-12 pt-0 md:pt-4 px-0 md:px-0 max-w-7xl mx-auto w-full">
+                <div className="flex-1 overflow-y-auto pb-24 lg:pb-12 pt-2 px-0 max-w-2xl mx-auto w-full">
                   <AnimatePresence mode="wait">
                     <motion.div
                       key={activeLogTab}
@@ -2983,7 +3029,7 @@ export default function DashboardEnhanced() {
                       {activeLogTab === "Weight" && (
                         <div className="space-y-6">
                           {/* Summary Card - High Fidelity */}
-                          <div className="bg-white border border-[#E8F3EE] shadow-[0_1px_3px_rgba(0,0,0,0.1)] rounded-[32px] p-8 relative group">
+                          <div className="liquid-glass rounded-[32px] p-8 relative group">
                             <div className="flex items-center justify-between mb-10">
                               <h4 className="text-lg font-bold text-[#90A1B9]">
                                 Current{" "}
@@ -3120,7 +3166,7 @@ export default function DashboardEnhanced() {
                             </div>
                           </div>
 
-                          <div className="bg-white/60 backdrop-blur-md rounded-[32px] p-8 border border-white shadow-sm overflow-hidden group">
+                          <div className="liquid-glass rounded-[32px] p-8 overflow-hidden group">
                             <div className="flex items-center justify-between mb-8">
                               <div className="flex items-center gap-3">
                                 <Activity className="w-5 h-5 text-[#1F5C49]" />
@@ -3354,8 +3400,8 @@ export default function DashboardEnhanced() {
                           </div>
 
                           {/* Weekly Hydration Chart Card */}
-                          <div className="bg-white border border-[#E8F3EE] shadow-sm rounded-[32px] p-6">
-                            <div className="flex justify-between items-center mb-10">
+                          <div className="liquid-glass rounded-[20px] p-4">
+                            <div className="flex justify-between items-center mb-6">
                               <h4 className="text-base font-black text-[#1D293D] tracking-tight">
                                 Weekly Hydration
                               </h4>
@@ -3450,7 +3496,7 @@ export default function DashboardEnhanced() {
                           </div>
 
                           {/* Quick Log Card - High Fidelity */}
-                          <div className="bg-white border border-[#E8F3EE] shadow-sm rounded-[32px] p-8 space-y-8">
+                          <div className="liquid-glass rounded-[20px] p-4 space-y-4">
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center">
                                 <Plus className="w-4 h-4 text-[#3B82F6]" />
@@ -3502,7 +3548,8 @@ export default function DashboardEnhanced() {
                                 )
                               }
                               disabled={vitalsLoading}
-                              className="w-full h-16 bg-[#3B82F6] rounded-full shadow-[0_20px_40px_rgba(59,130,246,0.3)] flex items-center justify-center gap-3 active:scale-[0.98] transition-all disabled:opacity-50"
+                              className="w-full h-12 rounded-2xl flex items-center justify-center gap-2 active:scale-[0.98] transition-all disabled:opacity-50"
+                              style={{ background: "linear-gradient(135deg, rgba(5,150,105,0.9) 0%, rgba(16,185,129,0.95) 100%)", boxShadow: "0 8px 24px rgba(16,185,129,0.3)" }}
                             >
                               {vitalsLoading ? (
                                 <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
@@ -3659,8 +3706,8 @@ export default function DashboardEnhanced() {
                           </div>
 
                           {/* Weekly Progress Chart Card */}
-                          <div className="bg-white border border-[#E8F3EE] shadow-sm rounded-[32px] p-6">
-                            <div className="flex justify-between items-center mb-10">
+                          <div className="liquid-glass rounded-[20px] p-4">
+                            <div className="flex justify-between items-center mb-6">
                               <h4 className="text-base font-black text-[#1D293D] tracking-tight">
                                 Weekly Progress
                               </h4>
@@ -3756,7 +3803,7 @@ export default function DashboardEnhanced() {
                           </div>
 
                           {/* Manual Entry Card */}
-                          <div className="bg-white border border-[#E8F3EE] shadow-sm rounded-[32px] p-8 space-y-8">
+                          <div className="liquid-glass rounded-[20px] p-4 space-y-4">
                             <div className="flex items-center gap-3">
                               <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center">
                                 <Plus className="w-4 h-4 text-[#F97316]" />
@@ -4016,8 +4063,8 @@ export default function DashboardEnhanced() {
                           </div>
 
                           {/* Weekly Sleep Analysis Chart */}
-                          <div className="bg-white border border-[#E8F3EE] shadow-sm rounded-[32px] p-6">
-                            <div className="flex justify-between items-center mb-10">
+                          <div className="liquid-glass rounded-[20px] p-4">
+                            <div className="flex justify-between items-center mb-6">
                               <h4 className="text-base font-black text-[#1D293D] tracking-tight">
                                 Weekly Sleep
                               </h4>
@@ -4118,12 +4165,12 @@ export default function DashboardEnhanced() {
                           </div>
 
                           {/* Log Sleep Manual Entry Card */}
-                          <div className="bg-white border border-[#F1F5F9] shadow-[0_10px_40px_rgba(0,0,0,0.03)] rounded-[32px] p-8 space-y-8">
-                            <div className="flex items-center gap-4">
-                              <div className="w-9 h-9 rounded-full bg-white shadow-[0_4px_12px_rgba(0,0,0,0.08)] flex items-center justify-center border border-slate-50">
-                                <Plus className="w-4 h-4 text-slate-400" />
+                          <div className="liquid-glass rounded-[20px] p-4 space-y-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center">
+                                <Plus className="w-4 h-4 text-emerald-600" />
                               </div>
-                              <h4 className="text-xl font-bold text-[#1D293D] tracking-tight">
+                              <h4 className="text-base font-bold text-[#1D293D] tracking-tight">
                                 Log Sleep
                               </h4>
                             </div>
