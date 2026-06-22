@@ -14,7 +14,8 @@ const generateToken = (id) => {
 
 exports.requestRegistrationOtp = async (req, res) => {
   try {
-    const { email, name } = req.body;
+    const { name } = req.body;
+    const email = req.body.email?.toLowerCase().trim();
     if (!email) return res.status(400).json({ message: 'Email is required' });
 
     // Check if user already exists
@@ -44,7 +45,8 @@ exports.requestRegistrationOtp = async (req, res) => {
 
 exports.register = async (req, res) => {
   try {
-    const { name, email, phone, password, role, profile, nutritionGoal, otp } = req.body;
+    const { name, phone, password, role, profile, nutritionGoal, otp } = req.body;
+    const email = req.body.email?.toLowerCase().trim();
 
     // Validate required fields
     if (!name || !email || !password || !phone) {
@@ -122,10 +124,6 @@ exports.register = async (req, res) => {
     let user = null;
     try {
       console.log('Creating user in database...');
-      // Generate 6-digit verification code
-      const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-      const verificationExpire = Date.now() + 15 * 60 * 1000; // 15 mins
-
       user = await User.create({
         name,
         email,
@@ -168,9 +166,6 @@ exports.register = async (req, res) => {
           // Don't fail the whole registration if this fails
         }
       }
-      // Send verification email
-      const emailService = require('../services/emailService');
-      await emailService.sendVerificationCode(user.email, user.name, verificationCode);
     } catch (createError) {
       console.error('User creation error:', createError.message);
       console.error('User creation error code:', createError.code);
@@ -275,7 +270,8 @@ exports.registerDoctor = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { email, phone, password } = req.body;
+    const { phone, password } = req.body;
+    const email = req.body.email?.toLowerCase().trim();
 
     // Input validation
     if (!email && !phone) {
@@ -491,6 +487,39 @@ exports.updateProfile = async (req, res) => {
 
           // The pre-save hook in HealthGoal will handle target recalculations
           await healthGoal.save();
+
+          // Sync recalculated calorie/macro targets back to user.nutritionGoal
+          user.nutritionGoal = {
+            ...(user.nutritionGoal?.toObject ? user.nutritionGoal.toObject() : user.nutritionGoal || {}),
+            calorieGoal: healthGoal.dailyCalorieTarget,
+            proteinGoal: healthGoal.macroTargets?.protein || user.nutritionGoal?.proteinGoal,
+            carbsGoal: healthGoal.macroTargets?.carbs || user.nutritionGoal?.carbsGoal,
+            fatGoal: healthGoal.macroTargets?.fats || user.nutritionGoal?.fatGoal,
+            lastUpdated: new Date()
+          };
+          user.markModified('nutritionGoal');
+        } else if (!req.body.nutritionGoal && user.nutritionGoal?.calorieGoal) {
+          // No HealthGoal doc but user has a saved calorieGoal — recalculate from updated profile
+          try {
+            const recalculated = calculateNutritionGoals({
+              age: user.profile.age,
+              gender: user.profile.gender,
+              weight: newWeight,
+              height: newHeight,
+              activityLevel: user.profile.activityLevel || 'sedentary',
+              goal: user.nutritionGoal.goal || 'general_health',
+              targetWeight: user.nutritionGoal.targetWeight,
+              weeklyGoal: user.nutritionGoal.weeklyGoal || 0.5,
+              isDiabetic: user.profile.isDiabetic === 'yes'
+            });
+            user.nutritionGoal = {
+              ...(user.nutritionGoal?.toObject ? user.nutritionGoal.toObject() : user.nutritionGoal || {}),
+              ...recalculated
+            };
+            user.markModified('nutritionGoal');
+          } catch (e) {
+            console.error('Profile-change nutrition recalc error:', e.message);
+          }
         } else if (req.body.nutritionGoal) {
           // Create initial HealthGoal record for early registration profile completion
           try {
@@ -630,7 +659,7 @@ exports.uploadProfilePicture = async (req, res) => {
 // @route   POST /api/auth/forgot-password
 exports.forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
+    const email = req.body.email?.toLowerCase().trim();
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -661,7 +690,8 @@ exports.forgotPassword = async (req, res) => {
 // @route   POST /api/auth/verify-reset-code
 exports.verifyResetCode = async (req, res) => {
   try {
-    const { email, code } = req.body;
+    const { code } = req.body;
+    const email = req.body.email?.toLowerCase().trim();
     const user = await User.findOne({
       email,
       resetPasswordCode: code,
@@ -682,7 +712,8 @@ exports.verifyResetCode = async (req, res) => {
 // @route   POST /api/auth/reset-password
 exports.resetPassword = async (req, res) => {
   try {
-    const { email, code, password } = req.body;
+    const { code, password } = req.body;
+    const email = req.body.email?.toLowerCase().trim();
     const user = await User.findOne({
       email,
       resetPasswordCode: code,

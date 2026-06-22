@@ -206,16 +206,6 @@ export const seoConfig = {
       noindex: true,
     },
 
-    diabetes: {
-      title: "Diabetes Care Management | take.health",
-      description:
-        "Comprehensive diabetes management tools and personalized care guidance.",
-      keywords: "diabetes care, diabetes management, blood sugar management",
-      path: "/diabetes",
-      canonical: `${baseURL}/diabetes`,
-      noindex: true,
-    },
-
     medicalVault: {
       title: "Medical Document Vault | take.health",
       description:

@@ -168,6 +168,14 @@ const userSchema = new mongoose.Schema({
   }
 }, { timestamps: true, strict: false });
 
+// --- Indexes ---
+// Admin/doctor dashboards filter by role + isActive
+userSchema.index({ role: 1, isActive: 1 });
+// Password reset lookup (called on every forgot-password verify)
+userSchema.index({ resetPasswordCode: 1, resetPasswordExpire: 1 }, { sparse: true });
+// Profile queries by subscription plan
+userSchema.index({ 'subscription.plan': 1, 'subscription.status': 1 }, { sparse: true });
+
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
   // Use 10 rounds (not 12) - still secure but ~4x faster on serverless

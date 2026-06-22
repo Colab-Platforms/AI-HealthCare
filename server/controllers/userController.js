@@ -40,6 +40,8 @@ exports.saveFoodPreferences = async (req, res) => {
     }
 
     user.foodPreferences = {
+      region: user.foodPreferences?.region,
+      country: user.foodPreferences?.country,
       preferredFoods: preferredFoods || [],
       foodsToAvoid: foodsToAvoid || [],
       dietaryRestrictions: dietaryRestrictions || [],

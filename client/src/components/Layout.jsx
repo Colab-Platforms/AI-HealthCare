@@ -77,7 +77,7 @@ export default function Layout({
   const { pendingAnalysisIds, pendingDietPlanIds } = useData();
   const location = useLocation();
   const navigate = useNavigate();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [sidebarOpen, setSidebarOpen] = useState(() => window.innerWidth >= 1024);
   const [healthData, setHealthData] = useState({
     healthScore: 0,
     caloriesConsumed: 0,
@@ -87,6 +87,27 @@ export default function Layout({
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [showBackToTop, setShowBackToTop] = useState(false);
   const notificationTriggerRef = useRef(null);
+
+  const aiPlaceholders = [
+    "Ask anything about your health…",
+    "What should I eat for dinner?",
+    "How's my blood sugar trend?",
+    "Am I hitting my protein goals?",
+    "Suggest a workout for today…",
+    "What does my HbA1c mean?",
+  ];
+  const [aiPlaceholderIdx, setAiPlaceholderIdx] = useState(0);
+  const [aiPlaceholderVisible, setAiPlaceholderVisible] = useState(true);
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setAiPlaceholderVisible(false);
+      setTimeout(() => {
+        setAiPlaceholderIdx(prev => (prev + 1) % aiPlaceholders.length);
+        setAiPlaceholderVisible(true);
+      }, 300);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Poll unread notification count for the bell badge
   useEffect(() => {
@@ -108,6 +129,15 @@ export default function Layout({
     if (user && refreshUser) {
       refreshUser();
     }
+  }, []);
+
+  // Auto-close sidebar when screen shrinks to mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth < 1024) setSidebarOpen(false);
+    };
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   useEffect(() => {
@@ -332,7 +362,9 @@ export default function Layout({
 
             {/* User Footer */}
             <div className="p-3 shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.4)" }}>
-              <div className={`flex items-center p-2.5 rounded-2xl transition-all ${sidebarOpen ? "gap-3" : "justify-center"}`}
+              <button
+                onClick={() => navigate("/profile")}
+                className={`w-full flex items-center p-2.5 rounded-2xl transition-all cursor-pointer hover:bg-white/60 ${sidebarOpen ? "gap-3" : "justify-center"}`}
                 style={{ background: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.6)" }}
               >
                 {user?.profilePicture ? (
@@ -344,7 +376,7 @@ export default function Layout({
                     <span className="font-black text-white text-sm">{user?.name?.[0]?.toUpperCase()}</span>
                   </div>
                 )}
-                <div className="flex-1 min-w-0 overflow-hidden"
+                <div className="flex-1 min-w-0 overflow-hidden text-left"
                   style={{ maxWidth: sidebarOpen ? "140px" : "0px", opacity: sidebarOpen ? 1 : 0, transition: "max-width 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease" }}>
                   <p className="text-xs font-black truncate text-slate-800 uppercase tracking-wider">
                     {isDoctor() ? `DR. ${user?.name}` : user?.name}
@@ -352,14 +384,14 @@ export default function Layout({
                   <p className="text-[10px] truncate text-slate-500 font-medium">{user?.email}</p>
                 </div>
                 <button
-                  onClick={handleLogout}
+                  onClick={(e) => { e.stopPropagation(); handleLogout(); }}
                   className="p-1.5 rounded-xl transition-all shrink-0 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 overflow-hidden"
                   title="Logout"
                   style={{ maxWidth: sidebarOpen ? "32px" : "0px", opacity: sidebarOpen ? 1 : 0, padding: sidebarOpen ? undefined : 0, transition: "max-width 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease, padding 0.35s ease" }}
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
-              </div>
+              </button>
             </div>
           </div>
         </aside>
@@ -398,50 +430,58 @@ export default function Layout({
               boxShadow: "0 2px 24px rgba(16,185,129,0.08), inset 0 1px 0 rgba(255,255,255,0.95)",
             }}
           >
-            <div className="flex items-center px-5 py-3 gap-4">
-              {/* Back Button */}
-              {(location.pathname === "/profile" || location.pathname === "/ai-chat") && (
+            <div className="flex items-center px-4 py-3 gap-3">
+              {/* Back Button (profile/ai-chat pages) OR Profile Avatar (all other pages, mobile only) */}
+              {(location.pathname === "/profile" || location.pathname === "/ai-chat") ? (
                 <button
                   onClick={() => navigate("/dashboard")}
-                  className="w-9 h-9 rounded-2xl flex items-center justify-center transition-all"
+                  className="w-9 h-9 rounded-2xl flex items-center justify-center transition-all shrink-0"
                   style={{ background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.8)" }}
                 >
                   <ArrowLeft size={18} className="text-slate-700" strokeWidth={2.5} />
+                </button>
+              ) : (
+                <button
+                  onClick={() => navigate("/profile")}
+                  className="lg:hidden w-9 h-9 rounded-full overflow-hidden shrink-0 transition-all active:scale-95"
+                  style={{ border: "2px solid rgba(91,140,111,0.4)", boxShadow: "0 2px 8px rgba(16,185,129,0.15)" }}
+                >
+                  {user?.profilePicture ? (
+                    <img src={user.profilePicture} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full bg-[#5B8C6F] flex items-center justify-center">
+                      <span className="text-white text-xs font-black">
+                        {user?.name?.charAt(0)?.toUpperCase() || "U"}
+                      </span>
+                    </div>
+                  )}
                 </button>
               )}
 
               {location.pathname === "/profile" ? (
                 <div className="flex-1 flex justify-center">
-                  <span className="font-bold text-lg text-slate-800" style={{ fontFamily: "Poppins, sans-serif", letterSpacing: "-0.4px" }}>
+                  <span className="font-bold text-lg text-slate-800" style={{ letterSpacing: "-0.4px" }}>
                     My Profile
                   </span>
                 </div>
               ) : (
                 <>
-                  {/* Profile avatar + greeting */}
-                  <button
-                    onClick={() => navigate("/profile")}
-                    className="tour-profile shrink-0 rounded-full overflow-hidden transition-all hover:ring-4 hover:ring-emerald-100"
-                    style={{ width: 42, height: 42, border: "2px solid rgba(255,255,255,0.9)", boxShadow: "0 2px 8px rgba(16,185,129,0.15)" }}
+                  {/* AI search bar - full width */}
+                  <div
+                    className="flex flex-1 items-center gap-3 rounded-full px-4 cursor-pointer transition-all"
+                    style={{ height: "40px", background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.9)", boxShadow: "0 2px 8px rgba(16,185,129,0.08)" }}
+                    onClick={() => navigate("/ai-chat")}
                   >
-                    {user?.profilePicture ? (
-                      <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-xs font-black text-white"
-                        style={{ background: "linear-gradient(135deg, #059669, #10b981)" }}>
-                        {user?.name?.[0] || "U"}
-                      </div>
-                    )}
-                  </button>
-
-                  <div className="flex flex-col min-w-0">
-                    <span className="font-bold text-[15px] text-slate-800 leading-tight" style={{ fontFamily: "Poppins, sans-serif", letterSpacing: "-0.3px" }}>
-                      Hello {user?.name?.split(" ")[0] || "User"}!
+                    <div className="w-6 h-6 rounded-full bg-[#588975] flex items-center justify-center shrink-0">
+                      <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_11.png?v=1775649527" alt="" className="w-3.5 h-3.5 object-contain" />
+                    </div>
+                    <span
+                      className="text-sm text-[#1a1a1a]/50 font-medium transition-all duration-300"
+                      style={{ opacity: aiPlaceholderVisible ? 1 : 0, transform: aiPlaceholderVisible ? "translateY(0)" : "translateY(4px)" }}
+                    >
+                      {aiPlaceholders[aiPlaceholderIdx]}
                     </span>
-                    <span className="text-[12px] font-semibold text-emerald-600 leading-tight">{getGreeting()}</span>
                   </div>
-
-                  <div className="flex-1" />
 
                   {/* Right side actions */}
                   <div className="flex items-center gap-2">

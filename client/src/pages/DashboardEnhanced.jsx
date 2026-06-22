@@ -348,7 +348,7 @@ const DiabetesMonitor = ({ onLog }) => {
             Biological markers tracking
           </p>
         </div>
-        <button onClick={() => navigate("/diabetes")} className="flex items-center gap-2 bg-[#FAFBF8] px-6 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-widest border border-[#f0f0ea] shadow-sm hover:shadow-md transition-all">
+        <button onClick={() => navigate("/glucose-log")} className="flex items-center gap-2 bg-[#FAFBF8] px-6 py-2.5 rounded-full text-[11px] font-bold uppercase tracking-widest border border-[#f0f0ea] shadow-sm hover:shadow-md transition-all">
           <Plus className="w-4 h-4" />
           Log Reading
         </button>
@@ -684,6 +684,128 @@ const MealDetailModal = ({ meal, onClose, onAdd }) => {
     </div>
   );
 };
+
+// --- Feature Carousel ---
+const FEATURE_SLIDES = [
+  {
+    tag: "AI Diet Plan",
+    title: "7-Day Personalized\nMeal Plan",
+    desc: "AI crafts your perfect diet based on your goals, health & preferences.",
+    cta: "View Plan",
+    ctaPath: "/diet-plan",
+    bg: "linear-gradient(135deg, #1a3a2a 0%, #2d5a3d 60%, #3d7a52 100%)",
+    img: "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=600&q=80",
+  },
+  {
+    tag: "Glucose Monitor",
+    title: "Track Blood Sugar\nTrends Daily",
+    desc: "Log readings and get AI-powered insights on your glucose patterns.",
+    cta: "Log Glucose",
+    ctaPath: "/glucose-log",
+    bg: "linear-gradient(135deg, #1a2a3a 0%, #1e3a5f 60%, #1a5276 100%)",
+    img: "https://images.unsplash.com/photo-1631815589968-fdb09a223b1e?w=600&q=80",
+  },
+  {
+    tag: "Lab Reports",
+    title: "Upload Reports\nGet AI Insights",
+    desc: "Our AI reads your lab reports and flags deficiencies instantly.",
+    cta: "Upload Now",
+    ctaPath: "/upload",
+    bg: "linear-gradient(135deg, #2a1a3a 0%, #3d2060 60%, #4a1a6e 100%)",
+    img: "https://images.unsplash.com/photo-1576671081837-49000212a370?w=600&q=80",
+  },
+  {
+    tag: "Fitness Goals",
+    title: "Hit Your Calorie\n& Macro Targets",
+    desc: "Stay on track with real-time nutrition logging and progress rings.",
+    cta: "Log Meal",
+    ctaPath: "/nutrition",
+    bg: "linear-gradient(135deg, #1a2a1a 0%, #2d4a1a 60%, #3a5a20 100%)",
+    img: "https://images.unsplash.com/photo-1490645935967-10de6ba17061?w=600&q=80",
+  },
+  {
+    tag: "Lifestyle",
+    title: "Track Sleep,\nWater & Habits",
+    desc: "Monitor all lifestyle factors that impact your health in one place.",
+    cta: "Log Sleep",
+    ctaPath: "/dashboard",
+    bg: "linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)",
+    img: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=600&q=80",
+  },
+];
+
+function FeatureCarousel({ navigate }) {
+  const [idx, setIdx] = useState(0);
+  const [animating, setAnimating] = useState(false);
+  const timerRef = useRef(null);
+
+  const goTo = (next) => {
+    if (animating) return;
+    setAnimating(true);
+    setTimeout(() => {
+      setIdx(next);
+      setAnimating(false);
+    }, 280);
+  };
+
+  useEffect(() => {
+    timerRef.current = setInterval(() => {
+      goTo((idx + 1) % FEATURE_SLIDES.length);
+    }, 4000);
+    return () => clearInterval(timerRef.current);
+  }, [idx]);
+
+  const slide = FEATURE_SLIDES[idx];
+
+  return (
+    <div className="relative w-full overflow-hidden rounded-[26px] border border-white/20" style={{ minHeight: 140, background: slide.bg, transition: "background 0.6s ease" }}>
+      {/* BG Image */}
+      <img
+        src={slide.img}
+        alt=""
+        className="absolute inset-0 w-full h-full object-cover"
+        style={{ opacity: 0.22, transition: "opacity 0.4s" }}
+      />
+      <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.2) 60%, transparent 100%)" }} />
+
+      {/* Content */}
+      <div
+        className="relative z-10 p-5 flex items-center justify-between h-full"
+        style={{ minHeight: 140, opacity: animating ? 0 : 1, transform: animating ? "translateY(6px)" : "translateY(0)", transition: "opacity 0.28s, transform 0.28s" }}
+      >
+        <div className="flex flex-col gap-2 flex-1 pr-4">
+          <span className="text-[9px] font-black uppercase tracking-[0.18em] text-white/60">{slide.tag}</span>
+          <h3 className="text-white font-black text-base leading-tight" style={{ whiteSpace: "pre-line" }}>{slide.title}</h3>
+          <p className="text-white/65 text-[10px] font-medium leading-snug max-w-[220px]">{slide.desc}</p>
+          <button
+            onClick={() => navigate(slide.ctaPath)}
+            className="mt-1 self-start px-4 py-1.5 rounded-xl text-[10px] font-black text-white uppercase tracking-wider transition-all active:scale-95"
+            style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.3)", backdropFilter: "blur(8px)" }}
+          >
+            {slide.cta} →
+          </button>
+        </div>
+
+        {/* Right image circle */}
+        <div className="shrink-0 w-[90px] h-[90px] rounded-2xl overflow-hidden border-2 border-white/20 shadow-xl">
+          <img src={slide.img} alt="" className="w-full h-full object-cover" />
+        </div>
+      </div>
+
+      {/* Dot indicators */}
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+        {FEATURE_SLIDES.map((_, i) => (
+          <button
+            key={i}
+            onClick={() => goTo(i)}
+            className="transition-all duration-300 rounded-full"
+            style={{ width: i === idx ? 18 : 6, height: 6, background: i === idx ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.35)" }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
 
 // --- Main Component ---
 
@@ -1482,122 +1604,15 @@ export default function DashboardEnhanced() {
         />
       )}
       <div className="w-full px-0 md:px-6">
-        {/* Header moved to Layout.jsx */}
 
-        {/* AI Search Bar */}
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.05 }}
-          className="px-4 md:px-0 mb-2"
-          style={{ marginTop: "15px" }}
-        >
-          <div
-            onClick={() => navigate("/ai-chat")}
-            className="liquid-glass w-full flex items-center gap-3 rounded-full px-4 cursor-pointer transition-all"
-            style={{ height: "51.26px" }}
-          >
-            <div
-              className="absolute bg-[#588975] flex items-center justify-center shrink-0 border border-[#588975]/10"
-              style={{
-                width: "38.4451789855957px",
-                height: "38.4451789855957px",
-                top: "6.41px",
-                left: "6.41px",
-                borderRadius: "30714396px",
-                opacity: 1,
-              }}
-            >
-              <img
-                src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_11.png?v=1775649527"
-                alt=""
-                className="w-5 h-5 object-contain"
-              />
-            </div>
-            <div className="flex-1 overflow-hidden h-5 relative ml-12">
-              <AnimatePresence mode="wait">
-                <motion.span
-                  key={placeholderIndex}
-                  initial={{ y: 5, opacity: 0 }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: -5, opacity: 0 }}
-                  transition={{ duration: 0.3 }}
-                  className="absolute inset-0 text-sm text-[#1a1a1a]/60 font-medium truncate"
-                >
-                  {placeholders[placeholderIndex]}
-                </motion.span>
-              </AnimatePresence>
-            </div>
-          </div>
-        </motion.div>
-
-        {/* Optimize Your Health Banner - Fully Responsive */}
+        {/* Feature Showcase Carousel */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
           className="px-4 md:px-0 mb-2 w-full"
         >
-          <div className="relative overflow-hidden w-full min-h-[140px] rounded-[26px] border border-white/30">
-            <img
-              src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/6de313b1e5c8e1bb654eedecdc54a6f84116947a.jpg?v=1775563817"
-              alt=""
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-[#2d3d32]/90 via-[#2d3d32]/75 to-[#2d3d32]/40" />
-
-            <div className="relative z-10 p-5 flex flex-col h-full justify-between">
-              <div className="flex gap-4">
-                <div className="w-10 h-10 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center shrink-0 border border-white/20">
-                  <img
-                    src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Bacteria.svg?v=1775563872"
-                    alt=""
-                    className="w-5 h-5 brightness-0 invert"
-                  />
-                </div>
-                <div className="flex flex-col">
-                  <div className="flex items-center gap-2">
-                    <h3
-                      className="text-white font-semibold text-sm"
-                      style={{ fontFamily: "Poppins, sans-serif" }}
-                    >
-                      Optimize Your Health
-                    </h3>
-                    <span className="px-2 py-0.5 bg-white/20 backdrop-blur-sm rounded-md text-[8px] font-black text-white uppercase tracking-wider">
-                      NEW
-                    </span>
-                  </div>
-                  <p
-                    className="text-white/70 text-[11px] font-medium leading-tight mt-1 max-w-[240px]"
-                    style={{ fontFamily: "Poppins, sans-serif" }}
-                  >
-                    Add details and lab reports to unlock tailored wellness
-                    insights.
-                  </p>
-                </div>
-              </div>
-
-              <div className="flex items-center justify-center gap-3 mt-4 w-full">
-                <button
-                  onClick={() => navigate("/profile")}
-                  className="px-4 h-9 bg-white/10 backdrop-blur-md text-white font-medium border border-white/20 rounded-xl text-[10px] hover:bg-white/20 transition-all lowercase whitespace-nowrap"
-                >
-                  complete profile
-                </button>
-                <button
-                  onClick={() => navigate("/upload")}
-                  className="px-4 h-9 bg-[#5B8C6F] text-white font-medium rounded-xl text-[10px] shadow-lg shadow-[#5B8C6F]/30 hover:bg-[#4a7b5e] transition-all lowercase flex items-center gap-2 whitespace-nowrap"
-                >
-                  <img
-                    src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_10.png?v=1775649527"
-                    alt=""
-                    className="w-3 h-3 invert brightness-0"
-                  />
-                  upload report
-                </button>
-              </div>
-            </div>
-          </div>
+          <FeatureCarousel navigate={navigate} />
         </motion.div>
 
         {/* Quick Navigation Cards */}
@@ -1627,38 +1642,6 @@ export default function DashboardEnhanced() {
             ))}
           </div>
         </motion.div>
-
-        {/* Desktop Action Buttons */}
-        <div className="hidden lg:flex items-center gap-3 mb-6">
-          <button
-            onClick={() =>
-              navigate("/nutrition", {
-                state: { openLogMeal: true, mealType: "Breakfast" },
-              })
-            }
-            className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-semibold text-white transition-all active:scale-95 whitespace-nowrap"
-            style={{ background: "linear-gradient(135deg, rgba(5,150,105,0.85) 0%, rgba(16,185,129,0.9) 100%)", boxShadow: "0 4px 20px rgba(5,150,105,0.35), 0 1px 0 rgba(255,255,255,0.25) inset" }}
-          >
-            <UtensilsCrossed className="w-4 h-4 text-white" /> Log Meal
-          </button>
-          <button
-            onClick={() => {
-              setActiveLogTab("Sleep");
-              setIsLogVitalsOpen(true);
-            }}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-semibold text-white transition-all active:scale-95 whitespace-nowrap"
-            style={{ background: "linear-gradient(135deg, rgba(5,150,105,0.85) 0%, rgba(16,185,129,0.9) 100%)", boxShadow: "0 4px 20px rgba(5,150,105,0.35), 0 1px 0 rgba(255,255,255,0.25) inset" }}
-          >
-            <Moon className="w-4 h-4 text-white" /> Log Sleep
-          </button>
-          <button
-            onClick={() => navigate("/upload")}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-full text-sm font-semibold text-white transition-all active:scale-95 whitespace-nowrap"
-            style={{ background: "linear-gradient(135deg, #052e16 0%, #064e3b 100%)", boxShadow: "0 4px 20px rgba(5,46,22,0.45), inset 0 1px 0 rgba(255,255,255,0.15)" }}
-          >
-            <Upload className="w-4 h-4" /> Upload Reports
-          </button>
-        </div>
 
         {/* Main Content - Dynamic Grid */}
         <div
@@ -1901,7 +1884,6 @@ export default function DashboardEnhanced() {
               <h2
                 className="text-[#1a1a1a] font-semibold text-base"
                 style={{
-                  fontFamily: "Poppins, sans-serif",
                   letterSpacing: "-0.43px",
                   margin: 0,
                 }}
@@ -1912,7 +1894,6 @@ export default function DashboardEnhanced() {
                 <Calendar className="w-3.5 h-3.5 text-[#5B8C6F]" />
                 <span
                   style={{
-                    fontFamily: "Poppins, sans-serif",
                     fontWeight: "600",
                     fontSize: "11px",
                     color: "#5B8C6F",
@@ -1945,8 +1926,8 @@ export default function DashboardEnhanced() {
                         : "bg-white text-[#8a8a8a] border border-[#f0f0ea] hover:bg-[#E8F3EE]"
                     }`}
                     style={activeMealTab === tab.id
-                      ? { fontFamily: "Poppins, sans-serif", background: "linear-gradient(135deg, rgba(5,150,105,0.85) 0%, rgba(16,185,129,0.9) 100%)", boxShadow: "0 4px 12px rgba(5,150,105,0.3), inset 0 1px 0 rgba(255,255,255,0.2)" }
-                      : { fontFamily: "Poppins, sans-serif" }
+                      ? { background: "linear-gradient(135deg, rgba(5,150,105,0.85) 0%, rgba(16,185,129,0.9) 100%)", boxShadow: "0 4px 12px rgba(5,150,105,0.3), inset 0 1px 0 rgba(255,255,255,0.2)" }
+                      : {}
                     }
                   >
                     {tab.label}
@@ -2018,9 +1999,7 @@ export default function DashboardEnhanced() {
                                 <div className="liquid-glass-inner absolute bottom-0 left-0 w-full h-[126px] rounded-[22px] pt-[52px] px-4 pb-3 z-10 text-left">
                                   <h4
                                     className="truncate font-bold text-[13px] text-[#1a1a1a] mb-1"
-                                    style={{
-                                      fontFamily: "Poppins, sans-serif",
-                                    }}
+                                    style={{}}
                                   >
                                     {foodName}
                                   </h4>
@@ -2066,7 +2045,7 @@ export default function DashboardEnhanced() {
               <button
                 onClick={() => navigate("/diet-plan")}
                 className="w-full h-[46px] text-white font-bold rounded-[18px] flex items-center justify-center gap-2 active:scale-95 transition-all"
-                style={{ background: "linear-gradient(135deg, rgba(5,150,105,0.9) 0%, rgba(16,185,129,0.95) 100%)", boxShadow: "0 4px 20px rgba(5,150,105,0.40), inset 0 1px 0 rgba(255,255,255,0.25)", fontFamily: "Poppins, sans-serif", fontSize: "14px" }}
+                style={{ background: "linear-gradient(135deg, rgba(5,150,105,0.9) 0%, rgba(16,185,129,0.95) 100%)", boxShadow: "0 4px 20px rgba(5,150,105,0.40), inset 0 1px 0 rgba(255,255,255,0.25)", fontSize: "14px" }}
               >
                 View Full Plan{" "}
                 <ArrowRight className="w-5 h-5 transition-transform group-hover:translate-x-1" />
@@ -2203,105 +2182,116 @@ export default function DashboardEnhanced() {
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.4 }}
-            className="liquid-glass-strong mx-4 lg:mx-0 rounded-[28px] p-5 lg:p-8 mt-4 mb-4"
+            className="liquid-glass-strong mx-4 lg:mx-0 rounded-[28px] mt-4 mb-4 overflow-hidden"
           >
-            <div className="relative z-10">
-              <div className="flex flex-row items-center justify-between mb-6">
-                <div>
-                  <h2 className="text-xl lg:text-2xl font-bold text-[#1a1a1a]">
-                    Diabetes Monitor
-                  </h2>
-                  <p className="text-xs text-[#a0a0a0] font-medium">
-                    Track glucose & HbA1c
-                  </p>
+            {/* Header strip */}
+            <div className="flex items-center justify-between px-5 pt-5 pb-4 lg:px-8 lg:pt-6">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-2xl flex items-center justify-center" style={{ background: "rgba(91,140,111,0.12)", border: "1px solid rgba(91,140,111,0.2)" }}>
+                  <Droplet className="w-4 h-4 text-[#5B8C6F]" />
                 </div>
-                <button
-                  onClick={() => navigate("/diabetes")}
-                  className="px-4 py-2 bg-[#FAFBF8] border border-[#f0f0ea] hover:bg-[#E8F3EE] text-[#5B8C6F] rounded-full text-xs font-bold transition-all flex items-center gap-2 shadow-sm"
-                >
-                  <Plus className="w-4 h-4" /> Log Reading
-                </button>
+                <div>
+                  <h2 className="text-base font-bold text-[#1a1a1a] leading-tight">Diabetes Monitor</h2>
+                  <p className="text-[10px] text-[#a0a0a0] font-medium leading-none mt-0.5">Track glucose & HbA1c</p>
+                </div>
               </div>
-
-              <div className="grid grid-cols-2 gap-4 lg:gap-6">
-                {!dashboardData?.latestAnalysis &&
-                !dashboardData?.vitals?.glucose &&
-                !dashboardData?.vitals?.hba1c ? (
-                  <div className="col-span-2 liquid-glass-inner rounded-[24px] p-8 text-center flex flex-col items-center justify-center">
-                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm mb-3 border border-[#E8F3EE]">
-                      <Sparkles className="w-6 h-6 text-[#5B8C6F]" />
-                    </div>
-                    <p className="text-[#1a1a1a] text-sm font-bold mb-1 uppercase tracking-wider">
-                      Ready to Monitor
-                    </p>
-                    <p className="text-[#a0a0a0] text-[10px] max-w-[200px] leading-relaxed uppercase tracking-widest font-medium">
-                      Upload report or log glucose to see insights.
-                    </p>
-                  </div>
-                ) : (
-                  <>
-                    {[
-                      {
-                        label: "Glucose",
-                        val:
-                          dashboardData?.vitals?.glucose?.value ||
-                          dashboardData?.latestAnalysis?.metrics?.Glucose
-                            ?.value ||
-                          "--",
-                        unit: "mg/dL",
-                        status:
-                          dashboardData?.latestAnalysis?.metrics?.Glucose
-                            ?.status ||
-                          (dashboardData?.vitals?.glucose
-                            ? "Recent"
-                            : "Normal"),
-                        color: "#5B8C6F",
-                        bg: "bg-[#E8F3EE]",
-                      },
-                      {
-                        label: "HbA1c",
-                        val:
-                          dashboardData?.vitals?.hba1c?.value ||
-                          dashboardData?.latestAnalysis?.metrics?.HbA1c
-                            ?.value ||
-                          "--",
-                        unit: "%",
-                        status:
-                          dashboardData?.latestAnalysis?.metrics?.HbA1c
-                            ?.status ||
-                          (dashboardData?.vitals?.hba1c ? "Recent" : "Good"),
-                        color: "#F59E0B",
-                        bg: "bg-[#FFF8ED]",
-                      },
-                    ].map((stat) => (
-                      <div
-                        key={stat.label}
-                        className="liquid-glass-inner rounded-[24px] p-5 lg:p-7 flex flex-col items-center justify-center group transition-all"
-                      >
-                        <span className="text-[#a0a0a0] text-[10px] font-bold uppercase tracking-widest mb-2">
-                          {stat.label}
-                        </span>
-                        <div className="flex items-baseline gap-1 mb-3">
-                          <span className="text-3xl lg:text-4xl font-black text-[#1a1a1a] tracking-tighter">
-                            {stat.val}
-                          </span>
-                          {stat.val !== "--" && (
-                            <span className="text-[10px] lg:text-xs font-bold text-[#d1d1d1] uppercase">
-                              {stat.unit}
-                            </span>
-                          )}
-                        </div>
-                        <span
-                          className={`text-[9px] font-bold px-3 py-1 rounded-full uppercase tracking-wider ${stat.val === "--" ? "bg-[#f5f5f5] text-[#b0b0b0]" : `${stat.bg} text-[#1a1a1a]`}`}
-                        >
-                          {stat.status}
-                        </span>
-                      </div>
-                    ))}
-                  </>
-                )}
-              </div>
+              <button
+                onClick={() => navigate("/glucose-log")}
+                className="flex items-center gap-1.5 px-4 py-2 rounded-full text-[11px] font-bold text-[#5B8C6F] transition-all"
+                style={{ background: "rgba(91,140,111,0.1)", border: "1px solid rgba(91,140,111,0.2)" }}
+              >
+                <Plus className="w-3.5 h-3.5" /> Log Reading
+              </button>
             </div>
+
+            {/* Stats row */}
+            {(() => {
+              const glucoseVal = dashboardData?.vitals?.glucose?.value || dashboardData?.latestAnalysis?.metrics?.Glucose?.value;
+              const hba1cVal = dashboardData?.vitals?.hba1c?.value || dashboardData?.latestAnalysis?.metrics?.HbA1c?.value;
+              const glucoseStatus = dashboardData?.latestAnalysis?.metrics?.Glucose?.status || (dashboardData?.vitals?.glucose ? "Recent" : null);
+              const hba1cStatus = dashboardData?.latestAnalysis?.metrics?.HbA1c?.status || (dashboardData?.vitals?.hba1c ? "Recent" : null);
+
+              if (!glucoseVal && !hba1cVal) {
+                return (
+                  <div className="mx-5 mb-5 liquid-glass-inner rounded-[20px] p-6 flex items-center gap-5">
+                    <div className="w-14 h-14 rounded-2xl flex items-center justify-center shrink-0" style={{ background: "rgba(91,140,111,0.1)" }}>
+                      <Sparkles className="w-7 h-7 text-[#5B8C6F]" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-bold text-[#1a1a1a] mb-0.5">Ready to Monitor</p>
+                      <p className="text-[10px] text-[#a0a0a0] font-medium leading-relaxed">Upload a report or log your glucose to see insights here.</p>
+                    </div>
+                    <button onClick={() => navigate("/glucose-log")} className="shrink-0 px-4 py-2 rounded-xl text-[10px] font-bold text-white" style={{ background: "linear-gradient(135deg,#5B8C6F,#3d6b53)" }}>
+                      Start
+                    </button>
+                  </div>
+                );
+              }
+
+              const glucoseNum = parseFloat(glucoseVal) || 0;
+              const ringPct = Math.min((glucoseNum / 200) * 100, 100);
+              const ringColor = glucoseNum > 180 ? "#EF4444" : glucoseNum > 130 ? "#F59E0B" : "#5B8C6F";
+              const circumference = 2 * Math.PI * 32;
+
+              return (
+                <div className="px-5 pb-5 lg:px-8 lg:pb-6">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {/* Glucose ring card */}
+                    <div className="liquid-glass-inner rounded-[20px] p-4 flex items-center gap-4 sm:col-span-1">
+                      <div className="relative shrink-0 w-[72px] h-[72px]">
+                        <svg width="72" height="72" viewBox="0 0 72 72" className="-rotate-90">
+                          <circle cx="36" cy="36" r="32" fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth="6" />
+                          <circle cx="36" cy="36" r="32" fill="none" stroke={ringColor} strokeWidth="6"
+                            strokeDasharray={circumference} strokeDashoffset={circumference - (circumference * ringPct) / 100}
+                            strokeLinecap="round" className="transition-all duration-700" />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className="text-lg font-black text-[#1a1a1a] leading-none">{glucoseVal || "--"}</span>
+                        </div>
+                      </div>
+                      <div>
+                        <p className="text-[9px] font-bold text-[#a0a0a0] uppercase tracking-widest mb-0.5">Glucose</p>
+                        <p className="text-xs font-bold text-[#888]">mg/dL</p>
+                        {glucoseStatus && (
+                          <span className="mt-1.5 inline-block text-[9px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"
+                            style={{ background: `${ringColor}18`, color: ringColor }}>
+                            {glucoseStatus}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* HbA1c card */}
+                    <div className="liquid-glass-inner rounded-[20px] p-4 flex flex-col justify-center sm:col-span-1">
+                      <p className="text-[9px] font-bold text-[#a0a0a0] uppercase tracking-widest mb-2">HbA1c</p>
+                      <div className="flex items-baseline gap-1 mb-2">
+                        <span className="text-3xl font-black text-[#1a1a1a]">{hba1cVal || "--"}</span>
+                        {hba1cVal && <span className="text-[10px] font-bold text-[#b0b0b0] uppercase">%</span>}
+                      </div>
+                      {hba1cStatus && (
+                        <span className="text-[9px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider self-start"
+                          style={{ background: "rgba(245,158,11,0.12)", color: "#F59E0B" }}>
+                          {hba1cStatus}
+                        </span>
+                      )}
+                    </div>
+
+                    {/* CTA card */}
+                    <div className="liquid-glass-inner rounded-[20px] p-4 flex flex-col justify-between sm:col-span-1">
+                      <div>
+                        <p className="text-[9px] font-bold text-[#a0a0a0] uppercase tracking-widest mb-1">Full History</p>
+                        <p className="text-[11px] text-[#1a1a1a] font-medium leading-snug">View trends, logs & AI analysis</p>
+                      </div>
+                      <button onClick={() => navigate("/glucose-log")}
+                        className="mt-3 w-full h-9 rounded-xl text-[10px] font-bold text-white flex items-center justify-center gap-1.5 transition-all active:scale-95"
+                        style={{ background: "linear-gradient(135deg, rgba(5,150,105,0.85), rgba(16,185,129,0.9))", boxShadow: "0 4px 12px rgba(5,150,105,0.25)" }}>
+                        Open Glucose Log <ArrowRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </motion.div>
         )}
 
@@ -2336,187 +2326,240 @@ export default function DashboardEnhanced() {
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
-          className="tour-logged-meals mb-4 w-full px-6 md:px-0"
+          className="tour-logged-meals mb-4 w-full px-4 md:px-0"
         >
-          <div className="flex items-center justify-between mb-5">
-            <h2 className="text-lg font-bold text-[#1a1a1a]">Logged Meals</h2>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-lg font-bold text-[#1a1a1a]">Logged Meals</h2>
+              <p className="text-[10px] text-[#a0a0a0] font-medium uppercase tracking-wider">Today's intake</p>
+            </div>
             <button
               onClick={() => navigate("/nutrition")}
-              className="text-xs font-bold text-[#5B8C6F] hover:text-[#4a7b5e] uppercase tracking-wider"
+              className="flex items-center gap-1.5 text-[11px] font-bold text-[#5B8C6F] hover:text-[#4a7b5e] uppercase tracking-wider transition-colors"
             >
-              View Menu
+              View All <ArrowRight className="w-3 h-3" />
             </button>
           </div>
 
-          <div
-            className="flex overflow-x-auto scrollbar-hide snap-x snap-mandatory pb-4 gap-[11px] w-full"
-            style={{
-              minHeight: "230px",
-            }}
-          >
-            {loggedMeals.length > 0 ? (
-              [...loggedMeals]
+          {loggedMeals.length > 0 ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
+              {[...loggedMeals]
                 .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                .slice(0, 8)
                 .map((meal, idx) => {
-                  const foodName =
-                    meal.name || meal.foodItems?.[0]?.name || "Meal";
+                  const foodName = meal.name || meal.foodItems?.[0]?.name || "Meal";
                   const bingThumb = `https://tse1.mm.bing.net/th?q=${encodeURIComponent(foodName + " indian food")}&w=400&h=300&c=7&o=5&pid=Api`;
+                  const calories = meal.totalNutrition?.calories || meal.calories || 200;
+                  const protein = meal.totalNutrition?.protein || meal.protein || 0;
+                  const mealTypeColors = {
+                    breakfast: { bg: "rgba(251,191,36,0.15)", text: "#D97706" },
+                    lunch: { bg: "rgba(16,185,129,0.15)", text: "#059669" },
+                    dinner: { bg: "rgba(99,102,241,0.15)", text: "#6366F1" },
+                    snack: { bg: "rgba(239,68,68,0.15)", text: "#EF4444" },
+                  };
+                  const typeColor = mealTypeColors[(meal.mealType || "").toLowerCase()] || mealTypeColors.lunch;
 
                   return (
-                    <div
+                    <motion.div
                       key={idx}
-                      className="liquid-glass flex flex-col flex-none snap-start group cursor-pointer"
-                      style={{
-                        width: "calc(50% - 6px)",
-                        minHeight: "220px",
-                        borderRadius: "24px",
-                      }}
-                      onClick={() =>
-                        navigate("/nutrition", { state: { prefillData: meal } })
-                      }
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      transition={{ delay: idx * 0.05 }}
+                      className="liquid-glass rounded-[22px] overflow-hidden group cursor-pointer flex flex-col"
+                      onClick={() => navigate("/nutrition", { state: { prefillData: meal } })}
                     >
-                      {/* Image Area */}
-                      <div className="p-2 w-full h-[105px]">
-                        <div className="w-full h-full relative overflow-hidden rounded-[20px]">
-                          <img
-                            src={meal.imageUrl || bingThumb}
-                            alt={foodName}
-                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                            onError={(e) => {
-                              e.target.src = bingThumb;
-                            }}
-                          />
-                          <div className="absolute top-2 left-2 px-2 py-0.5 bg-white/70 backdrop-blur-md rounded-full border border-white/20">
-                            <span className="text-[8px] font-black text-[#5B8C6F] uppercase tracking-wider">
-                              {meal.mealType || "Meal"}
-                            </span>
-                          </div>
+                      {/* Image */}
+                      <div className="relative h-[110px] overflow-hidden">
+                        <img
+                          src={meal.imageUrl || bingThumb}
+                          alt={foodName}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                          onError={(e) => { e.target.src = bingThumb; }}
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent" />
+                        <div className="absolute top-2 left-2">
+                          <span className="text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider backdrop-blur-sm"
+                            style={{ background: typeColor.bg, color: typeColor.text, border: `1px solid ${typeColor.text}30` }}>
+                            {meal.mealType || "Meal"}
+                          </span>
+                        </div>
+                        <div className="absolute bottom-2 right-2">
+                          <span className="text-[9px] font-black text-white bg-black/40 backdrop-blur-sm px-2 py-0.5 rounded-full">
+                            {calories} kcal
+                          </span>
                         </div>
                       </div>
 
-                      {/* Content Area */}
-                      <div className="px-3 py-2 flex flex-col flex-1">
-                        <h4
-                          className="text-[11px] font-bold text-[#1a1a1a] truncate mb-0.5"
-                          style={{ fontFamily: "Poppins, sans-serif" }}
-                        >
-                          {foodName}
-                        </h4>
-                        <p className="text-[9px] font-medium text-[#90A1B9] mb-auto">
-                          {meal.totalNutrition?.calories ||
-                            meal.calories ||
-                            200}{" "}
-                          kcal •{" "}
-                          {meal.totalNutrition?.protein || meal.protein || 0}g
-                          Pro
-                        </p>
-
-                        <button
-                          className="w-full h-[32px] rounded-xl flex items-center justify-center active:scale-95 transition-all mt-2"
-                          style={{ background: "linear-gradient(135deg, rgba(5,150,105,0.85) 0%, rgba(16,185,129,0.9) 100%)", boxShadow: "0 2px 8px rgba(5,150,105,0.25)" }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            navigate("/nutrition");
-                          }}
-                        >
-                          <span className="text-[9px] font-black text-white uppercase tracking-wider">
-                            VIEW
-                          </span>
-                        </button>
+                      {/* Info */}
+                      <div className="p-3 flex flex-col flex-1">
+                        <h4 className="text-[12px] font-bold text-[#1a1a1a] truncate mb-1">{foodName}</h4>
+                        <div className="flex items-center gap-2 mt-auto">
+                          <div className="flex items-center gap-1">
+                            <Zap className="w-2.5 h-2.5 text-[#5B8C6F]" />
+                            <span className="text-[9px] font-bold text-[#888]">{Math.round(protein)}g Pro</span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+                    </motion.div>
                   );
-                })
-            ) : (
-              <div
-                className="liquid-glass-inner w-full flex-none flex flex-col items-center justify-center p-8 rounded-[32px] text-center"
-                style={{ height: "208.24px" }}
+                })}
+
+              {/* Log More CTA card */}
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: Math.min(loggedMeals.length, 8) * 0.05 }}
+                className="liquid-glass-inner rounded-[22px] flex flex-col items-center justify-center p-4 cursor-pointer group min-h-[160px]"
+                onClick={() => navigate("/nutrition", { state: { openLogMeal: true } })}
               >
-                <Utensils className="w-8 h-8 text-[#5B8C6F] mb-3" />
-                <h3 className="text-md font-bold text-[#1a1a1a] uppercase tracking-tight mb-2">
-                  No Meals Logged
-                </h3>
-                <button
-                  onClick={() => navigate("/nutrition")}
-                  className="px-6 py-2 text-white rounded-xl text-[9px] font-bold uppercase tracking-widest transition-all"
-                  style={{ background: "linear-gradient(135deg, rgba(5,150,105,0.85) 0%, rgba(16,185,129,0.9) 100%)", boxShadow: "0 4px 12px rgba(5,150,105,0.3)" }}
-                >
-                  Log First Meal
-                </button>
+                <div className="w-10 h-10 rounded-2xl flex items-center justify-center mb-2 group-hover:scale-110 transition-transform"
+                  style={{ background: "rgba(91,140,111,0.12)", border: "1px solid rgba(91,140,111,0.2)" }}>
+                  <Plus className="w-5 h-5 text-[#5B8C6F]" />
+                </div>
+                <p className="text-[10px] font-bold text-[#5B8C6F] uppercase tracking-wider text-center">Log More</p>
+              </motion.div>
+            </div>
+          ) : (
+            <div className="liquid-glass rounded-[24px] overflow-hidden">
+              <div className="flex flex-col md:flex-row items-center gap-6 p-6 md:p-8">
+                {/* Left: visual */}
+                <div className="flex-shrink-0 w-24 h-24 md:w-28 md:h-28 rounded-3xl flex items-center justify-center"
+                  style={{ background: "linear-gradient(135deg,rgba(91,140,111,0.12),rgba(16,185,129,0.08))", border: "1px solid rgba(91,140,111,0.15)" }}>
+                  <UtensilsCrossed className="w-10 h-10 text-[#5B8C6F]" />
+                </div>
+
+                {/* Right: text + actions */}
+                <div className="flex-1 text-center md:text-left">
+                  <p className="text-[10px] font-bold text-[#5B8C6F] uppercase tracking-widest mb-1">No meals yet today</p>
+                  <h3 className="text-xl font-bold text-[#1a1a1a] mb-1">Start Tracking Your Diet</h3>
+                  <p className="text-sm text-[#a0a0a0] font-medium mb-5 max-w-xs">Log your meals to get personalized nutrition insights and track your daily macros.</p>
+                  <div className="flex flex-wrap gap-3 justify-center md:justify-start">
+                    <button
+                      onClick={() => navigate("/nutrition", { state: { openLogMeal: true, mealType: "Breakfast" } })}
+                      className="px-5 py-2.5 text-white rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all active:scale-95"
+                      style={{ background: "linear-gradient(135deg, rgba(5,150,105,0.85), rgba(16,185,129,0.9))", boxShadow: "0 4px 16px rgba(5,150,105,0.3)" }}
+                    >
+                      Log First Meal
+                    </button>
+                    <button
+                      onClick={() => navigate("/nutrition")}
+                      className="px-5 py-2.5 rounded-xl text-[11px] font-bold uppercase tracking-widest transition-all border"
+                      style={{ color: "#5B8C6F", borderColor: "rgba(91,140,111,0.3)", background: "rgba(91,140,111,0.06)" }}
+                    >
+                      View Nutrition
+                    </button>
+                  </div>
+                </div>
+
+                {/* Quick meal type shortcuts */}
+                <div className="hidden lg:flex flex-col gap-2 shrink-0">
+                  {["Breakfast", "Lunch", "Dinner", "Snack"].map((type) => (
+                    <button
+                      key={type}
+                      onClick={() => navigate("/nutrition", { state: { openLogMeal: true, mealType: type } })}
+                      className="px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all hover:scale-105"
+                      style={{ background: "rgba(91,140,111,0.08)", color: "#5B8C6F", border: "1px solid rgba(91,140,111,0.15)" }}
+                    >
+                      + {type}
+                    </button>
+                  ))}
+                </div>
               </div>
-            )}
+            </div>
+          )}
+        </motion.div>
+
+        {/* Challenge Banner - full width, visible on all screens */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.55 }}
+          className="px-4 md:px-0 mb-3"
+        >
+          <div
+            onClick={() => navigate("/challenge")}
+            className="relative overflow-hidden rounded-[24px] cursor-pointer group"
+            style={{ background: "linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%)" }}
+          >
+            <div className="absolute inset-0 pointer-events-none">
+              <div className="absolute top-0 right-1/4 w-48 h-48 bg-emerald-400/10 rounded-full blur-3xl" />
+              <div className="absolute bottom-0 left-1/3 w-32 h-32 bg-teal-300/10 rounded-full blur-2xl" />
+            </div>
+            <div className="relative z-10 flex items-center gap-5 px-5 py-4 lg:px-8 lg:py-5">
+              {/* Streak ring */}
+              <div className="relative shrink-0 w-14 h-14 lg:w-16 lg:h-16">
+                <svg className="w-full h-full -rotate-90" viewBox="0 0 56 56">
+                  <circle cx="28" cy="28" r="23" fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth="4" />
+                  <circle cx="28" cy="28" r="23" fill="none" stroke="#34d399" strokeWidth="4"
+                    strokeDasharray={144.5} strokeDashoffset={144.5 - (144.5 * Math.min((dashboardData?.streakDays || 0) / 30, 1))}
+                    strokeLinecap="round" className="transition-all duration-700" />
+                </svg>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <Flame className="w-5 h-5 text-emerald-400 fill-emerald-400" />
+                </div>
+              </div>
+              {/* Text */}
+              <div className="flex-1 min-w-0">
+                <p className="text-[9px] font-black text-emerald-300/60 uppercase tracking-widest mb-0.5">30-Day Challenge</p>
+                <p className="text-xl lg:text-2xl font-black text-white leading-tight">
+                  {dashboardData?.streakDays || 0} <span className="text-emerald-300">Day</span> Streak
+                </p>
+                <p className="text-[10px] font-medium text-emerald-200/50 mt-0.5">
+                  {dashboardData?.streakDays > 0 ? "Keep going! You're on a roll." : "Start your streak today!"}
+                </p>
+              </div>
+              {/* Progress */}
+              <div className="hidden sm:flex flex-col items-end gap-2 shrink-0 mr-2">
+                <span className="text-[9px] font-black text-emerald-300/50 uppercase tracking-widest">
+                  {Math.round(Math.min((dashboardData?.streakDays || 0) / 30, 1) * 100)}% Complete
+                </span>
+                <div className="w-28 h-1.5 bg-emerald-950/40 rounded-full overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${Math.min((dashboardData?.streakDays || 0) / 30, 1) * 100}%` }}
+                    transition={{ duration: 1, delay: 0.6 }}
+                    className="h-full bg-emerald-400 rounded-full"
+                  />
+                </div>
+              </div>
+              <ChevronRight className="w-5 h-5 text-emerald-300/40 group-hover:translate-x-1 transition-transform shrink-0" />
+            </div>
           </div>
         </motion.div>
 
-        {/* Bottom Grid - Consistent with Main Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 mb-4 lg:mb-8 px-4 md:px-0">
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.6 }}
-            className="hidden lg:flex flex-col"
-          >
-            {/* 30 Day Challenge Mini Card */}
-            <motion.div
-              whileHover={{ scale: 1.02 }}
-              onClick={() => navigate("/challenge")}
-              className="mt-4 bg-gradient-to-br from-[#064e3b] to-[#042f2e] rounded-[24px] p-5 text-emerald-50 shadow-lg cursor-pointer relative overflow-hidden group"
-            >
-              <div className="absolute top-0 right-0 w-24 h-24 bg-white/5 rounded-full blur-2xl -translate-y-1/2 translate-x-1/2" />
-              <div className="flex items-center justify-between relative z-10">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-emerald-50/10 flex items-center justify-center">
-                    <Flame className="w-5 h-5 text-emerald-400 fill-emerald-400" />
-                  </div>
-                  <div>
-                    <h4 className="text-[10px] font-black uppercase tracking-widest text-emerald-200/50">
-                      Challenge
-                    </h4>
-                    <p className="text-base font-bold text-emerald-50">
-                      {dashboardData?.streakDays || 0} Day Streak
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight className="w-5 h-5 text-emerald-300/50 group-hover:translate-x-1 transition-transform" />
-              </div>
-              <div className="mt-4 h-1.5 bg-emerald-950/20 rounded-full overflow-hidden">
-                <div className="h-full bg-emerald-400 rounded-full w-[40%]" />
-              </div>
-            </motion.div>
-          </motion.div>
-
+        {/* Bottom Grid - Nutrition Deficiency + Care Plan */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4 px-4 md:px-0">
           {/* Nutrition Deficiency Tracker */}
           <motion.div
             initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.7 }}
-            className="liquid-glass-strong rounded-[28px] p-4 lg:p-6 flex flex-col"
+            className="liquid-glass-strong rounded-[28px] p-5 lg:p-6 flex flex-col"
           >
-            <div className="flex items-center justify-between mb-6 shrink-0">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-[#1A1A1A]/5 flex items-center justify-center">
-                  <FlaskConical className="w-4 h-4 text-[#1a1a1a]" />
+            <div className="flex items-center justify-between mb-5 shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-2xl flex items-center justify-center" style={{ background: "rgba(91,140,111,0.1)", border: "1px solid rgba(91,140,111,0.2)" }}>
+                  <FlaskConical className="w-4 h-4 text-[#5B8C6F]" />
                 </div>
-                <h3 className="text-sm font-semibold text-[#064e3b]">
-                  Nutrition Deficiency
-                </h3>
+                <div>
+                  <h3 className="text-sm font-bold text-[#1a1a1a]">Nutrition Deficiency</h3>
+                  <p className="text-[9px] text-[#a0a0a0] font-medium uppercase tracking-wider">From your lab reports</p>
+                </div>
               </div>
-              <button className="text-[10px] font-bold text-[#888888] hover:text-[#1a1a1a] uppercase tracking-wide">
-                Detailed &rarr;
+              <button onClick={() => navigate("/upload")} className="text-[10px] font-bold text-[#5B8C6F] hover:text-[#4a7b5e] uppercase tracking-wide flex items-center gap-1">
+                Detailed <ArrowRight className="w-3 h-3" />
               </button>
             </div>
-            <div
-              className="space-y-6 flex-1 overflow-y-auto pr-2 pb-2 scrollbar-hide"
-              style={{ scrollbarWidth: "none" }}
-            >
+            <div className="space-y-4 flex-1 overflow-y-auto scrollbar-hide">
               {dashboardData?.processingReport ? (
-                <div className="flex flex-col items-center justify-center p-8 bg-[#FAFBF8] rounded-[24px] border border-[#f0f0ea]">
-                  <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm mb-4 border border-[#E8F3EE]">
+                <div className="liquid-glass-inner flex items-center gap-4 p-4 rounded-[20px]">
+                  <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center border border-[#E8F3EE] shrink-0">
                     <Clock className="w-5 h-5 text-[#5B8C6F] animate-spin" />
                   </div>
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest text-center">
-                    AI Analysis <br /> In Progress...
-                  </p>
+                  <div>
+                    <p className="text-xs font-bold text-[#1a1a1a] mb-0.5">AI Analysis In Progress</p>
+                    <p className="text-[10px] text-[#a0a0a0] font-medium">Processing your health data...</p>
+                  </div>
                 </div>
               ) : dynamicDeficiencies?.length > 0 ? (
                 dynamicDeficiencies.map((item, i) => {
@@ -2525,385 +2568,156 @@ export default function DashboardEnhanced() {
                     item.status?.toLowerCase().includes("deficient") ||
                     item.severity?.toLowerCase().includes("severe") ||
                     item.severity?.toLowerCase().includes("moderate");
-                  const statusColor = isRisk
-                    ? "text-white bg-[#FF6B6B]"
-                    : "text-[#5B8C6F] bg-[#E8F3EE]";
-                  const barColor = isRisk ? "bg-[#FF6B6B]" : "bg-[#5B8C6F]";
-
+                  const barColor = isRisk ? "#EF4444" : "#5B8C6F";
                   return (
-                    <div key={i} className="flex flex-col gap-2">
-                      <div className="flex justify-between items-center">
+                    <div key={i} className="liquid-glass-inner rounded-[18px] p-3.5">
+                      <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium text-[#1a1a1a]">
-                            {item.name}
-                          </span>
-                          <span
-                            className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor}`}
-                          >
-                            {item.severity || item.status || "Moderate"}
+                          <span className="text-xs font-bold text-[#1a1a1a]">{item.name}</span>
+                          <span className="text-[8px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider"
+                            style={{ background: `${barColor}18`, color: barColor }}>
+                            {item.severity || item.status || "Low"}
                           </span>
                         </div>
-                        <div className="text-xs text-[#888888]">
-                          <span className="font-bold text-[#1a1a1a] text-sm">
-                            {item.currentValue || item.current || "--"}
-                          </span>
-                          /{item.normalRange || item.target || "--"}{" "}
-                          {item.unit || ""}
-                        </div>
+                        <span className="text-[10px] font-bold text-[#888]">
+                          {item.currentValue || "--"}<span className="text-[#ccc]">/{item.normalRange || "--"}</span>
+                        </span>
                       </div>
-
-                      <div className="h-2 w-full bg-[#F5F5F7] rounded-full overflow-hidden">
-                        <motion.div
-                          initial={{ width: 0 }}
-                          animate={{ width: `${item.percent || 0}%` }}
+                      <div className="h-1.5 w-full bg-black/5 rounded-full overflow-hidden mb-2">
+                        <motion.div initial={{ width: 0 }} animate={{ width: `${item.percent || 0}%` }}
                           transition={{ duration: 1, delay: 0.8 + i * 0.1 }}
-                          className={`h-full ${barColor} rounded-full`}
-                        />
+                          className="h-full rounded-full" style={{ background: barColor }} />
                       </div>
-
-                      <div className="flex flex-col gap-1 mt-1 p-2 bg-white/40 rounded-xl border border-white">
-                        <div className="flex items-start gap-2 text-[10px] text-[#666666]">
-                          <Leaf className="w-3 h-3 text-[#1a1a1a] flex-shrink-0 mt-0.5" />
-                          <span>
-                            <span className="font-semibold text-[#1a1a1a]">
-                              Eat more:
-                            </span>{" "}
-                            {item.food}
-                          </span>
-                        </div>
-                        <div className="flex items-start gap-2 text-[10px] text-[#666666]">
-                          <Pill className="w-3 h-3 text-[#1a1a1a] flex-shrink-0 mt-0.5" />
-                          <span>
-                            <span className="font-semibold text-[#1a1a1a]">
-                              Supplement:
-                            </span>{" "}
-                            {item.supplement}
-                          </span>
-                        </div>
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <span className="text-[9px] font-medium text-[#888] flex items-center gap-1">
+                          <Leaf className="w-2.5 h-2.5 text-[#5B8C6F]" /> {item.food?.split(",")[0]}
+                        </span>
+                        <span className="text-[9px] font-medium text-[#888] flex items-center gap-1">
+                          <Pill className="w-2.5 h-2.5 text-[#5B8C6F]" /> {item.supplement}
+                        </span>
                       </div>
                     </div>
                   );
                 })
               ) : dashboardData?.totalReports > 0 ? (
-                <div className="flex flex-col items-center justify-center p-10 bg-emerald-50/10 rounded-[2rem] border border-emerald-100/30 text-center w-full">
-                  <CheckCircle2 className="w-10 h-10 text-emerald-500 mb-4" />
-                  <p className="text-[10px] font-black text-emerald-600/80 uppercase tracking-widest leading-loose">
-                    Great job! No deficiencies <br /> found in your reports
-                  </p>
+                <div className="liquid-glass-inner flex flex-col items-center justify-center p-8 rounded-[20px] text-center">
+                  <CheckCircle2 className="w-10 h-10 text-emerald-500 mb-3" />
+                  <p className="text-sm font-bold text-[#1a1a1a] mb-1">All Good!</p>
+                  <p className="text-[10px] font-medium text-[#a0a0a0] uppercase tracking-wider">No deficiencies found in your reports</p>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center p-10 bg-[#FAFBF8] rounded-[2rem] border border-[#f0f0ea] text-center w-full">
-                  <FileText className="w-10 h-10 text-slate-300 mb-4" />
-                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-loose">
-                    Upload lab reports to see <br /> nutritional insights
-                  </p>
+                <div className="liquid-glass-inner flex items-center gap-4 p-5 rounded-[20px]">
+                  <div className="w-12 h-12 rounded-2xl flex items-center justify-center shrink-0" style={{ background: "rgba(91,140,111,0.08)" }}>
+                    <Upload className="w-5 h-5 text-[#5B8C6F]" />
+                  </div>
+                  <div className="flex-1">
+                    <p className="text-xs font-bold text-[#1a1a1a] mb-0.5">No Reports Yet</p>
+                    <p className="text-[10px] text-[#a0a0a0] font-medium mb-3">Upload lab reports to see nutritional insights</p>
+                    <button onClick={() => navigate("/upload")}
+                      className="px-4 py-1.5 rounded-xl text-[10px] font-bold text-white"
+                      style={{ background: "linear-gradient(135deg, rgba(5,150,105,0.85), rgba(16,185,129,0.9))" }}>
+                      Upload Now
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
           </motion.div>
 
           {/* Care Plan */}
-          <motion.div
-            initial={{ opacity: 0, y: 15 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.8 }}
-            className="liquid-glass-strong rounded-[28px] p-4 lg:p-6 flex flex-col"
-          >
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-[#1A1A1A]/5 flex items-center justify-center border border-white/40 shadow-sm">
-                  <FileText className="w-4 h-4 text-[#064e3b]" />
-                </div>
-                <h3 className="text-sm font-semibold text-[#064e3b]">
-                  Care Plan
-                </h3>
-              </div>
-              <span className="text-xl font-light text-[#1a1a1a]">
-                {completedTasks.length}
-                <span className="text-sm text-[#888888]">
-                  /
-                  {(() => {
-                    const defaultTasks = [
-                      "Drink 3L Water",
-                      "Morning walk 20 mins",
-                      "Take Multivitamins",
-                      "8 Hours Sleep",
-                    ];
-                    const metrics =
-                      dashboardData?.latestAnalysis?.metrics || {};
-                    const conditions =
-                      user?.profile?.medicalHistory?.conditions || [];
-                    const hasCondition = (name) =>
-                      conditions.some((c) =>
-                        c.toLowerCase().includes(name.toLowerCase()),
-                      );
-                    const isHigh = (name) => {
-                      const metric = Object.values(metrics).find(
-                        (m) =>
-                          m.name?.toLowerCase().includes(name.toLowerCase()) ||
-                          m.label?.toLowerCase().includes(name.toLowerCase()),
-                      );
-                      return (
-                        metric?.status?.toLowerCase().includes("high") ||
-                        metric?.status?.toLowerCase().includes("risk")
-                      );
-                    };
-                    if (isDiabetic || hasCondition("diabetes")) {
-                      defaultTasks[0] = "Check Glucose Level";
-                      defaultTasks[2] = "Sugar-free Breakfast";
-                    }
-                    if (hasCondition("hypertension") || isHigh("pressure")) {
-                      defaultTasks.push("Check Blood Pressure");
-                      defaultTasks[0] = "Low Sodium Meals";
-                    }
-                    if (hasCondition("anemia") || isHigh("hemoglobin")) {
-                      defaultTasks.push("Iron-rich Foods");
-                      defaultTasks[2] = "Take Iron Supplement";
-                    }
-                    if (isHigh("cholesterol")) {
-                      defaultTasks.push("Omega-3 Supplement");
-                      defaultTasks[3] = "Fiber-rich Dinner";
-                    }
-                    if (isOverLimit) {
-                      defaultTasks[1] = "Extra 15m Cardio";
-                      if (defaultTasks.length < 5)
-                        defaultTasks.push("Log Extra Calories");
-                    }
-                    return (
-                      dashboardData?.latestAnalysis?.recommendations?.lifestyle
-                        ?.length > 0
-                        ? dashboardData.latestAnalysis.recommendations.lifestyle
-                        : defaultTasks.slice(0, 5)
-                    ).length;
-                  })()}
-                </span>
-              </span>
-            </div>
-            <div className="space-y-5 flex-1 min-h-0 overflow-y-auto pr-1">
-              {(() => {
-                const defaultTasks = [
-                  "Drink 3L Water",
-                  "Morning walk 20 mins",
-                  "Take Multivitamins",
-                  "8 Hours Sleep",
-                ];
+          {(() => {
+            const metrics = dashboardData?.latestAnalysis?.metrics || {};
+            const conditions = user?.profile?.medicalHistory?.conditions || [];
+            const hasCondition = (name) => conditions.some((c) => c.toLowerCase().includes(name.toLowerCase()));
+            const isHighMetric = (name) => {
+              const metric = Object.values(metrics).find((m) =>
+                m.name?.toLowerCase().includes(name.toLowerCase()) || m.label?.toLowerCase().includes(name.toLowerCase()));
+              return metric?.status?.toLowerCase().includes("high") || metric?.status?.toLowerCase().includes("risk");
+            };
+            const defaultTasks = ["Drink 3L Water", "Morning walk 20 mins", "Take Multivitamins", "8 Hours Sleep"];
+            if (isDiabetic || hasCondition("diabetes")) { defaultTasks[0] = "Check Glucose Level"; defaultTasks[2] = "Sugar-free Breakfast"; }
+            if (hasCondition("hypertension") || isHighMetric("pressure")) { defaultTasks.push("Check Blood Pressure"); defaultTasks[0] = "Low Sodium Meals"; }
+            if (hasCondition("anemia") || isHighMetric("hemoglobin")) { defaultTasks.push("Iron-rich Foods"); defaultTasks[2] = "Take Iron Supplement"; }
+            if (isHighMetric("cholesterol")) { defaultTasks.push("Omega-3 Supplement"); defaultTasks[3] = "Fiber-rich Dinner"; }
+            if (isOverLimit) { defaultTasks[1] = "Extra 15m Cardio"; if (defaultTasks.length < 5) defaultTasks.push("Log Extra Calories"); }
+            const tasksToRender = dashboardData?.latestAnalysis?.recommendations?.lifestyle?.length > 0
+              ? dashboardData.latestAnalysis.recommendations.lifestyle
+              : defaultTasks.slice(0, 5);
+            const totalTasks = tasksToRender.length;
+            const progressPct = totalTasks > 0 ? Math.round((completedTasks.length / totalTasks) * 100) : 0;
 
-                // Check for various health conditions from profile and analysis metrics
-                const metrics = dashboardData?.latestAnalysis?.metrics || {};
-                const conditions =
-                  user?.profile?.medicalHistory?.conditions || [];
-
-                const hasCondition = (name) =>
-                  conditions.some((c) =>
-                    c.toLowerCase().includes(name.toLowerCase()),
-                  );
-                const isHigh = (name) => {
-                  const metric = Object.values(metrics).find(
-                    (m) =>
-                      m.name?.toLowerCase().includes(name.toLowerCase()) ||
-                      m.label?.toLowerCase().includes(name.toLowerCase()),
-                  );
-                  return (
-                    metric?.status?.toLowerCase().includes("high") ||
-                    metric?.status?.toLowerCase().includes("risk")
-                  );
-                };
-
-                if (isDiabetic || hasCondition("diabetes")) {
-                  defaultTasks[0] = "Check Glucose Level";
-                  defaultTasks[2] = "Sugar-free Breakfast";
-                }
-
-                if (hasCondition("hypertension") || isHigh("pressure")) {
-                  defaultTasks.push("Check Blood Pressure");
-                  defaultTasks[0] = "Low Sodium Meals";
-                }
-
-                if (hasCondition("anemia") || isHigh("hemoglobin")) {
-                  defaultTasks.push("Iron-rich Foods");
-                  defaultTasks[2] = "Take Iron Supplement";
-                }
-
-                if (isHigh("cholesterol")) {
-                  defaultTasks.push("Omega-3 Supplement");
-                  defaultTasks[3] = "Fiber-rich Dinner";
-                }
-
-                if (isOverLimit) {
-                  defaultTasks[1] = "Extra 15m Cardio";
-                  if (defaultTasks.length < 5)
-                    defaultTasks.push("Log Extra Calories");
-                }
-
-                const tasksToRender =
-                  dashboardData?.latestAnalysis?.recommendations?.lifestyle
-                    ?.length > 0
-                    ? dashboardData.latestAnalysis.recommendations.lifestyle
-                    : defaultTasks.slice(0, 5);
-
-                return tasksToRender.map((task, i) => {
-                  const isCompleted = completedTasks.includes(i);
-                  return (
-                    <div
-                      key={i}
-                      className="flex items-center gap-4 group cursor-pointer"
-                      onClick={() => toggleCarePlanTask(i)}
-                    >
-                      <div
-                        className={`w-5 h-5 rounded-full flex items-center justify-center border transition-colors flex-shrink-0 ${isCompleted ? "border-[#1a1a1a] bg-[#1a1a1a]" : "border-slate-300 group-hover:border-slate-400"}`}
-                      >
-                        {isCompleted && (
-                          <CheckCircle2 className="w-3 h-3 text-white" />
-                        )}
-                      </div>
-                      <span
-                        className={`text-[11px] font-semibold transition-colors uppercase tracking-tight ${isCompleted ? "text-[#a0a0a0] line-through decoration-[#a0a0a0]" : "text-[#1a1a1a] group-hover:text-slate-600"}`}
-                      >
-                        {task}
-                      </span>
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.8 }}
+                className="liquid-glass-strong rounded-[28px] p-5 lg:p-6 flex flex-col"
+              >
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-2.5">
+                    <div className="w-9 h-9 rounded-2xl flex items-center justify-center" style={{ background: "rgba(91,140,111,0.1)", border: "1px solid rgba(91,140,111,0.2)" }}>
+                      <CheckCircle2 className="w-4 h-4 text-[#5B8C6F]" />
                     </div>
-                  );
-                });
-              })()}
-            </div>
-            <div className="mt-8 pt-6 border-t border-slate-100">
-              <div className="h-1.5 bg-[#F5F5F7] rounded-full overflow-hidden mb-3">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{
-                    width: `${
-                      (completedTasks.length /
-                        (() => {
-                          const defaultTasks = [
-                            "Drink 3L Water",
-                            "Morning walk 20 mins",
-                            "Take Multivitamins",
-                            "8 Hours Sleep",
-                          ];
-                          const metrics =
-                            dashboardData?.latestAnalysis?.metrics || {};
-                          const conditions =
-                            user?.profile?.medicalHistory?.conditions || [];
-                          const hasCondition = (name) =>
-                            conditions.some((c) =>
-                              c.toLowerCase().includes(name.toLowerCase()),
-                            );
-                          const isHigh = (name) => {
-                            const metric = Object.values(metrics).find(
-                              (m) =>
-                                m.name
-                                  ?.toLowerCase()
-                                  .includes(name.toLowerCase()) ||
-                                m.label
-                                  ?.toLowerCase()
-                                  .includes(name.toLowerCase()),
-                            );
-                            return (
-                              metric?.status?.toLowerCase().includes("high") ||
-                              metric?.status?.toLowerCase().includes("risk")
-                            );
-                          };
-                          if (isDiabetic || hasCondition("diabetes")) {
-                            defaultTasks[0] = "Check Glucose Level";
-                            defaultTasks[2] = "Sugar-free Breakfast";
-                          }
-                          if (
-                            hasCondition("hypertension") ||
-                            isHigh("pressure")
-                          ) {
-                            defaultTasks.push("Check Blood Pressure");
-                            defaultTasks[0] = "Low Sodium Meals";
-                          }
-                          if (hasCondition("anemia") || isHigh("hemoglobin")) {
-                            defaultTasks.push("Iron-rich Foods");
-                            defaultTasks[2] = "Take Iron Supplement";
-                          }
-                          if (isHigh("cholesterol")) {
-                            defaultTasks.push("Omega-3 Supplement");
-                            defaultTasks[3] = "Fiber-rich Dinner";
-                          }
-                          if (isOverLimit) {
-                            defaultTasks[1] = "Extra 15m Cardio";
-                            if (defaultTasks.length < 5)
-                              defaultTasks.push("Log Extra Calories");
-                          }
-                          return (
-                            dashboardData?.latestAnalysis?.recommendations
-                              ?.lifestyle?.length > 0
-                              ? dashboardData.latestAnalysis.recommendations
-                                  .lifestyle
-                              : defaultTasks.slice(0, 5)
-                          ).length;
-                        })()) *
-                      100
-                    }%`,
-                  }}
-                  transition={{ duration: 1, delay: 1 }}
-                  className="h-full bg-[#1a1a1a] rounded-full"
-                />
-              </div>
-              <p className="text-xs text-center text-[#888888] font-bold uppercase tracking-wider">
-                {(() => {
-                  const defaultTasks = [
-                    "Drink 3L Water",
-                    "Morning walk 20 mins",
-                    "Take Multivitamins",
-                    "8 Hours Sleep",
-                  ];
-                  const metrics = dashboardData?.latestAnalysis?.metrics || {};
-                  const conditions =
-                    user?.profile?.medicalHistory?.conditions || [];
-                  const hasCondition = (name) =>
-                    conditions.some((c) =>
-                      c.toLowerCase().includes(name.toLowerCase()),
-                    );
-                  const isHigh = (name) => {
-                    const metric = Object.values(metrics).find(
-                      (m) =>
-                        m.name?.toLowerCase().includes(name.toLowerCase()) ||
-                        m.label?.toLowerCase().includes(name.toLowerCase()),
-                    );
+                    <div>
+                      <h3 className="text-sm font-bold text-[#1a1a1a]">Care Plan</h3>
+                      <p className="text-[9px] text-[#a0a0a0] font-medium uppercase tracking-wider">Daily health goals</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="relative w-9 h-9">
+                      <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
+                        <circle cx="18" cy="18" r="15" fill="none" stroke="rgba(0,0,0,0.06)" strokeWidth="3" />
+                        <circle cx="18" cy="18" r="15" fill="none" stroke="#5B8C6F" strokeWidth="3"
+                          strokeDasharray={94.2} strokeDashoffset={94.2 - (94.2 * progressPct) / 100}
+                          strokeLinecap="round" className="transition-all duration-700" />
+                      </svg>
+                      <span className="absolute inset-0 flex items-center justify-center text-[8px] font-black text-[#5B8C6F]">{progressPct}%</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm font-black text-[#1a1a1a]">{completedTasks.length}</span>
+                      <span className="text-[10px] text-[#a0a0a0]">/{totalTasks}</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2.5 flex-1 overflow-y-auto scrollbar-hide">
+                  {tasksToRender.map((task, i) => {
+                    const isCompleted = completedTasks.includes(i);
                     return (
-                      metric?.status?.toLowerCase().includes("high") ||
-                      metric?.status?.toLowerCase().includes("risk")
+                      <div key={i}
+                        className="flex items-center gap-3 p-3 rounded-[14px] cursor-pointer group transition-all"
+                        style={{ background: isCompleted ? "rgba(91,140,111,0.06)" : "rgba(0,0,0,0.02)", border: `1px solid ${isCompleted ? "rgba(91,140,111,0.15)" : "rgba(0,0,0,0.04)"}` }}
+                        onClick={() => toggleCarePlanTask(i)}
+                      >
+                        <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 transition-all ${isCompleted ? "bg-[#5B8C6F]" : "border-2 border-slate-200 group-hover:border-[#5B8C6F]"}`}>
+                          {isCompleted && <Check className="w-2.5 h-2.5 text-white" />}
+                        </div>
+                        <span className={`text-[11px] font-semibold flex-1 leading-tight transition-all ${isCompleted ? "text-[#5B8C6F] line-through decoration-[#5B8C6F]/40" : "text-[#1a1a1a]"}`}>
+                          {task}
+                        </span>
+                      </div>
                     );
-                  };
-                  if (isDiabetic || hasCondition("diabetes")) {
-                    defaultTasks[0] = "Check Glucose Level";
-                    defaultTasks[2] = "Sugar-free Breakfast";
-                  }
-                  if (hasCondition("hypertension") || isHigh("pressure")) {
-                    defaultTasks.push("Check Blood Pressure");
-                    defaultTasks[0] = "Low Sodium Meals";
-                  }
-                  if (hasCondition("anemia") || isHigh("hemoglobin")) {
-                    defaultTasks.push("Iron-rich Foods");
-                    defaultTasks[2] = "Take Iron Supplement";
-                  }
-                  if (isHigh("cholesterol")) {
-                    defaultTasks.push("Omega-3 Supplement");
-                    defaultTasks[3] = "Fiber-rich Dinner";
-                  }
-                  if (isOverLimit) {
-                    defaultTasks[1] = "Extra 15m Cardio";
-                    if (defaultTasks.length < 5)
-                      defaultTasks.push("Log Extra Calories");
-                  }
-                  const list =
-                    dashboardData?.latestAnalysis?.recommendations?.lifestyle
-                      ?.length > 0
-                      ? dashboardData.latestAnalysis.recommendations.lifestyle
-                      : defaultTasks.slice(0, 5);
-                  return Math.max(0, list.length - completedTasks.length);
-                })()}{" "}
-                tasks remaining
-              </p>
-            </div>
-          </motion.div>
+                  })}
+                </div>
+
+                <div className="mt-4 pt-4 border-t border-black/5">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-[10px] font-bold text-[#a0a0a0] uppercase tracking-wider">{Math.max(0, totalTasks - completedTasks.length)} tasks remaining</span>
+                    <span className="text-[10px] font-bold text-[#5B8C6F]">{progressPct}% done</span>
+                  </div>
+                  <div className="h-1.5 bg-black/5 rounded-full overflow-hidden">
+                    <motion.div initial={{ width: 0 }} animate={{ width: `${progressPct}%` }}
+                      transition={{ duration: 1, delay: 1 }}
+                      className="h-full bg-[#5B8C6F] rounded-full" />
+                  </div>
+                </div>
+              </motion.div>
+            );
+          })()}
         </div>
 
         {/* Lifestyle Tracker Cards Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 px-4 md:px-0 mt-4 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 px-4 md:px-0 mt-2 mb-6">
           <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.9 }}>
             <StepMiniCard />
           </motion.div>
@@ -2911,7 +2725,7 @@ export default function DashboardEnhanced() {
             <SmokeTrackerCard />
           </motion.div>
           {features.alcoholTracker && (
-            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.05 }}>
+            <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 1.05 }} className="sm:col-span-2 lg:col-span-1">
               <AlcoholTrackerCard />
             </motion.div>
           )}

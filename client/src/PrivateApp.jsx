@@ -26,7 +26,7 @@ const AIChat = lazy(() => import("./pages/AIChat"));
 const Nutrition = lazy(() => import("./pages/Nutrition"));
 const AllReports = lazy(() => import("./pages/AllReports"));
 const Challenge30Days = lazy(() => import("./pages/Challenge30Days"));
-const DiabetesCare = lazy(() => import("./pages/DiabetesCare"));
+
 const ReportSummary = lazy(() => import("./pages/ReportSummary"));
 const VitalSigns = lazy(() => import("./pages/VitalSigns"));
 const Supplements = lazy(() => import("./pages/Supplements"));
@@ -241,25 +241,7 @@ export default function PrivateApp() {
                   </ProtectedRoute>
                 }
               />
-              <Route
-                path="/diabetes"
-                element={
-                  <ProtectedRoute
-                    allowedRoles={[
-                      "user",
-                      "patient",
-                      "client",
-                      "admin",
-                      "doctor",
-                      "superadmin",
-                    ]}
-                  >
-                    <Layout>
-                      <DiabetesCare />
-                    </Layout>
-                  </ProtectedRoute>
-                }
-              />
+
               <Route
                 path="/nutrition"
                 element={

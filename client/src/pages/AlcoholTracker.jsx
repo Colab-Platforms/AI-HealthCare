@@ -272,14 +272,24 @@ Rules: plain text only, no markdown, no medical advice, no goals or limits, no "
   }
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col w-full max-w-md mx-auto shadow-2xl overflow-hidden border-x border-slate-100">
+    <div
+      className="min-h-screen flex flex-col w-full max-w-md mx-auto overflow-hidden border-x border-white/40"
+      style={{ background: "linear-gradient(160deg, #fef9ed 0%, #fffdf7 50%, #fdf6e3 100%)" }}
+    >
       <SEO pageName="alcoholTracker" />
 
-      <header className="bg-white px-6 py-4 flex items-center justify-between border-b border-slate-100 sticky top-0 z-20">
+      <header className="px-6 py-4 flex items-center justify-between sticky top-0 z-20"
+        style={{
+          background: "rgba(255,253,245,0.75)",
+          backdropFilter: "blur(28px) saturate(180%)",
+          borderBottom: "1px solid rgba(245,158,11,0.15)",
+          boxShadow: "0 2px 16px rgba(245,158,11,0.06)",
+        }}
+      >
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="w-10 h-10 rounded-xl hover:bg-slate-50 flex items-center justify-center border border-slate-100"
+          className="liquid-glass-btn w-10 h-10 rounded-xl flex items-center justify-center"
         >
           <ChevronLeft className="w-5 h-5 text-slate-600" />
         </button>
@@ -296,7 +306,7 @@ Rules: plain text only, no markdown, no medical advice, no goals or limits, no "
         </p>
 
         {/* Log */}
-        <div className="bg-white border border-slate-100 rounded-[2.5rem] p-6 text-center shadow-sm">
+        <div className="liquid-glass-strong rounded-[2.5rem] p-6 text-center">
           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">
             {new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
           </p>
@@ -324,7 +334,7 @@ Rules: plain text only, no markdown, no medical advice, no goals or limits, no "
               type="button"
               onClick={undo}
               disabled={todayCount === 0}
-              className="w-12 h-12 rounded-2xl bg-slate-50 border border-slate-100 flex items-center justify-center disabled:opacity-20"
+              className="liquid-glass-inner w-12 h-12 rounded-2xl flex items-center justify-center disabled:opacity-20"
               aria-label="Undo last drink"
             >
               <RotateCcw className="w-4 h-4 text-slate-500" />
@@ -372,7 +382,7 @@ Rules: plain text only, no markdown, no medical advice, no goals or limits, no "
         </div>
 
         {showContextRow && (
-          <div className="bg-white rounded-3xl p-4 border border-amber-100">
+          <div className="liquid-glass rounded-3xl p-4">
             <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">What was going on?</p>
             <p className="text-[11px] text-slate-500 mb-3">Optional — helps you see which situations come up most.</p>
             <div className="flex flex-wrap gap-2">
@@ -383,7 +393,7 @@ Rules: plain text only, no markdown, no medical advice, no goals or limits, no "
                     key={c.id}
                     type="button"
                     onClick={() => tagContext(c.id)}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50 border border-slate-100 text-[10px] font-bold"
+                    className="liquid-glass-inner flex items-center gap-1.5 px-3 py-2 rounded-xl text-[10px] font-bold"
                   >
                     <Icon className="w-3.5 h-3.5 text-amber-600" />
                     {c.label}
@@ -395,28 +405,28 @@ Rules: plain text only, no markdown, no medical advice, no goals or limits, no "
         )}
 
         {/* Week — practical stats */}
-        <div className="bg-white rounded-[2rem] p-5 border border-slate-100">
+        <div className="liquid-glass rounded-[2rem] p-5">
           <div className="flex items-center gap-2 mb-4">
             <BarChart3 className="w-4 h-4 text-slate-500" />
             <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400">This week</h2>
           </div>
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-slate-50 rounded-2xl p-3 text-center">
+            <div className="liquid-glass-inner rounded-2xl p-3 text-center">
               <p className="text-2xl font-black text-slate-900">{patterns.weekTotal}</p>
               <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Total logged</p>
             </div>
-            <div className="bg-slate-50 rounded-2xl p-3 text-center">
+            <div className="liquid-glass-inner rounded-2xl p-3 text-center">
               <p className="text-2xl font-black text-emerald-600">{patterns.soberDays}</p>
               <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Clear days</p>
             </div>
             {patterns.typicalOnDrinkingDays !== null && (
-              <div className="bg-slate-50 rounded-2xl p-3 text-center">
+              <div className="liquid-glass-inner rounded-2xl p-3 text-center">
                 <p className="text-2xl font-black text-slate-900">{patterns.typicalOnDrinkingDays}</p>
                 <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">Typical on drinking days</p>
               </div>
             )}
             {patterns.heaviestDay && (
-              <div className="bg-slate-50 rounded-2xl p-3 text-center">
+              <div className="liquid-glass-inner rounded-2xl p-3 text-center">
                 <p className="text-2xl font-black text-amber-700">{patterns.heaviestDay.count}</p>
                 <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">
                   Busiest day ({patterns.heaviestDay.label})
@@ -427,7 +437,7 @@ Rules: plain text only, no markdown, no medical advice, no goals or limits, no "
         </div>
 
         {patterns.hasEnoughData && (patterns.topContext || patterns.topDrink || patterns.topTime) && (
-          <div className="bg-amber-50/60 rounded-[2rem] p-5 border border-amber-100">
+          <div className="liquid-glass rounded-[2rem] p-5" style={{ background: "rgba(251,191,36,0.08)" }}>
             <div className="flex items-center gap-2 mb-3">
               <Lightbulb className="w-4 h-4 text-amber-700" />
               <h2 className="text-[10px] font-black uppercase tracking-widest text-amber-900">What your log shows</h2>
@@ -461,7 +471,7 @@ Rules: plain text only, no markdown, no medical advice, no goals or limits, no "
         )}
 
         {todaySessions.length > 0 && (
-          <div className="bg-white rounded-[2rem] p-5 border border-slate-100">
+          <div className="liquid-glass rounded-[2rem] p-5">
             <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-3">Today</h2>
             <ul className="space-y-2">
               {todaySessions.map((s) => (
@@ -480,7 +490,7 @@ Rules: plain text only, no markdown, no medical advice, no goals or limits, no "
           </div>
         )}
 
-        <div className="bg-white rounded-[2rem] p-5 border border-slate-100">
+        <div className="liquid-glass rounded-[2rem] p-5">
           <h2 className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-4">Last 7 days</h2>
           <div className="h-36">
             <ResponsiveContainer width="100%" height="100%">
@@ -497,7 +507,7 @@ Rules: plain text only, no markdown, no medical advice, no goals or limits, no "
           </div>
         </div>
 
-        <div className="bg-gradient-to-br from-amber-50 to-white rounded-[2rem] p-5 border border-amber-100">
+        <div className="liquid-glass rounded-[2rem] p-5">
           <div className="flex items-center justify-between gap-2 mb-2">
             <div className="flex items-center gap-2">
               <Wine className="w-4 h-4 text-amber-600" />

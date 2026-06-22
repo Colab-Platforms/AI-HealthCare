@@ -5,6 +5,9 @@ const mongoose = require("mongoose");
 const connectDB = require("./config/db");
 const fs = require("fs");
 const path = require("path");
+const helmet = require("helmet");
+const mongoSanitize = require("express-mongo-sanitize");
+const compression = require("compression");
 
 dotenv.config(); // Works for local dev (CWD = server/)
 dotenv.config({ path: path.join(__dirname, ".env") }); // Works for Railway (CWD = repo root)
@@ -58,6 +61,18 @@ app.use(async (req, res, next) => {
     });
   }
 });
+
+// Security headers (XSS, clickjacking, MIME sniffing, etc.)
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" }, // allow Cloudinary images
+  contentSecurityPolicy: false, // frontend handles its own CSP
+}));
+
+// Gzip all responses (cuts payload size ~70%)
+app.use(compression());
+
+// Strip $ and . from req.body/query/params — blocks MongoDB operator injection
+app.use(mongoSanitize());
 
 app.use(
   cors({

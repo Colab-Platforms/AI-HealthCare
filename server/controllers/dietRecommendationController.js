@@ -320,6 +320,33 @@ async function processDietInternal(userId, dietPlanId, userData, promptEx) {
       return;
     }
 
+    // Validate and scale meal calories per day combo if they exceed target by >10%
+    const calorieCap = userData.nutritionGoals.dailyCalories;
+    if (calorieCap && aiDietPlan.mealPlan) {
+      const mealTypes = ['breakfast', 'lunch', 'dinner'];
+      const maxDays = Math.max(...mealTypes.map(m => (aiDietPlan.mealPlan[m] || []).length));
+      for (let i = 0; i < maxDays; i++) {
+        let dayTotal = 0;
+        mealTypes.forEach(m => {
+          const item = (aiDietPlan.mealPlan[m] || [])[i];
+          if (item?.calories) dayTotal += Number(item.calories) || 0;
+        });
+        if (dayTotal > calorieCap * 1.1) {
+          const scaleFactor = calorieCap / dayTotal;
+          mealTypes.forEach(m => {
+            const item = (aiDietPlan.mealPlan[m] || [])[i];
+            if (item) {
+              if (item.calories) item.calories = Math.round(item.calories * scaleFactor);
+              if (item.protein) item.protein = Math.round(item.protein * scaleFactor);
+              if (item.carbs) item.carbs = Math.round(item.carbs * scaleFactor);
+              if (item.fats) item.fats = Math.round(item.fats * scaleFactor);
+            }
+          });
+        }
+      }
+      aiDietPlan.dailyCalorieTarget = calorieCap;
+    }
+
     const finalData = {
       ...aiDietPlan,
       status: 'completed',

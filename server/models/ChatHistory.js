@@ -41,6 +41,9 @@ const chatHistorySchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Fetch latest chat for a user (dashboard AI chat load)
+chatHistorySchema.index({ userId: 1, lastUpdated: -1 });
+
 // Update lastUpdated on save
 chatHistorySchema.pre('save', function(next) {
   this.lastUpdated = new Date();

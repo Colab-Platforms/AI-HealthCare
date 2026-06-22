@@ -264,4 +264,6 @@ healthGoalSchema.pre('save', function (next) {
   next();
 });
 
+healthGoalSchema.index({ userId: 1, isActive: 1 }); // fetch active goal per user
+
 module.exports = mongoose.model('HealthGoal', healthGoalSchema);

@@ -366,4 +366,32 @@ router.get('/:type', protect, async (req, res) => {
     }
 });
 
+// Delete a specific health metric by ID
+router.delete('/:id', protect, async (req, res) => {
+    try {
+        const metricId = req.params.id;
+        
+        // Find and delete the metric only if it belongs to the authenticated user
+        const metric = await HealthMetric.findOneAndDelete({
+            _id: metricId,
+            userId: req.user._id
+        });
+
+        if (!metric) {
+            return res.status(404).json({ message: 'Metric not found or unauthorized' });
+        }
+
+        // Clear dashboard cache
+        await cache.delete(`dashboard:${req.user._id}`);
+
+        res.json({ success: true, message: 'Metric deleted successfully', deletedId: metricId });
+    } catch (error) {
+        console.error('Error deleting metric:', error.message);
+        res.status(500).json({
+            message: 'Server error deleting metric',
+            error: error.message
+        });
+    }
+});
+
 module.exports = router;

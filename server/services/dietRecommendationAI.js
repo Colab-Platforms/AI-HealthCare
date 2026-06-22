@@ -82,12 +82,23 @@ class DietRecommendationAI {
   }
 
   async generatePersonalizedDietPlan(userData, promptExtension = '') {
-    const { age, gender, weight, height, currentBMI, bmiGoal, activityLevel, nutritionGoals, medicalConditions, allergies, diabetesInfo, alcoholContext, alcoholSummary, lifestyle, country, region } = userData;
+    const { age, gender, weight, height, currentBMI, bmiGoal, activityLevel, nutritionGoals, medicalConditions, allergies, diabetesInfo, alcoholContext, alcoholSummary, lifestyle, country, region, foodPreferences } = userData;
     const isDiabetic = !!diabetesInfo;
     const alcoholLine = alcoholContext || 'No alcohol tracker data';
     const elevatedNote = alcoholSummary?.bingePattern || (alcoholSummary?.today >= 3)
       ? 'User logged several drinks recently — prefer lighter dinner options and avoid suggesting alcohol pairings; do not make medical claims.'
       : '';
+
+    // Build food preference context
+    const prefLines = [];
+    if (foodPreferences?.mealPreferences?.breakfast?.length) prefLines.push(`- Breakfast Favorites: ${foodPreferences.mealPreferences.breakfast.join(', ')}`);
+    if (foodPreferences?.mealPreferences?.lunch?.length) prefLines.push(`- Lunch Favorites: ${foodPreferences.mealPreferences.lunch.join(', ')}`);
+    if (foodPreferences?.mealPreferences?.snacks?.length) prefLines.push(`- Snack Preferences: ${foodPreferences.mealPreferences.snacks.join(', ')}`);
+    if (foodPreferences?.mealPreferences?.dinner?.length) prefLines.push(`- Dinner Favorites: ${foodPreferences.mealPreferences.dinner.join(', ')}`);
+    if (foodPreferences?.preferredFoods?.length) prefLines.push(`- General Preferred Foods: ${foodPreferences.preferredFoods.join(', ')}`);
+    if (foodPreferences?.foodsToAvoid?.length) prefLines.push(`- MUST AVOID (user dislikes): ${foodPreferences.foodsToAvoid.join(', ')}`);
+    if (foodPreferences?.dietaryRestrictions?.length) prefLines.push(`- Dietary Restrictions: ${foodPreferences.dietaryRestrictions.join(', ')}`);
+    const prefContext = prefLines.length ? `\nUser Food Preferences:\n${prefLines.join('\n')}` : '';
     const diabeticAlcoholNote = isDiabetic
       ? 'Diabetic user: do not suggest alcohol; keep meals steady and practical without medical claims about glucose and alcohol.'
       : '';
@@ -110,14 +121,23 @@ class DietRecommendationAI {
       }
     }
     
-    const prompt = `Indian Clinical Nutritionist. Generate a 100% accurate JSON meal plan.
+    const prompt = `Indian Clinical Nutritionist. Generate a 100% accurate JSON meal plan with 7 daily options per meal (one for each day of the week).
 STRUCTURE:
 {
   "dailyCalorieTarget": ${nutritionGoals?.dailyCalories || 2000},
   "mealPlan": {
-    "breakfast": [{"name": "Meal Name", "portionSize": "1 bowl / 2 pieces / 200g", "calories": 0, "protein": 0, "carbs": 0, "fats": 0}],
-    "lunch": [{"name": "Meal Name", "portionSize": "1 plate / 1.5 bowl / 350g", "calories": 0, "protein": 0, "carbs": 0, "fats": 0}],
-    "dinner": [{"name": "Meal Name", "portionSize": "1 bowl / 150g", "calories": 0, "protein": 0, "carbs": 0, "fats": 0}]
+    "breakfast": [
+      {"name": "Meal Name", "portionSize": "1 bowl / 2 pieces / 200g", "calories": 0, "protein": 0, "carbs": 0, "fats": 0},
+      ... 7 items total
+    ],
+    "lunch": [
+      {"name": "Meal Name", "portionSize": "1 plate / 1.5 bowl / 350g", "calories": 0, "protein": 0, "carbs": 0, "fats": 0},
+      ... 7 items total
+    ],
+    "dinner": [
+      {"name": "Meal Name", "portionSize": "1 bowl / 150g", "calories": 0, "protein": 0, "carbs": 0, "fats": 0},
+      ... 7 items total
+    ]
   }
 }
 USER DATA:
@@ -129,23 +149,23 @@ USER DATA:
 - Diabetes Status: ${isDiabetic ? `Positive (${diabetesInfo.diabetesType})` : 'Negative'}
 - Alcohol / Lifestyle: ${alcoholLine}
 - Profile alcohol flag: ${lifestyle?.alcohol ? `Yes (${lifestyle.alcoholFrequency || 'unspecified'})` : 'No or not set'}
-- Macro Targets: Protein ${nutritionGoals?.protein}g, Carbs ${nutritionGoals?.carbs}g, Fats ${nutritionGoals?.fats}g
+- Macro Targets: Protein ${nutritionGoals?.protein}g, Carbs ${nutritionGoals?.carbs}g, Fats ${nutritionGoals?.fats}g${prefContext}${regionCountryInstructions}
 
 REQUIREMENTS:
-1. CRITICAL: The SUM of Calories, Protein, Carbs, and Fats across NO MORE than one option from each meal (Breakfast + Lunch + Dinner) MUST strictly align with the USER'S Macro Targets provided.
-2. PRECISE PORTIONS: Use measurements like "1.5 Bowl (250g)", "2 Medium Roti (80g)", etc., in "portionSize". The portion must explain BOTH the visual quantity (bowl/piece) AND the approximate weight (grams) if applicable.
-3. Focus on varied cuisine based on user's region and country preferences.
-4. Output 1-2 options per meal.
+1. CRITICAL CALORIE RULE: Each breakfast+lunch+dinner COMBO (same array index across all three meals) MUST total exactly ${nutritionGoals?.dailyCalories || 2000} kcal ± 50 kcal. So breakfast[0].calories + lunch[0].calories + dinner[0].calories = target. Same for index 1, 2, 3, 4, 5, 6. NEVER let any single day's combo exceed ${nutritionGoals?.dailyCalories || 2000} kcal.
+2. PRECISE PORTIONS: Use measurements like "1.5 Bowl (250g)", "2 Medium Roti (80g)", etc. Include both visual quantity AND approximate weight.
+3. OUTPUT EXACTLY 7 unique meal options per meal type (breakfast, lunch, dinner) — all 7 must be completely different dishes.
+4. STRICTLY FOLLOW user food preferences above. Prioritize their favorites. NEVER suggest foods from their "MUST AVOID" list.
 5. If alcohol intake is elevated per user log, prefer lighter dinners and fewer empty calories — no medical claims.
 6. ${elevatedNote} ${diabeticAlcoholNote}
 7. ${promptExtension}
 
-JSON output ONLY. Exact mathematical alignment with macro goals is mandatory.`;
+JSON output ONLY. No markdown. Exact calorie math is mandatory.`;
 
     try {
       const aiResponse = await this.makeAIRequest({
-        max_tokens: 4000,
-        system: "Expert Clinical Dietitian. Generate varied, scientifically accurate meal plans based on user's region and country preferences. Never repeat the same plan for different users. Variety is prioritized.",
+        max_tokens: 8000,
+        system: "Expert Clinical Dietitian. Generate varied, scientifically accurate 7-day meal plans based on user's region, country, and food preferences. Each day must have a completely different meal. Never repeat dishes. Strict calorie compliance per day combo is mandatory.",
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7 // Increased for variety
       });

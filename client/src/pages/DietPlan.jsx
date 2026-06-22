@@ -269,12 +269,13 @@ const MealSectionCard = ({
   mealType,
 }) => {
   const { label, time } = section;
-  const totalCalories = meals.reduce(
-    (acc, m) => acc + (getMealCalories(m) || 0),
-    0,
-  );
+  // Show today's meal calories (based on daily rotation)
+  const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
+  const todayIdx = meals.length > 0 ? dayOfYear % meals.length : 0;
+  const todayMeal = meals[todayIdx] || meals[0];
+  const todayCalories = getMealCalories(todayMeal) || 0;
   const itemCount = meals.length;
-  const mainImage = meals[0]?.imageUrl;
+  const mainImage = todayMeal?.imageUrl || meals[0]?.imageUrl;
 
   // Check if all items in this section are logged (or if one is logged to show completion)
   const isAnyLogged = meals.some(
@@ -311,7 +312,7 @@ const MealSectionCard = ({
               ))}
             </div>
             <span className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">
-              {itemCount} items
+              {itemCount} day{itemCount !== 1 ? 's' : ''} planned
             </span>
           </div>
 
@@ -325,7 +326,7 @@ const MealSectionCard = ({
             <div className="flex items-center gap-1.5 text-slate-500">
               <Flame className="w-3.5 h-3.5 md:w-4 md:h-4 text-orange-500" />
               <span className="text-[10px] md:text-xs font-black uppercase tracking-widest leading-none mt-0.5 text-orange-600/70">
-                {totalCalories} Kcal
+                {todayCalories} Kcal today
               </span>
             </div>
           </div>
@@ -348,7 +349,7 @@ const MealSectionCard = ({
         <div className="w-full h-full relative">
           <ImageWithFallback
             src={mainImage}
-            query={getMealName(meals[0])}
+            query={getMealName(todayMeal)}
             className="w-full h-full object-cover rounded-l-[50px] md:rounded-l-[80px]"
           />
           <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white via-white/10 to-transparent" />

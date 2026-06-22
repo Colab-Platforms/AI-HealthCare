@@ -161,177 +161,183 @@ export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
         return null;
     }
 
+    const typeColors = {
+        food_reminder: '#059669',
+        sleep_reminder: '#7c3aed',
+        macro_update: '#0ea5e9',
+        diet_adherence: '#f59e0b',
+        health_insight: '#5B8C6F',
+        report_comparison: '#6366f1',
+        goal_progress: '#10b981',
+    };
+
     return (
         <div
             ref={panelRef}
-            className="fixed md:absolute top-16 md:top-14 right-2 md:right-0 w-[calc(100vw-16px)] md:w-[420px] max-h-[80vh] bg-white rounded-3xl shadow-2xl border border-slate-100 z-[100] overflow-hidden flex flex-col"
+            className="fixed md:absolute top-[60px] md:top-12 right-2 md:right-0 w-[calc(100vw-16px)] md:w-[400px] max-h-[80vh] z-[100] flex flex-col rounded-[28px] overflow-hidden"
             style={{
-                animation: 'slideDown 0.3s ease-out forwards',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15), 0 12px 24px -6px rgba(0, 0, 0, 0.1)'
+                animation: 'slideDown 0.25s ease-out forwards',
+                background: 'rgba(237,253,244,0.82)',
+                backdropFilter: 'blur(48px) saturate(200%)',
+                WebkitBackdropFilter: 'blur(48px) saturate(200%)',
+                border: '1px solid rgba(255,255,255,0.85)',
+                boxShadow: '0 20px 60px rgba(15,23,42,0.12), 0 4px 16px rgba(16,185,129,0.08), inset 0 1px 0 rgba(255,255,255,0.9)',
             }}
         >
             {/* Header */}
-            <div className="sticky top-0 bg-white/95 backdrop-blur-md px-5 py-4 border-b border-slate-100 flex items-center justify-between z-10 flex-shrink-0">
+            <div className="px-5 py-4 flex items-center justify-between flex-shrink-0"
+                style={{ borderBottom: '1px solid rgba(255,255,255,0.6)' }}>
                 <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-black/5 flex items-center justify-center">
-                        <Bell className="w-5 h-5 text-black" />
+                    <div className="w-9 h-9 rounded-2xl flex items-center justify-center"
+                        style={{ background: 'rgba(91,140,111,0.12)', border: '1px solid rgba(91,140,111,0.2)' }}>
+                        <Bell className="w-4 h-4 text-[#5B8C6F]" />
                     </div>
                     <div>
-                        <h3 className="text-sm font-black text-black uppercase tracking-wider">Notifications</h3>
+                        <h3 className="text-sm font-bold text-[#1a1a1a] tracking-tight">Notifications</h3>
                         {unreadCount > 0 && (
-                            <p className="text-[10px] text-slate-400 font-bold">{unreadCount} unread</p>
+                            <p className="text-[10px] text-[#5B8C6F] font-semibold">{unreadCount} unread</p>
                         )}
                     </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
                     {notifications.length > 0 && (
                         <>
-                            <button
-                                onClick={handleMarkAllAsRead}
-                                className="p-2 rounded-xl hover:bg-slate-100 transition-colors group"
-                                title="Mark all as read"
-                            >
-                                <CheckCheck className="w-4 h-4 text-slate-400 group-hover:text-black" />
+                            <button onClick={handleMarkAllAsRead}
+                                className="p-2 rounded-xl transition-colors group"
+                                style={{ background: 'rgba(255,255,255,0.5)' }}
+                                title="Mark all as read">
+                                <CheckCheck className="w-3.5 h-3.5 text-[#5B8C6F]" />
                             </button>
-                            <button
-                                onClick={handleClearAll}
-                                className="p-2 rounded-xl hover:bg-red-50 transition-colors group"
-                                title="Clear all"
-                            >
-                                <Trash2 className="w-4 h-4 text-slate-400 group-hover:text-red-500" />
+                            <button onClick={handleClearAll}
+                                className="p-2 rounded-xl transition-colors group"
+                                style={{ background: 'rgba(255,255,255,0.5)' }}
+                                title="Clear all">
+                                <Trash2 className="w-3.5 h-3.5 text-[#a0a0a0] group-hover:text-red-400 transition-colors" />
                             </button>
                         </>
                     )}
-                    <button
-                        onClick={onClose}
-                        className="p-2 rounded-xl hover:bg-slate-100 transition-colors"
-                    >
-                        <X className="w-4 h-4 text-slate-400" />
+                    <button onClick={onClose}
+                        className="p-2 rounded-xl transition-colors"
+                        style={{ background: 'rgba(255,255,255,0.5)' }}>
+                        <X className="w-3.5 h-3.5 text-[#a0a0a0]" />
                     </button>
                 </div>
             </div>
 
             {/* Notification List */}
-            <div className="overflow-y-auto flex-1">
+            <div className="overflow-y-auto flex-1 px-3 py-2 space-y-2 scrollbar-hide">
                 {loading ? (
                     <div className="flex items-center justify-center py-12">
-                        <div className="w-8 h-8 border-3 border-slate-100 border-t-black rounded-full animate-spin" />
+                        <div className="w-7 h-7 border-2 border-[#5B8C6F]/20 border-t-[#5B8C6F] rounded-full animate-spin" />
                     </div>
                 ) : notifications.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
-                        <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center mb-4">
-                            <Bell className="w-8 h-8 text-slate-300" />
+                    <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
+                        <div className="w-14 h-14 rounded-[20px] flex items-center justify-center mb-4"
+                            style={{ background: 'rgba(91,140,111,0.08)', border: '1px solid rgba(91,140,111,0.15)' }}>
+                            <Bell className="w-6 h-6 text-[#5B8C6F]/40" />
                         </div>
-                        <p className="text-sm font-bold text-slate-500">No notifications yet</p>
-                        <p className="text-xs text-slate-400 mt-1">
+                        <p className="text-sm font-bold text-[#1a1a1a] mb-1">All caught up</p>
+                        <p className="text-[11px] text-[#a0a0a0] font-medium leading-relaxed">
                             We'll notify you about meals, sleep, and health progress
                         </p>
                     </div>
                 ) : (
-                    <div className="py-2">
-                        {notifications.map((notif) => {
-                            const config = typeConfig[notif.type] || typeConfig.health_insight;
-                            const IconComponent = config.icon;
-                            const isExpanded = expandedId === notif._id;
+                    notifications.map((notif) => {
+                        const accentColor = typeColors[notif.type] || '#5B8C6F';
+                        const IconComponent = (typeConfig[notif.type] || typeConfig.health_insight).icon;
+                        const isExpanded = expandedId === notif._id;
 
-                            return (
-                                <div
-                                    key={notif._id}
-                                    onClick={() => handleNotificationClick(notif)}
-                                    className={`group flex items-start gap-3 px-5 py-4 cursor-pointer transition-all
-                    ${!notif.read ? 'bg-slate-50' : 'hover:bg-slate-50'}
-                    border-b border-slate-50 last:border-b-0`}
-                                >
-                                    {/* Icon */}
-                                    <div
-                                        className="w-10 h-10 rounded-2xl flex-shrink-0 flex items-center justify-center mt-0.5 transition-transform group-hover:scale-105"
-                                        style={{ backgroundColor: config.bg }}
-                                    >
-                                        <IconComponent className="w-5 h-5" style={{ color: config.color }} />
-                                    </div>
+                        return (
+                            <div
+                                key={notif._id}
+                                onClick={() => handleNotificationClick(notif)}
+                                className="group flex items-start gap-3 p-3.5 rounded-[18px] cursor-pointer transition-all"
+                                style={{
+                                    background: !notif.read ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.45)',
+                                    border: `1px solid ${!notif.read ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)'}`,
+                                    boxShadow: !notif.read ? '0 2px 12px rgba(16,185,129,0.06)' : 'none',
+                                }}
+                            >
+                                {/* Icon */}
+                                <div className="w-9 h-9 rounded-2xl flex-shrink-0 flex items-center justify-center mt-0.5"
+                                    style={{ background: `${accentColor}12`, border: `1px solid ${accentColor}25` }}>
+                                    <IconComponent className="w-4 h-4" style={{ color: accentColor }} />
+                                </div>
 
-                                    {/* Content */}
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-start justify-between gap-2">
-                                            <h4 className={`text-sm leading-tight ${!notif.read ? 'font-black text-black' : 'font-bold text-slate-700'}`}>
-                                                {notif.title}
-                                            </h4>
-                                            {!notif.read && (
-                                                <div className="w-2.5 h-2.5 rounded-full bg-black flex-shrink-0 mt-1.5 animate-pulse" />
-                                            )}
-                                        </div>
-                                        <p className={`text-xs text-slate-500 mt-1 leading-relaxed ${!isExpanded ? 'line-clamp-2' : ''}`}>
-                                            {notif.message}
-                                        </p>
-
-                                        {isExpanded && notif.actionUrl && (
-                                            <button
-                                                onClick={(e) => handleActionClick(notif, e)}
-                                                className="mt-3 text-xs font-bold px-3 py-1.5 rounded-lg bg-black text-white hover:bg-slate-900 transition-colors"
-                                            >
-                                                View Details
-                                            </button>
-                                        )}
-
-                                        {/* Macro Details */}
-                                        {notif.type === 'macro_update' && notif.metadata && (
-                                            <div className="flex gap-2 mt-2 flex-wrap">
-                                                {['calories', 'protein', 'carbs', 'fats'].map(macro => {
-                                                    const data = notif.metadata?.[macro];
-                                                    if (!data) return null;
-                                                    const pct = data.pct || 0;
-
-                                                    return (
-                                                        <div
-                                                            key={macro}
-                                                            className="px-2 py-1 rounded-lg text-[10px] font-bold"
-                                                            style={{
-                                                                backgroundColor: '#f8fafc',
-                                                                color: '#000000'
-                                                            }}
-                                                        >
-                                                            {macro.charAt(0).toUpperCase() + macro.slice(1)}: {pct}%
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        )}
-
-                                        <div className="flex items-center gap-2 mt-2">
-                                            <Clock className="w-3 h-3 text-slate-300" />
-                                            <span className="text-[10px] text-slate-400 font-bold">{formatTime(notif.createdAt)}</span>
-                                        </div>
-                                    </div>
-
-                                    {/* Actions */}
-                                    <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity flex gap-1 mt-1">
+                                {/* Content */}
+                                <div className="flex-1 min-w-0">
+                                    <div className="flex items-start justify-between gap-2">
+                                        <h4 className={`text-[13px] leading-tight ${!notif.read ? 'font-bold text-[#1a1a1a]' : 'font-semibold text-[#444]'}`}>
+                                            {notif.title}
+                                        </h4>
                                         {!notif.read && (
-                                            <button
-                                                onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif._id); }}
-                                                className="p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
-                                                title="Mark as read"
-                                            >
-                                                <Check className="w-3.5 h-3.5 text-black" />
-                                            </button>
+                                            <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5"
+                                                style={{ background: accentColor }} />
                                         )}
+                                    </div>
+                                    <p className={`text-[11px] text-[#888] mt-0.5 leading-relaxed font-medium ${!isExpanded ? 'line-clamp-2' : ''}`}>
+                                        {notif.message}
+                                    </p>
+
+                                    {isExpanded && notif.actionUrl && (
                                         <button
-                                            onClick={(e) => { e.stopPropagation(); handleDelete(notif._id); }}
-                                            className="p-1.5 rounded-lg hover:bg-red-50 transition-colors"
-                                            title="Delete"
+                                            onClick={(e) => handleActionClick(notif, e)}
+                                            className="mt-2.5 text-[11px] font-bold px-3 py-1.5 rounded-xl text-white transition-all"
+                                            style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)` }}
                                         >
-                                            <X className="w-3.5 h-3.5 text-red-400" />
+                                            View Details
                                         </button>
+                                    )}
+
+                                    {notif.type === 'macro_update' && notif.metadata && (
+                                        <div className="flex gap-1.5 mt-2 flex-wrap">
+                                            {['calories', 'protein', 'carbs', 'fats'].map(macro => {
+                                                const data = notif.metadata?.[macro];
+                                                if (!data) return null;
+                                                return (
+                                                    <div key={macro}
+                                                        className="px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider"
+                                                        style={{ background: 'rgba(91,140,111,0.1)', color: '#5B8C6F' }}>
+                                                        {macro}: {data.pct || 0}%
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+
+                                    <div className="flex items-center gap-1.5 mt-1.5">
+                                        <Clock className="w-2.5 h-2.5 text-[#c0c0c0]" />
+                                        <span className="text-[9px] text-[#b0b0b0] font-semibold">{formatTime(notif.createdAt)}</span>
                                     </div>
                                 </div>
-                            );
-                        })}
-                    </div>
+
+                                {/* Actions */}
+                                <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1 mt-0.5">
+                                    {!notif.read && (
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif._id); }}
+                                            className="p-1.5 rounded-lg transition-colors"
+                                            style={{ background: 'rgba(91,140,111,0.1)' }}
+                                            title="Mark as read">
+                                            <Check className="w-3 h-3 text-[#5B8C6F]" />
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); handleDelete(notif._id); }}
+                                        className="p-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                                        title="Delete">
+                                        <X className="w-3 h-3 text-[#d0d0d0] hover:text-red-400" />
+                                    </button>
+                                </div>
+                            </div>
+                        );
+                    })
                 )}
             </div>
 
             <style>{`
         @keyframes slideDown {
-          from { opacity: 0; transform: translateY(-10px) scale(0.98); }
+          from { opacity: 0; transform: translateY(-8px) scale(0.97); }
           to { opacity: 1; transform: translateY(0) scale(1); }
         }
         .line-clamp-2 {

@@ -56,6 +56,8 @@ export default function Register() {
 
   // Handle flow control and automatic step skipping
   useEffect(() => {
+    // Don't redirect while user is on the OTP verification screen
+    if (step === 1.5) return;
     if (user) {
       if (!user.profile?.age) {
         // User logged in but profile not complete - redirect to setup
@@ -65,7 +67,7 @@ export default function Register() {
         navigate("/dashboard");
       }
     }
-  }, [user, navigate]);
+  }, [user, navigate, step]);
 
   const handleNext = async (e) => {
     e.preventDefault();

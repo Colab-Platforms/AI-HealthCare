@@ -23,5 +23,6 @@ const aiAnalysisSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 aiAnalysisSchema.index({ userId: 1, type: 1 });
+aiAnalysisSchema.index({ userId: 1, createdAt: -1 }); // dashboard fetches latest analysis
 
 module.exports = mongoose.model('AIAnalysis', aiAnalysisSchema);
