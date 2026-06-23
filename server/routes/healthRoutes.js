@@ -28,16 +28,16 @@ const {
 } = require('../controllers/healthController');
 const { protect } = require('../middleware/auth');
 const upload = require('../middleware/upload');
-const { aiLimiter } = require('../middleware/rateLimit');
+const { aiLimiter, heavyReadLimiter, apiLimiter } = require('../middleware/rateLimit');
 
 router.post('/process-report-bg', processReportBG);
 router.post('/upload', protect, aiLimiter, upload.single('report'), uploadReport);
-router.get('/reports', protect, getReports);
-router.get('/history', protect, getHealthHistory);
-router.get('/dashboard', protect, getDashboardData);
-router.get('/report-comparison', protect, getReportComparison);
-router.get('/reports/:id/status', protect, getReportStatus);
-router.get('/reports/:id', protect, getReportById);
+router.get('/reports', protect, heavyReadLimiter, getReports);
+router.get('/history', protect, apiLimiter, getHealthHistory);
+router.get('/dashboard', protect, heavyReadLimiter, getDashboardData);
+router.get('/report-comparison', protect, apiLimiter, getReportComparison);
+router.get('/reports/:id/status', protect, apiLimiter, getReportStatus);
+router.get('/reports/:id', protect, apiLimiter, getReportById);
 router.post('/reports/:id/reanalyze', protect, aiLimiter, reanalyzeReport);
 router.delete('/reports/:id', protect, deleteReport);
 router.get('/reports/:id/compare', protect, compareWithPrevious);

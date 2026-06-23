@@ -505,12 +505,14 @@ exports.logMeal = async (req, res) => {
 // Get food logs
 exports.getFoodLogs = async (req, res) => {
   try {
-    const { startDate, endDate, mealType, date } = req.query;
+    const { startDate, endDate, mealType, date, page, limit: limitParam } = req.query;
+    const pageNum = Math.max(1, parseInt(page) || 1);
+    const pageSize = Math.min(50, Math.max(1, parseInt(limitParam) || 20));
+    const skip = (pageNum - 1) * pageSize;
 
     const query = { userId: req.user._id };
 
     if (date) {
-      // Parse YYYY-MM-DD as UTC to avoid timezone shift in different environments
       const [y, m, d_num] = date.split('-').map(Number);
       const d = new Date(Date.UTC(y, m - 1, d_num, 0, 0, 0, 0));
       const nextDay = new Date(d);
@@ -522,18 +524,20 @@ exports.getFoodLogs = async (req, res) => {
       if (endDate) query.timestamp.$lte = new Date(endDate);
     }
 
-    if (mealType) {
-      query.mealType = mealType;
-    }
+    if (mealType) query.mealType = mealType;
 
-    const foodLogs = await withTimeout(FoodLog.find(query)
-      .sort({ timestamp: -1 })
-      .limit(100));
+    const [foodLogs, total] = await Promise.all([
+      withTimeout(FoodLog.find(query).sort({ timestamp: -1 }).skip(skip).limit(pageSize).lean()),
+      FoodLog.countDocuments(query),
+    ]);
 
     res.json({
       success: true,
       foodLogs,
-      count: foodLogs.length
+      count: foodLogs.length,
+      total,
+      page: pageNum,
+      pages: Math.ceil(total / pageSize),
     });
   } catch (error) {
     console.error('Get food logs error:', error);
@@ -1245,7 +1249,7 @@ exports.getRecommendations = async (req, res) => {
 exports.updateDailySummaryInternal = updateDailySummary;
 async function updateDailySummary(userId, date) {
   try {
-    // Normalize date to UTC midnight for consistency
+    // Normalize date to UTC midnight
     let targetDate;
     if (date instanceof Date) {
       targetDate = new Date(date.toISOString().split('T')[0]);
@@ -1255,65 +1259,60 @@ async function updateDailySummary(userId, date) {
       targetDate = new Date(new Date(date).toISOString().split('T')[0]);
     }
     targetDate.setUTCHours(0, 0, 0, 0);
-
     const nextDay = new Date(targetDate);
     nextDay.setUTCDate(nextDay.getUTCDate() + 1);
 
-    console.log(`Updating daily summary for ${userId} from ${targetDate.toISOString()} to ${nextDay.toISOString()}`);
+    const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
 
-    // Get all food logs for the day
-    const foodLogs = await FoodLog.find({
-      userId,
-      timestamp: {
-        $gte: targetDate,
-        $lt: nextDay
-      }
-    });
+    // Run all independent DB queries in PARALLEL — was sequential before
+    const [foodLogs, healthGoal, activePlan, existingSummary] = await Promise.all([
+      FoodLog.find({ userId, timestamp: { $gte: targetDate, $lt: nextDay } }).lean(),
+      // Cached active goal — 15 min TTL avoids repeated scans on every meal log
+      (async () => {
+        const goalCacheKey = `health_goal:${userId}`;
+        const cached = await cache.get(goalCacheKey);
+        if (cached) return cached;
+        const goal = await HealthGoal.findOne({ userId, isActive: true }).sort({ createdAt: -1 }).lean();
+        if (goal) await cache.set(goalCacheKey, goal, 15 * 60);
+        return goal;
+      })(),
+      // Cached active diet plan — 15 min TTL
+      (async () => {
+        const planCacheKey = `active_diet_plan:${userId}`;
+        const cached = await cache.get(planCacheKey);
+        if (cached) return cached;
+        const plan = await PersonalizedDietPlan.findOne({
+          userId, isActive: true, validUntil: { $gt: new Date() }
+        }).sort({ generatedAt: -1 }).select('nutritionGoals dailyCalorieTarget macroTargets').lean();
+        if (plan) await cache.set(planCacheKey, plan, 15 * 60);
+        return plan;
+      })(),
+      NutritionSummary.findOne({ userId, date: targetDate }),
+    ]);
 
-    // Calculate totals
+    // Aggregate nutrition totals in JS (handles totalNutrition + foodItems fallback + micronutrients array)
     const totals = {
-      totalCalories: 0,
-      totalProtein: 0,
-      totalCarbs: 0,
-      totalFats: 0,
-      totalFiber: 0,
-      totalSugar: 0,
-      totalSodium: 0,
-      totalVitaminA: 0,
-      totalVitaminC: 0,
-      totalVitaminD: 0,
-      totalVitaminB12: 0,
-      totalIron: 0,
-      totalCalcium: 0,
-      averageHealthScore: 0,
-      healthyFoodsCount: 0,
-      junkFoodsCount: 0,
-      totalFoodsCount: 0
+      totalCalories: 0, totalProtein: 0, totalCarbs: 0, totalFats: 0,
+      totalFiber: 0, totalSugar: 0, totalSodium: 0,
+      totalVitaminA: 0, totalVitaminC: 0, totalVitaminD: 0,
+      totalVitaminB12: 0, totalIron: 0, totalCalcium: 0,
+      averageHealthScore: 0, healthyFoodsCount: 0, junkFoodsCount: 0, totalFoodsCount: 0
     };
-
-    const mealsLogged = {
-      breakfast: false,
-      lunch: false,
-      dinner: false,
-      snacks: 0
-    };
-
+    const mealsLogged = { breakfast: false, lunch: false, dinner: false, snacks: 0 };
     let totalWeight = 0;
     let weightedHealthScoreSum = 0;
 
-    foodLogs.forEach(log => {
-      // Use totalNutrition if available, otherwise sum foodItems as fallback
-      const logNutrition = log.totalNutrition || { calories: 0, protein: 0, carbs: 0, fats: 0 };
-
-      // Fallback: If totalNutrition is all 0 but foodItems are not, sum them
+    for (const log of foodLogs) {
+      const logNutrition = log.totalNutrition || {};
       let calories = Number(logNutrition.calories) || 0;
       let protein = Number(logNutrition.protein) || 0;
       let carbs = Number(logNutrition.carbs) || 0;
       let fats = Number(logNutrition.fats) || 0;
       let fiber = Number(logNutrition.fiber) || 0;
 
-      if (calories === 0 && log.foodItems && log.foodItems.length > 0) {
-        log.foodItems.forEach(item => {
+      // Fallback: sum foodItems when totalNutrition.calories is 0
+      if (calories === 0 && log.foodItems?.length > 0) {
+        for (const item of log.foodItems) {
           if (item.nutrition) {
             calories += Number(item.nutrition.calories) || 0;
             protein += Number(item.nutrition.protein) || 0;
@@ -1321,7 +1320,7 @@ async function updateDailySummary(userId, date) {
             fats += Number(item.nutrition.fats) || 0;
             fiber += Number(item.nutrition.fiber) || 0;
           }
-        });
+        }
       }
 
       totals.totalCalories += calories;
@@ -1333,162 +1332,81 @@ async function updateDailySummary(userId, date) {
       totals.totalSodium += Number(logNutrition.sodium) || 0;
 
       if (logNutrition.vitamins) {
-        totals.totalVitaminA += Number(logNutrition.vitamins.vitaminA) || 0;
-        totals.totalVitaminC += Number(logNutrition.vitamins.vitaminC) || 0;
-        totals.totalVitaminD += Number(logNutrition.vitamins.vitaminD) || 0;
+        totals.totalVitaminA  += Number(logNutrition.vitamins.vitaminA)  || 0;
+        totals.totalVitaminC  += Number(logNutrition.vitamins.vitaminC)  || 0;
+        totals.totalVitaminD  += Number(logNutrition.vitamins.vitaminD)  || 0;
         totals.totalVitaminB12 += Number(logNutrition.vitamins.vitaminB12) || 0;
-        totals.totalIron += Number(logNutrition.vitamins.iron) || 0;
-        totals.totalCalcium += Number(logNutrition.vitamins.calcium) || 0;
-      } else if (log.micronutrients && log.micronutrients.length > 0) {
-        // Fallback: Parse micronutrients array if vitamins object is missing
-        log.micronutrients.forEach(m => {
+        totals.totalIron      += Number(logNutrition.vitamins.iron)      || 0;
+        totals.totalCalcium   += Number(logNutrition.vitamins.calcium)   || 0;
+      } else if (log.micronutrients?.length > 0) {
+        for (const m of log.micronutrients) {
           const name = (m.name || '').toLowerCase();
           const val = Number(parseFloat(String(m.value || '0').replace(/[^0-9.]/g, ''))) || 0;
-          
-          if (name.includes('vitamin a')) totals.totalVitaminA += val;
-          else if (name.includes('vitamin c')) totals.totalVitaminC += val;
-          else if (name.includes('vitamin d')) totals.totalVitaminD += val;
+          if (name.includes('vitamin a'))   totals.totalVitaminA  += val;
+          else if (name.includes('vitamin c'))  totals.totalVitaminC  += val;
+          else if (name.includes('vitamin d'))  totals.totalVitaminD  += val;
           else if (name.includes('vitamin b12')) totals.totalVitaminB12 += val;
-          else if (name.includes('iron')) totals.totalIron += val;
-          else if (name.includes('calcium')) totals.totalCalcium += val;
-          else if (name.includes('fiber')) totals.totalFiber += val;
-          else if (name.includes('sugar')) totals.totalSugar += val;
-          else if (name.includes('sodium')) totals.totalSodium += val;
-        });
+          else if (name.includes('iron'))    totals.totalIron      += val;
+          else if (name.includes('calcium')) totals.totalCalcium   += val;
+          else if (name.includes('fiber'))   totals.totalFiber     += val;
+          else if (name.includes('sugar'))   totals.totalSugar     += val;
+          else if (name.includes('sodium'))  totals.totalSodium    += val;
+        }
       }
 
-      // Weight the health score by calories of the item
       const healthScore = log.healthScore10 !== undefined ? log.healthScore10 * 10 : (log.healthScore || 50);
       weightedHealthScoreSum += healthScore * (calories || 100);
       totalWeight += (calories || 100);
 
-      // Quality counts
       const score10 = log.healthScore10 !== undefined ? log.healthScore10 : (log.healthScore / 10);
       if (score10 >= 7) totals.healthyFoodsCount++;
       else if (score10 <= 4.5 && score10 > 0) totals.junkFoodsCount++;
       totals.totalFoodsCount++;
 
-      if (log.mealType === 'snack') {
-        mealsLogged.snacks++;
-      } else if (['breakfast', 'lunch', 'dinner'].includes(log.mealType)) {
-        mealsLogged[log.mealType] = true;
-      }
-    });
+      if (log.mealType === 'snack') mealsLogged.snacks++;
+      else if (['breakfast', 'lunch', 'dinner'].includes(log.mealType)) mealsLogged[log.mealType] = true;
+    }
 
     if (totalWeight > 0) {
       const avg = weightedHealthScoreSum / totalWeight;
       totals.averageHealthScore = isNaN(avg) ? 0 : Math.round(avg);
     } else if (foodLogs.length > 0) {
-      const totalScore = foodLogs.reduce((sum, log) => sum + (log.healthScore10 !== undefined ? log.healthScore10 * 10 : (log.healthScore || 50)), 0);
-      const avg = totalScore / foodLogs.length;
+      const avg = foodLogs.reduce((s, l) => s + (l.healthScore10 !== undefined ? l.healthScore10 * 10 : (l.healthScore || 50)), 0) / foodLogs.length;
       totals.averageHealthScore = isNaN(avg) ? 0 : Math.round(avg);
     }
 
-    // Get user's latest health goal
-    const healthGoal = await HealthGoal.findOne({ userId, isActive: true }).sort({ createdAt: -1 });
-
-    let summary = await NutritionSummary.findOne({ userId, date: targetDate });
-
-    if (!summary) {
-      console.log(`Summary not found for ${userId} on ${targetDate.toISOString()}, creating new one.`);
-      const newSummary = new NutritionSummary({
-        userId,
-        date: targetDate,
-        totalCalories: totals.totalCalories,
-        totalProtein: totals.totalProtein,
-        totalCarbs: totals.totalCarbs,
-        totalFats: totals.totalFats,
-        totalFiber: totals.totalFiber,
-        totalSugar: totals.totalSugar,
-        totalSodium: totals.totalSodium,
-        totalVitaminA: totals.totalVitaminA,
-        totalVitaminC: totals.totalVitaminC,
-        totalVitaminD: totals.totalVitaminD,
-        totalVitaminB12: totals.totalVitaminB12,
-        totalIron: totals.totalIron,
-        totalCalcium: totals.totalCalcium,
-        averageHealthScore: totals.averageHealthScore,
-        healthyFoodsCount: totals.healthyFoodsCount,
-        junkFoodsCount: totals.junkFoodsCount,
-        totalFoodsCount: totals.totalFoodsCount,
-        mealsLogged
-      });
-
-      // Try to get goals from active diet plan first
-      const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
-      const activePlan = await PersonalizedDietPlan.findOne({
-        userId,
-        isActive: true,
-        validUntil: { $gt: new Date() }
-      }).sort({ generatedAt: -1 });
-
+    // Resolve goals once — diet plan takes priority over health goal
+    const goalData = (() => {
       if (activePlan && (activePlan.nutritionGoals || activePlan.dailyCalorieTarget)) {
-        newSummary.calorieGoal = activePlan.nutritionGoals?.dailyCalorieTarget || activePlan.dailyCalorieTarget || 2000;
-        newSummary.proteinGoal = activePlan.nutritionGoals?.macroTargets?.protein || activePlan.macroTargets?.protein || 100;
-        newSummary.carbsGoal = activePlan.nutritionGoals?.macroTargets?.carbs || activePlan.macroTargets?.carbs || 250;
-        newSummary.fatsGoal = activePlan.nutritionGoals?.macroTargets?.fats || activePlan.macroTargets?.fats || 65;
-        console.log('✅ Daily goals synced from active PersonalizedDietPlan');
-      } else if (healthGoal) {
-        newSummary.calorieGoal = healthGoal.dailyCalorieTarget;
-        newSummary.proteinGoal = healthGoal.macroTargets?.protein || 100;
-        newSummary.carbsGoal = healthGoal.macroTargets?.carbs || 250;
-        newSummary.fatsGoal = healthGoal.macroTargets?.fats || 65;
-        console.log('✅ Daily goals synced from HealthGoal model');
+        return {
+          calorieGoal: activePlan.nutritionGoals?.dailyCalorieTarget || activePlan.dailyCalorieTarget || 2000,
+          proteinGoal: activePlan.nutritionGoals?.macroTargets?.protein || activePlan.macroTargets?.protein || 100,
+          carbsGoal:   activePlan.nutritionGoals?.macroTargets?.carbs   || activePlan.macroTargets?.carbs   || 250,
+          fatsGoal:    activePlan.nutritionGoals?.macroTargets?.fats    || activePlan.macroTargets?.fats    || 65,
+        };
       }
+      if (healthGoal) {
+        return {
+          calorieGoal: healthGoal.dailyCalorieTarget || 2000,
+          proteinGoal: healthGoal.macroTargets?.protein || 100,
+          carbsGoal:   healthGoal.macroTargets?.carbs   || 250,
+          fatsGoal:    healthGoal.macroTargets?.fats    || 65,
+        };
+      }
+      return {};
+    })();
 
-      await newSummary.save();
-      return newSummary;
+    if (existingSummary) {
+      Object.assign(existingSummary, totals, { mealsLogged }, goalData);
+      if (typeof existingSummary.calculateStatus === 'function') existingSummary.calculateStatus();
+      await existingSummary.save();
+      return existingSummary;
     }
 
-    // Update existing summary
-    summary.totalCalories = totals.totalCalories;
-    summary.totalProtein = totals.totalProtein;
-    summary.totalCarbs = totals.totalCarbs;
-    summary.totalFats = totals.totalFats;
-    summary.totalFiber = totals.totalFiber;
-    summary.totalSugar = totals.totalSugar;
-    summary.totalSodium = totals.totalSodium;
-    summary.totalVitaminA = totals.totalVitaminA;
-    summary.totalVitaminC = totals.totalVitaminC;
-    summary.totalVitaminD = totals.totalVitaminD;
-    summary.totalVitaminB12 = totals.totalVitaminB12;
-    summary.totalIron = totals.totalIron;
-    summary.totalCalcium = totals.totalCalcium;
-    summary.averageHealthScore = totals.averageHealthScore;
-    summary.healthyFoodsCount = totals.healthyFoodsCount;
-    summary.junkFoodsCount = totals.junkFoodsCount;
-    summary.totalFoodsCount = totals.totalFoodsCount;
-    summary.mealsLogged = mealsLogged;
-    // Keep waterIntake as is, unless we want to reset it (unlikely)
+    const newSummary = new NutritionSummary({ userId, date: targetDate, ...totals, mealsLogged, ...goalData });
+    await newSummary.save();
+    return newSummary;
 
-    // Refresh goals if needed (in case they changed)
-    const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
-    const activePlan = await PersonalizedDietPlan.findOne({
-      userId,
-      isActive: true,
-      validUntil: { $gt: new Date() }
-    }).sort({ generatedAt: -1 });
-
-    if (activePlan && (activePlan.nutritionGoals || activePlan.dailyCalorieTarget)) {
-      summary.calorieGoal = activePlan.nutritionGoals?.dailyCalorieTarget || activePlan.dailyCalorieTarget || 2000;
-      summary.proteinGoal = activePlan.nutritionGoals?.macroTargets?.protein || activePlan.macroTargets?.protein || 100;
-      summary.carbsGoal = activePlan.nutritionGoals?.macroTargets?.carbs || activePlan.macroTargets?.carbs || 250;
-      summary.fatsGoal = activePlan.nutritionGoals?.macroTargets?.fats || activePlan.macroTargets?.fats || 65;
-    } else if (healthGoal) {
-      summary.calorieGoal = healthGoal.dailyCalorieTarget;
-      summary.proteinGoal = healthGoal.macroTargets?.protein || 100;
-      summary.carbsGoal = healthGoal.macroTargets?.carbs || 250;
-      summary.fatsGoal = healthGoal.macroTargets?.fats || 65;
-    }
-
-    // Force recalculation of status and percentages
-    if (typeof summary.calculateStatus === 'function') {
-      summary.calculateStatus();
-    }
-
-    await summary.save();
-    console.log(`Daily summary updated successfully for ${userId} on ${targetDate.toISOString()}. Total Cals: ${summary.totalCalories}`);
-    return summary;
   } catch (error) {
     console.error('Update daily summary error:', error);
     return null;

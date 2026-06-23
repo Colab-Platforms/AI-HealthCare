@@ -49,52 +49,52 @@ const Potential = () => {
   const sectionRef = useRef(null);
   const potentialItems = [
     {
-      title: "CoreGrid",
-      subTitle: "All your health dimensions, mapped together",
+      title: "HealthDashboard",
+      subTitle: "Your complete health picture in one place.",
       description:
-        "Connect and visualize your body’s key health signals in one unified system, revealing how everything works together",
-      src: "/landing/potential/core-grid.webp",
-      alt: "CoreGrid",
+        "Bring together your health metrics, reports, lifestyle habits and risk indicators into a single personalized view.",
+      src: "/landing/potential/health-dashboard.webp",
+      alt: "HealthDashboard",
     },
     {
-      title: "HealthLens",
-      subTitle: "Refined Lab Intelligence",
+      title: "DailyHealth",
+      subTitle: "Track your activity, sleep and habits.",
       description:
-        "Build a clear understanding of your health through connected biomarkers and intelligent analysis, translating complex data into meaningful insights.",
-      src: "/landing/potential/health-lens.webp",
-      alt: "HealthLens",
-    },
-    {
-      title: "RiskSense",
-      subTitle: "Flag abnormal health markers early",
-      description:
-        "Identify early deviations in key health markers using predictive intelligence, enabling timely awareness and proactive health decisions.",
-      src: "/landing/potential/risk-sense.webp",
-      alt: "RiskSense",
-    },
-    {
-      title: "DeficiencyDetection",
-      subTitle: "Reveal hidden nutrient gaps",
-      description:
-        "Uncover underlying nutritional gaps through data-driven analysis of your reports, helping restore balance and support optimal function.",
-      src: "/landing/potential/deficiency-detection.webp",
-      alt: "DeficiencyDetection",
-    },
-    {
-      title: "NutriPath",
-      subTitle: "Plans tailored to your health profile",
-      description:
-        "Personalized nutrition strategies derived from your biological data, designed to align with your body’s needs and long-term health goals.",
-      src: "/landing/potential/nutri-path.webp",
-      alt: "NutriPath",
-    },
-    {
-      title: "VitalSync",
-      subTitle: "Track your steps and hydration",
-      description:
-        "Continuously track and interpret changes across your reports, revealing patterns and trends that shape your overall health trajectory.",
+        "Stay on top of your everyday wellness with a simple view of your movement, sleep, hydration and daily routines helping you make healthier choices every day.",
       src: "/landing/potential/vital-sync.webp",
-      alt: "VitalSync",
+      alt: "DailyHealth",
+    },
+    {
+      title: "HealthAlerts",
+      subTitle: "Spot potential health risks early.",
+      description:
+        "Advanced health intelligence continuously analyzes your data to highlight warning signs before they become bigger concerns.",
+      src: "/landing/potential/risk-sense.webp",
+      alt: "HealthAlerts",
+    },
+    {
+      title: "DeficiencyCheck",
+      subTitle: "Find nutrient gaps before they affect you.",
+      description:
+        "Identify potential vitamin and nutrient deficiencies early and take informed steps to support your long-term health.",
+      src: "/landing/potential/deficiency-detection.webp",
+      alt: "DeficiencyCheck",
+    },
+    {
+      title: "SmartNutrition",
+      subTitle: "Food recommendations tailored to you.",
+      description:
+        "Get nutrition guidance based on your health profile, goals and lifestyle, making healthy eating easier and more effective.",
+      src: "/landing/potential/nutri-path.webp",
+      alt: "SmartNutrition",
+    },
+    {
+      title: "LabInsights",
+      subTitle: "Understand your reports with ease.",
+      description:
+        "Transform complex lab results into clear, actionable insights so you can better understand what your numbers mean.",
+      src: "/landing/potential/lab-insights.webp",
+      alt: "LabInsights",
     },
   ];
 
@@ -146,7 +146,7 @@ const Potential = () => {
         {`
           @keyframes arc-marquee {
             from { transform: rotate(0deg); }
-            to   { transform: rotate(-${contentCycleDeg}deg); }
+            to   { transform: rotate(${contentCycleDeg}deg); }
           }
         `}
       </style>

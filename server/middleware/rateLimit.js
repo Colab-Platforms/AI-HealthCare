@@ -18,4 +18,26 @@ const aiLimiter = rateLimit({
   message: { success: false, message: 'Too many AI requests. Please slow down and try again shortly.' },
 });
 
-module.exports = { authLimiter, aiLimiter };
+// General API limiter for authenticated GET endpoints — prevents scraping/abuse
+// 200 requests per minute per user is generous for normal use but blocks bots
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 200,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.user?._id?.toString() || req.ip, // per-user, not per-IP
+  message: { success: false, message: 'Too many requests. Please slow down.' },
+  skip: (req) => req.method !== 'GET', // only apply to GET requests
+});
+
+// Stricter limiter for expensive DB-read endpoints (dashboard, reports listing)
+const heavyReadLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => req.user?._id?.toString() || req.ip,
+  message: { success: false, message: 'Too many requests. Please slow down.' },
+});
+
+module.exports = { authLimiter, aiLimiter, apiLimiter, heavyReadLimiter };
