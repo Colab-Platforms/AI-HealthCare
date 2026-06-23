@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { createPortal } from "react-dom";
 import { useAuth } from "../context/AuthContext";
 import { useData } from "../context/DataContext";
 import {
@@ -79,7 +80,7 @@ import {
 } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
 import { getFoodImage } from "../services/imageService";
-import api, { nutritionService } from "../services/api";
+import api, { nutritionService, dietRecommendationService } from "../services/api";
 import { ImageWithFallback } from "../components/ImageWithFallback";
 import SEO from "../hooks/useSEO";
 import SmokeTrackerCard from "../components/SmokeTrackerCard";
@@ -831,6 +832,20 @@ export default function DashboardEnhanced() {
   const navigate = useNavigate();
 
   const [dietPlan, setDietPlan] = useState(null);
+  const [dietHistory, setDietHistory] = useState([]);
+  const [selectedDietDate, setSelectedDietDate] = useState(new Date().toISOString().split("T")[0]);
+  const [selectedCalorieDate, setSelectedCalorieDate] = useState(new Date().toISOString().split("T")[0]);
+  const [calorieDateData, setCalorieDateData] = useState(null);
+  const [calorieDateLoading, setCalorieDateLoading] = useState(false);
+  const [showCalorieDatePicker, setShowCalorieDatePicker] = useState(false);
+  const [calorieDatePickerMonth, setCalorieDatePickerMonth] = useState(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() };
+  });
+  const [calorieDatePickerPos, setCalorieDatePickerPos] = useState({ top: 0, right: 0 });
+  const calorieDateBtnRef = useRef(null);
+  const [dietDatePickerPos, setDietDatePickerPos] = useState({ top: 0, right: 0 });
+  const dietDateBtnRef = useRef(null);
   const [loggedMeals, setLoggedMeals] = useState([]);
   const [loggedMealsMap, setLoggedMealsMap] = useState({});
   const [isDiabetic, setIsDiabetic] = useState(false);
@@ -1309,7 +1324,10 @@ export default function DashboardEnhanced() {
           fetchDashboard(force),
           fetchNutrition(new Date().toISOString().split("T")[0], force),
           fetchWearable(force),
-          fetchDietPlan(force).then((plan) => setDietPlan(plan)),
+          fetchDietPlan(force).then((plan) => { setDietPlan(plan); activeDietPlanRef.current = plan; }),
+          dietRecommendationService.getDietPlanHistory().then((res) => {
+            if (res.data.success) setDietHistory(res.data.history || []);
+          }).catch(() => {}),
           fetchNutritionLogs(
             new Date().toISOString().split("T")[0],
             force,
@@ -1360,6 +1378,77 @@ export default function DashboardEnhanced() {
     else if (hour < 17) setActiveMealTab("lunch");
     else setActiveMealTab("dinner");
   }, []);
+
+  const [showDietDatePicker, setShowDietDatePicker] = useState(false);
+  const [dietDatePickerMonth, setDietDatePickerMonth] = useState(() => {
+    const now = new Date();
+    return { year: now.getFullYear(), month: now.getMonth() };
+  });
+  const activeDietPlanRef = useRef(null); // stores the original active plan
+
+  const handleDietDateChange = async (dateStr) => {
+    setSelectedDietDate(dateStr);
+    setShowDietDatePicker(false);
+    const today = new Date().toISOString().split("T")[0];
+    if (dateStr === today) {
+      if (activeDietPlanRef.current) setDietPlan(activeDietPlanRef.current);
+      return;
+    }
+    // Include current active plan + history for lookup
+    const allPlans = activeDietPlanRef.current
+      ? [activeDietPlanRef.current, ...dietHistory]
+      : [...dietHistory];
+    const seen = new Set();
+    const unique = allPlans.filter((p) => {
+      if (seen.has(p._id)) return false;
+      seen.add(p._id);
+      return true;
+    });
+    const sorted = unique.sort(
+      (a, b) => new Date(b.generatedAt || b.createdAt) - new Date(a.generatedAt || a.createdAt)
+    );
+    const match = sorted.find(
+      (p) => new Date(p.generatedAt || p.createdAt) <= new Date(dateStr + "T23:59:59")
+    );
+    if (!match) { setDietPlan(null); return; }
+    // If this is the active plan, it already has mealPlan
+    if (match._id === activeDietPlanRef.current?._id) {
+      setDietPlan(activeDietPlanRef.current);
+      return;
+    }
+    // History plans don't have mealPlan — fetch full plan by id
+    try {
+      const { data } = await dietRecommendationService.getDietPlanById(match._id);
+      setDietPlan(data.dietPlan || null);
+    } catch {
+      setDietPlan(match);
+    }
+  };
+
+  const handleCalorieDateChange = async (dateStr) => {
+    setSelectedCalorieDate(dateStr);
+    setShowCalorieDatePicker(false);
+    const today = new Date().toISOString().split("T")[0];
+    if (dateStr === today) {
+      setCalorieDateData(null); // use live nutritionData
+      return;
+    }
+    setCalorieDateLoading(true);
+    try {
+      const response = await nutritionService.getDailySummary(dateStr);
+      setCalorieDateData(response.data?.summary || null);
+    } catch (err) {
+      console.error("Failed to fetch nutrition for date:", dateStr, err);
+      setCalorieDateData(null);
+    } finally {
+      setCalorieDateLoading(false);
+    }
+  };
+
+  // Active calorie data: today = live nutritionData, past date = fetched data (null = no meals logged that day, show zeros)
+  const activeNutritionData = selectedCalorieDate === new Date().toISOString().split("T")[0]
+    ? nutritionData
+    : calorieDateData;
 
   const calorieDelta =
     (nutritionData?.totalCalories || 0) - (nutritionData?.calorieGoal || 2000);
@@ -1665,30 +1754,137 @@ export default function DashboardEnhanced() {
             }}
           >
             {/* Calories Header */}
-            <div className="mb-0">
-              <h2 className="text-lg lg:text-xl font-bold text-[#1a1a1a] leading-tight">
-                Calories
-              </h2>
-              <p className="text-[9px] text-[#a0a0a0] font-bold uppercase tracking-widest leading-none mt-0.5">
-                Daily tracking
-              </p>
+            <div className="mb-0 flex items-start justify-between">
+              <div>
+                <h2 className="text-lg lg:text-xl font-bold text-[#1a1a1a] leading-tight">
+                  Calories
+                </h2>
+                <p className="text-[9px] text-[#a0a0a0] font-bold uppercase tracking-widest leading-none mt-0.5">
+                  Daily tracking
+                </p>
+              </div>
+              <button
+                ref={calorieDateBtnRef}
+                onClick={() => {
+                  const d = new Date(selectedCalorieDate + "T12:00:00");
+                  setCalorieDatePickerMonth({ year: d.getFullYear(), month: d.getMonth() });
+                  if (calorieDateBtnRef.current) {
+                    const rect = calorieDateBtnRef.current.getBoundingClientRect();
+                    setCalorieDatePickerPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+                  }
+                  setShowCalorieDatePicker((v) => !v);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#d4e9de] bg-gradient-to-r from-[#eef7f2] to-[#f5fbf7] shadow-sm hover:shadow-md transition-all"
+              >
+                <Calendar className="w-3.5 h-3.5 text-[#5B8C6F]" />
+                <span className="text-[11px] font-semibold text-[#3d7a5e]">
+                  {selectedCalorieDate === new Date().toISOString().split("T")[0]
+                    ? "Today"
+                    : new Date(selectedCalorieDate + "T12:00:00").toLocaleDateString("en-GB", { day: "numeric", month: "short" })}
+                </span>
+                <svg className={`w-3 h-3 text-[#5B8C6F] transition-transform ${showCalorieDatePicker ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+              </button>
+
+              {/* Premium Custom Date Picker - portal to escape card stacking context */}
+              {createPortal(
+              <AnimatePresence>
+                {showCalorieDatePicker && (
+                  <>
+                    <div className="fixed inset-0 z-[999]" onClick={() => setShowCalorieDatePicker(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                      transition={{ duration: 0.18, ease: "easeOut" }}
+                      className="fixed z-[1000] rounded-[20px] shadow-2xl border border-[#e0ede6] overflow-hidden"
+                      style={{ background: "linear-gradient(145deg, #ffffff 0%, #f4fbf7 100%)", width: 280, top: calorieDatePickerPos.top, right: calorieDatePickerPos.right }}
+                    >
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-[#edf5f0]">
+                        <button
+                          onClick={() => setCalorieDatePickerMonth((prev) => {
+                            const d = new Date(prev.year, prev.month - 1);
+                            return { year: d.getFullYear(), month: d.getMonth() };
+                          })}
+                          className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-[#e8f4ed] transition-colors text-[#5B8C6F]"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
+                        </button>
+                        <span className="text-[13px] font-bold text-[#1a2e22]">
+                          {new Date(calorieDatePickerMonth.year, calorieDatePickerMonth.month).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                        </span>
+                        <button
+                          onClick={() => setCalorieDatePickerMonth((prev) => {
+                            const d = new Date(prev.year, prev.month + 1);
+                            const now = new Date();
+                            if (d.getFullYear() > now.getFullYear() || (d.getFullYear() === now.getFullYear() && d.getMonth() > now.getMonth())) return prev;
+                            return { year: d.getFullYear(), month: d.getMonth() };
+                          })}
+                          className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-[#e8f4ed] transition-colors text-[#5B8C6F]"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                        </button>
+                      </div>
+                      <div className="grid grid-cols-7 px-3 pt-2 pb-1">
+                        {["Mo","Tu","We","Th","Fr","Sa","Su"].map((d) => (
+                          <div key={d} className="text-center text-[9px] font-black text-[#a0bfae] uppercase tracking-wider py-1">{d}</div>
+                        ))}
+                      </div>
+                      <div className="grid grid-cols-7 px-3 pb-3 gap-y-0.5">
+                        {(() => {
+                          const { year, month } = calorieDatePickerMonth;
+                          const firstDay = new Date(year, month, 1).getDay();
+                          const offset = firstDay === 0 ? 6 : firstDay - 1;
+                          const daysInMonth = new Date(year, month + 1, 0).getDate();
+                          const today = new Date().toISOString().split("T")[0];
+                          const cells = [];
+                          for (let i = 0; i < offset; i++) cells.push(<div key={`e${i}`} />);
+                          for (let d = 1; d <= daysInMonth; d++) {
+                            const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+                            const isFuture = dateStr > today;
+                            const isSelected = dateStr === selectedCalorieDate;
+                            const isToday = dateStr === today;
+                            cells.push(
+                              <button
+                                key={d}
+                                disabled={isFuture}
+                                onClick={() => handleCalorieDateChange(dateStr)}
+                                className={`w-full aspect-square rounded-full text-[12px] font-semibold flex items-center justify-center transition-all
+                                  ${isFuture ? "text-[#d0d0d0] cursor-not-allowed" : "hover:bg-[#e8f4ed] cursor-pointer"}
+                                  ${isSelected ? "text-white font-bold shadow-md" : isToday ? "text-[#3d7a5e] font-black" : "text-[#2a2a2a]"}
+                                `}
+                                style={isSelected ? { background: "linear-gradient(135deg, #059669 0%, #10b981 100%)" } : isToday && !isSelected ? { boxShadow: "inset 0 0 0 1.5px #5B8C6F" } : {}}
+                              >
+                                {d}
+                              </button>
+                            );
+                          }
+                          return cells;
+                        })()}
+                      </div>
+                      <div className="flex items-center justify-between px-4 py-2.5 border-t border-[#edf5f0]">
+                        <button onClick={() => handleCalorieDateChange(new Date().toISOString().split("T")[0])} className="text-[11px] font-bold text-[#5B8C6F] hover:text-[#3d7a5e] transition-colors">Today</button>
+                        <button onClick={() => setShowCalorieDatePicker(false)} className="text-[11px] font-bold text-[#a0a0a0] hover:text-[#5B8C6F] transition-colors">Close</button>
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>,
+              document.body)}
             </div>
 
             {/* Dashed Gauge */}
             <div className="flex justify-center mb-0 mt-2 relative z-10 w-full overflow-visible">
-              <DashedGauge
-                value={
-                  nutritionData?.totalCalories ||
-                  dashboardData?.nutritionData?.totalCalories ||
-                  0
-                }
-                max={
-                  user?.nutritionGoal?.calorieGoal ||
-                  nutritionData?.calorieGoal ||
-                  2000
-                }
-                mode={nutrientMode}
-              />
+              {calorieDateLoading ? (
+                <div className="flex items-center justify-center h-[180px]">
+                  <div className="w-8 h-8 border-2 border-[#5B8C6F] border-t-transparent rounded-full animate-spin" />
+                </div>
+              ) : (
+                <DashedGauge
+                  value={activeNutritionData?.totalCalories || 0}
+                  max={user?.nutritionGoal?.calorieGoal || activeNutritionData?.calorieGoal || 2000}
+                  mode={nutrientMode}
+                />
+              )}
             </div>
 
             {/* Protein / Carbs / Fats Row - Unified Card - Balanced */}
@@ -1701,7 +1897,7 @@ export default function DashboardEnhanced() {
                 />
                 <div className="flex flex-col">
                   <span className="text-[11px] font-black text-[#1a1a1a] leading-none">
-                    {Math.round(nutritionData?.totalProtein || 0)}g
+                    {Math.round(activeNutritionData?.totalProtein || 0)}g
                   </span>
                   <span className="text-[7px] font-bold text-[#a0a0a0] uppercase tracking-tighter">
                     Protein
@@ -1719,7 +1915,7 @@ export default function DashboardEnhanced() {
                 />
                 <div className="flex flex-col">
                   <span className="text-[11px] font-black text-[#1a1a1a] leading-none">
-                    {Math.round(nutritionData?.totalCarbs || 0)}g
+                    {Math.round(activeNutritionData?.totalCarbs || 0)}g
                   </span>
                   <span className="text-[7px] font-bold text-[#a0a0a0] uppercase tracking-tighter">
                     Carbs
@@ -1737,7 +1933,7 @@ export default function DashboardEnhanced() {
                 />
                 <div className="flex flex-col">
                   <span className="text-[11px] font-black text-[#1a1a1a] leading-none">
-                    {Math.round(nutritionData?.totalFats || 0)}g
+                    {Math.round(activeNutritionData?.totalFats || 0)}g
                   </span>
                   <span className="text-[7px] font-bold text-[#a0a0a0] uppercase tracking-tighter">
                     Fats
@@ -1782,49 +1978,49 @@ export default function DashboardEnhanced() {
                       const micros = [
                         {
                           label: "Fiber",
-                          value: nutritionData?.totalFiber || 0,
+                          value: activeNutritionData?.totalFiber || 0,
                           target: 30,
                           unit: "g",
                           color: "#10b981",
                         },
                         {
                           label: "Iron",
-                          value: nutritionData?.totalIron || 0,
+                          value: activeNutritionData?.totalIron || 0,
                           target: 18,
                           unit: "mg",
                           color: "#F59E0B",
                         },
                         {
                           label: "Vitamin C",
-                          value: nutritionData?.totalVitaminC || 0,
+                          value: activeNutritionData?.totalVitaminC || 0,
                           target: 90,
                           unit: "mg",
                           color: "#FF6B6B",
                         },
                         {
                           label: "Vitamin A",
-                          value: nutritionData?.totalVitaminA || 0,
+                          value: activeNutritionData?.totalVitaminA || 0,
                           target: 900,
                           unit: "mcg",
                           color: "#8B5CF6",
                         },
                         {
                           label: "Calcium",
-                          value: nutritionData?.totalCalcium || 0,
+                          value: activeNutritionData?.totalCalcium || 0,
                           target: 1000,
                           unit: "mg",
                           color: "#3B82F6",
                         },
                         {
                           label: "Vitamin D",
-                          value: nutritionData?.totalVitaminD || 0,
+                          value: activeNutritionData?.totalVitaminD || 0,
                           target: 20,
                           unit: "mcg",
                           color: "#F59E0B",
                         },
                         {
                           label: "B12",
-                          value: nutritionData?.totalVitaminB12 || 0,
+                          value: activeNutritionData?.totalVitaminB12 || 0,
                           target: 2.4,
                           unit: "mcg",
                           color: "#EF4444",
@@ -1888,30 +2084,131 @@ export default function DashboardEnhanced() {
             <div className="flex items-center justify-between px-5 pt-6 pb-4 w-full">
               <h2
                 className="text-[#1a1a1a] font-semibold text-base"
-                style={{
-                  letterSpacing: "-0.43px",
-                  margin: 0,
-                }}
+                style={{ letterSpacing: "-0.43px", margin: 0 }}
               >
-                Today's Diet
+                {selectedDietDate === new Date().toISOString().split("T")[0] ? "Today's Diet" : "Diet Plan"}
               </h2>
-              <div className="bg-[#FAFBF8] rounded-full border border-[#f0f0ea] flex items-center gap-1.5 shadow-sm px-3 py-1.5">
+              <button
+                ref={dietDateBtnRef}
+                onClick={() => {
+                  const d = new Date(selectedDietDate + "T12:00:00");
+                  setDietDatePickerMonth({ year: d.getFullYear(), month: d.getMonth() });
+                  if (dietDateBtnRef.current) {
+                    const rect = dietDateBtnRef.current.getBoundingClientRect();
+                    setDietDatePickerPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
+                  }
+                  setShowDietDatePicker((v) => !v);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[#d4e9de] bg-gradient-to-r from-[#eef7f2] to-[#f5fbf7] shadow-sm hover:shadow-md transition-all"
+              >
                 <Calendar className="w-3.5 h-3.5 text-[#5B8C6F]" />
-                <span
-                  style={{
-                    fontWeight: "600",
-                    fontSize: "11px",
-                    color: "#5B8C6F",
-                  }}
-                >
-                  {new Date().toLocaleDateString("en-GB", {
-                    weekday: "short",
-                    day: "numeric",
-                    month: "long",
-                    year: "numeric",
+                <span className="text-[11px] font-semibold text-[#3d7a5e]">
+                  {new Date(selectedDietDate + "T12:00:00").toLocaleDateString("en-GB", {
+                    weekday: "short", day: "numeric", month: "short", year: "numeric",
                   })}
                 </span>
-              </div>
+                <svg className={`w-3 h-3 text-[#5B8C6F] transition-transform ${showDietDatePicker ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+              </button>
+
+              {/* Premium Custom Date Picker Dropdown - portal to escape card stacking context */}
+              {createPortal(
+              <AnimatePresence>
+                {showDietDatePicker && (
+                  <>
+                    <div className="fixed inset-0 z-[999]" onClick={() => setShowDietDatePicker(false)} />
+                    <motion.div
+                      initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                      transition={{ duration: 0.18, ease: "easeOut" }}
+                      className="fixed z-[1000] rounded-[20px] shadow-2xl border border-[#e0ede6] overflow-hidden"
+                      style={{ background: "linear-gradient(145deg, #ffffff 0%, #f4fbf7 100%)", width: 280, top: dietDatePickerPos.top, right: dietDatePickerPos.right }}
+                    >
+                      {/* Month Nav */}
+                      <div className="flex items-center justify-between px-4 py-3 border-b border-[#edf5f0]">
+                        <button
+                          onClick={() => setDietDatePickerMonth((prev) => {
+                            const d = new Date(prev.year, prev.month - 1);
+                            return { year: d.getFullYear(), month: d.getMonth() };
+                          })}
+                          className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-[#e8f4ed] transition-colors text-[#5B8C6F]"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
+                        </button>
+                        <span className="text-[13px] font-bold text-[#1a2e22]">
+                          {new Date(dietDatePickerMonth.year, dietDatePickerMonth.month).toLocaleDateString("en-US", { month: "long", year: "numeric" })}
+                        </span>
+                        <button
+                          onClick={() => setDietDatePickerMonth((prev) => {
+                            const d = new Date(prev.year, prev.month + 1);
+                            const now = new Date();
+                            if (d.getFullYear() > now.getFullYear() || (d.getFullYear() === now.getFullYear() && d.getMonth() > now.getMonth())) return prev;
+                            return { year: d.getFullYear(), month: d.getMonth() };
+                          })}
+                          className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-[#e8f4ed] transition-colors text-[#5B8C6F]"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                        </button>
+                      </div>
+                      {/* Day Headers */}
+                      <div className="grid grid-cols-7 px-3 pt-2 pb-1">
+                        {["Mo","Tu","We","Th","Fr","Sa","Su"].map((d) => (
+                          <div key={d} className="text-center text-[9px] font-black text-[#a0bfae] uppercase tracking-wider py-1">{d}</div>
+                        ))}
+                      </div>
+                      {/* Days Grid */}
+                      <div className="grid grid-cols-7 px-3 pb-3 gap-y-0.5">
+                        {(() => {
+                          const { year, month } = dietDatePickerMonth;
+                          const firstDay = new Date(year, month, 1).getDay();
+                          const offset = firstDay === 0 ? 6 : firstDay - 1;
+                          const daysInMonth = new Date(year, month + 1, 0).getDate();
+                          const today = new Date().toISOString().split("T")[0];
+                          const cells = [];
+                          for (let i = 0; i < offset; i++) cells.push(<div key={`e${i}`} />);
+                          for (let d = 1; d <= daysInMonth; d++) {
+                            const dateStr = `${year}-${String(month + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+                            const isFuture = dateStr > today;
+                            const isSelected = dateStr === selectedDietDate;
+                            const isToday = dateStr === today;
+                            cells.push(
+                              <button
+                                key={d}
+                                disabled={isFuture}
+                                onClick={() => handleDietDateChange(dateStr)}
+                                className={`relative w-full aspect-square rounded-full text-[12px] font-semibold flex items-center justify-center transition-all
+                                  ${isFuture ? "text-[#d0d0d0] cursor-not-allowed" : "hover:bg-[#e8f4ed] cursor-pointer"}
+                                  ${isSelected ? "text-white font-bold shadow-md" : isToday ? "text-[#3d7a5e] font-black" : "text-[#2a2a2a]"}
+                                `}
+                                style={isSelected ? { background: "linear-gradient(135deg, #059669 0%, #10b981 100%)" } : isToday && !isSelected ? { boxShadow: "inset 0 0 0 1.5px #5B8C6F" } : {}}
+                              >
+                                {d}
+                              </button>
+                            );
+                          }
+                          return cells;
+                        })()}
+                      </div>
+                      {/* Footer */}
+                      <div className="flex items-center justify-between px-4 py-2.5 border-t border-[#edf5f0]">
+                        <button
+                          onClick={() => handleDietDateChange(new Date().toISOString().split("T")[0])}
+                          className="text-[11px] font-bold text-[#5B8C6F] hover:text-[#3d7a5e] transition-colors"
+                        >
+                          Today
+                        </button>
+                        <button
+                          onClick={() => setShowDietDatePicker(false)}
+                          className="text-[11px] font-bold text-[#a0a0a0] hover:text-[#5B8C6F] transition-colors"
+                        >
+                          Close
+                        </button>
+                      </div>
+                    </motion.div>
+                  </>
+                )}
+              </AnimatePresence>,
+              document.body)}
             </div>
 
             {/* Meal Tabs Row */}
@@ -1925,7 +2222,7 @@ export default function DashboardEnhanced() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveMealTab(tab.id)}
-                    className={`transition-all whitespace-nowrap flex-1 h-[36px] rounded-full font-bold text-[11px] uppercase tracking-wider transition-all ${
+                    className={`transition-all whitespace-nowrap flex-1 h-[36px] rounded-full font-bold text-[11px] uppercase tracking-wider ${
                       activeMealTab === tab.id
                         ? "text-white border-transparent"
                         : "bg-white text-[#8a8a8a] border border-[#f0f0ea] hover:bg-[#E8F3EE]"

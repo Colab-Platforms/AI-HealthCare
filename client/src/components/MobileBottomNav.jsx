@@ -33,7 +33,7 @@ export default function MobileBottomNav() {
   // Determine the best path for 'Reports' tab
   // If there's an active processing report, go there; otherwise go to upload
   const processingReportId = dashboardData?.processingReport?._id;
-  const reportsPath = processingReportId ? `/reports/${processingReportId}` : '/upload';
+  const reportsPath = processingReportId ? `/reports/${processingReportId}` : '/reports';
 
   // Check if modal is open by looking for modal elements
   useEffect(() => {
