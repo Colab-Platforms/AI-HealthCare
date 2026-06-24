@@ -142,7 +142,8 @@ export const healthService = {
   getMetricInfo: (data) => api.post('health/metric-info', data),
   getReportComparison: () => api.get('health/report-comparison'),
   syncDailyProgress: (data) => api.post('health/daily-progress', data),
-  getDailyProgress: (date) => api.get(`health/daily-progress/${date}`)
+  getDailyProgress: (date) => api.get(`health/daily-progress/${date}`),
+  getTrends: (params) => api.get('health/trends', { params })
 };
 
 export const authService = {

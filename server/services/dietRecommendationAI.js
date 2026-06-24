@@ -27,8 +27,8 @@ class DietRecommendationAI {
     };
 
     for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-      // Fallback to Haiku after 2 failed attempts for better availability
-      const currentModel = (attempt >= 2 && !modelOverride) ? CLAUDE_HAIKU_MODEL : primaryModel;
+      // Use Sonnet for all attempts; Haiku only as absolute last resort
+      const currentModel = (attempt === MAX_RETRIES - 1 && !modelOverride) ? CLAUDE_HAIKU_MODEL : (modelOverride || primaryModel);
       
       console.log(`🔄 DietAI | Model: ${currentModel} | Attempt: ${attempt + 1}/${MAX_RETRIES} | Tokens: ${payload.max_tokens}`);
 
@@ -155,7 +155,7 @@ REQUIREMENTS:
 1. CRITICAL CALORIE RULE: Each breakfast+lunch+dinner COMBO (same array index across all three meals) MUST total exactly ${nutritionGoals?.dailyCalories || 2000} kcal ± 50 kcal. So breakfast[0].calories + lunch[0].calories + dinner[0].calories = target. Same for index 1, 2, 3, 4, 5, 6. NEVER let any single day's combo exceed ${nutritionGoals?.dailyCalories || 2000} kcal.
 2. PRECISE PORTIONS: Use measurements like "1.5 Bowl (250g)", "2 Medium Roti (80g)", etc. Include both visual quantity AND approximate weight.
 3. OUTPUT EXACTLY 7 unique meal options per meal type (breakfast, lunch, dinner) — all 7 must be completely different dishes.
-4. STRICTLY FOLLOW user food preferences above. Prioritize their favorites. NEVER suggest foods from their "MUST AVOID" list.
+4. MANDATORY PREFERENCE RULE: If user listed Breakfast Favorites, minimum 5 out of 7 breakfast options MUST be built around those exact ingredients (e.g. if user likes "Toast" → "Masala Toast with Egg", "Peanut Butter Toast", "Avocado Toast", "Toast with Dal", "French Toast" — all count). Same rule for Lunch and Dinner favorites — minimum 5 out of 7 must feature them. If user listed only 1-2 items, repeat them across different preparations to meet the 5/7 minimum. General Preferred Foods must appear across at least 5 days total. NEVER suggest foods from their "MUST AVOID" list.
 5. If alcohol intake is elevated per user log, prefer lighter dinners and fewer empty calories — no medical claims.
 6. ${elevatedNote} ${diabeticAlcoholNote}
 7. ${promptExtension}
@@ -167,10 +167,18 @@ JSON output ONLY. No markdown. Exact calorie math is mandatory.`;
         max_tokens: 8000,
         system: "Expert Clinical Dietitian. Generate varied, scientifically accurate 7-day meal plans based on user's region, country, and food preferences. Each day must have a completely different meal. Never repeat dishes. Strict calorie compliance per day combo is mandatory.",
         messages: [{ role: 'user', content: prompt }],
-        temperature: 0.7 // Increased for variety
+        temperature: 0.7
       });
       const jsonMatch = aiResponse.match(/\{[\s\S]*\}/);
-      return jsonMatch ? robustJsonParse(jsonMatch[0]) : null;
+      if (!jsonMatch) return null;
+      const parsed = robustJsonParse(jsonMatch[0]);
+      // Warn in logs if AI returned fewer than 7 items (helps diagnose future issues)
+      if (parsed?.mealPlan) {
+        const counts = ['breakfast', 'lunch', 'dinner'].map(m => (parsed.mealPlan[m] || []).length);
+        const minCount = Math.min(...counts);
+        if (minCount < 7) console.warn(`[DietAI] Warning: AI returned only ${minCount} items per meal type (expected 7). Model: check logs.`);
+      }
+      return parsed;
     } catch (error) { throw error; }
   }
 

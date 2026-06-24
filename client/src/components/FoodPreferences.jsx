@@ -137,14 +137,32 @@ export default function FoodPreferences({ onClose, onGenerate, mode = 'save' }) 
 
   const savePreferences = async () => {
     try {
+      let finalPreferences = JSON.parse(JSON.stringify(preferences));
+
       // Automatically add current input value if not empty before saving
       const currentInput = inputValues[currentCategory];
       if (currentInput && currentInput.trim()) {
-        addItem(currentCategory);
+        const value = currentInput.trim();
+        if (activeTab === 'general') {
+          if (!finalPreferences[currentCategory]) finalPreferences[currentCategory] = [];
+          if (!finalPreferences[currentCategory].includes(value)) {
+            finalPreferences[currentCategory].push(value);
+          }
+        } else {
+          if (!finalPreferences.mealPreferences) finalPreferences.mealPreferences = {};
+          if (!finalPreferences.mealPreferences[currentCategory]) finalPreferences.mealPreferences[currentCategory] = [];
+          if (!finalPreferences.mealPreferences[currentCategory].includes(value)) {
+            finalPreferences.mealPreferences[currentCategory].push(value);
+          }
+        }
+        
+        // Also update local state so UI reflects it immediately
+        setPreferences(finalPreferences);
+        setInputValues(prev => ({ ...prev, [currentCategory]: '' }));
       }
 
-      console.log('Saving preferences:', preferences);
-      const response = await api.post('users/food-preferences', preferences);
+      console.log('Saving preferences:', finalPreferences);
+      const response = await api.post('users/food-preferences', finalPreferences);
       if (response.data.success) {
         toast.success('Preferences saved!');
         setHasChanges(false);

@@ -24,7 +24,8 @@ const {
   saveSmokeLog,
   getSmokeLog,
   saveAlcoholLog,
-  getAlcoholLog
+  getAlcoholLog,
+  getHealthTrends
 } = require('../controllers/healthController');
 const { protect } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -65,5 +66,8 @@ router.get('/health-dna', protect, aiLimiter, getHealthDNA);
 
 // AI Vitals Insights
 router.get('/vitals-insights/:metricType', protect, aiLimiter, getVitalsInsights);
+
+// Health Trends
+router.get('/trends', protect, apiLimiter, getHealthTrends);
 
 module.exports = router;

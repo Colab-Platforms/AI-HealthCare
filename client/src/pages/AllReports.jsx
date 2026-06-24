@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { healthService } from "../services/api";
 import api from "../services/api";
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartTooltip, ResponsiveContainer } from 'recharts';
 import { useData } from "../context/DataContext";
 import {
   FileText, ArrowLeft, Calendar, Zap, Activity, Filter, Search,
@@ -104,6 +105,7 @@ export default function AllReports() {
   const [totalPages, setTotalPages] = useState(1);
   const [totalDocs, setTotalDocs] = useState(0);
   const [globalStats, setGlobalStats] = useState({ total: 0, aiCount: 0, vaultCount: 0, recent: 0 });
+  const [healthScoreTrend, setHealthScoreTrend] = useState([]);
   const PAGE_SIZE = 10;
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(true);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
@@ -216,6 +218,16 @@ export default function AllReports() {
   useEffect(() => {
     window.scrollTo(0, 0);
     fetchDocuments(1);
+    healthService.getTrends({}).then(({ data }) => {
+      if (data?.healthScoreTrend?.length > 1) {
+        setHealthScoreTrend(data.healthScoreTrend.map(d => ({
+          date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          score: d.score,
+          reportId: d.reportId,
+          reportType: d.reportType
+        })));
+      }
+    }).catch(() => {});
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -687,6 +699,45 @@ export default function AllReports() {
             </div>
           ))}
         </div>
+
+        {/* Health Score Trend Chart */}
+        {healthScoreTrend.length > 1 && (
+          <div className="liquid-glass-inner rounded-[24px] p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-[13px] font-black text-[#1a2138] uppercase tracking-widest">Health Score Trend</h2>
+                <p className="text-[10px] text-slate-500 font-bold mt-0.5">Your AI health score across all reports</p>
+              </div>
+              <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-xl border border-emerald-100">
+                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                <span className="text-[10px] font-black text-emerald-700 uppercase tracking-wider">{healthScoreTrend.length} Reports</span>
+              </div>
+            </div>
+            <ResponsiveContainer width="100%" height={160}>
+              <AreaChart data={healthScoreTrend} onClick={(e) => {
+                if (e?.activePayload?.[0]?.payload?.reportId) {
+                  navigate(`/reports/${e.activePayload[0].payload.reportId}`);
+                }
+              }} style={{ cursor: 'pointer' }}>
+                <defs>
+                  <linearGradient id="allReportsGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#5B8C6F" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#5B8C6F" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+                <XAxis dataKey="date" tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} width={30} />
+                <RechartTooltip
+                  contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 11, fontWeight: 700 }}
+                  formatter={(v, _, props) => [`${v}/100 · ${props.payload.reportType}`, 'Health Score']}
+                />
+                <Area type="monotone" dataKey="score" stroke="#5B8C6F" strokeWidth={2.5} fill="url(#allReportsGrad)" dot={{ fill: '#5B8C6F', strokeWidth: 0, r: 4 }} activeDot={{ r: 6 }} />
+              </AreaChart>
+            </ResponsiveContainer>
+            <p className="text-[9px] text-slate-400 font-bold text-center mt-2">Click on any point to view that report</p>
+          </div>
+        )}
 
         {/* Search + View + Filter bar */}
         <div className="w-full liquid-glass p-3 rounded-[24px] flex items-center gap-3 flex-wrap md:flex-nowrap">

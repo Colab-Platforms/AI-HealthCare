@@ -2238,6 +2238,17 @@ export default function DashboardEnhanced() {
               </div>
             </div>
 
+            {/* Fallback Banner */}
+            {dietPlan?.isFallback && (
+              <div className="mx-5 mb-2 px-4 py-3 rounded-2xl flex items-start gap-3" style={{ background: "rgba(251,191,36,0.12)", border: "1px solid rgba(251,191,36,0.35)" }}>
+                <span className="text-base mt-0.5"></span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[11px] font-bold text-[#92400e] leading-snug">Server busy — showing your previous plan.</p>
+                  <p className="text-[10px] text-[#b45309] mt-0.5 leading-snug">New preferences will apply next time, or <button onClick={() => navigate("/diet-plan")} className="underline font-bold hover:text-[#92400e] transition-colors">retry now</button>.</p>
+                </div>
+              </div>
+            )}
+
             {/* Meal Content Area */}
             <div className="flex-1 flex flex-col min-h-[220px] w-full">
               {!dietPlan || !dietPlan.mealPlan ? (

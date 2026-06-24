@@ -316,7 +316,24 @@ async function processDietInternal(userId, dietPlanId, userData, promptEx) {
       if (!aiDietPlan || typeof aiDietPlan !== 'object') throw new Error('Invalid AI response');
     } catch (aiError) {
       console.error('[BG-DIET] AI Error:', aiError.message);
-      await PersonalizedDietPlan.findByIdAndUpdate(dietPlanId, { status: 'failed' });
+
+      // Fallback: reactivate last good plan instead of leaving user empty-handed
+      const lastGoodPlan = await PersonalizedDietPlan.findOne({
+        userId,
+        status: 'completed',
+        _id: { $ne: dietPlanId }
+      }).sort({ generatedAt: -1 });
+
+      if (lastGoodPlan) {
+        console.log(`[BG-DIET] Fallback: reactivating plan ${lastGoodPlan._id}`);
+        await PersonalizedDietPlan.findByIdAndUpdate(lastGoodPlan._id, {
+          isActive: true,
+          isFallback: true,
+          validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+        });
+      }
+
+      await PersonalizedDietPlan.findByIdAndUpdate(dietPlanId, { status: 'failed', isActive: false });
       return;
     }
 

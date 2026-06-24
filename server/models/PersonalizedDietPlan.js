@@ -153,6 +153,10 @@ const personalizedDietPlanSchema = new mongoose.Schema({
     type: String,
     enum: ['pending', 'generating', 'completed', 'failed'],
     default: 'completed'
+  },
+  isFallback: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true,

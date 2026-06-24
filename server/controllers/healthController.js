@@ -472,6 +472,92 @@ exports.getHealthHistory = async (req, res) => {
   }
 };
 
+exports.getHealthTrends = async (req, res) => {
+  try {
+    const userId = req.user._id.toString();
+    const { reportType, metric } = req.query;
+
+    const cacheKey = `trends:${userId}:${reportType || 'all'}`;
+    const cached = await cache.get(cacheKey);
+    if (cached) {
+      // If metric requested, filter from cached full payload
+      if (metric && cached.metricTrends) {
+        const normalised = metric.toLowerCase().trim();
+        const key = Object.keys(cached.metricTrends).find(k => k.toLowerCase() === normalised);
+        return res.json({ metricTrend: key ? cached.metricTrends[key] : [], availableMetrics: cached.availableMetrics, healthScoreTrend: cached.healthScoreTrend });
+      }
+      return res.json(cached);
+    }
+
+    const filter = { user: req.user._id, status: 'completed' };
+    if (reportType) filter.reportType = reportType;
+
+    const reports = await HealthReport.find(filter)
+      .select('reportType createdAt aiAnalysis.healthScore aiAnalysis.metrics')
+      .sort({ createdAt: 1 })
+      .limit(20)
+      .lean();
+
+    if (!reports.length) {
+      return res.json({ healthScoreTrend: [], metricTrends: {}, availableMetrics: [] });
+    }
+
+    // Health score over time
+    const healthScoreTrend = reports.map(r => ({
+      date: r.createdAt,
+      score: r.aiAnalysis?.healthScore || 0,
+      reportId: r._id,
+      reportType: r.reportType
+    }));
+
+    // Collect all metric keys across all reports (case-insensitive dedup)
+    const metricKeyMap = {}; // normalised -> canonical display name
+    reports.forEach(r => {
+      const metrics = r.aiAnalysis?.metrics || {};
+      Object.keys(metrics).forEach(k => {
+        const norm = k.toLowerCase().trim();
+        if (!metricKeyMap[norm]) metricKeyMap[norm] = k;
+      });
+    });
+    const availableMetrics = Object.values(metricKeyMap).sort();
+
+    // Build per-metric time series
+    const metricTrends = {};
+    Object.entries(metricKeyMap).forEach(([norm, canonical]) => {
+      const series = [];
+      reports.forEach(r => {
+        const metrics = r.aiAnalysis?.metrics || {};
+        const matchKey = Object.keys(metrics).find(k => k.toLowerCase().trim() === norm);
+        if (matchKey) {
+          const m = metrics[matchKey];
+          series.push({
+            date: r.createdAt,
+            value: parseFloat(m.value) || m.value,
+            unit: m.unit || '',
+            status: m.status || 'normal',
+            normalRange: m.normalRange || '',
+            reportId: r._id,
+            healthScore: r.aiAnalysis?.healthScore || 0
+          });
+        }
+      });
+      if (series.length > 0) metricTrends[canonical] = series;
+    });
+
+    const payload = { healthScoreTrend, metricTrends, availableMetrics };
+    await cache.set(cacheKey, payload, 5 * 60); // 5 min TTL
+
+    if (metric) {
+      const normalised = metric.toLowerCase().trim();
+      const key = Object.keys(metricTrends).find(k => k.toLowerCase() === normalised);
+      return res.json({ metricTrend: key ? metricTrends[key] : [], availableMetrics, healthScoreTrend });
+    }
+    res.json(payload);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 exports.getDashboardData = async (req, res) => {
   try {
     const userId = req.user._id.toString();
