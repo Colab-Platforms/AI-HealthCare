@@ -655,25 +655,17 @@ export default function AllReports() {
       <div className="absolute top-0 left-0 w-[500px] h-[500px] bg-emerald-300/10 rounded-full blur-[120px] -translate-x-1/2 -translate-y-1/2 pointer-events-none" />
       <div className="absolute bottom-0 right-0 w-[400px] h-[400px] bg-emerald-200/10 rounded-full blur-[100px] translate-x-1/2 pointer-events-none" />
 
-      <div className="px-4 md:px-8 pt-6 max-w-7xl mx-auto relative z-10 space-y-6">
+      <div className="px-4 md:px-6 lg:px-10 pt-6 relative z-10 space-y-6">
 
         {/* Header */}
-        <div className="flex items-end justify-between gap-4">
-          <div className="flex flex-col gap-4">
-            <button
-              onClick={() => navigate("/dashboard")}
-              className="w-10 h-10 liquid-glass-inner rounded-2xl flex items-center justify-center text-[#1a1a1a] hover:scale-105 transition-all self-start"
-            >
-              <ArrowLeft size={18} strokeWidth={2.5} />
-            </button>
-            <div>
-              <h1 className="text-[32px] font-black text-[#1a2138] dark:text-white tracking-tight leading-none uppercase">
-                Medical Records
-              </h1>
-              <p className="text-[14px] text-[#64748b] font-bold mt-1">
-                Your complete health documentation
-              </p>
-            </div>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <h1 className="text-[28px] md:text-[36px] font-black text-[#1a2138] tracking-tight leading-none uppercase">
+              Medical Records
+            </h1>
+            <p className="text-[13px] text-[#64748b] font-bold mt-1">
+              Your complete health documentation
+            </p>
           </div>
           <button
             onClick={() => setIsUploadOpen(true)}
@@ -700,44 +692,142 @@ export default function AllReports() {
           ))}
         </div>
 
-        {/* Health Score Trend Chart */}
-        {healthScoreTrend.length > 1 && (
-          <div className="liquid-glass-inner rounded-[24px] p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-[13px] font-black text-[#1a2138] uppercase tracking-widest">Health Score Trend</h2>
-                <p className="text-[10px] text-slate-500 font-bold mt-0.5">Your AI health score across all reports</p>
+        {/* Health Score Trend Section */}
+        {healthScoreTrend.length > 1 && (() => {
+          const latest = healthScoreTrend[healthScoreTrend.length - 1];
+          const first = healthScoreTrend[0];
+          const prev = healthScoreTrend[healthScoreTrend.length - 2];
+          const overallChange = latest.score - first.score;
+          const recentChange = latest.score - prev.score;
+          const overallPct = first.score > 0 ? Math.abs(((overallChange / first.score) * 100).toFixed(1)) : 0;
+          const improved = healthScoreTrend.filter((d, i) => i > 0 && d.score > healthScoreTrend[i-1].score);
+          const declined = healthScoreTrend.filter((d, i) => i > 0 && d.score < healthScoreTrend[i-1].score);
+          const stable   = healthScoreTrend.filter((d, i) => i > 0 && d.score === healthScoreTrend[i-1].score);
+          const bestScore = Math.max(...healthScoreTrend.map(d => d.score));
+          const lowestScore = Math.min(...healthScoreTrend.map(d => d.score));
+
+          return (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+
+              {/* Left — bar chart */}
+              <div className="lg:col-span-2 liquid-glass-inner rounded-[24px] p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <div>
+                    <h2 className="text-[13px] font-black text-[#1a2138] uppercase tracking-widest">Health Score Trend</h2>
+                    <p className="text-[10px] text-slate-500 font-bold mt-0.5">Tap any bar to open that report</p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <span className="text-2xl font-black text-[#1a2138] leading-none">{latest.score}</span>
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider block">Latest</span>
+                    </div>
+                    <div className={`flex items-center gap-1 px-3 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-wider ${recentChange >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
+                      {recentChange >= 0 ? '↑' : '↓'} {Math.abs(recentChange)} pts
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-end gap-1.5 sm:gap-2 w-full" style={{ height: 150 }}>
+                  {healthScoreTrend.map((d, i) => {
+                    const barH = Math.max(14, (d.score / 100) * 110);
+                    const prevD = healthScoreTrend[i - 1];
+                    const chg = prevD ? d.score - prevD.score : 0;
+                    const isLast = i === healthScoreTrend.length - 1;
+                    return (
+                      <div key={i} className="flex-1 flex flex-col items-center gap-0.5 group cursor-pointer select-none"
+                        onClick={() => d.reportId && navigate(`/reports/${d.reportId}`)}
+                        title={`${d.reportType} · ${d.score}/100 · ${d.date}`}
+                      >
+                        <span className={`text-[9px] font-black leading-none ${isLast ? 'text-[#5B8C6F]' : 'text-slate-400 group-hover:text-[#5B8C6F]'}`}>{d.score}</span>
+                        {i > 0 && chg !== 0 && (
+                          <span className={`text-[8px] font-black leading-none ${chg > 0 ? 'text-emerald-500' : 'text-red-400'}`}>
+                            {chg > 0 ? `+${chg}` : chg}
+                          </span>
+                        )}
+                        <div className="w-full flex items-end" style={{ height: 110, marginTop: (i === 0 || chg === 0) ? 14 : 0 }}>
+                          <div className={`w-full rounded-t-xl transition-all duration-300 group-hover:opacity-75 ${
+                            isLast ? 'bg-[#5B8C6F] shadow-md shadow-[#5B8C6F]/20'
+                            : chg > 0 ? 'bg-emerald-300'
+                            : chg < 0 ? 'bg-red-300'
+                            : 'bg-slate-200'
+                          }`} style={{ height: barH }} />
+                        </div>
+                        <span className={`text-[8px] font-bold truncate w-full text-center mt-1 ${isLast ? 'text-[#5B8C6F]' : 'text-slate-400'}`}>{d.date}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-center gap-4 mt-4 pt-3 border-t border-slate-100/80">
+                  {[['bg-emerald-300','Improved'],['bg-red-300','Declined'],['bg-slate-200','No Change'],['bg-[#5B8C6F]','Latest']].map(([bg, lbl]) => (
+                    <div key={lbl} className="flex items-center gap-1.5">
+                      <div className={`w-2.5 h-2.5 rounded-sm ${bg}`} />
+                      <span className="text-[9px] font-black text-slate-400 uppercase tracking-wider hidden sm:block">{lbl}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-50 rounded-xl border border-emerald-100">
-                <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                <span className="text-[10px] font-black text-emerald-700 uppercase tracking-wider">{healthScoreTrend.length} Reports</span>
+
+              {/* Right — insight cards */}
+              <div className="flex flex-col gap-3">
+
+                {/* Overall progress */}
+                <div className={`liquid-glass-inner rounded-[24px] p-5 ${overallChange >= 0 ? 'ring-1 ring-emerald-200/60' : 'ring-1 ring-red-200/60'}`}>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">Overall Progress</p>
+                  <div className="flex items-end gap-2 mb-2">
+                    <span className={`text-4xl font-black leading-none ${overallChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                      {overallChange >= 0 ? '+' : ''}{overallChange}
+                    </span>
+                    <span className="text-[11px] font-black text-slate-400 mb-1">pts</span>
+                  </div>
+                  <div className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-black ${overallChange >= 0 ? 'bg-emerald-50 text-emerald-700' : 'bg-red-50 text-red-600'}`}>
+                    {overallChange >= 0 ? '↑' : '↓'} {overallPct}% since first report
+                  </div>
+                  <p className="text-[10px] text-slate-500 font-bold mt-3">
+                    {first.score} → {latest.score} across {healthScoreTrend.length} reports
+                  </p>
+                </div>
+
+                {/* Breakdown */}
+                <div className="liquid-glass-inner rounded-[24px] p-5">
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-3">Report Breakdown</p>
+                  <div className="space-y-2.5">
+                    {[
+                      { color: 'bg-emerald-400', label: 'Improved', count: improved.length, textColor: 'text-emerald-600' },
+                      { color: 'bg-red-400',     label: 'Declined', count: declined.length, textColor: 'text-red-500' },
+                      { color: 'bg-slate-300',   label: 'No Change',count: stable.length,   textColor: 'text-slate-500' },
+                    ].filter(r => r.count > 0).map(({ color, label, count, textColor }) => (
+                      <div key={label} className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2.5 h-2.5 rounded-full ${color}`} />
+                          <span className="text-[11px] font-bold text-slate-600">{label}</span>
+                        </div>
+                        <span className={`text-[13px] font-black ${textColor}`}>{count} report{count > 1 ? 's' : ''}</span>
+                      </div>
+                    ))}
+                    {/* Progress bar */}
+                    <div className="h-2 bg-slate-100 rounded-full overflow-hidden flex mt-1">
+                      {improved.length > 0 && <div className="bg-emerald-400 h-full transition-all" style={{ width: `${(improved.length / (healthScoreTrend.length - 1)) * 100}%` }} />}
+                      {declined.length > 0 && <div className="bg-red-400 h-full transition-all"     style={{ width: `${(declined.length / (healthScoreTrend.length - 1)) * 100}%` }} />}
+                      {stable.length > 0   && <div className="bg-slate-300 h-full transition-all"   style={{ width: `${(stable.length   / (healthScoreTrend.length - 1)) * 100}%` }} />}
+                    </div>
+                  </div>
+                  <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2">
+                    <div>
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-1">Best Score</p>
+                      <p className="text-[20px] font-black text-emerald-600 leading-none">{bestScore}</p>
+                    </div>
+                    <div>
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-1">Lowest Score</p>
+                      <p className="text-[20px] font-black text-red-500 leading-none">{lowestScore}</p>
+                    </div>
+                  </div>
+                </div>
+
               </div>
             </div>
-            <ResponsiveContainer width="100%" height={160}>
-              <AreaChart data={healthScoreTrend} onClick={(e) => {
-                if (e?.activePayload?.[0]?.payload?.reportId) {
-                  navigate(`/reports/${e.activePayload[0].payload.reportId}`);
-                }
-              }} style={{ cursor: 'pointer' }}>
-                <defs>
-                  <linearGradient id="allReportsGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#5B8C6F" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#5B8C6F" stopOpacity={0} />
-                  </linearGradient>
-                </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                <XAxis dataKey="date" tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} />
-                <YAxis domain={[0, 100]} tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} width={30} />
-                <RechartTooltip
-                  contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0', fontSize: 11, fontWeight: 700 }}
-                  formatter={(v, _, props) => [`${v}/100 · ${props.payload.reportType}`, 'Health Score']}
-                />
-                <Area type="monotone" dataKey="score" stroke="#5B8C6F" strokeWidth={2.5} fill="url(#allReportsGrad)" dot={{ fill: '#5B8C6F', strokeWidth: 0, r: 4 }} activeDot={{ r: 6 }} />
-              </AreaChart>
-            </ResponsiveContainer>
-            <p className="text-[9px] text-slate-400 font-bold text-center mt-2">Click on any point to view that report</p>
-          </div>
-        )}
+          );
+        })()}
 
         {/* Search + View + Filter bar */}
         <div className="w-full liquid-glass p-3 rounded-[24px] flex items-center gap-3 flex-wrap md:flex-nowrap">

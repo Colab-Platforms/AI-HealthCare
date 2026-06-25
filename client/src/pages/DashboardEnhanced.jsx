@@ -95,12 +95,9 @@ const DashedGauge = ({ value, max = 2400, mode = "Macro" }) => {
   const activeDashes = Math.floor((percentage / 100) * totalDashes);
 
   const getSripColor = (index, isActive) => {
-    if (!isActive) return "#F5F5F7";
-    // 1st 7 strips: dd5432 67% and c82d06
+    if (!isActive) return "#D8D8DC";
     if (index < 7) return index % 2 === 0 ? "#dd5432" : "#c82d06";
-    // next 6 strips: f6efde and b8964e
     if (index < 13) return index % 2 === 0 ? "#f6efde" : "#b8964e";
-    // last 5 strips: 83c3ae and 567c6f
     return index % 2 === 0 ? "#83c3ae" : "#567c6f";
   };
 
@@ -127,7 +124,7 @@ const DashedGauge = ({ value, max = 2400, mode = "Macro" }) => {
               strokeLinecap="round"
               className="transition-colors duration-700"
               transform={`rotate(${angle} 120 120)`}
-              strokeOpacity={isActive ? 1 : 0.4}
+              strokeOpacity={isActive ? 1 : 0.65}
             />
           );
         })}
@@ -761,7 +758,10 @@ function FeatureCarousel({ navigate }) {
   const slide = FEATURE_SLIDES[idx];
 
   return (
-    <div className="relative w-full overflow-hidden rounded-[26px] border border-white/20" style={{ minHeight: 140, background: slide.bg, transition: "background 0.6s ease" }}>
+    <div
+      className="relative w-full h-full overflow-hidden rounded-[26px] border border-white/20"
+      style={{ minHeight: 130, background: slide.bg, transition: "background 0.6s ease" }}
+    >
       {/* BG Image */}
       <img
         src={slide.img}
@@ -773,36 +773,42 @@ function FeatureCarousel({ navigate }) {
 
       {/* Content */}
       <div
-        className="relative z-10 p-5 flex items-center justify-between h-full"
-        style={{ minHeight: 140, opacity: animating ? 0 : 1, transform: animating ? "translateY(6px)" : "translateY(0)", transition: "opacity 0.28s, transform 0.28s" }}
+        className="absolute inset-0 z-10 p-3 flex items-center justify-between"
+        style={{ opacity: animating ? 0 : 1, transform: animating ? "translateY(6px)" : "translateY(0)", transition: "opacity 0.28s, transform 0.28s" }}
       >
-        <div className="flex flex-col gap-2 flex-1 pr-4">
-          <span className="text-[9px] font-black uppercase tracking-[0.18em] text-white/60">{slide.tag}</span>
-          <h3 className="text-white font-black text-base leading-tight" style={{ whiteSpace: "pre-line" }}>{slide.title}</h3>
-          <p className="text-white/65 text-[10px] font-medium leading-snug max-w-[220px]">{slide.desc}</p>
+        <div className="flex flex-col gap-1.5 flex-1 pr-2 min-w-0 overflow-hidden">
+          <span className="text-[8px] font-black uppercase tracking-[0.15em] text-white/60 truncate">{slide.tag}</span>
+          <h3
+            className="text-white font-black text-[13px] leading-tight"
+            style={{ display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+          >{slide.title}</h3>
+          <p
+            className="text-white/65 text-[9px] font-medium leading-snug"
+            style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
+          >{slide.desc}</p>
           <button
             onClick={() => navigate(slide.ctaPath)}
-            className="mt-1 self-start px-4 py-1.5 rounded-xl text-[10px] font-black text-white uppercase tracking-wider transition-all active:scale-95"
+            className="mt-0.5 self-start px-3 py-1 rounded-xl text-[9px] font-black text-white uppercase tracking-wider transition-all active:scale-95 shrink-0"
             style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.3)", backdropFilter: "blur(8px)" }}
           >
             {slide.cta} →
           </button>
         </div>
 
-        {/* Right image circle */}
-        <div className="shrink-0 w-[90px] h-[90px] rounded-2xl overflow-hidden border-2 border-white/20 shadow-xl">
+        {/* Right image */}
+        <div className="shrink-0 w-[70px] h-[70px] rounded-xl overflow-hidden border-2 border-white/20 shadow-xl">
           <img src={slide.img} alt="" className="w-full h-full object-cover" />
         </div>
       </div>
 
       {/* Dot indicators */}
-      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-1 z-10">
         {FEATURE_SLIDES.map((_, i) => (
           <button
             key={i}
             onClick={() => goTo(i)}
             className="transition-all duration-300 rounded-full"
-            style={{ width: i === idx ? 18 : 6, height: 6, background: i === idx ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.35)" }}
+            style={{ width: i === idx ? 14 : 5, height: 5, background: i === idx ? "rgba(255,255,255,0.9)" : "rgba(255,255,255,0.35)" }}
           />
         ))}
       </div>
@@ -1400,28 +1406,31 @@ export default function DashboardEnhanced() {
       : [...dietHistory];
     const seen = new Set();
     const unique = allPlans.filter((p) => {
-      if (seen.has(p._id)) return false;
-      seen.add(p._id);
+      const idStr = p._id?.toString();
+      if (seen.has(idStr)) return false;
+      seen.add(idStr);
       return true;
     });
     const sorted = unique.sort(
       (a, b) => new Date(b.generatedAt || b.createdAt) - new Date(a.generatedAt || a.createdAt)
     );
+    // Find the most recent plan that was generated on or before the selected date.
+    // This gives the exact plan that was active/recommended on that day.
     const match = sorted.find(
       (p) => new Date(p.generatedAt || p.createdAt) <= new Date(dateStr + "T23:59:59")
     );
     if (!match) { setDietPlan(null); return; }
-    // If this is the active plan, it already has mealPlan
-    if (match._id === activeDietPlanRef.current?._id) {
+    // If this is the active plan, it already has mealPlan — use ref directly
+    if (match._id?.toString() === activeDietPlanRef.current?._id?.toString()) {
       setDietPlan(activeDietPlanRef.current);
       return;
     }
-    // History plans don't have mealPlan — fetch full plan by id
+    // History plans don't include mealPlan — fetch full plan by id
     try {
       const { data } = await dietRecommendationService.getDietPlanById(match._id);
       setDietPlan(data.dietPlan || null);
     } catch {
-      setDietPlan(match);
+      setDietPlan(null);
     }
   };
 
@@ -1696,14 +1705,169 @@ export default function DashboardEnhanced() {
       )}
       <div className="w-full px-0 md:px-6">
 
-        {/* Feature Showcase Carousel */}
+        {/* Feature Carousel + Health Score — side by side */}
         <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="px-4 md:px-0 mb-2 w-full"
+          className="px-4 md:px-0 mb-2 w-full flex gap-2 md:gap-3 items-stretch" style={{ height: 160 }}
         >
-          <FeatureCarousel navigate={navigate} />
+          {/* Carousel — 60% */}
+          <div className="w-[58%] md:w-[60%] shrink-0 flex">
+            <FeatureCarousel navigate={navigate} />
+          </div>
+
+          {/* Health Score card — remaining 40% */}
+          {dashboardData?.healthScores?.length > 0 ? (() => {
+            const scores = dashboardData.healthScores;
+            const latest = scores[scores.length - 1];
+            const first  = scores[0];
+            const overallChange = latest.score - first.score;
+            const overallPct = first.score > 0 ? Math.abs(((overallChange / first.score) * 100).toFixed(1)) : 0;
+            const improved = scores.filter((s, i) => i > 0 && s.score > scores[i-1].score);
+            const declined = scores.filter((s, i) => i > 0 && s.score < scores[i-1].score);
+            const bestScore   = Math.max(...scores.map(s => s.score));
+            const lowestScore = Math.min(...scores.map(s => s.score));
+            const scoreColor  = latest.score >= 75 ? '#5B8C6F' : latest.score >= 50 ? '#f59e0b' : '#ef4444';
+
+            const gradientBg = 'linear-gradient(135deg, #3d6b54 0%, #4a7b62 40%, #5B8C6F 100%)';
+
+            return (
+              <div
+                className="flex-1 rounded-[24px] p-3 md:p-4 flex flex-col justify-between cursor-pointer active:scale-[0.99] transition-all overflow-hidden h-full relative min-w-0"
+                style={{ background: gradientBg }}
+                onClick={() => navigate('/reports')}
+              >
+                {/* Heartbeat SVG animation — background */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden rounded-[24px]">
+                  <svg
+                    viewBox="0 0 900 80"
+                    preserveAspectRatio="none"
+                    className="opacity-20"
+                    style={{
+                      position: 'absolute',
+                      width: '300%',
+                      left: 0,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      animation: 'hb-scroll 4s linear infinite',
+                      filter: 'drop-shadow(0 0 5px #ff6b6b) drop-shadow(0 0 10px #f59e0b)',
+                    }}
+                  >
+                    <defs>
+                      <linearGradient id="hbGrad2" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%"   stopColor="#ff6b6b" />
+                        <stop offset="25%"  stopColor="#f59e0b" />
+                        <stop offset="50%"  stopColor="#34d399" />
+                        <stop offset="75%"  stopColor="#60a5fa" />
+                        <stop offset="100%" stopColor="#ff6b6b" />
+                      </linearGradient>
+                    </defs>
+                    {/* 3 identical segments — seam always off-screen */}
+                    <polyline
+                      points="
+                        0,40 25,40 38,40 48,8 58,72 68,18 78,52 88,40 130,40 143,40 153,8 163,72 173,18 183,52 193,40 300,40
+                        300,40 325,40 338,40 348,8 358,72 368,18 378,52 388,40 430,40 443,40 453,8 463,72 473,18 483,52 493,40 600,40
+                        600,40 625,40 638,40 648,8 658,72 668,18 678,52 688,40 730,40 743,40 753,8 763,72 773,18 783,52 793,40 900,40
+                      "
+                      fill="none"
+                      stroke="url(#hbGrad2)"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                </div>
+
+                <style>{`
+                  @keyframes hb-scroll {
+                    0%   { transform: translateY(-50%) translateX(0); }
+                    100% { transform: translateY(-50%) translateX(-33.333%); }
+                  }
+                `}</style>
+
+                {/* Glow blob top-right */}
+                <div className="absolute -top-6 -right-6 w-24 h-24 rounded-full opacity-25 blur-2xl pointer-events-none"
+                  style={{ background: scoreColor }} />
+
+                {/* Header */}
+                <div className="flex items-center justify-between relative z-10">
+                  <p className="text-[9px] font-black text-white/60 uppercase tracking-widest">Health Score</p>
+                  <span className="text-[8px] font-black text-white/80 bg-white/10 px-2 py-1 rounded-full uppercase tracking-wider whitespace-nowrap">View →</span>
+                </div>
+
+                {/* Big score */}
+                <div className="flex items-end gap-1 relative z-10">
+                  <span className="text-[32px] md:text-[38px] font-black text-white leading-none">{latest.score}</span>
+                  <span className="text-[10px] font-bold text-white/40 mb-1.5">/100</span>
+                </div>
+
+                {/* Divider */}
+                <div className="h-px bg-white/10 relative z-10 md:block hidden" />
+
+                {/* Breakdown rows — desktop only */}
+                {scores.length > 1 && (
+                  <div className="space-y-1 relative z-10 hidden md:block">
+                    {improved.length > 0 && (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
+                          <span className="text-[8px] font-bold text-white/70">Improved</span>
+                        </div>
+                        <span className="text-[9px] font-black text-white">{improved.length}</span>
+                      </div>
+                    )}
+                    {declined.length > 0 && (
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1">
+                          <div className="w-1.5 h-1.5 rounded-full bg-white/60 shrink-0" />
+                          <span className="text-[8px] font-bold text-white/70">Declined</span>
+                        </div>
+                        <span className="text-[9px] font-black text-white">{declined.length}</span>
+                      </div>
+                    )}
+                    <div className="h-1 bg-white/10 rounded-full overflow-hidden flex">
+                      {improved.length > 0 && <div className="bg-emerald-400 h-full" style={{ width: `${(improved.length / (scores.length - 1)) * 100}%` }} />}
+                      {declined.length > 0 && <div className="bg-red-400 h-full" style={{ width: `${(declined.length / (scores.length - 1)) * 100}%` }} />}
+                    </div>
+                  </div>
+                )}
+
+                {/* Best / Lowest — mobile: single row compact, desktop: grid */}
+                <div className="md:hidden flex gap-1.5 relative z-10 mt-auto">
+                  <div className="bg-white/15 rounded-lg px-2.5 py-1.5 flex items-center gap-1.5 flex-1">
+                    <p className="text-[7px] font-black text-white/50 uppercase">Best</p>
+                    <p className="text-sm font-black text-white leading-none">{bestScore}</p>
+                  </div>
+                  <div className="bg-white/15 rounded-lg px-2.5 py-1.5 flex items-center gap-1.5 flex-1">
+                    <p className="text-[7px] font-black text-white/50 uppercase">Low</p>
+                    <p className="text-sm font-black text-white/80 leading-none">{lowestScore}</p>
+                  </div>
+                </div>
+                <div className="hidden md:grid grid-cols-2 gap-1.5 relative z-10 mt-auto">
+                  <div className="bg-white/15 rounded-xl p-2">
+                    <p className="text-[6px] font-black text-white/50 uppercase tracking-wider mb-0.5">Best</p>
+                    <p className="text-base font-black text-white leading-none">{bestScore}</p>
+                  </div>
+                  <div className="bg-white/15 rounded-xl p-2">
+                    <p className="text-[6px] font-black text-white/50 uppercase tracking-wider mb-0.5">Lowest</p>
+                    <p className="text-base font-black text-white/80 leading-none">{lowestScore}</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })() : (
+            <div
+              className="flex-1 liquid-glass-strong rounded-[24px] px-4 py-4 flex flex-col items-center justify-center gap-2 cursor-pointer active:scale-[0.99] transition-all"
+              onClick={() => navigate('/upload')}
+            >
+              <div className="w-10 h-10 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(91,140,111,0.1)' }}>
+                <Upload className="w-5 h-5 text-[#5B8C6F]" />
+              </div>
+              <p className="text-[10px] font-black text-[#1a1a1a] uppercase tracking-wider text-center">Health Score</p>
+              <p className="text-[9px] text-[#a0a0a0] font-medium text-center">Upload a report to see your score</p>
+            </div>
+          )}
         </motion.div>
 
         {/* Quick Navigation Cards */}
@@ -2487,6 +2651,124 @@ export default function DashboardEnhanced() {
               </p>
             </div>
           </motion.div>
+
+          {/* Card 4: Health Score — moved to top banner, hidden here */}
+          {false && dashboardData?.healthScores?.length > 0 && (() => {
+            const scores = dashboardData.healthScores; // [{ date, score, type }] oldest→latest
+            const latest = scores[scores.length - 1];
+            const prev   = scores[scores.length - 2];
+            const change = prev ? latest.score - prev.score : null;
+            const pct    = (latest.score / 100) * 100;
+
+            // score color
+            const scoreColor = latest.score >= 75 ? '#5B8C6F'
+              : latest.score >= 50 ? '#f59e0b'
+              : '#ef4444';
+            const scoreBg = latest.score >= 75 ? 'rgba(91,140,111,0.08)'
+              : latest.score >= 50 ? 'rgba(245,158,11,0.08)'
+              : 'rgba(239,68,68,0.08)';
+
+            return (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.18 }}
+                className="liquid-glass-strong w-full rounded-[29px] p-5 lg:p-8 flex flex-col"
+                style={{ marginTop: '4px' }}
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between mb-5">
+                  <div>
+                    <h2 className="text-xl lg:text-2xl font-bold text-[#1a1a1a]">Health Score</h2>
+                    <p className="text-xs text-[#a0a0a0] font-medium">Based on your lab reports</p>
+                  </div>
+                  <button
+                    onClick={() => navigate('/reports')}
+                    className="text-[10px] font-bold text-[#5B8C6F] uppercase tracking-wider flex items-center gap-1 hover:text-[#4a7b5e] transition-colors"
+                  >
+                    View Trends <Plus className="w-3 h-3" />
+                  </button>
+                </div>
+
+                {/* Score Ring + Info */}
+                <div className="flex items-center gap-6 mb-6">
+                  {/* Ring */}
+                  <div className="relative w-24 h-24 shrink-0">
+                    <svg className="absolute inset-0 w-full h-full -rotate-90" viewBox="0 0 100 100">
+                      <circle cx="50" cy="50" r="42" fill="none" stroke="#f1f5f9" strokeWidth="8" />
+                      <circle
+                        cx="50" cy="50" r="42" fill="none"
+                        stroke={scoreColor} strokeWidth="8"
+                        strokeDasharray={264}
+                        strokeDashoffset={264 - (264 * pct) / 100}
+                        strokeLinecap="round"
+                        className="transition-all duration-1000 ease-out"
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-2xl font-black leading-none" style={{ color: scoreColor }}>{latest.score}</span>
+                      <span className="text-[8px] font-bold text-slate-400 mt-0.5">/ 100</span>
+                    </div>
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-black uppercase tracking-widest px-3 py-1 rounded-full"
+                        style={{ background: scoreBg, color: scoreColor }}>
+                        {latest.score >= 75 ? 'Good Health' : latest.score >= 50 ? 'Needs Attention' : 'Needs Improvement'}
+                      </span>
+                    </div>
+                    <p className="text-[10px] text-[#8a8a8a] font-medium leading-relaxed">
+                      {latest.type} · {new Date(latest.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </p>
+                    {change !== null && (
+                      <div className={`flex items-center gap-1.5 text-[11px] font-black ${change >= 0 ? 'text-[#5B8C6F]' : 'text-red-500'}`}>
+                        <span>{change >= 0 ? '↑' : '↓'}</span>
+                        <span>{Math.abs(change)} pts from last report</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Mini bar chart — last 5 scores */}
+                {scores.length > 1 && (
+                  <div className="liquid-glass-inner rounded-[20px] p-4">
+                    <p className="text-[9px] font-black text-[#a0a0a0] uppercase tracking-widest mb-3">Score History</p>
+                    <div className="flex items-end gap-1.5" style={{ height: 60 }}>
+                      {scores.slice(-6).map((s, i, arr) => {
+                        const h = Math.max(8, (s.score / 100) * 52);
+                        const isLast = i === arr.length - 1;
+                        const chg = i > 0 ? s.score - arr[i-1].score : 0;
+                        const barColor = isLast ? scoreColor : chg >= 0 ? '#5B8C6F' : '#ef4444';
+                        return (
+                          <div key={i} className="flex-1 flex flex-col items-center gap-0.5 cursor-pointer group"
+                            onClick={() => navigate('/reports')}>
+                            <span className="text-[7px] font-black text-slate-400 group-hover:text-[#5B8C6F] transition-colors">{s.score}</span>
+                            <div className="w-full flex items-end" style={{ height: 44 }}>
+                              <div className="w-full rounded-t-lg transition-all duration-300 opacity-80 group-hover:opacity-100"
+                                style={{ height: h, background: barColor }} />
+                            </div>
+                            <span className="text-[7px] font-bold text-slate-300 truncate w-full text-center">
+                              {new Date(s.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Single score state — no history */}
+                {scores.length === 1 && (
+                  <div className="liquid-glass-inner rounded-[20px] p-4 text-center">
+                    <p className="text-[10px] font-bold text-[#a0a0a0]">Upload more reports to see your score trend over time.</p>
+                  </div>
+                )}
+              </motion.div>
+            );
+          })()}
+
         </div>
 
         {/* Diabetes Monitor Block */}

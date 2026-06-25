@@ -99,14 +99,8 @@ export default function AIChat() {
     const fetchUserReports = async () => {
       try {
         const { data } = await api.get("health/reports", { skipAutoLogout: true });
-        // Ensure we always set an array
-        if (Array.isArray(data.reports)) {
-          setUserReports(data.reports);
-        } else if (Array.isArray(data)) {
-          setUserReports(data);
-        } else {
-          setUserReports([]);
-        }
+        const all = data.all || data.currentReports || (Array.isArray(data) ? data : []);
+        setUserReports(all);
       } catch (error) {
         console.error("Failed to load reports:", error);
         setUserReports([]);
@@ -289,11 +283,11 @@ export default function AIChat() {
         body: JSON.stringify({
           query: currentInput,
           conversationHistory: updatedMessages.slice(-10),
-          userReports: userReports.map((r) => ({
+          userReports: userReports.slice(0, 5).map((r) => ({
             type: r.reportType,
-            date: r.uploadDate,
-            analysis: r.analysis,
-            metrics: r.metrics,
+            date: r.reportDate || r.uploadDate || r.createdAt,
+            analysis: r.aiAnalysis?.summary || r.aiAnalysis?.doctorSummary || '',
+            metrics: r.aiAnalysis?.metrics || {},
           })),
         }),
         signal: abortControllerRef.current.signal,
@@ -456,6 +450,31 @@ export default function AIChat() {
       }
       return word;
     });
+  };
+
+  // Parse [ref: MetricName — value unit] citations from AI text
+  const parseCitationChips = (text) => {
+    if (!text) return [];
+    const chips = [];
+    const seen = new Set();
+    const regex = /\[ref:\s*([^—\]]+?)(?:\s*—\s*([^\]]+))?\]/g;
+    let m;
+    while ((m = regex.exec(text)) !== null) {
+      const label = m[1]?.trim();
+      const value = m[2]?.trim();
+      const key = `${label}:${value}`;
+      if (label && !seen.has(key)) {
+        seen.add(key);
+        chips.push({ label, value });
+      }
+    }
+    return chips;
+  };
+
+  const renderTextWithCitations = (text) => {
+    if (!text) return text;
+    // Strip [ref: ...] tags cleanly — chips are shown separately below
+    return text.replace(/\[ref:\s*[^\]]+\]/g, '');
   };
 
   const renderFormattedText = (text) => {
@@ -795,7 +814,28 @@ export default function AIChat() {
                       {msg.content}
                     </div>
                   ) : (
-                    renderFormattedText(msg.content)
+                    <>
+                      {renderFormattedText(renderTextWithCitations(msg.content))}
+                      {(() => {
+                        const chips = parseCitationChips(msg.content);
+                        if (!chips.length) return null;
+                        return (
+                          <div className="mt-3 flex flex-wrap gap-1.5">
+                            <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest self-center mr-0.5">Sources</span>
+                            {chips.map((chip, ci) => (
+                              <span
+                                key={ci}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold border"
+                                style={{ background: 'rgba(91,140,111,0.08)', borderColor: 'rgba(91,140,111,0.25)', color: '#3d6b54' }}
+                              >
+                                <span className="w-1.5 h-1.5 rounded-full bg-[#5B8C6F] shrink-0" />
+                                {chip.label}{chip.value ? ` · ${chip.value}` : ''}
+                              </span>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                    </>
                   )}
                   <div
                     className={`flex items-center mt-2 gap-4 ${msg.role === "user" ? "justify-end hidden" : "justify-start text-slate-400 opacity-50 hover:opacity-100 transition-opacity"}`}

@@ -264,14 +264,101 @@ exports.compareReports = async (currentReport, previousReport, context = {}) => 
   } catch (e) { return { overallTrend: 'unknown' }; }
 };
 
+// Build structured metric context for citation-aware prompting
+const buildReportContext = (report) => {
+  const metrics = report.aiAnalysis?.metrics || {};
+  const metricLines = Object.entries(metrics).map(([name, m]) => {
+    const val   = m?.value   ?? m?.result ?? '?';
+    const unit  = m?.unit    ?? '';
+    const range = m?.normalRange ?? 'N/A';
+    const status = m?.status ?? 'unknown';
+    return `  - [[metric:${name}]] ${name}: ${val} ${unit} (Normal: ${range}) — ${status}`;
+  }).join('\n');
+
+  const reportMeta = [
+    `Report ID: [[report:${report._id}]]`,
+    `Type: ${report.reportType || 'Lab Report'}`,
+    `Date: ${report.reportDate ? new Date(report.reportDate).toDateString() : 'Unknown'}`,
+    `Health Score: ${report.aiAnalysis?.healthScore ?? 'N/A'}/100`,
+  ].join(' | ');
+
+  return { metricLines, reportMeta, metricCount: Object.keys(metrics).length };
+};
+
+// Parse [[metric:Name]] and [[report:id]] citations from AI response
+const parseCitations = (text, report) => {
+  const sources = [];
+  const metrics = report.aiAnalysis?.metrics || {};
+  const seen = new Set();
+
+  const metricMatches = [...text.matchAll(/\[\[metric:([^\]]+)\]\]/g)];
+  metricMatches.forEach(([, name]) => {
+    if (seen.has(`metric:${name}`)) return;
+    seen.add(`metric:${name}`);
+    const m = metrics[name] || Object.entries(metrics).find(([k]) => k.toLowerCase() === name.toLowerCase())?.[1];
+    sources.push({
+      type:   'metric',
+      id:     name,
+      label:  name,
+      value:  m ? `${m.value ?? m.result ?? ''} ${m.unit ?? ''}`.trim() : null,
+      range:  m?.normalRange ?? null,
+      status: m?.status ?? null,
+      reportId: String(report._id),
+    });
+  });
+
+  const reportMatches = [...text.matchAll(/\[\[report:([^\]]+)\]\]/g)];
+  reportMatches.forEach(([, id]) => {
+    if (seen.has(`report:${id}`)) return;
+    seen.add(`report:${id}`);
+    sources.push({
+      type:  'report',
+      id,
+      label: `${report.reportType || 'Report'} — ${report.reportDate ? new Date(report.reportDate).toDateString() : ''}`,
+      reportId: String(report._id),
+    });
+  });
+
+  // Clean tags from visible text
+  const cleanText = text.replace(/\[\[(?:metric|report):[^\]]+\]\]/g, (match) => {
+    const name = match.replace(/\[\[(?:metric|report):/, '').replace(']]', '');
+    return `**${name}**`;
+  });
+
+  return { cleanText, sources };
+};
+
 exports.chatWithReport = async (report, message, chatHistory, context = {}) => {
   try {
-    const systemPrompt = `Assistant for report: ${report.aiAnalysis?.summary}`;
-    return await makeAnthropicRequest(
-      [{ role: 'system', content: systemPrompt }, ...chatHistory.slice(-4), { role: 'user', content: message }],
-      800, CLAUDE_HAIKU_MODEL, { feature: 'chat_about_report', ...context }
+    const { metricLines, reportMeta, metricCount } = buildReportContext(report);
+
+    const systemPrompt = `You are a medical AI assistant. Answer questions ONLY based on the patient's actual report data below. Never fabricate values.
+
+REPORT CONTEXT:
+${reportMeta}
+
+METRICS (${metricCount} found):
+${metricLines || '  (No metrics extracted)'}
+
+SUMMARY: ${report.aiAnalysis?.summary || 'Not available'}
+
+CITATION RULES — MANDATORY:
+- When you mention any metric value, tag it: [[metric:MetricName]]
+- When referencing this report overall, tag it: [[report:${report._id}]]
+- Example: "Your [[metric:Hemoglobin]] is 9.2 g/dL which is below normal range."
+- Always cite — never state a health value without its [[metric:...]] tag
+- Keep answers concise, empathetic, and in simple language`;
+
+    const rawResponse = await makeAnthropicRequest(
+      [{ role: 'system', content: systemPrompt }, ...chatHistory.slice(-6), { role: 'user', content: message }],
+      1000, CLAUDE_HAIKU_MODEL, { feature: 'chat_about_report', ...context }
     );
-  } catch (e) { return "Trouble analyzing right now."; }
+
+    return parseCitations(rawResponse, report);
+  } catch (e) {
+    console.error('chatWithReport error:', e.message);
+    return { cleanText: "I'm having trouble analyzing right now. Please try again.", sources: [] };
+  }
 };
 
 exports.generateMetricInfo = async (metricName, metricValue, normalRange, unit, context = {}) => {

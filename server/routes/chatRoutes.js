@@ -86,15 +86,31 @@ IMPORTANT FORMATTING RULES - Follow these strictly:
 - Structure long answers with clear sections using simple labels followed by a colon.
 - Never refer to yourself as FitCure. Your name is take.health Coach.`;
 
-    // Add report context if available
+    // Add report context with structured metric data for source citation
     if (userReports && userReports.length > 0) {
       const reportContext = userReports.map(report => {
         const date = new Date(report.date).toLocaleDateString();
-        const metrics = report.metrics ? JSON.stringify(report.metrics) : '';
-        return `Report: ${report.type || 'Health Report'} (${date})\nAnalysis: ${report.analysis || 'No analysis'}\nMetrics: ${metrics}`;
-      }).join('\n\n');
+        let metricLines = '';
+        if (report.metrics && typeof report.metrics === 'object') {
+          metricLines = Object.entries(report.metrics).map(([name, m]) => {
+            const val   = m?.value ?? m?.result ?? '';
+            const unit  = m?.unit  ?? '';
+            const range = m?.normalRange ?? 'N/A';
+            const status = m?.status ?? '';
+            return `    • ${name}: ${val} ${unit} (Normal: ${range}) [${status}]`;
+          }).join('\n');
+        }
+        return `Report: ${report.type || 'Health Report'} (${date})\nSummary: ${report.analysis || 'No analysis'}\nMetrics:\n${metricLines || '    (no metrics)'}`;
+      }).join('\n\n---\n\n');
 
-      systemPrompt += `\n\nRecent Health Reports:\n${reportContext}`;
+      systemPrompt += `\n\n=== USER'S HEALTH REPORTS ===\n${reportContext}\n\nSOURCE CITATION RULES (MANDATORY):
+When you reference any specific metric value from the user's reports above, you MUST cite it using this exact format at the end of the sentence: [ref: MetricName — value unit]
+Examples:
+- "Your hemoglobin is low [ref: Hemoglobin — 9.2 g/dL]"
+- "Your fasting glucose is in the normal range [ref: Fasting Glucose — 95 mg/dL]"
+- Only cite metrics you actually found in the reports above.
+- Do NOT cite if you are speaking generally without referencing their specific value.
+- Citations make the user trust your answer — always include them when using their data.`;
     }
 
     let processedQuery = query;

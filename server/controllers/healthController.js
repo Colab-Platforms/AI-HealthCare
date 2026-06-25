@@ -4,7 +4,7 @@ const FoodLog = require('../models/FoodLog');
 const User = require('../models/User');
 const Doctor = require('../models/Doctor');
 const HealthGoal = require('../models/HealthGoal');
-const { analyzeHealthReport, chatAboutReport, generateMetricInfo, generateVitalsInsights } = require('../services/aiService');
+const { analyzeHealthReport, chatAboutReport, chatWithReport, generateMetricInfo, generateVitalsInsights } = require('../services/aiService');
 const pdfParse = require('pdf-parse');
 const fs = require('fs');
 const NutritionSummary = require('../models/NutritionSummary');
@@ -443,11 +443,12 @@ exports.chatAboutReport = async (req, res) => {
     if (!message) return res.status(400).json({ message: 'Message is required' });
     const report = await HealthReport.findOne({ _id: req.params.id, user: req.user._id });
     if (!report) return res.status(404).json({ message: 'Report not found' });
-    const response = await chatAboutReport(report, message, chatHistory || [], {
+    const result = await chatWithReport(report, message, chatHistory || [], {
       userId:   req.user._id,
       reportId: report._id,
     });
-    res.json({ response });
+    // result = { cleanText, sources } — sources are cited metrics/report refs
+    res.json({ response: result.cleanText, sources: result.sources });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
