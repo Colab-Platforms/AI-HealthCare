@@ -49,7 +49,7 @@ const sendToUser = async (userId, { title, body, data = {}, imageUrl } = {}) => 
       data: { ...data, click_action: 'FLUTTER_NOTIFICATION_CLICK' },
       android: { priority: 'high', notification: { sound: 'default', channelId: 'health_reminders' } },
       apns: { payload: { aps: { sound: 'default', badge: 1 } } },
-      webpush: { notification: { icon: '/logo192.png', badge: '/badge.png' } }
+      webpush: { notification: { icon: 'https://take.health/logo192.png', badge: 'https://take.health/badge.png' } }
     };
 
     const response = await messaging.sendEachForMulticast(message);
@@ -90,7 +90,7 @@ const sendToMultipleUsers = async (userIds, notification) => {
         notification: { title: notification.title, body: notification.body },
         data: notification.data || {},
         android: { priority: 'high' },
-        webpush: { notification: { icon: '/logo192.png' } }
+        webpush: { notification: { icon: 'https://take.health/logo192.png' } }
       });
 
       totalSuccess += response.successCount;
@@ -135,7 +135,7 @@ const sendToToken = async (token, { title, body, data = {} } = {}) => {
       data,
       android: { priority: 'high' },
       webpush: {
-        notification: { title, body, icon: '/icon.svg' },
+        notification: { title, body, icon: 'https://take.health/logo192.png' },
         fcm_options: { link: '/' }
       }
     });
@@ -159,7 +159,7 @@ const broadcastToAll = async ({ title, body, data = {} } = {}) => {
       notification: { title, body },
       data,
       android: { priority: 'high' },
-      webpush: { notification: { icon: '/logo192.png' } }
+      webpush: { notification: { icon: 'https://take.health/logo192.png' } }
     });
 
     console.log(`📡 Broadcast sent: ${response}`);

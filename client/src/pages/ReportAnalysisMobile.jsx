@@ -308,24 +308,72 @@ export default function ReportAnalysisMobile() {
     if (!reportElement) return;
     const toastId = toast.loading("Preparing PDF...");
     try {
+      const SCALE = 2;
       const canvas = await html2canvas(reportElement, {
-        scale: 2,
+        scale: SCALE,
         useCORS: true,
         logging: false,
         backgroundColor: "#ffffff",
         windowWidth: 375,
       });
-      const imgData = canvas.toDataURL("image/png");
+
       const pdf = new jsPDF("p", "mm", "a4");
       const pdfWidth = pdf.internal.pageSize.getWidth();
-      pdf.addImage(
-        imgData,
-        "PNG",
-        0,
-        0,
-        pdfWidth,
-        canvas.height * (pdfWidth / canvas.width),
-      );
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+
+      // One A4 page height in canvas pixels
+      const pageHeightPx = Math.floor((canvas.width * pdfHeight) / pdfWidth);
+
+      // Collect section boundaries in canvas px (offsetTop * scale)
+      const containerTop = reportElement.getBoundingClientRect().top + window.scrollY;
+      const sectionEls = reportElement.querySelectorAll("[data-pdf-section]");
+      const sectionBreaks = Array.from(sectionEls).map((el) => {
+        const elTop = el.getBoundingClientRect().top + window.scrollY;
+        return Math.floor((elTop - containerTop) * SCALE);
+      });
+      // Always start at 0
+      if (!sectionBreaks.length || sectionBreaks[0] > 0) sectionBreaks.unshift(0);
+
+      // Build page start positions: never cut a section in the middle
+      const pageStarts = [0];
+      let pageTop = 0;
+      for (const breakY of sectionBreaks) {
+        if (breakY <= pageTop) continue; // already past this
+        // If this section starts beyond current page bottom, start new page here
+        if (breakY > pageTop + pageHeightPx) {
+          pageStarts.push(breakY);
+          pageTop = breakY;
+        }
+        // If section starts within the page, keep it on this page (no new break)
+      }
+
+      // Render each page as a slice of the canvas
+      const renderPage = (startY) => {
+        const srcH = Math.min(pageHeightPx, canvas.height - startY);
+        const pageCanvas = document.createElement("canvas");
+        pageCanvas.width = canvas.width;
+        pageCanvas.height = pageHeightPx;
+        const ctx = pageCanvas.getContext("2d");
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(0, 0, pageCanvas.width, pageCanvas.height);
+        ctx.drawImage(canvas, 0, startY, canvas.width, srcH, 0, 0, canvas.width, srcH);
+        return pageCanvas.toDataURL("image/png");
+      };
+
+      pageStarts.forEach((startY, i) => {
+        if (i > 0) pdf.addPage();
+        pdf.addImage(renderPage(startY), "PNG", 0, 0, pdfWidth, pdfHeight);
+      });
+
+      // If last page didn't cover all content, add remaining pages
+      const lastStart = pageStarts[pageStarts.length - 1];
+      let nextY = lastStart + pageHeightPx;
+      while (nextY < canvas.height) {
+        pdf.addPage();
+        pdf.addImage(renderPage(nextY), "PNG", 0, 0, pdfWidth, pdfHeight);
+        nextY += pageHeightPx;
+      }
+
       pdf.save(`Health_Report_${id.substring(0, 8)}.pdf`);
       toast.success("Report downloaded!", { id: toastId });
     } catch (error) {
@@ -579,7 +627,7 @@ export default function ReportAnalysisMobile() {
 
       <div className="px-5 flex flex-col gap-5 relative z-10 max-w-4xl mx-auto">
         {/* Info Card */}
-        <div className="bg-white/60 backdrop-blur-xl rounded-[40px] p-6 shadow-[0_4px_25px_rgba(0,0,0,0.04)] border border-white flex flex-col gap-6">
+        <div data-pdf-section className="bg-white/60 backdrop-blur-xl rounded-[40px] p-6 shadow-[0_4px_25px_rgba(0,0,0,0.04)] border border-white flex flex-col gap-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="w-14 h-14 rounded-2xl bg-[#E2EED2] flex items-center justify-center shadow-inner">
@@ -636,7 +684,7 @@ export default function ReportAnalysisMobile() {
 
         {/* Bio-Marker Metrics — moved to top for quick scan */}
         {!isProcessing && metrics.length > 0 && (
-          <div className="flex flex-col gap-4">
+          <div data-pdf-section className="flex flex-col gap-4">
             {/* Header + filter tabs */}
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
@@ -766,7 +814,7 @@ export default function ReportAnalysisMobile() {
         )}
 
         {/* Doctor's Analysis — below metrics */}
-        <div className="bg-white/60 backdrop-blur-xl rounded-[40px] p-6 shadow-[0_4px_25px_rgba(0,0,0,0.04)] border border-white">
+        <div data-pdf-section className="bg-white/60 backdrop-blur-xl rounded-[40px] p-6 shadow-[0_4px_25px_rgba(0,0,0,0.04)] border border-white">
           <div className="flex items-center gap-4 mb-6">
             <div className="w-12 h-12 rounded-full bg-white shadow-sm border border-white flex items-center justify-center">
               {isProcessing ? (
@@ -877,7 +925,7 @@ export default function ReportAnalysisMobile() {
 
         {/* Deficiencies */}
         {!isProcessing && aiAnalysis?.deficiencies?.length > 0 && (
-          <div className="bg-white/60 backdrop-blur-xl rounded-[40px] p-6 shadow-[0_4px_25px_rgba(0,0,0,0.04)] border border-white">
+          <div data-pdf-section className="bg-white/60 backdrop-blur-xl rounded-[40px] p-6 shadow-[0_4px_25px_rgba(0,0,0,0.04)] border border-white">
             <div className="flex items-center gap-4 mb-6">
               <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center border border-red-100">
                 <AlertTriangle size={20} className="text-[#EF4444]" />
@@ -927,7 +975,7 @@ export default function ReportAnalysisMobile() {
 
         {/* Nutritional Protocol CTA */}
         {!isProcessing && (
-          <div className="bg-white/60 backdrop-blur-xl rounded-[40px] p-8 shadow-[0_4px_25px_rgba(0,0,0,0.04)] border border-white flex flex-col gap-6 group relative overflow-hidden">
+          <div data-pdf-section className="bg-white/60 backdrop-blur-xl rounded-[40px] p-8 shadow-[0_4px_25px_rgba(0,0,0,0.04)] border border-white flex flex-col gap-6 group relative overflow-hidden">
             <div className="absolute top-0 right-0 w-32 h-32 bg-[#69A38D]/5 rounded-full blur-3xl -mr-16 -mt-16 group-hover:scale-125 transition-transform" />
             <div className="relative z-10 flex flex-col gap-6">
               <div className="flex items-center gap-4">
@@ -960,7 +1008,7 @@ export default function ReportAnalysisMobile() {
 
         {/* Doctor's Personalized Advice */}
         {!isProcessing && (
-          <div className="bg-[#69A38D] rounded-[40px] p-8 text-white shadow-xl flex flex-col gap-8">
+          <div data-pdf-section className="bg-[#69A38D] rounded-[40px] p-8 text-white shadow-xl flex flex-col gap-8">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
                 <Zap size={24} strokeWidth={3} fill="currentColor" />

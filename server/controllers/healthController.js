@@ -80,11 +80,12 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
 
     updatedReport.markModified('aiAnalysis');
     await updatedReport.save();
-    console.log(`✅ [BG] Report saved. Metrics count: ${Object.keys(aiAnalysis.metrics || {}).length}`);
+    console.log(`[BG] Report saved. Metrics count: ${Object.keys(aiAnalysis.metrics || {}).length}`);
 
     // Invalidate caches
     await cache.delete(`reports:${userId}`);
     await cache.delete(`dashboard:${userId}`);
+    await cache.delete(`trends:${userId}:all`);
 
     // Update User Score
     if (aiAnalysis.healthScore) {
@@ -745,8 +746,12 @@ exports.deleteReport = async (req, res) => {
     if (!report) return res.status(404).json({ message: 'Report not found' });
     if (report.originalFile?.path && fs.existsSync(report.originalFile.path)) fs.unlinkSync(report.originalFile.path);
     await HealthReport.deleteOne({ _id: req.params.id });
-    cache.delete(`reports:${req.user._id}`);
-    cache.delete(`dashboard:${req.user._id}`);
+    const uid = req.user._id.toString();
+    cache.delete(`reports:${uid}`);
+    cache.delete(`dashboard:${uid}`);
+    cache.delete(`trends:${uid}:all`);
+    cache.delete(`trends:${uid}:Blood Test`);
+    cache.delete(`trends:${uid}:undefined`);
     res.json({ message: 'Report deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });

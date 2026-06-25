@@ -369,12 +369,20 @@ if (!process.env.VERCEL) {
     console.error("Notification service error:", e);
   }
 
-  // Set up Daily Food Safety Sync Cron (Runs at midnight daily)
   const cron = require("node-cron");
+
+  // Food Safety Sync — midnight daily
   const { syncFoodSafetyDatabase } = require("./services/foodSafetyService");
   cron.schedule("0 0 * * *", async () => {
     console.log("⏰ Running scheduled Food Safety Sync...");
     await syncFoodSafetyDatabase();
+  });
+
+  // Follow-up Nudges — every night at 10 PM
+  const { runNudgeCron } = require("./services/nudgeService");
+  cron.schedule("0 22 * * *", async () => {
+    console.log("🔔 Starting Follow-up Nudge cron...");
+    await runNudgeCron();
   });
 
   // Optional: Run on startup to ensure fresh data

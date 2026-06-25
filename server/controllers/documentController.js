@@ -74,34 +74,47 @@ exports.getDocuments = async (req, res) => {
         const page = Math.max(1, parseInt(req.query.page) || 1);
         const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
 
-        // --- MedicalDocument query ---
-        let mdQuery = { userId: req.user._id };
-        if (category && category !== 'all' && category !== 'lab_report' && category !== 'prescription') {
-            mdQuery.category = category;
-        }
-        if (search) mdQuery.title = { $regex: search, $options: 'i' };
-        if (hospital) mdQuery.hospital = { $regex: hospital, $options: 'i' };
-        if (doctor) mdQuery.doctorName = { $regex: doctor, $options: 'i' };
-        if (tags) {
-            const tagArr = tags.split(',').map(t => t.trim()).filter(Boolean);
-            if (tagArr.length) mdQuery.tags = { $all: tagArr };
-        }
-        if (dateFrom || dateTo) {
-            mdQuery.documentDate = {};
-            if (dateFrom) mdQuery.documentDate.$gte = new Date(dateFrom);
-            if (dateTo) { const d = new Date(dateTo); d.setHours(23, 59, 59, 999); mdQuery.documentDate.$lte = d; }
-        }
+        // Support comma-separated multi-category filter from frontend
+        const categoryList = category ? category.split(',').map(c => c.trim()).filter(Boolean) : [];
+        const wantsAiReports = !categoryList.length || categoryList.includes('all') || categoryList.includes('ai_report') || categoryList.includes('lab_report') || categoryList.includes('prescription');
+        const wantsVaultDocs = !categoryList.length || categoryList.includes('all') || categoryList.some(c => !['ai_report', 'lab_report', 'prescription'].includes(c));
 
-        const mdDocs = await MedicalDocument.find(mdQuery).sort({ documentDate: -1, createdAt: -1 });
-        const vaultDocs = mdDocs.map(doc => ({ ...doc.toObject(), isAnalyzedReport: false }));
+        // --- MedicalDocument query ---
+        let vaultDocs = [];
+        if (wantsVaultDocs) {
+            let mdQuery = { userId: req.user._id };
+            // Vault-only categories (exclude ai_report/lab_report/prescription which live in HealthReport)
+            const vaultCategories = categoryList.filter(c => !['ai_report', 'lab_report', 'prescription', 'all'].includes(c));
+            if (vaultCategories.length === 1) mdQuery.category = vaultCategories[0];
+            else if (vaultCategories.length > 1) mdQuery.category = { $in: vaultCategories };
+
+            if (search) mdQuery.title = { $regex: search, $options: 'i' };
+            if (hospital) mdQuery.hospital = { $regex: hospital, $options: 'i' };
+            if (doctor) mdQuery.doctorName = { $regex: doctor, $options: 'i' };
+            if (tags) {
+                const tagArr = tags.split(',').map(t => t.trim()).filter(Boolean);
+                if (tagArr.length) mdQuery.tags = { $all: tagArr };
+            }
+            if (dateFrom || dateTo) {
+                mdQuery.documentDate = {};
+                if (dateFrom) mdQuery.documentDate.$gte = new Date(dateFrom);
+                if (dateTo) { const d = new Date(dateTo); d.setHours(23, 59, 59, 999); mdQuery.documentDate.$lte = d; }
+            }
+            const mdDocs = await MedicalDocument.find(mdQuery).sort({ documentDate: -1, createdAt: -1 });
+            vaultDocs = mdDocs.map(doc => ({ ...doc.toObject(), isAnalyzedReport: false }));
+        }
 
         // --- HealthReport query ---
         let reports = [];
-        if (!category || category === 'all' || category === 'lab_report' || category === 'prescription') {
+        if (wantsAiReports) {
             const reportQuery = { user: req.user._id };
             if (search) reportQuery['originalFile.filename'] = { $regex: search, $options: 'i' };
-            if (category === 'prescription') reportQuery.isPrescription = true;
-            else if (category === 'lab_report') reportQuery.isPrescription = { $ne: true };
+            // Narrow by sub-type only when exclusively filtering by prescription or lab_report
+            if (categoryList.includes('prescription') && !categoryList.includes('ai_report') && !categoryList.includes('lab_report')) {
+                reportQuery.isPrescription = true;
+            } else if (categoryList.includes('lab_report') && !categoryList.includes('ai_report') && !categoryList.includes('prescription')) {
+                reportQuery.isPrescription = { $ne: true };
+            }
 
             const foundReports = await HealthReport.find(reportQuery).sort({ createdAt: -1 });
             reports = foundReports.map(r => ({

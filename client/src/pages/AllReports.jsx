@@ -95,7 +95,7 @@ const formatBytes = (bytes, decimals = 1) => {
 
 export default function AllReports() {
   const navigate = useNavigate();
-  const { addPendingAnalysis, invalidateCache } = useData();
+  const { addPendingAnalysis, invalidateCache, dataRefreshTrigger } = useData();
   const [documents, setDocuments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -167,6 +167,21 @@ export default function AllReports() {
     JSON.parse(localStorage.getItem("recently_viewed_docs") || "[]")
   );
 
+  const fetchTrend = () => {
+    healthService.getTrends({}).then(({ data }) => {
+      if (data?.healthScoreTrend?.length > 1) {
+        setHealthScoreTrend(data.healthScoreTrend.map(d => ({
+          date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          score: d.score,
+          reportId: d.reportId,
+          reportType: d.reportType
+        })));
+      } else {
+        setHealthScoreTrend([]);
+      }
+    }).catch(() => {});
+  };
+
   // fetchDocuments is a plain async fn — avoids stale-closure issues with useCallback
   const fetchDocuments = async (page = 1, opts = {}) => {
     try {
@@ -185,7 +200,7 @@ export default function AllReports() {
       const activeEndDate = opts.customEndDate !== undefined ? opts.customEndDate : customEndDate;
 
       if (activeSearch.trim()) params.set('search', activeSearch.trim());
-      if (activeTypes.length === 1) params.set('category', activeTypes[0]);
+      if (activeTypes.length > 0) params.set('category', activeTypes.join(','));
       if (activeHospital.trim()) params.set('hospital', activeHospital.trim());
       if (activeDoctor.trim()) params.set('doctor', activeDoctor.trim());
       if (activeTags.length) params.set('tags', activeTags.join(','));
@@ -218,18 +233,18 @@ export default function AllReports() {
   useEffect(() => {
     window.scrollTo(0, 0);
     fetchDocuments(1);
-    healthService.getTrends({}).then(({ data }) => {
-      if (data?.healthScoreTrend?.length > 1) {
-        setHealthScoreTrend(data.healthScoreTrend.map(d => ({
-          date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          score: d.score,
-          reportId: d.reportId,
-          reportType: d.reportType
-        })));
-      }
-    }).catch(() => {});
+    fetchTrend();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Re-fetch trend whenever DataContext signals a completed analysis
+  const isFirstTrigger = useRef(true);
+  useEffect(() => {
+    if (isFirstTrigger.current) { isFirstTrigger.current = false; return; }
+    fetchDocuments(1);
+    fetchTrend();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [dataRefreshTrigger]);
 
   // Load preview when document details are opened
   useEffect(() => {
@@ -284,40 +299,46 @@ export default function AllReports() {
 
   const handleDownload = async (doc, e) => {
     if (e) { e.stopPropagation(); e.preventDefault(); }
+    const typeParam = doc.isAnalyzedReport ? '?type=report' : '';
+    const filename = doc.originalName || doc.title || "document";
     const toastId = toast.loading("Generating download link...");
-    try {
-      const { data } = await api.get(
-        `/documents/${doc._id}/download-url`
-      );
-      toast.dismiss(toastId);
+
+    const downloadBlob = async (url) => {
+      const response = await api.get(url, { responseType: "blob" });
+      const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
-      link.href = data.downloadUrl;
-      link.setAttribute("download", doc.originalName || doc.title || "document");
+      link.href = blobUrl;
+      link.setAttribute("download", filename);
       document.body.appendChild(link);
       link.click();
       link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    };
+
+    try {
+      const { data } = await api.get(`/documents/${doc._id}/download-url${typeParam}`);
+      toast.dismiss(toastId);
+
+      // If backend returns a server-relative path (encrypted vault doc), stream via api with auth
+      if (data.downloadUrl?.startsWith("/")) {
+        await downloadBlob(data.downloadUrl.replace(/^\/api/, ""));
+      } else {
+        const link = document.createElement("a");
+        link.href = data.downloadUrl;
+        link.setAttribute("download", filename);
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+      }
       toast.success("Download started");
     } catch (error) {
       toast.dismiss(toastId);
-      if (error.response?.status === 400 || error.response?.status === 500) {
-        try {
-          const response = await api.get(`/documents/${doc._id}/file`, {
-            responseType: "blob",
-          });
-          const url = window.URL.createObjectURL(new Blob([response.data]));
-          const fallbackLink = document.createElement("a");
-          fallbackLink.href = url;
-          fallbackLink.setAttribute("download", doc.originalName || doc.title || "document");
-          document.body.appendChild(fallbackLink);
-          fallbackLink.click();
-          fallbackLink.remove();
-          window.URL.revokeObjectURL(url);
-          toast.success("Download started");
-        } catch {
-          toast.error("Failed to download file");
-        }
-      } else {
-        toast.error("Failed to generate download link");
+      // Fallback: stream directly through proxy
+      try {
+        await downloadBlob(`/documents/${doc._id}/file${typeParam}`);
+        toast.success("Download started");
+      } catch {
+        toast.error("Failed to download file");
       }
     }
   };
@@ -334,6 +355,7 @@ export default function AllReports() {
       toast.success("Record deleted");
       if (isDetailsOpen && selectedDoc?._id === doc._id) setIsDetailsOpen(false);
       fetchDocuments(currentPage);
+      fetchTrend();
     } catch {
       toast.error("Failed to delete record");
     }
@@ -487,7 +509,8 @@ export default function AllReports() {
       setTimeout(() => {
         setIsUploadOpen(false);
         resetUploadForm();
-        fetchDocuments(1); // Refresh from page 1 so new upload appears at top
+        fetchDocuments(1);
+        fetchTrend();
         navigate(`/reports/${data.report._id}`);
       }, 800);
     } catch (error) {
@@ -1751,7 +1774,7 @@ export default function AllReports() {
                     </span>
                     <h4 className="font-bold text-xs truncate max-w-xs">{selectedDoc.title}</h4>
                   </div>
-                  {!selectedDoc.isAnalyzedReport && (
+                  {(selectedDoc.fileUrl || selectedDoc.isAnalyzedReport) && (
                     <button
                       onClick={(e) => handleDownload(selectedDoc, e)}
                       className="p-2.5 bg-white/10 hover:bg-white text-white hover:text-black rounded-full transition-all"

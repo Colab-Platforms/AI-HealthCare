@@ -59,6 +59,43 @@ router.post('/test-push', protect, async (req, res) => {
     }
 });
 
+// Manual nudge test — AI-generated, uses real report data
+router.post('/test-nudge', protect, async (req, res) => {
+  try {
+    const { sendToUser } = require('../services/fcmService');
+    const HealthReport = require('../models/HealthReport');
+    const { generateNudgeMessagePublic } = require('../services/nudgeService');
+    const { type = 'followup_3d' } = req.body;
+
+    const userName = req.user.name?.split(' ')[0] || 'there';
+
+    // Fetch real report data for AI context
+    const latestReport = await HealthReport.findOne({ user: req.user._id, status: 'completed' })
+      .sort({ reportDate: -1 }).select('reportType aiAnalysis').lean();
+
+    let reportData = {};
+    if (latestReport) {
+      const metrics = latestReport.aiAnalysis?.metrics || {};
+      const abnormal = Object.entries(metrics)
+        .filter(([, m]) => m?.status === 'high' || m?.status === 'low')
+        .map(([name, m]) => ({ name, value: m.value ?? m.result ?? '', unit: m.unit ?? '', status: m.status }));
+      reportData = {
+        reportType: latestReport.reportType,
+        abnormalMetrics: abnormal,
+        oldScore: (latestReport.aiAnalysis?.healthScore || 70) + 8,
+        newScore: latestReport.aiAnalysis?.healthScore || 62,
+      };
+    }
+
+    const { title, body } = await generateNudgeMessagePublic(userName, type, reportData);
+    const result = await sendToUser(req.user._id, { title, body, data: { type, test: 'true' } });
+
+    res.json({ success: true, title, body, fcmResult: result });
+  } catch (e) {
+    res.status(500).json({ success: false, error: e.message });
+  }
+});
+
 // All routes below require authentication
 router.use(protect);
 

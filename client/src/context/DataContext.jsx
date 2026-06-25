@@ -335,6 +335,7 @@ export const DataProvider = ({ children }) => {
               id: `completed-${report.id}`
             });
             await invalidateCache(['dashboard', 'diet_plan']);
+            triggerRefresh();
           } else if (report.status === 'failed') {
             toast.error('Report analysis failed. Please try again.', { id: `failed-${report.id}` });
           } else if (report.status === 'deleted') {
