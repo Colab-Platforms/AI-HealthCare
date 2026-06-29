@@ -1974,7 +1974,7 @@ export default function DashboardEnhanced() {
               { label: "Meal", icon: UtensilsCrossed, color: "#059669", onClick: () => navigate("/nutrition", { state: { openLogMeal: true, mealType: "Breakfast" } }) },
               { label: "Water", icon: GlassWater, color: "#0ea5e9", onClick: () => { setActiveLogTab("Water"); setIsLogVitalsOpen(true); } },
               { label: "Sleep", icon: Moon, color: "#7c3aed", onClick: () => { setActiveLogTab("Sleep"); setIsLogVitalsOpen(true); } },
-              { label: "Lab", icon: Upload, color: "#064e3b", onClick: () => navigate("/upload") },
+              { label: "Lab", icon: Upload, color: "#064e3b", onClick: () => navigate("/reports") },
               // { label: "Steps", icon: Footprints, color: "#f59e0b", onClick: () => { setActiveLogTab("Steps"); setIsLogVitalsOpen(true); } },
               { label: "Smoke", icon: Cigarette, color: "#6b7280", onClick: () => navigate("/smoke-tracker") },
               ...(features.alcoholTracker ? [{ label: "Drinks", icon: Wine, color: "#dc2626", onClick: () => navigate("/alcohol-tracker") }] : []),

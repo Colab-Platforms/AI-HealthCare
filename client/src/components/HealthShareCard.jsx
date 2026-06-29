@@ -49,21 +49,21 @@ async function nativeShare(dataUrl, filename, title) {
 const FONT = "'DM Sans', 'Inter', sans-serif";
 
 function TierBadge({ icon, name }) {
-  /* Premium pill with gold shimmer */
   return (
     <div style={{
-      display: 'inline-flex', alignItems: 'center', gap: 7,
+      display: 'inline-flex', alignItems: 'center', gap: 6, flexShrink: 0,
       background: 'linear-gradient(135deg, rgba(212,175,55,0.18) 0%, rgba(255,215,0,0.10) 100%)',
       border: '1px solid rgba(212,175,55,0.45)',
-      borderRadius: 100, padding: '6px 14px 6px 10px',
+      borderRadius: 100, padding: '5px 12px 5px 8px',
       boxShadow: '0 0 16px rgba(212,175,55,0.15)',
+      whiteSpace: 'nowrap',
     }}>
-      <span style={{ fontSize: 18, lineHeight: 1 }}>{icon}</span>
+      <span style={{ fontSize: 16, lineHeight: 1, flexShrink: 0 }}>{icon}</span>
       <div>
         <div style={{ fontSize: 7, fontWeight: 700, color: 'rgba(212,175,55,0.7)',
-          letterSpacing: '0.18em', textTransform: 'uppercase', fontFamily: FONT, marginBottom: 1 }}>Tier</div>
-        <div style={{ fontSize: 12, fontWeight: 800, color: '#f5d060',
-          letterSpacing: '0.04em', fontFamily: FONT, lineHeight: 1 }}>{name}</div>
+          letterSpacing: '0.16em', textTransform: 'uppercase', fontFamily: FONT, marginBottom: 1 }}>Tier</div>
+        <div style={{ fontSize: 11, fontWeight: 800, color: '#f5d060',
+          letterSpacing: '0.02em', fontFamily: FONT, lineHeight: 1, whiteSpace: 'nowrap' }}>{name}</div>
       </div>
     </div>
   );
@@ -116,12 +116,14 @@ function ScoreCard({ data }) {
         borderRadius: '50%', pointerEvents: 'none' }} />
 
       {/* Header row */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 24 }}>
-        <div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        gap: 12, marginBottom: 24 }}>
+        <div style={{ minWidth: 0 }}>
           <div style={{ fontSize: 9, fontWeight: 800, letterSpacing: '0.22em', color: '#69A38D',
             textTransform: 'uppercase', marginBottom: 3 }}>take.health</div>
-          <div style={{ fontSize: 15, fontWeight: 700, color: 'rgba(255,255,255,0.9)', lineHeight: 1.2 }}>
-            {userName ? `${userName}'s Health Card` : 'My Health Card'}
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'rgba(255,255,255,0.9)',
+            lineHeight: 1.2, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+            {userName ? `${userName}'s Card` : 'My Health Card'}
           </div>
         </div>
         <TierBadge icon={tierIcon} name={currentTier} />
@@ -168,15 +170,17 @@ function ScoreCard({ data }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {metrics.slice(0, 3).map(m => (
               <div key={m.name} style={{ display: 'flex', justifyContent: 'space-between',
-                alignItems: 'center',
+                alignItems: 'center', gap: 8,
                 background: 'rgba(255,255,255,0.035)',
                 borderRadius: 10, padding: '7px 12px',
                 border: '1px solid rgba(255,255,255,0.05)' }}>
                 <span style={{ fontSize: 11, fontWeight: 600, color: 'rgba(255,255,255,0.65)',
-                  textTransform: 'capitalize' }}>{m.name}</span>
-                <span style={{ fontSize: 12, fontWeight: 800,
-                  color: m.status === 'normal' ? '#4ade80' : m.status === 'high' ? '#f87171' : '#fbbf24' }}>
-                  {m.value}{m.unit ? ` ${m.unit}` : ''}
+                  textTransform: 'capitalize', whiteSpace: 'nowrap', overflow: 'hidden',
+                  textOverflow: 'ellipsis', maxWidth: 160 }}>{m.name}</span>
+                <span style={{ fontSize: 11, fontWeight: 800, flexShrink: 0,
+                  color: m.status === 'normal' ? '#4ade80' : m.status === 'high' ? '#f87171' : '#fbbf24',
+                  whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 140 }}>
+                  {String(m.value).length > 18 ? String(m.value).slice(0, 18) + '…' : m.value}{m.unit ? ` ${m.unit}` : ''}
                 </span>
               </div>
             ))}
