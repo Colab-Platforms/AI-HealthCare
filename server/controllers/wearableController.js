@@ -141,10 +141,16 @@ exports.syncDailyMetrics = async (req, res) => {
       distance: metrics.distance
     });
 
+    const gamificationService = require('../services/gamificationService');
+    let gamificationResult = null;
+    if (metrics.steps >= 1000) {
+      gamificationResult = await gamificationService.awardPoints(req.user._id, 'step_goal', 'Hit daily step target').catch(console.error);
+    }
+
     // Invalidate server-side dashboard cache so next fetch returns fresh data
     cache.delete(`dashboard:${req.user._id}`);
 
-    res.json(wearable);
+    res.json({ wearable, gamification: gamificationResult });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

@@ -58,6 +58,7 @@ import { ImageWithFallback } from "../components/ImageWithFallback";
 import SEO from "../hooks/useSEO";
 
 const reportTypes = [
+  { value: "auto", label: "Auto Detect", icon: "✨" },
   { value: "Blood Test", label: "Blood Test", icon: "🩸" },
   { value: "X-Ray", label: "X-Ray", icon: "🦴" },
   { value: "MRI", label: "MRI", icon: "🧠" },
@@ -65,6 +66,9 @@ const reportTypes = [
   { value: "ECG", label: "ECG", icon: "❤️" },
   { value: "Ultrasound", label: "Ultrasound", icon: "🌊" },
   { value: "General Checkup", label: "General Checkup", icon: "📋" },
+  { value: "Prescription", label: "Prescription", icon: "💊" },
+  { value: "Doctor Notes", label: "Doctor Notes", icon: "🩺" },
+  { value: "Vaccination", label: "Vaccination", icon: "💉" },
   { value: "Other", label: "Other", icon: "📁" },
 ];
 
@@ -433,7 +437,7 @@ export default function UploadReport() {
     const newFiles = acceptedFiles.map((file) => ({
       file,
       id: Math.random().toString(36).substr(2, 9),
-      reportType: "Blood Test",
+      reportType: "auto",
       name: file.name,
       size: file.size,
     }));
@@ -470,7 +474,7 @@ export default function UploadReport() {
       let finalFile = fileToUpload.file;
       const formData = new FormData();
       formData.append("report", finalFile);
-      formData.append("reportType", fileToUpload.reportType);
+      formData.append("reportType", fileToUpload.reportType === "auto" ? "general" : fileToUpload.reportType);
 
       const { data } = await healthService.uploadReport(formData);
       clearInterval(progressInterval);
@@ -479,6 +483,19 @@ export default function UploadReport() {
       if (data.backgroundProcessing) {
         addPendingAnalysis(data.report._id);
         toast.success("Report uploaded! Initiating Clinical AI...");
+
+        // Show gamification toast if points were earned
+        if (data.gamification?.status === 'success' && data.gamification.pointsAwarded > 0) {
+          setTimeout(() => {
+            toast.success(`📋 +${data.gamification.pointsAwarded} Points earned for uploading a report!`, {
+              icon: '✨',
+              style: { borderRadius: '16px', background: '#7c3aed', color: '#fff', fontWeight: 'bold' },
+              duration: 4000,
+            });
+            window.dispatchEvent(new Event('gamificationUpdate'));
+          }, 800);
+        }
+
         setTimeout(() => {
           navigate(`/reports/${data.report._id}`);
         }, 1000);
@@ -591,7 +608,7 @@ export default function UploadReport() {
                         </p>
                         <p className="text-xs font-bold text-[#64748b] truncate">
                           {(files[0].size / 1024 / 1024).toFixed(2)} MB •{" "}
-                          {files[0].reportType}
+                          {files[0].reportType === "auto" ? "✨ Auto Detect" : files[0].reportType}
                         </p>
                       </div>
                     </div>

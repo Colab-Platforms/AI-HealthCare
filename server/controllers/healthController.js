@@ -17,6 +17,7 @@ const { sendToUser } = require('../services/fcmService');
 const HealthMetric = require('../models/HealthMetric');
 const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
 const { logActivity } = require('../utils/activityLogger');
+const { inferCategory } = require('../utils/reportCategory');
 const {
   sanitizeAlcoholLog,
   toPlainAlcoholLog,
@@ -67,6 +68,19 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
 
     updatedReport.aiAnalysis = aiAnalysis;
     updatedReport.status = 'completed';
+
+    // AI-detected category takes priority over user-selected reportType
+    const validCategories = ['lab_report', 'prescription', 'scan', 'doctor_notes', 'vaccination', 'insurance', 'other'];
+    if (aiAnalysis.documentCategory && validCategories.includes(aiAnalysis.documentCategory)) {
+      updatedReport.category = aiAnalysis.documentCategory;
+    } else {
+      updatedReport.category = inferCategory(updatedReport.reportType, updatedReport.isPrescription, aiAnalysis);
+    }
+
+    // Update reportType with AI-detected human-readable type if available
+    if (aiAnalysis.documentType && aiAnalysis.documentType.trim()) {
+      updatedReport.reportType = aiAnalysis.documentType.trim();
+    }
 
     // Metadata extraction
     if (aiAnalysis.reportDate) {
@@ -244,9 +258,11 @@ exports.uploadReport = async (req, res) => {
     const isPastReport = req.body.isPastReport === 'true' || req.body.isPastReport === true;
     const isPrescription = req.body.isPrescription === 'true' || req.body.isPrescription === true;
 
+    const reportType = req.body.reportType || 'general';
     const reportData = {
       user: req.user._id,
-      reportType: req.body.reportType || 'general',
+      reportType,
+      category: inferCategory(reportType, isPrescription),
       originalFile: { filename: req.file.originalname, path: cloudinaryUrl, mimetype: req.file.mimetype, cloudinaryUrl },
       extractedText,
       status: 'processing',
@@ -286,8 +302,15 @@ exports.uploadReport = async (req, res) => {
       isPrescription
     }, req);
 
+    // Award Gamification Points for uploading a health report
+    const gamificationService = require('../services/gamificationService');
+    const gamificationResult = await gamificationService.awardPoints(req.user._id, 'health_checkup', 'Uploaded health report', report._id.toString()).catch(err => {
+      console.error('Gamification Error:', err);
+      return null;
+    });
+
     // Respond to client
-    res.status(201).json({ report, backgroundProcessing: true });
+    res.status(201).json({ report, backgroundProcessing: true, gamification: gamificationResult });
 
     // Trigger analysis
     const isVercel = !!(process.env.VERCEL || process.env.VERCEL_ID);

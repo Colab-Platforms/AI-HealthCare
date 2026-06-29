@@ -17,7 +17,10 @@ const notificationSchema = new mongoose.Schema({
             'health_insight',     // General health insights
             'report_comparison',  // Report comparison available
             'goal_progress',      // Progress toward fitness goal
-            'diet_ready'          // Personalized diet plan generated
+            'diet_ready',         // Personalized diet plan generated
+            'gamification_points', // Points earned
+            'gamification_tier',   // Tier upgraded
+            'gamification_badge'   // Badge unlocked
         ],
         required: true
     },

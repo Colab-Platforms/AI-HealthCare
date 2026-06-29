@@ -40,6 +40,7 @@ import PWAInstallPrompt from "./PWAInstallPrompt";
 import api, { notificationService } from "../services/api";
 import NotificationPanel from "./NotificationPanel";
 import { useRef } from "react";
+import GamificationMiniBadge from "./GamificationMiniBadge";
 
 const patientNavItems = [
   { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
@@ -487,6 +488,9 @@ export default function Layout({
 
                   {/* Right side actions */}
                   <div className="flex items-center gap-2">
+                    {/* Gamification Points Badge */}
+                    <GamificationMiniBadge />
+
                     {/* Bell */}
                     <div className="relative">
                       <button

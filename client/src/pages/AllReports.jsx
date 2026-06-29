@@ -14,8 +14,10 @@ import {
 } from "lucide-react";
 import toast from "react-hot-toast";
 import SEO from "../hooks/useSEO";
+import HealthShareCard from "../components/HealthShareCard";
 
 const AI_REPORT_TYPES = [
+  { value: "auto", label: "Auto Detect", icon: "✨" },
   { value: "Blood Test", label: "Blood Test", icon: "🩸" },
   { value: "X-Ray", label: "X-Ray", icon: "🦴" },
   { value: "MRI", label: "MRI", icon: "🧠" },
@@ -23,6 +25,9 @@ const AI_REPORT_TYPES = [
   { value: "ECG", label: "ECG", icon: "❤️" },
   { value: "Ultrasound", label: "Ultrasound", icon: "🌊" },
   { value: "General Checkup", label: "General Checkup", icon: "📋" },
+  { value: "Prescription", label: "Prescription", icon: "💊" },
+  { value: "Doctor Notes", label: "Doctor Notes", icon: "🩺" },
+  { value: "Vaccination", label: "Vaccination", icon: "💉" },
   { value: "Other", label: "Other", icon: "📁" },
 ];
 
@@ -56,6 +61,13 @@ const CATEGORY_MAP = {
     border: "border-purple-100",
   },
   discharge_summary: {
+    label: "Doctor Notes",
+    icon: Stethoscope,
+    color: "text-blue-600",
+    bg: "bg-blue-50",
+    border: "border-blue-100",
+  },
+  doctor_notes: {
     label: "Doctor Notes",
     icon: Stethoscope,
     color: "text-blue-600",
@@ -104,7 +116,7 @@ export default function AllReports() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const [totalDocs, setTotalDocs] = useState(0);
-  const [globalStats, setGlobalStats] = useState({ total: 0, aiCount: 0, vaultCount: 0, recent: 0 });
+  const [globalStats, setGlobalStats] = useState({ total: 0, aiCount: 0, vaultCount: 0, recent: 0, categoryCounts: {} });
   const [healthScoreTrend, setHealthScoreTrend] = useState([]);
   const PAGE_SIZE = 10;
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(true);
@@ -118,7 +130,7 @@ export default function AllReports() {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadState, setUploadState] = useState("idle");
   // AI analyze mode state
-  const [selectedReportType, setSelectedReportType] = useState("Blood Test");
+  const [selectedReportType, setSelectedReportType] = useState("auto");
   // Vault mode state
   const [uploadFormData, setUploadFormData] = useState({
     title: "",
@@ -494,7 +506,7 @@ export default function AllReports() {
     try {
       const formData = new FormData();
       formData.append("report", uploadFile);
-      formData.append("reportType", selectedReportType);
+      formData.append("reportType", selectedReportType === "auto" ? "general" : selectedReportType);
       const { data } = await healthService.uploadReport(formData);
       clearInterval(progressInterval);
       setUploadProgress(100);
@@ -932,7 +944,8 @@ export default function AllReports() {
                 animate={{ width: 268, opacity: 1 }}
                 exit={{ width: 0, opacity: 0 }}
                 transition={{ duration: 0.3, ease: "easeInOut" }}
-                className="hidden md:block shrink-0 sticky top-6 self-start max-h-[85vh] overflow-y-auto liquid-glass rounded-[24px] p-5 space-y-5"
+                className="hidden md:block shrink-0 sticky top-6 self-start max-h-[85vh] liquid-glass rounded-[24px] p-5 space-y-5"
+                style={{ overflowY: 'auto', overflowX: 'hidden' }}
               >
                 <div className="flex items-center justify-between border-b border-white/70 pb-3">
                   <span className="text-xs font-black uppercase tracking-wider text-[#1a2138] flex items-center gap-1.5">
@@ -981,9 +994,10 @@ export default function AllReports() {
                 {/* Document Type */}
                 <FilterSection title="Document Type">
                   <div className="space-y-2 pt-1">
-                    {Object.keys(CATEGORY_MAP).map((key) => {
+                    {Object.keys(CATEGORY_MAP).filter(k => k !== 'discharge_summary').map((key) => {
                       const active = filterTypes.includes(key);
                       const cat = CATEGORY_MAP[key];
+                      const count = globalStats.categoryCounts?.[key] || 0;
                       return (
                         <label
                           key={key}
@@ -995,9 +1009,16 @@ export default function AllReports() {
                             onChange={() => toggleCategoryFilter(key)}
                             className="rounded border-slate-300 text-[#69A38D] focus:ring-[#69A38D]"
                           />
-                          <div className="flex items-center gap-2">
-                            <cat.icon className={`w-3.5 h-3.5 ${cat.color}`} />
-                            <span>{cat.label}</span>
+                          <div className="flex items-center justify-between gap-2 flex-1">
+                            <div className="flex items-center gap-2">
+                              <cat.icon className={`w-3.5 h-3.5 ${cat.color}`} />
+                              <span>{cat.label}</span>
+                            </div>
+                            {count > 0 && (
+                              <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-md ${active ? 'bg-[#69A38D] text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                {count}
+                              </span>
+                            )}
                           </div>
                         </label>
                       );
@@ -1502,10 +1523,35 @@ export default function AllReports() {
                   {uploadMode === "analyze" ? (
                     /* ── AI ANALYZE FORM ── */
                     <>
-                      <div>
-                        <label className="text-[9px] font-black uppercase tracking-widest text-slate-400 block mb-2 ml-1">Report Type</label>
-                        <div className="grid grid-cols-2 gap-2">
-                          {AI_REPORT_TYPES.map((rt) => (
+                      {/* Auto Detect Banner */}
+                      <div className="bg-[#E2EED2]/60 border border-[#69A38D]/20 rounded-2xl px-4 py-3 flex items-center justify-between gap-3">
+                        <div className="flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-[#69A38D] shrink-0" />
+                          <div>
+                            <p className="text-[10px] font-black text-[#69A38D] uppercase tracking-wider">
+                              {selectedReportType === "auto" ? "Auto Detect — On" : `Manual: ${AI_REPORT_TYPES.find(r => r.value === selectedReportType)?.icon} ${AI_REPORT_TYPES.find(r => r.value === selectedReportType)?.label}`}
+                            </p>
+                            <p className="text-[9px] font-bold text-slate-500 mt-0.5">
+                              {selectedReportType === "auto" ? "AI will read your document and categorize it automatically" : "AI will use your selected type as a hint"}
+                            </p>
+                          </div>
+                        </div>
+                        {selectedReportType !== "auto" && (
+                          <button type="button" onClick={() => setSelectedReportType("auto")}
+                            className="text-[9px] font-black text-slate-400 hover:text-red-400 uppercase tracking-widest whitespace-nowrap">
+                            Reset
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Manual Override — collapsible */}
+                      <details className="group">
+                        <summary className="text-[9px] font-black text-slate-400 uppercase tracking-widest cursor-pointer hover:text-[#69A38D] transition-colors list-none flex items-center gap-1.5">
+                          <ChevronDown className="w-3 h-3 group-open:rotate-180 transition-transform" />
+                          Override report type manually
+                        </summary>
+                        <div className="grid grid-cols-2 gap-2 mt-3">
+                          {AI_REPORT_TYPES.filter(rt => rt.value !== "auto").map((rt) => (
                             <button
                               key={rt.value}
                               type="button"
@@ -1521,7 +1567,7 @@ export default function AllReports() {
                             </button>
                           ))}
                         </div>
-                      </div>
+                      </details>
 
                       <div className="bg-[#E2EED2]/50 border border-[#69A38D]/20 rounded-2xl p-4 space-y-1.5">
                         <p className="text-[10px] font-black text-[#69A38D] uppercase tracking-wider flex items-center gap-1.5">
@@ -1569,7 +1615,7 @@ export default function AllReports() {
                             onChange={(e) => setUploadFormData({ ...uploadFormData, category: e.target.value })}
                             className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs outline-none focus:border-[#69A38D] font-black uppercase cursor-pointer"
                           >
-                            {Object.entries(CATEGORY_MAP).filter(([k]) => k !== "ai_report").map(([k, v]) => (
+                            {Object.entries(CATEGORY_MAP).filter(([k]) => k !== "ai_report" && k !== "discharge_summary").map(([k, v]) => (
                               <option key={k} value={k}>{v.label}</option>
                             ))}
                           </select>
@@ -1692,7 +1738,7 @@ export default function AllReports() {
               <div className="space-y-2">
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block ml-1">Document Types</span>
                 <div className="flex flex-wrap gap-2">
-                  {Object.entries(CATEGORY_MAP).map(([key, cat]) => {
+                  {Object.entries(CATEGORY_MAP).filter(([k]) => k !== 'discharge_summary').map(([key, cat]) => {
                     const active = filterTypes.includes(key);
                     return (
                       <button
@@ -1804,13 +1850,34 @@ export default function AllReports() {
                             : "Analysis in progress..."}
                         </p>
                       </div>
-                      <Link
-                        to={`/reports/${selectedDoc._id}`}
-                        onClick={() => setIsDetailsOpen(false)}
-                        className="inline-flex items-center gap-3 px-8 py-4 bg-[#69A38D] hover:bg-[#528270] text-white rounded-[24px] font-black text-sm uppercase tracking-widest transition-all shadow-lg shadow-[#69A38D]/20"
-                      >
-                        <Zap size={18} fill="currentColor" /> Open Full Analysis
-                      </Link>
+                      <div className="flex items-center gap-3 justify-center flex-wrap">
+                        <Link
+                          to={`/reports/${selectedDoc._id}`}
+                          onClick={() => setIsDetailsOpen(false)}
+                          className="inline-flex items-center gap-3 px-8 py-4 bg-[#69A38D] hover:bg-[#528270] text-white rounded-[24px] font-black text-sm uppercase tracking-widest transition-all shadow-lg shadow-[#69A38D]/20"
+                        >
+                          <Zap size={18} fill="currentColor" /> Open Full Analysis
+                        </Link>
+                        {selectedDoc.aiAnalysis?.healthScore && (
+                          <HealthShareCard
+                            type="report"
+                            data={{
+                              healthScore: selectedDoc.aiAnalysis.healthScore,
+                              reportType: selectedDoc.title || 'Health Report',
+                              reportDate: selectedDoc.createdAt,
+                              category: selectedDoc.category || 'lab_report',
+                              keyFindings: selectedDoc.aiAnalysis?.keyFindings || selectedDoc.aiAnalysis?.findings || [],
+                              deficiencies: selectedDoc.aiAnalysis?.deficiencies || [],
+                              userName: '',
+                            }}
+                            trigger={
+                              <button className="inline-flex items-center gap-2 px-6 py-4 bg-white/10 hover:bg-white/20 text-white rounded-[24px] font-black text-sm uppercase tracking-widest transition-all border border-white/20">
+                                <Download size={16} /> Export Card
+                              </button>
+                            }
+                          />
+                        )}
+                      </div>
                     </div>
                   ) : previewLoading ? (
                     <div className="flex flex-col items-center text-slate-400 animate-pulse">
@@ -1891,7 +1958,7 @@ export default function AllReports() {
                           onChange={(e) => setEditFormData({ ...editFormData, category: e.target.value })}
                           className="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-xs focus:outline-none focus:border-[#69A38D] font-black uppercase"
                         >
-                          {Object.entries(CATEGORY_MAP).filter(([k]) => k !== "ai_report").map(([k, v]) => (
+                          {Object.entries(CATEGORY_MAP).filter(([k]) => k !== "ai_report" && k !== "discharge_summary").map(([k, v]) => (
                             <option key={k} value={k}>{v.label}</option>
                           ))}
                         </select>
@@ -2066,7 +2133,7 @@ function UnifiedGridCard({ doc, isFavorite, onFavorite, onDelete, onView, onDown
           <div className="flex flex-col min-w-0">
             <span className="text-[10px] font-black text-[#69A38D] uppercase tracking-widest">
               {doc.isAnalyzedReport
-                ? (doc.status === "completed" ? "SYNTHESIZED" : "PROCESSING")
+                ? (doc.status === "completed" ? meta.label.toUpperCase() : "PROCESSING")
                 : meta.label.toUpperCase()}
             </span>
             <h3 className="text-[17px] font-black text-[#1a2138] leading-tight uppercase tracking-tight line-clamp-1">
@@ -2181,7 +2248,7 @@ function UnifiedListRow({ doc, isFavorite, onFavorite, onDelete, onView, onDownl
           <div className="flex items-center gap-2 mb-0.5 flex-wrap">
             <span className="text-[9px] font-black text-[#69A38D] uppercase tracking-widest">
               {doc.isAnalyzedReport
-                ? (doc.status === "completed" ? "SYNTHESIZED" : "PROCESSING")
+                ? (doc.status === "completed" ? meta.label.toUpperCase() : "PROCESSING")
                 : meta.label.toUpperCase()}
             </span>
             <span className="text-[10px] text-slate-400 font-bold">

@@ -300,6 +300,7 @@ try {
       module: "./routes/dietRecommendationRoutes",
     },
     { path: "/api/users", module: "./routes/userRoutes" },
+    { path: "/api/gamification", module: "./routes/gamificationRoutes" },
     { path: "/api/notifications", module: "./routes/notificationRoutes" },
     { path: "/api/notification-preferences", module: "./routes/notificationPreferenceRoutes" },
     { path: "/api/chat", module: "./routes/chatHistoryRoutes" },
@@ -384,6 +385,63 @@ if (!process.env.VERCEL) {
     console.log("🔔 Starting Follow-up Nudge cron...");
     await runNudgeCron();
   });
+
+  // Streak Loss Warning — every night at 8 PM
+  cron.schedule("0 20 * * *", async () => {
+    console.log("🔥 Running streak loss warning cron...");
+    await runStreakWarningCron();
+  });
+
+  async function runStreakWarningCron() {
+    try {
+      const GamificationLog = require("./models/GamificationLog");
+      const User = require("./models/User");
+      const { sendToUser } = require("./services/fcmService");
+      const gamificationService = require("./services/gamificationService");
+
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      // Find users who logged something yesterday (have a streak) but NOT today
+      const activeUserIds = await GamificationLog.distinct("user", {
+        createdAt: { $gte: new Date(today.getTime() - 24 * 60 * 60 * 1000), $lt: today }
+      });
+
+      if (!activeUserIds.length) return;
+
+      // Filter: logged today already = no warning needed
+      const loggedTodayIds = await GamificationLog.distinct("user", {
+        createdAt: { $gte: today }
+      });
+      const loggedTodaySet = new Set(loggedTodayIds.map(id => id.toString()));
+
+      const toWarn = activeUserIds.filter(id => !loggedTodaySet.has(id.toString()));
+
+      let warned = 0;
+      for (const userId of toWarn) {
+        try {
+          const streak = await gamificationService.getCurrentStreak(userId);
+          if (streak < 3) continue; // Only warn if streak worth saving (3+ days)
+
+          await sendToUser(userId, {
+            title: "🔥 Don't break your streak!",
+            body: `You have a ${streak}-day streak! Log any activity today before midnight to keep it alive.`,
+            data: { type: "streak_warning", screen: "dashboard" }
+          });
+          warned++;
+
+          // Small delay to avoid hammering FCM
+          await new Promise(r => setTimeout(r, 100));
+        } catch (err) {
+          console.error(`Streak warning failed for user ${userId}:`, err.message);
+        }
+      }
+
+      console.log(`✅ Streak warnings sent to ${warned} users`);
+    } catch (err) {
+      console.error("❌ Streak warning cron error:", err.message);
+    }
+  }
 
   // Optional: Run on startup to ensure fresh data
   // syncFoodSafetyDatabase();

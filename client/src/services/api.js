@@ -419,4 +419,8 @@ export const metricsService = {
   getWeightTrends: (days) => api.get('metrics/trends/weight', { params: { days } })
 };
 
+export const gamificationService = {
+  getProfile: () => api.get('gamification/profile')
+};
+
 export default api;

@@ -74,17 +74,25 @@ exports.getDocuments = async (req, res) => {
         const page = Math.max(1, parseInt(req.query.page) || 1);
         const limit = Math.min(100, Math.max(1, parseInt(req.query.limit) || 10));
 
+        // All categories that can exist in HealthReport
+        const HR_CATEGORIES = ['ai_report', 'lab_report', 'prescription', 'scan', 'doctor_notes', 'vaccination', 'insurance', 'other'];
+
         // Support comma-separated multi-category filter from frontend
         const categoryList = category ? category.split(',').map(c => c.trim()).filter(Boolean) : [];
-        const wantsAiReports = !categoryList.length || categoryList.includes('all') || categoryList.includes('ai_report') || categoryList.includes('lab_report') || categoryList.includes('prescription');
-        const wantsVaultDocs = !categoryList.length || categoryList.includes('all') || categoryList.some(c => !['ai_report', 'lab_report', 'prescription'].includes(c));
+        const noFilter = !categoryList.length || categoryList.includes('all');
+        const wantsAiReports = noFilter || categoryList.some(c => HR_CATEGORIES.includes(c));
+        const wantsVaultDocs = noFilter || categoryList.some(c => !['ai_report', 'all'].includes(c));
 
         // --- MedicalDocument query ---
         let vaultDocs = [];
         if (wantsVaultDocs) {
             let mdQuery = { userId: req.user._id };
-            // Vault-only categories (exclude ai_report/lab_report/prescription which live in HealthReport)
-            const vaultCategories = categoryList.filter(c => !['ai_report', 'lab_report', 'prescription', 'all'].includes(c));
+            // MedicalDocument uses: prescription, lab_report, scan, discharge_summary, vaccination, insurance, other
+            // Map doctor_notes → discharge_summary for vault
+            const vaultCategoryMap = { doctor_notes: 'discharge_summary' };
+            const vaultCategories = categoryList
+                .filter(c => c !== 'all' && c !== 'ai_report')
+                .map(c => vaultCategoryMap[c] || c);
             if (vaultCategories.length === 1) mdQuery.category = vaultCategories[0];
             else if (vaultCategories.length > 1) mdQuery.category = { $in: vaultCategories };
 
@@ -109,32 +117,44 @@ exports.getDocuments = async (req, res) => {
         if (wantsAiReports) {
             const reportQuery = { user: req.user._id };
             if (search) reportQuery['originalFile.filename'] = { $regex: search, $options: 'i' };
-            // Narrow by sub-type only when exclusively filtering by prescription or lab_report
-            if (categoryList.includes('prescription') && !categoryList.includes('ai_report') && !categoryList.includes('lab_report')) {
-                reportQuery.isPrescription = true;
-            } else if (categoryList.includes('lab_report') && !categoryList.includes('ai_report') && !categoryList.includes('prescription')) {
-                reportQuery.isPrescription = { $ne: true };
+            // Filter by category field directly (set at upload + analysis time)
+            if (!noFilter) {
+                const hrCategories = categoryList.filter(c => c !== 'all');
+                if (hrCategories.length === 1) reportQuery.category = hrCategories[0];
+                else if (hrCategories.length > 1) reportQuery.category = { $in: hrCategories };
             }
 
+            const { inferCategory } = require('../utils/reportCategory');
             const foundReports = await HealthReport.find(reportQuery).sort({ createdAt: -1 });
-            reports = foundReports.map(r => ({
-                _id: r._id,
-                userId: r.user,
-                title: r.originalFile?.filename || (r.isPrescription ? 'Prescription' : 'Lab Report'),
-                category: r.isPrescription ? 'prescription' : 'lab_report',
-                documentDate: r.reportDate || r.createdAt,
-                notes: r.aiAnalysis?.summary || 'AI Analyzed Report',
-                fileUrl: r.originalFile?.cloudinaryUrl || r.originalFile?.path,
-                originalName: r.originalFile?.filename,
-                mimetype: r.originalFile?.mimetype,
-                size: 0,
-                isAnalyzedReport: true,
-                status: r.status,
-                hospital: r.prescriptionDetails?.clinicName || r.pastLabDetails?.labName || 'AI Health Lab',
-                doctorName: r.prescriptionDetails?.doctorName || 'AI Consultant',
-                isFavorite: false,
-                tags: ['AI Analyzed', r.reportType || (r.isPrescription ? 'Prescription' : 'Lab Report')]
-            }));
+            reports = foundReports.map(r => {
+                const category = r.category || inferCategory(r.reportType, r.isPrescription);
+                const categoryLabels = {
+                  lab_report: 'Lab Report', scan: 'Scan / X-Ray', prescription: 'Prescription',
+                  doctor_notes: 'Doctor Notes', vaccination: 'Vaccination',
+                  insurance: 'Insurance & ID', ai_report: 'AI Report', other: 'Other'
+                };
+                return {
+                    _id: r._id,
+                    userId: r.user,
+                    title: r.reportType && r.reportType !== 'general'
+                        ? r.reportType
+                        : (r.originalFile?.filename || categoryLabels[category] || 'Health Report'),
+                    category,
+                    documentDate: r.reportDate || r.createdAt,
+                    notes: r.aiAnalysis?.summary || 'AI Analyzed Report',
+                    fileUrl: r.originalFile?.cloudinaryUrl || r.originalFile?.path,
+                    originalName: r.originalFile?.filename,
+                    mimetype: r.originalFile?.mimetype,
+                    size: 0,
+                    isAnalyzedReport: true,
+                    status: r.status,
+                    aiAnalysis: r.aiAnalysis ? { healthScore: r.aiAnalysis.healthScore } : null,
+                    hospital: r.prescriptionDetails?.clinicName || r.pastLabDetails?.labName || 'AI Health Lab',
+                    doctorName: r.prescriptionDetails?.doctorName || 'AI Consultant',
+                    isFavorite: false,
+                    tags: ['AI Analyzed', r.reportType || categoryLabels[category] || 'Report']
+                };
+            });
         }
 
         // Merge + sort latest first
@@ -143,12 +163,23 @@ exports.getDocuments = async (req, res) => {
         );
 
         // Global stats (always across all unfiltered docs for accurate sidebar counts)
-        const [totalMd, totalHr, recentMd, recentHr] = await Promise.all([
+        const [totalMd, totalHr, recentMd, recentHr, hrCatAgg, mdCatAgg] = await Promise.all([
             MedicalDocument.countDocuments({ userId: req.user._id }),
             HealthReport.countDocuments({ user: req.user._id }),
             MedicalDocument.countDocuments({ userId: req.user._id, createdAt: { $gte: new Date(Date.now() - 7 * 86400000) } }),
             HealthReport.countDocuments({ user: req.user._id, createdAt: { $gte: new Date(Date.now() - 7 * 86400000) } }),
+            HealthReport.aggregate([{ $match: { user: req.user._id } }, { $group: { _id: '$category', count: { $sum: 1 } } }]),
+            MedicalDocument.aggregate([{ $match: { userId: req.user._id } }, { $group: { _id: '$category', count: { $sum: 1 } } }]),
         ]);
+
+        // Merge category counts from both collections
+        const categoryCounts = {};
+        hrCatAgg.forEach(({ _id, count }) => { if (_id) categoryCounts[_id] = (categoryCounts[_id] || 0) + count; });
+        mdCatAgg.forEach(({ _id, count }) => {
+            if (!_id) return;
+            const key = _id === 'discharge_summary' ? 'doctor_notes' : _id;
+            categoryCounts[key] = (categoryCounts[key] || 0) + count;
+        });
 
         const total = combined.length;
         const pages = Math.ceil(total / limit) || 1;
@@ -164,6 +195,7 @@ exports.getDocuments = async (req, res) => {
                 aiCount: totalHr,
                 vaultCount: totalMd,
                 recent: recentMd + recentHr,
+                categoryCounts,
             }
         });
     } catch (error) {

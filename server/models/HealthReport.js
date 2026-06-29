@@ -3,6 +3,11 @@ const mongoose = require('mongoose');
 const healthReportSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   reportType: { type: String, required: true },
+  category: {
+    type: String,
+    enum: ['ai_report', 'prescription', 'lab_report', 'scan', 'doctor_notes', 'vaccination', 'insurance', 'other'],
+    default: 'lab_report'
+  },
   patientName: { type: String, description: 'Patient name extracted from report for validation' },
   patientAge: { type: Number, description: 'Patient age extracted from report' },
   patientGender: { type: String, description: 'Patient gender extracted from report' },

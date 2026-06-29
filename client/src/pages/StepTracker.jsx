@@ -138,10 +138,24 @@ export default function StepTracker() {
     setLogLoading(true);
     try {
       const today = new Date().toISOString().split("T")[0];
-      await wearableService.syncMetrics("other", { steps: count, date: today });
+      const res = await wearableService.syncMetrics("other", { steps: count, date: today });
       addSteps(count);
       setLogSuccess(true);
       setManualSteps("");
+
+      // Show gamification toast if points were earned
+      if (res.data?.gamification?.status === 'success' && res.data.gamification.pointsAwarded > 0) {
+        const { toast } = await import('react-hot-toast');
+        setTimeout(() => {
+          toast.success(`🏃 +${res.data.gamification.pointsAwarded} Points earned for hitting step goal!`, {
+            icon: '✨',
+            style: { borderRadius: '16px', background: '#0f172a', color: '#fff', fontWeight: 'bold' },
+            duration: 4000,
+          });
+          window.dispatchEvent(new Event('gamificationUpdate'));
+        }, 500);
+      }
+
       setTimeout(() => {
         setLogSuccess(false);
         setIsLoggingSteps(false);

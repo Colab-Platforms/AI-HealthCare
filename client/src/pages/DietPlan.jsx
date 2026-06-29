@@ -643,7 +643,7 @@ export default function DietPlan() {
       // 2. Log with data from diet plan PREFERRED (for calorie goal consistency)
       // but enrich with AI analysis findings (benefits, alternatives)
       const todayStr = new Date().toISOString().split("T")[0];
-      await nutritionService.logMeal({
+      const res = await nutritionService.logMeal({
         mealType: type,
         foodItems: [
           {
@@ -678,6 +678,24 @@ export default function DietPlan() {
 
       toast.dismiss(analyzeToastId);
       toast.success("Meal logged! Keep it up 🚀");
+      
+      // Handle Gamification update
+      if (res.data?.gamification?.status === 'success' && res.data.gamification.pointsAwarded > 0) {
+        setTimeout(() => {
+          toast.success(`🎯 +${res.data.gamification.pointsAwarded} Points earned for logging a meal!`, {
+            icon: '✨',
+            style: {
+              borderRadius: '16px',
+              background: '#10b981',
+              color: '#fff',
+              fontWeight: 'bold',
+            },
+            duration: 4000,
+          });
+          window.dispatchEvent(new Event('gamificationUpdate'));
+        }, 500);
+      }
+
       setLoggedMeals((prev) => ({ ...prev, [mealId]: true }));
       invalidateCache([
         "dashboard",

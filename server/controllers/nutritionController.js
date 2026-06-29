@@ -9,6 +9,7 @@ const QuickFoodCheck = require('../models/QuickFoodCheck');
 const fs = require('fs');
 const cache = require('../utils/cache');
 const { logActivity } = require('../utils/activityLogger');
+const gamificationService = require('../services/gamificationService');
 
 // Helper function to add timeout to all queries for Vercel compatibility
 const withTimeout = (query, timeoutMs = 30000) => {
@@ -487,9 +488,16 @@ exports.logMeal = async (req, res) => {
       foodNames: foodItems.map(i => i.foodItem?.name || i.name).join(', ')
     }, req);
 
+    // Award Gamification Points (pass mealType as subType so they get points for each meal)
+    const gamificationResult = await gamificationService.awardPoints(req.user._id, 'food_log', `Logged ${mealType}`, mealType).catch(err => {
+      console.error('Gamification Error:', err);
+      return null;
+    });
+
     res.json({
       success: true,
       foodLog,
+      gamification: gamificationResult,
       message: 'Meal logged successfully'
     });
   } catch (error) {
@@ -1029,9 +1037,16 @@ exports.logWater = async (req, res) => {
     // Invalidate dashboard cache so next fetch returns fresh data
     cache.delete(`dashboard:${req.user._id}`);
 
+    const gamificationService = require('../services/gamificationService');
+    const gamificationResult = await gamificationService.awardPoints(req.user._id, 'water_intake', `Logged water intake`).catch(err => {
+      console.error('Gamification Error:', err);
+      return null;
+    });
+
     res.json({
       success: true,
       waterIntake: summary.waterIntake,
+      gamification: gamificationResult,
       message: 'Water intake logged successfully'
     });
   } catch (error) {

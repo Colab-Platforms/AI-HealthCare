@@ -5,7 +5,7 @@ const medicalDocumentSchema = new mongoose.Schema({
     title: { type: String, required: true },
     category: {
         type: String,
-        enum: ['prescription', 'lab_report', 'scan', 'discharge_summary', 'vaccination', 'insurance', 'other'],
+        enum: ['prescription', 'lab_report', 'scan', 'discharge_summary', 'doctor_notes', 'vaccination', 'insurance', 'other'],
         default: 'other'
     },
     documentDate: { type: Date, default: Date.now }, // The date the document was actually issued

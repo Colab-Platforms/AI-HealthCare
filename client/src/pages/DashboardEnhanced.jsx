@@ -80,7 +80,8 @@ import {
 } from "recharts";
 import { motion, AnimatePresence } from "framer-motion";
 import { getFoodImage } from "../services/imageService";
-import api, { nutritionService, dietRecommendationService } from "../services/api";
+import api, { nutritionService, dietRecommendationService, gamificationService } from "../services/api";
+import HealthShareCard from "../components/HealthShareCard";
 import { ImageWithFallback } from "../components/ImageWithFallback";
 import SEO from "../hooks/useSEO";
 import SmokeTrackerCard from "../components/SmokeTrackerCard";
@@ -837,6 +838,8 @@ export default function DashboardEnhanced() {
   } = useData();
   const navigate = useNavigate();
 
+  const [gamProfile, setGamProfile] = useState(null);
+
   const [dietPlan, setDietPlan] = useState(null);
   const [dietHistory, setDietHistory] = useState([]);
   const [selectedDietDate, setSelectedDietDate] = useState(new Date().toISOString().split("T")[0]);
@@ -922,6 +925,12 @@ export default function DashboardEnhanced() {
     };
     loadAllData();
   }, [fetchDashboard, fetchNutrition, fetchWearable, fetchWeeklyTrends]);
+
+  useEffect(() => {
+    gamificationService.getProfile().then(({ data }) => {
+      if (data?.success) setGamProfile(data.data);
+    }).catch(() => {});
+  }, []);
 
   // Sync Sleep Inputs with Real Data
   useEffect(() => {
@@ -1734,9 +1743,8 @@ export default function DashboardEnhanced() {
 
             return (
               <div
-                className="flex-1 rounded-[24px] p-3 md:p-4 flex flex-col justify-between cursor-pointer active:scale-[0.99] transition-all overflow-hidden h-full relative min-w-0"
+                className="flex-1 rounded-[24px] p-3 md:p-4 flex flex-col justify-between transition-all overflow-hidden h-full relative min-w-0"
                 style={{ background: gradientBg }}
-                onClick={() => navigate('/reports')}
               >
                 {/* Heartbeat SVG animation — background */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none overflow-hidden rounded-[24px]">
@@ -1792,68 +1800,152 @@ export default function DashboardEnhanced() {
 
                 {/* Header */}
                 <div className="flex items-center justify-between relative z-10">
-                  <p className="text-[9px] font-black text-white/60 uppercase tracking-widest">Health Score</p>
-                  <span className="text-[8px] font-black text-white/80 bg-white/10 px-2 py-1 rounded-full uppercase tracking-wider whitespace-nowrap">View →</span>
+                  <p className="text-[9px] font-black text-white/60 uppercase tracking-widest whitespace-nowrap">Health Score</p>
+                  {/* Desktop: Share + View in header */}
+                  <div className="hidden md:flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                    {gamProfile && (
+                      <HealthShareCard
+                        type="score"
+                        data={{
+                          healthScore: latest.score,
+                          currentTier: gamProfile.currentTier,
+                          tierIcon: gamProfile.tierIcon,
+                          streak: gamProfile.streak,
+                          totalPoints: gamProfile.totalPoints,
+                          badges: gamProfile.badges || [],
+                          metrics: (() => {
+                            const aiMetrics = dashboardData?.latestAnalysis?.metrics;
+                            if (aiMetrics && Object.keys(aiMetrics).length > 0) {
+                              return Object.entries(aiMetrics).filter(([, v]) => v?.value != null).slice(0, 3)
+                                .map(([k, v]) => ({ name: k, value: v.value, unit: v.unit || '', status: v.status || 'normal' }));
+                            }
+                            return dashboardData?.vitals
+                              ? Object.entries(dashboardData.vitals).filter(([, v]) => v?.value != null).slice(0, 3)
+                                  .map(([k, v]) => ({ name: k.replace(/_/g, ' '), value: v.value, unit: v.unit || '', status: 'normal' }))
+                              : [];
+                          })(),
+                          userName: user?.name || user?.profile?.name || '',
+                        }}
+                        trigger={
+                          <span className="text-[8px] font-black text-white/80 bg-white/10 px-2 py-1 rounded-full uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-white/20 transition-all">Share ↗</span>
+                        }
+                      />
+                    )}
+                    <span
+                      className="text-[8px] font-black text-white/80 bg-white/10 px-2 py-1 rounded-full uppercase tracking-wider whitespace-nowrap cursor-pointer hover:bg-white/20 transition-all"
+                      onClick={() => navigate('/reports')}
+                    >View →</span>
+                  </div>
                 </div>
 
-                {/* Big score */}
-                <div className="flex items-end gap-1 relative z-10">
-                  <span className="text-[32px] md:text-[38px] font-black text-white leading-none">{latest.score}</span>
+                {/* Big score — mobile: just score, desktop: score + Best/Low side by side */}
+                {/* Mobile score */}
+                <div className="flex items-end gap-1 relative z-10 md:hidden">
+                  <span className="text-[32px] font-black text-white leading-none">{latest.score}</span>
                   <span className="text-[10px] font-bold text-white/40 mb-1.5">/100</span>
                 </div>
 
-                {/* Divider */}
-                <div className="h-px bg-white/10 relative z-10 md:block hidden" />
+                {/* Desktop: score row + Best/Low chips inline */}
+                <div className="hidden md:flex items-center justify-between relative z-10 gap-2">
+                  <div className="flex items-end gap-1">
+                    <span className="text-[38px] font-black text-white leading-none">{latest.score}</span>
+                    <span className="text-[10px] font-bold text-white/40 mb-1.5">/100</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="bg-white/20 backdrop-blur-sm rounded-xl px-3 py-1.5 text-center">
+                      <p className="text-[7px] font-black text-white/60 uppercase tracking-wider">Best</p>
+                      <p className="text-lg font-black text-white leading-none">{bestScore}</p>
+                    </div>
+                    <div className="bg-white/20 backdrop-blur-sm rounded-xl px-3 py-1.5 text-center">
+                      <p className="text-[7px] font-black text-white/60 uppercase tracking-wider">Low</p>
+                      <p className="text-lg font-black text-white/70 leading-none">{lowestScore}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Divider — desktop only */}
+                <div className="h-px bg-white/15 relative z-10 hidden md:block" />
 
                 {/* Breakdown rows — desktop only */}
                 {scores.length > 1 && (
-                  <div className="space-y-1 relative z-10 hidden md:block">
+                  <div className="space-y-1.5 relative z-10 hidden md:block">
                     {improved.length > 0 && (
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1">
-                          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0" />
-                          <span className="text-[8px] font-bold text-white/70">Improved</span>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2 h-2 rounded-full bg-emerald-400 shrink-0" />
+                          <span className="text-[9px] font-bold text-white/80">Improved</span>
                         </div>
-                        <span className="text-[9px] font-black text-white">{improved.length}</span>
+                        <span className="text-[10px] font-black text-white bg-emerald-400/20 px-2 py-0.5 rounded-full">{improved.length}</span>
                       </div>
                     )}
                     {declined.length > 0 && (
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1">
-                          <div className="w-1.5 h-1.5 rounded-full bg-white/60 shrink-0" />
-                          <span className="text-[8px] font-bold text-white/70">Declined</span>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-2 h-2 rounded-full bg-red-400 shrink-0" />
+                          <span className="text-[9px] font-bold text-white/80">Declined</span>
                         </div>
-                        <span className="text-[9px] font-black text-white">{declined.length}</span>
+                        <span className="text-[10px] font-black text-white bg-red-400/20 px-2 py-0.5 rounded-full">{declined.length}</span>
                       </div>
                     )}
-                    <div className="h-1 bg-white/10 rounded-full overflow-hidden flex">
-                      {improved.length > 0 && <div className="bg-emerald-400 h-full" style={{ width: `${(improved.length / (scores.length - 1)) * 100}%` }} />}
-                      {declined.length > 0 && <div className="bg-red-400 h-full" style={{ width: `${(declined.length / (scores.length - 1)) * 100}%` }} />}
+                    <div className="h-1.5 bg-white/10 rounded-full overflow-hidden flex mt-1">
+                      {improved.length > 0 && <div className="bg-emerald-400 h-full rounded-l-full" style={{ width: `${(improved.length / (scores.length - 1)) * 100}%` }} />}
+                      {declined.length > 0 && <div className="bg-red-400 h-full rounded-r-full" style={{ width: `${(declined.length / (scores.length - 1)) * 100}%` }} />}
                     </div>
                   </div>
                 )}
 
-                {/* Best / Lowest — mobile: single row compact, desktop: grid */}
-                <div className="md:hidden flex gap-1.5 relative z-10 mt-auto">
-                  <div className="bg-white/15 rounded-lg px-2.5 py-1.5 flex items-center gap-1.5 flex-1">
-                    <p className="text-[7px] font-black text-white/50 uppercase">Best</p>
-                    <p className="text-sm font-black text-white leading-none">{bestScore}</p>
+                {/* ── MOBILE: Best/Low + Share/View stacked ── */}
+                <div className="md:hidden relative z-10 mt-auto space-y-1.5" onClick={e => e.stopPropagation()}>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <div className="bg-white/15 rounded-xl p-2">
+                      <p className="text-[6px] font-black text-white/50 uppercase tracking-wider mb-0.5">Best</p>
+                      <p className="text-base font-black text-white leading-none">{bestScore}</p>
+                    </div>
+                    <div className="bg-white/15 rounded-xl p-2">
+                      <p className="text-[6px] font-black text-white/50 uppercase tracking-wider mb-0.5">Lowest</p>
+                      <p className="text-base font-black text-white/80 leading-none">{lowestScore}</p>
+                    </div>
                   </div>
-                  <div className="bg-white/15 rounded-lg px-2.5 py-1.5 flex items-center gap-1.5 flex-1">
-                    <p className="text-[7px] font-black text-white/50 uppercase">Low</p>
-                    <p className="text-sm font-black text-white/80 leading-none">{lowestScore}</p>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {gamProfile ? (
+                      <HealthShareCard
+                        type="score"
+                        data={{
+                          healthScore: latest.score,
+                          currentTier: gamProfile.currentTier,
+                          tierIcon: gamProfile.tierIcon,
+                          streak: gamProfile.streak,
+                          totalPoints: gamProfile.totalPoints,
+                          badges: gamProfile.badges || [],
+                          metrics: (() => {
+                            const aiMetrics = dashboardData?.latestAnalysis?.metrics;
+                            if (aiMetrics && Object.keys(aiMetrics).length > 0) {
+                              return Object.entries(aiMetrics).filter(([, v]) => v?.value != null).slice(0, 3)
+                                .map(([k, v]) => ({ name: k, value: v.value, unit: v.unit || '', status: v.status || 'normal' }));
+                            }
+                            return dashboardData?.vitals
+                              ? Object.entries(dashboardData.vitals).filter(([, v]) => v?.value != null).slice(0, 3)
+                                  .map(([k, v]) => ({ name: k.replace(/_/g, ' '), value: v.value, unit: v.unit || '', status: 'normal' }))
+                              : [];
+                          })(),
+                          userName: user?.name || user?.profile?.name || '',
+                        }}
+                        trigger={
+                          <div className="bg-white/10 hover:bg-white/20 rounded-xl p-2 flex items-center justify-center transition-all cursor-pointer w-full">
+                            <span className="text-[8px] font-black text-white/80 uppercase tracking-wider">Share ↗</span>
+                          </div>
+                        }
+                      />
+                    ) : <div className="bg-white/10 rounded-xl p-2" />}
+                    <div
+                      className="bg-white/10 hover:bg-white/20 rounded-xl p-2 flex items-center justify-center transition-all cursor-pointer"
+                      onClick={() => navigate('/reports')}
+                    >
+                      <span className="text-[8px] font-black text-white/80 uppercase tracking-wider">View →</span>
+                    </div>
                   </div>
                 </div>
-                <div className="hidden md:grid grid-cols-2 gap-1.5 relative z-10 mt-auto">
-                  <div className="bg-white/15 rounded-xl p-2">
-                    <p className="text-[6px] font-black text-white/50 uppercase tracking-wider mb-0.5">Best</p>
-                    <p className="text-base font-black text-white leading-none">{bestScore}</p>
-                  </div>
-                  <div className="bg-white/15 rounded-xl p-2">
-                    <p className="text-[6px] font-black text-white/50 uppercase tracking-wider mb-0.5">Lowest</p>
-                    <p className="text-base font-black text-white/80 leading-none">{lowestScore}</p>
-                  </div>
-                </div>
+
               </div>
             );
           })() : (
@@ -1907,6 +1999,7 @@ export default function DashboardEnhanced() {
           onScroll={handleScroll}
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-5 pb-8 w-full mt-0 px-4 md:px-0 focus-visible:outline-none scroll-smooth"
         >
+
           {/* Card 1: Calories & Daily Tracking */}
           <motion.div
             initial={{ opacity: 0, y: 10 }}

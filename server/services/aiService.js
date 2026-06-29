@@ -114,6 +114,8 @@ STRUCTURE:
 {
   "patientName": "Name",
   "reportDate": "YYYY-MM-DD",
+  "documentCategory": "lab_report",
+  "documentType": "Blood Test",
   "healthScore": 75,
   "summary": "Short 3-5 bullet points (•).",
   "doctorSummary": "A detailed 200-300 word professional doctor's note written in a warm, empathetic but medically authoritative tone — as if a senior physician is sitting across from the patient and explaining their results face-to-face. Use paragraph breaks for readability. Use **Markdown bolding** for any specific bio-markers or critical values mentioned. The doctor should: (1) Start by acknowledging the patient by name (if known) and greeting warmly, (2) Highlight what looks GOOD first to reassure the patient, (3) Then gently explain areas of concern with clear context — avoid scary medical jargon, use simple analogies where helpful (e.g. 'Your HDL is like a vacuum cleaner for your heart'), (4) Explain WHY certain values matter in plain language, (5) Give 2-3 specific, actionable lifestyle recommendations, (6) End with encouragement. Write in second person ('your', 'you'). Do NOT use bullet points — write flowing, conversational paragraphs. Make the patient feel understood, supported, and professionaly cared for.",
@@ -140,7 +142,9 @@ STRUCTURE:
 CRITICAL: Extraction is your priority. Scan the entire report text and populate the "metrics" object with ALL found markers. For EACH metric, you MUST fill in whatIsThis, whatItDoes, lowHighImpact, topFoods, and symptoms.
 IMPORTANT: Deficiency "severity" MUST be one of: "mild", "moderate", "severe".
 IMPORTANT: The "doctorSummary" MUST be written like a real doctor talking to the patient. Do NOT write bullet points — write flowing, conversational paragraphs with Markdown bolding for emphasis. Be warm, professional, and thorough.
-IMPORTANT: The "doctorAdvice" array MUST consist of 3-5 specific, actionable points derived directly from the user's specific bio-marker results. Include the "why" for each advice based on their clinical data. Avoid generic advice.`;
+IMPORTANT: The "doctorAdvice" array MUST consist of 3-5 specific, actionable points derived directly from the user's specific bio-marker results. Include the "why" for each advice based on their clinical data. Avoid generic advice.
+IMPORTANT: "documentCategory" MUST be exactly one of: "lab_report", "prescription", "scan", "doctor_notes", "vaccination", "insurance", "other". Detect from content: lab values/blood tests = "lab_report", medicines/drugs prescribed = "prescription", X-Ray/MRI/CT/Ultrasound/imaging = "scan", doctor consultation notes/discharge summary = "doctor_notes", vaccine records = "vaccination", insurance/ID documents = "insurance".
+IMPORTANT: "documentType" is a short human-readable label like "Blood Test", "Prescription", "X-Ray", "MRI", "Ultrasound", "CBC Report", "Lipid Profile", "Thyroid Panel", "Discharge Summary", "Vaccination Record" etc. Detect from actual report content.`;
 
 const MEDICAL_REPORT_VALIDATOR_PROMPT = `You are a strict gatekeeper for a healthcare app.
 Task: Decide if the uploaded content is a REAL medical/healthcare report/document (examples: lab test report, radiology report, prescription, discharge summary, clinical notes, pathology report, etc).

@@ -7,7 +7,7 @@ const { calculateNutritionGoals } = require('../services/nutritionGoalCalculator
 const cloudinary = require('../services/cloudinary');
 const Otp = require('../models/Otp');
 const { logActivity } = require('../utils/activityLogger');
-
+const gamificationService = require('../services/gamificationService');
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
 };
@@ -358,6 +358,9 @@ exports.login = async (req, res) => {
 
       // Log activity (Awaited for reliability)
       await logActivity(user._id, 'USER_LOGIN', 'authentication', { method: email ? 'email' : 'phone' }, req);
+
+      // Award gamification points (fire and forget)
+      gamificationService.awardPoints(user._id, 'login', 'Daily Login').catch(console.error);
 
       res.json(response);
     } else {

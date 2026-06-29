@@ -123,6 +123,21 @@ const userSchema = new mongoose.Schema({
     lastCheckup: Date,
     healthScore: { type: Number, min: 0, max: 100 }
   },
+  gamification: {
+    totalPoints: { type: Number, default: 0 },
+    currentTier: { 
+      type: String, 
+      enum: ['Health Novice', 'Wellness Warrior', 'Fitness Champion', 'Health Master'],
+      default: 'Health Novice'
+    },
+    badges: [{
+      badgeId: String,
+      name: String,
+      icon: String,
+      earnedAt: { type: Date, default: Date.now }
+    }],
+    lastPointsAwardedAt: Date
+  },
   challengeData: {
     type: mongoose.Schema.Types.Mixed,
     default: {}

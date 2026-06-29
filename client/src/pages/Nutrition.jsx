@@ -571,12 +571,23 @@ function Nutrition() {
       }
 
       setWaterIntake((prev) => ({ ...prev, current: newWater }));
-      await api.post("nutrition/log-water", {
+      const res = await api.post("nutrition/log-water", {
         date: selectedDate,
         waterIntake: newWater,
       });
       invalidateCache(["dashboard"]);
       toast.success("Water intake updated");
+      
+      if (res.data?.gamification?.status === 'success' && res.data.gamification.pointsAwarded > 0) {
+        setTimeout(() => {
+          toast.success(`💧 +${res.data.gamification.pointsAwarded} Points earned for staying hydrated!`, {
+            icon: '✨',
+            style: { borderRadius: '16px', background: '#3b82f6', color: '#fff', fontWeight: 'bold' },
+            duration: 4000,
+          });
+          window.dispatchEvent(new Event('gamificationUpdate'));
+        }, 500);
+      }
     } catch (error) {
       toast.error("Failed to update water");
     }
@@ -807,8 +818,24 @@ function Nutrition() {
         imageUrl: data.imageUrl,
         source: data._isImageAnalysis ? "ai_vision" : "manual",
       };
-      await nutritionService.logMeal(logData);
+      const res = await nutritionService.logMeal(logData);
       toast.success("Added to " + mealTab);
+      
+      if (res.data?.gamification?.status === 'success' && res.data.gamification.pointsAwarded > 0) {
+        setTimeout(() => {
+          toast.success(`🎯 +${res.data.gamification.pointsAwarded} Points earned for logging a meal!`, {
+            icon: '✨',
+            style: {
+              borderRadius: '16px',
+              background: '#10b981',
+              color: '#fff',
+              fontWeight: 'bold',
+            },
+            duration: 4000,
+          });
+          window.dispatchEvent(new Event('gamificationUpdate'));
+        }, 500);
+      }
       invalidateCache([
         "dashboard",
         `logs_${selectedDate}`,
