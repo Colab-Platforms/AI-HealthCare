@@ -57,8 +57,14 @@ export default function PrivacySettings() {
     setExporting(true);
     try {
       const token = localStorage.getItem('token');
-      const baseUrl = import.meta.env.VITE_API_URL || '';
-      const res = await fetch(`${baseUrl}/api/privacy/export`, {
+      let baseUrl = import.meta.env.VITE_API_URL || '/api';
+      
+      // Ensure baseUrl ends with /api, don't double-add it
+      if (!baseUrl.endsWith('/api')) {
+        baseUrl = baseUrl.endsWith('/') ? `${baseUrl}api` : `${baseUrl}/api`;
+      }
+      
+      const res = await fetch(`${baseUrl}/privacy/export`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error('Export failed');
