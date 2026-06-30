@@ -8,9 +8,18 @@ const cloudinary = require('../services/cloudinary');
 const Otp = require('../models/Otp');
 const { logActivity } = require('../utils/activityLogger');
 const gamificationService = require('../services/gamificationService');
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '30d' });
-};
+const RefreshToken = require('../models/RefreshToken');
+const crypto = require('crypto');
+
+// Short-lived access token — 15 minutes
+const generateAccessToken = (id) =>
+  jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '15m' });
+
+// Long-lived refresh token — opaque random string stored in DB
+const generateRefreshToken = () => crypto.randomBytes(40).toString('hex');
+
+// Legacy alias so existing register/doctor flows still work
+const generateToken = generateAccessToken;
 
 exports.requestRegistrationOtp = async (req, res) => {
   try {
@@ -330,6 +339,16 @@ exports.login = async (req, res) => {
       user.loginCount = (user.loginCount || 0) + 1;
       await user.save();
 
+      // Issue refresh token and save to DB
+      const rawRefreshToken = generateRefreshToken();
+      await RefreshToken.create({
+        userId: user._id,
+        token: rawRefreshToken,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        userAgent: req.headers['user-agent'],
+        ipAddress: req.ip,
+      });
+
       const response = {
         _id: user._id,
         name: user.name,
@@ -341,7 +360,10 @@ exports.login = async (req, res) => {
         foodPreferences: user.foodPreferences,
         subscription: user.subscription,
         healthMetrics: user.healthMetrics,
-        token: generateToken(user._id)
+        consent: user.consent,
+        privacySettings: user.privacySettings,
+        token: generateAccessToken(user._id),
+        refreshToken: rawRefreshToken,
       };
 
       // Include doctor profile info if user is a doctor
@@ -373,16 +395,40 @@ exports.login = async (req, res) => {
   }
 };
 
-// @desc    Logout user & log activity
+// @desc    Logout user & revoke refresh token
 // @route   POST /api/auth/logout
 exports.logout = async (req, res) => {
   try {
+    const { refreshToken } = req.body;
+    if (refreshToken) {
+      await RefreshToken.deleteOne({ token: refreshToken });
+    }
     if (req.user) {
       await logActivity(req.user._id, 'USER_LOGOUT', 'authentication', {}, req);
     }
     res.json({ success: true, message: 'Logged out successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Refresh access token using refresh token
+// @route   POST /api/auth/refresh
+exports.refresh = async (req, res) => {
+  try {
+    const { refreshToken } = req.body;
+    if (!refreshToken) return res.status(401).json({ message: 'Refresh token required' });
+
+    const stored = await RefreshToken.findOne({ token: refreshToken });
+    if (!stored || stored.expiresAt < new Date()) {
+      if (stored) await stored.deleteOne();
+      return res.status(401).json({ code: 'REFRESH_EXPIRED', message: 'Session expired. Please login again.' });
+    }
+
+    const newAccessToken = generateAccessToken(stored.userId);
+    res.json({ token: newAccessToken });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };
 

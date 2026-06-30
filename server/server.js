@@ -307,6 +307,7 @@ try {
     { path: "/api/translate", module: "./routes/translateRoutes" },
     { path: "/api/food-safety", module: "./routes/foodSafetyRoutes" },
     { path: "/api/documents", module: "./routes/documentRoutes" },
+    { path: "/api/privacy",   module: "./routes/privacyRoutes" },
     { path: "/api/activity", module: "./routes/activityRoutes" },
     { path: "/api/support", module: "./routes/supportRoutes" },
     { path: "/api", module: "./routes/sitemapRoutes" }, // SEO: sitemap & robots
@@ -377,6 +378,13 @@ if (!process.env.VERCEL) {
   cron.schedule("0 0 * * *", async () => {
     console.log("⏰ Running scheduled Food Safety Sync...");
     await syncFoodSafetyDatabase();
+  });
+
+  // DPDPA Account Deletion — midnight daily
+  const { runDeletionCron } = require('./controllers/privacyController');
+  cron.schedule('0 0 * * *', async () => {
+    console.log('🗑️ Running DPDPA deletion cron...');
+    await runDeletionCron();
   });
 
   // Follow-up Nudges — every night at 10 PM

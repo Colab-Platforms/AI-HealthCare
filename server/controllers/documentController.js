@@ -307,7 +307,7 @@ exports.getDocumentDownloadUrl = async (req, res) => {
             // Generate a private download URL (valid for 24 hours)
             const downloadUrl = cloudinary.utils.private_download_url(publicId, ext, {
                 resource_type: resourceType,
-                type: 'upload',
+                type: 'authenticated',
                 expires_at: Math.round(Date.now() / 1000) + (24 * 3600) // 24 hours
             });
 
@@ -383,7 +383,7 @@ exports.getDocumentFile = async (req, res) => {
                     // This goes through the API, NOT the CDN, so delivery restrictions don't apply
                     fetchUrl = cloudinary.utils.private_download_url(publicId, ext, {
                         resource_type: resourceType,
-                        type: 'upload',
+                        type: 'authenticated',
                         expires_at: Math.round(Date.now() / 1000) + 300 // 5 min expiry
                     });
 

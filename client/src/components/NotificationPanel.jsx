@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bell, X, Check, CheckCheck, Trash2, Clock, Utensils, Moon, BarChart3, Apple, Target, FileText, Sparkles } from 'lucide-react';
-import { notificationService } from '../services/api';
+import { Bell, X, Check, CheckCheck, Trash2, Clock, Utensils, Moon, BarChart3, Apple, Target, FileText, Sparkles, Settings, Activity, ChevronRight } from 'lucide-react';
+import { notificationService, notificationPreferenceService } from '../services/api';
 
 const typeConfig = {
     food_reminder: { icon: Utensils, color: '#000000', bg: '#f8fafc' },
@@ -13,14 +13,38 @@ const typeConfig = {
     goal_progress: { icon: Target, color: '#000000', bg: '#f8fafc' }
 };
 
+const typeColors = {
+    food_reminder: '#059669',
+    sleep_reminder: '#7c3aed',
+    macro_update: '#0ea5e9',
+    diet_adherence: '#f59e0b',
+    health_insight: '#5B8C6F',
+    report_comparison: '#6366f1',
+    goal_progress: '#10b981',
+};
+
+const REMINDER_CATEGORIES = [
+    { id: 'mealReminders', label: 'Meal Reminders', icon: Utensils, color: '#f97316' },
+    { id: 'sleepReminder', label: 'Sleep Reminder', icon: Moon, color: '#6366f1' },
+    { id: 'macroUpdate', label: 'Macro Update', icon: BarChart3, color: '#3b82f6' },
+    { id: 'dietAdherence', label: 'Diet Adherence', icon: Apple, color: '#22c55e' },
+    { id: 'healthInsights', label: 'Health Insights', icon: Sparkles, color: '#a855f7' },
+    { id: 'glucoseAlerts', label: 'Glucose Alerts', icon: Activity, color: '#ef4444' },
+];
+
 export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
+    const [tab, setTab] = useState('notifications');
     const [notifications, setNotifications] = useState([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [loading, setLoading] = useState(false);
+    const [expandedId, setExpandedId] = useState(null);
+
+    // Reminders state
+    const [prefs, setPrefs] = useState(null);
+    const [savingKey, setSavingKey] = useState(null);
+
     const panelRef = useRef(null);
     const navigate = useNavigate();
-
-    const [expandedId, setExpandedId] = useState(null);
 
     async function fetchNotifications() {
         setLoading(true);
@@ -34,6 +58,15 @@ export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
             console.error('Failed to fetch notifications:', error);
         } finally {
             setLoading(false);
+        }
+    }
+
+    async function fetchPrefs() {
+        try {
+            const { data } = await notificationPreferenceService.getPreferences();
+            setPrefs(data);
+        } catch (e) {
+            console.error('Failed to fetch prefs:', e);
         }
     }
 
@@ -52,17 +85,16 @@ export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
     useEffect(() => {
         if (isOpen) {
             fetchNotifications();
+            fetchPrefs();
         }
     }, [isOpen]);
 
-    // Fetch unread count periodically
     useEffect(() => {
         fetchUnreadCount();
-        const interval = setInterval(fetchUnreadCount, 60000); // Check every minute
+        const interval = setInterval(fetchUnreadCount, 60000);
         return () => clearInterval(interval);
     }, []);
 
-    // Close panel when clicking outside
     useEffect(() => {
         const handleClickOutside = (e) => {
             if (
@@ -74,9 +106,7 @@ export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
                 onClose();
             }
         };
-        if (isOpen) {
-            document.addEventListener('mousedown', handleClickOutside);
-        }
+        if (isOpen) document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, [isOpen, onClose, triggerRef]);
 
@@ -84,13 +114,9 @@ export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
         if (e) e.stopPropagation();
         try {
             await notificationService.markAsRead(id);
-            setNotifications(prev =>
-                prev.map(n => n._id === id ? { ...n, read: true } : n)
-            );
+            setNotifications(prev => prev.map(n => n._id === id ? { ...n, read: true } : n));
             setUnreadCount(prev => Math.max(0, prev - 1));
-        } catch (error) {
-            console.error('Failed to mark as read:', error);
-        }
+        } catch (error) { console.error('Failed to mark as read:', error); }
     };
 
     const handleMarkAllAsRead = async () => {
@@ -98,9 +124,7 @@ export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
             await notificationService.markAllAsRead();
             setNotifications(prev => prev.map(n => ({ ...n, read: true })));
             setUnreadCount(0);
-        } catch (error) {
-            console.error('Failed to mark all as read:', error);
-        }
+        } catch (error) { console.error('Failed to mark all as read:', error); }
     };
 
     const handleDelete = async (id, e) => {
@@ -108,9 +132,7 @@ export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
         try {
             await notificationService.deleteOne(id);
             setNotifications(prev => prev.filter(n => n._id !== id));
-        } catch (error) {
-            console.error('Failed to delete:', error);
-        }
+        } catch (error) { console.error('Failed to delete:', error); }
     };
 
     const handleClearAll = async () => {
@@ -118,38 +140,34 @@ export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
             await notificationService.clearAll();
             setNotifications([]);
             setUnreadCount(0);
-        } catch (error) {
-            console.error('Failed to clear all:', error);
-        }
+        } catch (error) { console.error('Failed to clear all:', error); }
     };
 
     const handleNotificationClick = (notif) => {
-        // Expand immediately so "View Details" appears without delay —
-        // mark-as-read runs in the background instead of blocking the expand,
-        // which previously created a timing window where a second click could
-        // land on the still-collapsed row and re-collapse it before navigation.
         setExpandedId(prev => (prev === notif._id ? null : notif._id));
-        if (!notif.read) {
-            handleMarkAsRead(notif._id);
-        }
+        if (!notif.read) handleMarkAsRead(notif._id);
     };
 
     const handleActionClick = (notif, e) => {
         e.stopPropagation();
-        if (notif.actionUrl) {
-            navigate(notif.actionUrl);
-            onClose();
-        }
+        if (notif.actionUrl) { navigate(notif.actionUrl); onClose(); }
+    };
+
+    const toggleReminder = async (catId, currentEnabled) => {
+        setSavingKey(catId);
+        try {
+            await notificationPreferenceService.toggleNotificationType(catId, !currentEnabled);
+            setPrefs(prev => ({ ...prev, [catId]: { ...prev?.[catId], enabled: !currentEnabled } }));
+        } catch (e) { console.error('Toggle failed:', e); }
+        finally { setSavingKey(null); }
     };
 
     const formatTime = (dateStr) => {
         const date = new Date(dateStr);
         const now = new Date();
-        const diffMs = now - date;
-        const diffMin = Math.floor(diffMs / 60000);
-        const diffHr = Math.floor(diffMs / 3600000);
-        const diffDay = Math.floor(diffMs / 86400000);
-
+        const diffMin = Math.floor((now - date) / 60000);
+        const diffHr = Math.floor((now - date) / 3600000);
+        const diffDay = Math.floor((now - date) / 86400000);
         if (diffMin < 1) return 'Just now';
         if (diffMin < 60) return `${diffMin}m ago`;
         if (diffHr < 24) return `${diffHr}h ago`;
@@ -157,19 +175,7 @@ export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
         return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
     };
 
-    if (!isOpen) {
-        return null;
-    }
-
-    const typeColors = {
-        food_reminder: '#059669',
-        sleep_reminder: '#7c3aed',
-        macro_update: '#0ea5e9',
-        diet_adherence: '#f59e0b',
-        health_insight: '#5B8C6F',
-        report_comparison: '#6366f1',
-        goal_progress: '#10b981',
-    };
+    if (!isOpen) return null;
 
     return (
         <div
@@ -194,16 +200,16 @@ export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
                     </div>
                     <div>
                         <h3 className="text-sm font-bold text-[#1a1a1a] tracking-tight">Notifications</h3>
-                        {unreadCount > 0 && (
+                        {tab === 'notifications' && unreadCount > 0 && (
                             <p className="text-[10px] text-[#5B8C6F] font-semibold">{unreadCount} unread</p>
                         )}
                     </div>
                 </div>
                 <div className="flex items-center gap-1">
-                    {notifications.length > 0 && (
+                    {tab === 'notifications' && notifications.length > 0 && (
                         <>
                             <button onClick={handleMarkAllAsRead}
-                                className="p-2 rounded-xl transition-colors group"
+                                className="p-2 rounded-xl transition-colors"
                                 style={{ background: 'rgba(255,255,255,0.5)' }}
                                 title="Mark all as read">
                                 <CheckCheck className="w-3.5 h-3.5 text-[#5B8C6F]" />
@@ -224,116 +230,194 @@ export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
                 </div>
             </div>
 
+            {/* Tabs */}
+            <div className="flex gap-2 px-4 pt-3 pb-2 flex-shrink-0">
+                {[
+                    { id: 'notifications', label: 'Notifications' },
+                    { id: 'reminders', label: 'Reminders' },
+                ].map(t => (
+                    <button
+                        key={t.id}
+                        onClick={() => setTab(t.id)}
+                        className="px-4 py-1.5 rounded-full text-xs font-bold transition-all"
+                        style={tab === t.id
+                            ? { background: 'linear-gradient(135deg, #059669, #10b981)', color: '#fff', boxShadow: '0 2px 8px rgba(16,185,129,0.3)' }
+                            : { background: 'rgba(255,255,255,0.6)', color: '#888', border: '1px solid rgba(255,255,255,0.8)' }
+                        }
+                    >
+                        {t.label}
+                        {t.id === 'notifications' && unreadCount > 0 && (
+                            <span className="ml-1.5 bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full">
+                                {unreadCount > 9 ? '9+' : unreadCount}
+                            </span>
+                        )}
+                    </button>
+                ))}
+            </div>
+
             {/* Notification List */}
-            <div className="overflow-y-auto flex-1 px-3 py-2 space-y-2 scrollbar-hide">
-                {loading ? (
-                    <div className="flex items-center justify-center py-12">
-                        <div className="w-7 h-7 border-2 border-[#5B8C6F]/20 border-t-[#5B8C6F] rounded-full animate-spin" />
-                    </div>
-                ) : notifications.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
-                        <div className="w-14 h-14 rounded-[20px] flex items-center justify-center mb-4"
-                            style={{ background: 'rgba(91,140,111,0.08)', border: '1px solid rgba(91,140,111,0.15)' }}>
-                            <Bell className="w-6 h-6 text-[#5B8C6F]/40" />
+            {tab === 'notifications' && (
+                <div className="overflow-y-auto flex-1 px-3 py-2 space-y-2 scrollbar-hide">
+                    {loading ? (
+                        <div className="flex items-center justify-center py-12">
+                            <div className="w-7 h-7 border-2 border-[#5B8C6F]/20 border-t-[#5B8C6F] rounded-full animate-spin" />
                         </div>
-                        <p className="text-sm font-bold text-[#1a1a1a] mb-1">All caught up</p>
-                        <p className="text-[11px] text-[#a0a0a0] font-medium leading-relaxed">
-                            We'll notify you about meals, sleep, and health progress
-                        </p>
-                    </div>
-                ) : (
-                    notifications.map((notif) => {
-                        const accentColor = typeColors[notif.type] || '#5B8C6F';
-                        const IconComponent = (typeConfig[notif.type] || typeConfig.health_insight).icon;
-                        const isExpanded = expandedId === notif._id;
+                    ) : notifications.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-14 px-6 text-center">
+                            <div className="w-14 h-14 rounded-[20px] flex items-center justify-center mb-4"
+                                style={{ background: 'rgba(91,140,111,0.08)', border: '1px solid rgba(91,140,111,0.15)' }}>
+                                <Bell className="w-6 h-6 text-[#5B8C6F]/40" />
+                            </div>
+                            <p className="text-sm font-bold text-[#1a1a1a] mb-1">All caught up</p>
+                            <p className="text-[11px] text-[#a0a0a0] font-medium leading-relaxed">
+                                We'll notify you about meals, sleep, and health progress
+                            </p>
+                        </div>
+                    ) : (
+                        notifications.map((notif) => {
+                            const accentColor = typeColors[notif.type] || '#5B8C6F';
+                            const IconComponent = (typeConfig[notif.type] || typeConfig.health_insight).icon;
+                            const isExpanded = expandedId === notif._id;
 
-                        return (
-                            <div
-                                key={notif._id}
-                                onClick={() => handleNotificationClick(notif)}
-                                className="group flex items-start gap-3 p-3.5 rounded-[18px] cursor-pointer transition-all"
-                                style={{
-                                    background: !notif.read ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.45)',
-                                    border: `1px solid ${!notif.read ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)'}`,
-                                    boxShadow: !notif.read ? '0 2px 12px rgba(16,185,129,0.06)' : 'none',
-                                }}
-                            >
-                                {/* Icon */}
-                                <div className="w-9 h-9 rounded-2xl flex-shrink-0 flex items-center justify-center mt-0.5"
-                                    style={{ background: `${accentColor}12`, border: `1px solid ${accentColor}25` }}>
-                                    <IconComponent className="w-4 h-4" style={{ color: accentColor }} />
-                                </div>
-
-                                {/* Content */}
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-start justify-between gap-2">
-                                        <h4 className={`text-[13px] leading-tight ${!notif.read ? 'font-bold text-[#1a1a1a]' : 'font-semibold text-[#444]'}`}>
-                                            {notif.title}
-                                        </h4>
-                                        {!notif.read && (
-                                            <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5"
-                                                style={{ background: accentColor }} />
-                                        )}
+                            return (
+                                <div
+                                    key={notif._id}
+                                    onClick={() => handleNotificationClick(notif)}
+                                    className="group flex items-start gap-3 p-3.5 rounded-[18px] cursor-pointer transition-all"
+                                    style={{
+                                        background: !notif.read ? 'rgba(255,255,255,0.75)' : 'rgba(255,255,255,0.45)',
+                                        border: `1px solid ${!notif.read ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.6)'}`,
+                                        boxShadow: !notif.read ? '0 2px 12px rgba(16,185,129,0.06)' : 'none',
+                                    }}
+                                >
+                                    <div className="w-9 h-9 rounded-2xl flex-shrink-0 flex items-center justify-center mt-0.5"
+                                        style={{ background: `${accentColor}12`, border: `1px solid ${accentColor}25` }}>
+                                        <IconComponent className="w-4 h-4" style={{ color: accentColor }} />
                                     </div>
-                                    <p className={`text-[11px] text-[#888] mt-0.5 leading-relaxed font-medium ${!isExpanded ? 'line-clamp-2' : ''}`}>
-                                        {notif.message}
-                                    </p>
 
-                                    {isExpanded && notif.actionUrl && (
-                                        <button
-                                            onClick={(e) => handleActionClick(notif, e)}
-                                            className="mt-2.5 text-[11px] font-bold px-3 py-1.5 rounded-xl text-white transition-all"
-                                            style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)` }}
-                                        >
-                                            View Details
-                                        </button>
-                                    )}
-
-                                    {notif.type === 'macro_update' && notif.metadata && (
-                                        <div className="flex gap-1.5 mt-2 flex-wrap">
-                                            {['calories', 'protein', 'carbs', 'fats'].map(macro => {
-                                                const data = notif.metadata?.[macro];
-                                                if (!data) return null;
-                                                return (
-                                                    <div key={macro}
-                                                        className="px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider"
-                                                        style={{ background: 'rgba(91,140,111,0.1)', color: '#5B8C6F' }}>
-                                                        {macro}: {data.pct || 0}%
-                                                    </div>
-                                                );
-                                            })}
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-start justify-between gap-2">
+                                            <h4 className={`text-[13px] leading-tight ${!notif.read ? 'font-bold text-[#1a1a1a]' : 'font-semibold text-[#444]'}`}>
+                                                {notif.title}
+                                            </h4>
+                                            {!notif.read && (
+                                                <div className="w-2 h-2 rounded-full flex-shrink-0 mt-1.5"
+                                                    style={{ background: accentColor }} />
+                                            )}
                                         </div>
-                                    )}
+                                        <p className={`text-[11px] text-[#888] mt-0.5 leading-relaxed font-medium ${!isExpanded ? 'line-clamp-2' : ''}`}>
+                                            {notif.message}
+                                        </p>
 
-                                    <div className="flex items-center gap-1.5 mt-1.5">
-                                        <Clock className="w-2.5 h-2.5 text-[#c0c0c0]" />
-                                        <span className="text-[9px] text-[#b0b0b0] font-semibold">{formatTime(notif.createdAt)}</span>
+                                        {isExpanded && notif.actionUrl && (
+                                            <button
+                                                onClick={(e) => handleActionClick(notif, e)}
+                                                className="mt-2.5 text-[11px] font-bold px-3 py-1.5 rounded-xl text-white transition-all"
+                                                style={{ background: `linear-gradient(135deg, ${accentColor}, ${accentColor}cc)` }}
+                                            >
+                                                View Details
+                                            </button>
+                                        )}
+
+                                        {notif.type === 'macro_update' && notif.metadata && (
+                                            <div className="flex gap-1.5 mt-2 flex-wrap">
+                                                {['calories', 'protein', 'carbs', 'fats'].map(macro => {
+                                                    const data = notif.metadata?.[macro];
+                                                    if (!data) return null;
+                                                    return (
+                                                        <div key={macro}
+                                                            className="px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-wider"
+                                                            style={{ background: 'rgba(91,140,111,0.1)', color: '#5B8C6F' }}>
+                                                            {macro}: {data.pct || 0}%
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+
+                                        <div className="flex items-center gap-1.5 mt-1.5">
+                                            <Clock className="w-2.5 h-2.5 text-[#c0c0c0]" />
+                                            <span className="text-[9px] text-[#b0b0b0] font-semibold">{formatTime(notif.createdAt)}</span>
+                                        </div>
+                                    </div>
+
+                                    <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1 mt-0.5">
+                                        {!notif.read && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif._id); }}
+                                                className="p-1.5 rounded-lg transition-colors"
+                                                style={{ background: 'rgba(91,140,111,0.1)' }}
+                                                title="Mark as read">
+                                                <Check className="w-3 h-3 text-[#5B8C6F]" />
+                                            </button>
+                                        )}
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleDelete(notif._id); }}
+                                            className="p-1.5 rounded-lg hover:bg-red-50 transition-colors"
+                                            title="Delete">
+                                            <X className="w-3 h-3 text-[#d0d0d0] hover:text-red-400" />
+                                        </button>
                                     </div>
                                 </div>
+                            );
+                        })
+                    )}
+                </div>
+            )}
 
-                                {/* Actions */}
-                                <div className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col gap-1 mt-0.5">
-                                    {!notif.read && (
-                                        <button
-                                            onClick={(e) => { e.stopPropagation(); handleMarkAsRead(notif._id); }}
-                                            className="p-1.5 rounded-lg transition-colors"
-                                            style={{ background: 'rgba(91,140,111,0.1)' }}
-                                            title="Mark as read">
-                                            <Check className="w-3 h-3 text-[#5B8C6F]" />
-                                        </button>
-                                    )}
-                                    <button
-                                        onClick={(e) => { e.stopPropagation(); handleDelete(notif._id); }}
-                                        className="p-1.5 rounded-lg hover:bg-red-50 transition-colors"
-                                        title="Delete">
-                                        <X className="w-3 h-3 text-[#d0d0d0] hover:text-red-400" />
-                                    </button>
+            {/* Reminders Tab */}
+            {tab === 'reminders' && (
+                <div className="overflow-y-auto flex-1 px-3 py-2 space-y-2 scrollbar-hide">
+                    <p className="text-[10px] text-[#a0a0a0] font-semibold px-1 pb-1 uppercase tracking-widest">
+                        Toggle alerts on or off
+                    </p>
+                    {REMINDER_CATEGORIES.map(({ id, label, icon: Icon, color }) => {
+                        const enabled = prefs?.[id]?.enabled ?? true;
+                        const saving = savingKey === id;
+                        return (
+                            <div key={id}
+                                className="flex items-center justify-between p-3.5 rounded-[18px]"
+                                style={{ background: 'rgba(255,255,255,0.6)', border: '1px solid rgba(255,255,255,0.8)' }}>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-8 h-8 rounded-2xl flex items-center justify-center flex-shrink-0"
+                                        style={{ background: `${color}15`, border: `1px solid ${color}25` }}>
+                                        <Icon className="w-4 h-4" style={{ color }} />
+                                    </div>
+                                    <span className="text-[13px] font-semibold text-[#1a1a1a]">{label}</span>
                                 </div>
+                                <button
+                                    onClick={() => toggleReminder(id, enabled)}
+                                    disabled={saving}
+                                    className="w-10 h-6 rounded-full relative transition-all flex-shrink-0"
+                                    style={{ background: enabled ? '#059669' : 'rgba(0,0,0,0.12)' }}>
+                                    <span
+                                        className="absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all"
+                                        style={{ left: enabled ? '18px' : '2px' }}
+                                    />
+                                </button>
                             </div>
                         );
-                    })
-                )}
-            </div>
+                    })}
+
+                    {/* Link to full settings */}
+                    <button
+                        onClick={() => { navigate('/notification-settings'); onClose(); }}
+                        className="w-full flex items-center justify-between p-3.5 rounded-[18px] transition-colors hover:bg-white/70"
+                        style={{ background: 'rgba(255,255,255,0.4)', border: '1px solid rgba(255,255,255,0.7)' }}>
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-2xl flex items-center justify-center"
+                                style={{ background: 'rgba(91,140,111,0.1)', border: '1px solid rgba(91,140,111,0.15)' }}>
+                                <Settings className="w-4 h-4 text-[#5B8C6F]" />
+                            </div>
+                            <div className="text-left">
+                                <p className="text-[13px] font-bold text-[#1a1a1a]">Reminder Times</p>
+                                <p className="text-[10px] text-[#a0a0a0] font-medium">Set exact times for each alert</p>
+                            </div>
+                        </div>
+                        <ChevronRight className="w-4 h-4 text-slate-300" />
+                    </button>
+                </div>
+            )}
 
             <style>{`
         @keyframes slideDown {
@@ -351,7 +435,6 @@ export default function NotificationPanel({ isOpen, onClose, triggerRef }) {
     );
 }
 
-// Export a hook to use unread count from anywhere
 export function useNotificationCount() {
     const [unreadCount, setUnreadCount] = useState(0);
 

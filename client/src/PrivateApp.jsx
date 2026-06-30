@@ -1,4 +1,4 @@
-import { Suspense, lazy } from "react";
+import { Suspense, lazy, useState, useEffect } from "react";
 import {
   Routes,
   Route,
@@ -12,6 +12,7 @@ import { PedometerProvider } from "./context/PedometerContext";
 import GenericSkeleton from "./components/skeletons/GenericSkeleton";
 import PageLoader from "./components/PageLoader";
 import NotFound from "./pages/NotFound";
+import ConsentModal from "./components/ConsentModal";
 
 const Layout = lazy(() => import("./components/Layout"));
 const DashboardEnhanced = lazy(() => import("./pages/DashboardEnhanced"));
@@ -40,6 +41,7 @@ const AdminActivity = lazy(() => import("./pages/UserActivity"));
 const AdminSupport = lazy(() => import("./pages/AdminSupport"));
 const AdminAIUsage = lazy(() => import("./pages/AdminAIUsage"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
+const PrivacySettings = lazy(() => import("./pages/PrivacySettings"));
 
 const StepTracker = lazy(() => import("./pages/StepTracker"));
 const SmokeTracker = lazy(() => import("./pages/SmokeTracker"));
@@ -100,10 +102,28 @@ const AdminRoute = ({ children }) => {
   return children;
 };
 
+function ConsentGate({ children }) {
+  const { user } = useAuth();
+  const [needsConsent, setNeedsConsent] = useState(false);
+
+  useEffect(() => {
+    // Show consent modal if user hasn't given consent yet (new user or field missing)
+    if (user && !user.consent?.given) {
+      setNeedsConsent(true);
+    }
+  }, [user]);
+
+  if (needsConsent) {
+    return <ConsentModal onAccept={() => setNeedsConsent(false)} />;
+  }
+  return children;
+}
+
 export default function PrivateApp() {
   return (
     <DataProvider>
       <PedometerProvider>
+        <ConsentGate>
         <div className="min-h-screen bg-[#F9FCF3]">
           <Suspense fallback={<PageLoader />}>
             <Routes>
@@ -532,6 +552,17 @@ export default function PrivateApp() {
                 }
               />
 
+              <Route
+                path="/privacy-settings"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <PrivacySettings />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+
               {/* Admin Routes */}
               <Route
                 path="/admin"
@@ -618,6 +649,7 @@ export default function PrivateApp() {
             </Routes>
           </Suspense>
         </div>
+        </ConsentGate>
       </PedometerProvider>
     </DataProvider>
   );

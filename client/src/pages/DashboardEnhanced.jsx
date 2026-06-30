@@ -3234,7 +3234,7 @@ export default function DashboardEnhanced() {
                   <p className="text-[9px] text-[#a0a0a0] font-medium uppercase tracking-wider">From your lab reports</p>
                 </div>
               </div>
-              <button onClick={() => navigate("/upload")} className="text-[10px] font-bold text-[#5B8C6F] hover:text-[#4a7b5e] uppercase tracking-wide flex items-center gap-1">
+              <button onClick={() => navigate("/reports")} className="text-[10px] font-bold text-[#5B8C6F] hover:text-[#4a7b5e] uppercase tracking-wide flex items-center gap-1">
                 Detailed <ArrowRight className="w-3 h-3" />
               </button>
             </div>

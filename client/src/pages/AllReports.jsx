@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { healthService } from "../services/api";
 import api from "../services/api";
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartTooltip, ResponsiveContainer } from 'recharts';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as RechartTooltip, ResponsiveContainer, LineChart, Line, ReferenceLine } from 'recharts';
 import { useData } from "../context/DataContext";
 import {
   FileText, ArrowLeft, Calendar, Zap, Activity, Filter, Search,
@@ -118,6 +118,9 @@ export default function AllReports() {
   const [totalDocs, setTotalDocs] = useState(0);
   const [globalStats, setGlobalStats] = useState({ total: 0, aiCount: 0, vaultCount: 0, recent: 0, categoryCounts: {} });
   const [healthScoreTrend, setHealthScoreTrend] = useState([]);
+  const [availableMetrics, setAvailableMetrics] = useState([]);
+  const [metricTrends, setMetricTrends] = useState({});
+  const [selectedMetric, setSelectedMetric] = useState('');
   const PAGE_SIZE = 10;
   const [isFilterSidebarOpen, setIsFilterSidebarOpen] = useState(true);
   const [isMobileFilterOpen, setIsMobileFilterOpen] = useState(false);
@@ -181,16 +184,17 @@ export default function AllReports() {
 
   const fetchTrend = () => {
     healthService.getTrends({}).then(({ data }) => {
-      if (data?.healthScoreTrend?.length > 1) {
-        setHealthScoreTrend(data.healthScoreTrend.map(d => ({
-          date: new Date(d.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+      const validPoints = (data?.healthScoreTrend || [])
+        .filter(d => d.score > 0)
+        .map(d => ({
+          date: new Date(d.date).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }),
           score: d.score,
           reportId: d.reportId,
-          reportType: d.reportType
-        })));
-      } else {
-        setHealthScoreTrend([]);
-      }
+          reportType: d.reportType,
+        }));
+      setHealthScoreTrend(validPoints.length > 1 ? validPoints : []);
+      setAvailableMetrics(data?.availableMetrics || []);
+      setMetricTrends(data?.metricTrends || {});
     }).catch(() => {});
   };
 
@@ -248,6 +252,14 @@ export default function AllReports() {
     fetchTrend();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Auto-select first metric when availableMetrics loads
+  useEffect(() => {
+    if (availableMetrics.length > 0 && !selectedMetric) {
+      setSelectedMetric(availableMetrics[0]);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableMetrics]);
 
   // Re-fetch trend whenever DataContext signals a completed analysis
   const isFirstTrigger = useRef(true);
@@ -860,6 +872,112 @@ export default function AllReports() {
                 </div>
 
               </div>
+            </div>
+          );
+        })()}
+
+        {/* Metric Trend Section — hidden for now */}
+        {false && availableMetrics.length > 0 && (() => {
+          const trendData = selectedMetric ? (metricTrends[selectedMetric] || []) : [];
+          const latestPoint = trendData[trendData.length - 1];
+          const firstPoint = trendData[0];
+          const trendDir = trendData.length > 1
+            ? (latestPoint?.value > firstPoint?.value ? 'up' : latestPoint?.value < firstPoint?.value ? 'down' : 'stable')
+            : 'stable';
+          const statusColor = (status) => status === 'normal' ? '#5B8C6F' : status === 'high' ? '#ef4444' : '#f97316';
+          const dotColor = (entry) => statusColor(entry?.status);
+
+          return (
+            <div className="liquid-glass-inner rounded-[24px] p-5">
+              <div className="flex items-center justify-between mb-4 flex-wrap gap-3">
+                <div>
+                  <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-1">Metric Trend</p>
+                  <p className="text-[13px] font-black text-slate-700">{selectedMetric || 'Select a metric'}</p>
+                </div>
+                <select
+                  value={selectedMetric}
+                  onChange={e => setSelectedMetric(e.target.value)}
+                  className="bg-white/60 border border-white/80 rounded-[14px] px-3 py-2 text-[11px] font-bold text-slate-700 focus:outline-none focus:border-[#5B8C6F]/40 max-w-[200px]"
+                >
+                  {availableMetrics.map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedMetric && trendData.length > 0 ? (
+                <>
+                  <ResponsiveContainer width="100%" height={180}>
+                    <LineChart data={trendData} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
+                      <XAxis dataKey="date" tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} tickFormatter={v => new Date(v).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })} />
+                      <YAxis tick={{ fontSize: 9, fontWeight: 700, fill: '#94a3b8' }} />
+                      <RechartTooltip
+                        contentStyle={{ background: 'rgba(255,255,255,0.95)', border: '1px solid #e2e8f0', borderRadius: 12, fontSize: 11, fontWeight: 700 }}
+                        formatter={(val, name, props) => [`${val} ${props?.payload?.unit || ''}`, selectedMetric]}
+                        labelFormatter={l => new Date(l).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                      />
+                      {latestPoint?.normalRange && (
+                        <>
+                          {latestPoint.normalRange.min !== undefined && (
+                            <ReferenceLine y={latestPoint.normalRange.min} stroke="#5B8C6F" strokeDasharray="4 3" strokeOpacity={0.5} label={{ value: 'Min', fontSize: 8, fill: '#5B8C6F' }} />
+                          )}
+                          {latestPoint.normalRange.max !== undefined && (
+                            <ReferenceLine y={latestPoint.normalRange.max} stroke="#5B8C6F" strokeDasharray="4 3" strokeOpacity={0.5} label={{ value: 'Max', fontSize: 8, fill: '#5B8C6F' }} />
+                          )}
+                        </>
+                      )}
+                      <Line
+                        type="monotone"
+                        dataKey="value"
+                        stroke="#5B8C6F"
+                        strokeWidth={2}
+                        dot={(props) => {
+                          const { cx, cy, payload } = props;
+                          const color = dotColor(payload);
+                          return (
+                            <circle
+                              key={`dot-${cx}-${cy}`}
+                              cx={cx} cy={cy} r={5}
+                              fill={color} stroke="#fff" strokeWidth={2}
+                              style={{ cursor: 'pointer' }}
+                              onClick={() => payload?.reportId && navigate(`/reports/${payload.reportId}`)}
+                            />
+                          );
+                        }}
+                        activeDot={{ r: 7, cursor: 'pointer', onClick: (_, payload) => payload?.payload?.reportId && navigate(`/reports/${payload.payload.reportId}`) }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+
+                  {/* Summary row */}
+                  <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-3 gap-3">
+                    <div>
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-1">Current</p>
+                      <p className={`text-[18px] font-black leading-none`} style={{ color: statusColor(latestPoint?.status) }}>
+                        {latestPoint?.value ?? '—'} <span className="text-[10px] font-bold text-slate-400">{latestPoint?.unit || ''}</span>
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-1">Trend</p>
+                      <p className={`text-[18px] font-black leading-none ${trendDir === 'up' ? 'text-emerald-600' : trendDir === 'down' ? 'text-red-500' : 'text-slate-400'}`}>
+                        {trendDir === 'up' ? '↑' : trendDir === 'down' ? '↓' : '→'}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[8px] font-black text-slate-400 uppercase tracking-wider mb-1">Normal Range</p>
+                      <p className="text-[11px] font-black text-slate-600 leading-tight">
+                        {latestPoint?.normalRange
+                          ? `${latestPoint.normalRange.min ?? '?'} – ${latestPoint.normalRange.max ?? '?'} ${latestPoint?.unit || ''}`
+                          : '—'}
+                      </p>
+                    </div>
+                  </div>
+                </>
+              ) : (
+                <div className="flex items-center justify-center h-32 text-[11px] font-bold text-slate-400">
+                  {selectedMetric ? 'No data available for this metric' : 'Select a metric above'}
+                </div>
+              )}
             </div>
           );
         })()}

@@ -14,6 +14,7 @@ router.post('/register-otp', authLimiter, requestRegistrationOtp);
 router.post('/register/doctor', authLimiter, registerDoctor);
 router.post('/login', authLimiter, login);
 router.post('/logout', protect, require('../controllers/authController').logout);
+router.post('/refresh', require('../controllers/authController').refresh);
 router.post('/verify-email', authLimiter, verifyEmail);
 router.post('/resend-verify-code', authLimiter, resendVerificationCode);
 router.post('/forgot-password', authLimiter, require('../controllers/authController').forgotPassword);

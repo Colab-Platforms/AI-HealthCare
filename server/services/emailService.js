@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const User = require('../models/User');
 
 class EmailService {
   constructor() {
@@ -96,6 +97,20 @@ class EmailService {
   async sendDietPlanComplete(email, name) {
     const html = this.getDietPlanCompleteTemplate(name);
     return this.sendEmail({ to: email, subject: 'Customized Diet Plan Ready - take.health AI', html });
+  }
+
+  // Marketing emails (tips, newsletters, promotions) — skipped if user opted out
+  async sendMarketingEmail(userId, email, subject, html) {
+    try {
+      const user = await User.findById(userId).select('privacySettings').lean();
+      if (user && user.privacySettings?.marketingEnabled === false) {
+        console.log(`📭 Marketing email skipped (opted out): ${email}`);
+        return { success: false, skipped: true };
+      }
+    } catch (e) {
+      console.warn('Could not check marketing preference:', e.message);
+    }
+    return this.sendEmail({ to: email, subject, html });
   }
 
   getPasswordResetTemplate(name, code) {

@@ -180,6 +180,24 @@ const userSchema = new mongoose.Schema({
   alcoholLog: {
     type: mongoose.Schema.Types.Mixed,
     default: () => ({})
+  },
+
+  // DPDPA Compliance fields
+  consent: {
+    given:      { type: Boolean, default: false },
+    version:    { type: String, default: null },   // policy version agreed to
+    givenAt:    { type: Date,   default: null },
+    withdrawn:  { type: Boolean, default: false },
+    withdrawnAt:{ type: Date,   default: null },
+  },
+  dataRetention: {
+    scheduledDeletion: { type: Date, default: null }, // set when user requests account delete
+    deletionRequestedAt: { type: Date, default: null },
+  },
+  privacySettings: {
+    analyticsEnabled:   { type: Boolean, default: true },
+    marketingEnabled:   { type: Boolean, default: false },
+    dataSharing:        { type: Boolean, default: false },
   }
 }, { timestamps: true, strict: false });
 

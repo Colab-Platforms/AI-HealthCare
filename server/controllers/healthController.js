@@ -49,7 +49,9 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
       if (updatedReport && updatedReport.originalFile?.cloudinaryUrl) {
         console.log(`📥 [BG] Fetching file from Cloudinary for analysis: ${updatedReport.originalFile.cloudinaryUrl}`);
         const axios = require('axios');
-        const response = await axios.get(updatedReport.originalFile.cloudinaryUrl, { responseType: 'arraybuffer' });
+        // Use signed URL — files are now type:'authenticated' and need a valid signature to fetch
+        const fetchUrl = cloudinary.generateSignedUrl(updatedReport.originalFile.cloudinaryUrl) || updatedReport.originalFile.cloudinaryUrl;
+        const response = await axios.get(fetchUrl, { responseType: 'arraybuffer' });
         dataBuffer = Buffer.from(response.data);
       }
     }
@@ -386,10 +388,13 @@ exports.getReportById = async (req, res) => {
       recommendedDoctors = doctors.map(doc => ({ ...doc.toObject(), user: { name: doc.name, email: doc.email } }));
     }
 
-    // Add isAnalyzedReport flag for frontend consistency
+    // Add isAnalyzedReport flag + signed file URL for frontend
+    const reportObj = report.toObject();
+    const rawUrl = reportObj.originalFile?.cloudinaryUrl || reportObj.originalFile?.path;
     const reportWithFlag = {
-      ...report.toObject(),
-      isAnalyzedReport: true
+      ...reportObj,
+      isAnalyzedReport: true,
+      signedFileUrl: rawUrl ? cloudinary.generateSignedUrl(rawUrl) : null,
     };
 
     res.json({ report: reportWithFlag, recommendedDoctors });
@@ -514,13 +519,13 @@ exports.getHealthTrends = async (req, res) => {
       return res.json(cached);
     }
 
-    const filter = { user: req.user._id, status: 'completed' };
+    const filter = { user: req.user._id, status: 'completed', 'aiAnalysis.healthScore': { $gt: 0 } };
     if (reportType) filter.reportType = reportType;
 
     const reports = await HealthReport.find(filter)
       .select('reportType createdAt aiAnalysis.healthScore aiAnalysis.metrics')
       .sort({ createdAt: 1 })
-      .limit(20)
+      .limit(50)
       .lean();
 
     if (!reports.length) {
@@ -1049,6 +1054,25 @@ exports.getAlcoholLog = async (req, res) => {
     const user = await User.findById(req.user._id).select('alcoholLog');
     if (!user) return res.status(404).json({ message: 'User not found' });
     res.json({ success: true, alcoholLog: sanitizeAlcoholLog(user.alcoholLog) });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Returns a fresh signed URL for a report's original file (1hr validity, cached 55min)
+exports.getReportFileUrl = async (req, res) => {
+  try {
+    const report = await HealthReport.findOne({ _id: req.params.id, user: req.user._id })
+      .select('originalFile');
+    if (!report) return res.status(404).json({ message: 'Report not found' });
+
+    const rawUrl = report.originalFile?.cloudinaryUrl || report.originalFile?.path;
+    if (!rawUrl) return res.status(404).json({ message: 'No file stored for this report' });
+
+    const signedUrl = cloudinary.generateSignedUrl(rawUrl);
+    if (!signedUrl) return res.status(500).json({ message: 'Could not generate signed URL' });
+
+    res.json({ url: signedUrl, expiresIn: '1 hour' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

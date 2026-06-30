@@ -90,26 +90,51 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+let _refreshing = null; // singleton promise — prevents parallel refresh storms
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    // Check if this request should skip auto-logout
-    const skipAutoLogout = error.config?.skipAutoLogout;
+  async (error) => {
+    const original = error.config;
+    const skipAutoLogout = original?.skipAutoLogout;
+    const code = error.response?.data?.code;
+
+    // Silent token refresh on TOKEN_EXPIRED — only once per request
+    if (error.response?.status === 401 && code === 'TOKEN_EXPIRED' && !original._retried) {
+      original._retried = true;
+
+      try {
+        if (!_refreshing) {
+          const refreshToken = localStorage.getItem('refreshToken');
+          if (!refreshToken) throw new Error('No refresh token');
+          _refreshing = api.post('auth/refresh', { refreshToken })
+            .then(r => { localStorage.setItem('token', r.data.token); return r.data.token; })
+            .finally(() => { _refreshing = null; });
+        }
+        const newToken = await _refreshing;
+        original.headers.Authorization = `Bearer ${newToken}`;
+        return api(original); // retry original request
+      } catch {
+        // Refresh failed — force logout
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
+        localStorage.removeItem('user');
+        cache.clear();
+        window.location.href = '/login';
+        return Promise.reject(error);
+      }
+    }
 
     if (error.response?.status === 401) {
-      console.warn('🔓 401 Unauthorized detected for URL:', error.config?.url);
-      console.log('🔓 skipAutoLogout flag status:', !!skipAutoLogout);
+      console.warn('🔓 401 Unauthorized detected for URL:', original?.url);
 
       if (!skipAutoLogout) {
-        console.log('🚪 Triggering auto-logout and redirecting to /login');
-        // Clear only sensitive auth data, preserving UI flags like onboarding tour status
         localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
         localStorage.removeItem('user');
         sessionStorage.removeItem('token');
         cache.clear();
         window.location.href = '/login';
-      } else {
-        console.log('🛡️ skipAutoLogout is TRUE — keeping user on current page');
       }
     } else if (!error.response) {
       console.error('Network Error:', {
@@ -421,6 +446,14 @@ export const metricsService = {
 
 export const gamificationService = {
   getProfile: () => api.get('gamification/profile')
+};
+
+export const privacyService = {
+  getConsent:          ()       => api.get('/privacy/consent'),
+  recordConsent:       (payload) => api.post('/privacy/consent', payload),
+  updateSettings:      (payload) => api.put('/privacy/settings', payload),
+  requestDeletion:     ()       => api.post('/privacy/delete-account'),
+  cancelDeletion:      ()       => api.post('/privacy/cancel-deletion'),
 };
 
 export default api;

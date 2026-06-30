@@ -25,7 +25,8 @@ const {
   getSmokeLog,
   saveAlcoholLog,
   getAlcoholLog,
-  getHealthTrends
+  getHealthTrends,
+  getReportFileUrl
 } = require('../controllers/healthController');
 const { protect } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -38,6 +39,7 @@ router.get('/history', protect, apiLimiter, getHealthHistory);
 router.get('/dashboard', protect, heavyReadLimiter, getDashboardData);
 router.get('/report-comparison', protect, apiLimiter, getReportComparison);
 router.get('/reports/:id/status', protect, apiLimiter, getReportStatus);
+router.get('/reports/:id/file-url', protect, apiLimiter, getReportFileUrl);
 router.get('/reports/:id', protect, apiLimiter, getReportById);
 router.post('/reports/:id/reanalyze', protect, aiLimiter, reanalyzeReport);
 router.delete('/reports/:id', protect, deleteReport);

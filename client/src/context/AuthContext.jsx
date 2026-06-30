@@ -82,8 +82,9 @@ export const AuthProvider = ({ children }) => {
     const payload = isEmail ? { email: emailOrPhone, password } : { phone: emailOrPhone, password };
     const { data } = await api.post('auth/login', payload, { skipAutoLogout: true });
 
-    // Set new token and user data
+    // Store both tokens
     localStorage.setItem('token', data.token);
+    if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
     localStorage.setItem('user', JSON.stringify(data));
     api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
 
@@ -166,16 +167,17 @@ export const AuthProvider = ({ children }) => {
 
   const logout = async () => {
     try {
-      // Deregister FCM token before clearing auth
       const fcmToken = localStorage.getItem('fcmToken');
       if (fcmToken) {
         fcmService.deregisterToken(fcmToken).catch(() => {});
         localStorage.removeItem('fcmToken');
       }
-      await api.post('auth/logout').catch(err => console.warn('Logout log failed:', err.message));
+      const refreshToken = localStorage.getItem('refreshToken');
+      await api.post('auth/logout', { refreshToken }).catch(err => console.warn('Logout log failed:', err.message));
     } catch (e) {}
 
     localStorage.removeItem('token');
+    localStorage.removeItem('refreshToken');
     localStorage.removeItem('user');
     sessionStorage.removeItem('token');
 

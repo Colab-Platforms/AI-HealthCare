@@ -26,6 +26,8 @@ import {
   Dumbbell,
   Users,
   ShieldCheck,
+  Shield,
+  ScrollText,
   Sparkles,
   RefreshCw,
   Menu,
@@ -49,7 +51,8 @@ const patientNavItems = [
   { path: "/nutrition", icon: Utensils, label: "Nutrition" },
   { path: "/diet-plan", icon: FileText, label: "Diet Plan" },
   { path: "/glucose-log", icon: Droplet, label: "Glucose Tracking", isDiabeticOnly: true },
-  { path: "/notification-settings", icon: Bell, label: "Notifications" }
+  { path: "/notification-settings", icon: Bell, label: "Notifications" },
+  { path: "/privacy-settings", icon: ShieldCheck, label: "Data & Consent" }
 ];
 
 const doctorNavItems = [
@@ -361,10 +364,31 @@ export default function Layout({
               })}
             </nav>
 
+            {/* Legal Links */}
+            <div className="px-3 pb-2 space-y-1" style={{ borderTop: "1px solid rgba(255,255,255,0.4)", paddingTop: "8px" }}>
+              {[
+                { label: "Terms & Conditions", icon: ScrollText, url: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Terrms_and_Conditions_take.health_revised.pdf?v=1776407779" },
+                { label: "Privacy Policy", icon: Shield, url: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/take_health_privacy_policy.pdf?v=1776407816" },
+              ].map(({ label, icon: Icon, url }) => (
+                <a key={label} href={url} target="_blank" rel="noopener noreferrer"
+                  className={`flex items-center rounded-2xl px-3 py-2.5 transition-all gap-3 hover:bg-white/60 ${sidebarOpen ? "" : "justify-center"}`}
+                  style={{ color: "#94a3b8" }}>
+                  <Icon className="w-4 h-4 flex-shrink-0" />
+                  <span className="text-xs font-semibold truncate overflow-hidden whitespace-nowrap"
+                    style={{ maxWidth: sidebarOpen ? "140px" : "0px", opacity: sidebarOpen ? 1 : 0, transition: "max-width 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease" }}>
+                    {label}
+                  </span>
+                </a>
+              ))}
+            </div>
+
             {/* User Footer */}
             <div className="p-3 shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.4)" }}>
-              <button
+              <div
                 onClick={() => navigate("/profile")}
+                role="button"
+                tabIndex={0}
+                onKeyDown={(e) => e.key === 'Enter' && navigate("/profile")}
                 className={`w-full flex items-center p-2.5 rounded-2xl transition-all cursor-pointer hover:bg-white/60 ${sidebarOpen ? "gap-3" : "justify-center"}`}
                 style={{ background: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.6)" }}
               >
@@ -392,7 +416,7 @@ export default function Layout({
                 >
                   <LogOut className="w-4 h-4" />
                 </button>
-              </button>
+              </div>
             </div>
           </div>
         </aside>
