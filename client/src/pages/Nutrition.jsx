@@ -977,7 +977,7 @@ function Nutrition() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F2F5EC] dark:bg-[#111815] transition-colors pb-32">
+    <div className="min-h-screen pb-32" style={{ background: "#F2F7F2" }}>
       <SEO pageName="nutrition" />
       <div className="container mx-auto px-4 pt-2 pb-8">
         <NutritionTab
@@ -1057,7 +1057,14 @@ function Nutrition() {
               initial={{ scale: 0.95, y: 100, opacity: 0 }}
               animate={{ scale: 1, y: 0, opacity: 1 }}
               exit={{ scale: 0.95, y: 100, opacity: 0 }}
-              className="bg-white w-full max-w-md rounded-t-[2.5rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col h-[90vh] md:h-auto md:max-h-[90vh] border border-slate-100 mt-auto md:mt-0"
+              className="w-full max-w-md rounded-t-[2.5rem] md:rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col h-[90vh] md:h-auto md:max-h-[90vh] mt-auto md:mt-0"
+              style={{
+                background: "rgba(255,255,255,0.88)",
+                backdropFilter: "blur(24px) saturate(180%)",
+                WebkitBackdropFilter: "blur(24px) saturate(180%)",
+                border: "1px solid rgba(255,255,255,0.9)",
+                boxShadow: "0 8px 40px rgba(5,150,105,0.12), 0 1px 0 rgba(255,255,255,1) inset",
+              }}
             >
               {/* Header */}
               <div className="p-6 md:p-8 pb-4">
@@ -1083,11 +1090,18 @@ function Nutrition() {
                     <button
                       key={tab.id}
                       onClick={() => setMealTab(tab.id)}
-                      className={`flex items-center gap-1.5 px-4 py-2.5 rounded-full transition-all flex-[0_0_auto] min-w-fit justify-center ${
-                        mealTab === tab.id
-                          ? "bg-[#69A38D] text-white shadow-md"
-                          : "bg-white text-slate-500 border border-slate-100 font-bold hover:bg-slate-50"
-                      }`}
+                      className="flex items-center gap-1.5 px-4 py-2.5 rounded-full transition-all flex-[0_0_auto] min-w-fit justify-center"
+                      style={mealTab === tab.id ? {
+                        background: "linear-gradient(135deg,#059669,#10b981)",
+                        color: "white",
+                        boxShadow: "0 4px 14px rgba(5,150,105,0.3)",
+                      } : {
+                        background: "rgba(255,255,255,0.72)",
+                        backdropFilter: "blur(12px)",
+                        WebkitBackdropFilter: "blur(12px)",
+                        border: "1px solid rgba(255,255,255,0.85)",
+                        color: "#64748b",
+                      }}
                     >
                       {tab.icon && (
                         <tab.icon
@@ -1105,7 +1119,7 @@ function Nutrition() {
                 </div>
 
                 {/* Input Method Tabs */}
-                <div className="flex bg-white border border-slate-100 p-1.5 rounded-2xl mb-4 shadow-sm">
+                <div className="flex p-1.5 rounded-2xl mb-4" style={{ background: "rgba(255,255,255,0.55)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)", border: "1px solid rgba(255,255,255,0.8)" }}>
                   {[
                     { id: "Scan", label: "SCAN", icon: ScanLine },
                     { id: "Type", label: "TYPE", icon: FileText },
@@ -1495,7 +1509,14 @@ function Nutrition() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-lg bg-white rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh] border border-slate-100"
+              className="relative w-full max-w-lg rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+              style={{
+                background: "rgba(255,255,255,0.88)",
+                backdropFilter: "blur(24px) saturate(180%)",
+                WebkitBackdropFilter: "blur(24px) saturate(180%)",
+                border: "1px solid rgba(255,255,255,0.9)",
+                boxShadow: "0 8px 40px rgba(5,150,105,0.12), 0 1px 0 rgba(255,255,255,1) inset",
+              }}
             >
               {/* Image & Close Button */}
               <div className="h-56 relative shrink-0">

@@ -119,6 +119,18 @@ const Hero = () => {
           <span className="text-white/50 text-xs">
             * No Credit Card Required
           </span>
+          <a
+            href="https://github.com/patilabhiraj/take-health-download/releases/download/v1.0.0/Take.Health.apk"
+            className="flex items-center gap-3 px-4 py-2.5 rounded-2xl mt-2 transition-all hover:scale-105 active:scale-95"
+            style={{ background: "rgba(255,255,255,0.12)", border: "1px solid rgba(255,255,255,0.25)", backdropFilter: "blur(12px)" }}
+          >
+            <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/icon.png?v=1775538354" alt="take.health" className="w-9 h-9 rounded-xl flex-shrink-0" />
+            <div className="text-left">
+              <p className="text-[9px] text-white/60 uppercase tracking-widest leading-none mb-0.5">Free Download · Android 8.0+</p>
+              <p className="text-[13px] font-black text-white leading-tight">take.health Android App</p>
+              <p className="text-[9px] text-white/50 leading-none mt-0.5">v1.0.0 Beta · APK · Direct Install</p>
+            </div>
+          </a>
         </motion.div>
       </motion.div>
 

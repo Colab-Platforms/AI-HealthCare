@@ -1,4 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
+import { createPortal } from 'react-dom';
 import { 
   ChevronLeft, ChevronRight, Plus, Camera, Mic, Utensils, Droplet, Minus, CheckCircle2, 
   AlertTriangle, AlertCircle, X, Coffee, Apple, Calendar, Image as ImageIcon, 
@@ -46,7 +47,18 @@ export function NutritionTab({
   const headerCameraRef = useRef(null);
   const activeMealRef = useRef(null);
   const dateInputRef = useRef(null);
+  const dateBtnRef = useRef(null);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [datePickerMonth, setDatePickerMonth] = useState(() => { const d = new Date(); return { year: d.getFullYear(), month: d.getMonth() }; });
+  const [datePickerPos, setDatePickerPos] = useState({ top: 0, right: 0 });
+
+  React.useEffect(() => {
+    if (!showDatePicker) return;
+    const close = () => setShowDatePicker(false);
+    window.addEventListener('scroll', close, true);
+    return () => window.removeEventListener('scroll', close, true);
+  }, [showDatePicker]);
 
   const mealPool = {
     'Recommended': [
@@ -220,386 +232,483 @@ export function NutritionTab({
     };
   }, [weeklyTrendsData, loggedMeals]);
 
+  const glassStyle = {
+    background: "rgba(255,255,255,0.72)",
+    backdropFilter: "blur(20px) saturate(180%)",
+    WebkitBackdropFilter: "blur(20px) saturate(180%)",
+    border: "1px solid rgba(255,255,255,0.85)",
+    boxShadow: "0 4px 24px rgba(16,185,129,0.06), 0 1px 0 rgba(255,255,255,0.9) inset",
+  };
+
   return (
     <div className="flex flex-col gap-5 animate-in fade-in slide-in-from-bottom-4 duration-500 pb-8 max-w-5xl mx-auto w-full pt-1">
-      {/* Primary Header - Compact & Refined */}
-      <div className="flex flex-row items-center justify-between gap-2 mb-2">
-        <div className="flex flex-col gap-0 min-w-0">
-          <h1 className="text-[20px] md:text-[24px] font-black text-[#1a2138] tracking-tight dark:text-white leading-tight whitespace-nowrap">
-            Nutrition Tracker
+
+      {/* ── Header ── */}
+      <div className="flex flex-row items-center justify-between gap-2">
+        <div>
+          <h1 className="text-[22px] md:text-[26px] font-black text-[#0d2b22] tracking-tight leading-tight">
+            Nutrition
           </h1>
-          <p className="text-[11px] md:text-[13px] font-bold text-slate-400 dark:text-slate-500">
-            Achieve wellness goals..
+          <p className="text-[10px] font-black text-emerald-600 uppercase tracking-[0.2em]">
+            Daily Tracker
           </p>
         </div>
-        
-        <div className="flex items-center gap-1.5 justify-end shrink-0">
-          <button 
-            onClick={() => onLogFood('Scan')} 
-            className="bg-[#6FAF95] hover:bg-[#5B9A80] text-white px-3 py-1.5 h-9 md:h-10 rounded-full text-[12px] md:text-[13px] font-bold flex items-center gap-1 shadow-sm active:scale-95 transition-all justify-center whitespace-nowrap"
-          >
-            <Plus size={15} strokeWidth={3} /> Log Meal
-          </button>
-          <button 
+        <div className="flex items-center gap-2 shrink-0">
+          <button
             onClick={() => onLogFood('photo')}
-            className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white dark:bg-[#1A221E] flex items-center justify-center text-slate-500 border border-slate-100 dark:border-white/10 hover:shadow-xs transition-all active:scale-90"
+            className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all active:scale-90"
+            style={glassStyle}
           >
-            <Camera size={17} strokeWidth={2} className="text-slate-400" />
+            <Camera size={17} strokeWidth={2} className="text-emerald-600" />
           </button>
-          <button 
+          <button
             onClick={() => onLogFood('voice')}
-            className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white dark:bg-[#1A221E] flex items-center justify-center text-slate-500 border border-slate-100 dark:border-white/10 hover:shadow-xs transition-all active:scale-90"
+            className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all active:scale-90"
+            style={glassStyle}
           >
-            <Mic size={17} strokeWidth={2} className="text-slate-400" />
+            <Mic size={17} strokeWidth={2} className="text-emerald-600" />
+          </button>
+          <button
+            onClick={() => onLogFood('Scan')}
+            className="px-5 h-10 rounded-2xl text-[13px] font-black flex items-center gap-2 active:scale-95 transition-all text-white uppercase tracking-wide"
+            style={{ background: "linear-gradient(135deg,#059669,#10b981)", boxShadow: "0 4px 14px rgba(5,150,105,0.3)" }}
+          >
+            <Plus size={16} strokeWidth={3} /> Log Meal
           </button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-6">
-        {/* Left Column */}
-        <div className="flex flex-col gap-6">
-          {/* Daily Calorie Intake Card */}
-          <div className="bg-white/60 backdrop-blur-xl rounded-[32px] p-6 shadow-sm border border-white relative overflow-hidden dark:bg-[#1A221E]/90 dark:border-white/10">
-            <div className="absolute top-[-40px] right-[-40px] w-32 h-32 bg-[#558FE6]/20 rounded-full blur-2xl pointer-events-none"></div>
-            <h3 className="text-[13px] font-bold text-[#64748b] dark:text-slate-400 mb-2">Daily Calorie Intake</h3>
-            <div className="flex items-end justify-between mb-1.5">
-              <div className="flex items-baseline gap-1">
-                <span className={`text-[32px] md:text-[40px] font-bold tracking-tight leading-none ${totalTodayKcal > (dailySummary.calorieTarget || 1800) ? 'text-red-500' : 'text-[#1a2138] dark:text-white'}`}>{totalTodayKcal}</span>
-                <span className="text-[16px] md:text-[20px] font-semibold text-[#64748b]/70 dark:text-slate-500">/ {dailySummary.calorieTarget || 1800}</span>
-              </div>
-              <div className="flex flex-col items-end pb-1">
-                <span className={`text-[16px] font-bold tracking-tight ${totalTodayKcal > (dailySummary.calorieTarget || 1800) ? 'text-red-500' : 'text-[#1a2138] dark:text-white'}`}>{Math.round(progressPercent)}% <span className="text-[10px] font-semibold text-[#64748b]/70 dark:text-slate-500 uppercase tracking-wider ml-0.5">Of Goal</span></span>
-              </div>
-            </div>
-            {totalTodayKcal > (dailySummary.calorieTarget || 1800) ? (
-              <p className="text-[12px] font-black text-red-500 mb-5 flex items-center gap-1.5 uppercase tracking-tight">
-                <AlertTriangle size={12} /> {totalTodayKcal - (dailySummary.calorieTarget || 1800)} kcal over limit
-              </p>
-            ) : (
-              <p className="text-[12px] font-bold text-[#558FE6] mb-5">{(dailySummary.calorieTarget || 1800) - totalTodayKcal} kcal remaining</p>
-            )}
-            <div className="w-full h-3.5 bg-white/50 dark:bg-black/20 rounded-full overflow-hidden mb-8 shadow-inner border border-white/50 dark:border-white/5">
-              <motion.div initial={{ width: 0 }} animate={{ width: `${Math.min(100, progressPercent)}%` }} transition={{ duration: 1, ease: "easeOut" }} className={`h-full rounded-full relative overflow-hidden ${totalTodayKcal > (dailySummary.calorieTarget || 1800) ? 'bg-red-500' : 'bg-[#69A38D]'}`}><div className="absolute inset-0 bg-white/10 w-full h-full"></div></motion.div>
-            </div>
-            <div className="flex gap-3 w-full">
-              <div className="flex-1 flex flex-col gap-1.5">
-                <span className="text-[9px] font-black text-[#64748b]/70 dark:text-slate-500 uppercase tracking-widest">Protein</span>
-                <div className="flex items-baseline gap-1"><span className={`text-[13px] font-bold ${dailySummary.protein > dailySummary.proteinTarget ? 'text-red-500' : 'text-[#1a2138] dark:text-white'}`}>{dailySummary.protein}g</span><span className="text-[10px] font-bold text-[#64748b]/70">/ {dailySummary.proteinTarget}g</span></div>
-                <div className="w-full h-1.5 bg-white/50 dark:bg-black/20 rounded-full overflow-hidden self-stretch"><motion.div className={`h-full rounded-full ${dailySummary.protein > dailySummary.proteinTarget ? 'bg-red-500' : 'bg-[#5D5589]'}`} initial={{ width: 0 }} animate={{ width: `${Math.min(100, (dailySummary.protein / dailySummary.proteinTarget) * 100)}%` }}></motion.div></div>
-              </div>
-              <div className="flex-1 flex flex-col gap-1.5">
-                <span className="text-[9px] font-black text-[#64748b]/70 uppercase tracking-widest">Carbs</span>
-                <div className="flex items-baseline gap-1"><span className={`text-[13px] font-bold ${dailySummary.carbs > dailySummary.carbsTarget ? 'text-red-500' : 'text-[#1a2138] dark:text-white'}`}>{dailySummary.carbs}g</span><span className="text-[10px] font-bold text-[#64748b]/70">/ {dailySummary.carbsTarget}g</span></div>
-                <div className="w-full h-1.5 bg-white/50 dark:bg-black/20 rounded-full overflow-hidden self-stretch"><motion.div className={`h-full rounded-full ${dailySummary.carbs > dailySummary.carbsTarget ? 'bg-red-500' : 'bg-[#558FE6]'}`} initial={{ width: 0 }} animate={{ width: `${Math.min(100, (dailySummary.carbs / dailySummary.carbsTarget) * 100)}%` }}></motion.div></div>
-              </div>
-              <div className="flex-1 flex flex-col gap-1.5">
-                <span className="text-[9px] font-black text-[#64748b]/70 uppercase tracking-widest">Fats</span>
-                <div className="flex items-baseline gap-1"><span className={`text-[13px] font-bold ${dailySummary.fats > dailySummary.fatsTarget ? 'text-red-500' : 'text-[#1a2138] dark:text-white'}`}>{dailySummary.fats}g</span><span className="text-[10px] font-bold text-[#64748b]/70">/ {dailySummary.fatsTarget}g</span></div>
-                <div className="w-full h-1.5 bg-white/50 dark:bg-black/20 rounded-full overflow-hidden self-stretch"><motion.div className={`h-full rounded-full ${dailySummary.fats > dailySummary.fatsTarget ? 'bg-red-500' : 'bg-[#69A38D]'}`} initial={{ width: 0 }} animate={{ width: `${Math.min(100, (dailySummary.fats / dailySummary.fatsTarget) * 100)}%` }}></motion.div></div>
-              </div>
-            </div>
+      {/* ── Calorie Card + Weekly Trend side by side on desktop ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1.4fr_1fr] gap-4">
+
+        {/* Calorie Card */}
+        <div className="rounded-[28px] p-5 relative overflow-hidden" style={glassStyle}>
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Daily Calories</p>
+            <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest ${
+              totalTodayKcal > (dailySummary.calorieTarget || 1800)
+                ? 'bg-red-50 text-red-500 border border-red-100'
+                : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
+            }`}>
+              {Math.round(progressPercent)}% of goal
+            </span>
           </div>
-
-          {/* Today's Insights */}
-          <div className="bg-[#FCEEE3] rounded-[32px] p-6 shadow-sm border border-[#F5D6C1] flex flex-col gap-5 dark:bg-[#1A221E]/10 dark:border-[#E88F4A]/20">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-md"><AlertTriangle size={20} className="text-[#E88F4A]" strokeWidth={2.5} /></div>
-                <h4 className="text-[16px] font-black text-[#1a2138] dark:text-white uppercase tracking-tight">Nutrition Insight</h4>
-              </div>
-              <span className="bg-[#E88F4A] text-white text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest whitespace-nowrap">AI ANALYSIS</span>
-            </div>
-            <div className="flex flex-col gap-3">
-              {(() => {
-                const alerts = [];
-                const target = dailySummary.calorieTarget || 1800;
-                if (totalTodayKcal > target) alerts.push({ type: 'CALORIES', msg: `Exceeded by ${totalTodayKcal - target} kcal. ${totalTodayKcal - target > 500 ? 'Try 45 mins of HIIT.' : 'A 20-min jog will help.'}` });
-                if (dailySummary.protein > dailySummary.proteinTarget) alerts.push({ type: 'PROTEIN', msg: `Exceeded target by ${(dailySummary.protein - dailySummary.proteinTarget).toFixed(1)}g.` });
-                if (alerts.length > 0) {
-                  return alerts.map((a, i) => (
-                    <div key={i} className="flex gap-4 items-start">
-                      <div className="flex items-center gap-1.5 font-black text-[#EF4444] uppercase text-[9px] px-2.5 py-1.5 rounded-full bg-[#FFE7E7] border border-[#FFCFCF]">{a.type}</div>
-                      <p className="text-[#991B1B] font-bold text-[14px] leading-tight flex-1 pt-1.5">{a.msg}</p>
-                    </div>
-                  ));
-                }
-                return <p className="text-[#1a2138]/80 text-[13px] font-medium leading-relaxed dark:text-slate-400">{aiInsights || "Your nutrition is perfectly balanced today. Keep it up!"}</p>;
-              })()}
-            </div>
+          <div className="flex items-end gap-2 mb-1">
+            <span className={`text-[38px] md:text-[44px] font-black tracking-tight leading-none ${totalTodayKcal > (dailySummary.calorieTarget || 1800) ? 'text-red-500' : 'text-[#0d2b22]'}`}>
+              {totalTodayKcal}
+            </span>
+            <span className="text-[15px] font-bold text-slate-400 pb-1.5">/ {dailySummary.calorieTarget || 1800} kcal</span>
           </div>
-
-          {/* Meal Timeline Section */}
-          <div className="flex flex-col gap-5 mt-4">
-            <div className="flex items-center justify-between gap-2 mb-2">
-              <h2 className="text-[20px] font-black text-[#1a2138] dark:text-white leading-tight uppercase tracking-tight">
-                {(() => {
-                  const today = new Date().toISOString().split('T')[0];
-                  const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
-                  if (selectedDate === today) return "Today";
-                  if (selectedDate === yesterday) return "Yesterday";
-                  return new Date(selectedDate).toLocaleDateString('en-IN', { weekday: 'long' });
-                })()}, {new Date(selectedDate).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-              </h2>
-              <div className="relative">
-                <button onClick={() => { if (dateInputRef.current?.showPicker) dateInputRef.current.showPicker(); else dateInputRef.current?.click(); }} className="w-11 h-11 rounded-full bg-white dark:bg-[#222B26] flex items-center justify-center text-[#64748b] shadow-sm border border-slate-100 dark:border-white/10"><Calendar size={18} /></button>
-                <input type="date" ref={dateInputRef} className="absolute inset-0 opacity-0 pointer-events-none" value={selectedDate} onChange={(e) => onDateChange && onDateChange(e.target.value)} max={new Date().toISOString().split('T')[0]} />
-              </div>
-            </div>
-
-
-
+          <p className={`text-[11px] font-black mb-4 ${totalTodayKcal > (dailySummary.calorieTarget || 1800) ? 'text-red-500' : 'text-emerald-600'}`}>
+            {totalTodayKcal > (dailySummary.calorieTarget || 1800)
+              ? `${totalTodayKcal - (dailySummary.calorieTarget || 1800)} kcal over limit`
+              : `${(dailySummary.calorieTarget || 1800) - totalTodayKcal} kcal remaining`}
+          </p>
+          <div className="w-full h-2.5 rounded-full overflow-hidden mb-5" style={{ background: "rgba(255,255,255,0.5)" }}>
+            <motion.div
+              initial={{ width: 0 }} animate={{ width: `${Math.min(100, progressPercent)}%` }}
+              transition={{ duration: 1, ease: "easeOut" }}
+              className={`h-full rounded-full ${totalTodayKcal > (dailySummary.calorieTarget || 1800) ? 'bg-red-500' : 'bg-emerald-500'}`}
+            />
+          </div>
+          <div className="grid grid-cols-3 gap-3">
             {[
-              { name: 'Breakfast', target: Math.round((dailySummary.calorieTarget || 1800) * 0.30), icon: Coffee, time: '09:00' },
-              { name: 'Lunch', target: Math.round((dailySummary.calorieTarget || 1800) * 0.40), icon: Utensils, time: '13:30' },
-              { name: 'Dinner', target: Math.round((dailySummary.calorieTarget || 1800) * 0.30), icon: UtensilsCrossed, time: '20:15' }
-            ].map((meal, idx) => {
-              const typeKey = 
-                meal.name === 'Breakfast' ? 'breakfast' :
-                meal.name === 'Lunch' ? 'lunch' :
-                meal.name === 'Dinner' ? 'dinner' : 'other';
-
-              const meals = (loggedMeals || []).filter(m => {
-                if (!m.mealType) return false;
-                const mt = String(m.mealType).toLowerCase();
-                const target = typeKey.toLowerCase();
-                
-                // Direct match
-                if (mt === target) return true;
-                
-                // Flexible match for snacks and common names
-                if (target === 'breakfast' && (mt.includes('breakfast') || mt === 'morning')) return true;
-                if (target === 'lunch' && mt.includes('lunch')) return true;
-                if (target === 'dinner' && mt.includes('dinner')) return true;
-                if (target === 'midmorningsnack' && (mt.includes('mid') || mt.includes('morning'))) return true;
-                if (target === 'eveningsnack' && (mt.includes('evening') || mt === 'snack' || mt === 'afternoon')) return true;
-                
-                return false;
-              });
-
-              const consumed = meals.reduce((acc, curr) => {
-                const cal = curr.calories || curr.foodItems?.[0]?.nutrition?.calories || 0;
-                return acc + Number(cal);
-              }, 0);
-              
-              const isExceeded = consumed > meal.target;
-
-              return (
-                <div key={idx} className={`mb-4 relative ${logMethodSection === meal.name ? 'z-[60]' : 'z-10'}`}>
-                  <div className="w-full bg-white/70 dark:bg-[#1A221E]/90 backdrop-blur-xl rounded-[2.25rem] p-5 shadow-sm border border-white dark:border-white/10 transition-all hover:shadow-md">
-                    <div className="flex items-center justify-between mb-4 gap-2">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-11 h-11 rounded-2xl bg-[#FEF4EB] dark:bg-[#2D241E] flex items-center justify-center text-[#E88F4A] group-hover:scale-110 shrink-0"><meal.icon size={20} strokeWidth={2.5} /></div>
-                        <div>
-                          <span className="text-[15px] font-black text-[#1a2138] dark:text-white tracking-tight">{meal.name}</span>
-                          {consumed > 0 && <p className="text-[10px] font-bold text-[#6FAF95]/60 -mt-1 uppercase tracking-tight">Logged • {meals.length} items</p>}
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-3 ml-2">
-                        <div className="flex flex-col items-end">
-                          <div className="flex items-center gap-1.5">
-                            {isExceeded && <AlertTriangle size={14} className="text-red-500 animate-pulse" />}
-                            <span className={`text-[14px] font-black ${isExceeded ? 'text-red-500' : (consumed > 0 ? 'text-[#69A38D]' : 'text-slate-400')}`}>{consumed}</span>
-                          </div>
-                          <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider">of {meal.target} kcal</span>
-                        </div>
-                        <div className="relative">
-                          <button onClick={() => setLogMethodSection(logMethodSection === meal.name ? null : meal.name)} className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#69A38D] border border-slate-100 shadow-sm"><Plus size={16} strokeWidth={3} /></button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {isExceeded && (
-                      <div className="mb-4 p-3.5 bg-red-50 dark:bg-red-900/20 rounded-2xl border border-red-100 dark:border-red-900/30 flex gap-3 items-start">
-                        <div className="w-8 h-8 rounded-xl bg-red-100 dark:bg-red-900/40 flex items-center justify-center shrink-0"><AlertCircle size={16} className="text-red-600" /></div>
-                        <div className="flex flex-col gap-0.5">
-                          <p className="text-[12px] font-black text-red-700 uppercase tracking-tight">Limit Exceeded</p>
-                          <p className="text-[11px] font-bold text-red-600/80 leading-snug">Target exceeded by {consumed - meal.target} kcal. A 30-min walk is recommended.</p>
-                        </div>
-                      </div>
-                    )}
-
-                    {meals.length > 0 && (
-                      <div className="flex flex-col gap-3 mt-2 border-t border-slate-50 dark:border-white/5 pt-4">
-                        {meals.map((log, lIdx) => (
-                          <div key={lIdx} onClick={() => onViewFood && onViewFood(log)} className="group bg-slate-50/50 dark:bg-black/20 rounded-[1.75rem] p-4 flex items-center gap-4 hover:bg-white transition-all cursor-pointer border border-transparent hover:border-slate-100">
-                            <div className="w-12 h-12 rounded-2xl overflow-hidden shrink-0 border border-white">
-                              <ImageWithFallback 
-                                src={log.imageUrl || log.foodItems?.[0]?.imageUrl} 
-                                query={log.name || log.foodItems?.[0]?.name}
-                                alt={log.name} 
-                                className="w-full h-full object-cover" 
-                              />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <h4 className="text-[14px] font-black text-[#1a2138] dark:text-white uppercase truncate">{log.name || log.foodItems?.[0]?.name}</h4>
-                              <div className="flex items-center gap-2 mt-0.5"><span className="text-[11px] font-bold text-[#6FAF95] uppercase">{log.calories || log.foodItems?.[0]?.nutrition?.calories} kcal</span><span className="w-1 h-1 rounded-full bg-slate-200" /><span className="text-[10px] font-black text-slate-400">{new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span></div>
-                            </div>
-                            <div className="flex items-center gap-1.5 ml-auto">
-                              <div className="relative group/move">
-                                <button className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-[#6FAF95] hover:bg-[#6FAF95]/5 rounded-full transition-all border border-slate-100 bg-white shadow-sm">
-                                  <MoreHorizontal size={14} strokeWidth={2.5} />
-                                </button>
-                                <select 
-                                  onClick={(e) => e.stopPropagation()} 
-                                  onChange={(e) => onMoveFood && onMoveFood(log._id, e.target.value)} 
-                                  value={log.mealType} 
-                                  className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10"
-                                >
-                                  {[
-                                    { label: 'Breakfast', value: 'breakfast' },
-                                    { label: 'Lunch', value: 'lunch' },
-                                    { label: 'Dinner', value: 'dinner' }
-                                  ].map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                                </select>
-                              </div>
-                              <button onClick={(e) => { e.stopPropagation(); onDeleteFood && onDeleteFood(log._id); }} className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-full transition-all border border-slate-100 bg-white"><Trash2 size={13} /></button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    
-                    {logMethodSection === meal.name && (
-                      <div className="absolute right-0 top-12 w-[280px] p-5 rounded-[28px] border border-white/20 bg-gradient-to-b from-[#69A38D] to-[#2E5244] dark:from-[#2E5244] shadow-2xl z-[100] animate-in zoom-in-95 duration-200">
-                        <h3 className="text-[18px] font-bold text-white mb-1 tracking-tight">Add {meal.name}</h3>
-                        <p className="text-[12px] text-white/80 font-medium mb-5">Select a method</p>
-                        <div className="flex flex-col gap-3">
-                          {LOG_METHODS.map((method) => (
-                            <button key={method.id} onClick={() => { if (method.id === 'photo') { setActiveMealForImport(meal.name); activeMealRef.current = meal.name; setLogMethodSection(null); setTimeout(() => cameraInputRef.current?.click(), 100); } else { setLogMethodSection(null); onLogFood(method.label, meal.name); } }} className="w-full py-3.5 px-4 bg-white/10 hover:bg-white/20 rounded-[16px] flex items-center justify-between group transition-all active:scale-95 border border-white/10">
-                              <span className="text-white font-bold text-[14px]">{method.label}</span>
-                              <div className="w-8 h-8 rounded-[10px] bg-white/10 flex items-center justify-center text-white"><method.icon size={16} /></div>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+              { label: 'Protein', val: dailySummary.protein, target: dailySummary.proteinTarget, color: '#7c3aed' },
+              { label: 'Carbs', val: dailySummary.carbs, target: dailySummary.carbsTarget, color: '#2563eb' },
+              { label: 'Fats', val: dailySummary.fats, target: dailySummary.fatsTarget, color: '#059669' },
+            ].map(m => (
+              <div key={m.label} className="flex flex-col gap-1.5">
+                <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">{m.label}</span>
+                <div className="flex items-baseline gap-0.5">
+                  <span className={`text-[13px] font-black ${m.val > m.target ? 'text-red-500' : 'text-[#0d2b22]'}`}>{m.val}g</span>
+                  <span className="text-[9px] font-bold text-slate-400">/{m.target}g</span>
                 </div>
-              );
-            })}
-          </div>
-
-          {/* Meal Quality Breakdown (Detailed) - Bottom of Column */}
-          <div className="bg-white/60 backdrop-blur-xl rounded-[32px] p-6 shadow-sm border border-white relative overflow-hidden dark:bg-[#1A221E]/90 dark:border-white/10 mt-6 mb-2">
-            <h3 className="text-[14px] font-black text-[#1a2138] dark:text-white uppercase tracking-tight mb-4 flex items-center gap-2">
-              <Sparkles size={16} className="text-amber-500" /> Diet Quality Score
-            </h3>
-            
-            <div className="flex flex-col gap-3">
-              {/* Today's Quality Pill */}
-              <div className="p-4 bg-[#6FAF95]/5 dark:bg-white/5 rounded-[24px] border border-[#6FAF95]/10">
-                <div className="flex items-center justify-between mb-2.5 px-0.5">
-                  <span className="text-[10px] font-black text-[#6FAF95] uppercase tracking-widest">Today's Quality</span>
-                  <div className="flex gap-2 md:gap-4 font-black text-[9px] md:text-[10px] uppercase tracking-widest">
-                    <span className="text-[#6FAF95]">{todayQuality.healthy}% Healthy</span>
-                    <span className="text-slate-400">{100 - todayQuality.healthy - todayQuality.junk}% Average</span>
-                    <span className="text-orange-500">{todayQuality.junk}% Junk</span>
-                  </div>
-                </div>
-                <div className="h-3 w-full bg-slate-100 dark:bg-black/20 rounded-full overflow-hidden flex relative">
-                  <motion.div initial={{ width: 0 }} animate={{ width: `${todayQuality.healthy}%` }} className="h-full bg-[#6FAF95]" />
-                  <motion.div initial={{ width: 0 }} animate={{ width: `${100 - todayQuality.healthy - todayQuality.junk}%` }} className="h-full bg-slate-200 dark:bg-slate-700" />
-                  <motion.div initial={{ width: 0 }} animate={{ width: `${todayQuality.junk}%` }} className="h-full bg-orange-400" />
+                <div className="h-1.5 rounded-full overflow-hidden" style={{ background: "rgba(0,0,0,0.06)" }}>
+                  <motion.div className="h-full rounded-full" style={{ background: m.val > m.target ? '#ef4444' : m.color }}
+                    initial={{ width: 0 }} animate={{ width: `${Math.min(100, (m.val / m.target) * 100)}%` }} />
                 </div>
               </div>
-
-              {/* Bio Trend Pill */}
-              <div className="p-4 bg-blue-50/50 dark:bg-white/5 rounded-[24px] border border-blue-100/50">
-                <div className="flex items-center justify-between mb-2.5 px-0.5">
-                  <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest">Overall Bio Trend</span>
-                  <div className="flex gap-2 md:gap-4 font-black text-[9px] md:text-[10px] uppercase tracking-widest">
-                    <span className="text-blue-500">{overallQuality.healthy}% Healthy</span>
-                    <span className="text-slate-400">{100 - overallQuality.healthy - overallQuality.junk}% Average</span>
-                    <span className="text-orange-500">{overallQuality.junk}% Junk</span>
-                  </div>
-                </div>
-                <div className="h-3 w-full bg-slate-100 dark:bg-black/20 rounded-full overflow-hidden flex relative">
-                  <motion.div initial={{ width: 0 }} animate={{ width: `${overallQuality.healthy}%` }} className="h-full bg-blue-500" />
-                  <motion.div initial={{ width: 0 }} animate={{ width: `${100 - overallQuality.healthy - overallQuality.junk}%` }} className="h-full bg-slate-200 dark:bg-slate-700" />
-                  <motion.div initial={{ width: 0 }} animate={{ width: `${overallQuality.junk}%` }} className="h-full bg-orange-400" />
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-5 p-3 bg-white/40 dark:bg-white/5 rounded-2xl border border-white flex items-start gap-3">
-              <Zap size={14} className="text-amber-500 mt-0.5 shrink-0" />
-              <p className="text-[10px] md:text-[11px] font-bold text-slate-500 leading-snug">
-                {todayQuality.healthy > 70 
-                  ? "Outstanding! You're consistently choosing high-nutrient fuel. This is accelerating your biological age reversal." 
-                  : todayQuality.total > 0 
-                    ? "Your body craves micronutrients. Try substituting refined carbs with leafy greens at your next meal."
-                    : "Track your first meal to unlock personalized biological fuel insights."}
-              </p>
-            </div>
+            ))}
           </div>
         </div>
 
-        {/* Right Column */}
-        <div className="flex flex-col gap-6">
-
-          {/* Quick Access */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-white/95 rounded-[28px] p-4 border border-white dark:bg-[#1A221E]/90 dark:border-white/10">
-              <h3 className="text-[13px] font-black text-[#1a2138] dark:text-white mb-3">Recent</h3>
-              <div className="flex flex-col gap-2">{recentMeals.slice(0, 2).map((m, i) => <div key={i} className="bg-slate-50 dark:bg-black/20 rounded-xl p-2 border border-slate-100 dark:border-white/5"><p className="text-[11px] font-bold dark:text-white truncate">{m.foodItems?.[0]?.name}</p><p className="text-[9px] text-[#64748b]">{m.foodItems?.[0]?.nutrition?.calories} kcal</p></div>)}</div>
+        {/* Weekly Trend — right side, prominent */}
+        <div className="rounded-[28px] p-5" style={glassStyle}>
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Weekly Trend</p>
+              <p className="text-[18px] font-black text-[#0d2b22] leading-tight">{avgKcal} <span className="text-[11px] font-bold text-slate-400">avg kcal</span></p>
             </div>
-            <div className="bg-white/95 rounded-[28px] p-4 border border-white dark:bg-[#1A221E]/90 dark:border-white/10">
-              <h3 className="text-[13px] font-black text-[#1a2138] dark:text-white mb-3">Frequent</h3>
-              <div className="flex flex-wrap gap-1.5 overflow-hidden">{dynamicFrequentFoods.map(f => <span key={f} className="text-[10px] font-bold bg-[#6FAF95]/10 text-[#6FAF95] px-2.5 py-1 rounded-lg border border-[#6FAF95]/20">{f}</span>)}</div>
-            </div>
+            <span className={`text-[11px] font-black px-2.5 py-1 rounded-full ${diffFromLastWeek > 0 ? 'bg-red-50 text-red-500' : 'bg-emerald-50 text-emerald-600'}`}>
+              {diffFromLastWeek > 0 ? '+' : ''}{diffFromLastWeek}%
+            </span>
           </div>
-
-          {/* Water Intake */}
-          <div className="bg-gradient-to-br from-[#E8F1F9]/90 to-white/60 dark:from-[#1A221E] rounded-[32px] p-5 shadow-sm border border-white mt-4 relative">
-            <h3 className="text-[16px] font-bold text-[#1a2138] dark:text-white">Hydration Tracker</h3>
-            <p className="text-[11px] font-black text-[#64748b] mt-0.5 uppercase tracking-wider">Goal: {waterIntake.target} glasses</p>
-            <div className="flex items-center justify-between mt-4 bg-white/50 p-2 rounded-[24px] border border-white dark:bg-[#1A221E]/60 dark:border-white/10">
-              <button onClick={() => onWaterUpdate(-1)} className="w-8 h-8 rounded-full bg-white flex items-center justify-center text-[#64748b] shadow-sm"><Minus size={16} /></button>
-              <div className="flex gap-1">{[...Array(waterIntake.target)].map((_, i) => <div key={i} className={`w-4 h-[30px] rounded-b-lg border-2 transition-all ${i < waterIntake.current ? 'border-[#558FE6] bg-[#558FE6]' : 'border-white bg-white/40'}`}></div>)}</div>
-              <button onClick={() => onWaterUpdate(1)} className="w-8 h-8 rounded-full bg-[#6FAF95] flex items-center justify-center text-white"><Plus size={16} /></button>
-            </div>
-            <div className="flex justify-between items-center mt-2 px-2"><span className="text-[12px] font-black text-[#558FE6]">{waterIntake.current * 250} ml</span><span className="text-[11px] font-black text-[#64748b]">{Math.max(0, (waterIntake.target - waterIntake.current) * 250)} ml left</span></div>
+          <div className="h-[90px] flex items-end justify-between gap-1.5 px-1">
+            {weeklyData.map((data, i) => (
+              <div key={i} onClick={() => toast.success(`${data.day}: ${Math.round(data.value)} kcal`, { icon: '🔥', style: { borderRadius: '16px', fontWeight: 'bold' } })}
+                className="group relative flex-1 h-full flex flex-col justify-end cursor-pointer">
+                <div className="w-full rounded-t-[5px] transition-all duration-300 relative"
+                  style={{
+                    height: `${Math.max(6, (data.value / maxWeeklyKcal) * 100)}%`,
+                    background: data.active ? 'linear-gradient(180deg,#059669,#10b981)' : 'rgba(5,150,105,0.15)',
+                  }}>
+                  <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-[#0d2b22] text-white text-[9px] font-black py-0.5 px-2 rounded-full pointer-events-none whitespace-nowrap z-10">
+                    {Math.round(data.value)}
+                  </div>
+                </div>
+                <span className={`text-[9px] font-black uppercase tracking-tighter text-center mt-1.5 ${data.active ? 'text-emerald-600' : 'text-slate-400'}`}>{data.day}</span>
+              </div>
+            ))}
           </div>
+        </div>
+      </div>
 
-          <div className="bg-white/60 rounded-[32px] p-6 border border-white dark:bg-[#1A221E]/90 dark:border-white/10">
-            <h3 className="text-[16px] font-semibold text-[#1a2138] dark:text-white mb-6">Weekly Trends</h3>
-            <div className="h-[100px] flex items-end justify-between gap-2 px-1">
-              {weeklyData.map((data, i) => (
-                <div 
-                  key={i} 
-                  onClick={() => toast.success(`${data.day}: ${Math.round(data.value)} kcal`, {
-                    icon: '🔥',
-                    style: { borderRadius: '16px', fontWeight: 'bold' }
-                  })}
-                  className="group relative flex-1 h-full flex flex-col justify-end"
-                >
-                  <div 
-                    className="w-full bg-[#6FAF95]/20 dark:bg-white/10 rounded-t-[6px] transition-all duration-300 group-hover:bg-[#6FAF95] cursor-pointer relative" 
-                    style={{ height: `${Math.max(4, (data.value / maxWeeklyKcal) * 100)}%` }}
-                  >
-                    <div className="absolute -top-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-[#1a2138] text-white text-[10px] font-bold py-0.5 px-2 rounded-full pointer-events-none whitespace-nowrap z-10">
-                      {Math.round(data.value)} kcal
+      {/* ── Date Navigator ── */}
+      <div className="flex items-center gap-2 rounded-[20px] p-1.5" style={glassStyle}>
+        <button
+          onClick={() => onDateChange && onDateChange(new Date(new Date(selectedDate).getTime() - 86400000).toISOString().split('T')[0])}
+          className="w-9 h-9 rounded-[14px] flex items-center justify-center flex-shrink-0 transition-all active:scale-90"
+          style={{ background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.9)" }}
+        >
+          <ChevronLeft size={16} className="text-emerald-700" strokeWidth={2.5} />
+        </button>
+
+        <button
+          ref={dateBtnRef}
+          onClick={() => {
+            const d = new Date(selectedDate + 'T12:00:00');
+            setDatePickerMonth({ year: d.getFullYear(), month: d.getMonth() });
+            if (dateBtnRef.current) {
+              const rect = dateBtnRef.current.getBoundingClientRect();
+              setDatePickerPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right + (rect.width / 2) - 140 });
+            }
+            setShowDatePicker(v => !v);
+          }}
+          className="flex-1 flex flex-col items-center py-1 transition-all active:scale-95"
+        >
+          <p className="text-[14px] font-black text-[#0d2b22] leading-tight tracking-tight">
+            {(() => {
+              const today = new Date().toISOString().split('T')[0];
+              const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+              if (selectedDate === today) return "Today";
+              if (selectedDate === yesterday) return "Yesterday";
+              return new Date(selectedDate).toLocaleDateString('en-IN', { weekday: 'long' });
+            })()}
+          </p>
+          <p className="text-[10px] font-black text-emerald-600 uppercase tracking-widest flex items-center gap-1">
+            {new Date(selectedDate + 'T12:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+            <svg className={`w-2.5 h-2.5 transition-transform ${showDatePicker ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M19 9l-7 7-7-7" /></svg>
+          </p>
+        </button>
+
+        <button
+          onClick={() => {
+            const today = new Date().toISOString().split('T')[0];
+            if (selectedDate < today) onDateChange && onDateChange(new Date(new Date(selectedDate + 'T12:00:00').getTime() + 86400000).toISOString().split('T')[0]);
+          }}
+          disabled={selectedDate >= new Date().toISOString().split('T')[0]}
+          className="w-9 h-9 rounded-[14px] flex items-center justify-center flex-shrink-0 transition-all active:scale-90 disabled:opacity-30"
+          style={{ background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.9)" }}
+        >
+          <ChevronRight size={16} className="text-emerald-700" strokeWidth={2.5} />
+        </button>
+      </div>
+
+      {/* Custom Calendar Picker Portal */}
+      {createPortal(
+        <AnimatePresence>
+          {showDatePicker && (
+            <>
+              <div className="fixed inset-0 z-[999]" onClick={() => setShowDatePicker(false)} />
+              <motion.div
+                initial={{ opacity: 0, y: -8, scale: 0.96 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: -8, scale: 0.96 }}
+                transition={{ duration: 0.18, ease: "easeOut" }}
+                className="fixed z-[1000] rounded-[20px] shadow-2xl border border-[#e0ede6] overflow-hidden"
+                style={{ background: "linear-gradient(145deg,#ffffff 0%,#f4fbf7 100%)", width: 280, top: datePickerPos.top, right: datePickerPos.right }}
+              >
+                {/* Month Nav */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-[#edf5f0]">
+                  <button onClick={() => setDatePickerMonth(prev => { const d = new Date(prev.year, prev.month - 1); return { year: d.getFullYear(), month: d.getMonth() }; })}
+                    className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-[#e8f4ed] transition-colors text-[#5B8C6F]">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" /></svg>
+                  </button>
+                  <span className="text-[13px] font-bold text-[#1a2e22]">
+                    {new Date(datePickerMonth.year, datePickerMonth.month).toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                  </span>
+                  <button onClick={() => setDatePickerMonth(prev => { const d = new Date(prev.year, prev.month + 1); const now = new Date(); if (d.getFullYear() > now.getFullYear() || (d.getFullYear() === now.getFullYear() && d.getMonth() > now.getMonth())) return prev; return { year: d.getFullYear(), month: d.getMonth() }; })}
+                    className="w-7 h-7 rounded-full flex items-center justify-center hover:bg-[#e8f4ed] transition-colors text-[#5B8C6F]">
+                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7" /></svg>
+                  </button>
+                </div>
+                {/* Day Headers */}
+                <div className="grid grid-cols-7 px-3 pt-2 pb-1">
+                  {['Mo','Tu','We','Th','Fr','Sa','Su'].map(d => (
+                    <div key={d} className="text-center text-[9px] font-black text-[#a0bfae] uppercase tracking-wider py-1">{d}</div>
+                  ))}
+                </div>
+                {/* Days Grid */}
+                <div className="grid grid-cols-7 px-3 pb-3 gap-y-0.5">
+                  {(() => {
+                    const { year, month } = datePickerMonth;
+                    const firstDay = new Date(year, month, 1).getDay();
+                    const offset = firstDay === 0 ? 6 : firstDay - 1;
+                    const daysInMonth = new Date(year, month + 1, 0).getDate();
+                    const today = new Date().toISOString().split('T')[0];
+                    const cells = [];
+                    for (let i = 0; i < offset; i++) cells.push(<div key={`e${i}`} />);
+                    for (let d = 1; d <= daysInMonth; d++) {
+                      const dateStr = `${year}-${String(month + 1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+                      const isFuture = dateStr > today;
+                      const isSelected = dateStr === selectedDate;
+                      const isToday = dateStr === today;
+                      cells.push(
+                        <button key={d} disabled={isFuture}
+                          onClick={() => { onDateChange && onDateChange(dateStr); setShowDatePicker(false); }}
+                          className={`relative w-full aspect-square rounded-full text-[12px] font-semibold flex items-center justify-center transition-all ${isFuture ? 'text-[#d0d0d0] cursor-not-allowed' : 'hover:bg-[#e8f4ed] cursor-pointer'} ${isSelected ? 'text-white font-bold shadow-md' : isToday ? 'text-[#3d7a5e] font-black' : 'text-[#2a2a2a]'}`}
+                          style={isSelected ? { background: 'linear-gradient(135deg,#059669 0%,#10b981 100%)' } : isToday && !isSelected ? { boxShadow: 'inset 0 0 0 1.5px #5B8C6F' } : {}}
+                        >{d}</button>
+                      );
+                    }
+                    return cells;
+                  })()}
+                </div>
+                {/* Footer */}
+                <div className="flex items-center justify-between px-4 py-2.5 border-t border-[#edf5f0]">
+                  <button onClick={() => { onDateChange && onDateChange(new Date().toISOString().split('T')[0]); setShowDatePicker(false); }}
+                    className="text-[11px] font-bold text-[#5B8C6F] hover:text-[#3d7a5e] transition-colors">Today</button>
+                  <button onClick={() => setShowDatePicker(false)}
+                    className="text-[11px] font-bold text-[#a0a0a0] hover:text-[#5B8C6F] transition-colors">Close</button>
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
+
+      {/* ── Meal Timeline ── */}
+      <div className="flex flex-col gap-4">
+        {[
+          { name: 'Breakfast', target: Math.round((dailySummary.calorieTarget || 1800) * 0.30), icon: Coffee, time: '09:00' },
+          { name: 'Lunch', target: Math.round((dailySummary.calorieTarget || 1800) * 0.40), icon: Utensils, time: '13:30' },
+          { name: 'Dinner', target: Math.round((dailySummary.calorieTarget || 1800) * 0.30), icon: UtensilsCrossed, time: '20:15' },
+        ].map((meal, idx) => {
+          const typeKey = meal.name.toLowerCase();
+          const meals = (loggedMeals || []).filter(m => {
+            if (!m.mealType) return false;
+            const mt = String(m.mealType).toLowerCase();
+            if (mt === typeKey) return true;
+            if (typeKey === 'breakfast' && (mt.includes('breakfast') || mt === 'morning')) return true;
+            if (typeKey === 'lunch' && mt.includes('lunch')) return true;
+            if (typeKey === 'dinner' && mt.includes('dinner')) return true;
+            return false;
+          });
+          const consumed = meals.reduce((acc, curr) => acc + Number(curr.calories || curr.foodItems?.[0]?.nutrition?.calories || 0), 0);
+          const isExceeded = consumed > meal.target;
+
+          return (
+            <React.Fragment key={idx}>
+              <div className={`relative ${logMethodSection === meal.name ? 'z-[60]' : 'z-10'}`}>
+                <div className="rounded-[24px] p-5 transition-all" style={glassStyle}>
+                  {/* Meal header */}
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-10 h-10 rounded-2xl flex items-center justify-center shrink-0" style={{ background: "rgba(5,150,105,0.08)", border: "1px solid rgba(5,150,105,0.12)" }}>
+                        <meal.icon size={18} className="text-emerald-600" strokeWidth={2.5} />
+                      </div>
+                      <div>
+                        <p className="text-[15px] font-black text-[#0d2b22] leading-tight tracking-tight">{meal.name}</p>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">
+                          {consumed > 0 ? `${meals.length} item${meals.length > 1 ? 's' : ''} logged` : meal.time}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2.5">
+                      <div className="text-right">
+                        <p className={`text-[14px] font-black leading-tight ${isExceeded ? 'text-red-500' : consumed > 0 ? 'text-emerald-600' : 'text-slate-300'}`}>
+                          {consumed > 0 ? `${consumed}` : '—'}
+                        </p>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-wider">of {meal.target} kcal</p>
+                      </div>
+                      <button
+                        onClick={() => setLogMethodSection(logMethodSection === meal.name ? null : meal.name)}
+                        className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 transition-all active:scale-90 text-white"
+                        style={{ background: "linear-gradient(135deg,#059669,#10b981)", boxShadow: "0 2px 10px rgba(5,150,105,0.25)" }}
+                      >
+                        <Plus size={16} strokeWidth={3} />
+                      </button>
                     </div>
                   </div>
-                  <span className="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tighter text-center mt-2">
-                    {data.day}
-                  </span>
+
+                  {/* Exceeded warning */}
+                  {isExceeded && (
+                    <div className="mt-3 p-3 rounded-2xl flex gap-2.5 items-center" style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.12)" }}>
+                      <AlertCircle size={14} className="text-red-500 shrink-0" />
+                      <p className="text-[11px] font-black text-red-600">Over by {consumed - meal.target} kcal — a 30-min walk will help.</p>
+                    </div>
+                  )}
+
+                  {/* Logged items */}
+                  {meals.length > 0 && (
+                    <div className="flex flex-col gap-2 mt-4 pt-4" style={{ borderTop: "1px solid rgba(0,0,0,0.05)" }}>
+                      {meals.map((log, lIdx) => (
+                        <div key={lIdx} onClick={() => onViewFood && onViewFood(log)}
+                          className="flex items-center gap-3 p-3 rounded-2xl cursor-pointer transition-all"
+                          style={{ background: "rgba(255,255,255,0.55)", border: "1px solid rgba(255,255,255,0.9)" }}
+                          onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.85)"}
+                          onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.55)"}
+                        >
+                          <div className="w-11 h-11 rounded-xl overflow-hidden shrink-0">
+                            <ImageWithFallback src={log.imageUrl || log.foodItems?.[0]?.imageUrl} query={log.name || log.foodItems?.[0]?.name} alt={log.name} className="w-full h-full object-cover" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-black text-[#0d2b22] truncate">{log.name || log.foodItems?.[0]?.name}</p>
+                            <div className="flex items-center gap-1.5 mt-0.5">
+                              <span className="text-[10px] font-black text-emerald-600">{log.calories || log.foodItems?.[0]?.nutrition?.calories} kcal</span>
+                              <span className="w-1 h-1 rounded-full bg-slate-200" />
+                              <span className="text-[9px] font-black text-slate-400">{new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <div className="relative">
+                              <button className="w-8 h-8 flex items-center justify-center rounded-xl transition-all" style={{ background: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.9)" }}>
+                                <MoreHorizontal size={13} className="text-slate-400" />
+                              </button>
+                              <select onClick={e => e.stopPropagation()} onChange={e => onMoveFood && onMoveFood(log._id, e.target.value)} value={log.mealType} className="absolute inset-0 opacity-0 cursor-pointer w-full h-full z-10">
+                                {[{ label: 'Breakfast', value: 'breakfast' }, { label: 'Lunch', value: 'lunch' }, { label: 'Dinner', value: 'dinner' }].map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                              </select>
+                            </div>
+                            <button onClick={e => { e.stopPropagation(); onDeleteFood && onDeleteFood(log._id); }} className="w-8 h-8 flex items-center justify-center rounded-xl transition-all hover:bg-red-50" style={{ background: "rgba(255,255,255,0.7)", border: "1px solid rgba(255,255,255,0.9)" }}>
+                              <Trash2 size={12} className="text-slate-400 hover:text-red-500" />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Log method popup */}
+                  {logMethodSection === meal.name && (
+                    <div className="absolute right-4 top-14 w-[260px] p-4 rounded-[24px] shadow-2xl z-[100] animate-in zoom-in-95 duration-200"
+                      style={{ background: "linear-gradient(135deg,#064e3b,#065f46)", border: "1px solid rgba(255,255,255,0.15)" }}>
+                      <p className="text-[11px] font-black text-white/60 uppercase tracking-widest mb-1">Add to</p>
+                      <h3 className="text-[17px] font-black text-white mb-4 tracking-tight">{meal.name}</h3>
+                      <div className="flex flex-col gap-2">
+                        {LOG_METHODS.map(method => (
+                          <button key={method.id}
+                            onClick={() => { if (method.id === 'photo') { setActiveMealForImport(meal.name); activeMealRef.current = meal.name; setLogMethodSection(null); setTimeout(() => cameraInputRef.current?.click(), 100); } else { setLogMethodSection(null); onLogFood(method.label, meal.name); } }}
+                            className="w-full py-3 px-4 rounded-2xl flex items-center justify-between transition-all active:scale-95 border border-white/10"
+                            style={{ background: "rgba(255,255,255,0.1)" }}
+                            onMouseEnter={e => e.currentTarget.style.background = "rgba(255,255,255,0.18)"}
+                            onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.1)"}
+                          >
+                            <span className="text-white font-black text-[13px]">{method.label}</span>
+                            <div className="w-8 h-8 rounded-xl flex items-center justify-center" style={{ background: "rgba(255,255,255,0.12)" }}>
+                              <method.icon size={15} className="text-white" />
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ))}
-            </div>
-            <div className="mt-8 pt-4 border-t border-slate-100 dark:border-white/5 flex gap-4 items-center">
-              <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Average</span>
-                <span className="text-[15px] font-black text-[#1a2138] dark:text-white">{avgKcal} kcal</span>
               </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase text-slate-400 tracking-wider">Variation</span>
-                <span className={`text-[15px] font-black ${diffFromLastWeek > 0 ? 'text-red-500' : 'text-[#6FAF95]'}`}>
-                  {diffFromLastWeek > 0 ? '+' : ''}{diffFromLastWeek}%
-                </span>
+
+              {/* Water tracker inline — after Lunch */}
+              {idx === 1 && (
+                <div className="rounded-[24px] p-5" style={{ ...glassStyle, boxShadow: "0 4px 20px rgba(59,130,246,0.07), 0 1px 0 rgba(255,255,255,0.9) inset" }}>
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Hydration</p>
+                      <p className="text-[15px] font-black text-[#0d2b22]">{waterIntake.current * 250} ml <span className="text-[11px] font-bold text-slate-400">/ {waterIntake.target * 250} ml</span></p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => onWaterUpdate(-1)} className="w-9 h-9 rounded-xl flex items-center justify-center" style={glassStyle}><Minus size={14} className="text-slate-500" /></button>
+                      <button onClick={() => onWaterUpdate(1)} className="w-9 h-9 rounded-xl flex items-center justify-center text-white" style={{ background: "linear-gradient(135deg,#2563eb,#3b82f6)", boxShadow: "0 2px 10px rgba(59,130,246,0.3)" }}><Plus size={14} strokeWidth={3} /></button>
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    {[...Array(waterIntake.target)].map((_, i) => (
+                      <div key={i} className={`flex-1 h-2.5 rounded-full transition-all ${i < waterIntake.current ? 'bg-blue-500' : 'bg-slate-100'}`} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+
+      {/* ── Diet Quality Score ── */}
+      <div className="rounded-[24px] p-5" style={glassStyle}>
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest flex items-center gap-1.5"><Sparkles size={12} className="text-amber-500" /> Diet Quality</p>
+        </div>
+        <div className="flex flex-col gap-3">
+          {[
+            { label: "Today", healthy: todayQuality.healthy, avg: 100 - todayQuality.healthy - todayQuality.junk, junk: todayQuality.junk, accent: "#059669" },
+            { label: "7-Day Trend", healthy: overallQuality.healthy, avg: 100 - overallQuality.healthy - overallQuality.junk, junk: overallQuality.junk, accent: "#2563eb" },
+          ].map(q => (
+            <div key={q.label} className="p-3.5 rounded-2xl" style={{ background: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.9)" }}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-black uppercase tracking-widest" style={{ color: q.accent }}>{q.label}</span>
+                <div className="flex gap-3 text-[9px] font-black uppercase tracking-widest">
+                  <span style={{ color: q.accent }}>{q.healthy}% Healthy</span>
+                  <span className="text-slate-400">{q.avg}% Avg</span>
+                  <span className="text-orange-500">{q.junk}% Junk</span>
+                </div>
+              </div>
+              <div className="h-2.5 w-full rounded-full overflow-hidden flex" style={{ background: "rgba(0,0,0,0.06)" }}>
+                <motion.div initial={{ width: 0 }} animate={{ width: `${q.healthy}%` }} className="h-full" style={{ background: q.accent }} />
+                <motion.div initial={{ width: 0 }} animate={{ width: `${q.avg}%` }} className="h-full bg-slate-200" />
+                <motion.div initial={{ width: 0 }} animate={{ width: `${q.junk}%` }} className="h-full bg-orange-400" />
               </div>
             </div>
+          ))}
+        </div>
+        <div className="mt-4 p-3 rounded-2xl flex items-start gap-2.5" style={{ background: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.9)" }}>
+          <Zap size={13} className="text-amber-500 mt-0.5 shrink-0" />
+          <p className="text-[11px] font-bold text-slate-500 leading-relaxed">
+            {todayQuality.healthy > 70
+              ? "Outstanding! Consistently choosing high-nutrient food is accelerating your health goals."
+              : todayQuality.total > 0
+                ? "Try substituting refined carbs with leafy greens at your next meal."
+                : "Log your first meal to unlock personalized diet quality insights."}
+          </p>
+        </div>
+      </div>
+
+      {/* ── Nutrition Insight (bottom — after data) ── */}
+      <div className="rounded-[24px] p-5" style={{ ...glassStyle, boxShadow: "0 4px 24px rgba(232,143,74,0.08), 0 1px 0 rgba(255,255,255,0.9) inset" }}>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-2xl flex items-center justify-center" style={{ background: "rgba(232,143,74,0.1)", border: "1px solid rgba(232,143,74,0.15)" }}>
+              <AlertTriangle size={16} className="text-amber-500" strokeWidth={2.5} />
+            </div>
+            <p className="text-[13px] font-black text-[#0d2b22] uppercase tracking-tight">AI Insight</p>
           </div>
+          <span className="text-[9px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest text-amber-600" style={{ background: "rgba(232,143,74,0.1)", border: "1px solid rgba(232,143,74,0.15)" }}>
+            AI Analysis
+          </span>
+        </div>
+        <div className="flex flex-col gap-2.5">
+          {(() => {
+            const alerts = [];
+            const target = dailySummary.calorieTarget || 1800;
+            if (totalTodayKcal > target) alerts.push({ type: 'CALORIES', msg: `Exceeded by ${totalTodayKcal - target} kcal. ${totalTodayKcal - target > 500 ? 'Try 45 mins of HIIT.' : 'A 20-min jog will help.'}` });
+            if (dailySummary.protein > dailySummary.proteinTarget) alerts.push({ type: 'PROTEIN', msg: `Exceeded target by ${(dailySummary.protein - dailySummary.proteinTarget).toFixed(1)}g.` });
+            if (alerts.length > 0) {
+              return alerts.map((a, i) => (
+                <div key={i} className="flex gap-3 items-start p-3 rounded-2xl" style={{ background: "rgba(239,68,68,0.05)", border: "1px solid rgba(239,68,68,0.1)" }}>
+                  <span className="text-[9px] font-black text-red-500 uppercase tracking-widest px-2 py-1 rounded-full shrink-0" style={{ background: "rgba(239,68,68,0.08)" }}>{a.type}</span>
+                  <p className="text-[12px] font-bold text-red-700 leading-snug pt-0.5">{a.msg}</p>
+                </div>
+              ));
+            }
+            return <p className="text-[13px] font-bold text-slate-600 leading-relaxed">{aiInsights || "Your nutrition is perfectly balanced today. Keep it up!"}</p>;
+          })()}
         </div>
       </div>
 
@@ -608,7 +717,7 @@ export function NutritionTab({
         {showRecipe && (
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={() => setShowRecipe(false)} />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white dark:bg-[#0F1412] w-full max-w-lg rounded-[40px] overflow-hidden shadow-2xl max-h-[90vh] flex flex-col">
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative w-full max-w-lg rounded-[40px] overflow-hidden shadow-2xl max-h-[90vh] flex flex-col" style={glassStyle}>
               <div className="relative h-[200px] shrink-0">
                 <button onClick={() => setShowRecipe(false)} className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-black/40 text-white flex items-center justify-center"><X size={20} /></button>
                 <ImageWithFallback src={currentSuggestion.image} alt={currentSuggestion.title} className="w-full h-full object-cover" />

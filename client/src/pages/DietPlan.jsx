@@ -269,90 +269,225 @@ const MealSectionCard = ({
   mealType,
 }) => {
   const { label, time } = section;
-  // Show today's meal calories (based on daily rotation)
-  const dayOfYear = Math.floor((new Date() - new Date(new Date().getFullYear(), 0, 0)) / 86400000);
-  const todayIdx = meals.length > 0 ? dayOfYear % meals.length : 0;
-  const todayMeal = meals[todayIdx] || meals[0];
-  const todayCalories = getMealCalories(todayMeal) || 0;
-  const itemCount = meals.length;
-  const mainImage = todayMeal?.imageUrl || meals[0]?.imageUrl;
+  const [slideIdx, setSlideIdx] = useState(0);
+  const [dir, setDir] = useState(1); // 1 = forward, -1 = backward
+  const intervalRef = useRef(null);
 
-  // Check if all items in this section are logged (or if one is logged to show completion)
-  const isAnyLogged = meals.some(
-    (m) => !!loggedMeals[`${mealType}-${getMealName(m)}`],
-  );
+  const staggerOffset = { breakfast: 0, lunch: 1200, dinner: 2400, snacks: 3600 };
+
+  const goTo = (idx, direction) => {
+    setDir(direction);
+    setSlideIdx(idx);
+  };
+
+  const next = (e) => {
+    e?.stopPropagation();
+    const nxt = (slideIdx + 1) % meals.length;
+    goTo(nxt, 1);
+    resetInterval();
+  };
+
+  const prev = (e) => {
+    e?.stopPropagation();
+    const prv = (slideIdx - 1 + meals.length) % meals.length;
+    goTo(prv, -1);
+    resetInterval();
+  };
+
+  const resetInterval = () => {
+    clearInterval(intervalRef.current);
+    if (meals.length <= 1) return;
+    intervalRef.current = setInterval(() => {
+      setDir(1);
+      setSlideIdx(p => (p + 1) % meals.length);
+    }, 6500);
+  };
+
+  useEffect(() => {
+    if (meals.length <= 1) return;
+    const delay = staggerOffset[mealType] ?? 0;
+    const t = setTimeout(() => {
+      intervalRef.current = setInterval(() => {
+        setDir(1);
+        setSlideIdx(p => (p + 1) % meals.length);
+      }, 6500);
+    }, delay);
+    return () => { clearTimeout(t); clearInterval(intervalRef.current); };
+  }, [meals.length, mealType]);
+
+  const isAnyLogged = meals.some(m => !!loggedMeals[`${mealType}-${getMealName(m)}`]);
+  const currentMeal = meals[slideIdx] || meals[0];
+  const currentCalories = getMealCalories(currentMeal) || 0;
+  const currentName = getMealName(currentMeal);
+
+  const variants = {
+    enter: (d) => ({ x: d > 0 ? 60 : -60, opacity: 0 }),
+    center: { x: 0, opacity: 1 },
+    exit: (d) => ({ x: d > 0 ? -60 : 60, opacity: 0 }),
+  };
 
   return (
     <motion.div
-      whileHover={{ y: -5, transition: { duration: 0.2 } }}
-      whileTap={{ scale: 0.98 }}
       onClick={onOpenOptions}
-      className="bg-white rounded-[2.5rem] p-6 md:p-8 flex items-center justify-between shadow-[0_15px_45px_rgba(0,0,0,0.03)] cursor-pointer group relative overflow-hidden h-[180px] md:h-[220px] active:shadow-sm transition-all border border-transparent hover:border-emerald-100"
+      className="rounded-[2rem] cursor-pointer overflow-hidden flex flex-col w-full lg:flex-1"
+      style={{
+        background: "rgba(255,255,255,0.72)",
+        backdropFilter: "blur(20px) saturate(180%)",
+        WebkitBackdropFilter: "blur(20px) saturate(180%)",
+        border: "1px solid rgba(255,255,255,0.85)",
+        boxShadow: "0 4px 24px rgba(16,185,129,0.07), 0 1px 0 rgba(255,255,255,0.9) inset",
+      }}
     >
-      <div className="flex-1 pr-8 z-10 flex flex-col justify-between h-full">
-        <div>
-          <h3 className="text-xl md:text-2xl font-black text-[#1a2e35] mb-2 md:mb-3 tracking-tight">
-            {label}
-          </h3>
+      {/* Image slider */}
+      <div className="relative w-full overflow-hidden aspect-[4/3] lg:aspect-auto lg:h-[260px]">
 
-          <div className="flex items-center gap-3 mb-3 md:mb-5">
-            <div className="flex -space-x-3">
-              {meals.slice(0, 3).map((m, i) => (
-                <div
-                  key={i}
-                  className="w-8 h-8 md:w-9 md:h-9 rounded-full border-2 border-white overflow-hidden shadow-sm"
-                >
-                  <ImageWithFallback
-                    src={m.imageUrl}
-                    query={getMealName(m)}
-                    alt={getMealName(m)}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ))}
-            </div>
-            <span className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">
-              {itemCount} day{itemCount !== 1 ? 's' : ''} planned
-            </span>
-          </div>
+        {/* Sliding image */}
+        <AnimatePresence initial={false} custom={dir} mode="sync">
+          <motion.div
+            key={slideIdx}
+            custom={dir}
+            variants={{
+              enter: (d) => ({ x: d > 0 ? "100%" : "-100%", opacity: 1 }),
+              center: { x: 0, opacity: 1 },
+              exit: (d) => ({ x: d > 0 ? "-100%" : "100%", opacity: 1 }),
+            }}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{ duration: 1.4, ease: [0.4, 0, 0.2, 1] }}
+            className="absolute inset-0"
+          >
+            <ImageWithFallback
+              src={currentMeal?.imageUrl}
+              query={currentName}
+              className="w-full h-full object-cover"
+            />
+          </motion.div>
+        </AnimatePresence>
 
-          <div className="flex items-center gap-5 md:gap-6">
-            <div className="flex items-center gap-1.5 text-slate-500">
-              <Clock className="w-3.5 h-3.5 md:w-4 md:h-4 text-emerald-500" />
-              <span className="text-[10px] md:text-xs font-black uppercase tracking-widest leading-none mt-0.5">
-                {time}
-              </span>
-            </div>
-            <div className="flex items-center gap-1.5 text-slate-500">
-              <Flame className="w-3.5 h-3.5 md:w-4 md:h-4 text-orange-500" />
-              <span className="text-[10px] md:text-xs font-black uppercase tracking-widest leading-none mt-0.5 text-orange-600/70">
-                {todayCalories} Kcal today
-              </span>
-            </div>
-          </div>
+        {/* Dark gradient at bottom for text readability */}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent pointer-events-none" />
+
+        {/* Meal name (left) + Calories (right) — animated with slide */}
+        <div className="absolute bottom-0 left-0 right-0 px-4 pb-3 flex items-stretch justify-between pointer-events-none overflow-hidden gap-2">
+          <AnimatePresence initial={false} custom={dir} mode="wait">
+            <motion.div
+              key={`name-${slideIdx}`}
+              custom={dir}
+              variants={variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 1.0, ease: [0.4, 0, 0.2, 1] }}
+              className="min-w-0 flex-1"
+            >
+              <div className="flex flex-col justify-center px-3 py-2 rounded-xl"
+                style={{
+                  background: "rgba(0,0,0,0.45)",
+                  backdropFilter: "blur(14px) saturate(180%)",
+                  WebkitBackdropFilter: "blur(14px) saturate(180%)",
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  maxWidth: "220px",
+                  minHeight: "54px",
+                }}>
+                <p className="text-[9px] font-black text-white/60 uppercase tracking-widest leading-none mb-1">
+                  Day {slideIdx + 1} of {meals.length}
+                </p>
+                <p className="text-[13px] font-black text-white leading-tight line-clamp-2">
+                  {currentName}
+                </p>
+              </div>
+            </motion.div>
+          </AnimatePresence>
+
+          <AnimatePresence initial={false} custom={-dir} mode="wait">
+            <motion.div
+              key={`cal-${slideIdx}`}
+              custom={-dir}
+              variants={variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ duration: 1.0, ease: [0.4, 0, 0.2, 1] }}
+              className="flex-shrink-0"
+            >
+              <div className="flex flex-col items-end justify-center px-3 py-2 rounded-xl"
+                style={{
+                  background: "rgba(0,0,0,0.45)",
+                  backdropFilter: "blur(14px) saturate(180%)",
+                  WebkitBackdropFilter: "blur(14px) saturate(180%)",
+                  border: "1px solid rgba(255,255,255,0.18)",
+                  minHeight: "54px",
+                }}>
+                <p className="text-[9px] font-black text-white/60 uppercase tracking-widest leading-none mb-1">Calories</p>
+                <p className="text-[15px] font-black text-orange-400 leading-tight">
+                  {currentCalories} <span className="text-[10px] font-bold text-white/50">kcal</span>
+                </p>
+              </div>
+            </motion.div>
+          </AnimatePresence>
         </div>
 
-        <div className="mt-3 md:mt-4">
-          {isAnyLogged ? (
-            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-500 border border-emerald-100 shadow-inner">
-              <Check className="w-5 h-5 md:w-6 md:h-6" />
-            </div>
-          ) : (
-            <div className="w-10 h-10 md:w-12 md:h-12 rounded-full bg-[#5d8d7d] flex items-center justify-center text-white shadow-lg group-hover:scale-110 transition-all">
-              <ArrowUpRight className="w-5 h-5 md:w-6 md:h-6" />
-            </div>
-          )}
-        </div>
+        {/* Manual prev/next tap zones */}
+        {meals.length > 1 && (
+          <>
+            <button
+              onClick={prev}
+              className="absolute left-0 top-0 bottom-8 w-1/3 z-10 flex items-center justify-start pl-2 opacity-100 lg:opacity-0 lg:hover:opacity-100 transition-opacity"
+            >
+              <div className="w-7 h-7 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
+                <ChevronLeft className="w-4 h-4 text-white" />
+              </div>
+            </button>
+            <button
+              onClick={next}
+              className="absolute right-0 top-0 bottom-8 w-1/3 z-10 flex items-center justify-end pr-2 opacity-100 lg:opacity-0 lg:hover:opacity-100 transition-opacity"
+            >
+              <div className="w-7 h-7 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center">
+                <ChevronRight className="w-4 h-4 text-white" />
+              </div>
+            </button>
+          </>
+        )}
+
+        {/* Logged badge */}
+        {isAnyLogged && (
+          <div className="absolute top-3 right-3 w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center shadow-md z-10">
+            <Check className="w-3.5 h-3.5 text-white" />
+          </div>
+        )}
+
+        {/* Dots */}
+        {meals.length > 1 && (
+          <div className="absolute bottom-2 left-0 right-0 flex justify-center gap-1 pointer-events-none z-10">
+            {meals.map((_, i) => (
+              <div key={i} className={`rounded-full transition-all duration-300 ${
+                i === slideIdx ? "w-4 h-1.5 bg-white" : "w-1.5 h-1.5 bg-white/40"
+              }`} />
+            ))}
+          </div>
+        )}
       </div>
 
-      <div className="absolute right-0 top-0 bottom-0 w-2/5 md:w-5/12 pointer-events-none">
-        <div className="w-full h-full relative">
-          <ImageWithFallback
-            src={mainImage}
-            query={getMealName(todayMeal)}
-            className="w-full h-full object-cover rounded-l-[50px] md:rounded-l-[80px]"
-          />
-          <div className="absolute left-0 top-0 bottom-0 w-8 bg-gradient-to-r from-white via-white/10 to-transparent" />
+      {/* Bottom info bar */}
+      <div className="px-4 py-3 flex items-center justify-between gap-3">
+        <div className="min-w-0">
+          <h3 className="text-[15px] font-black text-[#0d2b22] leading-tight truncate" style={{ letterSpacing: "-0.4px" }}>
+            {label}
+          </h3>
+          <div className="flex items-center gap-1 mt-0.5">
+            <Clock className="w-3 h-3 text-emerald-500 shrink-0" />
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{time}</span>
+          </div>
+        </div>
+
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shadow-sm flex-shrink-0 ${
+          isAnyLogged ? "bg-emerald-500" : "bg-emerald-600"
+        }`}>
+          {isAnyLogged
+            ? <Check className="w-4 h-4 text-white" />
+            : <ArrowUpRight className="w-4 h-4 text-white" />
+          }
         </div>
       </div>
     </motion.div>
@@ -381,7 +516,13 @@ const MealOptionsModal = ({
         initial={{ scale: 0.95, opacity: 0, y: 30 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
         exit={{ scale: 0.95, opacity: 0, y: 30 }}
-        className="relative w-full max-w-lg bg-[#F8F9F5] rounded-[2.5rem] shadow-2xl flex flex-col max-h-[85vh] overflow-hidden border border-white/50"
+        className="relative w-full max-w-lg rounded-[2.5rem] shadow-2xl flex flex-col max-h-[85vh] overflow-hidden"
+        style={{
+          background: "rgba(242,247,242,0.97)",
+          backdropFilter: "blur(24px) saturate(180%)",
+          WebkitBackdropFilter: "blur(24px) saturate(180%)",
+          border: "1px solid rgba(255,255,255,0.9)",
+        }}
       >
         <div className="p-8 pb-4 flex items-center justify-between">
           <h2 className="text-2xl font-black text-[#1a2e35] tracking-tight">
@@ -411,7 +552,14 @@ const MealOptionsModal = ({
                   setSelectedFood(meal);
                   setSelectedFoodType(mealType);
                 }}
-                className="bg-white rounded-[2rem] p-5 shadow-[0_8px_30px_rgba(0,0,0,0.02)] flex flex-col gap-6 cursor-pointer hover:shadow-md transition-shadow border border-transparent hover:border-emerald-50"
+                className="rounded-[2rem] p-4 flex flex-col gap-4 cursor-pointer transition-all"
+                style={{
+                  background: "rgba(255,255,255,0.75)",
+                  backdropFilter: "blur(16px) saturate(180%)",
+                  WebkitBackdropFilter: "blur(16px) saturate(180%)",
+                  border: "1px solid rgba(255,255,255,0.9)",
+                  boxShadow: "0 2px 12px rgba(16,185,129,0.05)",
+                }}
               >
                 <div className="flex gap-5">
                   <div className="w-20 h-20 md:w-24 md:h-24 rounded-2xl overflow-hidden shrink-0 bg-slate-50 shadow-inner">
@@ -827,7 +975,7 @@ export default function DietPlan() {
   };
 
   return (
-    <div className="min-h-screen bg-[#E9ECE4] pb-32 px-4 md:px-6 lg:px-12 pt-2 md:pt-8 relative">
+    <div className="min-h-screen pb-32 px-4 md:px-6 lg:px-12 pt-2 md:pt-8 relative" style={{ background: "#F2F7F2" }}>
       <SEO pageName="dietPlan" />
       {/* Background elements */}
       <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-purple-100/20 rounded-full blur-[120px] pointer-events-none" />
@@ -846,7 +994,8 @@ export default function DietPlan() {
         </div>
         <button
           onClick={() => setShowHistory(true)}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-6 md:py-2 bg-emerald-50/60 backdrop-blur-md rounded-full text-[10px] md:text-sm font-black text-[#064e3b] hover:bg-emerald-50 transition-all border border-emerald-200 shadow-sm shrink-0 uppercase tracking-tighter"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-6 md:py-2 rounded-full text-[10px] md:text-sm font-black text-[#064e3b] transition-all shrink-0 uppercase tracking-tighter"
+          style={{ background: "rgba(255,255,255,0.72)", border: "1px solid rgba(255,255,255,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}
         >
           <Clock className="w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-800/40" />{" "}
           History
@@ -856,7 +1005,8 @@ export default function DietPlan() {
             setPrefMode("save");
             setShowPreferences(true);
           }}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-6 md:py-2 bg-emerald-50/60 backdrop-blur-md rounded-full text-[10px] md:text-sm font-black text-[#064e3b] hover:bg-emerald-50 transition-all border border-emerald-200 shadow-sm shrink-0 uppercase tracking-tighter"
+          className="flex items-center gap-1.5 px-2.5 py-1.5 md:px-6 md:py-2 rounded-full text-[10px] md:text-sm font-black text-[#064e3b] transition-all shrink-0 uppercase tracking-tighter"
+          style={{ background: "rgba(255,255,255,0.72)", border: "1px solid rgba(255,255,255,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}
         >
           <Filter className="w-3 h-3 md:w-3.5 md:h-3.5 text-emerald-800/40" />{" "}
           Preference
@@ -883,7 +1033,7 @@ export default function DietPlan() {
       </div>
 
       {!dietPlan ? (
-        <div className="bg-white rounded-[3rem] p-12 border border-slate-100 shadow-xl text-center max-w-2xl mx-auto mt-20">
+        <div className="rounded-[3rem] p-12 text-center max-w-2xl mx-auto mt-20" style={{ background: "rgba(255,255,255,0.72)", backdropFilter: "blur(20px) saturate(180%)", WebkitBackdropFilter: "blur(20px) saturate(180%)", border: "1px solid rgba(255,255,255,0.85)", boxShadow: "0 4px 24px rgba(16,185,129,0.06)" }}>
           <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto mb-8 border border-white shadow-inner">
             <ChefHat className="w-10 h-10 text-slate-400" />
           </div>
@@ -914,7 +1064,8 @@ export default function DietPlan() {
             <h2 className="text-2xl md:text-3xl font-black text-[#1a2e35] px-2 mb-2 tracking-tight">
               Today's Plan
             </h2>
-            <div className="grid grid-cols-1 gap-6 md:gap-8">
+            {/* Mobile: vertical stack | Desktop: horizontal full-width row */}
+            <div className="flex flex-col gap-4 lg:flex-row lg:gap-5">
               {MEAL_ORDER.map((sectionId) => {
                 const section = SECTION_INFO[sectionId];
                 const meals = dietPlan.mealPlan?.[sectionId] || [];
