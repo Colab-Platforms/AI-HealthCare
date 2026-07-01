@@ -760,7 +760,14 @@ export default function Layout({
                 </p>
               </div>
               <button
-                onClick={() => navigate('/privacy-settings')}
+                onClick={async () => {
+                  try {
+                    await api.post('/privacy/cancel-deletion');
+                    await refreshUser();
+                  } catch (e) {
+                    navigate('/privacy-settings');
+                  }
+                }}
                 className="flex-shrink-0 text-[11px] font-black text-white px-3 py-1.5 rounded-xl"
                 style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)' }}>
                 Cancel

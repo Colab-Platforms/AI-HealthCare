@@ -56,20 +56,20 @@ const NavbarOld = () => {
             : "container mx-auto bg-transparent px-5 lg:px-20 py-6 h-24"
         }`}
       >
-        <div>
+        <div className="flex-shrink-0">
           <img
             src={logoSrc}
             alt="AI HealthCare"
             width={208}
             height={48}
             className={`transition-all duration-300 h-auto ${
-              isScrolled ? "w-28 sm:w-36 lg:w-40 brightness-0 opacity-80" : "w-36 sm:w-48 lg:w-52"
+              isScrolled ? "w-28 sm:w-36 lg:w-36 brightness-0 opacity-80" : "w-36 sm:w-44 lg:w-44"
             }`}
           />
         </div>
 
-        <div className="hidden lg:block">
-          <ul className={`flex items-center transition-all duration-300 ${isScrolled ? "gap-6" : "gap-10"}`}>
+        <div className="hidden lg:flex flex-1 justify-center">
+          <ul className={`flex items-center transition-all duration-300 ${isScrolled ? "gap-4 xl:gap-6" : "gap-6 xl:gap-10"}`}>
             {navLinks.map((link) => (
               <Link key={link.to} to={link.to} className={linkClass}>
                 {link.label}
@@ -78,10 +78,25 @@ const NavbarOld = () => {
           </ul>
         </div>
 
-        <div className="hidden lg:flex items-center">
+        <div className="hidden lg:flex items-center gap-2 xl:gap-3 flex-shrink-0">
+          <a
+            href="https://github.com/patilabhiraj/take-health-download/releases/download/v1.0.0/Take.Health.apk"
+            className={`flex items-center gap-2 px-3 py-1.5 rounded-full border transition whitespace-nowrap hover:scale-105 active:scale-95 ${
+              isScrolled
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                : "border-white/30 bg-white/10 text-white hover:bg-white/20"
+            }`}
+            style={{ backdropFilter: "blur(8px)" }}
+          >
+            <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/icon.png?v=1775538354" alt="take.health" className="w-5 h-5 rounded-md flex-shrink-0" />
+            <div className="flex flex-col leading-tight">
+              <span className="text-[8px] font-bold uppercase tracking-widest opacity-70">Download</span>
+              <span className={`font-black uppercase tracking-wide ${isScrolled ? "text-[10px]" : "text-[11px]"}`}>Android App</span>
+            </div>
+          </a>
           <Link
             to="/login"
-            className={`${brandTextClass} uppercase font-landing-accent cursor-pointer transition mr-4 whitespace-nowrap ${
+            className={`${brandTextClass} uppercase font-landing-accent cursor-pointer transition whitespace-nowrap ${
               isScrolled ? "text-xs" : "text-sm"
             }`}
           >

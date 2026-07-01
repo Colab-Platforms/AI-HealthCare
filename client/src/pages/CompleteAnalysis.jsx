@@ -47,8 +47,14 @@ import api from "../services/api";
 import toast from "react-hot-toast";
 import SEO from "../hooks/useSEO";
 
-const glassCard =
-  "bg-white border border-slate-100/80 rounded-2xl shadow-sm hover:shadow-md transition-all duration-300";
+const glassCard = "rounded-2xl transition-all duration-300";
+const glassStyle = {
+  background: "rgba(255,255,255,0.72)",
+  backdropFilter: "blur(20px) saturate(180%)",
+  WebkitBackdropFilter: "blur(20px) saturate(180%)",
+  border: "1px solid rgba(255,255,255,0.85)",
+  boxShadow: "0 4px 24px rgba(16,185,129,0.06), 0 1px 0 rgba(255,255,255,0.9) inset",
+};
 
 export default function CompleteAnalysis() {
   const navigate = useNavigate();
@@ -275,7 +281,7 @@ export default function CompleteAnalysis() {
 
   if (loading || contextLoading.dashboard) {
     return (
-      <div className="min-h-screen bg-[#F9FCF3] flex flex-col items-center justify-center p-8">
+      <div className="min-h-screen flex flex-col items-center justify-center p-8" style={{ background: "#F2F7F2" }}>
         <div className="w-16 h-16 border-4 border-emerald-100 border-t-emerald-500 rounded-full animate-spin mb-6" />
         <div className="text-center space-y-2">
           <p className="text-[#064e3b] font-black uppercase tracking-widest text-sm animate-pulse">
@@ -289,29 +295,27 @@ export default function CompleteAnalysis() {
     );
   }
 
-  const cardStyle =
-    "bg-white border border-slate-100 rounded-2xl shadow-sm hover:shadow transition-all duration-300";
-
   return (
-    <div className="min-h-screen bg-[#FAFBF8] pt-6 pb-24 px-4 md:px-8 max-w-[1400px] mx-auto space-y-6 font-sans">
+    <div className="min-h-screen pt-6 pb-24 px-4 md:px-6 space-y-6 font-sans" style={{ background: "#F2F7F2" }}>
       <SEO pageName="completeAnalysis" />
 
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 w-full border-b border-slate-200/60 pb-5">
-        <div>
-          <h1 className="text-2xl font-bold text-[#011B1D] tracking-tight">
+      <div className="flex items-center justify-between gap-3 w-full pb-5" style={{ borderBottom: "1px solid rgba(255,255,255,0.6)" }}>
+        <div className="min-w-0">
+          <h1 className="text-lg md:text-2xl font-bold text-[#011B1D] tracking-tight truncate">
             Daily Breakdown
           </h1>
-          <p className="text-xs text-slate-500 font-normal mt-0.5">
+          <p className="text-[10px] md:text-xs text-slate-500 font-normal mt-0.5">
             Holistic Performance Metrics
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-shrink-0">
           {/* Custom Range Dropdown */}
           <div className="relative">
             <button
               onClick={() => setShowRangeDropdown(!showRangeDropdown)}
-              className="flex items-center gap-1.5 px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 hover:bg-slate-50 hover:shadow-sm transition-all"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 transition-all"
+              style={{ background: "rgba(255,255,255,0.72)", border: "1px solid rgba(255,255,255,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}
             >
               <Filter className="w-3.5 h-3.5 text-slate-500" />
               Range: {activeRange}
@@ -351,7 +355,8 @@ export default function CompleteAnalysis() {
 
           <button
             onClick={handleRefresh}
-            className="p-2 bg-white border border-slate-200 rounded-xl text-slate-500 hover:text-slate-700 hover:bg-slate-50 hover:shadow-sm transition-all shadow-sm"
+            className="p-2 rounded-xl text-slate-500 hover:text-slate-700 transition-all"
+            style={{ background: "rgba(255,255,255,0.72)", border: "1px solid rgba(255,255,255,0.85)", backdropFilter: "blur(12px)", WebkitBackdropFilter: "blur(12px)" }}
           >
             <RefreshCw className="w-3.5 h-3.5" />
           </button>
@@ -363,7 +368,7 @@ export default function CompleteAnalysis() {
         <motion.div
           initial={{ opacity: 0, y: 15 }}
           animate={{ opacity: 1, y: 0 }}
-          className={`${glassCard} p-5 bg-gradient-to-br from-white to-emerald-50/10 space-y-5`}
+          className={`${glassCard} p-5 space-y-5`} style={glassStyle}
         >
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100">
             <div className="flex items-center gap-3">
@@ -384,7 +389,7 @@ export default function CompleteAnalysis() {
             </div>
 
             <div className="flex gap-3">
-              <div className="px-3.5 py-2 bg-slate-50/60 rounded-xl border border-slate-100 min-w-[110px]">
+              <div className="px-3.5 py-2 rounded-xl min-w-[110px]" style={{ background: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.8)" }}>
                 <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-0.5">
                   Glucose
                 </span>
@@ -393,7 +398,7 @@ export default function CompleteAnalysis() {
                   <small className="text-xs font-normal text-slate-400">mg/dL</small>
                 </span>
               </div>
-              <div className="px-3.5 py-2 bg-slate-50/60 rounded-xl border border-slate-100 min-w-[110px]">
+              <div className="px-3.5 py-2 rounded-xl min-w-[110px]" style={{ background: "rgba(255,255,255,0.5)", border: "1px solid rgba(255,255,255,0.8)" }}>
                 <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wider block mb-0.5">
                   HbA1c
                 </span>
@@ -426,7 +431,7 @@ export default function CompleteAnalysis() {
               </div>
             </div>
 
-            <div className="h-[260px] w-full bg-slate-50/30 rounded-xl border border-slate-100 p-4">
+            <div className="h-[260px] w-full rounded-xl p-4" style={{ background: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.7)" }}>
               {vitalsMode === "glucose" ? (
                 processedGlucoseData.length === 0 ? (
                   <div className="h-full flex flex-col items-center justify-center opacity-30 italic">
@@ -602,7 +607,7 @@ export default function CompleteAnalysis() {
           </div>
 
           {diabetesAnalysis && (
-            <div className="p-4 bg-emerald-50/40 rounded-xl border border-emerald-100/50 flex items-start gap-3 mt-4">
+            <div className="p-4 rounded-xl flex items-start gap-3 mt-4" style={{ background: "rgba(5,150,105,0.06)", border: "1px solid rgba(5,150,105,0.15)" }}>
               <div className="w-8 h-8 rounded-lg bg-emerald-100/80 flex items-center justify-center flex-shrink-0 text-emerald-700 shadow-sm">
                 <Sparkles className="w-4 h-4 text-emerald-700" />
               </div>
@@ -620,21 +625,21 @@ export default function CompleteAnalysis() {
       )}
 
       {/* --- PREMIUM BREAKDOWN GRID --- */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
         {/* 1. STEPS CARD */}
         <motion.div
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
-          className={`${glassCard} p-5 relative group overflow-hidden bg-white hover:scale-[1.01]`}
+          className={`${glassCard} p-3.5 md:p-5 relative group overflow-hidden hover:scale-[1.01]`} style={glassStyle}
         >
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-[#FFF5EF] text-[#FF7A2F] flex items-center justify-center shadow-sm">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-[#FFF5EF] text-[#FF7A2F] flex items-center justify-center shadow-sm">
                 <Footprints className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Steps</h4>
-                <p className="text-lg font-bold text-slate-900 mt-0.5">
+                <h4 className="text-[10px] md:text-xs font-semibold text-slate-500 uppercase tracking-wider">Steps</h4>
+                <p className="text-base md:text-lg font-bold text-slate-900 mt-0.5">
                   {Math.round(
                     wearableData?.todayMetrics?.steps ||
                       dashboardData?.vitals?.steps?.value ||
@@ -661,7 +666,7 @@ export default function CompleteAnalysis() {
             )}
           </div>
 
-          <div className="h-[140px] w-full">
+          <div className="h-[110px] md:h-[140px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={multiDayData}
@@ -714,16 +719,16 @@ export default function CompleteAnalysis() {
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.1 }}
-          className={`${glassCard} p-5 relative group overflow-hidden bg-white hover:scale-[1.01]`}
+          className={`${glassCard} p-3.5 md:p-5 relative group overflow-hidden hover:scale-[1.01]`} style={glassStyle}
         >
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-[#F5F3FF] text-[#8B5CF6] flex items-center justify-center shadow-sm">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-[#F5F3FF] text-[#8B5CF6] flex items-center justify-center shadow-sm">
                 <Moon className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Sleep</h4>
-                <p className="text-lg font-bold text-slate-900 mt-0.5">
+                <h4 className="text-[10px] md:text-xs font-semibold text-slate-500 uppercase tracking-wider">Sleep</h4>
+                <p className="text-base md:text-lg font-bold text-slate-900 mt-0.5">
                   {(() => {
                     const todayStr = new Date().toISOString().split("T")[0];
                     let wearableHours = 0;
@@ -761,7 +766,7 @@ export default function CompleteAnalysis() {
             </div>
           </div>
 
-          <div className="h-[140px] w-full">
+          <div className="h-[110px] md:h-[140px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={multiDayData}
@@ -814,16 +819,16 @@ export default function CompleteAnalysis() {
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.2 }}
-          className={`${glassCard} p-5 relative group overflow-hidden bg-white hover:scale-[1.01]`}
+          className={`${glassCard} p-3.5 md:p-5 relative group overflow-hidden hover:scale-[1.01]`} style={glassStyle}
         >
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-[#ECFDF5] text-[#10B981] flex items-center justify-center shadow-sm">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-[#ECFDF5] text-[#10B981] flex items-center justify-center shadow-sm">
                 <Flame className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Calories</h4>
-                <p className="text-lg font-bold text-slate-900 mt-0.5">
+                <h4 className="text-[10px] md:text-xs font-semibold text-slate-500 uppercase tracking-wider">Calories</h4>
+                <p className="text-base md:text-lg font-bold text-slate-900 mt-0.5">
                   {Math.round(
                     nutritionData?.totalCalories ||
                       dashboardData?.vitals?.calories?.value ||
@@ -850,7 +855,7 @@ export default function CompleteAnalysis() {
             )}
           </div>
 
-          <div className="h-[140px] w-full">
+          <div className="h-[110px] md:h-[140px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={multiDayData}
@@ -903,18 +908,18 @@ export default function CompleteAnalysis() {
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.3 }}
-          className={`${glassCard} p-5 relative group overflow-hidden bg-white hover:scale-[1.01]`}
+          className={`${glassCard} p-3.5 md:p-5 relative group overflow-hidden hover:scale-[1.01]`} style={glassStyle}
         >
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-[#EFF6FF] text-[#3B82F6] flex items-center justify-center shadow-sm">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-[#EFF6FF] text-[#3B82F6] flex items-center justify-center shadow-sm">
                 <Droplets className="w-5 h-5" />
               </div>
               <div>
                 <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider font-sans">
                   Hydration
                 </h4>
-                <p className="text-lg font-bold text-slate-900 mt-0.5">
+                <p className="text-base md:text-lg font-bold text-slate-900 mt-0.5">
                   {(() => {
                     const todayData = multiDayData.find((d) =>
                       d.date?.startsWith(
@@ -941,7 +946,7 @@ export default function CompleteAnalysis() {
             </div>
           </div>
 
-          <div className="h-[140px] w-full">
+          <div className="h-[110px] md:h-[140px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart
                 data={multiDayData}
@@ -995,18 +1000,18 @@ export default function CompleteAnalysis() {
           initial={{ opacity: 0, scale: 0.98 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ delay: 0.4 }}
-          className={`${glassCard} p-5 relative group overflow-hidden md:col-span-2 bg-white hover:scale-[1.01]`}
+          className={`${glassCard} p-3.5 md:p-5 relative group overflow-hidden col-span-2 lg:col-span-2 hover:scale-[1.01]`} style={glassStyle}
         >
           <div className="flex justify-between items-start mb-4">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-lg bg-[#F8FAFC] text-[#475569] flex items-center justify-center shadow-sm">
+              <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg bg-[#F8FAFC] text-[#475569] flex items-center justify-center shadow-sm">
                 <Scale className="w-5 h-5" />
               </div>
               <div>
                 <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                   Weight Journey
                 </h4>
-                <p className="text-lg font-bold text-slate-900 mt-0.5">
+                <p className="text-base md:text-lg font-bold text-slate-900 mt-0.5">
                   {dashboardData?.vitals?.weight?.value || "--"}{" "}
                   <span className="text-slate-400 font-normal text-xs">lbs</span>
                 </p>
@@ -1019,7 +1024,7 @@ export default function CompleteAnalysis() {
             </div>
           </div>
 
-          <div className="h-[140px] w-full">
+          <div className="h-[110px] md:h-[140px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart
                 data={multiDayData}
