@@ -254,11 +254,12 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white font-sans p-4">
+    <div className="min-h-screen flex items-center justify-center font-sans p-4" style={{ background: "#F2F7F2" }}>
+
       <SEO pageName="register" />
       <div className="w-full max-w-md flex flex-col items-center">
         {/* Centered Logo */}
-        <Link to="/" className="mb-8 hover:scale-105 transition-transform">
+        <Link to="/" className="mb-6 hover:scale-105 transition-transform">
           <img
             src="/assets/logos/logo-full.png"
             alt="take.health"
@@ -266,7 +267,14 @@ export default function Register() {
           />
         </Link>
 
-        <div className="w-full bg-white rounded-3xl p-2 sm:p-4">
+        <div className="w-full rounded-3xl p-5 sm:p-6"
+          style={{
+            background: "rgba(255,255,255,0.72)",
+            backdropFilter: "blur(20px) saturate(180%)",
+            WebkitBackdropFilter: "blur(20px) saturate(180%)",
+            border: "1px solid rgba(255,255,255,0.85)",
+            boxShadow: "0 4px 24px rgba(16,185,129,0.06), 0 1px 0 rgba(255,255,255,0.9) inset",
+          }}>
           <div className="mb-2 relative shrink-0">
             {step > 1 && (
               <button

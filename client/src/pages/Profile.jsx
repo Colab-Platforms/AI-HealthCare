@@ -447,7 +447,7 @@ export default function Profile() {
   if (!user) return <ProfileSkeleton />;
 
   return (
-    <div className="w-full relative min-h-screen bg-[#F9FCF3] overflow-x-hidden animate-fade-in pb-32">
+    <div className="w-full relative min-h-screen bg-[#F2F7F2] overflow-x-hidden animate-fade-in pb-32">
       <SEO pageName="profile" />
       <div className="relative z-10 px-[21.96px] pt-12 max-w-lg mx-auto">
         {/* Profile Header Section - Horizontal Layout */}
@@ -571,70 +571,17 @@ export default function Profile() {
           </div>
         </div>
 
-        {/* Summary Row - Precision Layout */}
-        <div className="w-full grid grid-cols-2 gap-[14px] mb-8">
-          {/* Health Score Card */}
-          <div className="bg-white rounded-[25.6px] p-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border-[0.91px] border-white/50 flex flex-col justify-between h-[144.91px] w-full overflow-hidden">
-            <div className="flex items-center gap-2">
-              <div className="w-[36px] h-[36px] rounded-full bg-[#EEF6F2] flex items-center justify-center flex-shrink-0">
-                <Heart size={16} className="text-[#69A38D]" />
-              </div>
-              <span className="text-[12px] font-bold text-[#4A5568] tracking-tight truncate">
-                Health Score
-              </span>
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-baseline gap-1">
-                <span className="text-[32px] font-black text-[#1a2138] leading-none shrink-0">
-                  {user?.healthMetrics?.healthScore ||
-                    extraData.latestAnalysis?.healthScore ||
-                    "92"}
-                </span>
-                <span className="text-[16px] font-bold text-[#69A38D] -translate-y-1">
-                  / 100
-                </span>
-              </div>
-              <p className="text-[10px] font-medium text-[#7B8B9A] whitespace-nowrap overflow-hidden text-ellipsis">
-                Top 5% for your age
-              </p>
-            </div>
-          </div>
-
-          {/* BMI Card */}
-          <div className="bg-white rounded-[25.6px] p-4 shadow-[0_4px_20px_rgba(0,0,0,0.02)] border-[0.91px] border-white/50 flex flex-col justify-between h-[144.91px] w-full overflow-hidden">
-            <div className="flex items-center gap-2">
-              <div className="w-[36px] h-[36px] rounded-full bg-[#EAF2FF] flex items-center justify-center flex-shrink-0">
-                <Activity size={16} className="text-[#1F75FE]" />
-              </div>
-              <span className="text-[12px] font-bold text-[#4A5568] tracking-tight truncate">
-                Current BMI
-              </span>
-            </div>
-            <div className="flex flex-col gap-2">
-              <span className="text-[32px] font-black text-[#1a2138] leading-none">
-                {bmi || "22.4"}
-              </span>
-              <div className="flex">
-                <div
-                  className="flex items-center justify-center bg-[#EAF2FF] border-[0.91px] border-[#1F75FE]/20 rounded-[7.31px]"
-                  style={{ width: "67.47px", height: "22.86px" }}
-                >
-                  <span className="text-[8px] font-black text-[#1F75FE] uppercase tracking-tight">
-                    {bmiStatus.label}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Big Settings & Logout Card - Unified & Dynamic Height */}
+        {/* Settings Card — liquid glass */}
         <div
-          className="w-full bg-white shadow-[0_8px_40px_rgba(0,0,0,0.03)] border-[0.91px] border-slate-100 flex flex-col mx-auto mb-10"
+          className="w-full flex flex-col mx-auto mb-10"
           style={{
-            minHeight: "468.10px",
             borderRadius: "25.6px",
             maxWidth: "349.25px",
+            background: "rgba(255,255,255,0.72)",
+            backdropFilter: "blur(20px) saturate(180%)",
+            WebkitBackdropFilter: "blur(20px) saturate(180%)",
+            border: "1px solid rgba(255,255,255,0.85)",
+            boxShadow: "0 4px 24px rgba(16,185,129,0.06), 0 1px 0 rgba(255,255,255,0.9) inset",
           }}
         >
           <div className="flex flex-col">
@@ -1202,6 +1149,22 @@ export default function Profile() {
               <ChevronRight size={18} className="text-slate-300" />
             </button>
 
+            {/* Data & Consent */}
+            <button
+              onClick={() => navigate("/privacy-settings")}
+              className="w-full px-8 py-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group"
+            >
+              <div className="flex items-center gap-5">
+                <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                  <ShieldCheck size={18} className="text-slate-600" />
+                </div>
+                <span className="text-[15px] font-black text-[#1a1a1a] tracking-tight">
+                  Data & Consent
+                </span>
+              </div>
+              <ChevronRight size={18} className="text-slate-300" />
+            </button>
+
             {/* Terms & Conditions */}
             <button
               onClick={() => {
@@ -1260,7 +1223,7 @@ export default function Profile() {
           </div>
 
           {/* Logout Section - Fixed at the bottom of the card */}
-          <div className="p-6 border-t border-slate-50 bg-slate-50/30">
+          <div className="p-6 border-t border-white/40">
             <button
               onClick={logout}
               className="w-full py-4 bg-white rounded-2xl border border-slate-100 shadow-sm flex items-center justify-center gap-3 hover:bg-rose-50 hover:border-rose-100 transition-all group"

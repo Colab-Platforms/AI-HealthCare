@@ -318,7 +318,7 @@ exports.login = async (req, res) => {
 
     if (!user.isActive) {
       console.log('User account is deactivated:', user._id);
-      return res.status(403).json({ message: 'Account is deactivated. Please contact support.' });
+      return res.status(403).json({ message: 'Account is deactivated. Please contact support at support@takesolutions.com' });
     }
 
     // Compare password with proper error handling
@@ -362,6 +362,7 @@ exports.login = async (req, res) => {
         healthMetrics: user.healthMetrics,
         consent: user.consent,
         privacySettings: user.privacySettings,
+        dataRetention: user.dataRetention,
         token: generateAccessToken(user._id),
         refreshToken: rawRefreshToken,
       };

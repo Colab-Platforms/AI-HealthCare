@@ -134,7 +134,7 @@ exports.requestAccountDeletion = async (req, res) => {
         await User.findByIdAndUpdate(req.user._id, {
             'dataRetention.scheduledDeletion':   scheduledDeletion,
             'dataRetention.deletionRequestedAt': new Date(),
-            isActive: false, // soft-deactivate immediately
+            // isActive stays true — user can still login and cancel within 30 days
         });
 
         await ConsentLog.create({

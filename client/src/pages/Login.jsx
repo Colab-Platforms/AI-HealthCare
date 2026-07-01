@@ -2,8 +2,98 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import SEO from "../hooks/useSEO";
 import { useAuth } from "../context/AuthContext";
-import { Activity, Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react";
+import { Activity, Mail, Lock, Eye, EyeOff, ArrowRight, Smartphone, ChevronDown, Download, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
 import toast from "react-hot-toast";
+
+const APK_URL = "https://github.com/patilabhiraj/take-health-download/releases/download/v1.0.0/Take.Health.apk";
+
+function ApkBanner() {
+  const [open, setOpen] = useState(false);
+
+  return (
+    <div className="w-full mb-5 rounded-2xl overflow-hidden border border-emerald-100"
+      style={{ background: "linear-gradient(135deg, #f0fdf4 0%, #ecfdf5 100%)" }}>
+
+      {/* Header row — always visible */}
+      <button
+        onClick={() => setOpen(p => !p)}
+        className="w-full flex items-center justify-between px-4 py-3 gap-3 text-left"
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0"
+            style={{ background: "rgba(5,150,105,0.12)" }}>
+            <Smartphone className="w-4 h-4 text-emerald-600" />
+          </div>
+          <div>
+            <p className="text-[12px] font-black text-emerald-800 tracking-tight leading-tight">Android App Available</p>
+            <p className="text-[10px] text-emerald-600 font-semibold leading-tight">Beta APK • Play Store coming soon</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">
+            {open ? "Hide" : "How to Install"}
+          </span>
+          <ChevronDown className={`w-4 h-4 text-emerald-500 transition-transform duration-200 ${open ? "rotate-180" : ""}`} />
+        </div>
+      </button>
+
+      {/* Expandable instructions */}
+      {open && (
+        <div className="px-4 pb-4 space-y-3">
+          {/* Warning note */}
+          <div className="flex items-start gap-2.5 rounded-xl p-3"
+            style={{ background: "rgba(234,179,8,0.08)", border: "1px solid rgba(234,179,8,0.2)" }}>
+            <AlertTriangle className="w-3.5 h-3.5 text-amber-500 flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-[11px] font-black text-amber-700 leading-tight">Android may show a security warning</p>
+              <p className="text-[10px] text-amber-600 leading-relaxed mt-0.5">
+                This is normal for apps not yet on the Play Store. We are waiting for our DUNS number to publish on Google Play. The app is 100% official and safe.
+              </p>
+            </div>
+          </div>
+
+          {/* Steps */}
+          <div className="space-y-2">
+            {[
+              "Tap the Download button below",
+              'Open the downloaded APK file from your notifications or Downloads folder',
+              'If prompted, tap "Install anyway" — or go to Settings → Security → enable "Install unknown apps"',
+              "App installs in seconds. Login with your account.",
+            ].map((step, i) => (
+              <div key={i} className="flex items-start gap-2.5">
+                <div className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                  style={{ background: "rgba(5,150,105,0.12)" }}>
+                  <span className="text-[10px] font-black text-emerald-700">{i + 1}</span>
+                </div>
+                <p className="text-[11px] text-slate-600 leading-relaxed font-medium">{step}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Play Store status */}
+          <div className="flex items-center gap-2 rounded-xl px-3 py-2"
+            style={{ background: "rgba(5,150,105,0.06)", border: "1px solid rgba(5,150,105,0.12)" }}>
+            <Clock className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
+            <p className="text-[10px] text-emerald-700 font-semibold">
+              Play Store listing in progress — DUNS verification pending
+            </p>
+          </div>
+
+          {/* Download button */}
+          <a
+            href={APK_URL}
+            className="flex items-center justify-center gap-2 w-full py-3 rounded-xl text-white text-sm font-black tracking-wide transition-all active:scale-[0.98]"
+            style={{ background: "linear-gradient(135deg, #059669, #10b981)", boxShadow: "0 4px 16px rgba(5,150,105,0.3)" }}
+          >
+            <Download className="w-4 h-4" />
+            Download take.health APK
+          </a>
+          <p className="text-center text-[9px] text-slate-400 font-medium">v1.0.0 Beta • Android 8.0+</p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -84,11 +174,12 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-white font-sans p-4">
+    <div className="min-h-screen flex items-center justify-center font-sans p-4" style={{ background: "#F2F7F2" }}>
+
       <SEO pageName="login" />
       <div className="w-full max-w-md flex flex-col items-center">
         {/* Centered Logo */}
-        <Link to="/" className="mb-8 hover:scale-105 transition-transform">
+        <Link to="/" className="mb-6 hover:scale-105 transition-transform">
           <img
             src="/assets/logos/logo-full.png"
             alt="take.health"
@@ -96,7 +187,16 @@ export default function Login() {
           />
         </Link>
 
-        <div className="w-full bg-white rounded-3xl p-2 sm:p-4">
+        <ApkBanner />
+
+        <div className="w-full rounded-3xl p-5 sm:p-6"
+          style={{
+            background: "rgba(255,255,255,0.72)",
+            backdropFilter: "blur(20px) saturate(180%)",
+            WebkitBackdropFilter: "blur(20px) saturate(180%)",
+            border: "1px solid rgba(255,255,255,0.85)",
+            boxShadow: "0 4px 24px rgba(16,185,129,0.06), 0 1px 0 rgba(255,255,255,0.9) inset",
+          }}>
           <div className="text-left mb-4 shrink-0">
             <h2 className="text-2xl font-black mb-0 text-[#064e3b] tracking-tight">
               Welcome Back

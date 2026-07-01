@@ -28,6 +28,9 @@ import {
   ShieldCheck,
   Shield,
   ScrollText,
+  ChevronRight,
+  User,
+  Target,
   Sparkles,
   RefreshCw,
   Menu,
@@ -90,7 +93,11 @@ export default function Layout({
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [mobileProfileMenuOpen, setMobileProfileMenuOpen] = useState(false);
   const notificationTriggerRef = useRef(null);
+  const profileMenuRef = useRef(null);
+  const mobileProfileMenuRef = useRef(null);
 
   const aiPlaceholders = [
     "Ask anything about your health…",
@@ -112,6 +119,32 @@ export default function Layout({
     }, 3000);
     return () => clearInterval(interval);
   }, []);
+
+  // Close sidebar profile menu on outside click or sidebar collapse
+  useEffect(() => {
+    const handler = (e) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target)) {
+        setProfileMenuOpen(false);
+      }
+    };
+    if (profileMenuOpen) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [profileMenuOpen]);
+
+  // Close mobile profile menu on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (mobileProfileMenuRef.current && !mobileProfileMenuRef.current.contains(e.target)) {
+        setMobileProfileMenuOpen(false);
+      }
+    };
+    if (mobileProfileMenuOpen) document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [mobileProfileMenuOpen]);
+
+  useEffect(() => {
+    if (!sidebarOpen) setProfileMenuOpen(false);
+  }, [sidebarOpen]);
 
   // Poll unread notification count for the bell badge
   useEffect(() => {
@@ -274,7 +307,7 @@ export default function Layout({
           `}
           style={{
             width: sidebarOpen ? "256px" : "64px",
-            transition: "width 0.35s cubic-bezier(0.4,0,0.2,1), transform 0.35s cubic-bezier(0.4,0,0.2,1)",
+            transition: "width 0.2s cubic-bezier(0.25,0.46,0.45,0.94), transform 0.2s cubic-bezier(0.25,0.46,0.45,0.94)",
             background: "linear-gradient(135deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.25) 100%)",
             backdropFilter: "blur(32px) saturate(180%)",
             WebkitBackdropFilter: "blur(32px) saturate(180%)",
@@ -313,18 +346,20 @@ export default function Layout({
             </div>
 
             {/* Navigation */}
-            <nav className="flex-1 p-3 space-y-1 overflow-y-auto overflow-x-hidden">
+            <nav className="flex-1 py-3 space-y-0.5 overflow-y-auto overflow-x-hidden">
               {navItems.map(({ path, icon: Icon, label, comingSoon, badge, isDiabeticOnly }) => {
                 const isDiabetic = user?.profile?.isDiabetic === "yes";
                 if (isDiabeticOnly && !isDiabetic) return null;
                 const isActive = location.pathname === path;
+                const labelStyle = { maxWidth: sidebarOpen ? "160px" : "0px", opacity: sidebarOpen ? 1 : 0, transition: "max-width 0.2s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.12s ease" };
 
                 if (comingSoon) {
                   return (
-                    <div key={path} className="flex items-center rounded-2xl cursor-not-allowed opacity-40 px-3 py-3 gap-3">
-                      <Icon className="w-5 h-5 text-slate-500 shrink-0" />
-                      <span className="text-sm font-bold text-slate-500 truncate overflow-hidden whitespace-nowrap"
-                        style={{ maxWidth: sidebarOpen ? "160px" : "0px", opacity: sidebarOpen ? 1 : 0, transition: "max-width 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease" }}>
+                    <div key={path} className="flex items-center cursor-not-allowed opacity-35 py-2.5 gap-3 mx-2 rounded-2xl" style={{ paddingLeft: "6px", paddingRight: "6px" }}>
+                      <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0">
+                        <Icon className="w-[18px] h-[18px] text-slate-500" />
+                      </div>
+                      <span className="text-sm font-bold text-slate-500 truncate overflow-hidden whitespace-nowrap" style={labelStyle}>
                         {label}
                       </span>
                     </div>
@@ -332,90 +367,169 @@ export default function Layout({
                 }
 
                 return (
-                  <Link
-                    key={path}
-                    to={path}
-                    onClick={() => { if(window.innerWidth < 1024) setSidebarOpen(false); }}
-                    title={!sidebarOpen ? label : undefined}
-                    className={`flex items-center rounded-2xl font-bold transition-all duration-200 group ${
-                      sidebarOpen ? "px-4 py-3 gap-3 justify-start" : "px-0 py-3 justify-center"
-                    } ${isActive ? "text-white shadow-lg" : "text-slate-600 hover:text-slate-900"}`}
-                    style={isActive ? {
-                      background: "linear-gradient(135deg, rgba(5,150,105,0.85) 0%, rgba(16,185,129,0.9) 100%)",
-                      backdropFilter: "blur(8px)",
-                      boxShadow: "0 4px 16px rgba(5,150,105,0.3), inset 0 1px 0 rgba(255,255,255,0.2)",
-                    } : {}}
-                    onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "rgba(255,255,255,0.5)"; }}
-                    onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = ""; }}
-                  >
-                    <Icon className={`w-5 h-5 shrink-0 transition-colors ${isActive ? "text-white" : "text-slate-500 group-hover:text-slate-800"}`} />
-                    <span className="text-sm tracking-tight truncate overflow-hidden whitespace-nowrap"
-                      style={{ maxWidth: sidebarOpen ? "160px" : "0px", opacity: sidebarOpen ? 1 : 0, transition: "max-width 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease" }}>
-                      {label}
-                    </span>
-                    {badge && !isActive && (
-                      <span className="ml-auto bg-white/60 text-slate-600 text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center overflow-hidden whitespace-nowrap"
-                        style={{ maxWidth: sidebarOpen ? "20px" : "0px", opacity: sidebarOpen ? 1 : 0, transition: "max-width 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease" }}>
-                        {badge}
+                  <div key={path} className="px-2">
+                    <Link
+                      to={path}
+                      onClick={() => { if(window.innerWidth < 1024) setSidebarOpen(false); }}
+                      title={!sidebarOpen ? label : undefined}
+                      className={`flex items-center rounded-2xl font-bold group py-2.5 gap-3 w-full ${
+                        isActive ? "text-white shadow-lg" : "text-slate-600 hover:text-slate-900"
+                      }`}
+                      style={{
+                        paddingLeft: "6px",
+                        paddingRight: "6px",
+                        ...(isActive ? {
+                          background: "linear-gradient(135deg, rgba(5,150,105,0.85) 0%, rgba(16,185,129,0.9) 100%)",
+                          backdropFilter: "blur(8px)",
+                          boxShadow: "0 4px 16px rgba(5,150,105,0.3), inset 0 1px 0 rgba(255,255,255,0.2)",
+                        } : {})
+                      }}
+                      onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = "rgba(255,255,255,0.55)"; }}
+                      onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = ""; }}
+                    >
+                      {/* Fixed-width icon well — always 40px so icon stays centered when collapsed */}
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${isActive ? "bg-white/20" : "bg-transparent"}`}>
+                        <Icon className={`w-[18px] h-[18px] transition-colors ${isActive ? "text-white" : "text-slate-500 group-hover:text-slate-700"}`} />
+                      </div>
+                      <span className="text-sm tracking-tight truncate overflow-hidden whitespace-nowrap" style={labelStyle}>
+                        {label}
                       </span>
-                    )}
-                  </Link>
+                      {badge && !isActive && (
+                        <span className="ml-auto bg-white/60 text-slate-600 text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center overflow-hidden whitespace-nowrap flex-shrink-0"
+                          style={{ opacity: sidebarOpen ? 1 : 0, transition: "opacity 0.15s ease" }}>
+                          {badge}
+                        </span>
+                      )}
+                    </Link>
+                  </div>
                 );
               })}
             </nav>
 
-            {/* Legal Links */}
-            <div className="px-3 pb-2 space-y-1" style={{ borderTop: "1px solid rgba(255,255,255,0.4)", paddingTop: "8px" }}>
-              {[
-                { label: "Terms & Conditions", icon: ScrollText, url: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Terrms_and_Conditions_take.health_revised.pdf?v=1776407779" },
-                { label: "Privacy Policy", icon: Shield, url: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/take_health_privacy_policy.pdf?v=1776407816" },
-              ].map(({ label, icon: Icon, url }) => (
-                <a key={label} href={url} target="_blank" rel="noopener noreferrer"
-                  className={`flex items-center rounded-2xl px-3 py-2.5 transition-all gap-3 hover:bg-white/60 ${sidebarOpen ? "" : "justify-center"}`}
-                  style={{ color: "#94a3b8" }}>
-                  <Icon className="w-4 h-4 flex-shrink-0" />
-                  <span className="text-xs font-semibold truncate overflow-hidden whitespace-nowrap"
-                    style={{ maxWidth: sidebarOpen ? "140px" : "0px", opacity: sidebarOpen ? 1 : 0, transition: "max-width 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease" }}>
-                    {label}
-                  </span>
-                </a>
-              ))}
-            </div>
 
             {/* User Footer */}
-            <div className="p-3 shrink-0" style={{ borderTop: "1px solid rgba(255,255,255,0.4)" }}>
+            <div className="px-2 py-2 shrink-0 relative" ref={profileMenuRef} style={{ borderTop: "1px solid rgba(255,255,255,0.4)" }}>
+
+              {/* Animated Profile Menu */}
+              <AnimatePresence>
+                {profileMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 8, scale: 0.96 }}
+                    transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+                    className="absolute bottom-[68px] left-2 right-2 rounded-2xl overflow-hidden z-50"
+                    style={{
+                      background: "rgba(255,255,255,0.95)",
+                      backdropFilter: "blur(20px) saturate(180%)",
+                      WebkitBackdropFilter: "blur(20px) saturate(180%)",
+                      border: "1px solid rgba(255,255,255,0.9)",
+                      boxShadow: "0 -8px 32px rgba(16,185,129,0.1), 0 4px 16px rgba(0,0,0,0.08)",
+                    }}
+                  >
+                    {/* Profile header inside menu */}
+                    <div className="px-4 py-3 flex items-center gap-3" style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
+                      {user?.profilePicture ? (
+                        <img src={user.profilePicture} alt={user.name} className="w-9 h-9 rounded-xl object-cover shrink-0" />
+                      ) : (
+                        <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0"
+                          style={{ background: "linear-gradient(135deg, #059669, #10b981)" }}>
+                          <span className="font-black text-white text-sm">{user?.name?.[0]?.toUpperCase()}</span>
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-xs font-black text-slate-800 uppercase tracking-wider truncate">{isDoctor() ? `DR. ${user?.name}` : user?.name}</p>
+                        <p className="text-[10px] text-slate-400 font-medium truncate">{user?.email}</p>
+                      </div>
+                    </div>
+
+                    {/* Menu Items */}
+                    {[
+                      { icon: User, label: "Account Details", action: () => navigate("/profile") },
+                      { icon: Target, label: "Goal Settings", action: () => navigate("/profile") },
+                      { icon: FileText, label: "Medical Records", action: () => navigate("/medical-vault") },
+                      { icon: TrendingUp, label: "Progress Reports", action: () => navigate("/complete-analysis") },
+                      { icon: ShieldCheck, label: "Data & Consent", action: () => navigate("/privacy-settings") },
+                      { icon: ScrollText, label: "Terms & Conditions", action: () => window.open("https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Terrms_and_Conditions_take.health_revised.pdf?v=1776407779", "_blank") },
+                      { icon: Shield, label: "Privacy Policy", action: () => window.open("https://cdn.shopify.com/s/files/1/0636/5226/6115/files/take_health_privacy_policy.pdf?v=1776407816", "_blank") },
+                    ].map(({ icon: Icon, label, action }, i) => (
+                      <motion.button
+                        key={label}
+                        initial={{ opacity: 0, x: -8 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: i * 0.03, duration: 0.18 }}
+                        onClick={() => { action(); setProfileMenuOpen(false); }}
+                        className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-emerald-50/60 transition-colors text-left"
+                        style={{ borderBottom: "1px solid rgba(0,0,0,0.04)" }}
+                      >
+                        <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0"
+                          style={{ background: "rgba(91,140,111,0.08)" }}>
+                          <Icon className="w-3.5 h-3.5 text-[#5B8C6F]" />
+                        </div>
+                        <span className="text-[13px] font-semibold text-slate-700">{label}</span>
+                      </motion.button>
+                    ))}
+
+                    {/* Logout */}
+                    <button
+                      onClick={() => { handleLogout(); setProfileMenuOpen(false); }}
+                      className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50/60 transition-colors"
+                    >
+                      <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0"
+                        style={{ background: "rgba(239,68,68,0.08)" }}>
+                        <LogOut className="w-3.5 h-3.5 text-red-500" />
+                      </div>
+                      <span className="text-[13px] font-semibold text-red-500">Logout</span>
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Profile Trigger Button */}
               <div
-                onClick={() => navigate("/profile")}
+                onClick={() => {
+                  if (!sidebarOpen) { setSidebarOpen(true); return; }
+                  setProfileMenuOpen(prev => !prev);
+                }}
                 role="button"
                 tabIndex={0}
-                onKeyDown={(e) => e.key === 'Enter' && navigate("/profile")}
-                className={`w-full flex items-center p-2.5 rounded-2xl transition-all cursor-pointer hover:bg-white/60 ${sidebarOpen ? "gap-3" : "justify-center"}`}
-                style={{ background: "rgba(255,255,255,0.4)", border: "1px solid rgba(255,255,255,0.6)" }}
+                onKeyDown={(e) => e.key === 'Enter' && (sidebarOpen ? setProfileMenuOpen(prev => !prev) : setSidebarOpen(true))}
+                className="w-full flex items-center gap-3 rounded-2xl cursor-pointer transition-all"
+                style={{
+                  padding: "6px 6px",
+                  background: profileMenuOpen ? "rgba(91,140,111,0.12)" : "rgba(255,255,255,0.4)",
+                  border: `1px solid ${profileMenuOpen ? "rgba(91,140,111,0.3)" : "rgba(255,255,255,0.6)"}`,
+                }}
+                onMouseEnter={e => { if (!profileMenuOpen) e.currentTarget.style.background = "rgba(255,255,255,0.65)"; }}
+                onMouseLeave={e => { if (!profileMenuOpen) e.currentTarget.style.background = "rgba(255,255,255,0.4)"; }}
               >
-                {user?.profilePicture ? (
-                  <img src={user.profilePicture} alt={user.name} className="w-8 h-8 rounded-xl object-cover shrink-0 shadow-md" />
-                ) : (
-                  <div className="w-8 h-8 rounded-xl flex items-center justify-center shrink-0 shadow-md"
-                    style={{ background: "linear-gradient(135deg, #059669, #10b981)" }}
-                  >
-                    <span className="font-black text-white text-sm">{user?.name?.[0]?.toUpperCase()}</span>
-                  </div>
-                )}
+                {/* Avatar — fixed 36px, always centered when collapsed */}
+                <div className="w-9 h-9 rounded-xl flex-shrink-0 overflow-hidden shadow-sm"
+                  style={{ background: "linear-gradient(135deg, #059669, #10b981)" }}>
+                  {user?.profilePicture
+                    ? <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" />
+                    : <div className="w-full h-full flex items-center justify-center">
+                        <span className="font-black text-white text-sm">{user?.name?.[0]?.toUpperCase()}</span>
+                      </div>
+                  }
+                </div>
+                {/* Name + email — fades out when collapsed */}
                 <div className="flex-1 min-w-0 overflow-hidden text-left"
-                  style={{ maxWidth: sidebarOpen ? "140px" : "0px", opacity: sidebarOpen ? 1 : 0, transition: "max-width 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease" }}>
-                  <p className="text-xs font-black truncate text-slate-800 uppercase tracking-wider">
+                  style={{ maxWidth: sidebarOpen ? "130px" : "0px", opacity: sidebarOpen ? 1 : 0, transition: "max-width 0.2s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.12s ease" }}>
+                  <p className="text-[11px] font-black truncate text-slate-800 uppercase tracking-wide leading-tight">
                     {isDoctor() ? `DR. ${user?.name}` : user?.name}
                   </p>
-                  <p className="text-[10px] truncate text-slate-500 font-medium">{user?.email}</p>
+                  <p className="text-[10px] truncate text-slate-400 font-medium leading-tight mt-0.5">{user?.email}</p>
                 </div>
-                <button
-                  onClick={(e) => { e.stopPropagation(); handleLogout(); }}
-                  className="p-1.5 rounded-xl transition-all shrink-0 text-slate-400 hover:text-rose-500 hover:bg-rose-500/10 overflow-hidden"
-                  title="Logout"
-                  style={{ maxWidth: sidebarOpen ? "32px" : "0px", opacity: sidebarOpen ? 1 : 0, padding: sidebarOpen ? undefined : 0, transition: "max-width 0.35s cubic-bezier(0.4,0,0.2,1), opacity 0.25s ease, padding 0.35s ease" }}
+                {/* Chevron — fades out when collapsed */}
+                <motion.div
+                  animate={{ rotate: profileMenuOpen ? 180 : 0 }}
+                  transition={{ duration: 0.18 }}
+                  className="flex-shrink-0 overflow-hidden"
+                  style={{ maxWidth: sidebarOpen ? "16px" : "0px", opacity: sidebarOpen ? 1 : 0, transition: "max-width 0.2s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.12s ease" }}
                 >
-                  <LogOut className="w-4 h-4" />
-                </button>
+                  <ChevronRight className="w-4 h-4 text-slate-400 -rotate-90" />
+                </motion.div>
               </div>
             </div>
           </div>
@@ -466,21 +580,102 @@ export default function Layout({
                   <ArrowLeft size={18} className="text-slate-700" strokeWidth={2.5} />
                 </button>
               ) : (
-                <button
-                  onClick={() => navigate("/profile")}
-                  className="lg:hidden w-9 h-9 rounded-full overflow-hidden shrink-0 transition-all active:scale-95"
-                  style={{ border: "2px solid rgba(91,140,111,0.4)", boxShadow: "0 2px 8px rgba(16,185,129,0.15)" }}
-                >
-                  {user?.profilePicture ? (
-                    <img src={user.profilePicture} alt="" className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full bg-[#5B8C6F] flex items-center justify-center">
-                      <span className="text-white text-xs font-black">
-                        {user?.name?.charAt(0)?.toUpperCase() || "U"}
-                      </span>
-                    </div>
-                  )}
-                </button>
+                <div className="relative lg:hidden shrink-0" ref={mobileProfileMenuRef}>
+                  {/* Avatar trigger */}
+                  <button
+                    onClick={() => setMobileProfileMenuOpen(p => !p)}
+                    className="w-9 h-9 rounded-full overflow-hidden transition-all active:scale-95"
+                    style={{ border: "2px solid rgba(91,140,111,0.4)", boxShadow: "0 2px 8px rgba(16,185,129,0.15)" }}
+                  >
+                    {user?.profilePicture ? (
+                      <img src={user.profilePicture} alt="" className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full bg-[#5B8C6F] flex items-center justify-center">
+                        <span className="text-white text-xs font-black">
+                          {user?.name?.charAt(0)?.toUpperCase() || "U"}
+                        </span>
+                      </div>
+                    )}
+                  </button>
+
+                  {/* Mobile profile popup */}
+                  <AnimatePresence>
+                    {mobileProfileMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                        transition={{ duration: 0.18, ease: [0.4, 0, 0.2, 1] }}
+                        className="absolute top-12 left-0 w-56 rounded-2xl overflow-hidden z-50"
+                        style={{
+                          background: "rgba(255,255,255,0.97)",
+                          backdropFilter: "blur(20px) saturate(180%)",
+                          WebkitBackdropFilter: "blur(20px) saturate(180%)",
+                          border: "1px solid rgba(255,255,255,0.9)",
+                          boxShadow: "0 8px 32px rgba(16,185,129,0.12), 0 4px 16px rgba(0,0,0,0.08)",
+                        }}
+                      >
+                        {/* User info header */}
+                        <div className="px-4 py-3 flex items-center gap-3" style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
+                          <div className="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0"
+                            style={{ background: "linear-gradient(135deg, #059669, #10b981)" }}>
+                            {user?.profilePicture
+                              ? <img src={user.profilePicture} alt={user.name} className="w-full h-full object-cover" />
+                              : <div className="w-full h-full flex items-center justify-center">
+                                  <span className="font-black text-white text-sm">{user?.name?.[0]?.toUpperCase()}</span>
+                                </div>
+                            }
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-[11px] font-black text-slate-800 uppercase tracking-wide truncate">
+                              {isDoctor() ? `DR. ${user?.name}` : user?.name}
+                            </p>
+                            <p className="text-[10px] text-slate-400 font-medium truncate">{user?.email}</p>
+                          </div>
+                        </div>
+
+                        {/* Menu items */}
+                        {[
+                          { icon: User, label: "Account Details", action: () => navigate("/profile") },
+                          { icon: Target, label: "Goal Settings", action: () => navigate("/profile") },
+                          { icon: FileText, label: "Medical Records", action: () => navigate("/medical-vault") },
+                          { icon: TrendingUp, label: "Progress Reports", action: () => navigate("/complete-analysis") },
+                          { icon: ShieldCheck, label: "Data & Consent", action: () => navigate("/privacy-settings") },
+                          { icon: ScrollText, label: "Terms & Conditions", action: () => window.open("https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Terrms_and_Conditions_take.health_revised.pdf?v=1776407779", "_blank") },
+                          { icon: Shield, label: "Privacy Policy", action: () => window.open("https://cdn.shopify.com/s/files/1/0636/5226/6115/files/take_health_privacy_policy.pdf?v=1776407816", "_blank") },
+                        ].map(({ icon: Icon, label, action }, i) => (
+                          <motion.button
+                            key={label}
+                            initial={{ opacity: 0, x: -8 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ delay: i * 0.03, duration: 0.15 }}
+                            onClick={() => { action(); setMobileProfileMenuOpen(false); }}
+                            className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-emerald-50/60 transition-colors text-left"
+                            style={{ borderBottom: "1px solid rgba(0,0,0,0.04)" }}
+                          >
+                            <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0"
+                              style={{ background: "rgba(91,140,111,0.08)" }}>
+                              <Icon className="w-3.5 h-3.5 text-[#5B8C6F]" />
+                            </div>
+                            <span className="text-[13px] font-semibold text-slate-700">{label}</span>
+                          </motion.button>
+                        ))}
+
+                        {/* Logout */}
+                        <button
+                          onClick={() => { handleLogout(); setMobileProfileMenuOpen(false); }}
+                          className="w-full flex items-center gap-3 px-4 py-3 hover:bg-red-50/60 transition-colors"
+                        >
+                          <div className="w-7 h-7 rounded-xl flex items-center justify-center flex-shrink-0"
+                            style={{ background: "rgba(239,68,68,0.08)" }}>
+                            <LogOut className="w-3.5 h-3.5 text-red-500" />
+                          </div>
+                          <span className="text-[13px] font-semibold text-red-500">Logout</span>
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               )}
 
               {location.pathname === "/profile" ? (
@@ -495,7 +690,7 @@ export default function Layout({
                 <>
                   {/* AI search bar - full width */}
                   <div
-                    className="flex flex-1 items-center gap-3 rounded-full px-4 cursor-pointer transition-all"
+                    className="flex flex-1 min-w-0 items-center gap-2 rounded-full px-3 cursor-pointer transition-all overflow-hidden"
                     style={{ height: "40px", background: "rgba(255,255,255,0.6)", border: "1px solid rgba(255,255,255,0.9)", boxShadow: "0 2px 8px rgba(16,185,129,0.08)" }}
                     onClick={() => navigate("/ai-chat")}
                   >
@@ -503,7 +698,7 @@ export default function Layout({
                       <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Icon_11.png?v=1775649527" alt="" className="w-3.5 h-3.5 object-contain" />
                     </div>
                     <span
-                      className="text-sm text-[#1a1a1a]/50 font-medium transition-all duration-300"
+                      className="text-sm text-[#1a1a1a]/50 font-medium transition-all duration-300 truncate"
                       style={{ opacity: aiPlaceholderVisible ? 1 : 0, transform: aiPlaceholderVisible ? "translateY(0)" : "translateY(4px)" }}
                     >
                       {aiPlaceholders[aiPlaceholderIdx]}
@@ -550,6 +745,28 @@ export default function Layout({
 
           {/* Spacer for fixed header on mobile */}
           <div className="h-16 shrink-0 lg:hidden" />
+
+          {/* Account Deletion Warning Banner */}
+          {user?.dataRetention?.scheduledDeletion && (
+            <div className="mx-3 mt-3 lg:mx-4 rounded-2xl px-4 py-3 flex items-center justify-between gap-3 flex-shrink-0"
+              style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)' }}>
+              <div className="flex items-center gap-2 min-w-0">
+                <span className="text-red-500 text-base flex-shrink-0">⚠️</span>
+                <p className="text-red-600 text-xs font-semibold leading-snug">
+                  Account deletion scheduled on{' '}
+                  <span className="font-black">
+                    {new Date(user.dataRetention.scheduledDeletion).toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })}
+                  </span>
+                </p>
+              </div>
+              <button
+                onClick={() => navigate('/privacy-settings')}
+                className="flex-shrink-0 text-[11px] font-black text-white px-3 py-1.5 rounded-xl"
+                style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)' }}>
+                Cancel
+              </button>
+            </div>
+          )}
 
           {/* Page Content */}
           <main
