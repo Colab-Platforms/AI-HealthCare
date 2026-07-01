@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import SEO from "../hooks/useSEO";
 import { useAuth } from "../context/AuthContext";
-import { Activity, Mail, Lock, Eye, EyeOff, ArrowRight, Smartphone, ChevronDown, Download, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
+import { Activity, Mail, Lock, Eye, EyeOff, ArrowRight, Smartphone, ChevronDown, Download, AlertTriangle } from "lucide-react";
 import toast from "react-hot-toast";
 
 const APK_URL = "https://github.com/patilabhiraj/take-health-download/releases/download/v1.0.0/Take.Health.apk";
@@ -68,15 +68,6 @@ function ApkBanner() {
                 <p className="text-[11px] text-slate-600 leading-relaxed font-medium">{step}</p>
               </div>
             ))}
-          </div>
-
-          {/* Play Store status */}
-          <div className="flex items-center gap-2 rounded-xl px-3 py-2"
-            style={{ background: "rgba(5,150,105,0.06)", border: "1px solid rgba(5,150,105,0.12)" }}>
-            <Clock className="w-3.5 h-3.5 text-emerald-500 flex-shrink-0" />
-            <p className="text-[10px] text-emerald-700 font-semibold">
-              Play Store listing in progress — DUNS verification pending
-            </p>
           </div>
 
           {/* Download button */}
