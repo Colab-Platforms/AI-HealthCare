@@ -282,7 +282,7 @@ export default function AllReports() {
       
       setPreviewLoading(true);
       try {
-        const response = await api.get(`/documents/${selectedDoc._id}/file`, {
+        const response = await api.get(`/documents/${selectedDoc._id}/file${selectedDoc.isAnalyzedReport ? '?type=report' : ''}`, {
           responseType: 'blob',
         });
         const url = window.URL.createObjectURL(new Blob([response.data]));

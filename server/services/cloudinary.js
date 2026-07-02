@@ -186,10 +186,12 @@ const generateSignedDownloadUrl = (cloudinaryUrlOrPublicId, resourceType = 'auto
 const extractPublicId = (cloudinaryUrl) => {
     try {
         if (!cloudinaryUrl) return null;
-        // Strip query params first
         const baseUrl = cloudinaryUrl.split('?')[0];
-        // Match after /upload/ or /authenticated/ or /raw/
-        const match = baseUrl.match(/\/(?:upload|authenticated|raw|image|video)\/(?:v\d+\/)?(.+?)(?:\.\w+)?$/);
+        // Cloudinary URL structure: /{resource_type}/{delivery_type}/v{ver}/{public_id}.{ext}
+        // e.g. /raw/authenticated/v123/fitcure/medical_documents/abc
+        // e.g. /image/authenticated/v123/fitcure/health_reports/xyz.jpg
+        // e.g. /image/upload/v123/fitcure/food_scans/abc.jpg
+        const match = baseUrl.match(/\/(?:raw|image|video|auto)\/(?:upload|authenticated)\/(?:v\d+\/)?(.+?)(?:\.\w+)?$/);
         return match ? match[1] : null;
     } catch (error) {
         console.error('☁️ extractPublicId error:', error.message);

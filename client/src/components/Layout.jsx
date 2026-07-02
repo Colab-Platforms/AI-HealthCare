@@ -307,10 +307,10 @@ export default function Layout({
           `}
           style={{
             width: sidebarOpen ? "256px" : "64px",
-            transition: "width 0.2s cubic-bezier(0.25,0.46,0.45,0.94), transform 0.2s cubic-bezier(0.25,0.46,0.45,0.94)",
-            background: "linear-gradient(135deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.25) 100%)",
-            backdropFilter: "blur(32px) saturate(180%)",
-            WebkitBackdropFilter: "blur(32px) saturate(180%)",
+            transition: "width 0.22s cubic-bezier(0.4,0,0.2,1), transform 0.22s cubic-bezier(0.4,0,0.2,1)",
+            transform: "translateZ(0)",
+            willChange: "width",
+            background: "rgba(240,248,240,0.92)",
             borderRight: "1px solid rgba(255,255,255,0.5)",
             boxShadow: "4px 0 24px rgba(16,185,129,0.08), inset 1px 0 0 rgba(255,255,255,0.6)",
           }}
@@ -351,7 +351,7 @@ export default function Layout({
                 const isDiabetic = user?.profile?.isDiabetic === "yes";
                 if (isDiabeticOnly && !isDiabetic) return null;
                 const isActive = location.pathname === path;
-                const labelStyle = { maxWidth: sidebarOpen ? "160px" : "0px", opacity: sidebarOpen ? 1 : 0, transition: "max-width 0.2s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.12s ease" };
+                const labelStyle = { maxWidth: sidebarOpen ? "160px" : "0px", opacity: sidebarOpen ? 1 : 0, transition: "max-width 0.25s cubic-bezier(0.4,0,0.2,1), opacity 0.15s ease" };
 
                 if (comingSoon) {
                   return (
@@ -407,8 +407,27 @@ export default function Layout({
             </nav>
 
 
+            {/* Privacy & Terms links */}
+            <div className="px-2 py-2 shrink-0 flex flex-col gap-0.5" style={{ borderTop: "1px solid rgba(255,255,255,0.4)" }}>
+              {[
+                { icon: Shield, label: "Privacy Policy", url: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/take_health_privacy_policy.pdf?v=1776407816" },
+                { icon: ScrollText, label: "Terms & Conditions", url: "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Terrms_and_Conditions_take.health_revised.pdf?v=1776407779" },
+              ].map(({ icon: Icon, label, url }) => (
+                <button key={label} onClick={() => window.open(url, "_blank")}
+                  className="flex items-center gap-3 rounded-xl px-1.5 py-1.5 hover:bg-white/50 transition-colors text-left w-full">
+                  <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <Icon className="w-[17px] h-[17px] text-slate-400" />
+                  </div>
+                  <span className="text-[11px] font-semibold text-slate-400 truncate whitespace-nowrap overflow-hidden"
+                    style={{ maxWidth: sidebarOpen ? "160px" : "0px", opacity: sidebarOpen ? 1 : 0, transition: "max-width 0.25s cubic-bezier(0.4,0,0.2,1), opacity 0.15s ease" }}>
+                    {label}
+                  </span>
+                </button>
+              ))}
+            </div>
+
             {/* User Footer */}
-            <div className="px-2 py-2 shrink-0 relative" ref={profileMenuRef} style={{ borderTop: "1px solid rgba(255,255,255,0.4)" }}>
+            <div className="px-2 py-2 shrink-0 relative" ref={profileMenuRef}>
 
               {/* Animated Profile Menu */}
               <AnimatePresence>
@@ -515,7 +534,7 @@ export default function Layout({
                 </div>
                 {/* Name + email — fades out when collapsed */}
                 <div className="flex-1 min-w-0 overflow-hidden text-left"
-                  style={{ maxWidth: sidebarOpen ? "130px" : "0px", opacity: sidebarOpen ? 1 : 0, transition: "max-width 0.2s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.12s ease" }}>
+                  style={{ maxWidth: sidebarOpen ? "130px" : "0px", opacity: sidebarOpen ? 1 : 0, transition: "max-width 0.25s cubic-bezier(0.4,0,0.2,1), opacity 0.15s ease" }}>
                   <p className="text-[11px] font-black truncate text-slate-800 uppercase tracking-wide leading-tight">
                     {isDoctor() ? `DR. ${user?.name}` : user?.name}
                   </p>
@@ -526,7 +545,7 @@ export default function Layout({
                   animate={{ rotate: profileMenuOpen ? 180 : 0 }}
                   transition={{ duration: 0.18 }}
                   className="flex-shrink-0 overflow-hidden"
-                  style={{ maxWidth: sidebarOpen ? "16px" : "0px", opacity: sidebarOpen ? 1 : 0, transition: "max-width 0.2s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.12s ease" }}
+                  style={{ maxWidth: sidebarOpen ? "16px" : "0px", opacity: sidebarOpen ? 1 : 0, transition: "max-width 0.25s cubic-bezier(0.4,0,0.2,1), opacity 0.15s ease" }}
                 >
                   <ChevronRight className="w-4 h-4 text-slate-400 -rotate-90" />
                 </motion.div>
@@ -770,7 +789,7 @@ export default function Layout({
                 }}
                 className="flex-shrink-0 text-[11px] font-black text-white px-3 py-1.5 rounded-xl"
                 style={{ background: 'linear-gradient(135deg, #ef4444, #dc2626)' }}>
-                Cancel
+                Cancel Deletion
               </button>
             </div>
           )}

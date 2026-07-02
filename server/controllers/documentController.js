@@ -288,39 +288,16 @@ exports.getDocumentDownloadUrl = async (req, res) => {
             return res.status(404).json({ message: 'No file URL found for this document' });
         }
 
-        // Extract public ID and extension from Cloudinary URL
-        const regex = /res\.cloudinary\.com\/[^\/]+\/([^\/]+)\/([^\/]+)\/(?:v\d+\/)?(.+?)(?:\.([^.]+))?$/;
-        const match = fileUrl.match(regex);
+        const resourceType = fileUrl.includes('/raw/') ? 'raw' : 'auto';
+        const downloadUrl = cloudinaryService.generateSignedDownloadUrl(fileUrl, resourceType);
 
-        if (!match) {
-            console.error('❌ Could not parse Cloudinary URL:', fileUrl);
-            return res.status(400).json({ message: 'Invalid file URL format' });
-        }
-
-        const resourceType = match[1]; // e.g. 'image'
-        const publicId = match[3];      // e.g. 'fitcure/medical_documents/file_d4gl9f'
-        const ext = match[4] || 'pdf';  // e.g. 'pdf'
-
-        try {
-            const { cloudinary } = cloudinaryService;
-            
-            // Generate a private download URL (valid for 24 hours)
-            const downloadUrl = cloudinary.utils.private_download_url(publicId, ext, {
-                resource_type: resourceType,
-                type: 'authenticated',
-                expires_at: Math.round(Date.now() / 1000) + (24 * 3600) // 24 hours
-            });
-
-            console.log('✅ Generated private download URL for:', filename);
-            res.json({ 
-                downloadUrl,
-                filename,
-                expiresIn: '24 hours'
-            });
-        } catch (err) {
-            console.error('❌ Error generating private URL:', err.message);
+        if (!downloadUrl) {
+            console.error('❌ Could not generate signed URL for:', fileUrl);
             return res.status(500).json({ message: 'Failed to generate download URL' });
         }
+
+        console.log('✅ Generated signed download URL for:', filename);
+        res.json({ downloadUrl, filename, expiresIn: '1 hour' });
     } catch (error) {
         console.error('❌ Error in getDocumentDownloadUrl:', error.message);
         res.status(500).json({ message: 'Failed to generate download URL: ' + error.message });
@@ -361,41 +338,10 @@ exports.getDocumentFile = async (req, res) => {
         }
 
         const axios = require('axios');
-        let fetchUrl = fileUrl;
-        let fetchOptions = { responseType: 'stream', timeout: 30000 };
-
-        // For Cloudinary URLs, use private_download_url to download through the API endpoint
-        // This bypasses ALL CDN delivery restrictions because it goes through api.cloudinary.com
-        if (fileUrl.includes('res.cloudinary.com')) {
-            try {
-                const { cloudinary } = cloudinaryService;
-                // Extract: resource_type, public_id, extension from the Cloudinary URL
-                const regex = /res\.cloudinary\.com\/[^\/]+\/([^\/]+)\/([^\/]+)\/(?:v\d+\/)?(.+?)(?:\.([^.]+))?$/;
-                const match = fileUrl.match(regex);
-
-                if (match) {
-                    const resourceType = match[1]; // e.g. 'image'
-                    const publicId = match[3];      // e.g. 'fitcure/medical_documents/file_d4gl9f'
-                    const ext = match[4] || 'pdf';  // e.g. 'pdf'
-
-                    // private_download_url generates a URL like:
-                    // https://api.cloudinary.com/v1_1/{cloud}/image/download?api_key=...&public_id=...&signature=...&timestamp=...
-                    // This goes through the API, NOT the CDN, so delivery restrictions don't apply
-                    fetchUrl = cloudinary.utils.private_download_url(publicId, ext, {
-                        resource_type: resourceType,
-                        type: 'authenticated',
-                        expires_at: Math.round(Date.now() / 1000) + 300 // 5 min expiry
-                    });
-
-                    console.log('🔐 Generated Cloudinary private download URL (via api.cloudinary.com)');
-                }
-            } catch (err) {
-                console.error('private_download_url generation failed, falling back to direct URL:', err.message);
-                // fetchUrl stays as original fileUrl
-            }
-        }
-
-        console.log('📥 Fetching file via proxy...');
+        // The stored fileUrl already contains Cloudinary's embedded signature (s--...--).
+        // Fetching it directly works — no re-signing needed.
+        const fetchUrl = fileUrl;
+        const fetchOptions = { responseType: 'stream', timeout: 30000 };
 
         const response = await axios.get(fetchUrl, fetchOptions);
 
