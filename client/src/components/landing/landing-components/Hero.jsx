@@ -127,10 +127,11 @@ const Hero = () => {
             <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/icon.png?v=1775538354" alt="take.health" className="w-9 h-9 rounded-xl flex-shrink-0" />
             <div className="text-left">
               <p className="text-[9px] text-white/60 uppercase tracking-widest leading-none mb-0.5">Free Download · Android 8.0+</p>
-              <p className="text-[13px] font-black text-white leading-tight">take.health Android App</p>
-              <p className="text-[9px] text-white/50 leading-none mt-0.5">v1.0.0 Beta · APK · Direct Install</p>
+              <p className="text-[13px] font-black text-white leading-tight">Download APK</p>
+              <p className="text-[9px] text-white/50 leading-none mt-0.5">v1.0.0 Beta · Direct Install</p>
             </div>
           </a>
+          <p className="text-[11px] text-emerald-300 font-semibold text-center mt-1.5 tracking-wide">Coming soon on Play Store & App Store</p>
         </motion.div>
       </motion.div>
 

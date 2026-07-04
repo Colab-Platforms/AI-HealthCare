@@ -91,7 +91,7 @@ const NavbarOld = () => {
             <img src="https://cdn.shopify.com/s/files/1/0636/5226/6115/files/icon.png?v=1775538354" alt="take.health" className="w-5 h-5 rounded-md flex-shrink-0" />
             <div className="flex flex-col leading-tight">
               <span className="text-[8px] font-bold uppercase tracking-widest opacity-70">Download</span>
-              <span className={`font-black uppercase tracking-wide ${isScrolled ? "text-[10px]" : "text-[11px]"}`}>Android App</span>
+              <span className={`font-black uppercase tracking-wide ${isScrolled ? "text-[10px]" : "text-[11px]"}`}>Android APK</span>
             </div>
           </a>
           <Link

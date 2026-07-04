@@ -733,6 +733,16 @@ const FEATURE_SLIDES = [
     bg: "linear-gradient(135deg, #1a1a2e 0%, #16213e 60%, #0f3460 100%)",
     img: "https://images.unsplash.com/photo-1512621776951-a57141f2eefd?w=600&q=80",
   },
+  {
+    tag: "Mobile App",
+    title: "Coming Soon on\nPlay Store & App Store",
+    desc: "take.health app is arriving on Android & iOS. Stay tuned!",
+    cta: "Download APK",
+    ctaPath: "https://github.com/patilabhiraj/take-health-download/releases/download/v1.0.0/Take.Health.apk",
+    ctaExternal: true,
+    bg: "linear-gradient(135deg, #1a2a1a 0%, #14532d 60%, #166534 100%)",
+    img: "https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?w=600&q=80",
+  },
 ];
 
 function FeatureCarousel({ navigate }) {
@@ -788,7 +798,7 @@ function FeatureCarousel({ navigate }) {
             style={{ display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}
           >{slide.desc}</p>
           <button
-            onClick={() => navigate(slide.ctaPath)}
+            onClick={() => slide.ctaExternal ? window.open(slide.ctaPath, "_blank") : navigate(slide.ctaPath)}
             className="mt-0.5 self-start px-3 py-1 rounded-xl text-[9px] font-black text-white uppercase tracking-wider transition-all active:scale-95 shrink-0"
             style={{ background: "rgba(255,255,255,0.18)", border: "1px solid rgba(255,255,255,0.3)", backdropFilter: "blur(8px)" }}
           >
