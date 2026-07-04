@@ -306,7 +306,7 @@ export default function Layout({
             ${sidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"}
           `}
           style={{
-            width: sidebarOpen ? "256px" : "64px",
+            width: sidebarOpen ? "256px" : (window.innerWidth < 1024 ? "0px" : "64px"),
             transition: "width 0.22s cubic-bezier(0.4,0,0.2,1), transform 0.22s cubic-bezier(0.4,0,0.2,1)",
             transform: "translateZ(0)",
             willChange: "width",

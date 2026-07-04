@@ -33,7 +33,7 @@ const apiLimiter = rateLimit({
 // Stricter limiter for expensive DB-read endpoints (dashboard, reports listing)
 const heavyReadLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 30,
+  max: 60,
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req) => req.user?._id?.toString() || req.ip,
