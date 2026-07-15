@@ -5,7 +5,7 @@ import api from '../services/api';
 
 const PURPOSES = [
   { id: 'health_processing', icon: Heart,    label: 'Health Data Processing',  desc: 'Analyze your reports, metrics, and vitals to provide AI-powered health insights.', required: true },
-  { id: 'analytics',        icon: BarChart2, label: 'Usage Analytics',         desc: 'Understand how you use FitCure to improve the app experience.', required: false },
+  { id: 'analytics',        icon: BarChart2, label: 'Usage Analytics',         desc: 'Understand how you use Take Health to improve the app experience.', required: false },
   { id: 'marketing',        icon: FileText,  label: 'Health Tips & Updates',   desc: 'Receive personalized health tips and feature announcements via email.', required: false },
 ];
 
@@ -58,7 +58,7 @@ export default function ConsentModal({ onAccept }) {
               </div>
             </div>
             <p className="text-white/60 text-sm leading-relaxed">
-              FitCure processes your health data to provide AI-powered insights. Choose what you're comfortable sharing.
+              Take Health processes your health data to provide AI-powered insights. Choose what you're comfortable sharing.
             </p>
           </div>
 
