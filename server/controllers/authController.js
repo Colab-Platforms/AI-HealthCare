@@ -95,7 +95,8 @@ exports.register = async (req, res) => {
 
     if (existingUser) {
       console.log('User already exists:', existingUser.email);
-      return res.status(400).json({ message: 'User already exists with this email or phone' });
+      const conflictField = existingUser.email === email ? 'email' : 'phone number';
+      return res.status(400).json({ message: `An account with this ${conflictField} already exists` });
     }
 
     // ✅ VALIDATE OTP before registration
