@@ -96,6 +96,7 @@ export default function Register() {
       await api.post("auth/register-otp", {
         name: formData.name,
         email: formData.email,
+        phone: formData.phone,
       });
       toast.success("Verification code sent to your email!", { icon: "📧" });
       setStep(1.5);

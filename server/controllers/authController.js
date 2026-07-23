@@ -23,13 +23,18 @@ const generateToken = generateAccessToken;
 
 exports.requestRegistrationOtp = async (req, res) => {
   try {
-    const { name } = req.body;
+    const { name, phone } = req.body;
     const email = req.body.email?.toLowerCase().trim();
     if (!email) return res.status(400).json({ message: 'Email is required' });
 
-    // Check if user already exists
-    const existingUser = await User.findOne({ email });
-    if (existingUser) return res.status(400).json({ message: 'User already exists' });
+    // Check if user already exists (by email or phone)
+    const existingUser = await User.findOne({
+      $or: [{ email }, ...(phone ? [{ phone }] : [])]
+    });
+    if (existingUser) {
+      const conflictField = existingUser.email === email ? 'email' : 'phone number';
+      return res.status(400).json({ message: `An account with this ${conflictField} already exists` });
+    }
 
     // Generate 6-digit code
     const code = Math.floor(100000 + Math.random() * 900000).toString();
