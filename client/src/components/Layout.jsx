@@ -55,7 +55,7 @@ const patientNavItems = [
   { path: "/nutrition", icon: Utensils, label: "Nutrition" },
   { path: "/diet-plan", icon: FileText, label: "Diet Plan" },
   { path: "/glucose-log", icon: Droplet, label: "Glucose Tracking", isDiabeticOnly: true },
-  { path: "/notification-settings", icon: Bell, label: "Notifications" },
+  { path: "/notification-settings", icon: Bell, label: "Notificationss" },
   { path: "/privacy-settings", icon: ShieldCheck, label: "Data & Consent" },
   // { path: "/subscription", icon: Crown, label: "Subscription" }
 ];
