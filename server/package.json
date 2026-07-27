@@ -32,6 +32,8 @@
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.12",
     "pdf-parse": "^1.1.1",
+    "pdfkit": "^0.19.1",
+    "razorpay": "^2.9.8",
     "resend": "^6.9.4",
     "swagger-ui-express": "^5.0.1",
     "uuid": "^13.0.0",

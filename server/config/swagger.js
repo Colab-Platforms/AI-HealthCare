@@ -79,7 +79,7 @@ function buildServers(req) {
 
 const swaggerUiOptions = {
   explorer: true,
-  customSiteTitle: "FitCure / take.health — API Docs",
+  customSiteTitle: "take.health — API Docs",
   customCss: `
     .topbar { background: #0f172a; }
     .swagger-ui .topbar .download-url-wrapper { display: none; }

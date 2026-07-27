@@ -84,7 +84,7 @@ IMPORTANT FORMATTING RULES - Follow these strictly:
 - Do not use excessive exclamation marks, random special characters, or technical jargon.
 - Write in a warm, conversational yet professional tone.
 - Structure long answers with clear sections using simple labels followed by a colon.
-- Never refer to yourself as FitCure. Your name is take.health Coach.`;
+- Never refer to yourself as TakeHealth. Your name is take.health Coach.`;
 
     // Add report context with structured metric data for source citation
     if (userReports && userReports.length > 0) {

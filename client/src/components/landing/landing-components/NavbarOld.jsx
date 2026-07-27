@@ -2,28 +2,31 @@ import { Link, useLocation } from "react-router-dom";
 import { motion } from "framer-motion";
 import { useState, useEffect } from "react";
 
-const NavbarOld = () => {
+const NavbarOld = ({ forceSolid = false }) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const [isScrolled, setIsScrolled] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
   const { pathname } = useLocation();
   const isHomePage = pathname === "/";
+  const isScrolled = forceSolid || scrolled;
 
   useEffect(() => {
+    if (forceSolid) return;
     const handleScroll = () => {
       if (window.scrollY > 20) {
-        setIsScrolled(true);
+        setScrolled(true);
       } else {
-        setIsScrolled(false);
+        setScrolled(false);
       }
     };
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
-  }, []);
+  }, [forceSolid]);
 
   const navLinks = [
     { to: "/", label: "Home" },
     { to: "/about", label: "About Us" },
     { to: "/how-it-works", label: "How It Works" },
+    // { to: "/pricing", label: "Pricing" },
     { to: "/weight-loss", label: "Weight Loss" },
     { to: "/diabetes-landing", label: "Diabetes Management" },
   ];

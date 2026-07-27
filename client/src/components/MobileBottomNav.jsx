@@ -107,6 +107,7 @@ export default function MobileBottomNav() {
   ];
 
   const moreMenuItems = [
+    // { path: '/shop', icon: ShoppingBag, label: 'Shop' },
     { path: '/profile', icon: Settings, label: 'Profile' },
     { path: '/diet-plan', icon: Heart, label: 'Diet Plan' }
   ];

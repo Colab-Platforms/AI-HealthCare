@@ -138,7 +138,7 @@ class EmailService {
       <body>
         <div class="container">
           <div class="header">
-            <div class="logo">FitCure AI</div>
+            <div class="logo">TakeHealth AI</div>
             <h2 style="margin: 0;">Password Reset Request</h2>
           </div>
           <div class="content">
@@ -152,7 +152,7 @@ class EmailService {
             <p class="expiry-note">This code is valid for <span class="highlight">10 minutes</span>. If you didn't request this, you can safely ignore this email.</p>
           </div>
           <div class="footer">
-            <p>&copy; ${new Date().getFullYear()} FitCure AI. All rights reserved.</p>
+            <p>&copy; ${new Date().getFullYear()} TakeHealth AI. All rights reserved.</p>
             <p>Empowering your health journey with AI.</p>
           </div>
         </div>

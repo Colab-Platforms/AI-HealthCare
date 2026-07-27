@@ -1,4 +1,5 @@
 const rateLimit = require('express-rate-limit');
+const { ipKeyGenerator } = rateLimit;
 
 // Brute-force protection for login/signup/OTP/password-reset endpoints
 const authLimiter = rateLimit({
@@ -25,7 +26,7 @@ const apiLimiter = rateLimit({
   max: 200,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.user?._id?.toString() || req.ip, // per-user, not per-IP
+  keyGenerator: (req, res) => req.user?._id?.toString() || ipKeyGenerator(req.ip), // per-user, not per-IP
   message: { success: false, message: 'Too many requests. Please slow down.' },
   skip: (req) => req.method !== 'GET', // only apply to GET requests
 });
@@ -36,7 +37,7 @@ const heavyReadLimiter = rateLimit({
   max: 60,
   standardHeaders: true,
   legacyHeaders: false,
-  keyGenerator: (req) => req.user?._id?.toString() || req.ip,
+  keyGenerator: (req, res) => req.user?._id?.toString() || ipKeyGenerator(req.ip),
   message: { success: false, message: 'Too many requests. Please slow down.' },
 });
 

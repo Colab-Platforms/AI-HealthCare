@@ -1,70 +1,29 @@
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
+import { motion, AnimatePresence } from "framer-motion";
 import { useAuth } from "../context/AuthContext";
 import { subscriptionService } from "../services/api";
-import { Crown, Check, Calendar, CreditCard, Zap, Star } from "lucide-react";
+import { Check, X, ShieldCheck, Loader2, AlertCircle, Download, Receipt } from "lucide-react";
 import GenericSkeleton from "../components/skeletons/GenericSkeleton";
 import SEO from "../hooks/useSEO";
-
-const plans = [
-  {
-    id: "free",
-    name: "Free",
-    price: 0,
-    period: "forever",
-    features: [
-      "1 Report analysis per month",
-      "Basic AI insights",
-      "View doctor listings",
-      "Email support",
-    ],
-    color: "slate",
-    icon: Star,
-  },
-  {
-    id: "basic",
-    name: "Basic",
-    price: 0,
-    period: "month",
-    features: [
-      "5 Report analyses per month",
-      "Full AI analysis with deficiencies",
-      "Personalized diet plans",
-      "Supplement recommendations",
-      "Health trend tracking",
-      "Priority support",
-    ],
-    color: "slate",
-    icon: Zap,
-    popular: true,
-  },
-  {
-    id: "premium",
-    name: "Premium",
-    price: 0,
-    period: "month",
-    features: [
-      "Unlimited report analyses",
-      "Advanced AI insights",
-      "Personalized diet & exercise plans",
-      "Supplement recommendations",
-      "Health trend analytics",
-      "Chat with AI about reports",
-      "Doctor recommendations",
-      "24/7 Priority support",
-    ],
-    color: "slate",
-    icon: Crown,
-  },
-];
+import PricingSection from "../components/landing/PricingSection";
+import { loadRazorpayScript } from "../utils/loadRazorpay";
 
 export default function Subscription() {
   const { user } = useAuth();
   const [subscription, setSubscription] = useState(null);
+  const [dbPlans, setDbPlans] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [billingCycle, setBillingCycle] = useState("monthly");
+  const [selectedPlan, setSelectedPlan] = useState(null);
+  const [cancelling, setCancelling] = useState(false);
+  const [cancelError, setCancelError] = useState("");
+  const [payments, setPayments] = useState([]);
+  const [loadingPayments, setLoadingPayments] = useState(true);
 
   useEffect(() => {
     fetchSubscription();
+    fetchPlans();
+    fetchPayments();
   }, []);
 
   const fetchSubscription = async () => {
@@ -78,169 +37,364 @@ export default function Subscription() {
     }
   };
 
+  const fetchPlans = async () => {
+    try {
+      const { data } = await subscriptionService.getPlans();
+      setDbPlans(data?.plans || []);
+    } catch (error) {
+      console.error("Failed to fetch plans");
+    }
+  };
+
+  const fetchPayments = async () => {
+    setLoadingPayments(true);
+    try {
+      const { data } = await subscriptionService.getMyPayments();
+      setPayments(data?.payments || []);
+    } catch (error) {
+      console.error("Failed to fetch payment history");
+    } finally {
+      setLoadingPayments(false);
+    }
+  };
+
   const currentPlan = subscription?.plan || user?.subscription?.plan || "free";
+  const currentStatus = subscription?.status || user?.subscription?.status || "active";
+  const currentPeriodEnd = subscription?.currentPeriodEnd || user?.subscription?.currentPeriodEnd;
+
+  const handleCancel = async () => {
+    if (!window.confirm("Cancel your subscription? You'll keep access until the current billing period ends.")) return;
+    setCancelling(true);
+    setCancelError("");
+    try {
+      await subscriptionService.cancel();
+      await fetchSubscription();
+    } catch (err) {
+      setCancelError(err?.response?.data?.message || "Couldn't cancel your subscription. Please try again.");
+    } finally {
+      setCancelling(false);
+    }
+  };
 
   if (loading) return <GenericSkeleton />;
 
   return (
-    <div className="w-full mx-auto space-y-8 animate-fade-in">
+    <div className="w-full mx-auto space-y-10 animate-fade-in">
       <SEO pageName="subscription" />
+
       {/* Header */}
-      <div className="text-center">
-        <div className="inline-flex items-center gap-2 bg-white/10 text-white px-4 py-2 rounded-full text-[10px] font-black uppercase tracking-widest mb-4">
-          <Crown className="w-4 h-4" />
-          Subscription Plans
-        </div>
-        <h1 className="text-3xl font-bold text-white mb-2">Choose Your Plan</h1>
-        <p className="text-slate-400 max-w-lg mx-auto">
-          Unlock the full potential of AI-powered health insights with our
-          premium plans
+      <div className="text-center max-w-xl mx-auto">
+        <h1 className="text-3xl md:text-4xl font-black text-landing-text mb-3 font-landing-title">
+          Pricing Plans
+        </h1>
+        <p className="text-landing-text/60 font-landing-body">
+          Track, understand, and act on your health with a plan built for
+          your needs.
         </p>
       </div>
 
-      {/* Current Plan Banner */}
-      <div className="bg-white rounded-2xl p-6 text-black relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-black rounded-full -translate-y-1/2 translate-x-1/2" />
+      {currentPlan !== "free" && (
+        <CurrentPlanCard
+          plan={currentPlan}
+          status={currentStatus}
+          currentPeriodEnd={currentPeriodEnd}
+          autoRenew={subscription?.autoRenew ?? user?.subscription?.autoRenew}
+          cancelling={cancelling}
+          cancelError={cancelError}
+          onCancel={handleCancel}
+        />
+      )}
+
+      <PricingSection currentPlan={currentPlan} onSelectPlan={setSelectedPlan} />
+
+      {!loadingPayments && payments.length > 0 && <PaymentHistory payments={payments} />}
+
+      <CheckoutModal
+        plan={selectedPlan}
+        dbPlans={dbPlans}
+        onClose={() => setSelectedPlan(null)}
+        onSubscribed={() => { fetchSubscription(); fetchPayments(); }}
+      />
+    </div>
+  );
+}
+
+const STATUS_LABELS = {
+  active: { label: "Active", color: "text-green-700 bg-green-100" },
+  past_due: { label: "Payment issue — grace period", color: "text-amber-700 bg-amber-100" },
+  cancelled: { label: "Cancelled", color: "text-red-700 bg-red-100" },
+  expired: { label: "Expired", color: "text-red-700 bg-red-100" },
+  inactive: { label: "Inactive", color: "text-landing-text/50 bg-landing-text/5" },
+};
+
+function CurrentPlanCard({ plan, status, currentPeriodEnd, autoRenew, cancelling, cancelError, onCancel }) {
+  const statusInfo = STATUS_LABELS[status] || STATUS_LABELS.inactive;
+  const canCancel = status === "active";
+
+  return (
+    <div className="max-w-2xl mx-auto bg-white/60 backdrop-blur-xl rounded-[2rem] border border-white/60 shadow-sm p-6">
+      <div className="flex items-center justify-between flex-wrap gap-3">
+        <div>
+          <p className="text-xs text-landing-text/50 uppercase tracking-wider font-semibold mb-1">Current Plan</p>
+          <p className="text-xl font-bold text-landing-text capitalize">{plan}</p>
         </div>
-        <div className="relative flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <div className="w-14 h-14 bg-black/10 backdrop-blur-sm rounded-2xl flex items-center justify-center">
-              <Crown className="w-7 h-7" />
-            </div>
-            <div>
-              <p className="text-black/70 text-sm">Current Plan</p>
-              <h2 className="text-2xl font-bold capitalize">{currentPlan}</h2>
-            </div>
-          </div>
-          <div className="flex items-center gap-6">
-            {subscription?.endDate && (
-              <div className="text-right">
-                <p className="text-black/70 text-sm">Renewal Date</p>
-                <p className="font-semibold">
-                  {new Date(subscription.endDate).toLocaleDateString("en-US", {
-                    month: "long",
-                    day: "numeric",
-                    year: "numeric",
-                  })}
-                </p>
-              </div>
-            )}
-            <div className="flex items-center gap-2 px-4 py-2 bg-black/10 backdrop-blur-sm rounded-xl">
-              <Calendar className="w-4 h-4" />
-              <span className="font-medium capitalize">
-                {subscription?.status || "Active"}
-              </span>
-            </div>
-          </div>
-        </div>
+        <span className={`text-xs font-bold px-3 py-1.5 rounded-full ${statusInfo.color}`}>
+          {statusInfo.label}
+        </span>
       </div>
 
-      {/* Billing Toggle */}
-      <div className="flex justify-center">
-        <div className="flex items-center gap-3 p-1 bg-slate-800 rounded-xl">
-          <button
-            onClick={() => setBillingCycle("monthly")}
-            className={`px-6 py-2.5 rounded-lg font-medium transition-all ${billingCycle === "monthly" ? "bg-white text-black" : "text-slate-400"}`}
-          >
-            Monthly
-          </button>
-          <button
-            onClick={() => setBillingCycle("yearly")}
-            className={`px-6 py-2.5 rounded-lg font-medium transition-all flex items-center gap-2 ${billingCycle === "yearly" ? "bg-white text-black" : "text-slate-400"}`}
-          >
-            Yearly
-            <span className="text-[10px] bg-black text-white px-2 py-0.5 rounded-full font-black uppercase tracking-widest">
-              Save 20%
-            </span>
-          </button>
+      {currentPeriodEnd && (
+        <p className="text-sm text-landing-text/60 mt-3">
+          {status === "cancelled" ? "Access ends" : "Renews"} on{" "}
+          {new Date(currentPeriodEnd).toLocaleDateString("en-IN", { day: "numeric", month: "long", year: "numeric" })}
+        </p>
+      )}
+
+      {status === "past_due" && (
+        <div className="flex items-start gap-2 mt-4 bg-amber-50 text-amber-800 text-xs rounded-xl p-3">
+          <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+          Your last payment didn't go through. Please update your payment method to avoid losing access.
         </div>
+      )}
+
+      {cancelError && (
+        <p className="text-xs text-red-600 bg-red-50 rounded-xl p-3 mt-4">{cancelError}</p>
+      )}
+
+      {canCancel && (
+        <button
+          onClick={onCancel}
+          disabled={cancelling}
+          className="mt-5 text-sm font-semibold text-red-600 hover:text-red-700 disabled:opacity-60 flex items-center gap-2"
+        >
+          {cancelling && <Loader2 className="w-4 h-4 animate-spin" />}
+          {cancelling ? "Cancelling…" : "Cancel subscription"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+const PAYMENT_STATUS_LABELS = {
+  paid: { label: "Paid", color: "text-green-700 bg-green-100" },
+  failed: { label: "Failed", color: "text-red-700 bg-red-100" },
+  created: { label: "Pending", color: "text-amber-700 bg-amber-100" },
+  authenticated: { label: "Pending", color: "text-amber-700 bg-amber-100" },
+  refunded: { label: "Refunded", color: "text-landing-text/50 bg-landing-text/5" },
+};
+
+function PaymentHistory({ payments }) {
+  const [downloadingId, setDownloadingId] = useState(null);
+  const [downloadError, setDownloadError] = useState("");
+
+  const handleDownload = async (payment) => {
+    setDownloadError("");
+    setDownloadingId(payment._id);
+    try {
+      const response = await subscriptionService.downloadInvoice(payment._id);
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${payment.invoiceNumber || "invoice"}.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setDownloadError("Couldn't download the invoice. Please try again.");
+    } finally {
+      setDownloadingId(null);
+    }
+  };
+
+  return (
+    <div className="max-w-2xl mx-auto bg-white/60 backdrop-blur-xl rounded-[2rem] border border-white/60 shadow-sm p-6">
+      <div className="flex items-center gap-2 mb-4">
+        <Receipt className="w-4 h-4 text-landing-text/50" />
+        <p className="text-sm font-bold text-landing-text">Payment History</p>
       </div>
 
-      {/* Plans Grid */}
-      <div className="grid md:grid-cols-3 gap-6">
-        {plans.map((plan) => {
-          const Icon = plan.icon;
-          const isCurrentPlan = currentPlan === plan.id;
-          const price =
-            billingCycle === "yearly"
-              ? Math.round(plan.price * 12 * 0.8)
-              : plan.price;
+      {downloadError && (
+        <p className="text-xs text-red-600 bg-red-50 rounded-xl p-3 mb-3">{downloadError}</p>
+      )}
+
+      <div className="space-y-2">
+        {payments.map((p) => {
+          const statusInfo = PAYMENT_STATUS_LABELS[p.status] || PAYMENT_STATUS_LABELS.created;
+          const canDownload = p.status === "paid" && !!p.invoiceNumber;
+          const isDownloading = downloadingId === p._id;
 
           return (
             <div
-              key={plan.id}
-              className={`bg-[#111827] rounded-2xl border p-6 relative ${plan.popular ? "border-white" : "border-slate-700"} ${isCurrentPlan ? "ring-2 ring-white ring-offset-2 ring-offset-[#0a0f1a]" : ""}`}
+              key={p._id}
+              className="flex items-center justify-between gap-3 p-3.5 bg-white/60 rounded-2xl border border-white/60"
             >
-              {plan.popular && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
-                  <span className="bg-white text-black text-[10px] font-black uppercase tracking-widest px-4 py-1.5 rounded-full shadow-lg">
-                    Most Popular
-                  </span>
-                </div>
-              )}
-
-              <div className="text-center mb-6 pt-2">
-                <div
-                  className={`w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center bg-white/10`}
-                >
-                  <Icon className={`w-7 h-7 text-white`} />
-                </div>
-                <h3 className="text-xl font-bold text-white">{plan.name}</h3>
-                <div className="mt-4">
-                  <span className="text-4xl font-bold text-white">
-                    ₹{price}
-                  </span>
-                  <span className="text-slate-400">
-                    /{billingCycle === "yearly" ? "year" : plan.period}
-                  </span>
-                </div>
+              <div className="min-w-0">
+                <p className="text-sm font-semibold text-landing-text capitalize truncate">
+                  {p.plan?.name || "Plan"} · {p.plan?.billingCycle || ""}
+                </p>
+                <p className="text-xs text-landing-text/50">
+                  {new Date(p.createdAt).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}
+                  {" · "}₹{p.amount}
+                </p>
               </div>
 
-              <ul className="space-y-3 mb-8">
-                {plan.features.map((feature, i) => (
-                  <li key={i} className="flex items-start gap-3 text-sm">
-                    <div
-                      className={`w-5 h-5 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0 mt-0.5`}
-                    >
-                      <Check className={`w-3 h-3 text-white`} />
-                    </div>
-                    <span className="text-slate-400">{feature}</span>
-                  </li>
-                ))}
-              </ul>
-
-              <button
-                className={`w-full py-3 rounded-xl font-bold uppercase tracking-widest text-xs transition-all ${isCurrentPlan ? "bg-slate-800 text-slate-500 cursor-not-allowed" : plan.popular ? "bg-white text-black hover:bg-slate-200" : "border-2 border-slate-700 text-slate-300 hover:border-white hover:text-white"}`}
-                disabled={isCurrentPlan}
-              >
-                {isCurrentPlan
-                  ? "Current Plan"
-                  : plan.price === 0
-                    ? "Downgrade"
-                    : "Upgrade Now"}
-              </button>
+              <div className="flex items-center gap-3 shrink-0">
+                <span className={`text-[10px] font-bold px-2.5 py-1 rounded-full ${statusInfo.color}`}>
+                  {statusInfo.label}
+                </span>
+                {canDownload && (
+                  <button
+                    onClick={() => handleDownload(p)}
+                    disabled={isDownloading}
+                    className="p-2 text-landing-text/50 hover:text-landing-primary hover:bg-landing-primary/10 rounded-xl transition-all disabled:opacity-60"
+                    title="Download invoice"
+                  >
+                    {isDownloading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+                  </button>
+                )}
+              </div>
             </div>
           );
         })}
       </div>
-
-      {/* FAQ / Info */}
-      <div className="bg-[#111827] rounded-2xl border border-slate-700 p-6">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center flex-shrink-0">
-            <CreditCard className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h3 className="font-bold text-white mb-2">Secure Payment</h3>
-            <p className="text-slate-400 text-sm">
-              All payments are processed securely. You can upgrade, downgrade,
-              or cancel your subscription at any time. Changes take effect
-              immediately and unused time is prorated.
-            </p>
-          </div>
-        </div>
-      </div>
     </div>
+  );
+}
+
+function CheckoutModal({ plan, dbPlans, onClose, onSubscribed }) {
+  const [paying, setPaying] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    setError("");
+  }, [plan]);
+
+  const dbPlan = plan
+    ? dbPlans.find((p) => p.key === plan.id && p.billingCycle === plan.billingCycle)
+    : null;
+
+  const handlePay = async () => {
+    if (!dbPlan) {
+      setError("This plan isn't available for checkout right now. Please try again shortly.");
+      return;
+    }
+    setPaying(true);
+    setError("");
+    try {
+      const scriptLoaded = await loadRazorpayScript();
+      if (!scriptLoaded) {
+        setError("Couldn't load the payment widget. Check your connection and try again.");
+        return;
+      }
+
+      const { data } = await subscriptionService.subscribe(dbPlan._id);
+
+      const rzp = new window.Razorpay({
+        key: data.razorpayKeyId,
+        order_id: data.razorpayOrderId,
+        name: "take.health",
+        description: `${data.plan.name} Plan — ${data.plan.billingCycle}`,
+        theme: { color: "#014343" },
+        handler: () => {
+          // Access is granted by the webhook, not this callback — just refresh state.
+          onSubscribed?.();
+          onClose();
+        },
+        modal: {
+          ondismiss: () => setPaying(false),
+        },
+      });
+      rzp.open();
+    } catch (err) {
+      setError(err?.response?.data?.message || "Something went wrong. Please try again.");
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  return createPortal(
+    <AnimatePresence>
+      {plan && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-landing-text/40 backdrop-blur-sm z-[200]"
+          />
+          <motion.div
+            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+            className="fixed inset-0 z-[201] flex items-center justify-center p-4"
+          >
+            <div className="bg-white/90 backdrop-blur-2xl rounded-[2rem] border border-white/60 shadow-2xl max-w-md w-full overflow-hidden">
+              <div className="flex items-center justify-between p-6 border-b border-landing-text/10">
+                <h2 className="text-lg font-bold text-landing-text">Confirm your plan</h2>
+                <button
+                  onClick={onClose}
+                  className="p-2 hover:bg-landing-text/5 rounded-xl transition-colors"
+                >
+                  <X className="w-5 h-5 text-landing-text/50" />
+                </button>
+              </div>
+
+              <div className="p-6 space-y-6">
+                <div className="flex items-center justify-between bg-landing-accent-bg rounded-2xl p-4">
+                  <div>
+                    <p className="text-landing-text font-bold capitalize">{plan.name} Plan</p>
+                    <p className="text-landing-text/50 text-xs capitalize">{plan.billingCycle} billing</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-2xl font-bold text-landing-primary">₹{plan.price}</p>
+                    <p className="text-landing-text/50 text-xs">/month</p>
+                    {plan.billingCycle === "yearly" && (
+                      <p className="text-landing-text/50 text-[11px] mt-0.5">
+                        Billed ₹{plan.price * 12}/year
+                      </p>
+                    )}
+                  </div>
+                </div>
+
+                <ul className="space-y-2">
+                  {plan.features.slice(0, 4).map((feature, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-landing-text/70">
+                      <Check className="w-4 h-4 text-landing-primary flex-shrink-0 mt-0.5" />
+                      {feature}
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="flex items-start gap-3 bg-landing-text/5 rounded-2xl p-4">
+                  <ShieldCheck className="w-5 h-5 text-landing-text/40 flex-shrink-0 mt-0.5" />
+                  <p className="text-xs text-landing-text/50">
+                    Payments are processed securely via Razorpay. This is a one-time
+                    payment for the {plan.billingCycle} period — we'll remind you
+                    before it's time to renew.
+                  </p>
+                </div>
+
+                {error && (
+                  <p className="text-xs text-red-600 bg-red-50 rounded-xl p-3">{error}</p>
+                )}
+
+                <button
+                  onClick={handlePay}
+                  disabled={paying}
+                  className="w-full py-3.5 rounded-2xl font-bold text-sm bg-landing-primary text-white hover:bg-landing-primary-hover transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+                >
+                  {paying && <Loader2 className="w-4 h-4 animate-spin" />}
+                  {paying ? "Opening secure checkout…" : "Pay with Razorpay"}
+                </button>
+              </div>
+            </div>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>,
+    document.body
   );
 }

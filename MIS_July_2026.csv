@@ -1,0 +1,43 @@
+S.No,Date,Task Description,Developer,Est. Time,Status
+1,01-07-2026,Set up new APK build configuration and generated first build,Amish Singh,3.0h,Completed
+2,01-07-2026,Fixed APK issues found after initial install testing,Amish Singh,2.0h,Completed
+3,01-07-2026,Fixed general UI issues across app screens,Amish Singh,2.0h,Completed
+4,02-07-2026,Investigated vault data issue and identified root cause,Amish Singh,3.5h,Completed
+5,02-07-2026,Implemented fix for vault issue,Amish Singh,1.5h,Completed
+6,02-07-2026,Documented fix and updated internal runbook,Amish Singh,2.0h,Completed
+7,03-07-2026,Conducted extended APK testing across additional Android device models,Amish Singh,2.5h,Completed
+8,03-07-2026,Reviewed user-reported issues and triaged priority for vault module,Amish Singh,2.0h,Completed
+9,03-07-2026,Coordinated with support team on reported vault symptoms,Amish Singh,1.0h,Completed
+10,03-07-2026,Polished mobile UI consistency across device sizes,Amish Singh,1.5h,Completed
+11,04-07-2026,Reproduced and fixed sidebar display issue on mobile view,Amish Singh,2.5h,Completed
+12,04-07-2026,Cross-checked sidebar fix across multiple phone screen sizes,Amish Singh,1.0h,Completed
+13,04-07-2026,Fixed miscellaneous bugs reported during regression testing,Amish Singh,2.0h,Completed
+14,04-07-2026,Triaged additional bugs reported from mobile testing,Amish Singh,1.5h,Completed
+15,06-07-2026 to 08-07-2026,On Leave — heavy rainfall/waterlogging in the city; unable to reach office,Amish Singh,—,Leave
+16,09-07-2026,Drafted database schema for subscription plans,Amish Singh,2.0h,Completed
+17,09-07-2026,Planned API contract for subscription plan module,Amish Singh,1.5h,Completed
+18,09-07-2026,Reviewed schema design with team lead,Amish Singh,1.0h,Completed
+19,09-07-2026,Documented finalized API contract,Amish Singh,1.0h,Completed
+20,09-07-2026,Gathered requirements for subscription plan feature,Amish Singh,1.5h,Completed
+21,10-07-2026,Started backend module for subscription plan handling,Amish Singh,2.5h,Completed
+22,10-07-2026,Researched pricing tier structures for subscription model,Amish Singh,2.0h,Completed
+23,10-07-2026,Set up backend project structure for subscription module,Amish Singh,1.5h,Completed
+24,10-07-2026,Ran initial testing of tier mapping logic,Amish Singh,1.0h,Completed
+25,11-07-2026,"Researched and finalized tech stack for AI Content Factory Engine pipeline (Supabase + pgvector, Jina Reader, Claude API, Voyage/OpenAI embeddings, Remotion, Next.js)",Amish Singh,3.0h,Completed
+26,11-07-2026,Designed end-to-end 11-stage pipeline architecture and flow diagram (half day - 2nd Saturday),Amish Singh,2.5h,Completed
+27,14-07-2026,Built Stage 1-2: input collection form and Jina Reader web-scraping integration,Amish Singh,2.5h,Completed
+28,14-07-2026,"Built Stage 3: Claude-based structuring of raw product input into structured JSON (ingredients, USP, tone)",Amish Singh,2.5h,Completed
+29,14-07-2026,Implemented missing-field/confidence flagging so pipeline pauses on incomplete data,Amish Singh,2.0h,Completed
+30,15-07-2026,Updated app/site branding name across components,Amish Singh,1.5h,Completed
+31,15-07-2026,Verified name change reflected correctly on all pages,Amish Singh,1.0h,Completed
+32,15-07-2026,Updated marketing/legal docs with new branding,Amish Singh,2.0h,Completed
+33,15-07-2026,Checked SEO metadata and notified stakeholders of branding update,Amish Singh,1.5h,Completed
+34,16-07-2026,Built Stage 4 (optional/non-blocking trend-fetching) and Stage 5 embedding pipeline (Voyage AI),Amish Singh,3.5h,Completed
+35,16-07-2026,Integrated Supabase pgvector similarity search across ~900-1000 historical creative rows,Amish Singh,3.5h,Completed
+36,17-07-2026,Built Stage 6: Claude-based script generation (hook/body/CTA) and visual-tag creation with keyword guardrails,Amish Singh,2.5h,Completed
+37,17-07-2026,Built Stage 7: independent compliance-audit pass (Claude Haiku) against banned-words/claims list,Amish Singh,2.5h,Completed
+38,17-07-2026,Researched competitor pricing and plan structures for subscription tiers,Amish Singh,2.0h,Completed
+39,20-07-2026,Reviewed Fastrr/Shopify API documentation for integration approach,Amish Singh,2.0h,In Progress
+40,20-07-2026,Set up sandbox/test credentials for Fastrr,Amish Singh,2.0h,In Progress
+41,20-07-2026,"Built Stage 8-9: Pexels/Pixabay asset sourcing with Claude Vision ranking, and Remotion-based video rendering — working end-to-end through video generation",Amish Singh,1.5h,Completed
+42,20-07-2026,Evaluated paid voice/TTS API options needed for higher-quality narration — blocked pending budget approval,Amish Singh,1.5h,In Progress

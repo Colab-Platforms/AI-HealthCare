@@ -21,6 +21,7 @@ const ReportAnalysisMobile = lazy(() => import("./pages/ReportAnalysisMobile"));
 const Profile = lazy(() => import("./pages/Profile"));
 const AdminDashboard = lazy(() => import("./pages/AdminDashboard"));
 const Subscription = lazy(() => import("./pages/Subscription"));
+// const Shop = lazy(() => import("./pages/Shop"));
 
 const DietPlan = lazy(() => import("./pages/DietPlan"));
 const AIChat = lazy(() => import("./pages/AIChat"));
@@ -40,6 +41,7 @@ const AdminFoodCache = lazy(() => import("./pages/AdminFoodCache"));
 const AdminActivity = lazy(() => import("./pages/UserActivity"));
 const AdminSupport = lazy(() => import("./pages/AdminSupport"));
 const AdminAIUsage = lazy(() => import("./pages/AdminAIUsage"));
+// const AdminSubscriptions = lazy(() => import("./pages/AdminSubscriptions"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 const PrivacySettings = lazy(() => import("./pages/PrivacySettings"));
 
@@ -376,6 +378,25 @@ export default function PrivateApp() {
                   </ProtectedRoute>
                 }
               />
+              {/* <Route
+                path="/shop"
+                element={
+                  <ProtectedRoute
+                    allowedRoles={[
+                      "user",
+                      "patient",
+                      "client",
+                      "admin",
+                      "doctor",
+                      "superadmin",
+                    ]}
+                  >
+                    <Layout>
+                      <Shop />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              /> */}
               <Route
                 path="/diet-plan"
                 element={
@@ -634,6 +655,16 @@ export default function PrivateApp() {
                   </AdminRoute>
                 }
               />
+              {/* <Route
+                path="/admin/subscriptions"
+                element={
+                  <AdminRoute>
+                    <Layout isAdmin>
+                      <AdminSubscriptions />
+                    </Layout>
+                  </AdminRoute>
+                }
+              /> */}
 
               <Route
                 path="/onboarding"

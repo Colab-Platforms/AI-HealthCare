@@ -13,6 +13,9 @@ const {
 } = require('../controllers/adminController');
 const { getDoctorScheduleOverview } = require('../controllers/doctorController');
 const {
+  getSubscribers, getPayments, getRevenueSummary, overrideSubscription, getPaymentInvoice
+} = require('../controllers/adminSubscriptionController');
+const {
   getSummary, getCostOverTime, getByFeature, getByModel,
   getByUser, getLogs, getCacheStats, getBudgetStatus
 } = require('../controllers/usageController');
@@ -32,6 +35,13 @@ router.use(protect, authorize('admin', 'superadmin'));
 
 // Dashboard & Stats
 router.get('/stats', getReportStats);
+
+// Subscription Management
+router.get('/subscriptions', getSubscribers);
+router.get('/subscriptions/payments', getPayments);
+router.get('/subscriptions/payments/:paymentId/invoice', getPaymentInvoice);
+router.get('/subscriptions/revenue', getRevenueSummary);
+router.patch('/subscriptions/:userId/override', authorize('superadmin'), overrideSubscription);
 
 // User Management
 router.get('/users', getAllUsers);

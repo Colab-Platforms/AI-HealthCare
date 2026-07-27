@@ -19,6 +19,7 @@ import WeightLossLanding from "./pages/WeightLossLanding";
 
 const ForgotPassword = lazy(() => import("./pages/ForgotPassword"));
 const HowItWorks = lazy(() => import("./pages/HowItWorks"));
+// const Pricing = lazy(() => import("./pages/Pricing"));
 const AboutUs = lazy(() => import("./pages/AboutUs"));
 const TermsAndCondition = lazy(() => import("./pages/TermsAndCondition"));
 const PrivacyPolicy = lazy(() => import("./pages/PrivacyPolicy"));
@@ -108,6 +109,7 @@ export default function App() {
           <Route path="/login" element={getLoginRedirect()} />
           <Route path="/register" element={<Register />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
+          {/* <Route path="/pricing" element={<Pricing />} /> */}
           <Route path="/terms-and-conditions" element={<TermsAndCondition />} />
           <Route path="/privacy-policy" element={<PrivacyPolicy />} />
           <Route

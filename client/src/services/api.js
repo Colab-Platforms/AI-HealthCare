@@ -273,6 +273,13 @@ export const adminService = {
   approveDietPlan: (id, status) => api.patch(`admin/diet-plans/${id}/approve`, { status }),
   deleteDietPlan: (id) => api.delete(`admin/diet-plans/${id}`),
 
+  // Subscriptions & Billing
+  getSubscribers: (params) => api.get('admin/subscriptions', { params }),
+  getSubscriptionPayments: (params) => api.get('admin/subscriptions/payments', { params }),
+  getRevenueSummary: () => api.get('admin/subscriptions/revenue'),
+  overrideSubscription: (userId, data) => api.patch(`admin/subscriptions/${userId}/override`, data),
+  downloadPaymentInvoice: (paymentId) => api.get(`admin/subscriptions/payments/${paymentId}/invoice`, { responseType: 'blob' }),
+
   // Doctors Management
   getDoctors: (params) => api.get('admin/doctors', { params }),
   createDoctor: (data) => api.post('admin/doctors', data),
@@ -320,7 +327,12 @@ export const fcmService = {
 };
 
 export const subscriptionService = {
-  getSubscription: () => api.get('auth/subscription')
+  getSubscription: () => api.get('auth/subscription'),
+  getPlans: () => api.get('subscription/plans'),
+  subscribe: (planId) => api.post('subscription/subscribe', { planId }),
+  cancel: () => api.post('subscription/cancel'),
+  getMyPayments: () => api.get('subscription/payments'),
+  downloadInvoice: (paymentId) => api.get(`subscription/invoice/${paymentId}`, { responseType: 'blob' }),
 };
 
 export const nutritionService = {

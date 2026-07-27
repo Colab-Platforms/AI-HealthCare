@@ -90,7 +90,7 @@ app.use(
       // Allow Vercel frontend domains
       if (
         origin.includes(".vercel.app") ||
-        origin.includes("fitcure") ||
+        origin.includes("takehealth") ||
         origin.includes("healthcare")
       ) {
         return callback(null, true);
@@ -223,7 +223,7 @@ app.get("/api/health-check", async (req, res) => {
 
   res.json({
     status: "ok",
-    message: "FitCure API",
+    message: "TakeHealth API",
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
     dbConnected,
@@ -310,6 +310,8 @@ try {
     { path: "/api/privacy",   module: "./routes/privacyRoutes" },
     { path: "/api/activity", module: "./routes/activityRoutes" },
     { path: "/api/support", module: "./routes/supportRoutes" },
+    { path: "/api/subscription", module: "./routes/subscriptionRoutes" },
+    { path: "/", module: "./routes/fastrrRoutes" }, // Fastrr scaffolding: /shiprocket/*, /api/checkout/start, /api/fastrr/webhook
     { path: "/api", module: "./routes/sitemapRoutes" }, // SEO: sitemap & robots
     { path: "/api", module: "./routes/chatRoutes" }, // 🔚 Generic catch-all goes last
   ];
@@ -351,7 +353,7 @@ app.use((req, res) => {
     `[404 NOT FOUND] ${req.method} ${req.originalUrl} | Host: ${req.headers.host} | UserAgent: ${req.headers["user-agent"]}`,
   );
   res.status(404).json({
-    message: "Route not found in FitCure API",
+    message: "Route not found in TakeHealth API",
     requestedPath: req.originalUrl,
     hint: "Check if the path starts with /api",
   });
@@ -385,6 +387,20 @@ if (!process.env.VERCEL) {
   cron.schedule('0 0 * * *', async () => {
     console.log('🗑️ Running DPDPA deletion cron...');
     await runDeletionCron();
+  });
+
+  // Subscription Lifecycle — expiry downgrade + past_due grace period, midnight daily
+  const { runSubscriptionLifecycleCron, runRenewalReminderCron } = require('./services/subscriptionLifecycleService');
+  cron.schedule('0 0 * * *', async () => {
+    console.log('💳 Running subscription lifecycle cron...');
+    await runSubscriptionLifecycleCron();
+  });
+
+  // Manual-renewal reminder — one-time-payment flow has no auto-renew, so remind users
+  // a few days before currentPeriodEnd. Runs at 9 AM daily.
+  cron.schedule('0 9 * * *', async () => {
+    console.log('📧 Running subscription renewal reminder cron...');
+    await runRenewalReminderCron();
   });
 
   // Follow-up Nudges — every night at 10 PM

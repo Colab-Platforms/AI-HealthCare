@@ -49,13 +49,15 @@ import GamificationMiniBadge from "./GamificationMiniBadge";
 
 const patientNavItems = [
   { path: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
+  // { path: "/shop", icon: ShoppingBag, label: "Shop" },
   { path: "/complete-analysis", icon: TrendingUp, label: "Analysis" },
   { path: "/reports", icon: ShieldCheck, label: "Medical Records" },
   { path: "/nutrition", icon: Utensils, label: "Nutrition" },
   { path: "/diet-plan", icon: FileText, label: "Diet Plan" },
   { path: "/glucose-log", icon: Droplet, label: "Glucose Tracking", isDiabeticOnly: true },
   { path: "/notification-settings", icon: Bell, label: "Notifications" },
-  { path: "/privacy-settings", icon: ShieldCheck, label: "Data & Consent" }
+  { path: "/privacy-settings", icon: ShieldCheck, label: "Data & Consent" },
+  // { path: "/subscription", icon: Crown, label: "Subscription" }
 ];
 
 const doctorNavItems = [
@@ -469,6 +471,7 @@ export default function Layout({
                       { icon: FileText, label: "Medical Records", action: () => navigate("/medical-vault") },
                       { icon: TrendingUp, label: "Progress Reports", action: () => navigate("/complete-analysis") },
                       { icon: ShieldCheck, label: "Data & Consent", action: () => navigate("/privacy-settings") },
+                      // { icon: Crown, label: "Subscription", action: () => navigate("/subscription") },
                       { icon: ScrollText, label: "Terms & Conditions", action: () => window.open("https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Terrms_and_Conditions_take.health_revised.pdf?v=1776407779", "_blank") },
                       { icon: Shield, label: "Privacy Policy", action: () => window.open("https://cdn.shopify.com/s/files/1/0636/5226/6115/files/take_health_privacy_policy.pdf?v=1776407816", "_blank") },
                     ].map(({ icon: Icon, label, action }, i) => (

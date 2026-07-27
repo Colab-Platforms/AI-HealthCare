@@ -113,10 +113,16 @@ const userSchema = new mongoose.Schema({
   },
   subscription: {
     plan: { type: String, enum: ['free', 'basic', 'premium'], default: 'free' },
-    status: { type: String, enum: ['active', 'inactive', 'expired'], default: 'active' },
+    status: { type: String, enum: ['active', 'inactive', 'expired', 'past_due', 'cancelled'], default: 'active' },
+    billingCycle: { type: String, enum: ['monthly', 'yearly'], default: 'monthly' },
     startDate: Date,
     endDate: Date,
-    autoRenew: { type: Boolean, default: false }
+    currentPeriodEnd: Date, // authoritative expiry check, independent of `status` webhook lag
+    statusUpdatedAt: Date, // when `status` last changed — used to time out the past_due grace period
+    autoRenew: { type: Boolean, default: false },
+    razorpayCustomerId: String,
+    razorpaySubscriptionId: String, // only set if the account is on the Subscriptions (auto-renew) flow
+    renewalReminderSentAt: Date, // dedupes the manual-renewal reminder email while on the one-time-payment flow
   },
   healthMetrics: {
     bmi: Number,
