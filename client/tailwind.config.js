@@ -72,10 +72,13 @@ export default {
         },
       },
       fontFamily: {
-        "landing-title": ["Montserrat", "sans-serif"],
+        "brand-logo": ['"Vipnagorgialla"', '"ABC Diatype Expanded Unlicensed Trial"', '"Space Grotesk"', "sans-serif"],
+        "landing-title": ['"ABC Diatype Expanded Unlicensed Trial"', '"Syne"', '"Space Grotesk"', "sans-serif"],
+        "diatype-expanded": ['"ABC Diatype Expanded Unlicensed Trial"', '"Syne"', '"Space Grotesk"', "sans-serif"],
         "landing-body": ["DM Sans", "sans-serif"],
         "landing-accent": ["DM Sans", "sans-serif"],
         "landing-accent-2": ["Montserrat", "sans-serif"],
+        "Founders-Grotesk": ['"Founders Grotesk"', '"Founders-Grotesk"', '"Space Grotesk"', "sans-serif"],
         sans: ["Montserrat", "sans-serif"],
       },
       boxShadow: {

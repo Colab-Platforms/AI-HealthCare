@@ -13,6 +13,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import LandingPage from "./pages/LandingPage";
 import NewLandingPage from "./pages/NewLandingPage";
+import UpdatedLandingPage from "./pages/UpdatedLandingPage";
 import HelpWidget from "./components/HelpWidget";
 import DiabetesLanding from "./pages/DiabetesLanding";
 import WeightLossLanding from "./pages/WeightLossLanding";
@@ -78,6 +79,14 @@ export default function App() {
             element={
               <SmoothScrollLayout>
                 <NewLandingPage />
+              </SmoothScrollLayout>
+            }
+          />
+          <Route
+            path="/updated-landing"
+            element={
+              <SmoothScrollLayout>
+                <UpdatedLandingPage />
               </SmoothScrollLayout>
             }
           />

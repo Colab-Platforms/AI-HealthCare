@@ -273,6 +273,7 @@ export default function Profile() {
     const gender = formData.profile.gender;
 
     if (!currentWeight || !height || !age || !gender) {
+      console.log( `Missing required personal info: weight=${currentWeight}, height=${height}, age=${age}, gender=${gender}`)
       toast.error(
         "Please fill your weight, height, age and gender in Personal Info before setting a goal.",
       );
