@@ -412,26 +412,55 @@ exports.login = async (req, res) => {
 // @route   POST /api/auth/google
 exports.googleAuth = async (req, res) => {
   try {
-    const { accessToken } = req.body;
-    if (!accessToken) return res.status(400).json({ message: 'Google access token is required' });
+    // Web (GoogleSignInButton.jsx) sends an OAuth2 access token via
+    // google.accounts.oauth2. The mobile app (native Google Sign-In SDK)
+    // sends an ID token (JWT) instead — a different token type that needs
+    // a different Google verification endpoint. Support both.
+    const { accessToken, idToken } = req.body;
+    if (!accessToken && !idToken) {
+      return res.status(400).json({ message: 'A Google access token or ID token is required' });
+    }
 
     let tokenInfo;
     let profile;
     try {
-      const [tokenInfoRes, profileRes] = await Promise.all([
-        axios.get('https://oauth2.googleapis.com/tokeninfo', { params: { access_token: accessToken } }),
-        axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
-          headers: { Authorization: `Bearer ${accessToken}` }
-        })
-      ]);
-      tokenInfo = tokenInfoRes.data;
-      profile = profileRes.data;
+      if (idToken) {
+        const { data } = await axios.get('https://oauth2.googleapis.com/tokeninfo', { params: { id_token: idToken } });
+        tokenInfo = data;
+        // ID tokens already carry profile claims (with the openid/email/profile scopes) — no extra call needed.
+        profile = { email: data.email, sub: data.sub, name: data.name, picture: data.picture };
+      } else {
+        const [tokenInfoRes, profileRes] = await Promise.all([
+          axios.get('https://oauth2.googleapis.com/tokeninfo', { params: { access_token: accessToken } }),
+          axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${accessToken}` }
+          })
+        ]);
+        tokenInfo = tokenInfoRes.data;
+        profile = profileRes.data;
+      }
     } catch (verifyError) {
       console.error('Google token verification failed:', verifyError.response?.data || verifyError.message);
       return res.status(401).json({ message: 'Invalid Google token' });
     }
 
-    if (tokenInfo.aud !== process.env.GOOGLE_CLIENT_ID) {
+    // GOOGLE_CLIENT_ID may hold a single client ID or a comma-separated list
+    // (web, iOS, Android each get their own client ID in Google Cloud Console —
+    // an ID token's audience will be whichever one issued it).
+    const allowedClientIds = (process.env.GOOGLE_CLIENT_ID || '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+
+    // Access-token tokeninfo responses identify the requesting client via
+    // `azp` (authorized party); `aud` isn't always populated the same way
+    // an ID token's `aud` claim is. Check both.
+    const receivedAud = tokenInfo.aud || null;
+    const receivedAzp = tokenInfo.azp || null;
+    const audienceOk = allowedClientIds.includes(receivedAud) || allowedClientIds.includes(receivedAzp);
+
+    if (!audienceOk) {
+      console.log('Google token audience mismatch — receivedAud:', receivedAud, 'receivedAzp:', receivedAzp, 'expected (one of):', allowedClientIds);
       return res.status(401).json({ message: 'Google token audience mismatch' });
     }
 
