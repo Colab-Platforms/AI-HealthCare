@@ -772,6 +772,62 @@ exports.getSubscription = async (req, res) => {
   }
 };
 
+// @desc    Change password for a logged-in user (Profile > Account Details)
+// @route   POST /api/auth/change-password
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Current password and new password are required' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'New password must be at least 6 characters long' });
+    }
+
+    const user = await User.findById(req.user._id).maxTimeMS(15000);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Google-only accounts have a random, never-shared password — there's
+    // nothing real for the user to "verify" here.
+    if (user.authProvider === 'google') {
+      return res.status(400).json({ message: 'This account uses Google Sign-In and has no password to change' });
+    }
+
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      // 400, not 401 — this is a wrong-input error, not an invalid/expired
+      // auth token. The global axios interceptor treats any 401 as "your
+      // session is dead" and force-logs the user out, which would silently
+      // swallow this message before it ever reaches the UI.
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({ message: 'New password must be different from your current password' });
+    }
+
+    user.password = newPassword; // hashed by the pre-save hook
+    await user.save();
+
+    // Revoke all other sessions — force re-login everywhere except this device
+    await RefreshToken.deleteMany({ userId: user._id });
+
+    await logActivity(user._id, 'PASSWORD_CHANGED', 'authentication', {}, req);
+
+    // Security alert email — fire-and-forget so a slow/down SMTP server
+    // never delays this response.
+    require('../services/emailService').sendPasswordChangedAlert(user.email, user.name).catch((e) => {
+      console.error('Failed to send password-changed alert email:', e.message);
+    });
+
+    res.json({ message: 'Password changed successfully. Please log in again on your other devices.' });
+  } catch (error) {
+    console.error('Change password error:', error.message);
+    res.status(500).json({ message: 'Failed to change password. Please try again.' });
+  }
+};
+
 // Admin only - create admin user
 exports.createAdmin = async (req, res) => {
   try {

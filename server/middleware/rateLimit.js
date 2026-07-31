@@ -41,4 +41,17 @@ const heavyReadLimiter = rateLimit({
   message: { success: false, message: 'Too many requests. Please slow down.' },
 });
 
-module.exports = { authLimiter, aiLimiter, apiLimiter, heavyReadLimiter };
+// Sensitive account actions (change password, etc.) — an attacker who steals
+// an access token could otherwise brute-force the current password with
+// unlimited attempts. Keyed per-user (not per-IP) since the request is
+// already authenticated, so switching IPs doesn't reset the counter.
+const sensitiveActionLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req, res) => req.user?._id?.toString() || ipKeyGenerator(req.ip),
+  message: { success: false, message: 'Too many attempts. Please try again in a few minutes.' },
+});
+
+module.exports = { authLimiter, aiLimiter, apiLimiter, heavyReadLimiter, sensitiveActionLimiter };

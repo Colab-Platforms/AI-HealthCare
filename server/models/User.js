@@ -22,7 +22,7 @@ const userSchema = new mongoose.Schema({
   profile: {
     age: Number,
     gender: { type: String, enum: ['male', 'female', 'other'] },
-    dietaryPreference: { type: String, enum: ['vegetarian', 'non-vegetarian', 'vegan', 'eggetarian'], default: 'non-vegetarian' },
+    dietaryPreference: { type: String, enum: ['vegetarian', 'non-vegetarian', 'vegan', 'eggetarian', 'other'], default: 'non-vegetarian' },
     height: Number, // in cm
     weight: Number, // in kg
     bloodGroup: String,

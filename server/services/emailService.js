@@ -89,6 +89,13 @@ class EmailService {
     return this.sendEmail({ to: email, subject: 'Email Verification - take.health AI', html });
   }
 
+  // Security alert — sent after a successful password change so the account
+  // owner can act fast (contact support) if they didn't make the change.
+  async sendPasswordChangedAlert(email, name) {
+    const html = this.getPasswordChangedTemplate(name);
+    return this.sendEmail({ to: email, subject: 'Your password was changed - take.health', html });
+  }
+
   async sendReportAnalysisComplete(email, name, reportId) {
     const html = this.getReportAnalysisCompleteTemplate(name, reportId);
     return this.sendEmail({ to: email, subject: 'Report Analysis Completed - take.health AI', html });
@@ -154,6 +161,48 @@ class EmailService {
           <div class="footer">
             <p>&copy; ${new Date().getFullYear()} TakeHealth AI. All rights reserved.</p>
             <p>Empowering your health journey with AI.</p>
+          </div>
+        </div>
+      </body>
+      </html>
+    `;
+  }
+
+  getPasswordChangedTemplate(name) {
+    return `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Password Changed</title>
+        <style>
+          body { font-family: 'Segoe UI', Arial, sans-serif; line-height: 1.6; color: #1e293b; margin: 0; padding: 0; background-color: #f8fafc; }
+          .container { max-width: 600px; margin: 20px auto; padding: 0; background-color: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
+          .header { background: linear-gradient(135deg, #2FC8B9, #22d3ee); color: white; padding: 40px 20px; text-align: center; }
+          .logo { font-size: 28px; font-weight: 800; letter-spacing: -1px; margin-bottom: 10px; }
+          .content { padding: 40px; text-align: center; }
+          .welcome-text { font-size: 18px; color: #64748b; margin-bottom: 10px; }
+          .warning-box { background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; padding: 16px 20px; margin: 24px 0; text-align: left; }
+          .warning-box p { margin: 0; font-size: 13px; color: #991b1b; }
+          .footer { text-align: center; padding: 30px; color: #94a3b8; font-size: 12px; background-color: #f8fafc; }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">take.health</div>
+            <h2 style="margin: 0;">Password Changed</h2>
+          </div>
+          <div class="content">
+            <p class="welcome-text">Hi ${name},</p>
+            <p>Your account password was just changed successfully. You've been logged out on all other devices as a security precaution.</p>
+            <div class="warning-box">
+              <p><strong>Wasn't you?</strong> If you didn't make this change, your account may be compromised — please contact our support team immediately at support@take.health.</p>
+            </div>
+          </div>
+          <div class="footer">
+            <p>&copy; ${new Date().getFullYear()} take.health. All rights reserved.</p>
           </div>
         </div>
       </body>
