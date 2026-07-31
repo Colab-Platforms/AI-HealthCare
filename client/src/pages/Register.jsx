@@ -17,6 +17,7 @@ import {
   Phone,
 } from "lucide-react";
 import toast from "react-hot-toast";
+import GoogleSignInButton from "../components/GoogleSignInButton";
 
 export default function Register() {
   const [step, setStep] = useState(1);
@@ -51,8 +52,24 @@ export default function Register() {
   const [heightUnit, setHeightUnit] = useState("cm");
   const [feet, setFeet] = useState("");
   const [inches, setInches] = useState("");
-  const { register, refreshUser, user } = useAuth();
+  const { register, refreshUser, user, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+
+  const handleGoogleToken = async (accessToken) => {
+    try {
+      const googleUser = await loginWithGoogle(accessToken);
+      toast.success("Account created!");
+      navigate(
+        googleUser.role === "admin" || googleUser.role === "superadmin"
+          ? "/admin"
+          : googleUser.role === "doctor"
+            ? "/doctor/dashboard"
+            : "/dashboard",
+      );
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Google sign-up failed. Please try again.");
+    }
+  };
 
   // Handle flow control and automatic step skipping
   useEffect(() => {
@@ -403,6 +420,14 @@ export default function Register() {
                   </>
                 )}
               </button>
+              <div className="flex items-center gap-3 my-4">
+                <div className="h-px flex-1 bg-gray-200" />
+                <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest">or</span>
+                <div className="h-px flex-1 bg-gray-200" />
+              </div>
+
+              <GoogleSignInButton onAccessToken={handleGoogleToken} label="Sign up with Google" />
+
               <div className="mt-4 text-center">
                 <span className="text-xs font-black text-gray-400 uppercase tracking-widest">
                   Already registered?

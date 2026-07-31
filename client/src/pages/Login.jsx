@@ -4,6 +4,7 @@ import SEO from "../hooks/useSEO";
 import { useAuth } from "../context/AuthContext";
 import { Activity, Mail, Lock, Eye, EyeOff, ArrowRight, Smartphone, ChevronDown, Download, AlertTriangle } from "lucide-react";
 import toast from "react-hot-toast";
+import GoogleSignInButton from "../components/GoogleSignInButton";
 
 const APK_URL = "https://github.com/patilabhiraj/take-health-download/releases/download/v1.0.0/Take.Health.apk";
 
@@ -91,8 +92,25 @@ export default function Login() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const [rememberMe, setRememberMe] = useState(true);
+  const { login, loginWithGoogle } = useAuth();
   const navigate = useNavigate();
+
+  const handleGoogleToken = async (accessToken) => {
+    try {
+      const user = await loginWithGoogle(accessToken, rememberMe);
+      toast.success("Welcome back!");
+      navigate(
+        user.role === "admin" || user.role === "superadmin"
+          ? "/admin"
+          : user.role === "doctor"
+            ? "/doctor/dashboard"
+            : "/dashboard",
+      );
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Google sign-in failed. Please try again.");
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -101,7 +119,7 @@ export default function Login() {
     const attemptLogin = async (retryCount = 0) => {
       let loadingToastId = null;
       try {
-        const user = await login(email, password);
+        const user = await login(email, password, rememberMe);
         toast.success("Welcome back!");
         navigate(
           user.role === "admin" || user.role === "superadmin"
@@ -246,7 +264,12 @@ export default function Login() {
             <div className="flex items-center justify-between px-1 gap-2 pt-1">
               <label className="flex items-center gap-2 cursor-pointer group">
                 <div className="relative flex items-center justify-center">
-                  <input type="checkbox" className="peer sr-only" />
+                  <input
+                    type="checkbox"
+                    className="peer sr-only"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                  />
                   <div className="w-4 h-4 bg-white border-2 border-gray-300 rounded peer-checked:bg-[#064e3b] peer-checked:border-[#064e3b] transition-all" />
                   <div className="absolute text-white opacity-0 peer-checked:opacity-100 transition-opacity">
                     <svg
@@ -285,6 +308,14 @@ export default function Login() {
               )}
             </button>
           </form>
+
+          <div className="flex items-center gap-3 my-4 shrink-0">
+            <div className="h-px flex-1 bg-gray-200" />
+            <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest">or</span>
+            <div className="h-px flex-1 bg-gray-200" />
+          </div>
+
+          <GoogleSignInButton onAccessToken={handleGoogleToken} />
 
           <p className="text-center mt-6 shrink-0">
             <Link

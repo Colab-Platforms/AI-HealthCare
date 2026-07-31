@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import api from "../services/api";
+import { getToken } from "../utils/authStorage";
 import toast from "react-hot-toast";
 import SEO from "../hooks/useSEO";
 
@@ -278,7 +279,7 @@ export default function AIChat() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${localStorage.getItem("token")}`,
+          Authorization: `Bearer ${getToken()}`,
         },
         body: JSON.stringify({
           query: currentInput,

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Shield, Download, Trash2, ToggleLeft, ToggleRight, AlertTriangle, CheckCircle, ChevronRight } from 'lucide-react';
 import api from '../services/api';
+import { getToken } from '../utils/authStorage';
 
 const glass = {
   background: 'rgba(255,255,255,0.72)',
@@ -56,7 +57,7 @@ export default function PrivacySettings() {
   const handleExport = async () => {
     setExporting(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = getToken();
       let baseUrl = import.meta.env.VITE_API_URL || '/api';
       
       // Ensure baseUrl ends with /api, don't double-add it

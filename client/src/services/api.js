@@ -1,5 +1,6 @@
 import axios from 'axios';
 import cache from '../utils/cache';
+import { getToken, getRefreshToken, setToken, clearAuthData } from '../utils/authStorage';
 
 // Determine API URL based on environment
 // Determine API URL based on environment
@@ -77,7 +78,7 @@ const cachedGet = async (url, options = {}) => {
 };
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = getToken();
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -105,10 +106,10 @@ api.interceptors.response.use(
 
       try {
         if (!_refreshing) {
-          const refreshToken = localStorage.getItem('refreshToken');
+          const refreshToken = getRefreshToken();
           if (!refreshToken) throw new Error('No refresh token');
           _refreshing = api.post('auth/refresh', { refreshToken })
-            .then(r => { localStorage.setItem('token', r.data.token); return r.data.token; })
+            .then(r => { setToken(r.data.token); return r.data.token; })
             .finally(() => { _refreshing = null; });
         }
         const newToken = await _refreshing;
@@ -116,9 +117,7 @@ api.interceptors.response.use(
         return api(original); // retry original request
       } catch {
         // Refresh failed — force logout
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
+        clearAuthData();
         cache.clear();
         window.location.href = '/login';
         return Promise.reject(error);
@@ -129,10 +128,7 @@ api.interceptors.response.use(
       console.warn('🔓 401 Unauthorized detected for URL:', original?.url);
 
       if (!skipAutoLogout) {
-        localStorage.removeItem('token');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('user');
-        sessionStorage.removeItem('token');
+        clearAuthData();
         cache.clear();
         window.location.href = '/login';
       }
@@ -372,7 +368,7 @@ export const supportService = {
   respondToTicket: (ticketId, data) => api.patch(`support/${ticketId}/respond`, data),
   aiChat: (data, onChunk) => {
     return new Promise((resolve, reject) => {
-      const token = localStorage.getItem('token');
+      const token = getToken();
       const xhr = new XMLHttpRequest();
       const baseURL = api.defaults.baseURL;
       let lastProcessedLength = 0; // Track last processed position

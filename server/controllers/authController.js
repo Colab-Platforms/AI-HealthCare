@@ -1,4 +1,5 @@
 const fs = require('fs');
+const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Doctor = require('../models/Doctor');
@@ -398,6 +399,121 @@ exports.login = async (req, res) => {
     }
   } catch (error) {
     console.error('Login error:', error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Sign in (or sign up) with a Google OAuth2 access token obtained
+//          client-side via google.accounts.oauth2 (see GoogleSignInButton.jsx
+//          — a custom-styled button, not Google's iframe-rendered one).
+//          Verified directly against Google's own endpoints (no
+//          google-auth-library dependency, same raw-axios pattern used for
+//          the Anthropic API in services/aiService.js).
+// @route   POST /api/auth/google
+exports.googleAuth = async (req, res) => {
+  try {
+    const { accessToken } = req.body;
+    if (!accessToken) return res.status(400).json({ message: 'Google access token is required' });
+
+    let tokenInfo;
+    let profile;
+    try {
+      const [tokenInfoRes, profileRes] = await Promise.all([
+        axios.get('https://oauth2.googleapis.com/tokeninfo', { params: { access_token: accessToken } }),
+        axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        })
+      ]);
+      tokenInfo = tokenInfoRes.data;
+      profile = profileRes.data;
+    } catch (verifyError) {
+      console.error('Google token verification failed:', verifyError.response?.data || verifyError.message);
+      return res.status(401).json({ message: 'Invalid Google token' });
+    }
+
+    if (tokenInfo.aud !== process.env.GOOGLE_CLIENT_ID) {
+      return res.status(401).json({ message: 'Google token audience mismatch' });
+    }
+
+    const email = profile.email?.toLowerCase().trim();
+    const googleId = profile.sub;
+    if (!email || !googleId) {
+      return res.status(401).json({ message: 'Google token missing required fields' });
+    }
+
+    let user = await User.findOne({ $or: [{ googleId }, { email }] }).populate('doctorProfile');
+
+    if (!user) {
+      user = await User.create({
+        name: profile.name || email.split('@')[0],
+        email,
+        password: crypto.randomBytes(32).toString('hex'), // unusable random password — user only ever signs in via Google
+        googleId,
+        authProvider: 'google',
+        isEmailVerified: true,
+        profilePicture: profile.picture,
+        subscription: {
+          plan: 'free',
+          status: 'active',
+          startDate: new Date()
+        }
+      });
+    } else if (!user.googleId) {
+      // Existing password-based account with the same email — link it instead of creating a duplicate
+      user.googleId = googleId;
+      user.authProvider = 'google';
+      await user.save();
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({ message: 'Account is deactivated. Please contact support at support@takesolutions.com' });
+    }
+
+    user.loginCount = (user.loginCount || 0) + 1;
+    await user.save();
+
+    const rawRefreshToken = generateRefreshToken();
+    await RefreshToken.create({
+      userId: user._id,
+      token: rawRefreshToken,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.ip,
+    });
+
+    const response = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      profile: user.profile,
+      nutritionGoal: user.nutritionGoal,
+      foodPreferences: user.foodPreferences,
+      subscription: user.subscription,
+      healthMetrics: user.healthMetrics,
+      consent: user.consent,
+      privacySettings: user.privacySettings,
+      dataRetention: user.dataRetention,
+      token: generateAccessToken(user._id),
+      refreshToken: rawRefreshToken,
+    };
+
+    if (user.role === 'doctor' && user.doctorProfile) {
+      response.doctorProfile = {
+        _id: user.doctorProfile._id,
+        approvalStatus: user.doctorProfile.approvalStatus,
+        specialization: user.doctorProfile.specialization,
+        isListed: user.doctorProfile.isListed
+      };
+    }
+
+    await logActivity(user._id, 'USER_LOGIN', 'authentication', { method: 'google' }, req);
+    gamificationService.awardPoints(user._id, 'login', 'Daily Login').catch(console.error);
+
+    res.json(response);
+  } catch (error) {
+    console.error('Google auth error:', error.message);
     res.status(500).json({ message: error.message });
   }
 };

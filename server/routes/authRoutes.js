@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const {
-    register, requestRegistrationOtp, registerDoctor, login, getProfile, updateProfile,
+    register, requestRegistrationOtp, registerDoctor, login, googleAuth, getProfile, updateProfile,
     getSubscription, createAdmin, uploadProfilePicture,
     verifyEmail, resendVerificationCode
 } = require('../controllers/authController');
@@ -13,6 +13,7 @@ router.post('/register', authLimiter, register);
 router.post('/register-otp', authLimiter, requestRegistrationOtp);
 router.post('/register/doctor', authLimiter, registerDoctor);
 router.post('/login', authLimiter, login);
+router.post('/google', authLimiter, googleAuth);
 router.post('/logout', protect, require('../controllers/authController').logout);
 router.post('/refresh', require('../controllers/authController').refresh);
 router.post('/verify-email', authLimiter, verifyEmail);
