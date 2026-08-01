@@ -104,7 +104,7 @@ const UpdatedFAQs = () => {
                       transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
                       className="overflow-hidden"
                     >
-                      <p className="pb-6 text-lg sm:text-lg text-slate-600 font-normal leading-relaxed pr-6">
+                      <p className="pb-6 text-sm sm:text-lg lg:text-xl text-slate-600 font-normal leading-relaxed pr-6">
                         {item.answer}
                       </p>
                     </motion.div>

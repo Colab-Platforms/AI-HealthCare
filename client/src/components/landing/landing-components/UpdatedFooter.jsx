@@ -67,7 +67,7 @@ const UpdatedFooter = () => {
           <div className="lg:col-span-5 grid grid-cols-2 sm:grid-cols-3 gap-6 sm:gap-6">
             {navColumns.map((col, idx) => (
               <div key={idx} className="flex flex-col items-start">
-                <span className="text-xs sm:text-md font-bold uppercase tracking-wider text-white mb-3 sm:mb-4">
+                <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-white mb-3 sm:mb-4">
                   {col.title}
                 </span>
                 <ul className="flex flex-col gap-2.5 sm:gap-3 text-sm sm:text-lg text-white/70 font-light">
@@ -91,10 +91,10 @@ const UpdatedFooter = () => {
 
             {/* STAY UPDATED */}
             <div className="w-full text-left">
-              <span className="text-xs sm:text-md font-bold uppercase tracking-wider text-white mb-2 block">
+              <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-white mb-2 block">
                 STAY UPDATED
               </span>
-              <p className="text-xs sm:text-md text-white/70 font-light mb-3">
+              <p className="text-xs sm:text-sm text-white/70 font-light mb-3">
                 Join our newsletter for the latest in longevity research.
               </p>
 
@@ -123,7 +123,7 @@ const UpdatedFooter = () => {
 
             {/* GET IN TOUCH */}
             <div className="w-full text-left">
-              <span className="text-xs sm:text-md font-bold uppercase tracking-wider text-white mb-2.5 block">
+              <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-white mb-2.5 block">
                 GET IN TOUCH
               </span>
               <div className="flex flex-col gap-2 text-xs text-white/80 font-light">

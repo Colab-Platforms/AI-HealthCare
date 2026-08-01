@@ -192,7 +192,7 @@ const UpdatedHowItWorks = ({ cardImages = {} }) => {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-100px" }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="text-md sm:text-xl lg:text-3xl font-medium text-slate-600 max-w-5xl lg:max-w-3xl mb-8 sm:mb-16 leading-relaxed text-center px-2"
+          className="text-sm sm:text-xl lg:text-3xl font-medium text-slate-600 max-w-5xl lg:max-w-3xl mb-8 sm:mb-16 leading-relaxed text-center px-2"
         >
           See how Take Health analyzes your data, explains what it means, and guides you toward better health.
         </motion.p>
