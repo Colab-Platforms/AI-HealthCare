@@ -1,7 +1,7 @@
 import React from "react";
 import SEO from "../hooks/useSEO";
-import Navbar from "../components/landing/landing-components/Navbar";
-import Footer from "../components/landing/landing-components/Footer";
+import UpdatedNavbar from "../components/landing/landing-components/UpdatedNavbar";
+import UpdatedFooter from "../components/landing/landing-components/UpdatedFooter";
 
 const PrivacyPolicy = () => {
   const pdfUrl =
@@ -10,7 +10,7 @@ const PrivacyPolicy = () => {
   return (
     <div className="bg-landing-light-bg text-landing-text font-landing-body">
       <SEO pageName="privacyPolicy" />
-      <Navbar />
+      <UpdatedNavbar />
       <div className="">
         <div className="h-[350px] bg-landing-primary relative z-10 flex items-center justify-center text-center">
           <div className="container px-5 lg:px-20 mx-auto relative z-10 text-white mt-14">
@@ -50,7 +50,7 @@ const PrivacyPolicy = () => {
           </a>
         </div>
       </div>
-      <Footer />
+      <UpdatedFooter />
     </div>
   );
 };

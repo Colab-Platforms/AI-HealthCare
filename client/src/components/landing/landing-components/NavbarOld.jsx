@@ -7,7 +7,7 @@ const NavbarOld = ({ forceSolid = false }) => {
   const [scrolled, setScrolled] = useState(false);
   const { pathname } = useLocation();
   const isHomePage = pathname === "/";
-  const isScrolled = forceSolid || scrolled;
+  const isScrolled = forceSolid || scrolled || !isHomePage;
 
   useEffect(() => {
     if (forceSolid) return;

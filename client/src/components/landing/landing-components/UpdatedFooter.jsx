@@ -134,13 +134,13 @@ const UpdatedFooter = () => {
                   <Mail className="w-3.5 h-3.5 text-white/60 flex-shrink-0" />
                   <span className="text-xs sm:text-sm truncate">support@takelimited.com</span>
                 </a>
-                <a
+                {/* <a
                   href="tel:8155020445"
                   className="flex items-center gap-2 hover:text-white transition-colors"
                 >
                   <Phone className="w-3.5 h-3.5 text-white/60 flex-shrink-0" />
                   <span className="text-xs sm:text-sm">8155020445</span>
-                </a>
+                </a> */}
               </div>
             </div>
 

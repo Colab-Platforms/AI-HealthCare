@@ -1,25 +1,24 @@
 import { lazy, Suspense } from "react";
 import SEO from "../hooks/useSEO";
-import Navbar from "../components/landing/landing-components/Navbar";
 import Hero from "../components/how-it-works/Hero";
 import Steps from "../components/how-it-works/Steps";
 import CTA from "../components/how-it-works/CTA";
-import NavbarOld from "../components/landing/landing-components/NavbarOld";
+import UpdatedNavbar from "../components/landing/landing-components/UpdatedNavbar";
 
-const Footer = lazy(
-  () => import("../components/landing/landing-components/Footer"),
+const UpdatedFooter = lazy(
+  () => import("../components/landing/landing-components/UpdatedFooter"),
 );
 
 const HowItWorks = () => {
   return (
     <section className="bg-landing-light-bg text-landing-text font-landing-body">
       <SEO pageName="howItWorks" />
-      <NavbarOld />
+      <UpdatedNavbar />
       <Hero />
       <Suspense fallback={<div className="h-20" />}>
         <Steps />
         <CTA />
-        <Footer />
+        <UpdatedFooter />
       </Suspense>
     </section>
   );

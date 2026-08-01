@@ -12,7 +12,6 @@ import PageLoader from "./components/PageLoader";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import LandingPage from "./pages/LandingPage";
-import NewLandingPage from "./pages/NewLandingPage";
 import UpdatedLandingPage from "./pages/UpdatedLandingPage";
 import HelpWidget from "./components/HelpWidget";
 import DiabetesLanding from "./pages/DiabetesLanding";
@@ -67,6 +66,7 @@ export default function App() {
 
   useEffect(() => {
     console.log("📍 Route Changed:", location.pathname);
+    window.scrollTo(0, 0);
   }, [location.pathname]);
 
   return (
@@ -78,7 +78,7 @@ export default function App() {
             path="/"
             element={
               <SmoothScrollLayout>
-                <NewLandingPage />
+                <UpdatedLandingPage />
               </SmoothScrollLayout>
             }
           />

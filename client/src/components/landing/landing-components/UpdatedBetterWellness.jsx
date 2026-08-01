@@ -71,9 +71,10 @@ const UpdatedBetterWellness = ({ cardImages = {} }) => {
   const hasFlippedCard = Object.values(flippedCards).some(Boolean);
 
   const IDLE_SPEED = 0.2;
-  const speedRef = useRef(IDLE_SPEED);
-  const targetSpeedRef = useRef(IDLE_SPEED);
+  const speedRef = useRef(isMobile ? 0 : IDLE_SPEED);
+  const targetSpeedRef = useRef(isMobile ? 0 : IDLE_SPEED);
   const scrollTimeoutRef = useRef(null);
+  const dragStateRef = useRef({ isDragging: false, startX: 0, startOffset: 0, lastX: 0, lastTime: 0, velocity: 0 });
 
   // Fast, instant scroll-driven rotation (scroll down = fast counter-clockwise, scroll up = fast clockwise)
   useEffect(() => {
@@ -96,7 +97,7 @@ const UpdatedBetterWellness = ({ cardImages = {} }) => {
 
         if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
         scrollTimeoutRef.current = setTimeout(() => {
-          targetSpeedRef.current = IDLE_SPEED;
+          targetSpeedRef.current = isMobile ? 0 : IDLE_SPEED;
         }, 100);
       }
     };
@@ -106,7 +107,7 @@ const UpdatedBetterWellness = ({ cardImages = {} }) => {
       window.removeEventListener("scroll", handleScroll);
       if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
     };
-  }, [totalLoopWidth]);
+  }, [totalLoopWidth, isMobile]);
 
   useEffect(() => {
     let lastTime = performance.now();
@@ -130,6 +131,85 @@ const UpdatedBetterWellness = ({ cardImages = {} }) => {
     requestRef.current = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(requestRef.current);
   }, [isPaused, hasFlippedCard, totalLoopWidth]);
+
+  // Manual horizontal drag/swipe for mobile — page vertical scroll still drives rotation,
+  // but idle auto-rotation is disabled so the strip only moves on scroll or direct touch drag.
+  const pendingDragXRef = useRef(null);
+  const dragRafRef = useRef(null);
+
+  const applyPendingDrag = () => {
+    dragRafRef.current = null;
+    if (pendingDragXRef.current === null) return;
+    const dx = pendingDragXRef.current - dragStateRef.current.startX;
+    setOffset(() => {
+      const next = dragStateRef.current.startOffset - dx;
+      return ((next % totalLoopWidth) + totalLoopWidth) % totalLoopWidth;
+    });
+  };
+
+  const handleDragStart = (e) => {
+    if (!isMobile) return;
+    const x = e.touches ? e.touches[0].clientX : e.clientX;
+    dragStateRef.current = {
+      isDragging: true,
+      startX: x,
+      startOffset: offset,
+      lastX: x,
+      lastTime: performance.now(),
+      velocity: 0,
+    };
+    pendingDragXRef.current = null;
+    if (dragRafRef.current) cancelAnimationFrame(dragRafRef.current);
+    targetSpeedRef.current = 0;
+    speedRef.current = 0;
+  };
+
+  const handleDragMove = (e) => {
+    if (!isMobile || !dragStateRef.current.isDragging) return;
+    const x = e.touches ? e.touches[0].clientX : e.clientX;
+    const now = performance.now();
+    const dt = now - dragStateRef.current.lastTime;
+    if (dt > 0) {
+      // Exponential moving average smooths out noisy per-event deltas so a fast
+      // flick produces a stable velocity reading instead of whatever the last
+      // (possibly tiny) touchmove happened to measure.
+      const instVelocity = (dragStateRef.current.lastX - x) / dt;
+      dragStateRef.current.velocity =
+        dragStateRef.current.velocity * 0.7 + instVelocity * 0.3;
+    }
+    dragStateRef.current.lastX = x;
+    dragStateRef.current.lastTime = now;
+
+    // Throttle the actual React state update to once per animation frame —
+    // touchmove can fire faster than the display refresh rate, and re-rendering
+    // every card on every single event is what made this feel laggy.
+    pendingDragXRef.current = x;
+    if (dragRafRef.current === null) {
+      dragRafRef.current = requestAnimationFrame(applyPendingDrag);
+    }
+  };
+
+  const handleDragEnd = () => {
+    if (!isMobile || !dragStateRef.current.isDragging) return;
+    dragStateRef.current.isDragging = false;
+
+    if (dragRafRef.current) {
+      cancelAnimationFrame(dragRafRef.current);
+      dragRafRef.current = null;
+      applyPendingDrag();
+    }
+
+    // Convert drag release velocity (px/ms) into the loop's speed unit so momentum feels continuous.
+    const flingSpeed = dragStateRef.current.velocity / 0.06;
+    const clamped = Math.max(-14, Math.min(14, flingSpeed));
+    speedRef.current = clamped;
+    targetSpeedRef.current = clamped;
+
+    if (scrollTimeoutRef.current) clearTimeout(scrollTimeoutRef.current);
+    scrollTimeoutRef.current = setTimeout(() => {
+      targetSpeedRef.current = 0;
+    }, 300);
+  };
 
   const calculateArcTransform = (relativeX) => {
     const maxRange = 1000;
@@ -177,7 +257,14 @@ const UpdatedBetterWellness = ({ cardImages = {} }) => {
           <div className="absolute left-0 top-0 bottom-0 w-16 sm:w-48 bg-gradient-to-r from-[#FAF9F8] via-[#FAF9F8]/90 to-transparent z-30 pointer-events-none" />
           <div className="absolute right-0 top-0 bottom-0 w-16 sm:w-48 bg-gradient-to-l from-[#FAF9F8] via-[#FAF9F8]/90 to-transparent z-30 pointer-events-none" />
 
-          <div className="relative w-full h-[460px] sm:h-[630px] lg:h-[680px] flex items-center justify-center">
+          <div
+            className="relative w-full h-[460px] sm:h-[630px] lg:h-[680px] flex items-center justify-center"
+            style={{ touchAction: isMobile ? "pan-y" : "auto" }}
+            onTouchStart={handleDragStart}
+            onTouchMove={handleDragMove}
+            onTouchEnd={handleDragEnd}
+            onTouchCancel={handleDragEnd}
+          >
             {[-1, 0, 1].map((copyIndex) =>
               cards.map((card, cardIndex) => {
                 const globalIndex = copyIndex * cards.length + cardIndex;

@@ -28,7 +28,7 @@ const UpdatedHero = () => {
         <UpdatedNavbar />
 
         {/* ─── HERO CONTENT AREA ──────────────────────────────────────────────── */}
-        <div className="max-w-[1920px] w-full mx-auto px-4 sm:px-8 lg:px-16 mt-0 sm:mt-0 pt-16 sm:pt-12 lg:pt-16 pb-2 flex flex-col items-center text-center z-10">
+        <div className="max-w-[1920px] w-full mx-auto px-4 sm:px-8 lg:px-16 mt-0 sm:mt-0 pt-28 sm:pt-24 lg:pt-36 pb-2 flex flex-col items-center text-center z-10">
 
           {/* Rating Pill Badge */}
           <motion.div

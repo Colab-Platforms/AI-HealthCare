@@ -9,7 +9,7 @@ const UpdatedTestimonials = () => {
       name: "Priti S.",
       role: "Health Enthusiast",
       stars: 5,
-      avatar: "https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=200&q=80",
+      avatar: "/updated-landing/testi_1.jpeg",
       quote:
         "Take Health has completely transformed how I track my lab results and daily vitals. The AI analysis caught an early trend in my glucose levels before my routine checkup. Truly life-changing!",
     },
@@ -18,7 +18,7 @@ const UpdatedTestimonials = () => {
       name: "Rohit S.",
       role: "Active Member",
       stars: 5,
-      avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=200&q=80",
+      avatar: "/updated-landing/testi_2.jpeg",
       quote:
         "The personalized daily recommendations and sleep recovery scores have helped me optimize my energy levels dramatically. Having my health data simplified is a game changer.",
     },
@@ -27,7 +27,7 @@ const UpdatedTestimonials = () => {
       name: "Sneha S.",
       role: "Longevity Advocate",
       stars: 5,
-      avatar: "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80",
+      avatar: "/updated-landing/testi_3.jpeg",
       quote:
         "Having all my medical records and lab reports explained in plain English has given me complete confidence in managing my health. Couldn't recommend Take Health enough!",
     },
@@ -36,7 +36,7 @@ const UpdatedTestimonials = () => {
       name: "Yogita P.",
       role: "Functional Physician",
       stars: 5,
-      avatar: "https://images.unsplash.com/photo-1559839734-2b71ea197ec2?auto=format&fit=crop&w=200&q=80",
+      avatar: "/updated-landing/testi_6.webp",
       quote:
         "As a physician, I am thoroughly impressed by the precision of Take Health's biomarker breakdown. It gives patients clear, actionable insights they can actually follow.",
     },
@@ -45,7 +45,7 @@ const UpdatedTestimonials = () => {
       name: "Abhiraj P.",
       role: "Fitness Coach",
       stars: 5,
-      avatar: "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=200&q=80",
+      avatar: "/updated-landing/testi_5.jpg",
       quote:
         "The biological age tracking and nutrition breakdown are spot on. It's like having a top-tier longevity specialist in your pocket 24/7.",
     },
@@ -155,9 +155,6 @@ const UpdatedTestimonials = () => {
                     <div className="flex flex-col text-left">
                       <span className="text-sm font-bold text-slate-900 leading-snug">
                         {item.name}
-                      </span>
-                      <span className="text-xs text-slate-500 font-medium">
-                        {item.role}
                       </span>
                     </div>
                   </div>
