@@ -11,6 +11,7 @@ const WearableData = require('../models/WearableData');
 const ChatHistory = require('../models/ChatHistory');
 const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
 const Otp = require('../models/Otp');
+const cache = require('../utils/cache');
 
 // User Management
 exports.getAllUsers = async (req, res) => {
@@ -283,85 +284,80 @@ exports.getUniqueReportUsers = async (req, res) => {
 exports.getReportStats = async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
-    
-    // Build date filter
-    const dateFilter = {};
-    if (startDate || endDate) {
-      dateFilter.createdAt = {};
+    const cacheKey = `admin-stats:${startDate || ''}:${endDate || ''}`;
+
+    const payload = await cache.getOrSet(cacheKey, async () => {
+      // Build date filter
+      const dateFilter = {};
+      if (startDate || endDate) {
+        dateFilter.createdAt = {};
+        if (startDate) {
+          dateFilter.createdAt.$gte = new Date(startDate);
+        }
+        if (endDate) {
+          const end = new Date(endDate);
+          end.setHours(23, 59, 59, 999);
+          dateFilter.createdAt.$lte = end;
+        }
+      }
+
+      // Growth Data - Use provided date range or last 7 days
+      let startDateForGrowth;
       if (startDate) {
-        dateFilter.createdAt.$gte = new Date(startDate);
+        startDateForGrowth = new Date(startDate);
+      } else {
+        startDateForGrowth = new Date();
+        startDateForGrowth.setDate(startDateForGrowth.getDate() - 7);
       }
-      if (endDate) {
-        const end = new Date(endDate);
-        end.setHours(23, 59, 59, 999);
-        dateFilter.createdAt.$lte = end;
-      }
-    }
+      const growthDateFilter = { $gte: startDateForGrowth, ...(endDate ? { $lte: new Date(endDate) } : {}) };
 
-    const totalReports = await HealthReport.countDocuments(dateFilter);
-    const completedReports = await HealthReport.countDocuments({ ...dateFilter, status: 'completed' });
-    const failedReports = await HealthReport.countDocuments({ ...dateFilter, status: 'failed' });
-    const totalUsers = await User.countDocuments({ role: { $in: ['patient', 'user'] }, ...dateFilter });
-    const activeUsers = await User.countDocuments({ role: { $in: ['patient', 'user'] }, isActive: true, ...dateFilter });
-    const AllUsers = await User.countDocuments({ role: 'user', ...dateFilter });
-    const repeatUsers = await User.countDocuments({ role: 'user', loginCount: { $gt: 1 }, ...dateFilter });
-    const uniqueUsers = AllUsers;
-
-    const recentReports = await HealthReport.find(dateFilter)
-      .populate('user', 'name')
-      .sort({ createdAt: -1 })
-      .limit(10);
-
-    // Growth Data - Use provided date range or last 7 days
-    let startDateForGrowth;
-    if (startDate) {
-      startDateForGrowth = new Date(startDate);
-    } else {
-      startDateForGrowth = new Date();
-      startDateForGrowth.setDate(startDateForGrowth.getDate() - 7);
-    }
-
-    const reportGrowth = await HealthReport.aggregate([
-      { $match: { createdAt: { $gte: startDateForGrowth, ...(endDate ? { $lte: new Date(endDate) } : {}) } } },
-      {
-        $group: {
-          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { _id: 1 } }
-    ]);
-
-    const userGrowth = await User.aggregate([
-      { $match: { createdAt: { $gte: startDateForGrowth, ...(endDate ? { $lte: new Date(endDate) } : {}) }, role: { $in: ['patient', 'user'] } } },
-      {
-        $group: {
-          _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } },
-          count: { $sum: 1 }
-        }
-      },
-      { $sort: { _id: 1 } }
-    ]);
-
-    // Classification Distribution
-    const distribution = await HealthReport.aggregate([
-      { $match: dateFilter },
-      { $group: { _id: { $ifNull: ["$reportType", "General"] }, value: { $sum: 1 } } },
-      { $project: { name: "$_id", value: 1, _id: 0 } }
-    ]);
-
-    res.json({
-      stats: {
+      // All independent DB round-trips run in parallel instead of sequentially —
+      // was 11 awaited-one-after-another queries, the main cause of /admin being slow.
+      const [
         totalReports, completedReports, failedReports,
-        totalUsers, activeUsers,
-        reportGrowth,
-        userGrowth,
-        distribution,
-        uniqueUsers,
-        repeatUsers
-      },
-      recentReports
-    });
+        totalUsers, activeUsers, AllUsers, repeatUsers,
+        recentReports, reportGrowth, userGrowth, distribution
+      ] = await Promise.all([
+        HealthReport.countDocuments(dateFilter),
+        HealthReport.countDocuments({ ...dateFilter, status: 'completed' }),
+        HealthReport.countDocuments({ ...dateFilter, status: 'failed' }),
+        User.countDocuments({ role: { $in: ['patient', 'user'] }, ...dateFilter }),
+        User.countDocuments({ role: { $in: ['patient', 'user'] }, isActive: true, ...dateFilter }),
+        User.countDocuments({ role: 'user', ...dateFilter }),
+        User.countDocuments({ role: 'user', loginCount: { $gt: 1 }, ...dateFilter }),
+        HealthReport.find(dateFilter).populate('user', 'name').sort({ createdAt: -1 }).limit(10),
+        HealthReport.aggregate([
+          { $match: { createdAt: growthDateFilter } },
+          { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, count: { $sum: 1 } } },
+          { $sort: { _id: 1 } }
+        ]),
+        User.aggregate([
+          { $match: { createdAt: growthDateFilter, role: { $in: ['patient', 'user'] } } },
+          { $group: { _id: { $dateToString: { format: "%Y-%m-%d", date: "$createdAt" } }, count: { $sum: 1 } } },
+          { $sort: { _id: 1 } }
+        ]),
+        HealthReport.aggregate([
+          { $match: dateFilter },
+          { $group: { _id: { $ifNull: ["$reportType", "General"] }, value: { $sum: 1 } } },
+          { $project: { name: "$_id", value: 1, _id: 0 } }
+        ]),
+      ]);
+
+      return {
+        stats: {
+          totalReports, completedReports, failedReports,
+          totalUsers, activeUsers,
+          reportGrowth,
+          userGrowth,
+          distribution,
+          uniqueUsers: AllUsers,
+          repeatUsers
+        },
+        recentReports
+      };
+    }, 120); // 2 min cache — this data doesn't need to be real-time on every dashboard load
+
+    res.json(payload);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

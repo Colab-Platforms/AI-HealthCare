@@ -161,7 +161,6 @@ const validateMedicalReport = async (reportText, fileData = null) => {
   try {
     const userContent = [];
 
-    // For PDFs: use extracted text only (no need to send full PDF for validation)
     // For images: send the image since there may be no extracted text
     if (fileData && fileData.buffer && fileData.mimetype?.startsWith('image/')) {
       userContent.push({
@@ -175,6 +174,18 @@ const validateMedicalReport = async (reportText, fileData = null) => {
     } else if (reportText && reportText.trim()) {
       // Cap at 3000 chars — enough to identify if it's a medical report
       userContent.push({ type: 'text', text: `Extracted Text:\n${reportText.substring(0, 3000)}` });
+    } else if (fileData && fileData.buffer && fileData.mimetype === 'application/pdf') {
+      // pdf-parse extraction failed or returned nothing (happens with some PDF
+      // generators/fonts) — fall back to sending the PDF itself, which Claude
+      // can read natively, instead of rejecting the file for lack of text.
+      userContent.push({
+        type: 'document',
+        source: {
+          type: 'base64',
+          media_type: 'application/pdf',
+          data: fileData.buffer.toString('base64')
+        }
+      });
     }
 
     const messages = [
@@ -378,7 +389,7 @@ exports.generateMetricInfo = async (metricName, metricValue, normalRange, unit, 
         "dietaryTips": ["Food 1", "Food 2", "Food 3"],
         "symptoms": ["Symptom 1", "Symptom 2"],
         "actions": ["Action 1", "Action 2"]
-      }
+      }q
     }`;
 
     const content = await makeAnthropicRequest([{ role: 'user', content: prompt }], 1200, CLAUDE_HAIKU_MODEL, { feature: 'metric_info', ...context });
@@ -394,6 +405,21 @@ exports.generateVitalsInsights = async (metricType, history, user, context = {})
   try {
     const prompt = `Insights for ${metricType}: ${JSON.stringify(history)}. JSON {"analysis": ""}`;
     const content = await makeAnthropicRequest([{ role: 'user', content: prompt }], 800, CLAUDE_HAIKU_MODEL, { feature: 'vitals_insights', userId: user?._id, ...context });
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    return jsonMatch ? robustJsonParse(jsonMatch[0]) : null;
+  } catch (e) { return null; }
+};
+
+// Short plain-language summary of today's blended Health Score — always
+// generated (see getHealthScoreInsight in healthController.js), cached 24h
+// per user/day/score so it stays cheap despite running on every score.
+exports.generateHealthScoreInsight = async (score, normalRange, breakdown, direction, context = {}) => {
+  try {
+    const positionLine = direction === 'normal'
+      ? `which is within the normal healthy range of ${normalRange.min}-${normalRange.max}`
+      : `which is ${direction} the normal healthy range of ${normalRange.min}-${normalRange.max}`;
+    const prompt = `A health app user's daily Health Score is ${score}/100, ${positionLine}. Today's activity breakdown: ${JSON.stringify(breakdown)}. In 1-2 short, encouraging, plain-language sentences (no medical jargon), explain what's likely driving this score and one simple suggestion. Respond as JSON {"insight": ""}`;
+    const content = await makeAnthropicRequest([{ role: 'user', content: prompt }], 300, CLAUDE_HAIKU_MODEL, { feature: 'health_score_insight', ...context });
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     return jsonMatch ? robustJsonParse(jsonMatch[0]) : null;
   } catch (e) { return null; }

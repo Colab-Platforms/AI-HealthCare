@@ -7,6 +7,8 @@ const userSchema = new mongoose.Schema({
   phone: { type: String, sparse: true },
   fcmToken: { type: String, default: null }, // Android/iOS push notification token
   password: { type: String, required: true, minlength: 6 },
+  googleId: { type: String, unique: true, sparse: true }, // Google 'sub' claim, only set for Google sign-ins
+  authProvider: { type: String, enum: ['local', 'google'], default: 'local' },
   role: { type: String, enum: ['user', 'admin', 'superadmin', 'patient', 'client', 'doctor'], default: 'user' },
   isActive: { type: Boolean, default: true },
   isEmailVerified: { type: Boolean, default: false },
@@ -20,7 +22,7 @@ const userSchema = new mongoose.Schema({
   profile: {
     age: Number,
     gender: { type: String, enum: ['male', 'female', 'other'] },
-    dietaryPreference: { type: String, enum: ['vegetarian', 'non-vegetarian', 'vegan', 'eggetarian'], default: 'non-vegetarian' },
+    dietaryPreference: { type: String, enum: ['vegetarian', 'non-vegetarian', 'vegan', 'eggetarian', 'other'], default: 'non-vegetarian' },
     height: Number, // in cm
     weight: Number, // in kg
     bloodGroup: String,
@@ -214,6 +216,8 @@ userSchema.index({ role: 1, isActive: 1 });
 userSchema.index({ resetPasswordCode: 1, resetPasswordExpire: 1 }, { sparse: true });
 // Profile queries by subscription plan
 userSchema.index({ 'subscription.plan': 1, 'subscription.status': 1 }, { sparse: true });
+// Admin stats/growth charts filter by signup date range collection-wide
+userSchema.index({ createdAt: 1 });
 
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();

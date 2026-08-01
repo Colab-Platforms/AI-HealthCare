@@ -1,4 +1,5 @@
 const fs = require('fs');
+const axios = require('axios');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const Doctor = require('../models/Doctor');
@@ -402,6 +403,150 @@ exports.login = async (req, res) => {
   }
 };
 
+// @desc    Sign in (or sign up) with a Google OAuth2 access token obtained
+//          client-side via google.accounts.oauth2 (see GoogleSignInButton.jsx
+//          — a custom-styled button, not Google's iframe-rendered one).
+//          Verified directly against Google's own endpoints (no
+//          google-auth-library dependency, same raw-axios pattern used for
+//          the Anthropic API in services/aiService.js).
+// @route   POST /api/auth/google
+exports.googleAuth = async (req, res) => {
+  try {
+    // Web (GoogleSignInButton.jsx) sends an OAuth2 access token via
+    // google.accounts.oauth2. The mobile app (native Google Sign-In SDK)
+    // sends an ID token (JWT) instead — a different token type that needs
+    // a different Google verification endpoint. Support both.
+    const { accessToken, idToken } = req.body;
+    if (!accessToken && !idToken) {
+      return res.status(400).json({ message: 'A Google access token or ID token is required' });
+    }
+
+    let tokenInfo;
+    let profile;
+    try {
+      if (idToken) {
+        const { data } = await axios.get('https://oauth2.googleapis.com/tokeninfo', { params: { id_token: idToken } });
+        tokenInfo = data;
+        // ID tokens already carry profile claims (with the openid/email/profile scopes) — no extra call needed.
+        profile = { email: data.email, sub: data.sub, name: data.name, picture: data.picture };
+      } else {
+        const [tokenInfoRes, profileRes] = await Promise.all([
+          axios.get('https://oauth2.googleapis.com/tokeninfo', { params: { access_token: accessToken } }),
+          axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${accessToken}` }
+          })
+        ]);
+        tokenInfo = tokenInfoRes.data;
+        profile = profileRes.data;
+      }
+    } catch (verifyError) {
+      console.error('Google token verification failed:', verifyError.response?.data || verifyError.message);
+      return res.status(401).json({ message: 'Invalid Google token' });
+    }
+
+    // GOOGLE_CLIENT_ID may hold a single client ID or a comma-separated list
+    // (web, iOS, Android each get their own client ID in Google Cloud Console —
+    // an ID token's audience will be whichever one issued it).
+    const allowedClientIds = (process.env.GOOGLE_CLIENT_ID || '')
+      .split(',')
+      .map((id) => id.trim())
+      .filter(Boolean);
+
+    // Access-token tokeninfo responses identify the requesting client via
+    // `azp` (authorized party); `aud` isn't always populated the same way
+    // an ID token's `aud` claim is. Check both.
+    const receivedAud = tokenInfo.aud || null;
+    const receivedAzp = tokenInfo.azp || null;
+    const audienceOk = allowedClientIds.includes(receivedAud) || allowedClientIds.includes(receivedAzp);
+
+    if (!audienceOk) {
+      console.log('Google token audience mismatch — receivedAud:', receivedAud, 'receivedAzp:', receivedAzp, 'expected (one of):', allowedClientIds);
+      return res.status(401).json({ message: 'Google token audience mismatch' });
+    }
+
+    const email = profile.email?.toLowerCase().trim();
+    const googleId = profile.sub;
+    if (!email || !googleId) {
+      return res.status(401).json({ message: 'Google token missing required fields' });
+    }
+
+    let user = await User.findOne({ $or: [{ googleId }, { email }] }).populate('doctorProfile');
+
+    if (!user) {
+      user = await User.create({
+        name: profile.name || email.split('@')[0],
+        email,
+        password: crypto.randomBytes(32).toString('hex'), // unusable random password — user only ever signs in via Google
+        googleId,
+        authProvider: 'google',
+        isEmailVerified: true,
+        profilePicture: profile.picture,
+        subscription: {
+          plan: 'free',
+          status: 'active',
+          startDate: new Date()
+        }
+      });
+    } else if (!user.googleId) {
+      // Existing password-based account with the same email — link it instead of creating a duplicate
+      user.googleId = googleId;
+      user.authProvider = 'google';
+      await user.save();
+    }
+
+    if (!user.isActive) {
+      return res.status(403).json({ message: 'Account is deactivated. Please contact support at support@takesolutions.com' });
+    }
+
+    user.loginCount = (user.loginCount || 0) + 1;
+    await user.save();
+
+    const rawRefreshToken = generateRefreshToken();
+    await RefreshToken.create({
+      userId: user._id,
+      token: rawRefreshToken,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.ip,
+    });
+
+    const response = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      profile: user.profile,
+      nutritionGoal: user.nutritionGoal,
+      foodPreferences: user.foodPreferences,
+      subscription: user.subscription,
+      healthMetrics: user.healthMetrics,
+      consent: user.consent,
+      privacySettings: user.privacySettings,
+      dataRetention: user.dataRetention,
+      token: generateAccessToken(user._id),
+      refreshToken: rawRefreshToken,
+    };
+
+    if (user.role === 'doctor' && user.doctorProfile) {
+      response.doctorProfile = {
+        _id: user.doctorProfile._id,
+        approvalStatus: user.doctorProfile.approvalStatus,
+        specialization: user.doctorProfile.specialization,
+        isListed: user.doctorProfile.isListed
+      };
+    }
+
+    await logActivity(user._id, 'USER_LOGIN', 'authentication', { method: 'google' }, req);
+    gamificationService.awardPoints(user._id, 'login', 'Daily Login').catch(console.error);
+
+    res.json(response);
+  } catch (error) {
+    console.error('Google auth error:', error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // @desc    Logout user & revoke refresh token
 // @route   POST /api/auth/logout
 exports.logout = async (req, res) => {
@@ -624,6 +769,62 @@ exports.getSubscription = async (req, res) => {
     res.json(user.subscription);
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+};
+
+// @desc    Change password for a logged-in user (Profile > Account Details)
+// @route   POST /api/auth/change-password
+exports.changePassword = async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Current password and new password are required' });
+    }
+    if (newPassword.length < 6) {
+      return res.status(400).json({ message: 'New password must be at least 6 characters long' });
+    }
+
+    const user = await User.findById(req.user._id).maxTimeMS(15000);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    // Google-only accounts have a random, never-shared password — there's
+    // nothing real for the user to "verify" here.
+    if (user.authProvider === 'google') {
+      return res.status(400).json({ message: 'This account uses Google Sign-In and has no password to change' });
+    }
+
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      // 400, not 401 — this is a wrong-input error, not an invalid/expired
+      // auth token. The global axios interceptor treats any 401 as "your
+      // session is dead" and force-logs the user out, which would silently
+      // swallow this message before it ever reaches the UI.
+      return res.status(400).json({ message: 'Current password is incorrect' });
+    }
+
+    if (currentPassword === newPassword) {
+      return res.status(400).json({ message: 'New password must be different from your current password' });
+    }
+
+    user.password = newPassword; // hashed by the pre-save hook
+    await user.save();
+
+    // Revoke all other sessions — force re-login everywhere except this device
+    await RefreshToken.deleteMany({ userId: user._id });
+
+    await logActivity(user._id, 'PASSWORD_CHANGED', 'authentication', {}, req);
+
+    // Security alert email — fire-and-forget so a slow/down SMTP server
+    // never delays this response.
+    require('../services/emailService').sendPasswordChangedAlert(user.email, user.name).catch((e) => {
+      console.error('Failed to send password-changed alert email:', e.message);
+    });
+
+    res.json({ message: 'Password changed successfully. Please log in again on your other devices.' });
+  } catch (error) {
+    console.error('Change password error:', error.message);
+    res.status(500).json({ message: 'Failed to change password. Please try again.' });
   }
 };
 

@@ -4,6 +4,7 @@ import {
   ChevronRight, Lightbulb, Target, Droplets, Image as ImageIcon
 } from 'lucide-react';
 import { useRef } from 'react';
+import { getToken } from '../utils/authStorage';
 
 export default function QuickFoodCheck() {
   const cameraInputRef = useRef(null);
@@ -247,7 +248,7 @@ export default function QuickFoodCheck() {
 
     setLoading(true);
     try {
-      const token = localStorage.getItem('token');
+      const token = getToken();
 
       // Build context from image details and food input
       let contextText = '';

@@ -229,5 +229,7 @@ healthReportSchema.pre('save', function (next) {
 // Add indexes for faster queries as we scale
 healthReportSchema.index({ user: 1, createdAt: -1 });
 healthReportSchema.index({ user: 1, reportType: 1 });
+// Admin stats/growth charts filter by report date range collection-wide
+healthReportSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model('HealthReport', healthReportSchema);

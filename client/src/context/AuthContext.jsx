@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useRef } from 'react';
 import api, { fcmService } from '../services/api';
 import { requestNotificationPermission, onForegroundMessage } from '../services/firebase';
 import toast from 'react-hot-toast';
+import { getToken, getUserRaw, getRefreshToken, setAuthData, setRememberMe, clearAuthData } from '../utils/authStorage';
 
 const AuthContext = createContext({});
 
@@ -20,8 +21,8 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     try {
-      const token = localStorage.getItem('token');
-      const userData = localStorage.getItem('user');
+      const token = getToken();
+      const userData = getUserRaw();
       if (token && userData) {
         setUser(JSON.parse(userData));
         api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -29,8 +30,7 @@ export const AuthProvider = ({ children }) => {
         setupFCM();
       }
     } catch (error) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
+      clearAuthData();
     } finally {
       setLoading(false);
     }
@@ -62,11 +62,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const login = async (emailOrPhone, password) => {
-    // Clear sensitive items instead of wiping all storage
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    sessionStorage.removeItem('token');
+  const login = async (emailOrPhone, password, rememberMe = true) => {
+    // Clear any existing session from both storages before deciding where the new one lives
+    clearAuthData();
+    setRememberMe(rememberMe);
 
     // Clear service worker cache immediately
     if ('caches' in window) {
@@ -82,33 +81,62 @@ export const AuthProvider = ({ children }) => {
     const payload = isEmail ? { email: emailOrPhone, password } : { phone: emailOrPhone, password };
     const { data } = await api.post('auth/login', payload, { skipAutoLogout: true });
 
-    // Store both tokens
-    localStorage.setItem('token', data.token);
-    if (data.refreshToken) localStorage.setItem('refreshToken', data.refreshToken);
-    localStorage.setItem('user', JSON.stringify(data));
+    setAuthData({ token: data.token, refreshToken: data.refreshToken, user: data });
     api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
 
     // Fetch latest profile data to ensure we have the most recent info
     try {
       const profileResponse = await api.get('auth/profile');
       const userData = { ...data, ...profileResponse.data };
-      localStorage.setItem('user', JSON.stringify(userData));
+      setAuthData({ user: userData });
       setUser(userData);
       setupFCM(); // non-blocking
       return userData;
     } catch (error) {
-      localStorage.setItem('user', JSON.stringify(data));
+      setAuthData({ user: data });
       setUser(data);
       setupFCM(); // non-blocking
       return data;
     }
   };
 
+  const loginWithGoogle = async (accessToken, rememberMe = true) => {
+    clearAuthData();
+    setRememberMe(rememberMe);
+
+    if ('caches' in window) {
+      try {
+        const cacheNames = await caches.keys();
+        await Promise.all(cacheNames.map(name => caches.delete(name)));
+      } catch (err) {
+        console.error('Cache clear error:', err);
+      }
+    }
+
+    const { data } = await api.post('auth/google', { accessToken }, { skipAutoLogout: true });
+
+    setAuthData({ token: data.token, refreshToken: data.refreshToken, user: data });
+    api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
+
+    try {
+      const profileResponse = await api.get('auth/profile');
+      const userData = { ...data, ...profileResponse.data };
+      setAuthData({ user: userData });
+      setUser(userData);
+      setupFCM();
+      return userData;
+    } catch (error) {
+      setAuthData({ user: data });
+      setUser(data);
+      setupFCM();
+      return data;
+    }
+  };
+
   const register = async (name, email, phone, password, profile = {}, nutritionGoal = null, otp = null) => {
-    // Clear sensitive items instead of wiping all storage
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    sessionStorage.removeItem('token');
+    // Clear any existing session — signup always starts a remembered session (no checkbox here)
+    clearAuthData();
+    setRememberMe(true);
 
     // Clear service worker cache immediately
     if ('caches' in window) {
@@ -131,8 +159,7 @@ export const AuthProvider = ({ children }) => {
     });
 
     // Set new token and user data
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data));
+    setAuthData({ token: data.token, user: data });
     api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
     setUser(data);
     setupFCM(); // non-blocking
@@ -140,10 +167,9 @@ export const AuthProvider = ({ children }) => {
   };
 
   const registerDoctor = async (doctorData) => {
-    // Clear sensitive items instead of wiping all storage
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
-    sessionStorage.removeItem('token');
+    // Clear any existing session — signup always starts a remembered session (no checkbox here)
+    clearAuthData();
+    setRememberMe(true);
 
     // Clear service worker cache immediately
     if ('caches' in window) {
@@ -158,8 +184,7 @@ export const AuthProvider = ({ children }) => {
     const { data } = await api.post('auth/register/doctor', doctorData);
 
     // Set new token and user data
-    localStorage.setItem('token', data.token);
-    localStorage.setItem('user', JSON.stringify(data));
+    setAuthData({ token: data.token, user: data });
     api.defaults.headers.common['Authorization'] = `Bearer ${data.token}`;
     setUser(data);
     return data;
@@ -172,14 +197,11 @@ export const AuthProvider = ({ children }) => {
         fcmService.deregisterToken(fcmToken).catch(() => {});
         localStorage.removeItem('fcmToken');
       }
-      const refreshToken = localStorage.getItem('refreshToken');
+      const refreshToken = getRefreshToken();
       await api.post('auth/logout', { refreshToken }).catch(err => console.warn('Logout log failed:', err.message));
     } catch (e) {}
 
-    localStorage.removeItem('token');
-    localStorage.removeItem('refreshToken');
-    localStorage.removeItem('user');
-    sessionStorage.removeItem('token');
+    clearAuthData();
 
     // Clear API headers
     delete api.defaults.headers.common['Authorization'];
@@ -197,14 +219,14 @@ export const AuthProvider = ({ children }) => {
 
   const updateUser = (userData) => {
     setUser(userData);
-    localStorage.setItem('user', JSON.stringify(userData));
+    setAuthData({ user: userData });
   };
 
   const refreshUser = async () => {
     try {
       const { data } = await api.get('auth/profile');
       setUser(data);
-      localStorage.setItem('user', JSON.stringify(data));
+      setAuthData({ user: data });
       return data;
     } catch (error) {
       console.error('Failed to refresh user:', error);
@@ -224,6 +246,7 @@ export const AuthProvider = ({ children }) => {
     <AuthContext.Provider value={{
       user,
       login,
+      loginWithGoogle,
       register,
       registerDoctor,
       logout,

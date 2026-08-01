@@ -159,15 +159,15 @@ const Footer = () => {
                 className="flex items-center gap-2 hover:text-white transition"
               >
                 <Mail />
-                <span>takesolutionsltd@gmail.com</span>
+                <span>support@takelimited.com</span>
               </a>
-              <a
+              {/* <a
                 href="tel:+918156020445"
                 className="flex items-center gap-2 hover:text-white transition"
               >
                 <Phone />
                 <span>+91 8156020445</span>
-              </a>
+              </a> */}
             </div>
           </motion.div>
         </motion.div>
@@ -306,7 +306,7 @@ const Footer = () => {
         </motion.div>
 
         <div className="text-center lg:text-left lg:flex justify-between w-full border-t border-white/10 pt-5">
-          <p>© 2026 Take Solutions Ltd. All rights reserved.</p>
+          <p>© 2026 Take Limited. All rights reserved.</p>
           <p>Designed with purpose. Priced with care.</p>
         </div>
       </div>

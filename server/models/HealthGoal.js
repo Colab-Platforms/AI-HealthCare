@@ -74,7 +74,7 @@ const healthGoalSchema = new mongoose.Schema({
   // Preferences
   dietaryPreference: {
     type: String,
-    enum: ['vegetarian', 'vegan', 'non-vegetarian', 'eggetarian'],
+    enum: ['vegetarian', 'vegan', 'non-vegetarian', 'eggetarian', 'paleo', 'keto', 'other'],
     default: 'non-vegetarian'
   },
   allergies: [String],

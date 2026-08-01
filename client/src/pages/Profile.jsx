@@ -10,6 +10,9 @@ import {
   Camera,
   Mail,
   Phone,
+  Lock,
+  Eye,
+  EyeOff,
   Target,
   Activity,
   Droplet,
@@ -62,6 +65,52 @@ export default function Profile() {
   const [expandedSection, setExpandedSection] = useState(null); // 'profile' or 'goals'
   const [viewingPdf, setViewingPdf] = useState(null); // URL of PDF to view
   const [pdfLoading, setPdfLoading] = useState(true);
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+  const [showPasswordFields, setShowPasswordFields] = useState({
+    current: false,
+    new: false,
+    confirm: false,
+  });
+  const [changingPassword, setChangingPassword] = useState(false);
+
+  const handleChangePassword = async () => {
+    const { currentPassword, newPassword, confirmPassword } = passwordForm;
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      toast.error("Please fill in all password fields");
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error("New password must be at least 6 characters long");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("New password and confirmation do not match");
+      return;
+    }
+
+    setChangingPassword(true);
+    try {
+      const { data } = await api.post(
+        "auth/change-password",
+        { currentPassword, newPassword },
+        { skipAutoLogout: true },
+      );
+      toast.success(data.message || "Password changed successfully");
+      setPasswordForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+      setExpandedSection(null);
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Failed to change password. Please try again.",
+      );
+    } finally {
+      setChangingPassword(false);
+    }
+  };
 
   const [goalFormData, setGoalFormData] = useState({
     goalType: "maintenance",
@@ -844,6 +893,112 @@ export default function Profile() {
                       Save Changes
                     </button>
                   </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Change Password */}
+            <button
+              onClick={() =>
+                setExpandedSection(
+                  expandedSection === "password" ? null : "password",
+                )
+              }
+              className="w-full px-8 py-5 flex items-center justify-between hover:bg-slate-50/50 transition-colors border-b border-slate-50 group"
+            >
+              <div className="flex items-center gap-5">
+                <div className="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center border border-slate-100">
+                  <Lock size={18} className="text-slate-600" />
+                </div>
+                <span className="text-[15px] font-black text-[#1a1a1a] tracking-tight">
+                  Change Password
+                </span>
+              </div>
+              <ChevronRight
+                size={18}
+                className={`text-slate-300 transition-transform ${expandedSection === "password" ? "rotate-90" : ""}`}
+              />
+            </button>
+
+            <AnimatePresence>
+              {expandedSection === "password" && (
+                <motion.div
+                  initial={{ height: 0, opacity: 0 }}
+                  animate={{ height: "auto", opacity: 1 }}
+                  exit={{ height: 0, opacity: 0 }}
+                  className="bg-slate-50/30 px-6 border-b border-slate-100 overflow-hidden"
+                >
+                  {user?.authProvider === "google" ? (
+                    <div className="py-6">
+                      <p className="text-xs font-bold text-slate-400 text-center">
+                        This account uses Google Sign-In and doesn't have a
+                        password to change.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="py-6 space-y-4">
+                      {[
+                        {
+                          key: "currentPassword",
+                          label: "Current Password",
+                          show: "current",
+                        },
+                        {
+                          key: "newPassword",
+                          label: "New Password",
+                          show: "new",
+                        },
+                        {
+                          key: "confirmPassword",
+                          label: "Confirm New Password",
+                          show: "confirm",
+                        },
+                      ].map(({ key, label, show }) => (
+                        <div key={key}>
+                          <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">
+                            {label}
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showPasswordFields[show] ? "text" : "password"}
+                              value={passwordForm[key]}
+                              onChange={(e) =>
+                                setPasswordForm((prev) => ({
+                                  ...prev,
+                                  [key]: e.target.value,
+                                }))
+                              }
+                              className="w-full bg-white border border-slate-100 rounded-xl py-3 pl-4 pr-11 text-sm font-bold shadow-sm"
+                              placeholder="••••••••"
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setShowPasswordFields((prev) => ({
+                                  ...prev,
+                                  [show]: !prev[show],
+                                }))
+                              }
+                              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                            >
+                              {showPasswordFields[show] ? (
+                                <EyeOff size={16} />
+                              ) : (
+                                <Eye size={16} />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      <button
+                        onClick={handleChangePassword}
+                        disabled={changingPassword}
+                        className="w-full py-4 bg-[#1a2138] text-white rounded-2xl text-[11px] font-black uppercase tracking-[0.15em] shadow-lg active:scale-98 transition-transform disabled:opacity-60"
+                      >
+                        {changingPassword ? "Updating..." : "Update Password"}
+                      </button>
+                    </div>
+                  )}
                 </motion.div>
               )}
             </AnimatePresence>
