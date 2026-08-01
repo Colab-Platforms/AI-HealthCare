@@ -22,7 +22,7 @@ const UpdatedBetterWellness = ({ cardImages = {} }) => {
       id: "sleep_recovery",
       title: "Sleep & Recovery",
       subtitle: "Sleep Tracking • Recovery Score • Sleep Trends",
-      fallbackImg: "/updated-landing/rotating-card-3.jpg",
+      fallbackImg: "/updated-landing/rotating-card-3.png",
       backImg: "/updated-landing/3.png",
     },
     {
@@ -70,7 +70,7 @@ const UpdatedBetterWellness = ({ cardImages = {} }) => {
 
   const hasFlippedCard = Object.values(flippedCards).some(Boolean);
 
-  const IDLE_SPEED = 0.2;
+  const IDLE_SPEED = 0.7;
   const speedRef = useRef(isMobile ? 0 : IDLE_SPEED);
   const targetSpeedRef = useRef(isMobile ? 0 : IDLE_SPEED);
   const scrollTimeoutRef = useRef(null);
