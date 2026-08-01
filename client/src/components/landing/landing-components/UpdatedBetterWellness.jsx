@@ -262,7 +262,7 @@ const UpdatedBetterWellness = ({ cardImages = {} }) => {
                         <img
                           src={card.backImg}
                           alt={card.title}
-                          className="w-full h-full object-contain"
+                          className="w-full h-full object-cover"
                           loading="lazy"
                         />
                       </div>
