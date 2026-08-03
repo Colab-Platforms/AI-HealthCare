@@ -36,11 +36,12 @@ export default function Supplements() {
   const fetchReports = async () => {
     try {
       const { data } = await healthService.getReports();
-      setReports(data);
+      const allReports = Array.isArray(data) ? data : (data.all || []);
+      setReports(allReports);
 
       // Auto-select the latest report
-      if (data.length > 0) {
-        setSelectedReportId(data[0]._id);
+      if (allReports.length > 0) {
+        setSelectedReportId(allReports[0]._id);
       }
     } catch (error) {
       console.error("Failed to fetch reports:", error);
