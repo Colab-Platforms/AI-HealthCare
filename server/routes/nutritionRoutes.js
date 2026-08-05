@@ -10,7 +10,8 @@ router.use(protect);
 // Food Analysis
 const upload = require('../middleware/upload');
 router.post('/analyze-food', aiLimiter, nutritionController.analyzeFood);
-router.post('/quick-check', aiLimiter, upload.single('image'), nutritionController.quickFoodCheck);
+// 'image' kept for backward-compat single-photo clients; 'images' is the new multi-photo field (up to 5)
+router.post('/quick-check', aiLimiter, upload.fields([{ name: 'image', maxCount: 1 }, { name: 'images', maxCount: 5 }]), nutritionController.quickFoodCheck);
 router.post('/quick-check/save', nutritionController.saveQuickCheck);
 router.post('/get-alternatives', aiLimiter, nutritionController.getHealthyAlternatives);
 
@@ -18,6 +19,7 @@ router.post('/get-alternatives', aiLimiter, nutritionController.getHealthyAltern
 router.post('/goals', nutritionController.setHealthGoal);
 router.put('/goals', nutritionController.updateHealthGoal);
 router.get('/goals', apiLimiter, nutritionController.getHealthGoal);
+router.patch('/goals/calorie-override', nutritionController.setCalorieOverride);
 router.post('/log-weight', nutritionController.logWeight);
 router.post('/log-water', nutritionController.logWater);
 

@@ -58,9 +58,178 @@ exports.requestRegistrationOtp = async (req, res) => {
   }
 };
 
+// @desc    Send a login OTP to an existing user's phone (passwordless login, step 1)
+// @route   POST /api/auth/phone/login-otp
+exports.requestPhoneLoginOtp = async (req, res) => {
+  try {
+    const { phone } = req.body;
+    const phoneRegex = /^\d{10}$/;
+    if (!phone || !phoneRegex.test(phone)) {
+      return res.status(400).json({ message: 'A valid 10-digit phone number is required' });
+    }
+
+    const user = await User.findOne({ phone }).maxTimeMS(15000);
+    if (!user) {
+      return res.status(404).json({ message: 'No account found with this phone number' });
+    }
+    if (!user.isActive) {
+      return res.status(403).json({ message: 'Account is deactivated. Please contact support at support@takesolutions.com' });
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    await Otp.findOneAndUpdate(
+      { phone },
+      { phone, code, createdAt: Date.now() },
+      { upsert: true, new: true }
+    );
+
+    const smsService = require('../services/smsService');
+    await smsService.sendOtpSms(phone, code);
+
+    res.json({ success: true, message: 'Verification code sent to your phone' });
+  } catch (error) {
+    console.error('Phone login OTP request error:', error.message);
+    res.status(500).json({ message: 'Failed to send verification code' });
+  }
+};
+
+// @desc    Verify the phone login OTP and log the user in (passwordless login, step 2)
+// @route   POST /api/auth/phone/login
+exports.loginWithPhoneOtp = async (req, res) => {
+  try {
+    const { phone, otp } = req.body;
+    if (!phone || !otp) {
+      return res.status(400).json({ message: 'Phone number and verification code are required' });
+    }
+
+    const otpRecord = await Otp.findOne({ phone, code: otp });
+    if (!otpRecord) {
+      return res.status(400).json({ message: 'Invalid or expired verification code' });
+    }
+    await Otp.deleteOne({ _id: otpRecord._id });
+
+    const user = await User.findOne({ phone }).populate('doctorProfile').maxTimeMS(15000);
+    if (!user) {
+      return res.status(404).json({ message: 'No account found with this phone number' });
+    }
+    if (!user.isActive) {
+      return res.status(403).json({ message: 'Account is deactivated. Please contact support at support@takesolutions.com' });
+    }
+
+    user.isPhoneVerified = true;
+    user.loginCount = (user.loginCount || 0) + 1;
+    await user.save();
+
+    const rawRefreshToken = generateRefreshToken();
+    await RefreshToken.create({
+      userId: user._id,
+      token: rawRefreshToken,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.ip,
+    });
+
+    const response = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+      profile: user.profile,
+      nutritionGoal: user.nutritionGoal,
+      foodPreferences: user.foodPreferences,
+      subscription: user.subscription,
+      healthMetrics: user.healthMetrics,
+      consent: user.consent,
+      privacySettings: user.privacySettings,
+      dataRetention: user.dataRetention,
+      token: generateAccessToken(user._id),
+      refreshToken: rawRefreshToken,
+    };
+
+    if (user.role === 'doctor' && user.doctorProfile) {
+      response.doctorProfile = {
+        _id: user.doctorProfile._id,
+        approvalStatus: user.doctorProfile.approvalStatus,
+        specialization: user.doctorProfile.specialization,
+        isListed: user.doctorProfile.isListed
+      };
+    }
+
+    await logActivity(user._id, 'USER_LOGIN', 'authentication', { method: 'phone_otp' }, req);
+    gamificationService.awardPoints(user._id, 'login', 'Daily Login').catch(console.error);
+
+    res.json(response);
+  } catch (error) {
+    console.error('Phone OTP login error:', error.message);
+    res.status(500).json({ message: 'Login failed. Please try again.' });
+  }
+};
+
+// @desc    Send an OTP to verify/change the logged-in user's phone number
+// @route   POST /api/auth/phone/verify-otp
+exports.requestPhoneVerificationOtp = async (req, res) => {
+  try {
+    const { phone } = req.body;
+    const phoneRegex = /^\d{10}$/;
+    if (!phone || !phoneRegex.test(phone)) {
+      return res.status(400).json({ message: 'A valid 10-digit phone number is required' });
+    }
+
+    const existingUser = await User.findOne({ phone, _id: { $ne: req.user._id } }).maxTimeMS(15000);
+    if (existingUser) {
+      return res.status(400).json({ message: 'This phone number is already linked to another account' });
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    await Otp.findOneAndUpdate(
+      { phone },
+      { phone, code, createdAt: Date.now() },
+      { upsert: true, new: true }
+    );
+
+    const smsService = require('../services/smsService');
+    await smsService.sendOtpSms(phone, code);
+
+    res.json({ success: true, message: 'Verification code sent to your phone' });
+  } catch (error) {
+    console.error('Phone verification OTP request error:', error.message);
+    res.status(500).json({ message: 'Failed to send verification code' });
+  }
+};
+
+// @desc    Verify the OTP and mark the logged-in user's phone as verified
+// @route   POST /api/auth/phone/verify
+exports.verifyPhone = async (req, res) => {
+  try {
+    const { phone, otp } = req.body;
+    if (!phone || !otp) {
+      return res.status(400).json({ message: 'Phone number and verification code are required' });
+    }
+
+    const otpRecord = await Otp.findOne({ phone, code: otp });
+    if (!otpRecord) {
+      return res.status(400).json({ message: 'Invalid or expired verification code' });
+    }
+    await Otp.deleteOne({ _id: otpRecord._id });
+
+    const user = await User.findById(req.user._id).maxTimeMS(15000);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    user.phone = phone;
+    user.isPhoneVerified = true;
+    await user.save();
+
+    res.json({ success: true, message: 'Phone number verified successfully', phone: user.phone, isPhoneVerified: true });
+  } catch (error) {
+    console.error('Phone verification error:', error.message);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 exports.register = async (req, res) => {
   try {
-    const { name, phone, password, role, profile, nutritionGoal, otp } = req.body;
+    const { name, phone, password, role, profile, nutritionGoal, otp, device_id } = req.body;
     const email = req.body.email?.toLowerCase().trim();
 
     // Validate required fields
@@ -147,6 +316,7 @@ exports.register = async (req, res) => {
         password,
         role: userRole,
         isEmailVerified: true,
+        device_id: device_id || null,
         profile: profile || {},
         nutritionGoal: calculatedGoals ? {
           goal: nutritionGoal.goal,
@@ -226,7 +396,7 @@ exports.registerDoctor = async (req, res) => {
     const {
       name, email, phone, password,
       specialization, qualifications, experience, hospital,
-      licenseNumber, consultationFee, bio
+      licenseNumber, consultationFee, bio, device_id
     } = req.body;
 
     // Check if user exists - with extended timeout for Vercel
@@ -242,7 +412,8 @@ exports.registerDoctor = async (req, res) => {
       phone,
       password,
       role: 'doctor',
-      isActive: true
+      isActive: true,
+      device_id: device_id || null
     });
 
     // Create doctor profile (pending approval) - with extended timeout for Vercel
@@ -286,7 +457,7 @@ exports.registerDoctor = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { phone, password } = req.body;
+    const { phone, password, device_id } = req.body;
     const email = req.body.email?.toLowerCase().trim();
 
     // Input validation
@@ -343,7 +514,15 @@ exports.login = async (req, res) => {
     }
 
     if (passwordMatch) {
+      // Single-device login enforcement: a stored device_id means a session
+      // is already active elsewhere; only a null device_id allows login
+      if (user.device_id) {
+        console.log('Login blocked, device already logged in for user:', user._id);
+        return res.status(409).json({ message: 'Device already logged in' });
+      }
+
       user.loginCount = (user.loginCount || 0) + 1;
+      if (device_id) user.device_id = device_id;
       await user.save();
 
       // Issue refresh token and save to DB
@@ -416,7 +595,7 @@ exports.googleAuth = async (req, res) => {
     // google.accounts.oauth2. The mobile app (native Google Sign-In SDK)
     // sends an ID token (JWT) instead — a different token type that needs
     // a different Google verification endpoint. Support both.
-    const { accessToken, idToken } = req.body;
+    const { accessToken, idToken, device_id } = req.body;
     if (!accessToken && !idToken) {
       return res.status(400).json({ message: 'A Google access token or ID token is required' });
     }
@@ -471,6 +650,7 @@ exports.googleAuth = async (req, res) => {
     }
 
     let user = await User.findOne({ $or: [{ googleId }, { email }] }).populate('doctorProfile');
+    const isNewUser = !user;
 
     if (!user) {
       user = await User.create({
@@ -480,6 +660,7 @@ exports.googleAuth = async (req, res) => {
         googleId,
         authProvider: 'google',
         isEmailVerified: true,
+        device_id: device_id || null,
         profilePicture: profile.picture,
         subscription: {
           plan: 'free',
@@ -498,7 +679,16 @@ exports.googleAuth = async (req, res) => {
       return res.status(403).json({ message: 'Account is deactivated. Please contact support at support@takesolutions.com' });
     }
 
+    // Single-device login enforcement (same rule as password login): a
+    // stored device_id means a session is already active elsewhere.
+    // Skipped for brand-new sign-ups, which already stored device_id above.
+    if (!isNewUser && user.device_id) {
+      console.log('Google login blocked, device already logged in for user:', user._id);
+      return res.status(409).json({ message: 'Device already logged in' });
+    }
+
     user.loginCount = (user.loginCount || 0) + 1;
+    if (device_id) user.device_id = device_id;
     await user.save();
 
     const rawRefreshToken = generateRefreshToken();
@@ -556,6 +746,7 @@ exports.logout = async (req, res) => {
       await RefreshToken.deleteOne({ token: refreshToken });
     }
     if (req.user) {
+      await User.updateOne({ _id: req.user._id }, { device_id: null });
       await logActivity(req.user._id, 'USER_LOGOUT', 'authentication', {}, req);
     }
     res.json({ success: true, message: 'Logged out successfully' });
@@ -748,12 +939,16 @@ exports.updateProfile = async (req, res) => {
 
       const updatedUser = await user.save();
 
-      res.json({
+      const responseBody = {
         ...updatedUser.toObject(),
         password: undefined,
         bmiChanged,
         newBmi
-      });
+      };
+
+      console.log('updateProfile response:', JSON.stringify(responseBody, null, 2));
+
+      res.json(responseBody);
     } else {
       res.status(404).json({ message: 'User not found' });
     }
@@ -812,6 +1007,8 @@ exports.changePassword = async (req, res) => {
 
     // Revoke all other sessions — force re-login everywhere except this device
     await RefreshToken.deleteMany({ userId: user._id });
+    user.device_id = null;
+    await user.save();
 
     await logActivity(user._id, 'PASSWORD_CHANGED', 'authentication', {}, req);
 

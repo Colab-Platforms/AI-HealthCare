@@ -52,6 +52,18 @@ const healthGoalSchema = new mongoose.Schema({
   bmr: Number, // Basal Metabolic Rate
   tdee: Number, // Total Daily Energy Expenditure
   dailyCalorieTarget: Number,
+  // The actual weekly weight-change rate (kg) used to derive dailyCalorieTarget, AFTER capping
+  // to a physiologically realistic max — lets the UI tell the user their real ETA vs. what they asked for
+  weeklyRateKg: Number,
+  // Manual calorie override: when set, dailyCalorieTarget uses this value instead of the
+  // calculateCalorieTarget() formula. Reset to 'auto' whenever the user resubmits the goal
+  // form (goalType/targetWeight/timeframe/etc.) — auto-calc always wins over a stale override.
+  calorieSource: {
+    type: String,
+    enum: ['auto', 'manual'],
+    default: 'auto'
+  },
+  manualCalorieTarget: Number,
 
   macroTargets: {
     protein: Number, // grams
@@ -121,6 +133,19 @@ healthGoalSchema.methods.calculateTDEE = function () {
   return this.tdee;
 };
 
+// Max safe weekly rate of weight change, as a fraction of current bodyweight.
+// weight_loss: ACSM/CDC safe-loss guideline (~1%/week). weight_gain: general bulk cap (~0.5%/week).
+// muscle_gain: natural muscle-protein-synthesis ceiling is far lower than fat loss/gain rates —
+// sports-nutrition literature (Aragon/Helms lean-gain models) puts it around 0.25%/week; surplus
+// beyond what the body can actually turn into muscle just becomes fat, so we don't let a user's
+// requested timeframe push the surplus past this regardless of how fast they say they want to go.
+const MAX_WEEKLY_RATE_FRACTION = {
+  weight_loss: 0.01,
+  weight_gain: 0.005,
+  muscle_gain: 0.0025,
+};
+const KCAL_PER_KG_FAT = 7700; // Wishnofsky rule — standard energy-density-of-fat approximation
+
 // Calculate daily calorie target based on goal (scientifically backed)
 healthGoalSchema.methods.calculateCalorieTarget = function () {
   if (!this.tdee) {
@@ -128,29 +153,60 @@ healthGoalSchema.methods.calculateCalorieTarget = function () {
   }
 
   let calorieAdjust = 0;
+  this.weeklyRateKg = 0; // what we actually targeted after clamping — surfaced to the UI
 
-  switch (this.goalType) {
-    case 'weight_loss':
-      calorieAdjust = this.isDiabetic ? -400 : -500;
-      break;
-    case 'weight_gain':
-      calorieAdjust = this.isDiabetic ? 250 : 500;
-      break;
-    case 'muscle_gain':
-      calorieAdjust = this.isDiabetic ? 200 : 300;
-      break;
-    case 'maintenance':
-    case 'maintain':
-    case 'health_improvement':
-    case 'general_health':
-    case 'disease_management':
-      calorieAdjust = 0;
-      break;
-    default:
-      calorieAdjust = 0;
+  const hasWeightGoal = ['weight_loss', 'weight_gain', 'muscle_gain'].includes(this.goalType);
+
+  if (hasWeightGoal && this.targetWeight && this.currentWeight) {
+    // Derive the rate the user is IMPLICITLY asking for from targetWeight + targetDate,
+    // instead of using a flat constant that ignores both entirely.
+    const weeksAvailable = this.targetDate
+      ? Math.max(1, (new Date(this.targetDate) - Date.now()) / (7 * 24 * 60 * 60 * 1000))
+      : 12; // sane default when no timeframe was given
+
+    const requestedWeeklyRate = (this.targetWeight - this.currentWeight) / weeksAvailable;
+
+    // The safety cap always follows the DIRECTION actually implied by target vs. current
+    // weight, not the selected goalType label. Previously a mismatched label (e.g. "weight_loss"
+    // with a higher target weight) forced the rate's sign to match the label, which clamped it
+    // to exactly 0 — freezing the calorie budget at plain maintenance regardless of target
+    // weight or timeframe. The mismatch is still flagged to the user elsewhere in the UI, but
+    // the calorie math itself must always track their actual numbers.
+    const maxRateFraction = requestedWeeklyRate < 0
+      ? MAX_WEEKLY_RATE_FRACTION.weight_loss
+      : (this.goalType === 'muscle_gain' ? MAX_WEEKLY_RATE_FRACTION.muscle_gain : MAX_WEEKLY_RATE_FRACTION.weight_gain);
+    const maxRate = maxRateFraction * this.currentWeight;
+
+    const cappedWeeklyRate = requestedWeeklyRate < 0
+      ? Math.max(requestedWeeklyRate, -maxRate)
+      : Math.min(requestedWeeklyRate, maxRate);
+
+    this.weeklyRateKg = Math.round(cappedWeeklyRate * 100) / 100;
+    calorieAdjust = (cappedWeeklyRate * KCAL_PER_KG_FAT) / 7;
+
+    // Diabetic users get a gentler adjustment for glycemic/metabolic safety margin
+    if (this.isDiabetic) calorieAdjust *= 0.8;
+  } else {
+    // No targetWeight/timeframe given — fall back to conservative flat defaults
+    switch (this.goalType) {
+      case 'weight_loss':
+        calorieAdjust = this.isDiabetic ? -400 : -500;
+        break;
+      case 'weight_gain':
+        calorieAdjust = this.isDiabetic ? 250 : 500;
+        break;
+      case 'muscle_gain':
+        calorieAdjust = this.isDiabetic ? 200 : 300;
+        break;
+      default:
+        calorieAdjust = 0;
+    }
   }
 
-  this.dailyCalorieTarget = Math.round(this.tdee + calorieAdjust);
+  // Safety floor: never below ~1200/1500 kcal (standard nutrition-guideline minimums) or
+  // below 1.1x BMR — deficits beyond this are considered unsafe without medical supervision.
+  const safeMinimum = Math.max(this.gender === 'male' ? 1500 : 1200, Math.round(this.bmr * 1.1));
+  this.dailyCalorieTarget = Math.max(Math.round(this.tdee + calorieAdjust), safeMinimum);
   return this.dailyCalorieTarget;
 };
 
@@ -258,8 +314,15 @@ healthGoalSchema.pre('save', function (next) {
 
   this.calculateBMR();
   this.calculateTDEE();
-  this.calculateCalorieTarget();
-  this.calculateMacros();
+
+  if (this.calorieSource === 'manual' && this.manualCalorieTarget) {
+    this.dailyCalorieTarget = this.manualCalorieTarget;
+    this.weeklyRateKg = null; // no longer derived from the formula
+  } else {
+    this.calculateCalorieTarget();
+  }
+
+  this.calculateMacros(); // macro split still derives from dailyCalorieTarget either way
 
   next();
 });

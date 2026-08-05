@@ -8,6 +8,9 @@ const MODEL_PRICING = {
     'claude-3-5-haiku-latest': { input: 1.00,  output: 5.00,  cacheRead: 0.10,  cacheWrite: 1.25 },
     'claude-4-haiku-latest':   { input: 1.00,  output: 5.00,  cacheRead: 0.10,  cacheWrite: 1.25 },
     'claude-opus-4-8':         { input: 5.00,  output: 25.00, cacheRead: 0.50,  cacheWrite: 6.25 },
+    // OpenRouter models — verify against https://openrouter.ai/models before relying on cost totals
+    'google/gemini-2.5-flash':      { input: 0.30, output: 2.50, cacheRead: 0.075, cacheWrite: 0 },
+    'google/gemini-2.5-flash-lite': { input: 0.10, output: 0.40, cacheRead: 0.025, cacheWrite: 0 },
 };
 
 const calcCost = (model, inputTokens, outputTokens, cacheReadTokens = 0, cacheWriteTokens = 0) => {
@@ -26,7 +29,7 @@ const usageLogSchema = new mongoose.Schema({
         'validate_report', 'analyze_report', 'reanalyze_report',
         'ai_chat', 'chat_about_report', 'metric_info',
         'compare_reports', 'health_dna', 'vitals_insights',
-        'diet_plan', 'translate', 'other'
+        'diet_plan', 'translate', 'nutrition_analysis', 'other'
     ]},
     model:             { type: String, required: true },
     inputTokens:       { type: Number, default: 0 },

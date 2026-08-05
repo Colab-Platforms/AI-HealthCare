@@ -339,7 +339,13 @@ try {
 }
 
 app.use((err, req, res, next) => {
-  console.error("[Server Error Handler]:", err.message);
+  if (err.code === "LIMIT_UNEXPECTED_FILE") {
+    console.error(
+      `[Server Error Handler]: Unexpected field "${err.field}" on ${req.method} ${req.originalUrl}`,
+    );
+  } else {
+    console.error("[Server Error Handler]:", err.message);
+  }
   res.status(err.status || 500).json({
     message: err.message || "Something went wrong!",
     path: req.originalUrl,

@@ -10,6 +10,19 @@ import { toast } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
 import { MealAnalysisModal } from './MealAnalysisModal';
+import { MEAL_CALORIE_SPLIT } from '../utils/mealCalorieSplit';
+
+// A FoodLog can hold multiple dishes (multi-photo scan) in `foodItems[]` — these read the
+// properly aggregated `totalNutrition`/full item list instead of assuming a single dish.
+const getLogCalories = (log) =>
+  Number(log.totalNutrition?.calories ?? log.calories ?? log.foodItems?.[0]?.nutrition?.calories ?? 0);
+
+const getLogDisplayName = (log) => {
+  const names = (log.foodItems || []).map((f) => f.name).filter(Boolean);
+  if (names.length === 0) return log.name || 'Food Item';
+  if (names.length === 1) return names[0];
+  return `${names[0]} +${names.length - 1} more`;
+};
 
 const LOG_METHODS = [
   { id: 'voice', label: 'Voice Log', icon: Mic },
@@ -34,7 +47,8 @@ export function NutritionTab({
   aiInsights = "",
   onDeleteFood,
   onMoveFood,
-  onViewFood
+  onViewFood,
+  onLogActivity
 }) {
   const [activeSuggestion, setActiveSuggestion] = useState('Recommended');
   const [showRecipe, setShowRecipe] = useState(false);
@@ -178,7 +192,11 @@ export function NutritionTab({
   const avgKcal = Math.round(weeklyData.reduce((acc, curr) => acc + (curr.value || 0), 0) / (weeklyData.length || 7));
   const diffFromLastWeek = Math.round(((avgKcal - 1900) / 1900) * 100);
 
-  const progressPercent = Math.min(100, (totalTodayKcal / (dailySummary.calorieTarget || 1800)) * 100);
+  // Logged activity (manual "Log Activity" entries or wearable sync) offsets the daily total only —
+  // per-meal warnings below stay as pure food-vs-meal-target comparisons.
+  const caloriesBurnedToday = Math.round(Number(dailySummary.caloriesBurned) || 0);
+  const netTodayKcal = Math.max(0, Math.round(totalTodayKcal) - caloriesBurnedToday);
+  const progressPercent = Math.min(100, (netTodayKcal / (dailySummary.calorieTarget || 1800)) * 100);
 
   // --- Healthy vs Junk Calculation ---
   const todayQuality = useMemo(() => {
@@ -286,7 +304,7 @@ export function NutritionTab({
           <div className="flex items-center justify-between mb-3">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Daily Calories</p>
             <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-widest ${
-              totalTodayKcal > (dailySummary.calorieTarget || 1800)
+              netTodayKcal > (dailySummary.calorieTarget || 1800)
                 ? 'bg-red-50 text-red-500 border border-red-100'
                 : 'bg-emerald-50 text-emerald-600 border border-emerald-100'
             }`}>
@@ -294,21 +312,24 @@ export function NutritionTab({
             </span>
           </div>
           <div className="flex items-end gap-2 mb-1">
-            <span className={`text-[38px] md:text-[44px] font-black tracking-tight leading-none ${totalTodayKcal > (dailySummary.calorieTarget || 1800) ? 'text-red-500' : 'text-[#0d2b22]'}`}>
-              {totalTodayKcal}
+            <span className={`text-[38px] md:text-[44px] font-black tracking-tight leading-none ${netTodayKcal > (dailySummary.calorieTarget || 1800) ? 'text-red-500' : 'text-[#0d2b22]'}`}>
+              {netTodayKcal}
             </span>
             <span className="text-[15px] font-bold text-slate-400 pb-1.5">/ {dailySummary.calorieTarget || 1800} kcal</span>
+            {caloriesBurnedToday > 0 && (
+              <span className="text-[10px] font-black text-orange-500 pb-2 ml-1">🔥 -{caloriesBurnedToday} burned</span>
+            )}
           </div>
-          <p className={`text-[11px] font-black mb-4 ${totalTodayKcal > (dailySummary.calorieTarget || 1800) ? 'text-red-500' : 'text-emerald-600'}`}>
-            {totalTodayKcal > (dailySummary.calorieTarget || 1800)
-              ? `${totalTodayKcal - (dailySummary.calorieTarget || 1800)} kcal over limit`
-              : `${(dailySummary.calorieTarget || 1800) - totalTodayKcal} kcal remaining`}
+          <p className={`text-[11px] font-black mb-4 ${netTodayKcal > (dailySummary.calorieTarget || 1800) ? 'text-red-500' : 'text-emerald-600'}`}>
+            {netTodayKcal > (dailySummary.calorieTarget || 1800)
+              ? `${netTodayKcal - (dailySummary.calorieTarget || 1800)} kcal over limit`
+              : `${(dailySummary.calorieTarget || 1800) - netTodayKcal} kcal remaining`}
           </p>
           <div className="w-full h-2.5 rounded-full overflow-hidden mb-5" style={{ background: "rgba(255,255,255,0.5)" }}>
             <motion.div
               initial={{ width: 0 }} animate={{ width: `${Math.min(100, progressPercent)}%` }}
               transition={{ duration: 1, ease: "easeOut" }}
-              className={`h-full rounded-full ${totalTodayKcal > (dailySummary.calorieTarget || 1800) ? 'bg-red-500' : 'bg-emerald-500'}`}
+              className={`h-full rounded-full ${netTodayKcal > (dailySummary.calorieTarget || 1800) ? 'bg-red-500' : 'bg-emerald-500'}`}
             />
           </div>
           <div className="grid grid-cols-3 gap-3">
@@ -491,9 +512,9 @@ export function NutritionTab({
       {/* ── Meal Timeline ── */}
       <div className="flex flex-col gap-4">
         {[
-          { name: 'Breakfast', target: Math.round((dailySummary.calorieTarget || 1800) * 0.30), icon: Coffee, time: '09:00' },
-          { name: 'Lunch', target: Math.round((dailySummary.calorieTarget || 1800) * 0.40), icon: Utensils, time: '13:30' },
-          { name: 'Dinner', target: Math.round((dailySummary.calorieTarget || 1800) * 0.30), icon: UtensilsCrossed, time: '20:15' },
+          { name: 'Breakfast', target: Math.round((dailySummary.calorieTarget || 1800) * MEAL_CALORIE_SPLIT.breakfast), icon: Coffee, time: '09:00' },
+          { name: 'Lunch', target: Math.round((dailySummary.calorieTarget || 1800) * MEAL_CALORIE_SPLIT.lunch), icon: Utensils, time: '13:30' },
+          { name: 'Dinner', target: Math.round((dailySummary.calorieTarget || 1800) * MEAL_CALORIE_SPLIT.dinner), icon: UtensilsCrossed, time: '20:15' },
         ].map((meal, idx) => {
           const typeKey = meal.name.toLowerCase();
           const meals = (loggedMeals || []).filter(m => {
@@ -505,7 +526,7 @@ export function NutritionTab({
             if (typeKey === 'dinner' && mt.includes('dinner')) return true;
             return false;
           });
-          const consumed = meals.reduce((acc, curr) => acc + Number(curr.calories || curr.foodItems?.[0]?.nutrition?.calories || 0), 0);
+          const consumed = meals.reduce((acc, curr) => acc + getLogCalories(curr), 0);
           const isExceeded = consumed > meal.target;
 
           return (
@@ -544,9 +565,17 @@ export function NutritionTab({
 
                   {/* Exceeded warning */}
                   {isExceeded && (
-                    <div className="mt-3 p-3 rounded-2xl flex gap-2.5 items-center" style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.12)" }}>
-                      <AlertCircle size={14} className="text-red-500 shrink-0" />
-                      <p className="text-[11px] font-black text-red-600">Over by {consumed - meal.target} kcal — a 30-min walk will help.</p>
+                    <div className="mt-3 p-3 rounded-2xl flex gap-2.5 items-center justify-between flex-wrap" style={{ background: "rgba(239,68,68,0.06)", border: "1px solid rgba(239,68,68,0.12)" }}>
+                      <div className="flex gap-2.5 items-center">
+                        <AlertCircle size={14} className="text-red-500 shrink-0" />
+                        <p className="text-[11px] font-black text-red-600">Over by {Math.round(consumed - meal.target)} kcal — a 30-min walk will help.</p>
+                      </div>
+                      <button
+                        onClick={() => onLogActivity && onLogActivity()}
+                        className="text-[10px] font-black text-white bg-red-500 hover:bg-red-600 px-3 py-1.5 rounded-full uppercase tracking-wide transition-all active:scale-95 shrink-0"
+                      >
+                        Have you walked?
+                      </button>
                     </div>
                   )}
 
@@ -561,12 +590,18 @@ export function NutritionTab({
                           onMouseLeave={e => e.currentTarget.style.background = "rgba(255,255,255,0.55)"}
                         >
                           <div className="w-11 h-11 rounded-xl overflow-hidden shrink-0">
-                            <ImageWithFallback src={log.imageUrl || log.foodItems?.[0]?.imageUrl} query={log.name || log.foodItems?.[0]?.name} alt={log.name} className="w-full h-full object-cover" />
+                            <ImageWithFallback src={log.imageUrl || log.foodItems?.[0]?.imageUrl} query={getLogDisplayName(log)} alt={getLogDisplayName(log)} className="w-full h-full object-cover" />
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-[13px] font-black text-[#0d2b22] truncate">{log.name || log.foodItems?.[0]?.name}</p>
+                            <p className="text-[13px] font-black text-[#0d2b22] truncate">{getLogDisplayName(log)}</p>
                             <div className="flex items-center gap-1.5 mt-0.5">
-                              <span className="text-[10px] font-black text-emerald-600">{log.calories || log.foodItems?.[0]?.nutrition?.calories} kcal</span>
+                              <span className="text-[10px] font-black text-emerald-600">{getLogCalories(log)} kcal</span>
+                              {log.foodItems?.length > 1 && (
+                                <>
+                                  <span className="w-1 h-1 rounded-full bg-slate-200" />
+                                  <span className="text-[9px] font-black text-emerald-500">{log.foodItems.length} dishes</span>
+                                </>
+                              )}
                               <span className="w-1 h-1 rounded-full bg-slate-200" />
                               <span className="text-[9px] font-black text-slate-400">{new Date(log.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                             </div>

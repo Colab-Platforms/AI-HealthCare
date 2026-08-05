@@ -30,6 +30,30 @@ const getNum = (val) => {
   return 0;
 };
 
+// Coerces a raw AI nutrition object into fixed numeric fields
+const mapNutrition = (n) => ({
+  calories: getNum(n?.calories),
+  protein: getNum(n?.protein),
+  carbs: getNum(n?.carbs),
+  fats: getNum(n?.fats),
+  fiber: getNum(n?.fiber),
+  sugar: getNum(n?.sugar),
+  sodium: getNum(n?.sodium)
+});
+
+// Maps AI's dishes[].ingredients[] into the persisted schema shape (used by both QuickFoodCheck and FoodLog saves)
+const mapDishesForSave = (dishes) => Array.isArray(dishes) ? dishes.map(d => ({
+  name: d.name || 'Dish',
+  quantity: d.quantity || '',
+  ingredients: Array.isArray(d.ingredients) ? d.ingredients.map(ing => ({
+    name: ing.name || 'Ingredient',
+    quantity: ing.quantity || '',
+    nutrition: mapNutrition(ing.nutrition)
+  })) : [],
+  nutrition: mapNutrition(d.nutrition),
+  healthScore: getNum(d.healthScore)
+})) : [];
+
 // --- DATA SANITIZERS (ENSURE CONSISTENT STRUCTURE FOR CACHE & UI) ---
 const sanitizeMicronutrients = (data) => {
   if (!data) return [];
@@ -369,19 +393,76 @@ exports.logMeal = async (req, res) => {
   try {
     const {
       mealType,
-      foodItems,
       imageUrl,
+      imageUrls,
       notes,
       timestamp,
-      healthScore,
-      healthScore10,
-      micronutrients,
-      enhancementTips,
-      healthBenefitsSummary,
-      warnings,
-      alternatives,
-      source
+      source,
+      dishes,       // NEW: structured dish/ingredient data from the scan → edit flow
+      isEdited,     // NEW: true if the user modified dishes/ingredients before confirming
+      quickCheckId  // NEW: _id of the QuickFoodCheck scan-history record this log originated from (optional)
     } = req.body;
+
+    // These are re-derived below when a dishes[]-based request is used, so they're `let`, not `const`
+    let foodItems = req.body.foodItems;
+    let healthScore = req.body.healthScore;
+    let healthScore10 = req.body.healthScore10;
+    let micronutrients = req.body.micronutrients;
+    let enhancementTips = req.body.enhancementTips;
+    let healthBenefitsSummary = req.body.healthBenefitsSummary;
+    let warnings = req.body.warnings;
+    let alternatives = req.body.alternatives;
+    let recalculatedData = null; // kept so we can sync the corrected data back to QuickFoodCheck below
+
+    // ─── NEW: dishes-based flow (from the multi-photo/editable-ingredients scan) ───
+    // Legacy clients that only ever send `foodItems` skip this block entirely — unchanged behavior.
+    if (Array.isArray(dishes) && dishes.length > 0) {
+      let finalDishes = dishes;
+
+      if (isEdited === true) {
+        console.log('✏️ [LogMeal] User edited dishes — recalculating nutrition via AI...');
+        const recalculated = await nutritionAI.recalculateNutrition(dishes, req.user._id);
+        recalculatedData = recalculated.data;
+        finalDishes = recalculated.data.dishes;
+        healthScore = recalculated.data.healthScore;
+        healthScore10 = getNum(recalculated.data.healthScore10 || (getNum(recalculated.data.healthScore) / 10));
+        micronutrients = recalculated.data.micronutrients;
+        enhancementTips = recalculated.data.enhancementTips;
+        healthBenefitsSummary = recalculated.data.healthBenefitsSummary || recalculated.data.analysis;
+        warnings = recalculated.data.warnings;
+        alternatives = recalculated.data.alternatives;
+      } else {
+        console.log('✅ [LogMeal] Dishes unedited — skipping AI, logging as-is.');
+      }
+
+      // Map dishes[] into the FoodLog foodItems[] shape — one foodItem per dish, ingredients preserved
+      foodItems = finalDishes.map(d => ({
+        name: d.name || 'Food Item',
+        quantity: d.quantity || '1 serving',
+        nutrition: {
+          calories: getNum(d.nutrition?.calories),
+          protein: getNum(d.nutrition?.protein),
+          carbs: getNum(d.nutrition?.carbs),
+          fats: getNum(d.nutrition?.fats),
+          fiber: getNum(d.nutrition?.fiber),
+          sugar: getNum(d.nutrition?.sugar),
+          sodium: getNum(d.nutrition?.sodium)
+        },
+        ingredients: Array.isArray(d.ingredients) ? d.ingredients.map(ing => ({
+          name: ing.name || 'Ingredient',
+          quantity: ing.quantity || '',
+          nutrition: {
+            calories: getNum(ing.nutrition?.calories),
+            protein: getNum(ing.nutrition?.protein),
+            carbs: getNum(ing.nutrition?.carbs),
+            fats: getNum(ing.nutrition?.fats),
+            fiber: getNum(ing.nutrition?.fiber),
+            sugar: getNum(ing.nutrition?.sugar),
+            sodium: getNum(ing.nutrition?.sodium)
+          }
+        })) : []
+      }));
+    }
 
     if (!mealType || !foodItems || foodItems.length === 0) {
       return res.status(400).json({
@@ -456,6 +537,7 @@ exports.logMeal = async (req, res) => {
       foodItems,
       totalNutrition,
       imageUrl,
+      imageUrls: Array.isArray(imageUrls) ? imageUrls : [],
       notes,
       healthScore,
       healthScore10,
@@ -476,6 +558,34 @@ exports.logMeal = async (req, res) => {
     });
 
     await foodLog.save();
+
+    // Sync the corrected data back to the originating QuickFoodCheck scan-history record (best-effort,
+    // never blocks the response) — keeps "Today's Checks" history consistent with what was actually logged.
+    if (isEdited === true && quickCheckId && recalculatedData) {
+      const aiData = recalculatedData;
+      const nutritionForCheck = mapNutrition(aiData.foodItem?.nutrition || aiData.totalNutrition);
+      QuickFoodCheck.findOneAndUpdate(
+        { _id: quickCheckId, userId: req.user._id },
+        {
+          foodName: aiData.foodItem?.name || 'Analyzed Food',
+          quantity: aiData.foodItem?.quantity || '',
+          calories: nutritionForCheck.calories,
+          protein: nutritionForCheck.protein,
+          carbs: nutritionForCheck.carbs,
+          fats: nutritionForCheck.fats,
+          nutrition: nutritionForCheck,
+          healthScore: getNum(aiData.healthScore),
+          healthScore10: getNum(aiData.healthScore10 || (getNum(aiData.healthScore) / 10)),
+          analysis: aiData.analysis || aiData.healthBenefitsSummary || '',
+          micronutrients: sanitizeMicronutrients(aiData.micronutrients),
+          enhancementTips: sanitizeTips(aiData.enhancementTips),
+          warnings: Array.isArray(aiData.warnings) ? aiData.warnings.map(w => typeof w === 'string' ? w : (w.message || w.text || JSON.stringify(w))) : [],
+          healthBenefitsSummary: aiData.healthBenefitsSummary || aiData.analysis || '',
+          alternatives: sanitizeAlternatives(aiData.alternatives),
+          dishes: mapDishesForSave(aiData.dishes)
+        }
+      ).catch(err => console.error('⚠️ [LogMeal] QuickFoodCheck sync error:', err.message));
+    }
 
     // Update daily summary
     await updateDailySummary(req.user._id, foodLog.timestamp);
@@ -683,7 +793,11 @@ exports.setHealthGoal = async (req, res) => {
       height: Number(req.body.height) || 0,
       age: Number(req.body.age) || 0,
       gender: req.body.gender || 'male',
-      userId: req.user._id
+      userId: req.user._id,
+      // Resubmitting the full goal form always reverts to the formula — a stale manual
+      // calorie override should not silently persist once weight/goal/timeframe change.
+      calorieSource: 'auto',
+      manualCalorieTarget: undefined
     };
 
     let healthGoal = await withTimeout(HealthGoal.findOne({ userId: req.user._id }));
@@ -723,8 +837,10 @@ exports.setHealthGoal = async (req, res) => {
       'profile.weight': Number(healthGoal.currentWeight) || 0
     });
 
-    // Invalidate server-side dashboard cache
+    // Invalidate server-side dashboard cache and the 15-min cached active goal used by
+    // updateDailySummary — without this, today's calorie target could stay stale for up to 15 min.
     cache.delete(`dashboard:${req.user._id}`);
+    cache.delete(`health_goal:${req.user._id}`);
 
     res.json({
       success: true,
@@ -763,9 +879,23 @@ exports.setHealthGoal = async (req, res) => {
 // Get health goal
 exports.getHealthGoal = async (req, res) => {
   try {
+    // HealthGoal is the source of truth — User.nutritionGoal is just a best-effort mirror
+    // kept in sync by the goal-setting endpoints, and can lag behind (e.g. if a goal doc
+    // was saved by a path that forgot to update it). Prefer the real doc when it exists.
+    const healthGoal = await withTimeout(
+      HealthGoal.findOne({ userId: req.user._id, isActive: true }).sort({ createdAt: -1 })
+    );
+
+    if (healthGoal) {
+      return res.json({
+        success: true,
+        healthGoal
+      });
+    }
+
+    // Fallback to the User.nutritionGoal mirror only when no HealthGoal doc exists at all
     const user = await withTimeout(require('../models/User').findById(req.user._id));
 
-    // PRIORITIZE user's nutritionGoal from profile
     if (user && user.nutritionGoal && user.nutritionGoal.calorieGoal) {
       return res.json({
         success: true,
@@ -784,19 +914,9 @@ exports.getHealthGoal = async (req, res) => {
       });
     }
 
-    // Fallback to HealthGoal model
-    const healthGoal = await withTimeout(HealthGoal.findOne({ userId: req.user._id }));
-
-    if (!healthGoal) {
-      return res.status(404).json({
-        success: false,
-        message: 'No health goal found. Please set your goals first.'
-      });
-    }
-
-    res.json({
-      success: true,
-      healthGoal
+    return res.status(404).json({
+      success: false,
+      message: 'No health goal found. Please set your goals first.'
     });
   } catch (error) {
     console.error('Get health goal error:', error);
@@ -813,11 +933,14 @@ exports.updateHealthGoal = async (req, res) => {
   try {
     const goalData = {
       ...req.body,
-      userId: req.user._id
+      userId: req.user._id,
+      // Same as setHealthGoal — resubmitting the goal form clears any manual calorie override.
+      calorieSource: 'auto',
+      manualCalorieTarget: undefined
     };
 
     let healthGoal = await withTimeout(HealthGoal.findOne({ userId: req.user._id }));
-    
+
     if (healthGoal) {
       Object.assign(healthGoal, goalData);
     } else {
@@ -846,8 +969,10 @@ exports.updateHealthGoal = async (req, res) => {
       'profile.weight': Number(healthGoal.currentWeight)
     });
 
-    // Invalidate server-side dashboard cache
+    // Invalidate server-side dashboard cache and the 15-min cached active goal used by
+    // updateDailySummary — without this, today's calorie target could stay stale for up to 15 min.
     cache.delete(`dashboard:${req.user._id}`);
+    cache.delete(`health_goal:${req.user._id}`);
 
     res.json({
       success: true,
@@ -866,6 +991,69 @@ exports.updateHealthGoal = async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Failed to update health goal',
+      error: error.message
+    });
+  }
+};
+
+// @desc    Manually override today's daily calorie target, bypassing the calculateCalorieTarget()
+//          formula. Sticks until the user resubmits the full goal form (setHealthGoal/updateHealthGoal),
+//          which always resets calorieSource back to 'auto'.
+// @route   PATCH /api/nutrition/goals/calorie-override
+exports.setCalorieOverride = async (req, res) => {
+  try {
+    const value = Number(req.body.dailyCalorieTarget);
+    if (!value || value < 800 || value > 6000) {
+      return res.status(400).json({
+        success: false,
+        message: 'Enter a calorie target between 800 and 6000 kcal'
+      });
+    }
+
+    const healthGoal = await withTimeout(
+      HealthGoal.findOne({ userId: req.user._id, isActive: true }).sort({ createdAt: -1 })
+    );
+    if (!healthGoal) {
+      return res.status(404).json({
+        success: false,
+        message: 'Set your fitness goal first before customizing your calorie target'
+      });
+    }
+
+    healthGoal.calorieSource = 'manual';
+    healthGoal.manualCalorieTarget = value;
+    await healthGoal.save({ maxTimeMS: 30000 });
+
+    const proteinGoal = healthGoal.macroTargets?.protein || 150;
+    const carbsGoal = healthGoal.macroTargets?.carbs || 200;
+    const fatGoal = healthGoal.macroTargets?.fats || 65;
+
+    await User.findByIdAndUpdate(req.user._id, {
+      nutritionGoal: {
+        goal: healthGoal.goalType,
+        targetWeight: healthGoal.targetWeight,
+        calorieGoal: healthGoal.dailyCalorieTarget,
+        proteinGoal,
+        carbsGoal,
+        fatGoal,
+        autoCalculated: false,
+        lastUpdated: new Date()
+      }
+    });
+
+    cache.delete(`dashboard:${req.user._id}`);
+    cache.delete(`health_goal:${req.user._id}`);
+
+    res.json({
+      success: true,
+      healthGoal,
+      message: 'Calorie goal updated'
+    });
+  } catch (error) {
+    console.error('Set calorie override error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to update calorie goal',
       error: error.message
     });
   }
@@ -977,6 +1165,7 @@ exports.logWeight = async (req, res) => {
 
     // Invalidate server-side dashboard cache so next fetch returns fresh data
     cache.delete(`dashboard:${req.user._id}`);
+    cache.delete(`health_goal:${req.user._id}`);
 
     res.json({
       success: true,
@@ -1278,9 +1467,10 @@ async function updateDailySummary(userId, date) {
     nextDay.setUTCDate(nextDay.getUTCDate() + 1);
 
     const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
+    const WearableData = require('../models/WearableData');
 
     // Run all independent DB queries in PARALLEL — was sequential before
-    const [foodLogs, healthGoal, activePlan, existingSummary] = await Promise.all([
+    const [foodLogs, healthGoal, activePlan, existingSummary, wearableDocs] = await Promise.all([
       FoodLog.find({ userId, timestamp: { $gte: targetDate, $lt: nextDay } }).lean(),
       // Cached active goal — 15 min TTL avoids repeated scans on every meal log
       (async () => {
@@ -1303,7 +1493,20 @@ async function updateDailySummary(userId, date) {
         return plan;
       })(),
       NutritionSummary.findOne({ userId, date: targetDate }),
+      // All of the user's devices/manual-entry docs — summed below for the target date
+      WearableData.find({ user: userId }).select('dailyMetrics').lean(),
     ]);
+
+    // Sum caloriesBurned across every device (including manual "other" entries) for this date
+    const caloriesBurned = wearableDocs.reduce((sum, doc) => {
+      const entry = (doc.dailyMetrics || []).find((m) => {
+        const d = new Date(m.date);
+        return d.getUTCFullYear() === targetDate.getUTCFullYear() &&
+               d.getUTCMonth() === targetDate.getUTCMonth() &&
+               d.getUTCDate() === targetDate.getUTCDate();
+      });
+      return sum + (entry?.caloriesBurned || 0);
+    }, 0);
 
     // Aggregate nutrition totals in JS (handles totalNutrition + foodItems fallback + micronutrients array)
     const totals = {
@@ -1311,7 +1514,8 @@ async function updateDailySummary(userId, date) {
       totalFiber: 0, totalSugar: 0, totalSodium: 0,
       totalVitaminA: 0, totalVitaminC: 0, totalVitaminD: 0,
       totalVitaminB12: 0, totalIron: 0, totalCalcium: 0,
-      averageHealthScore: 0, healthyFoodsCount: 0, junkFoodsCount: 0, totalFoodsCount: 0
+      averageHealthScore: 0, healthyFoodsCount: 0, junkFoodsCount: 0, totalFoodsCount: 0,
+      caloriesBurned
     };
     const mealsLogged = { breakfast: false, lunch: false, dinner: false, snacks: 0 };
     let totalWeight = 0;
@@ -1438,7 +1642,8 @@ exports.quickFoodCheck = async (req, res) => {
   try {
     let { foodDescription, imageBase64, additionalContext, quantity, prepMethod } = req.body;
 
-    let cloudinaryUrl = null;
+    let analysis = null;
+    let cloudinaryUrls = [];
 
     console.log('🏁 [QuickCheck] Start - User ID:', req.user?._id);
     console.log('📑 [QuickCheck] Headers:', req.headers['content-type']);
@@ -1456,22 +1661,32 @@ exports.quickFoodCheck = async (req, res) => {
       }
     }
 
-    // ─── STEP 1: Extract base64 from uploaded file ───
-    if (req.file) {
-      console.log('📷 [QuickCheck] File received:', req.file.originalname, 'Type:', req.file.mimetype, 'Size:', req.file.size);
+    // ─── STEP 1: Collect uploaded files — supports legacy single 'image' field AND new multi 'images' field ───
+    const uploadedFiles = [
+      ...(req.files?.image || []),
+      ...(req.files?.images || [])
+    ].slice(0, 5); // hard cap matches multer maxCount limits
+
+    let imageInputs = []; // [{ data: base64, mediaType }] — one entry per photo
+
+    if (uploadedFiles.length > 0) {
+      console.log(`📷 [QuickCheck] ${uploadedFiles.length} file(s) received:`, uploadedFiles.map(f => `${f.originalname} (${f.mimetype}, ${(f.size / 1024).toFixed(0)}KB)`).join(', '));
 
       try {
-        if (req.file.buffer) {
-          // Memory storage (Vercel)
-          imageBase64 = req.file.buffer.toString('base64');
-        } else if (req.file.path) {
-          // Disk storage (local)
-          imageBase64 = fs.readFileSync(req.file.path, { encoding: 'base64' });
-          // Delete temp file after reading
-          fs.unlink(req.file.path, (err) => {
-            if (err) console.error('Error deleting temp file:', err);
-          });
+        for (const file of uploadedFiles) {
+          let data;
+          if (file.buffer) {
+            data = file.buffer.toString('base64'); // Memory storage (Vercel)
+          } else if (file.path) {
+            data = fs.readFileSync(file.path, { encoding: 'base64' }); // Disk storage (local)
+            fs.unlink(file.path, (err) => {
+              if (err) console.error('Error deleting temp file:', err);
+            });
+          }
+          if (data) imageInputs.push({ data, mediaType: file.mimetype || 'image/jpeg' });
         }
+        // Backward-compat: mirror first image into imageBase64 for any legacy code path below
+        if (imageInputs.length > 0) imageBase64 = imageInputs[0].data;
       } catch (fileError) {
         console.error('❌ [QuickCheck] File process error:', fileError);
         return res.status(500).json({
@@ -1480,9 +1695,13 @@ exports.quickFoodCheck = async (req, res) => {
           error: fileError.message
         });
       }
+    } else if (imageBase64) {
+      // Legacy JSON-body base64 path (no multipart file) — still supported
+      const rawData = imageBase64.includes(',') ? imageBase64.split(',')[1] : imageBase64;
+      imageInputs = [{ data: rawData, mediaType: 'image/jpeg' }];
     }
 
-    if (!foodDescription && !imageBase64) {
+    if (!foodDescription && imageInputs.length === 0) {
       console.log('⚠️ [QuickCheck] No input provided');
       return res.status(400).json({
         success: false,
@@ -1490,39 +1709,40 @@ exports.quickFoodCheck = async (req, res) => {
       });
     }
 
-    // ─── STEP 2 & 3: Upload to Cloudinary & AI Analysis in PARALLEL ───
-    if (imageBase64) {
+    // ─── STEP 2 & 3: Upload ALL images to Cloudinary & run ONE AI Analysis call, in PARALLEL ───
+    if (imageInputs.length > 0) {
       try {
-        console.log('🔄 [QuickCheck] Starting parallel Upload & AI Analysis...');
-        const mimeType = req.file?.mimetype || 'image/jpeg';
-        const dataUri = `data:${mimeType};base64,${imageBase64}`;
+        console.log(`🔄 [QuickCheck] Starting parallel Upload (${imageInputs.length} image(s)) & AI Analysis...`);
 
         // Combine description and additional context for more accurate AI analysis
         const combinedContext = [foodDescription, additionalContext]
           .filter(c => c && c !== 'Food from image')
           .join('. ') || 'Food from image';
 
-        const [uploadResult, analysisResult] = await Promise.all([
-          // Task 1: Upload to Cloudinary (wrapped in try/catch to not block AI)
-          uploadImage(dataUri, 'food_scans').catch(err => {
-            console.error('☁️ [QuickCheck] Cloudinary upload background error:', err.message);
-            return null;
-          }),
-          // Task 2: AI Analysis
-          nutritionAI.analyzeFromImage(imageBase64, combinedContext)
+        const [uploadResults, analysisResult] = await Promise.all([
+          // Task 1: Upload every photo to Cloudinary (each wrapped so one failure doesn't sink the others)
+          Promise.all(imageInputs.map(img =>
+            uploadImage(`data:${img.mediaType};base64,${img.data}`, 'food_scans').catch(err => {
+              console.error('☁️ [QuickCheck] Cloudinary upload background error:', err.message);
+              return null;
+            })
+          )),
+          // Task 2: Single AI Analysis call covering ALL images together
+          nutritionAI.analyzeFromImage(imageInputs, combinedContext)
         ]);
 
-        cloudinaryUrl = uploadResult;
+        cloudinaryUrls = uploadResults.filter(Boolean);
         analysis = analysisResult;
 
-        console.log('🧠 [QuickCheck] Image analysis successful:', analysis.data?.foodItem?.name || 'Unknown food');
-        console.log('☁️ [QuickCheck] Cloudinary finished:', cloudinaryUrl ? 'Success' : 'Failed');
+        const dishNames = (analysis.data?.dishes || []).map(d => d.name).join(', ');
+        console.log('🧠 [QuickCheck] Image analysis successful. Dishes:', dishNames || analysis.data?.foodItem?.name || 'Unknown food');
+        console.log(`☁️ [QuickCheck] Cloudinary finished: ${cloudinaryUrls.length}/${imageInputs.length} uploaded`);
 
         // Check if AI couldn't detect food but returned 200 (special AI-rejection case)
-        if (analysis.data?.error === 'UNABLE_TO_DETECT_FOOD') {
+        if (analysis.data?.error === 'UNABLE_TO_DETECT_FOOD' || analysis.data?.isFood === false) {
           return res.status(400).json({
             success: false,
-            message: analysis.data.message || 'Could not detect food in image',
+            message: analysis.data.errorMessage || analysis.data.message || 'Could not detect food in image',
             error: 'UNABLE_TO_DETECT_FOOD'
           });
         }
@@ -1550,14 +1770,14 @@ exports.quickFoodCheck = async (req, res) => {
     // Consolidate alternatives logic
     const alternativesArray = sanitizeAlternatives(analysis.data.alternatives);
 
-    // ─── STEP 4: Construct final image URL ───
-    let finalImageUrl = cloudinaryUrl;
-    if (!finalImageUrl && imageBase64) {
-      // Use truncated base64 for small images or just skip if too large
-      if (imageBase64.length < 200000) {
-        finalImageUrl = `data:image/jpeg;base64,${imageBase64}`;
-      }
+    // ─── STEP 4: Construct final image URL(s) ───
+    let finalImageUrls = cloudinaryUrls;
+    if (finalImageUrls.length === 0 && imageInputs.length > 0) {
+      // Cloudinary failed for all — fall back to inline base64, but only for a small first image
+      const first = imageInputs[0];
+      if (first.data.length < 200000) finalImageUrls = [`data:${first.mediaType};base64,${first.data}`];
     }
+    const finalImageUrl = finalImageUrls[0] || null;
 
     // ─── STEP 5: Save to MongoDB (Optimized with structured data) ───
     const aiData = analysis.data;
@@ -1570,7 +1790,9 @@ exports.quickFoodCheck = async (req, res) => {
       sugar: getNum(aiData.foodItem?.nutrition?.sugar || aiData.totalNutrition?.sugar || aiData.sugar),
       sodium: getNum(aiData.foodItem?.nutrition?.sodium || aiData.totalNutrition?.sodium || aiData.sodium)
     };
-    
+
+    const dishesForSave = mapDishesForSave(aiData.dishes);
+
     const foodCheck = new QuickFoodCheck({
       userId: req.user._id,
       foodName: aiData.foodItem?.name || foodDescription || 'Analyzed Food',
@@ -1593,7 +1815,9 @@ exports.quickFoodCheck = async (req, res) => {
       healthBenefitsSummary: aiData.healthBenefitsSummary || aiData.analysis || '',
       alternatives: alternativesArray,
       imageUrl: finalImageUrl,
-      scanType: imageBase64 ? 'image' : 'text',
+      imageUrls: finalImageUrls,
+      dishes: dishesForSave,
+      scanType: imageInputs.length > 1 ? 'multi_image' : (imageInputs.length === 1 ? 'image' : 'text'),
       timestamp: new Date()
     });
 
@@ -1606,10 +1830,20 @@ exports.quickFoodCheck = async (req, res) => {
       foodCheck.micronutrients = foodCheck.micronutrients.map(m => ({ ...m, name: String(m.name), value: String(m.value) }));
       foodCheck.enhancementTips = foodCheck.enhancementTips.map(t => ({ name: String(t.name || 'Tip'), benefit: String(t.benefit || '') }));
       foodCheck.warnings = foodCheck.warnings.map(w => String(typeof w === 'object' ? JSON.stringify(w) : w));
+      foodCheck.dishes = foodCheck.dishes.map(d => ({
+        ...d,
+        name: String(d.name || 'Dish'),
+        quantity: String(d.quantity || ''),
+        ingredients: (d.ingredients || []).map(ing => ({
+          ...ing,
+          name: String(ing.name || 'Ingredient'),
+          quantity: String(ing.quantity || '')
+        }))
+      }));
       await foodCheck.save();
     }
 
-    console.log('✅ Food check saved. Cloudinary URL:', cloudinaryUrl || 'N/A');
+    console.log('✅ Food check saved. Cloudinary URLs:', cloudinaryUrls.length ? cloudinaryUrls.join(', ') : 'N/A');
     res.json({
       success: true,
       data: normalizeAnalysisResult(foodCheck),

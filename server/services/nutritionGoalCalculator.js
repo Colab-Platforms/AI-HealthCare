@@ -75,28 +75,55 @@ function calculateTDEE(bmr, activityLevel) {
   return Math.round(bmr * multiplier);
 }
 
+// Max safe weekly rate of weight change as a fraction of bodyweight — mirrors HealthGoal.js.
+// weight_loss: ACSM/CDC safe-loss guideline (~1%/week). weight_gain: general bulk cap (~0.5%/week).
+// muscle_gain: natural muscle-protein-synthesis ceiling (~0.25%/week) — surplus beyond what the
+// body can actually build muscle with just becomes fat, regardless of how fast the user wants to go.
+const MAX_WEEKLY_RATE_FRACTION = {
+  weight_loss: 0.01,
+  weight_gain: 0.005,
+  muscle_gain: 0.0025,
+};
+const KCAL_PER_KG_FAT = 7700; // Wishnofsky rule — standard energy-density-of-fat approximation
+
 /**
  * Calculate target calories based on goal
  * @param {number} tdee - Total Daily Energy Expenditure
  * @param {string} goal - Nutrition goal
- * @param {number} weeklyGoal - Target kg per week (optional)
+ * @param {number} weeklyGoal - Requested kg/week rate of change (will be capped to a safe max)
+ * @param {number} weight - Body weight in kg (for capping the rate and the safety floor)
+ * @param {string} gender - 'male'/'female'/'other' (for the safety floor)
+ * @param {number} bmr - Basal Metabolic Rate (for the safety floor)
+ * @param {boolean} isDiabetic - Applies a gentler adjustment for glycemic safety margin
  * @returns {number} Target calories
  */
-function calculateTargetCalories(tdee, goal, weeklyGoal = 0.5) {
+// Clamps a requested kg/week rate to a physiologically realistic max for the given goal + bodyweight,
+// in the correct sign/direction. Shared by calculateTargetCalories and the estimatedWeeks calculation
+// below so the "safe rate" and "realistic ETA" always agree with each other.
+function getCappedWeeklyRate(goal, weeklyGoal, weight) {
+  if (!['weight_loss', 'weight_gain', 'muscle_gain'].includes(goal)) return 0;
+  const maxRate = (MAX_WEEKLY_RATE_FRACTION[goal] || 0.005) * weight;
+  const requestedRate = Math.abs(weeklyGoal);
+  return goal === 'weight_loss'
+    ? -Math.min(requestedRate, maxRate)
+    : Math.min(requestedRate, maxRate);
+}
+
+function calculateTargetCalories(tdee, goal, weeklyGoal = 0.5, weight = 70, gender = 'male', bmr = null, isDiabetic = false) {
   let adjustment = GOAL_ADJUSTMENTS[goal] || 0;
-  
-  // Adjust based on weekly goal if provided
-  if (goal === 'weight_loss' || goal === 'weight_gain') {
-    // 1 kg fat = ~7700 calories
-    // So for X kg/week, need (X * 7700) / 7 calories per day
-    const caloriesPerDay = (weeklyGoal * 7700) / 7;
-    adjustment = goal === 'weight_loss' ? -caloriesPerDay : caloriesPerDay;
+
+  if (goal === 'weight_loss' || goal === 'weight_gain' || goal === 'muscle_gain') {
+    const cappedRate = getCappedWeeklyRate(goal, weeklyGoal, weight);
+    // 1 kg fat = ~7700 calories, so for X kg/week we need (X * 7700) / 7 calories/day
+    adjustment = (cappedRate * KCAL_PER_KG_FAT) / 7;
+    if (isDiabetic) adjustment *= 0.8;
   }
-  
+
   const targetCalories = tdee + adjustment;
-  
-  // Safety limits: don't go below 1200 for women, 1500 for men
-  return Math.max(Math.round(targetCalories), 1200);
+
+  // Safety floor: never below 1200 (women) / 1500 (men), or below 1.1x BMR
+  const safeMinimum = Math.max(gender === 'male' ? 1500 : 1200, bmr ? Math.round(bmr * 1.1) : 0);
+  return Math.max(Math.round(targetCalories), safeMinimum);
 }
 
 /**
@@ -197,16 +224,18 @@ function calculateNutritionGoals(userProfile) {
   const tdee = calculateTDEE(bmr, activityLevel);
   
   // Calculate target calories
-  const calorieGoal = calculateTargetCalories(tdee, goal, weeklyGoal);
-  
+  const calorieGoal = calculateTargetCalories(tdee, goal, weeklyGoal, weight, gender, bmr, isDiabetic);
+
   // Calculate macros
   const macros = calculateMacros(calorieGoal, goal, weight, isDiabetic);
-  
-  // Calculate estimated time to goal (if applicable)
+
+  // Calculate estimated time to goal (if applicable) — uses the SAME capped rate as the calorie
+  // calculation above, so this reflects the realistic ETA, not the (possibly unsafe) rate requested.
   let estimatedWeeks = null;
-  if (targetWeight && (goal === 'weight_loss' || goal === 'weight_gain')) {
+  if (targetWeight && (goal === 'weight_loss' || goal === 'weight_gain' || goal === 'muscle_gain')) {
     const weightDifference = Math.abs(targetWeight - weight);
-    estimatedWeeks = Math.ceil(weightDifference / weeklyGoal);
+    const cappedRate = Math.abs(getCappedWeeklyRate(goal, weeklyGoal, weight));
+    estimatedWeeks = cappedRate > 0 ? Math.ceil(weightDifference / cappedRate) : null;
   }
   
   return {
@@ -294,5 +323,7 @@ module.exports = {
   calculateNutritionGoals,
   getDietRecommendations,
   calculateBMR,
-  calculateTDEE
+  calculateTDEE,
+  calculateTargetCalories,
+  getCappedWeeklyRate
 };

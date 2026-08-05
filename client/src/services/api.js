@@ -227,7 +227,7 @@ export const wearableService = {
   connectDevice: (deviceType, deviceName) => api.post('wearables/connect', { deviceType, deviceName }),
   disconnectDevice: (deviceType) => api.post(`wearables/disconnect/${deviceType}`),
   getDevices: () => api.get('wearables/devices'),
-  syncMetrics: (deviceType, metrics) => api.post('wearables/sync', { deviceType, metrics }),
+  syncMetrics: (deviceType, metrics, isAdditive = false) => api.post('wearables/sync', { deviceType, metrics, isAdditive }),
   addHeartRate: (deviceType, bpm, type) => api.post('wearables/heart-rate', { deviceType, bpm, type }),
   addSleepData: (deviceType, sleepData) => api.post('wearables/sleep', { deviceType, sleepData }),
   getDashboard: () => api.get('wearables/dashboard'),
