@@ -149,6 +149,7 @@ exports.syncDailyMetrics = async (req, res) => {
 
     // Invalidate server-side dashboard cache so next fetch returns fresh data
     cache.delete(`dashboard:${req.user._id}`);
+    require('../utils/scoreRecompute').triggerDailyScoreRecompute(req.user._id, targetDateString);
 
     res.json({ wearable, gamification: gamificationResult });
   } catch (error) {
@@ -265,6 +266,7 @@ exports.addSleepData = async (req, res) => {
 
     // Invalidate server-side dashboard cache so next fetch returns fresh data
     cache.delete(`dashboard:${req.user._id}`);
+    require('../utils/scoreRecompute').triggerDailyScoreRecompute(req.user._id, targetDateString);
 
     res.json(wearable);
   } catch (error) {

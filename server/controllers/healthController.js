@@ -103,6 +103,11 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
     await cache.delete(`dashboard:${userId}`);
     await cache.delete(`trends:${userId}:all`);
 
+    // Instant Report Score — recompute the composite Long-Term Health Score
+    // the moment analysis finishes, so the user sees an updated number
+    // same-second instead of waiting for the weekly cycle.
+    require('../utils/scoreRecompute').triggerLongTermScoreRecompute(userId);
+
     // Update User Score
     if (aiAnalysis.healthScore) {
       await User.findByIdAndUpdate(userId, {
@@ -1016,6 +1021,7 @@ exports.saveSmokeLog = async (req, res) => {
 
     if (!user) return res.status(404).json({ message: 'User not found' });
     await cache.delete(`dashboard:${req.user._id}`);
+    require('../utils/scoreRecompute').triggerDailyScoreRecompute(req.user._id);
     res.json({ success: true, smokeLog: toPlainSmokeLog(user.smokeLog) });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -1043,6 +1049,7 @@ exports.saveAlcoholLog = async (req, res) => {
 
     if (!user) return res.status(404).json({ message: 'User not found' });
     await cache.delete(`dashboard:${req.user._id}`);
+    require('../utils/scoreRecompute').triggerDailyScoreRecompute(req.user._id);
     res.json({ success: true, alcoholLog: toPlainAlcoholLog(user.alcoholLog) });
   } catch (error) {
     res.status(500).json({ message: error.message });
