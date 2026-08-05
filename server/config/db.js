@@ -1,4 +1,9 @@
 const mongoose = require('mongoose');
+const dns = require('dns');
+
+// Node's resolver on this machine falls back to 127.0.0.1, which fails
+// mongodb+srv:// SRV lookups with ECONNREFUSED. Force a working resolver.
+dns.setServers(['8.8.8.8', '1.1.1.1']);
 
 // Use the same global cache as the Vercel serverless handler
 if (!global._mongooseCache) {

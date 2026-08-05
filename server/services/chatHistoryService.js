@@ -8,11 +8,9 @@ class ChatHistoryService {
       this.redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
       this.redisAvailable = true;
       this.redis.on('error', (err) => {
-        console.warn('Redis connection warning:', err.message);
         this.redisAvailable = false;
       });
       this.redis.on('connect', () => {
-        console.log('✓ Redis connected');
         this.redisAvailable = true;
       });
     } catch (err) {

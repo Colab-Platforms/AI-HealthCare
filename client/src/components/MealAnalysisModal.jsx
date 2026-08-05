@@ -132,18 +132,28 @@ function extractAllMicronutrients(meal) {
 export function MealAnalysisModal({ meal, onClose, onAdd, source }) {
   if (!meal) return null;
 
-  // Use consistent name extraction
-  const foodName = extractFoodName(meal);
-  const quantity = meal.portionSize || meal.foodItems?.[0]?.quantity || meal.foodItem?.quantity || meal.quantity || '1 serving';
-  const healthScore = meal.healthScore || (meal.healthScore10 ? meal.healthScore10 * 10 : 0) || 50;
-  
-  const calories = meal.foodItems?.[0]?.nutrition?.calories || meal.foodItem?.nutrition?.calories || meal.totalNutrition?.calories || meal.nutrition?.calories || meal.calories || 0;
-  const protein = meal.foodItems?.[0]?.nutrition?.protein || meal.foodItem?.nutrition?.protein || meal.totalNutrition?.protein || meal.nutrition?.protein || meal.protein || 0;
-  const carbs = meal.foodItems?.[0]?.nutrition?.carbs || meal.foodItem?.nutrition?.carbs || meal.totalNutrition?.carbs || meal.nutrition?.carbs || meal.carbs || 0;
-  const fats = meal.foodItems?.[0]?.nutrition?.fats || meal.foodItem?.nutrition?.fats || meal.totalNutrition?.fats || meal.nutrition?.fats || meal.fats || 0;
+  // A log can hold multiple dishes (multi-photo scan) — show all of them, not just the first
+  const isMultiDish = (meal.foodItems?.length || 0) > 1;
 
-  // Get the stored image URL (from scan/upload) — keeps consistent across views
+  // Use consistent name extraction — joins all dish names when there's more than one
+  const foodName = isMultiDish
+    ? meal.foodItems.map((f) => f.name).filter(Boolean).join(', ')
+    : extractFoodName(meal);
+  const quantity = isMultiDish
+    ? `${meal.foodItems.length} dishes`
+    : meal.portionSize || meal.foodItems?.[0]?.quantity || meal.foodItem?.quantity || meal.quantity || '1 serving';
+  const healthScore = meal.healthScore || (meal.healthScore10 ? meal.healthScore10 * 10 : 0) || 50;
+
+  // totalNutrition is the aggregated truth across all dishes — prefer it first (it's identical
+  // to foodItems[0] for single-dish meals anyway, so this is safe for the legacy shapes too).
+  const calories = meal.totalNutrition?.calories || meal.foodItems?.[0]?.nutrition?.calories || meal.foodItem?.nutrition?.calories || meal.nutrition?.calories || meal.calories || 0;
+  const protein = meal.totalNutrition?.protein || meal.foodItems?.[0]?.nutrition?.protein || meal.foodItem?.nutrition?.protein || meal.nutrition?.protein || meal.protein || 0;
+  const carbs = meal.totalNutrition?.carbs || meal.foodItems?.[0]?.nutrition?.carbs || meal.foodItem?.nutrition?.carbs || meal.nutrition?.carbs || meal.carbs || 0;
+  const fats = meal.totalNutrition?.fats || meal.foodItems?.[0]?.nutrition?.fats || meal.foodItem?.nutrition?.fats || meal.nutrition?.fats || meal.fats || 0;
+
+  // Get the stored image URL(s) — a multi-photo scan has one photo per (roughly) dish
   const storedImage = meal.imageUrl || meal.image || meal.foodItems?.[0]?.imageUrl || null;
+  const imageGallery = meal.imageUrls?.length > 0 ? meal.imageUrls : storedImage ? [storedImage] : [];
 
   // Extract ALL micronutrients from all sources
   const allMicronutrients = extractAllMicronutrients(meal);
@@ -228,28 +238,50 @@ export function MealAnalysisModal({ meal, onClose, onAdd, source }) {
         {/* ─── SCROLLABLE BODY ─── */}
         <div className="overflow-y-auto flex-1 scrollbar-hide px-6 pb-6 space-y-4">
 
-          {/* ─── FOOD IMAGE ─── */}
-          <motion.div 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.15 }}
-            className="relative w-full h-52 md:h-56 rounded-[1.5rem] overflow-hidden shadow-lg"
-          >
-            {/* Use storedImage first for consistency, fallback to name-based search */}
-            <ImageWithFallback 
-              src={storedImage}
-              query={foodName}
-              alt={foodName}
-              className="w-full h-full object-cover"
-            />
-            {(meal.source === 'ai_vision' || meal._isImageAnalysis) && (
-              <div className="absolute top-4 left-4">
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-lg text-[9px] font-black text-slate-700 uppercase tracking-wider shadow-md border border-white/60">
-                  <Sparkles className="w-3 h-3 text-emerald-500" /> Analyzed Image
-                </span>
-              </div>
-            )}
-          </motion.div>
+          {/* ─── FOOD IMAGE(S) ─── */}
+          {imageGallery.length > 1 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="grid grid-cols-3 gap-2"
+            >
+              {imageGallery.map((src, i) => (
+                <div key={i} className="relative h-24 md:h-28 rounded-2xl overflow-hidden shadow-md">
+                  <ImageWithFallback src={src} query={foodName} alt={`Dish photo ${i + 1}`} className="w-full h-full object-cover" />
+                  {i === 0 && (
+                    <div className="absolute top-1.5 left-1.5">
+                      <span className="inline-flex items-center gap-1 px-2 py-1 bg-white/90 backdrop-blur-sm rounded-md text-[7px] font-black text-slate-700 uppercase tracking-wider shadow-sm border border-white/60">
+                        <Sparkles className="w-2.5 h-2.5 text-emerald-500" /> Analyzed
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </motion.div>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+              className="relative w-full h-52 md:h-56 rounded-[1.5rem] overflow-hidden shadow-lg"
+            >
+              {/* Use storedImage first for consistency, fallback to name-based search */}
+              <ImageWithFallback
+                src={storedImage}
+                query={foodName}
+                alt={foodName}
+                className="w-full h-full object-cover"
+              />
+              {(meal.source === 'ai_vision' || meal._isImageAnalysis) && (
+                <div className="absolute top-4 left-4">
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/90 backdrop-blur-sm rounded-lg text-[9px] font-black text-slate-700 uppercase tracking-wider shadow-md border border-white/60">
+                    <Sparkles className="w-3 h-3 text-emerald-500" /> Analyzed Image
+                  </span>
+                </div>
+              )}
+            </motion.div>
+          )}
 
           {/* ─── MACROS CARD ─── */}
           <motion.div 
@@ -300,6 +332,38 @@ export function MealAnalysisModal({ meal, onClose, onAdd, source }) {
               </div>
             )}
           </motion.div>
+
+          {/* ─── DISHES IN THIS MEAL (multi-photo scans) ─── */}
+          {isMultiDish && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="bg-white rounded-[1.5rem] p-5 shadow-[0_4px_20px_rgba(0,0,0,0.04)] border border-slate-100/80"
+            >
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-7 h-7 rounded-full bg-emerald-50 flex items-center justify-center border border-emerald-100">
+                  <Utensils className="w-3.5 h-3.5 text-emerald-600" />
+                </div>
+                <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  {meal.foodItems.length} Dishes in This Meal
+                </span>
+              </div>
+              <div className="space-y-2.5">
+                {meal.foodItems.map((item, i) => (
+                  <div key={i} className="flex items-center justify-between gap-3 p-3.5 bg-slate-50/60 rounded-2xl border border-slate-100">
+                    <div className="min-w-0">
+                      <p className="text-[13px] font-black text-slate-900 truncate">{item.name}</p>
+                      <p className="text-[10px] font-bold text-slate-400">{item.quantity || '1 serving'}</p>
+                    </div>
+                    <div className="flex items-center gap-2.5 shrink-0 text-right">
+                      <span className="text-[12px] font-black text-emerald-600">{Math.round(item.nutrition?.calories || 0)} kcal</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          )}
 
           {/* ─── HEALTH SUMMARY ─── */}
           {(meal.analysis || meal.healthBenefitsSummary) && (

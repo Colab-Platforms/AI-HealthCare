@@ -45,6 +45,9 @@ const nutritionSummarySchema = new mongoose.Schema({
   // Water intake
   waterIntake: { type: Number, default: 0 }, // in ml
 
+  // Calories burned via logged activity (manual entry or wearable sync) — offsets the daily total
+  caloriesBurned: { type: Number, default: 0 },
+
   // Goals for the day (from HealthGoal)
   calorieGoal: Number,
   proteinGoal: Number,

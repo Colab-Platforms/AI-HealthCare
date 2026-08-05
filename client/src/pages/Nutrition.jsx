@@ -46,6 +46,7 @@ import {
 import api, {
   nutritionService,
   dietRecommendationService,
+  wearableService,
 } from "../services/api";
 import toast from "react-hot-toast";
 import { useData } from "../context/DataContext";
@@ -53,7 +54,10 @@ import { useAuth } from "../context/AuthContext";
 import NutritionSkeleton from "../components/skeletons/NutritionSkeleton";
 import { NutritionTab } from "../components/NutritionTab";
 import { MealAnalysisModal } from "../components/MealAnalysisModal";
+import { MealEditReviewModal } from "../components/MealEditReviewModal";
+import { LogActivityModal } from "../components/LogActivityModal";
 import { useSpeechRecognition } from "../hooks/useSpeechRecognition";
+import { MEAL_CALORIE_SPLIT } from "../utils/mealCalorieSplit";
 import SEO from "../hooks/useSEO";
 
 function Nutrition() {
@@ -90,7 +94,10 @@ function Nutrition() {
     carbsTarget: 200,
     fats: 0,
     fatsTarget: 55,
+    caloriesBurned: 0,
   });
+  const [showLogActivity, setShowLogActivity] = useState(false);
+  const [isLoggingActivity, setIsLoggingActivity] = useState(false);
   const [mealLogs, setMealLogs] = useState({
     Breakfast: [],
     Lunch: [],
@@ -348,13 +355,16 @@ function Nutrition() {
 
   // Modal Specific States
   const [foodInput, setFoodInput] = useState("");
-  const [image, setImage] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
+  const [images, setImages] = useState([]); // File[] — supports 1-5 photos of one meal
+  const [imagePreviews, setImagePreviews] = useState([]); // string[] object URLs, parallel to `images`
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysisResult, setAnalysisResult] = useState(null);
+  const [reviewMeal, setReviewMeal] = useState(null); // scan/type/voice result awaiting user edit + confirm
+  const [isLoggingMeal, setIsLoggingMeal] = useState(false);
   const [foodQuantity, setFoodQuantity] = useState("");
   const [lastSource, setLastSource] = useState("Scan"); // 'Scan' or 'Upload'
   const [prepMethod, setPrepMethod] = useState("");
+  const MAX_MEAL_PHOTOS = 5;
 
   // Use the robust utility hook for voice logging
   const {
@@ -468,6 +478,7 @@ function Nutrition() {
         carbsTarget: goals?.macroTargets?.carbs || 200,
         fats: summary?.totalFats || 0,
         fatsTarget: goals?.macroTargets?.fats || 55,
+        caloriesBurned: summary?.caloriesBurned || 0,
       });
 
       // Water (Assuming it's part of daily summary)
@@ -511,24 +522,19 @@ function Nutrition() {
       }
 
       // Insights & Suggestions
+      // NOTE: a log can hold multiple dishes (multi-photo scan) — sum totalNutrition
+      // (falling back to foodItems[0] only for older single-dish logs that predate it).
+      const logCalories = (l) =>
+        Number(l.totalNutrition?.calories ?? l.foodItems?.[0]?.nutrition?.calories ?? 0);
       let insight = "Analyzing your eating patterns...";
-      const bCals = (grouped.Breakfast || []).reduce(
-        (sum, l) => sum + (l.foodItems?.[0]?.nutrition?.calories || 0),
-        0,
-      );
-      const lCals = (grouped.Lunch || []).reduce(
-        (sum, l) => sum + (l.foodItems?.[0]?.nutrition?.calories || 0),
-        0,
-      );
-      const dCals = (grouped.Dinner || []).reduce(
-        (sum, l) => sum + (l.foodItems?.[0]?.nutrition?.calories || 0),
-        0,
-      );
+      const bCals = (grouped.Breakfast || []).reduce((sum, l) => sum + logCalories(l), 0);
+      const lCals = (grouped.Lunch || []).reduce((sum, l) => sum + logCalories(l), 0);
+      const dCals = (grouped.Dinner || []).reduce((sum, l) => sum + logCalories(l), 0);
 
       const cTarget = goals?.dailyCalorieTarget || 1800;
-      const bT = Math.round(cTarget * 0.3);
-      const lT = Math.round(cTarget * 0.35);
-      const dT = Math.round(cTarget * 0.25);
+      const bT = Math.round(cTarget * MEAL_CALORIE_SPLIT.breakfast);
+      const lT = Math.round(cTarget * MEAL_CALORIE_SPLIT.lunch);
+      const dT = Math.round(cTarget * MEAL_CALORIE_SPLIT.dinner);
 
       if (bCals > bT)
         insight = `Your breakfast was heavy (${bCals} kcal). Stay light on lunch to balance.`;
@@ -593,15 +599,36 @@ function Nutrition() {
     }
   };
 
+  const handleSubmitActivity = async ({ activityType, activeMinutes, caloriesBurned }) => {
+    setIsLoggingActivity(true);
+    try {
+      // isAdditive=true: repeated logs on the same day accumulate rather than overwrite
+      await wearableService.syncMetrics(
+        "other",
+        { date: selectedDate, caloriesBurned, activeMinutes },
+        true,
+      );
+      toast.success(`🔥 Logged ${activityType.toLowerCase()} — ${caloriesBurned} kcal burned`);
+      setShowLogActivity(false);
+      invalidateCache(["dashboard", `nutrition_${selectedDate}`]);
+      await fetchData(true);
+    } catch (error) {
+      toast.error("Failed to log activity");
+    } finally {
+      setIsLoggingActivity(false);
+    }
+  };
+
   const openModal = (meal) => {
     setMealTab(meal);
     setIsModalOpen(true);
     setAnalysisResult(null);
+    setReviewMeal(null);
     setFoodInput("");
     setFoodQuantity("");
     setPrepMethod("");
-    setImage(null);
-    setImagePreview(null);
+    setImages([]);
+    setImagePreviews([]);
     resetTranscript();
   };
 
@@ -650,15 +677,38 @@ function Nutrition() {
     });
   };
 
+  // Accepts a single File, a <input onChange> event (possibly with multiple files selected), or
+  // an array of Files. Appends to the existing `images` array — one meal can have up to
+  // MAX_MEAL_PHOTOS photos (e.g. chapati + sabji + rice shot separately).
   const handleImageSelect = async (fileOrEvent, autoAnalyze = false) => {
-    const file = fileOrEvent?.target
-      ? fileOrEvent.target.files[0]
-      : fileOrEvent;
-    if (!file) return;
+    let files = [];
+    if (fileOrEvent?.target) {
+      files = Array.from(fileOrEvent.target.files || []);
+    } else if (Array.isArray(fileOrEvent)) {
+      files = fileOrEvent;
+    } else if (fileOrEvent) {
+      files = [fileOrEvent];
+    }
+    if (files.length === 0) return;
+
+    const room = MAX_MEAL_PHOTOS - images.length;
+    if (room <= 0) {
+      toast.error(`You can add up to ${MAX_MEAL_PHOTOS} photos per meal`);
+      if (fileOrEvent?.target) fileOrEvent.target.value = "";
+      return;
+    }
+    if (files.length > room) {
+      toast.error(`Only ${room} more photo(s) can be added (max ${MAX_MEAL_PHOTOS})`);
+      files = files.slice(0, room);
+    }
+
     try {
-      const compressed = await compressImage(file);
-      setImage(compressed);
-      setImagePreview(URL.createObjectURL(compressed));
+      const compressedFiles = await Promise.all(files.map((f) => compressImage(f)));
+      setImages((prev) => [...prev, ...compressedFiles]);
+      setImagePreviews((prev) => [
+        ...prev,
+        ...compressedFiles.map((f) => URL.createObjectURL(f)),
+      ]);
       // If auto-analyze is requested (e.g. from camera capture), trigger analysis after state update
       if (autoAnalyze) {
         pendingAutoAnalyzeRef.current = true;
@@ -672,9 +722,14 @@ function Nutrition() {
     }
   };
 
-  // Auto-analyze effect: triggers when image is set and auto-analyze is pending
+  const removeImageAt = (index) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
+    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  // Auto-analyze effect: triggers when a photo is set and auto-analyze is pending
   useEffect(() => {
-    if (pendingAutoAnalyzeRef.current && image && !isAnalyzing) {
+    if (pendingAutoAnalyzeRef.current && images.length > 0 && !isAnalyzing) {
       pendingAutoAnalyzeRef.current = false;
       // Small delay to ensure UI has rendered with the preview
       const timer = setTimeout(() => {
@@ -682,17 +737,17 @@ function Nutrition() {
       }, 300);
       return () => clearTimeout(timer);
     }
-  }, [image]);
+  }, [images]);
 
   const handleAnalyzeAndLog = async () => {
-    if (!foodInput && !image) return;
+    if (!foodInput && images.length === 0) return;
     if (isListening) stopVoiceCapture();
     setIsAnalyzing(true);
     setAnalyzingMessage("Please wait, analyzing your food…");
     try {
       const formData = new FormData();
       formData.append("foodDescription", foodInput || "Food from image");
-      if (image) formData.append("image", image);
+      images.forEach((file) => formData.append("images", file));
 
       let context = "";
       if (foodQuantity) {
@@ -707,14 +762,12 @@ function Nutrition() {
 
       const response = await api.post("nutrition/quick-check", formData, {
         headers: { "Content-Type": "multipart/form-data" },
-        timeout: 60000,
+        timeout: 90000,
       });
 
       const result = response.data.data;
-      const isCached =
-        response.data.isCached || response.data.source === "global_cache";
 
-      // NEW: Validation for food detection
+      // Validation for food detection
       const totalCals =
         result.foodItem?.nutrition?.calories ||
         result.totalNutrition?.calories ||
@@ -722,7 +775,7 @@ function Nutrition() {
         result.calories ||
         0;
       const name =
-        result.foodItem?.name || result.foodName || result.foodItems?.[0]?.name;
+        result.foodItem?.name || result.foodName || result.dishes?.[0]?.name;
       const isWater = name?.toLowerCase().includes("water");
 
       if (!name || name === "Unknown Food" || (totalCals === 0 && !isWater)) {
@@ -736,32 +789,36 @@ function Nutrition() {
         return;
       }
 
-      // Inject user input directly into result so it can be logged exactly as typed
-      const finalResult = {
+      // Hand off to the review/edit screen — nothing is logged yet, user must confirm
+      setReviewMeal({
         ...result,
         _userInput: foodInput,
-        _isFromCache: isCached,
-        _cacheSource: response.data?.source,
-        _alreadyLogged: true,
-        _isImageAnalysis: !!image,
-      };
-
-      // AUTO-LOG: Directly log the meal to the database using the selected mealTab
-      await handleConfirmLog(finalResult);
-
-      // We set the result to show the modal so the user sees the details,
-      setAnalysisResult(finalResult);
-
-      if (isCached) {
-        toast.success("Instant Analysis: Retrieved from Food DB Cache");
-      } else {
-        toast.success("AI Analysis complete!");
-      }
+        _isImageAnalysis: images.length > 0,
+      });
     } catch (error) {
       console.error(error);
       toast.error("Analysis failed");
     } finally {
       setIsAnalyzing(false);
+    }
+  };
+
+  // Called from MealEditReviewModal once the user confirms (possibly edited) dishes
+  const handleConfirmReviewedMeal = async ({ dishes, isEdited, quickCheckId, imageUrl, imageUrls }) => {
+    setIsLoggingMeal(true);
+    try {
+      await handleConfirmLog({
+        dishes,
+        isEdited,
+        quickCheckId,
+        imageUrl,
+        imageUrls,
+        _isImageAnalysis: reviewMeal?._isImageAnalysis,
+      });
+      setReviewMeal(null);
+      setIsModalOpen(false);
+    } finally {
+      setIsLoggingMeal(false);
     }
   };
 
@@ -787,37 +844,55 @@ function Nutrition() {
     try {
       const mappedMealType = mealTab.toLowerCase();
 
-      const rawNutrition = data.foodItem?.nutrition || data.nutrition || data.totalNutrition || {};
-      const safeNutrition = {
-        calories: Number(rawNutrition.calories) || 0,
-        protein: Number(rawNutrition.protein) || 0,
-        carbs: Number(rawNutrition.carbs) || 0,
-        fats: Number(rawNutrition.fats) || 0,
-        fiber: Number(rawNutrition.fiber) || 0,
-        sugar: Number(rawNutrition.sugar) || 0,
-        sodium: Number(rawNutrition.sodium) || 0,
-      };
+      // ─── NEW: dishes-based payload (scan/type/voice → review/edit → confirm flow) ───
+      // isEdited is computed by MealEditReviewModal via an actual diff against the AI's
+      // original response, not a manually-set flag — see MealEditReviewModal.jsx for why.
+      let logData;
+      if (Array.isArray(data.dishes)) {
+        logData = {
+          mealType: mappedMealType,
+          dishes: data.dishes,
+          isEdited: data.isEdited,
+          quickCheckId: data.quickCheckId,
+          date: selectedDate,
+          imageUrl: data.imageUrl,
+          imageUrls: data.imageUrls,
+          source: data._isImageAnalysis ? "ai_vision" : "manual",
+        };
+      } else {
+        // ─── LEGACY: single-item payload — still used by the "log again from history" flow ───
+        const rawNutrition = data.foodItem?.nutrition || data.nutrition || data.totalNutrition || {};
+        const safeNutrition = {
+          calories: Number(rawNutrition.calories) || 0,
+          protein: Number(rawNutrition.protein) || 0,
+          carbs: Number(rawNutrition.carbs) || 0,
+          fats: Number(rawNutrition.fats) || 0,
+          fiber: Number(rawNutrition.fiber) || 0,
+          sugar: Number(rawNutrition.sugar) || 0,
+          sodium: Number(rawNutrition.sodium) || 0,
+        };
 
-      const logData = {
-        mealType: mappedMealType,
-        foodItems: [
-          {
-            name: data._userInput || data.foodItem?.name || data.foodName || data.name || "Food Item",
-            quantity: data.foodItem?.quantity || data.quantity || "1 serving",
-            nutrition: safeNutrition,
-          },
-        ],
-        healthScore: data.healthScore,
-        healthScore10: data.healthScore10,
-        micronutrients: data.micronutrients,
-        enhancementTips: data.enhancementTips,
-        healthBenefitsSummary: data.healthBenefitsSummary || data.analysis,
-        warnings: data.warnings,
-        alternatives: data.alternatives,
-        date: selectedDate,
-        imageUrl: data.imageUrl,
-        source: data._isImageAnalysis ? "ai_vision" : "manual",
-      };
+        logData = {
+          mealType: mappedMealType,
+          foodItems: [
+            {
+              name: data._userInput || data.foodItem?.name || data.foodName || data.name || "Food Item",
+              quantity: data.foodItem?.quantity || data.quantity || "1 serving",
+              nutrition: safeNutrition,
+            },
+          ],
+          healthScore: data.healthScore,
+          healthScore10: data.healthScore10,
+          micronutrients: data.micronutrients,
+          enhancementTips: data.enhancementTips,
+          healthBenefitsSummary: data.healthBenefitsSummary || data.analysis,
+          warnings: data.warnings,
+          alternatives: data.alternatives,
+          date: selectedDate,
+          imageUrl: data.imageUrl,
+          source: data._isImageAnalysis ? "ai_vision" : "manual",
+        };
+      }
       const res = await nutritionService.logMeal(logData);
       toast.success("Added to " + mealTab);
       
@@ -998,8 +1073,8 @@ function Nutrition() {
 
             // Clear previous inputs
             setFoodInput("");
-            setImage(null);
-            setImagePreview(null);
+            setImages([]);
+            setImagePreviews([]);
 
             if (inputMode === "Scan") {
               setInputMethod("Scan");
@@ -1029,6 +1104,7 @@ function Nutrition() {
           recentMeals={recentMeals}
           frequentFoods={frequentFoods}
           aiInsights={aiInsights}
+          onLogActivity={() => setShowLogActivity(true)}
         />
 
         {/* View Meal Detail Modal */}
@@ -1197,25 +1273,45 @@ function Nutrition() {
                     className="flex flex-col h-full flex-1"
                   >
                     <div className="bg-[#5c7a6e] rounded-[2rem] p-6 lg:p-8 flex flex-col items-center justify-center relative shadow-inner w-full border-2 border-dashed border-white/20 flex-1 min-h-[250px] overflow-hidden">
-                      {imagePreview ? (
-                        <>
-                          <img
-                            src={imagePreview}
-                            className="absolute inset-0 w-full h-full object-cover"
-                            alt="Food preview"
-                          />
-                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">
-                            <button
-                              onClick={() => {
-                                setImagePreview(null);
-                                setImage(null);
-                              }}
-                              className="bg-white/20 backdrop-blur-md border border-white/30 text-white px-6 py-2 rounded-full text-[12px] font-bold uppercase tracking-wider transition-all"
-                            >
-                              Retake Photo
-                            </button>
+                      {imagePreviews.length > 0 ? (
+                        <div className="w-full">
+                          <div className="grid grid-cols-3 gap-2.5">
+                            {imagePreviews.map((src, i) => (
+                              <div
+                                key={src}
+                                className="relative aspect-square rounded-xl overflow-hidden group"
+                              >
+                                <img
+                                  src={src}
+                                  className="w-full h-full object-cover"
+                                  alt={`Dish ${i + 1}`}
+                                />
+                                <button
+                                  onClick={() => removeImageAt(i)}
+                                  className="absolute top-1 right-1 w-6 h-6 bg-black/60 hover:bg-red-500 rounded-full flex items-center justify-center text-white transition-colors"
+                                >
+                                  <X className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            ))}
+                            {imagePreviews.length < MAX_MEAL_PHOTOS && (
+                              <button
+                                onClick={() =>
+                                  document.getElementById("food-img-upload")?.click()
+                                }
+                                className="aspect-square rounded-xl border-2 border-dashed border-white/30 flex flex-col items-center justify-center gap-1 text-white/70 hover:text-white hover:border-white/60 transition-all"
+                              >
+                                <Plus className="w-5 h-5" />
+                                <span className="text-[8px] font-black uppercase tracking-wider">
+                                  Add
+                                </span>
+                              </button>
+                            )}
                           </div>
-                        </>
+                          <p className="text-white/70 text-[10px] font-bold uppercase tracking-widest text-center mt-4">
+                            {imagePreviews.length} of {MAX_MEAL_PHOTOS} photos — one per dish, optional
+                          </p>
+                        </div>
                       ) : (
                         <>
                           <div className="w-16 h-16 rounded-full bg-white/10 border border-white/20 flex items-center justify-center backdrop-blur-sm mb-6 shadow-lg">
@@ -1253,6 +1349,7 @@ function Nutrition() {
                         id="food-img-upload"
                         type="file"
                         accept="image/*"
+                        multiple
                         className="hidden"
                         onChange={(e) => handleImageSelect(e)}
                       />
@@ -1267,18 +1364,19 @@ function Nutrition() {
                     </div>
 
                     <p className="text-center text-[#1a2138] font-bold text-[13px] px-6 mt-6 mb-6 leading-relaxed">
-                      Our engine will optimize the portion size and nutritional
-                      content directly from the photo.
+                      {imagePreviews.length > 1
+                        ? "Each photo is analyzed as its own dish, then combined into one meal."
+                        : "Our engine will optimize the portion size and nutritional content directly from the photo. Add more photos if this meal has separate dishes."}
                     </p>
 
                     <button
                       onClick={handleAnalyzeAndLog}
-                      disabled={isAnalyzing || !image}
+                      disabled={isAnalyzing || imagePreviews.length === 0}
                       className="w-full bg-[#69A38D] hover:bg-[#5B9A80] text-white py-4 rounded-[1.25rem] flex items-center justify-center gap-2 transition-all shadow-lg active:scale-[0.98] mt-auto mb-2 disabled:opacity-50"
                     >
                       <Search size={18} className="text-white" />
                       <span className="text-[14px] font-black uppercase tracking-wider">
-                        ANALYZE PHOTO
+                        {imagePreviews.length > 1 ? `ANALYZE ${imagePreviews.length} PHOTOS` : "ANALYZE PHOTO"}
                       </span>
                     </button>
                   </motion.div>
@@ -1383,7 +1481,7 @@ function Nutrition() {
                         <Search className="w-[18px] h-[18px]" />
                       )}
                       <span className="text-[14px] font-black uppercase tracking-wider">
-                        {isAnalyzing ? analyzingMessage : "Analyze & Log Meal"}
+                        {isAnalyzing ? analyzingMessage : "Analyze Meal"}
                       </span>
                     </button>
                   </motion.div>
@@ -1457,7 +1555,7 @@ function Nutrition() {
                           ) : (
                             <Zap className="w-5 h-5" />
                           )}
-                          {isAnalyzing ? analyzingMessage : "Analyze My Meal"}
+                          {isAnalyzing ? analyzingMessage : "Analyze Meal"}
                         </button>
 
                         <button
@@ -1490,6 +1588,29 @@ function Nutrition() {
                 ? null
                 : () => handleConfirmLog(analysisResult)
             }
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Scan/Type/Voice result — user reviews and edits dishes/ingredients before this actually logs anything */}
+      <AnimatePresence>
+        {reviewMeal && (
+          <MealEditReviewModal
+            meal={reviewMeal}
+            onClose={() => setReviewMeal(null)}
+            onConfirm={handleConfirmReviewedMeal}
+            isSubmitting={isLoggingMeal}
+          />
+        )}
+      </AnimatePresence>
+
+      {/* Log Activity — offsets daily calories with manually-entered exercise burn */}
+      <AnimatePresence>
+        {showLogActivity && (
+          <LogActivityModal
+            onClose={() => setShowLogActivity(false)}
+            onSubmit={handleSubmitActivity}
+            isSubmitting={isLoggingActivity}
           />
         )}
       </AnimatePresence>

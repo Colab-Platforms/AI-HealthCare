@@ -60,7 +60,7 @@ exports.requestRegistrationOtp = async (req, res) => {
 
 exports.register = async (req, res) => {
   try {
-    const { name, phone, password, role, profile, nutritionGoal, otp } = req.body;
+    const { name, phone, password, role, profile, nutritionGoal, otp, device_id } = req.body;
     const email = req.body.email?.toLowerCase().trim();
 
     // Validate required fields
@@ -147,6 +147,7 @@ exports.register = async (req, res) => {
         password,
         role: userRole,
         isEmailVerified: true,
+        device_id: device_id || null,
         profile: profile || {},
         nutritionGoal: calculatedGoals ? {
           goal: nutritionGoal.goal,
@@ -226,7 +227,7 @@ exports.registerDoctor = async (req, res) => {
     const {
       name, email, phone, password,
       specialization, qualifications, experience, hospital,
-      licenseNumber, consultationFee, bio
+      licenseNumber, consultationFee, bio, device_id
     } = req.body;
 
     // Check if user exists - with extended timeout for Vercel
@@ -242,7 +243,8 @@ exports.registerDoctor = async (req, res) => {
       phone,
       password,
       role: 'doctor',
-      isActive: true
+      isActive: true,
+      device_id: device_id || null
     });
 
     // Create doctor profile (pending approval) - with extended timeout for Vercel
@@ -286,7 +288,7 @@ exports.registerDoctor = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { phone, password } = req.body;
+    const { phone, password, device_id } = req.body;
     const email = req.body.email?.toLowerCase().trim();
 
     // Input validation
@@ -343,7 +345,15 @@ exports.login = async (req, res) => {
     }
 
     if (passwordMatch) {
+      // Single-device login enforcement: a stored device_id means a session
+      // is already active elsewhere; only a null device_id allows login
+      if (user.device_id) {
+        console.log('Login blocked, device already logged in for user:', user._id);
+        return res.status(409).json({ message: 'Device already logged in' });
+      }
+
       user.loginCount = (user.loginCount || 0) + 1;
+      if (device_id) user.device_id = device_id;
       await user.save();
 
       // Issue refresh token and save to DB
@@ -416,7 +426,7 @@ exports.googleAuth = async (req, res) => {
     // google.accounts.oauth2. The mobile app (native Google Sign-In SDK)
     // sends an ID token (JWT) instead — a different token type that needs
     // a different Google verification endpoint. Support both.
-    const { accessToken, idToken } = req.body;
+    const { accessToken, idToken, device_id } = req.body;
     if (!accessToken && !idToken) {
       return res.status(400).json({ message: 'A Google access token or ID token is required' });
     }
@@ -471,6 +481,7 @@ exports.googleAuth = async (req, res) => {
     }
 
     let user = await User.findOne({ $or: [{ googleId }, { email }] }).populate('doctorProfile');
+    const isNewUser = !user;
 
     if (!user) {
       user = await User.create({
@@ -480,6 +491,7 @@ exports.googleAuth = async (req, res) => {
         googleId,
         authProvider: 'google',
         isEmailVerified: true,
+        device_id: device_id || null,
         profilePicture: profile.picture,
         subscription: {
           plan: 'free',
@@ -498,7 +510,16 @@ exports.googleAuth = async (req, res) => {
       return res.status(403).json({ message: 'Account is deactivated. Please contact support at support@takesolutions.com' });
     }
 
+    // Single-device login enforcement (same rule as password login): a
+    // stored device_id means a session is already active elsewhere.
+    // Skipped for brand-new sign-ups, which already stored device_id above.
+    if (!isNewUser && user.device_id) {
+      console.log('Google login blocked, device already logged in for user:', user._id);
+      return res.status(409).json({ message: 'Device already logged in' });
+    }
+
     user.loginCount = (user.loginCount || 0) + 1;
+    if (device_id) user.device_id = device_id;
     await user.save();
 
     const rawRefreshToken = generateRefreshToken();
@@ -556,6 +577,7 @@ exports.logout = async (req, res) => {
       await RefreshToken.deleteOne({ token: refreshToken });
     }
     if (req.user) {
+      await User.updateOne({ _id: req.user._id }, { device_id: null });
       await logActivity(req.user._id, 'USER_LOGOUT', 'authentication', {}, req);
     }
     res.json({ success: true, message: 'Logged out successfully' });
@@ -812,6 +834,8 @@ exports.changePassword = async (req, res) => {
 
     // Revoke all other sessions — force re-login everywhere except this device
     await RefreshToken.deleteMany({ userId: user._id });
+    user.device_id = null;
+    await user.save();
 
     await logActivity(user._id, 'PASSWORD_CHANGED', 'authentication', {}, req);
 

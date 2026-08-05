@@ -56,6 +56,9 @@ export default function Profile() {
   const cameraInputRef = useRef(null);
   const [healthGoal, setHealthGoal] = useState(null);
   const [goalLoading, setGoalLoading] = useState(false);
+  const [editingCalories, setEditingCalories] = useState(false);
+  const [calorieOverrideInput, setCalorieOverrideInput] = useState("");
+  const [savingCalorieOverride, setSavingCalorieOverride] = useState(false);
   const [extraData, setExtraData] = useState({
     reportsCount: 0,
     metrics: {},
@@ -363,6 +366,31 @@ export default function Profile() {
     setGoalFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const handleSaveCalorieOverride = async () => {
+    const value = parseInt(calorieOverrideInput, 10);
+    if (!value || value < 800 || value > 6000) {
+      toast.error("Enter a calorie target between 800 and 6000 kcal");
+      return;
+    }
+    setSavingCalorieOverride(true);
+    try {
+      const { data } = await api.patch("nutrition/goals/calorie-override", {
+        dailyCalorieTarget: value,
+      });
+      setHealthGoal(data.healthGoal);
+      const { data: userData } = await api.get("auth/profile");
+      updateUser(userData);
+      toast.success("Calorie goal updated");
+      setEditingCalories(false);
+    } catch (error) {
+      toast.error(
+        error.response?.data?.message || "Failed to update calorie goal",
+      );
+    } finally {
+      setSavingCalorieOverride(false);
+    }
+  };
+
   const handleImageUpload = async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -450,7 +478,7 @@ export default function Profile() {
 
     if (!cw || !ht || !age) return null;
 
-    // 1. Calculate BMR
+    // 1. Calculate BMR (Mifflin-St Jeor)
     let bmr = 10 * cw + 6.25 * ht - 5 * age;
     bmr = gender === "male" ? bmr + 5 : bmr - 161;
 
@@ -464,13 +492,55 @@ export default function Profile() {
     };
     const tdee = bmr * (multipliers[activity] || 1.2);
 
-    // 3. Calorie Target
+    // 3. Calorie Target — mirrors HealthGoal.js's calculateCalorieTarget() so the live preview
+    // matches what actually gets persisted on submit. Derives the surplus/deficit from
+    // targetWeight + targetWeeks instead of a flat constant, capped to a physiologically
+    // realistic weekly rate (ACSM safe-loss guideline / natural muscle-gain ceiling).
+    const MAX_WEEKLY_RATE_FRACTION = {
+      weight_loss: 0.01,
+      weight_gain: 0.005,
+      muscle_gain: 0.0025,
+    };
+    const KCAL_PER_KG_FAT = 7700;
+
+    const targetWeight = parseFloat(goalFormData.targetWeight) || 0;
+    const weeks = parseInt(goalFormData.targetWeeks) || 12;
+
     let adjust = 0;
-    if (goal === "weight_loss") adjust = isDiabetic ? -400 : -500;
+    let weeklyRateKg = 0;
+    let realisticWeeks = null;
+
+    if (["weight_loss", "weight_gain", "muscle_gain"].includes(goal) && targetWeight) {
+      const requestedWeeklyRate = (targetWeight - cw) / weeks;
+
+      // Cap direction follows the actual target-vs-current sign, not the goalType label —
+      // mirrors HealthGoal.js so a mismatched goal/target combo (e.g. "Weight loss" with a
+      // higher target) still recalculates live instead of freezing at 0.
+      const maxRateFraction =
+        requestedWeeklyRate < 0
+          ? MAX_WEEKLY_RATE_FRACTION.weight_loss
+          : goal === "muscle_gain"
+            ? MAX_WEEKLY_RATE_FRACTION.muscle_gain
+            : MAX_WEEKLY_RATE_FRACTION.weight_gain;
+      const maxRate = maxRateFraction * cw;
+
+      weeklyRateKg =
+        requestedWeeklyRate < 0
+          ? Math.max(requestedWeeklyRate, -maxRate)
+          : Math.min(requestedWeeklyRate, maxRate);
+
+      adjust = (weeklyRateKg * KCAL_PER_KG_FAT) / 7;
+      if (isDiabetic) adjust *= 0.8;
+
+      if (weeklyRateKg !== 0) {
+        realisticWeeks = Math.ceil(Math.abs(targetWeight - cw) / Math.abs(weeklyRateKg));
+      }
+    } else if (goal === "weight_loss") adjust = isDiabetic ? -400 : -500;
     else if (goal === "weight_gain") adjust = isDiabetic ? 250 : 500;
     else if (goal === "muscle_gain") adjust = isDiabetic ? 200 : 300;
 
-    const calorieTarget = Math.round(tdee + adjust);
+    const safeMinimum = Math.max(gender === "male" ? 1500 : 1200, Math.round(bmr * 1.1));
+    const calorieTarget = Math.max(Math.round(tdee + adjust), safeMinimum);
 
     // 4. Macros
     let pro, carb, fat;
@@ -491,7 +561,15 @@ export default function Profile() {
       carb = Math.round(Math.max((calorieTarget - pro * 4 - fat * 9) / 4, 0));
     }
 
-    return { calories: calorieTarget, protein: pro, carbs: carb, fats: fat };
+    return {
+      calories: calorieTarget,
+      protein: pro,
+      carbs: carb,
+      fats: fat,
+      weeklyRateKg,
+      realisticWeeks,
+      requestedWeeks: weeks,
+    };
   })();
 
   if (!user) return <ProfileSkeleton />;
@@ -1148,14 +1226,68 @@ export default function Profile() {
                                   Live Prediction
                                 </span>
                               )}
+                              {healthGoal?.calorieSource === "manual" && (
+                                <span className="text-[8px] font-bold text-amber-400 uppercase tracking-tight">
+                                  Custom target
+                                </span>
+                              )}
                             </div>
-                            <span className="text-xl font-black">
-                              {liveMacroPreview?.calories ||
-                                healthGoal?.dailyCalorieTarget}
-                              <span className="text-[11px] text-[#69A38D] ml-1">
-                                KCAL
-                              </span>
-                            </span>
+                            {editingCalories ? (
+                              <div className="flex items-center gap-2">
+                                <input
+                                  type="number"
+                                  autoFocus
+                                  value={calorieOverrideInput}
+                                  onChange={(e) =>
+                                    setCalorieOverrideInput(e.target.value)
+                                  }
+                                  className="w-20 bg-white/10 border border-white/20 rounded-lg py-1 px-2 text-sm font-black text-white text-right focus:outline-none focus:border-[#69A38D]"
+                                  placeholder="kcal"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={handleSaveCalorieOverride}
+                                  disabled={savingCalorieOverride}
+                                  className="text-[10px] font-black uppercase text-emerald-400 disabled:opacity-50"
+                                >
+                                  {savingCalorieOverride ? "..." : "Save"}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingCalories(false)}
+                                  className="text-[10px] font-black uppercase text-slate-400"
+                                >
+                                  Cancel
+                                </button>
+                              </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setCalorieOverrideInput(
+                                    String(
+                                      liveMacroPreview?.calories ||
+                                        healthGoal?.dailyCalorieTarget ||
+                                        "",
+                                    ),
+                                  );
+                                  setEditingCalories(true);
+                                }}
+                                disabled={!healthGoal}
+                                className="text-xl font-black disabled:cursor-not-allowed"
+                                title={
+                                  healthGoal
+                                    ? "Tap to set a custom calorie target"
+                                    : "Sync your fitness plan first to customize"
+                                }
+                              >
+                                {liveMacroPreview?.calories ||
+                                  healthGoal?.dailyCalorieTarget}
+                                <span className="text-[11px] text-[#69A38D] ml-1">
+                                  KCAL
+                                </span>
+                              </button>
+                            )}
                           </div>
 
                           <div className="grid grid-cols-3 gap-3 relative z-10">
@@ -1218,6 +1350,27 @@ export default function Profile() {
                               </p>
                             </div>
                           )}
+
+                          {/* Realistic timeframe note — the calorie budget above is capped to a safe
+                              weekly rate, so surface the actual ETA when it differs from what was picked */}
+                          {liveMacroPreview?.realisticWeeks &&
+                            liveMacroPreview.realisticWeeks > liveMacroPreview.requestedWeeks && (
+                              <div className="mt-4 flex items-start gap-2 px-1 relative z-10">
+                                <span className="text-sm shrink-0">⏱️</span>
+                                <p className="text-[9px] text-slate-400 leading-relaxed">
+                                  <span className="text-amber-400 font-bold">
+                                    {Math.abs(liveMacroPreview.weeklyRateKg)} kg/week
+                                  </span>{" "}
+                                  is the safe rate for this goal — reaching your target this way
+                                  will realistically take{" "}
+                                  <span className="text-white font-bold">
+                                    ~{liveMacroPreview.realisticWeeks} weeks
+                                  </span>
+                                  , not {liveMacroPreview.requestedWeeks}. The calorie budget above
+                                  reflects the safe rate, not the shorter timeframe.
+                                </p>
+                              </div>
+                            )}
                         </div>
                       )}
 

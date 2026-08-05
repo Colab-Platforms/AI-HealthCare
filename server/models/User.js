@@ -6,6 +6,7 @@ const userSchema = new mongoose.Schema({
   email: { type: String, required: true, unique: true, lowercase: true },
   phone: { type: String, sparse: true },
   fcmToken: { type: String, default: null }, // Android/iOS push notification token
+  device_id: { type: String, default: null }, // Currently logged-in device; null means no active session
   password: { type: String, required: true, minlength: 6 },
   googleId: { type: String, unique: true, sparse: true }, // Google 'sub' claim, only set for Google sign-ins
   authProvider: { type: String, enum: ['local', 'google'], default: 'local' },
@@ -20,12 +21,13 @@ const userSchema = new mongoose.Schema({
   // For doctors - links to Doctor profile
   doctorProfile: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' },
   profile: {
-    age: Number,
+    age: { type: Number, min: 0 },
     gender: { type: String, enum: ['male', 'female', 'other'] },
     dietaryPreference: { type: String, enum: ['vegetarian', 'non-vegetarian', 'vegan', 'eggetarian', 'other'], default: 'non-vegetarian' },
-    height: Number, // in cm
-    weight: Number, // in kg
+    height: { type: Number, min: 0 },
+    weight: { type: Number, min: 0 },
     bloodGroup: String,
+    dateOfBirth: { type: Date },
     allergies: [String],
     chronicConditions: [String],
     isDiabetic: { type: String, enum: ['yes', 'no'], default: 'no' },
@@ -33,9 +35,30 @@ const userSchema = new mongoose.Schema({
     // New comprehensive health fields
     activityLevel: {
       type: String,
-      enum: ['sedentary', 'lightly_active', 'moderately_active', 'moderate', 'very_active', 'extremely_active'],
-      default: 'sedentary'
+      enum: ['sedentary', 'lightly_active', 'moderately_active', 'moderate', 'very_active', 'extremely_active']
+      // optional - no default, left unset until the user completes onboarding
     },
+    // Onboarding "What matters to you?" goals (pick up to 3), plus free-text "Other"
+    goals: {
+      type: [String],
+      enum: [
+        'Better Sleep', 'Improve Energy', 'Weight Management', 'Build Muscle',
+        'Better Nutrition', 'Reduce Stress', 'Healthy Ageing', 'Understand My Health',
+        'Manage Diabetes', 'Heart Health', 'Boost Immunity', 'Improve Overall Wellness', 'Other'
+      ],
+      default: undefined // optional - omit the key entirely rather than defaulting to []
+    },
+    goalOther: { type: String, trim: true }, // free-text when 'Other' is selected in goals
+    // Onboarding "Any existing health conditions?" multi-select, plus free-text "Other"
+    healthConditions: {
+      type: [String],
+      enum: [
+        'Diabetes', 'Hypertension', 'High Cholesterol', 'Thyroid', 'PCOS',
+        'Vitamin Deficiency', 'Gut Health Issues', 'Heart Disease', 'None of these', 'Other'
+      ],
+      default: undefined // optional
+    },
+    healthConditionOther: { type: String, trim: true }, // free-text when 'Other' is selected in healthConditions
     medicalHistory: {
       conditions: [String], // diabetes, hypertension, etc.
       surgeries: [String],

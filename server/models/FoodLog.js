@@ -22,7 +22,13 @@ const foodItemSchema = new mongoose.Schema({
   name: { type: String, required: true },
   description: String,
   quantity: String, // e.g., "1 cup", "150g", "2 pieces"
-  nutrition: nutritionSchema
+  nutrition: nutritionSchema,
+  // Ingredient-level breakdown, preserved from the dishes[]/editable-ingredients scan flow (optional)
+  ingredients: [{
+    name: String,
+    quantity: String,
+    nutrition: nutritionSchema
+  }]
 });
 
 const foodLogSchema = new mongoose.Schema({
@@ -66,7 +72,8 @@ const foodLogSchema = new mongoose.Schema({
     nutrition: Object,
     benefits: String
   }],
-  imageUrl: String, // Cloudinary or base64
+  imageUrl: String, // Cloudinary or base64 — primary/first image, kept for backward-compat
+  imageUrls: [String], // full set of photos when logged from a multi-photo scan
   aiAnalysis: String, // Full AI response
   notes: String,
   source: {

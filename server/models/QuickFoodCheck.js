@@ -71,10 +71,38 @@ const quickFoodCheckSchema = new mongoose.Schema({
     satietyScore: Number,
     prepTime: String
   }],
-  imageUrl: String,
+  imageUrl: String, // primary/first image — kept for backward-compat with existing UI
+  imageUrls: [String], // full set of uploaded photos when multi-photo scan is used
+  dishes: [{
+    name: String,
+    quantity: String,
+    ingredients: [{
+      name: String,
+      quantity: String,
+      nutrition: {
+        calories: Number,
+        protein: Number,
+        carbs: Number,
+        fats: Number,
+        fiber: Number,
+        sugar: Number,
+        sodium: Number
+      }
+    }],
+    nutrition: {
+      calories: Number,
+      protein: Number,
+      carbs: Number,
+      fats: Number,
+      fiber: Number,
+      sugar: Number,
+      sodium: Number
+    },
+    healthScore: Number
+  }],
   scanType: {
     type: String,
-    enum: ['barcode', 'image', 'text'],
+    enum: ['barcode', 'image', 'multi_image', 'text'],
     default: 'text'
   },
   timestamp: {

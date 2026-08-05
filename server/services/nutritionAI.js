@@ -1,6 +1,7 @@
 const axios = require('axios');
 const { robustJsonParse } = require('../utils/aiParser');
 const UsageLog = require('../models/UsageLog');
+const openrouterAI = require('./openrouterAI');
 
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 const CLAUDE_MODEL = 'claude-sonnet-4-6';
@@ -8,6 +9,19 @@ const CLAUDE_MODEL = 'claude-sonnet-4-6';
 class NutritionAI {
   constructor() {
     this.apiKey = process.env.ANTHROPIC_API_KEY;
+  }
+
+  // The OpenRouter/Gemini backend occasionally returns a truncated response for no
+  // discernible reason (observed even with ample max_tokens and reasoning disabled) —
+  // one retry absorbs that flakiness instead of surfacing a 500 to the user.
+  async _withRetry(fn, retries = 1) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (retries <= 0) throw error;
+      console.warn(`⚠️ [NutritionAI] Request failed (${error.message}), retrying once...`);
+      return this._withRetry(fn, retries - 1);
+    }
   }
 
   getApiParams() {
@@ -72,100 +86,229 @@ class NutritionAI {
     }
   }
 
-  _getUnifiedPrompt(context = '') {
-    return `Analyze the provided image or text and return a JSON object.
+  // imageCount > 0 tailors the instructions for image input (single or multi-photo); 0 = text-only input
+  _getUnifiedPrompt(context = '', imageCount = 0) {
+    const multiImageNote = imageCount > 1
+      ? `\n    MULTI-IMAGE INPUT: You have been given ${imageCount} separate photos that together make up ONE meal. In most cases each photo shows a DIFFERENT dish — treat each photo as contributing one or more entries to the "dishes" array. Do NOT merge two visibly different photos into a single dish unless they are clearly duplicate angles of the exact same plate. If any single photo itself shows multiple distinct food items side by side (e.g. a thali or a tray), split THAT photo into multiple dish entries as well.`
+      : '';
+
+    return `Analyze the provided image(s) and/or text and return a JSON object describing the FULL meal.
     Context: "${context}"
-    
+    ${multiImageNote}
+
     TASK:
-    1. Determine if the image/text contains actual FOOD or drink.
+    1. Determine if the input contains actual FOOD or drink.
     2. If NOT food (e.g., a person, a car, a document, or a completely empty plate), set "isFood" to false and provide a helpful "errorMessage".
-    3. If it IS food, perform high-precision nutritional analysis.
-    
-    - IDENTIFICATION: Be specific. Identify the exact dish (e.g., "Egg Curry" vs "Boiled Egg").
+    3. If it IS food, identify EVERY distinct dish present, break EACH dish down into its real component ingredients, and perform high-precision nutritional analysis at the ingredient level — then roll that up to dish level and meal level.
+
+    - IDENTIFICATION: Be specific per dish (e.g., "Egg Curry" vs "Boiled Egg").
     - REFERENCE DATA: Use official nutritional databases (USDA, Indian Food Composition Tables (IFCT)) as your primary source for all values.
-    - PORTION SENSE: Use the context "${context}" for quantity. If context is missing, use standard serving sizes.
+    - PORTION SENSE: Use the context "${context}" for quantity when it specifies one. Where context is missing for a dish/ingredient, use standard serving sizes.
     - MACRO PRECISION (MANDATORY): Use these multipliers:
         * 1g Protein = 4 kcal
         * 1g Carb = 4 kcal
         * 1g Fat = 9 kcal
-      The sum (Protein*4 + Carbs*4 + Fats*9) MUST exactly match the total calories returned.
-    - COMPOSITE DECOMPOSITION: For complex meals (e.g., "Bagel with Cream Cheese and Chicken"), mentally break down the food into its components (Bagel + Cream Cheese + Chicken), calculate for each, and then aggregate. Do not use generic "Sandwich" averages.
-    - EXCLUSIVITY: Do NOT use generic averages. Account for the specific preparation mentioned (oils, frying, etc.).
-    
-    JSON STRUCTURE:
+      For every ingredient, every dish, and the meal total: (Protein*4 + Carbs*4 + Fats*9) MUST closely match the calories returned.
+    - COMPOSITE DECOMPOSITION (MANDATORY): For EVERY dish, list its real component ingredients with individual quantity + nutrition (e.g., "Egg Curry" → Boiled Egg, Onion-Tomato Gravy, Cooking Oil, Spices). Never return a dish with zero or exactly one vague ingredient when it's clearly a composite dish — decompose it like a nutritionist would. Do not use generic "combo meal" averages.
+    - EXCLUSIVITY: Account for the specific preparation mentioned (oils, frying, etc.) rather than generic assumptions.
+
+    JSON STRUCTURE (return EXACTLY this shape, always — even for a single dish/photo/text input, "dishes" must still be a 1-item array):
     {
       "isFood": true/false,
       "errorMessage": "Helpful message if not food (e.g., 'This looks like a medical report, not a meal. Please upload a food photo.')",
+      "dishes": [
+        {
+          "name": "Specific dish name",
+          "quantity": "Estimated portion for this dish (e.g., 1 bowl, 250g)",
+          "ingredients": [
+            {
+              "name": "Ingredient name",
+              "quantity": "Estimated quantity (e.g., 100g, 1 tsp)",
+              "nutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0 }
+            }
+          ],
+          "nutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0 },
+          "healthScore": 0-100
+        }
+      ],
       "foodItem": {
-        "name": "Specific food name",
-        "quantity": "Estimated portion (e.g., 250g, 1 bowl)",
+        "name": "All dish names joined with ', ' (or the single dish name if only one)",
+        "quantity": "Combined portion summary across all dishes",
         "nutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0 }
       },
       "totalNutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0 },
       "healthScore": 0-100,
-      "analysis": "Short 2-sentence summary of health impact",
+      "analysis": "Short 2-sentence summary of the FULL meal's health impact",
       "micronutrients": [{ "name": "Vitamin C", "amount": "12", "unit": "mg", "percentage": 13 }],
       "enhancementTips": [{ "name": "Tip Title", "benefit": "Explanation" }],
-      "healthBenefitsSummary": "Positive impact summary",
+      "healthBenefitsSummary": "Positive impact summary for the whole meal",
       "warnings": ["Disadvantages if unhealthy"],
       "alternatives": [{ "name": "Name", "description": "Why better", "nutrition": { "calories": 0, "protein": 0 } }]
-    }`;
+    }
+
+    CRITICAL CONSISTENCY RULES:
+    - "totalNutrition" and "foodItem.nutrition" MUST equal the SUM of all "dishes[].nutrition".
+    - Each "dishes[].nutrition" MUST equal the SUM of that dish's "ingredients[].nutrition".
+    - Top-level "healthScore" is the calorie-weighted average of all dishes' healthScore.`;
   }
 
-  async analyzeFromImage(imageBase64, additionalContext = '') {
-    let mediaType = 'image/jpeg'; // Default
-
-    if (imageBase64.startsWith('data:')) {
-      // Extract mime type if present
-      const match = imageBase64.match(/^data:([^;]+);base64,/);
-      if (match) {
-        mediaType = match[1];
-      }
-      imageBase64 = imageBase64.split(',')[1];
+  // Normalizes a raw image input (string, data-URI string, or {data, mediaType}) into { data, mediaType }
+  _normalizeImageInput(img) {
+    if (img && typeof img === 'object' && img.data) {
+      const supportedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+      return { data: img.data, mediaType: supportedTypes.includes(img.mediaType) ? img.mediaType : 'image/jpeg' };
     }
 
-    // Supported mime types for Anthropic
+    let data = String(img);
+    let mediaType = 'image/jpeg';
+    if (data.startsWith('data:')) {
+      const match = data.match(/^data:([^;]+);base64,/);
+      if (match) mediaType = match[1];
+      data = data.split(',')[1];
+    }
     const supportedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-    if (!supportedTypes.includes(mediaType)) {
-      console.warn(`⚠️ [NutritionAI] Unsupported media type ${mediaType}, falling back to image/jpeg`);
-      mediaType = 'image/jpeg';
+    if (!supportedTypes.includes(mediaType)) mediaType = 'image/jpeg';
+    return { data, mediaType };
+  }
+
+  // Defensive fallback: if the model ever omits "dishes" (schema drift), synthesize one from foodItem/totalNutrition
+  _ensureDishesArray(data) {
+    if (!data) return data;
+    if (Array.isArray(data.dishes) && data.dishes.length > 0) return data;
+    data.dishes = data.foodItem ? [{
+      name: data.foodItem.name || 'Food Item',
+      quantity: data.foodItem.quantity || '1 serving',
+      ingredients: [],
+      nutrition: data.foodItem.nutrition || data.totalNutrition || {},
+      healthScore: data.healthScore || 50
+    }] : [];
+    return data;
+  }
+
+  // `images` accepts a single base64/data-URI string (legacy) OR an array of those / {data, mediaType} objects (multi-photo)
+  async analyzeFromImage(images, additionalContext = '', userId = null) {
+    const imageList = (Array.isArray(images) ? images : [images]).filter(Boolean);
+    const normalized = imageList.map((img) => this._normalizeImageInput(img));
+
+    if (normalized.length === 0) {
+      throw new Error('At least one image is required for image analysis');
     }
 
-    console.log('🖼️ [NutritionAI] Preparing image for Claude:', mediaType, '| Context:', additionalContext.substring(0, 50));
+    console.log(`🖼️ [NutritionAI] Preparing ${normalized.length} image(s) for Gemini | Context:`, additionalContext.substring(0, 50));
 
-    const prompt = this._getUnifiedPrompt(additionalContext);
-    const payload = {
-      system: 'You are a professional nutritionist AI specialized in Indian and global cuisine. Analyze the food in the image. IMPORTANT: Always prioritize the quantity mentioned in the user text/context for all nutritional calculations. Return ONLY a JSON response.',
-      messages: [{
-        role: 'user',
-        content: [
-          { type: 'text', text: prompt },
-          { type: 'image', source: { type: 'base64', media_type: mediaType, data: imageBase64 } }
-        ]
-      }],
-      max_tokens: 2000
-    };
+    const prompt = this._getUnifiedPrompt(additionalContext, normalized.length);
 
     try {
-      const response = await this.makeAIRequest(payload);
-      return this._parseResponse(response);
+      const data = await this._withRetry(async () => {
+        const response = await openrouterAI.chatCompletion({
+          model: openrouterAI.MODELS.GEMINI_FLASH,
+          system: 'You are a professional nutritionist AI specialized in Indian and global cuisine. Analyze the food in the image(s). IMPORTANT: Always prioritize the quantity mentioned in the user text/context for all nutritional calculations. Return ONLY a JSON response.',
+          messages: [{
+            role: 'user',
+            content: [
+              openrouterAI.buildTextPart(prompt),
+              ...normalized.map((n) => openrouterAI.buildImagePart(n.data, n.mediaType))
+            ]
+          }],
+          maxTokens: Math.min(6000, 2500 + normalized.length * 1200),
+          feature: 'nutrition_analysis',
+          userId
+        });
+        return this._ensureDishesArray(openrouterAI.parseJsonResponse(response));
+      });
+      return { success: true, data };
     } catch (error) {
       console.error('❌ [NutritionAI] Image analysis failed:', error.message);
       throw error;
     }
   }
 
-  async quickFoodCheck(foodDescription, additionalContext = '') {
-    const combined = additionalContext 
+  async quickFoodCheck(foodDescription, additionalContext = '', userId = null) {
+    const combined = additionalContext
       ? `Food: ${foodDescription}. Context: ${additionalContext}`
       : foodDescription;
-    const prompt = this._getUnifiedPrompt(combined);
-    const payload = {
-      system: 'You are a professional nutritionist AI. Respond ONLY with valid JSON. Be extremely concise. CRITICAL: You must calculate nutrition based on the EXACT quantity provided in the context (e.g., if user says "3 eggs", calculate for 3, NOT 1).',
-      messages: [{ role: 'user', content: prompt }],
-      max_tokens: 1500
-    };
-    return this._parseResponse(await this.makeAIRequest(payload));
+    const prompt = this._getUnifiedPrompt(combined, 0);
+
+    const data = await this._withRetry(async () => {
+      const response = await openrouterAI.chatCompletion({
+        model: openrouterAI.MODELS.GEMINI_FLASH,
+        system: 'You are a professional nutritionist AI. Respond ONLY with valid JSON. Be extremely concise. CRITICAL: You must calculate nutrition based on the EXACT quantity provided in the context (e.g., if user says "3 eggs", calculate for 3, NOT 1).',
+        messages: [{ role: 'user', content: prompt }],
+        maxTokens: 2500,
+        feature: 'nutrition_analysis',
+        userId
+      });
+      return this._ensureDishesArray(openrouterAI.parseJsonResponse(response));
+    });
+    return { success: true, data };
+  }
+
+  // The user has already reviewed and edited the AI's dish/ingredient guess — this prompt
+  // treats that edited list as ground truth and asks the model ONLY to compute nutrition,
+  // never to re-identify or second-guess the dish/ingredient names or quantities.
+  _getRecalculationPrompt(dishes) {
+    const confirmedDishes = dishes.map((d) => ({
+      name: d.name,
+      quantity: d.quantity,
+      ingredients: Array.isArray(d.ingredients) && d.ingredients.length > 0
+        ? d.ingredients.map((i) => ({ name: i.name, quantity: i.quantity }))
+        : undefined
+    }));
+
+    return `The user has EDITED and CONFIRMED the exact dishes, ingredients, and quantities for a meal they ate. This is ground truth from the user — you MUST NOT rename, add, remove, merge, or re-identify any dish or ingredient. Do not second-guess their input.
+
+    CONFIRMED MEAL:
+    ${JSON.stringify(confirmedDishes, null, 2)}
+
+    TASK: For each ingredient (or for the dish as a whole if it has no listed ingredients), calculate accurate nutrition using official databases (USDA, Indian Food Composition Tables (IFCT)) based purely on the given name and quantity.
+
+    MACRO PRECISION (MANDATORY): 1g Protein = 4 kcal, 1g Carb = 4 kcal, 1g Fat = 9 kcal. (Protein*4 + Carbs*4 + Fats*9) MUST closely match the calories at ingredient, dish, and meal level.
+
+    Return EXACTLY this JSON shape:
+    {
+      "dishes": [
+        {
+          "name": "(same name as given — do not change)",
+          "quantity": "(same quantity as given — do not change)",
+          "ingredients": [{ "name": "(same as given)", "quantity": "(same as given)", "nutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0 } }],
+          "nutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0 },
+          "healthScore": 0-100
+        }
+      ],
+      "foodItem": { "name": "All dish names joined with ', '", "quantity": "Combined portion summary", "nutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0 } },
+      "totalNutrition": { "calories": 0, "protein": 0, "carbs": 0, "fats": 0, "fiber": 0, "sugar": 0, "sodium": 0 },
+      "healthScore": 0-100,
+      "analysis": "Short 2-sentence summary of the full meal's health impact",
+      "micronutrients": [{ "name": "Vitamin C", "amount": "12", "unit": "mg", "percentage": 13 }],
+      "enhancementTips": [{ "name": "Tip Title", "benefit": "Explanation" }],
+      "healthBenefitsSummary": "Positive impact summary for the whole meal",
+      "warnings": ["Disadvantages if unhealthy"],
+      "alternatives": [{ "name": "Name", "description": "Why better", "nutrition": { "calories": 0, "protein": 0 } }]
+    }
+
+    CONSISTENCY RULES: "totalNutrition"/"foodItem.nutrition" MUST equal the SUM of all "dishes[].nutrition". Each "dishes[].nutrition" MUST equal the SUM of that dish's "ingredients[].nutrition". Top-level "healthScore" is the calorie-weighted average of all dishes' healthScore.`;
+  }
+
+  // Called on the second (log-meal) API call, only when the user actually edited the AI's first guess.
+  async recalculateNutrition(dishes, userId = null) {
+    if (!Array.isArray(dishes) || dishes.length === 0) {
+      throw new Error('At least one dish is required for nutrition recalculation');
+    }
+
+    const prompt = this._getRecalculationPrompt(dishes);
+
+    const data = await this._withRetry(async () => {
+      const response = await openrouterAI.chatCompletion({
+        model: openrouterAI.MODELS.GEMINI_FLASH,
+        system: 'You are a professional nutritionist AI. The user has already confirmed the exact dishes/ingredients/quantities for their meal — treat that as ground truth and do not re-identify anything. Respond ONLY with valid JSON.',
+        messages: [{ role: 'user', content: prompt }],
+        maxTokens: Math.min(6000, 2200 + dishes.length * 1200),
+        feature: 'nutrition_analysis',
+        userId
+      });
+      return this._ensureDishesArray(openrouterAI.parseJsonResponse(response));
+    });
+    return { success: true, data };
   }
 
   async getMealRecommendations(userGoal, todaySummary, deficiencies = []) {
