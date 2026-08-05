@@ -15,12 +15,14 @@ const userSchema = new mongoose.Schema({
   isEmailVerified: { type: Boolean, default: false },
   emailVerificationCode: String,
   emailVerificationExpire: Date,
+  isPhoneVerified: { type: Boolean, default: false },
   profilePicture: { type: String }, // Cloudinary URL
   resetPasswordCode: String,
   resetPasswordExpire: Date,
   // For doctors - links to Doctor profile
   doctorProfile: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' },
   profile: {
+    age: { type: Number, min: 0 },
     age: { type: Number, min: 0 },
     gender: { type: String, enum: ['male', 'female', 'other'] },
     dietaryPreference: { type: String, enum: ['vegetarian', 'non-vegetarian', 'vegan', 'eggetarian', 'other'], default: 'non-vegetarian' },

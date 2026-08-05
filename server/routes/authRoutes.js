@@ -3,7 +3,8 @@ const router = express.Router();
 const {
     register, requestRegistrationOtp, registerDoctor, login, googleAuth, getProfile, updateProfile,
     getSubscription, createAdmin, uploadProfilePicture,
-    verifyEmail, resendVerificationCode
+    verifyEmail, resendVerificationCode,
+    requestPhoneLoginOtp, loginWithPhoneOtp, requestPhoneVerificationOtp, verifyPhone
 } = require('../controllers/authController');
 const { protect, authorize } = require('../middleware/auth');
 const upload = require('../middleware/upload');
@@ -13,6 +14,10 @@ router.post('/register', authLimiter, register);
 router.post('/register-otp', authLimiter, requestRegistrationOtp);
 router.post('/register/doctor', authLimiter, registerDoctor);
 router.post('/login', authLimiter, login);
+router.post('/phone/login-otp', authLimiter, requestPhoneLoginOtp);
+router.post('/phone/login', authLimiter, loginWithPhoneOtp);
+router.post('/phone/verify-otp', protect, sensitiveActionLimiter, requestPhoneVerificationOtp);
+router.post('/phone/verify', protect, sensitiveActionLimiter, verifyPhone);
 router.post('/google', authLimiter, googleAuth);
 router.post('/logout', protect, require('../controllers/authController').logout);
 router.post('/refresh', require('../controllers/authController').refresh);
