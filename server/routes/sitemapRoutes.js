@@ -7,7 +7,6 @@ const router = express.Router();
  * Can be expanded by reading from database or environment
  */
 const sitemapPages = [
-  // Public pages (indexable)
   {
     url: "/",
     changefreq: "weekly",

@@ -479,6 +479,7 @@ exports.logMeal = async (req, res) => {
       item.nutrition.protein  = Number(item.nutrition.protein)  || 0;
       item.nutrition.carbs    = Number(item.nutrition.carbs)    || 0;
       item.nutrition.fats     = Number(item.nutrition.fats)     || 0;
+      item.nutrition.fiber    = Number(item.nutrition.fiber)    || 0;
     });
 
     // Sanitize metadata

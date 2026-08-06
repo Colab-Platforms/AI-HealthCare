@@ -93,8 +93,7 @@ exports.requestPhoneLoginOtp = async (req, res) => {
   }
 };
 
-// @desc    Verify the phone login OTP and log the user in (passwordless login, step 2)
-// @route   POST /api/auth/phone/login
+
 exports.loginWithPhoneOtp = async (req, res) => {
   try {
     const { phone, otp } = req.body;
