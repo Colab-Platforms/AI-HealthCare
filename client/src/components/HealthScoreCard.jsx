@@ -26,8 +26,8 @@ export default function HealthScoreCard() {
   // No score yet at all (brand-new account, or nothing logged today and no
   // Long-Term score computed yet) — quiet empty state, not an error/a "0".
   // The engine itself has no dead zone once *something* is logged.
-  const hasDailyComponents = data?.daily?.components && Object.keys(data.daily.components).length > 0;
-  if (!hasDailyComponents && !data?.longTerm) {
+  const hasDailyComponents = data?.dailyHealthScore?.components && Object.keys(data.dailyHealthScore.components).length > 0;
+  if (!hasDailyComponents && !data?.longTermHealthScore) {
     return (
       <div className="liquid-glass-strong rounded-[28px] p-6 text-center">
         <Sparkles className="w-8 h-8 text-[#69A38D] mx-auto mb-2" />
@@ -41,7 +41,7 @@ export default function HealthScoreCard() {
   // Prefer today's Daily Score, but only if it's backed by real components —
   // an empty-components day has value:0, which isn't "0 health", it's "no
   // data yet today" and should fall back to the Long-Term score instead.
-  const score = Math.round(hasDailyComponents ? data.daily.value : (data.longTerm?.value ?? 0));
+  const score = Math.round(hasDailyComponents ? data.dailyHealthScore.value : (data.longTermHealthScore?.value ?? 0));
   const circumference = 2 * Math.PI * 46;
   const offset = circumference - (circumference * score) / 100;
   const weeklyChange = data.weeklyChange;
@@ -50,7 +50,7 @@ export default function HealthScoreCard() {
   // component is excluded from the score math (rescaled, not counted as 0),
   // but the user should still SEE which activities they didn't log today.
   // Calculation fairness and display transparency are separate concerns.
-  const dailyComponents = data.daily?.components || {};
+  const dailyComponents = data.dailyHealthScore?.components || {};
   const componentEntries = Object.keys(COMPONENT_LABELS)
     .map((key) => [key, typeof dailyComponents[key] === "number" ? dailyComponents[key] : null])
     .sort((a, b) => (b[1] ?? -1) - (a[1] ?? -1));
@@ -86,9 +86,9 @@ export default function HealthScoreCard() {
         </div>
       )}
 
-      {data.longTerm?.daysOfHistory !== undefined && data.longTerm.daysOfHistory < 14 && (
+      {data.longTermHealthScore?.daysOfHistory !== undefined && data.longTermHealthScore.daysOfHistory < 14 && (
         <p className="text-[10px] text-slate-400 font-semibold -mt-2 mb-3 text-center">
-          Based on {data.longTerm.daysOfHistory} day{data.longTerm.daysOfHistory === 1 ? "" : "s"} — gets more accurate over 2 weeks
+          Based on {data.longTermHealthScore.daysOfHistory} day{data.longTermHealthScore.daysOfHistory === 1 ? "" : "s"} — gets more accurate over 2 weeks
         </p>
       )}
 

@@ -1,6 +1,7 @@
 const WearableData = require('../models/WearableData');
 const cache = require('../utils/cache');
 const { logActivity } = require('../utils/activityLogger');
+const openWearablesClient = require('../config/openWearables');
 
 // Connect a new wearable device
 exports.connectDevice = async (req, res) => {
@@ -429,6 +430,220 @@ exports.generateDemoData = async (req, res) => {
     await wearable.save();
 
     res.json({ message: 'Demo data generated', wearable });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Open Wearables has its own internal user_id space. Before we can call
+// oauth/authorize for a provider, our user must exist over there first.
+// We find-or-create a WearableData doc, and lazily create the Open Wearables
+// user on first connect, caching the returned id on openWearablesUserId.
+async function ensureOpenWearablesUser(ourUserId, provider) {
+  let wearable = await WearableData.findOne({ user: ourUserId, deviceType: provider });
+
+  if (!wearable) {
+    wearable = await WearableData.create({
+      user: ourUserId,
+      deviceType: provider,
+      deviceName: provider,
+      isConnected: false // becomes true once the OAuth flow actually completes
+    });
+  }
+
+  if (!wearable.openWearablesUserId) {
+    // NOTE: verify the exact request body Open Wearables expects for
+    // "Create user" (POST /api/v1/users) against their docs — this is a
+    // reasonable guess (external_id lets us store OUR id on THEIR side too)
+    const { data } = await openWearablesClient.post('/users', {
+      external_user_id: ourUserId.toString()
+    });
+    wearable.openWearablesUserId = data.id;
+    await wearable.save();
+  }
+
+  return wearable;
+}
+
+// Get an authorize URL from Open Wearables for a given provider (fitbit/garmin/etc)
+exports.getConnectUrl = async (req, res) => {
+  try {
+    const { provider } = req.params;
+
+    const wearable = await ensureOpenWearablesUser(req.user._id, provider);
+
+    const { data } = await openWearablesClient.get(
+      `/oauth/${provider}/authorize`,
+      { params: { user_id: wearable.openWearablesUserId } }
+    );
+
+    res.json({ url: data.url });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const { Webhook } = require('svix');
+
+// A user in Open Wearables can have several provider connections (one WearableData
+// doc per deviceType), so every event must be matched on BOTH their user id and
+// the provider that produced it.
+async function findWearableDoc(openWearablesUserId, provider) {
+  return WearableData.findOne({ openWearablesUserId, deviceType: provider });
+}
+
+function dateOnlyUTC(isoString) {
+  const d = new Date(isoString);
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+}
+
+// Receive events pushed by Open Wearables (via Svix) once an endpoint is
+// registered — see server/scripts/registerOpenWearablesWebhook.js for setup.
+// No auth middleware on this route — Svix calls it directly, not the browser.
+// Signature is verified instead of a JWT/session.
+exports.handleWebhook = async (req, res) => {
+  try {
+    const wh = new Webhook(process.env.OPEN_WEARABLES_WEBHOOK_SECRET);
+    let event;
+    try {
+      // req.rawBody is captured in server.js's express.json({ verify }) hook —
+      // Svix needs the exact bytes that were signed, not a re-serialized req.body
+      event = wh.verify(req.rawBody, req.headers);
+    } catch (err) {
+      return res.status(400).json({ message: 'Invalid webhook signature' });
+    }
+
+    const { type, data } = event;
+
+    switch (type) {
+      case 'connection.created': {
+        const wearable = await findWearableDoc(data.user_id, data.provider)
+          ?? await WearableData.findOneAndUpdate(
+            { openWearablesUserId: data.user_id, deviceType: data.provider },
+            { openWearablesUserId: data.user_id, deviceType: data.provider, deviceName: data.provider },
+            { upsert: true, new: true }
+          );
+        wearable.isConnected = true;
+        wearable.lastSyncedAt = new Date();
+        await wearable.save();
+        break;
+      }
+
+      case 'connection.revoked': {
+        await WearableData.findOneAndUpdate(
+          { openWearablesUserId: data.user_id, deviceType: data.provider },
+          { isConnected: false }
+        );
+        break;
+      }
+
+      case 'sleep.created': {
+        const wearable = await findWearableDoc(data.user_id, data.source?.provider);
+        if (wearable) {
+          wearable.sleepData.push({
+            date: dateOnlyUTC(data.start_time),
+            totalSleepMinutes: Math.round(data.duration_seconds / 60),
+            deepSleepMinutes: data.stages?.deep_minutes,
+            lightSleepMinutes: data.stages?.light_minutes,
+            remSleepMinutes: data.stages?.rem_minutes,
+            awakeMinutes: data.stages?.awake_minutes,
+            bedTime: data.start_time,
+            wakeTime: data.end_time
+          });
+          wearable.lastSyncedAt = new Date();
+          await wearable.save();
+        }
+        break;
+      }
+
+      case 'workout.created': {
+        const wearable = await findWearableDoc(data.user_id, data.source?.provider);
+        if (wearable) {
+          const date = dateOnlyUTC(data.start_time);
+          const existing = wearable.dailyMetrics.find(
+            m => dateOnlyUTC(m.date).getTime() === date.getTime()
+          );
+          if (existing) {
+            existing.caloriesBurned += data.calories_kcal || 0;
+            existing.distance += (data.distance_meters || 0) / 1000;
+            existing.activeMinutes += Math.round(data.duration_seconds / 60);
+          } else {
+            wearable.dailyMetrics.push({
+              date,
+              caloriesBurned: data.calories_kcal || 0,
+              distance: (data.distance_meters || 0) / 1000,
+              activeMinutes: Math.round(data.duration_seconds / 60)
+            });
+          }
+          wearable.markModified('dailyMetrics');
+          wearable.lastSyncedAt = new Date();
+          await wearable.save();
+        }
+        break;
+      }
+
+      case 'heart_rate.created': {
+        const wearable = await findWearableDoc(data.user_id, data.provider);
+        if (wearable) {
+          for (const sample of data.samples) {
+            if (sample.type !== 'heart_rate') continue;
+            wearable.heartRate.push({ timestamp: sample.timestamp, bpm: sample.value, type: 'resting' });
+          }
+          if (wearable.heartRate.length > 100) wearable.heartRate = wearable.heartRate.slice(-100);
+          wearable.lastSyncedAt = new Date();
+          await wearable.save();
+        }
+        break;
+      }
+
+      case 'steps.created': {
+        const wearable = await findWearableDoc(data.user_id, data.provider);
+        if (wearable) {
+          // Only additive when the provider gives intraday samples (is_daily_total: false);
+          // a true daily total should replace, not add to, the day's figure.
+          for (const sample of data.samples) {
+            const date = dateOnlyUTC(sample.timestamp);
+            let entry = wearable.dailyMetrics.find(
+              m => dateOnlyUTC(m.date).getTime() === date.getTime()
+            );
+            if (!entry) {
+              entry = { date, steps: 0 };
+              wearable.dailyMetrics.push(entry);
+            }
+            entry.steps = sample.is_daily_total ? sample.value : (entry.steps || 0) + sample.value;
+          }
+          wearable.markModified('dailyMetrics');
+          wearable.lastSyncedAt = new Date();
+          await wearable.save();
+        }
+        break;
+      }
+
+      case 'spo2.created': {
+        const wearable = await findWearableDoc(data.user_id, data.provider);
+        if (wearable) {
+          for (const sample of data.samples) {
+            if (sample.type !== 'oxygen_saturation') continue;
+            wearable.bloodOxygen.push({ timestamp: sample.timestamp, percentage: sample.value });
+          }
+          wearable.lastSyncedAt = new Date();
+          await wearable.save();
+        }
+        break;
+      }
+
+      default:
+        // Event type we don't map yet — acknowledge so Svix doesn't retry, but do nothing
+        break;
+    }
+
+    // Invalidate dashboard cache so the next fetch shows fresh data
+    const wearableForCache = data.user_id
+      ? await WearableData.findOne({ openWearablesUserId: data.user_id })
+      : null;
+    if (wearableForCache) cache.delete(`dashboard:${wearableForCache.user}`);
+
+    res.status(200).json({ received: true });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

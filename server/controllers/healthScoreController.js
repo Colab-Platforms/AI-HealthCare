@@ -31,10 +31,14 @@ exports.getHealthScore = async (req, res) => {
     const weeklyChange = recentAvg !== null && priorAvg !== null ? Math.round(recentAvg - priorAvg) : null;
 
     res.json({
-      longTerm: user?.compositeHealthScore?.value !== undefined ? user.compositeHealthScore : null,
-      daily: todayScore ? {
+      // Named explicitly (not `daily`/`longTerm`) so it's unambiguous to any
+      // dev/app-team consumer reading the response cold, without needing to
+      // cross-reference docs for what "daily" vs "longTerm" means here.
+      longTermHealthScore: user?.compositeHealthScore?.value !== undefined ? user.compositeHealthScore : null,
+      dailyHealthScore: todayScore ? {
         value: todayScore.finalScore,
         components: todayScore.components,
+        raw: todayScore.raw,
         date: todayScore.date,
       } : null,
       weeklyChange,

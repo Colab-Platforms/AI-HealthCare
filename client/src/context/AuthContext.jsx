@@ -191,30 +191,32 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = async () => {
-    try {
-      const fcmToken = localStorage.getItem('fcmToken');
-      if (fcmToken) {
-        fcmService.deregisterToken(fcmToken).catch(() => {});
-        localStorage.removeItem('fcmToken');
-      }
-      const refreshToken = getRefreshToken();
-      await api.post('auth/logout', { refreshToken }).catch(err => console.warn('Logout log failed:', err.message));
-    } catch (e) {}
+    // Clear local state FIRST, synchronously — callers often navigate right
+    // after calling logout() without awaiting it (see Layout.jsx), and if we
+    // clear `user` only after an awaited network call, there's a window
+    // where the route guards still see a logged-in user and bounce between
+    // /dashboard and /login a few times before this finishes. The
+    // server-side refresh-token invalidation below doesn't need to block
+    // the UI from reflecting "logged out" — it's best-effort cleanup.
+    const refreshToken = getRefreshToken();
+    const fcmToken = localStorage.getItem('fcmToken');
 
     clearAuthData();
-
-    // Clear API headers
     delete api.defaults.headers.common['Authorization'];
-
-    // Clear user state
     setUser(null);
 
-    // Clear service worker cache
     if ('caches' in window) {
       caches.keys().then(names => {
         names.forEach(name => caches.delete(name));
       }).catch(err => console.error('Cache clear error:', err));
     }
+
+    // Fire-and-forget server-side cleanup — doesn't block the UI.
+    if (fcmToken) {
+      fcmService.deregisterToken(fcmToken).catch(() => {});
+      localStorage.removeItem('fcmToken');
+    }
+    api.post('auth/logout', { refreshToken }).catch(err => console.warn('Logout log failed:', err.message));
   };
 
   const updateUser = (userData) => {

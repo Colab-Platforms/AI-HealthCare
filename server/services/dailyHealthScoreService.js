@@ -66,12 +66,18 @@ async function calculateDailyScore(userId, dateStr) {
   ]);
 
   const components = {};
+  // Raw inputs behind each component — not part of the scoring math, just
+  // surfaced back to the API/app so the UI (and support/debugging) can show
+  // "8000 steps" next to "activity: 87" instead of the number alone.
+  const raw = {};
 
   // --- Sleep ---
   const sleepEntry = findDailyEntry(wearables, 'sleepData', dateStr);
   if (sleepEntry?.totalSleepMinutes) {
     const hours = sleepEntry.totalSleepMinutes / 60;
+    raw.sleepHours = Math.round(hours * 10) / 10;
     const target = await updateAndBlend(userId, 'sleepHours', hours, POPULATION_NORMS.sleepHours, config.personalBaselineTau.sleep, dateStr);
+    raw.sleepTargetHours = Math.round(target * 10) / 10;
     components.sleep = gaussian(hours, target, 1.5);
   }
 
@@ -79,12 +85,16 @@ async function calculateDailyScore(userId, dateStr) {
   // self-learning baseline (see FIXED_GOALS comment above) ---
   const stepsEntry = findDailyEntry(wearables, 'dailyMetrics', dateStr);
   if (stepsEntry?.steps) {
+    raw.steps = stepsEntry.steps;
+    raw.stepsGoal = FIXED_GOALS.steps;
     components.activity = sigmoidIncreasing(stepsEntry.steps, FIXED_GOALS.steps / 2, 3000);
   }
 
   // --- Hydration — scored against the app's fixed water goal (glasses, not
   // ml — the NutritionSummary field is mislabeled, not the data) ---
   if (nutritionSummary && nutritionSummary.waterIntake > 0) {
+    raw.waterGlasses = nutritionSummary.waterIntake;
+    raw.waterGoalGlasses = FIXED_GOALS.waterGlasses;
     components.hydration = gaussian(nutritionSummary.waterIntake, FIXED_GOALS.waterGlasses, 2);
   }
 
@@ -93,6 +103,12 @@ async function calculateDailyScore(userId, dateStr) {
     const mealsLogged = ['breakfast', 'lunch', 'dinner'].filter((m) => nutritionSummary.mealsLogged?.[m]).length;
     const loggingCompleteness = mealsLogged / 3;
     const mealQuality = nutritionSummary.healthyFoodsCount / nutritionSummary.totalFoodsCount;
+    raw.mealsLogged = mealsLogged;
+    raw.mealsLoggedDetail = nutritionSummary.mealsLogged;
+    raw.totalFoodsCount = nutritionSummary.totalFoodsCount;
+    raw.healthyFoodsCount = nutritionSummary.healthyFoodsCount;
+    raw.dietQuality = Math.round(mealQuality * 100); // % of logged foods rated "healthy" today
+    raw.calories = nutritionSummary.totalCalories;
     components.nutrition = 100 * (0.6 * loggingCompleteness + 0.4 * mealQuality);
   }
 
@@ -114,6 +130,8 @@ async function calculateDailyScore(userId, dateStr) {
   if (hasSmokeLog || hasAlcoholLog || Object.keys(components).length > 0) {
     const smokeScore = cigsToday === 0 ? 100 : Math.max(0, 100 - cigsToday * 12);
     const alcoholScore = drinksToday === 0 ? 100 : Math.max(0, 100 - drinksToday * 15);
+    raw.cigarettes = cigsToday;
+    raw.drinks = drinksToday;
     components.substanceFree = 0.5 * smokeScore + 0.5 * alcoholScore;
   }
 
@@ -146,7 +164,10 @@ async function calculateDailyScore(userId, dateStr) {
     { upsert: true, new: true },
   );
 
-  return saved;
+  // `raw` isn't persisted (it's cheaply re-derivable from source data every
+  // call) — attached here only so callers needing it for a single request
+  // don't have to duplicate this same NutritionSummary/WearableData reads.
+  return Object.assign(saved.toObject(), { raw });
 }
 
 function findDailyEntry(wearables, arrayField, dateStr) {
