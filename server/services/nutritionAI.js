@@ -109,6 +109,7 @@ class NutritionAI {
         * 1g Carb = 4 kcal
         * 1g Fat = 9 kcal
       For every ingredient, every dish, and the meal total: (Protein*4 + Carbs*4 + Fats*9) MUST closely match the calories returned.
+    - FIBER PRECISION (MANDATORY): Never default fiber to 0 unless the food genuinely contains none (e.g., oil, sugar, plain meat). Estimate fiber from real food-composition data (USDA, IFCT) for every ingredient with the same rigor as protein/carbs/fats — grains, legumes, vegetables, and fruits all carry meaningful fiber and must reflect it.
     - COMPOSITE DECOMPOSITION (MANDATORY): For EVERY dish, list its real component ingredients with individual quantity + nutrition (e.g., "Egg Curry" → Boiled Egg, Onion-Tomato Gravy, Cooking Oil, Spices). Never return a dish with zero or exactly one vague ingredient when it's clearly a composite dish — decompose it like a nutritionist would. Do not use generic "combo meal" averages.
     - EXCLUSIVITY: Account for the specific preparation mentioned (oils, frying, etc.) rather than generic assumptions.
 
@@ -263,6 +264,8 @@ class NutritionAI {
     TASK: For each ingredient (or for the dish as a whole if it has no listed ingredients), calculate accurate nutrition using official databases (USDA, Indian Food Composition Tables (IFCT)) based purely on the given name and quantity.
 
     MACRO PRECISION (MANDATORY): 1g Protein = 4 kcal, 1g Carb = 4 kcal, 1g Fat = 9 kcal. (Protein*4 + Carbs*4 + Fats*9) MUST closely match the calories at ingredient, dish, and meal level.
+
+    FIBER PRECISION (MANDATORY): Never default fiber to 0 unless the food genuinely contains none. Estimate fiber from real food-composition data with the same rigor as protein/carbs/fats.
 
     Return EXACTLY this JSON shape:
     {

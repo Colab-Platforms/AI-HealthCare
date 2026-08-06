@@ -1,3 +1,4 @@
+const mongoose = require('mongoose');
 const ActivityLog = require('../models/ActivityLog');
 const User = require('../models/User');
 
@@ -569,6 +570,80 @@ exports.getDauMau = async (req, res) => {
     });
   } catch (error) {
     console.error('Error fetching DAU/MAU:', error);
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// @desc    Get day-wise activity count (+ action breakdown) for one user for a given month
+// @route   GET /api/activity/heatmap?userId=<id>&month=YYYY-MM
+exports.getUserActivityHeatmap = async (req, res) => {
+  try {
+    const { userId, month } = req.query;
+
+    if (!userId) {
+      return res.status(400).json({ success: false, message: 'userId is required' });
+    }
+
+    // Default to current month if not provided
+    const now = new Date();
+    const [year, mon] = month
+      ? month.split('-').map(Number)
+      : [now.getFullYear(), now.getMonth() + 1];
+
+    if (!year || !mon || mon < 1 || mon > 12) {
+      return res.status(400).json({ success: false, message: 'month must be in YYYY-MM format' });
+    }
+
+    const monthStart = new Date(year, mon - 1, 1, 0, 0, 0, 0);
+    const monthEnd = new Date(year, mon, 0, 23, 59, 59, 999); // last day of month
+
+    const raw = await ActivityLog.aggregate([
+      {
+        $match: {
+          user: new mongoose.Types.ObjectId(userId),
+          timestamp: { $gte: monthStart, $lte: monthEnd }
+        }
+      },
+      {
+        $group: {
+          _id: {
+            date: { $dateToString: { format: '%Y-%m-%d', date: '$timestamp' } },
+            action: '$action'
+          },
+          count: { $sum: 1 }
+        }
+      },
+      {
+        $group: {
+          _id: '$_id.date',
+          total: { $sum: '$count' },
+          actions: { $push: { action: '$_id.action', count: '$count' } }
+        }
+      },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // Fill every day of the month, including days with zero activity
+    const daysInMonth = monthEnd.getDate();
+    const heatmap = [];
+    for (let day = 1; day <= daysInMonth; day++) {
+      const dateStr = `${year}-${String(mon).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+      const found = raw.find(r => r._id === dateStr);
+      heatmap.push({
+        date: dateStr,
+        count: found ? found.total : 0,
+        actions: found ? found.actions : []
+      });
+    }
+
+    res.json({
+      success: true,
+      userId,
+      month: `${year}-${String(mon).padStart(2, '0')}`,
+      heatmap
+    });
+  } catch (error) {
+    console.error('Error fetching user activity heatmap:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 };
