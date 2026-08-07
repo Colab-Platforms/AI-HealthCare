@@ -197,7 +197,7 @@ export const AuthProvider = ({ children }) => {
     // where the route guards still see a logged-in user and bounce between
     // /dashboard and /login a few times before this finishes. The
     // server-side refresh-token invalidation below doesn't need to block
-    // the UI from reflecting "logged out" — it's best-effort cleanup.
+    // the UI from reflecting "logged out" — it's best-effort cleanup
     const refreshToken = getRefreshToken();
     const fcmToken = localStorage.getItem('fcmToken');
 

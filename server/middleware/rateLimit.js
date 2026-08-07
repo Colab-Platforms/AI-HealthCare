@@ -1,5 +1,5 @@
 const rateLimit = require('express-rate-limit');
-const { ipKeyGenerator } = rateLimit;
+const { ipKeyGenerator } = rateLimit
 
 // Brute-force protection for login/signup/OTP/password-reset endpoints
 const authLimiter = rateLimit({

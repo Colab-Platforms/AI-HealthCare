@@ -785,6 +785,11 @@ exports.deleteReport = async (req, res) => {
     cache.delete(`trends:${uid}:all`);
     cache.delete(`trends:${uid}:Blood Test`);
     cache.delete(`trends:${uid}:undefined`);
+    // The Long-Term score's Clinical component and risk adjustment come from
+    // the user's latest report. Deleting one changes which report that is (or
+    // leaves none at all), so the stored composite score is stale the moment
+    // this returns — recompute it the same way an upload does.
+    require('../utils/scoreRecompute').triggerLongTermScoreRecompute(req.user._id);
     res.json({ message: 'Report deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });

@@ -4,7 +4,7 @@ const DailyHealthScore = require('../models/DailyHealthScore');
 const NutritionSummary = require('../models/NutritionSummary');
 const WearableData = require('../models/WearableData');
 const User = require('../models/User');
-const { sigmoidIncreasing, gaussian, updateRunningBaseline, blendedBaseline } = require('./healthScoreFormulas');
+const { gaussian, saturatingToGoal, updateRunningBaseline, blendedBaseline } = require('./healthScoreFormulas');
 const { getAlcoholSummary } = require('../utils/alcoholLog');
 
 // Sleep genuinely varies person-to-person (real physiological variation), so
@@ -78,16 +78,26 @@ async function calculateDailyScore(userId, dateStr) {
     raw.sleepHours = Math.round(hours * 10) / 10;
     const target = await updateAndBlend(userId, 'sleepHours', hours, POPULATION_NORMS.sleepHours, config.personalBaselineTau.sleep, dateStr);
     raw.sleepTargetHours = Math.round(target * 10) / 10;
-    components.sleep = gaussian(hours, target, 1.5);
+    // Width 2 (not 1.5): at 1.5 the curve was punishing — 5 hours against a
+    // 7.5-hour target scored 19, reading as "you did nothing" for a night
+    // that was short but not catastrophic. Gaussian (symmetric) stays right
+    // here though: oversleeping is a real signal, unlike over-hydrating.
+    components.sleep = gaussian(hours, target, 2);
   }
 
   // --- Activity (steps) — scored against the app's fixed step goal, not a
-  // self-learning baseline (see FIXED_GOALS comment above) ---
+  // self-learning baseline (see FIXED_GOALS comment above).
+  //
+  // Same "hit the goal, then plateau" curve as hydration. A plain sigmoid was
+  // wrong in both directions here: hitting the 10,000-step goal the app shows
+  // scored only 84 (you needed ~20,000 to approach 100, so the goal the user
+  // was given didn't line up with the score they got), while 0 steps still
+  // paid out 16 points for not walking at all. ---
   const stepsEntry = findDailyEntry(wearables, 'dailyMetrics', dateStr);
   if (stepsEntry?.steps) {
     raw.steps = stepsEntry.steps;
     raw.stepsGoal = FIXED_GOALS.steps;
-    components.activity = sigmoidIncreasing(stepsEntry.steps, FIXED_GOALS.steps / 2, 3000);
+    components.activity = saturatingToGoal(stepsEntry.steps, FIXED_GOALS.steps);
   }
 
   // --- Hydration — scored against the app's fixed water goal (glasses, not
@@ -95,7 +105,7 @@ async function calculateDailyScore(userId, dateStr) {
   if (nutritionSummary && nutritionSummary.waterIntake > 0) {
     raw.waterGlasses = nutritionSummary.waterIntake;
     raw.waterGoalGlasses = FIXED_GOALS.waterGlasses;
-    components.hydration = gaussian(nutritionSummary.waterIntake, FIXED_GOALS.waterGlasses, 2);
+    components.hydration = saturatingToGoal(nutritionSummary.waterIntake, FIXED_GOALS.waterGlasses);
   }
 
   // --- Nutrition ---
@@ -104,22 +114,26 @@ async function calculateDailyScore(userId, dateStr) {
     const loggingCompleteness = mealsLogged / 3;
     const mealQuality = nutritionSummary.healthyFoodsCount / nutritionSummary.totalFoodsCount;
     raw.mealsLogged = mealsLogged;
-    raw.mealsLoggedDetail = nutritionSummary.mealsLogged;
-    raw.totalFoodsCount = nutritionSummary.totalFoodsCount;
-    raw.healthyFoodsCount = nutritionSummary.healthyFoodsCount;
+    raw.mealsGoal = 3;
     raw.dietQuality = Math.round(mealQuality * 100); // % of logged foods rated "healthy" today
     raw.calories = nutritionSummary.totalCalories;
     components.nutrition = 100 * (0.6 * loggingCompleteness + 0.4 * mealQuality);
   }
 
-  // --- Substance-Free Living (always computable — 0 logged = perfect score) ---
-  // Only score Substance-Free Living if the user engaged with *something*
-  // today (logged a cigarette/drink, or has at least one other component
-  // already computed above). Otherwise "0 cigarettes, 0 drinks" defaults to
-  // 100 for a day the user did nothing on, and — being the only available
-  // component — the missing-data rescale would hand it 100% of the weight,
-  // making a totally inactive day score a perfect 100. That's a free win,
-  // not a signal.
+  // --- Clean Habits (smoking + alcohol) ---
+  // Scored ONLY when the user actually logged a cigarette or a drink that day.
+  //
+  // "0 cigarettes, 0 drinks" scores 100, so counting this component for
+  // everyone meant its 15% weight sat permanently at 100 for the (vast)
+  // majority who never log either — a constant that inflated every daily
+  // score and never moved, telling the user nothing. Worse, on a day where
+  // it was the only component, the missing-data rescale handed it 100% of
+  // the weight and a totally inactive day scored a perfect 100.
+  //
+  // Gated on an explicit log instead: non-users of both simply don't get the
+  // component (its weight rescales across what they did log), while users who
+  // track it get scored honestly on real behaviour — so smoking and drinking
+  // still move the score, which for a health app they must.
   const todayKey = dateStr;
   const hasSmokeLog = todayKey in (user?.smokeLog || {});
   const alcoholSummary = getAlcoholSummary(user?.alcoholLog);
@@ -127,12 +141,12 @@ async function calculateDailyScore(userId, dateStr) {
   const cigsToday = user?.smokeLog?.[todayKey]?.count || 0;
   const drinksToday = dateStr === new Date().toISOString().split('T')[0] ? alcoholSummary.today : 0;
 
-  if (hasSmokeLog || hasAlcoholLog || Object.keys(components).length > 0) {
+  if (hasSmokeLog || hasAlcoholLog) {
     const smokeScore = cigsToday === 0 ? 100 : Math.max(0, 100 - cigsToday * 12);
     const alcoholScore = drinksToday === 0 ? 100 : Math.max(0, 100 - drinksToday * 15);
     raw.cigarettes = cigsToday;
     raw.drinks = drinksToday;
-    components.substanceFree = 0.5 * smokeScore + 0.5 * alcoholScore;
+    components.cleanHabits = 0.5 * smokeScore + 0.5 * alcoholScore;
   }
 
   // --- Consistency (needs a minimum trailing history to be meaningful) ---

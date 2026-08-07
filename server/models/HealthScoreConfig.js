@@ -14,7 +14,7 @@ const healthScoreConfigSchema = new mongoose.Schema({
     sleep: { type: Number, default: 0.25 },
     nutrition: { type: Number, default: 0.20 },
     activity: { type: Number, default: 0.20 },
-    substanceFree: { type: Number, default: 0.15 },
+    cleanHabits: { type: Number, default: 0.15 },
     hydration: { type: Number, default: 0.10 },
     consistency: { type: Number, default: 0.10 },
   },
