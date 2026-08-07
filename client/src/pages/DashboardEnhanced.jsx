@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useAuth } from "../context/AuthContext";
 import { useData } from "../context/DataContext";
+import HealthScoreCard from "../components/HealthScoreCard";
 import {
   Flame,
   Moon,
@@ -837,6 +838,7 @@ export default function DashboardEnhanced() {
     wearableData,
     weeklyTrends,
     fetchDashboard,
+    fetchHealthScore,
     fetchNutrition,
     fetchNutritionLogs,
     fetchDietPlan,
@@ -928,13 +930,14 @@ export default function DashboardEnhanced() {
       const today = new Date().toISOString().split("T")[0];
       await Promise.all([
         fetchDashboard(),
+        fetchHealthScore(),
         fetchNutrition(today),
         fetchWearable(),
         fetchWeeklyTrends(),
       ]);
     };
     loadAllData();
-  }, [fetchDashboard, fetchNutrition, fetchWearable, fetchWeeklyTrends]);
+  }, [fetchDashboard, fetchHealthScore, fetchNutrition, fetchWearable, fetchWeeklyTrends]);
 
   useEffect(() => {
     gamificationService.getProfile().then(({ data }) => {
@@ -1970,6 +1973,16 @@ export default function DashboardEnhanced() {
               <p className="text-[9px] text-[#a0a0a0] font-medium text-center">Upload a report to see your score</p>
             </div>
           )}
+        </motion.div>
+
+        {/* Composite Health Score — new formula-based engine (Clinical + Lifestyle + Consistency + Trend, risk-capped) */}
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.11 }}
+          className="px-4 md:px-0 mb-3"
+        >
+          <HealthScoreCard />
         </motion.div>
 
         {/* Quick Navigation Cards */}

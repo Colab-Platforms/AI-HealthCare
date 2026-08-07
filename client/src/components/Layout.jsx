@@ -448,7 +448,7 @@ export default function Layout({
                       boxShadow: "0 -8px 32px rgba(16,185,129,0.1), 0 4px 16px rgba(0,0,0,0.08)",
                     }}
                   >
-                    {/* Profile header inside menu */}
+                    {/* Profile header inside menu */}  
                     <div className="px-4 py-3 flex items-center gap-3" style={{ borderBottom: "1px solid rgba(0,0,0,0.05)" }}>
                       {user?.profilePicture ? (
                         <img src={user.profilePicture} alt={user.name} className="w-9 h-9 rounded-xl object-cover shrink-0" />

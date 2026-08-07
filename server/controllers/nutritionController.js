@@ -1217,6 +1217,7 @@ exports.logWater = async (req, res) => {
 
     // Also update DailyProgress for dashboard metrics
     const dateStr = targetDate.toISOString().split('T')[0];
+    require('../utils/scoreRecompute').triggerDailyScoreRecompute(req.user._id, dateStr);
     const DailyProgress = require('../models/DailyProgress');
     await DailyProgress.findOneAndUpdate(
       { userId: req.user._id, date: dateStr },
@@ -1616,15 +1617,20 @@ async function updateDailySummary(userId, date) {
       return {};
     })();
 
+    const targetDateStr = targetDate.toISOString().split('T')[0];
+    const { triggerDailyScoreRecompute } = require('../utils/scoreRecompute');
+
     if (existingSummary) {
       Object.assign(existingSummary, totals, { mealsLogged }, goalData);
       if (typeof existingSummary.calculateStatus === 'function') existingSummary.calculateStatus();
       await existingSummary.save();
+      triggerDailyScoreRecompute(userId, targetDateStr);
       return existingSummary;
     }
 
     const newSummary = new NutritionSummary({ userId, date: targetDate, ...totals, mealsLogged, ...goalData });
     await newSummary.save();
+    triggerDailyScoreRecompute(userId, targetDateStr);
     return newSummary;
 
   } catch (error) {

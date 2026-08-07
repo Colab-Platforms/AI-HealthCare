@@ -154,7 +154,27 @@ const userSchema = new mongoose.Schema({
   healthMetrics: {
     bmi: Number,
     lastCheckup: Date,
+    // Legacy: AI-generated per-report score (LLM's own judgment call, not a
+    // formula). Superseded by `compositeHealthScore` below — kept only so
+    // old reports don't break; do not write new values here.
     healthScore: { type: Number, min: 0, max: 100 }
+  },
+  // The Long-Term Health Score (see docs/health-score-formulas.md) — the
+  // single trustworthy composite number: Clinical + Lifestyle + Consistency +
+  // Trend, multiplicatively capped by RiskAdjustmentFactor. Recomputed weekly
+  // and instantly on a new report upload.
+  compositeHealthScore: {
+    value: { type: Number, min: 0, max: 100 },
+    components: {
+      clinical: Number,
+      lifestyle: Number,
+      consistency: Number,
+      trend: Number,
+    },
+    riskAdjustmentFactor: Number,
+    daysOfHistory: Number, // drives the "based on N days" confidence hint in the UI
+    configVersion: Number,
+    computedAt: Date,
   },
   gamification: {
     totalPoints: { type: Number, default: 0 },

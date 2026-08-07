@@ -373,6 +373,7 @@ connectDB().catch((err) => {
 // Initialize services (only if not on Vercel)
 if (!process.env.VERCEL) {
   require("./services/reminderService");
+  require("./services/healthScoreCronService");
   try {
     require("./services/notificationService");
   } catch (e) {
