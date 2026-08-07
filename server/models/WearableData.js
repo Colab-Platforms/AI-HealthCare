@@ -10,7 +10,11 @@ const wearableDataSchema = new mongoose.Schema({
   deviceName: String,
   isConnected: { type: Boolean, default: true },
   lastSyncedAt: { type: Date, default: Date.now },
-  
+
+  // Open Wearables service ka internal user ID — webhook se aane wale data ko
+  // isi field se match karke pata chalega ye kis user ka data hai
+  openWearablesUserId: { type: String, index: true },
+
   // Daily metrics
   dailyMetrics: [{
     date: { type: Date, required: true },

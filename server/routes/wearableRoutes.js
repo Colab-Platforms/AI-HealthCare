@@ -10,11 +10,17 @@ const {
   addHeartRate,
   addSleepData,
   getWearableDashboard,
-  generateDemoData
+  generateDemoData,
+  getConnectUrl,
+  handleWebhook
 } = require('../controllers/wearableController');
 
-router.use(protect); // All routes require authentication
+// No auth — Open Wearables/Svix calls this directly, verified by signature instead of JWT
+router.post('/webhook', handleWebhook);
 
+router.use(protect); // All routes below require authentication
+
+router.get('/connect-url/:provider', getConnectUrl);
 router.post('/connect', connectDevice);
 router.post('/disconnect/:deviceType', disconnectDevice);
 router.get('/devices', apiLimiter, getConnectedDevices);
