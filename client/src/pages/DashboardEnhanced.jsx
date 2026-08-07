@@ -1976,14 +1976,15 @@ export default function DashboardEnhanced() {
         </motion.div>
 
         {/* Composite Health Score — new formula-based engine (Clinical + Lifestyle + Consistency + Trend, risk-capped) */}
-        <motion.div
+        {/* Hidden for now — the backend engine and GET /api/health/score stay live. */}
+        {/* <motion.div
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.11 }}
           className="px-4 md:px-0 mb-3"
         >
           <HealthScoreCard />
-        </motion.div>
+        </motion.div> */}
 
         {/* Quick Navigation Cards */}
         <motion.div
