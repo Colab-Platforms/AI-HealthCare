@@ -1,26 +1,13 @@
-const Redis = require('ioredis');
+// Uses the app's single shared Redis connection (utils/cache.js) instead of
+// opening a second one — a separate `new Redis(...)` here had no TLS/retry
+// tuning (unlike cache.js's Upstash-aware config) and was reconnecting
+// constantly in production, flooding logs and adding load on every request.
+const cache = require('../utils/cache');
 const ChatHistory = require('../models/ChatHistory');
-const { Client } = require('@upstash/qstash');
+const { Client } = require('@upstash/qstash')
 
 class ChatHistoryService {
   constructor() {
-    try {
-      this.redis = new Redis(process.env.REDIS_URL || 'redis://localhost:6379');
-      this.redisAvailable = true;
-      this.redis.on('error', (err) => {
-        console.warn('Redis connection warning:', err.message);
-        this.redisAvailable = false;
-      });
-      this.redis.on('connect', () => {
-        console.log('✓ Redis connected');
-        this.redisAvailable = true;
-      });
-    } catch (err) {
-      console.warn('Redis unavailable, will use MongoDB only:', err.message);
-      this.redisAvailable = false;
-      this.redis = null;
-    }
-    
     try {
       this.qstash = new Client({ token: process.env.QSTASH_TOKEN });
       this.qstashAvailable = !!process.env.QSTASH_TOKEN;
@@ -40,22 +27,19 @@ class ChatHistoryService {
         return { userId, messages: [], version: 0 };
       }
 
-      // Try Redis first if available
-      if (this.redisAvailable && this.redis) {
-        try {
-          const cacheKey = `chat:${userId}`;
-          // Add 5 second timeout for Redis
-          const cached = await Promise.race([
-            this.redis.get(cacheKey),
-            new Promise((_, reject) => setTimeout(() => reject(new Error('Redis timeout')), 5000))
-          ]);
-          if (cached) {
-            console.log(`✓ Cache hit for user ${userId}`);
-            return JSON.parse(cached);
-          }
-        } catch (redisErr) {
-          console.warn(`Redis get failed, falling back to MongoDB:`, redisErr.message);
+      // Try cache first (Redis if configured, in-memory fallback otherwise — see utils/cache.js)
+      try {
+        const cacheKey = `chat:${userId}`;
+        const cached = await Promise.race([
+          cache.get(cacheKey),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('Cache timeout')), 5000))
+        ]);
+        if (cached) {
+          console.log(`✓ Cache hit for user ${userId}`);
+          return cached;
         }
+      } catch (cacheErr) {
+        console.warn(`Cache get failed, falling back to MongoDB:`, cacheErr.message);
       }
 
       console.log(`📚 Fetching from MongoDB for user ${userId}`);
@@ -70,14 +54,11 @@ class ChatHistoryService {
         history = { userId, messages: [], version: 0 };
       }
 
-      // Cache for 1 hour if Redis is available
-      if (this.redisAvailable && this.redis) {
-        try {
-          const cacheKey = `chat:${userId}`;
-          await this.redis.setex(cacheKey, 3600, JSON.stringify(history));
-        } catch (err) {
-          console.warn('Redis cache set failed:', err.message);
-        }
+      // Cache for 1 hour
+      try {
+        await cache.set(`chat:${userId}`, history, 3600);
+      } catch (err) {
+        console.warn('Cache set failed:', err.message);
       }
       
       return history;
@@ -106,7 +87,7 @@ class ChatHistoryService {
       }
 
       const cacheKey = `chat:${userId}`;
-      
+
       const data = {
         userId,
         messages,
@@ -114,14 +95,12 @@ class ChatHistoryService {
         version: Date.now()
       };
 
-      // 1. Save to Redis immediately if available
-      if (this.redisAvailable && this.redis) {
-        try {
-          await this.redis.setex(cacheKey, 3600, JSON.stringify(data));
-          console.log(`✓ Redis cached for user ${userId}`);
-        } catch (err) {
-          console.warn('Redis set failed, continuing without cache:', err.message);
-        }
+      // 1. Cache immediately
+      try {
+        await cache.set(cacheKey, data, 3600);
+        console.log(`✓ Cached for user ${userId}`);
+      } catch (err) {
+        console.warn('Cache set failed, continuing without cache:', err.message);
       }
 
       // 2. Save to MongoDB (sync fallback or async later)
@@ -187,11 +166,8 @@ class ChatHistoryService {
       console.log(`✅ MongoDB saved for ${userId} (v${history.version})`);
       
       // Update cache with server version (non-blocking, fire and forget)
-      if (this.redisAvailable && this.redis) {
-        const cacheKey = `chat:${userId}`;
-        this.redis.setex(cacheKey, 3600, JSON.stringify(history))
-          .catch(err => console.warn('Redis cache update failed (non-critical):', err.message));
-      }
+      cache.set(`chat:${userId}`, history, 3600)
+        .catch(err => console.warn('Cache update failed (non-critical):', err.message));
 
       return history;
     } catch (error) {
@@ -234,11 +210,8 @@ class ChatHistoryService {
    */
   async invalidateCache(userId) {
     try {
-      if (this.redisAvailable && this.redis) {
-        const cacheKey = `chat:${userId}`;
-        await this.redis.del(cacheKey);
-        console.log(`🗑️ Cache cleared for ${userId}`);
-      }
+      await cache.delete(`chat:${userId}`);
+      console.log(`🗑️ Cache cleared for ${userId}`);
     } catch (error) {
       console.warn('invalidateCache warning (non-critical):', error.message);
     }
