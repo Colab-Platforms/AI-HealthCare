@@ -6,7 +6,7 @@ const COMPONENT_LABELS = {
   nutrition: "Diet Quality",
   activity: "Activity",
   hydration: "Hydration",
-  substanceFree: "Substance-Free",
+  cleanHabits: "Clean Habits",
   consistency: "Consistency",
 };
 
