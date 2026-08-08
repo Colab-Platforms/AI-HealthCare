@@ -9,8 +9,21 @@ const sigmoidIncreasing = (value, mid, width) => 100 * sigmoid((value - mid) / w
 // "Less is better" markers (RHR, LDL, HbA1c) — mirror of the above.
 const sigmoidDecreasing = (value, mid, width) => 100 * sigmoid(-(value - mid) / width);
 
-// "Optimal-range" markers (sleep duration, weight-ratio) — penalizes both directions.
+// "Optimal-range" markers (weight-ratio) — penalizes both directions.
 const gaussian = (value, target, width) => 100 * Math.exp(-((value - target) ** 2) / (2 * width ** 2));
+
+// Flat-topped version for guidance expressed as a RANGE rather than a point.
+// Sleep guidance is "7 to 9 hours for adults" — every value in that band is
+// endorsed, so all of them should score 100. Scoring against a single target
+// meant a perfectly healthy 9-hour night scored 61 for someone whose personal
+// target sat at 7, penalising them for sleeping a duration the guideline
+// explicitly recommends. Outside the band the familiar bell-curve falloff
+// applies, measured from whichever edge was crossed.
+const plateauRange = (value, min, max, width) => {
+  if (value >= min && value <= max) return 100;
+  const edge = value < min ? min : max;
+  return 100 * Math.exp(-((value - edge) ** 2) / (2 * width ** 2));
+};
 
 // "Hit the goal, then plateau" markers (hydration) — an S-curve that reaches
 // exactly 100 at `goal` and stays there beyond it.
@@ -31,6 +44,32 @@ const saturatingToGoal = (value, goal) => {
   const ratio = sigmoid((value - mid) / width) / sigmoid((goal - mid) / width);
   return 100 * Math.min(1, ratio);
 };
+
+// Smoking: harm is steeply non-linear at the low end, so a linear penalty is
+// the wrong shape. Hackshaw et al. (BMJ 2018) found a single cigarette a day
+// carries roughly 46% (men) / 31% (women) of the excess coronary heart disease
+// risk of twenty a day — most of the damage is done by the first one, and the
+// twentieth adds comparatively little.
+//
+// The curve mirrors that: a steep initial drop that saturates, plus a smaller
+// linear term so heavy smoking still separates from light. Reaches 0 at 20/day.
+function scoreSmoking(cigarettes) {
+  if (!cigarettes || cigarettes <= 0) return 100;
+  const steep = 0.55 * (1 - Math.exp(-cigarettes / 1.2)); // front-loaded harm
+  const linear = 0.45 * Math.min(1, cigarettes / 20); // continued dose response
+  return Math.max(0, 100 * (1 - steep - linear));
+}
+
+// Alcohol: scored against the sex-specific daily limits in the US Dietary
+// Guidelines (≤2 standard drinks/day for men, ≤1 for women). Staying inside
+// the limit isn't free — there is no established "no risk" intake — but it is
+// treated very differently from exceeding it, where the slope steepens sharply.
+function scoreAlcohol(drinks, gender) {
+  if (!drinks || drinks <= 0) return 100;
+  const limit = gender === 'female' ? 1 : 2;
+  if (drinks <= limit) return 100 - 15 * (drinks / limit); // at the limit → 85
+  return Math.max(0, 85 - 25 * (drinks - limit));
+}
 
 // Blood pressure: AHA clinical categories, not an invented Gaussian width —
 // systolic and diastolic are scored independently against the category table,
@@ -77,7 +116,10 @@ module.exports = {
   sigmoidIncreasing,
   sigmoidDecreasing,
   gaussian,
+  plateauRange,
   saturatingToGoal,
+  scoreSmoking,
+  scoreAlcohol,
   scoreBloodPressure,
   updateRunningBaseline,
   stdDev,

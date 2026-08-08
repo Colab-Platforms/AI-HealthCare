@@ -4,8 +4,8 @@ const DailyHealthScore = require('../models/DailyHealthScore');
 const NutritionSummary = require('../models/NutritionSummary');
 const WearableData = require('../models/WearableData');
 const User = require('../models/User');
-const { gaussian, saturatingToGoal, updateRunningBaseline, blendedBaseline } = require('./healthScoreFormulas');
-const { getAlcoholSummary } = require('../utils/alcoholLog');
+const { gaussian, plateauRange, saturatingToGoal, scoreSmoking, scoreAlcohol, updateRunningBaseline, blendedBaseline } = require('./healthScoreFormulas');
+const { toPlainAlcoholLog } = require('../utils/alcoholLog');
 
 // Sleep genuinely varies person-to-person (real physiological variation), so
 // it uses the population-to-personal baseline blend below. Steps and
@@ -57,12 +57,19 @@ async function calculateDailyScore(userId, dateStr) {
   if (!config) throw new Error('No active HealthScoreConfig found — run the seed script first');
 
   const dayStart = new Date(`${dateStr}T00:00:00.000Z`);
-  const dayEnd = new Date(`${dateStr}T23:59:59.999Z`);
+
+  // Fallbacks so an older config version (one predating these fields) that
+  // gets reactivated degrades to the previous behaviour instead of throwing
+  // or producing NaN part-way through the score.
+  const sleepBounds = config.sleepTargetBounds || { min: 0, max: Infinity };
+  const nw = config.nutritionWeights || { logging: 0.6, quality: 0.4, calories: 0 };
 
   const [nutritionSummary, wearables, user] = await Promise.all([
     NutritionSummary.findOne({ userId, date: dayStart }).lean(),
     WearableData.find({ user: userId }).lean(),
-    User.findById(userId).select('smokeLog alcoholLog').lean(),
+    User.findById(userId)
+      .select('smokeLog alcoholLog profile.gender profile.chronicConditions profile.lifestyle nutritionGoal.calorieGoal')
+      .lean(),
   ]);
 
   const components = {};
@@ -76,13 +83,24 @@ async function calculateDailyScore(userId, dateStr) {
   if (sleepEntry?.totalSleepMinutes) {
     const hours = sleepEntry.totalSleepMinutes / 60;
     raw.sleepHours = Math.round(hours * 10) / 10;
-    const target = await updateAndBlend(userId, 'sleepHours', hours, POPULATION_NORMS.sleepHours, config.personalBaselineTau.sleep, dateStr);
+    const blended = await updateAndBlend(userId, 'sleepHours', hours, POPULATION_NORMS.sleepHours, config.personalBaselineTau.sleep, dateStr);
+    // Clamp the personalised target into the clinically endorsed range.
+    // Unbounded, someone habitually sleeping 5 hours drifts their own target
+    // down to 5 (tau is 10 nights, so it's ~95% personal within a month) and
+    // then scores ~100 for chronic sleep deprivation. Personalising within a
+    // healthy range is useful; personalising all the way to a harmful habit
+    // just tells the user their deprivation is fine.
+    // Sleep guidance is a range (7–9 hours for adults), not a point, so every
+    // duration inside it scores 100 and the falloff starts at the edges. The
+    // personal baseline still matters: it decides WHERE inside that band this
+    // user's ideal sits, which is what's reported back as their target.
+    const target = Math.min(sleepBounds.max, Math.max(sleepBounds.min, blended));
     raw.sleepTargetHours = Math.round(target * 10) / 10;
-    // Width 2 (not 1.5): at 1.5 the curve was punishing — 5 hours against a
-    // 7.5-hour target scored 19, reading as "you did nothing" for a night
-    // that was short but not catastrophic. Gaussian (symmetric) stays right
-    // here though: oversleeping is a real signal, unlike over-hydrating.
-    components.sleep = gaussian(hours, target, 2);
+    raw.sleepHealthyRange = [sleepBounds.min, sleepBounds.max];
+    // Width 2 (not 1.5) outside the band: at 1.5 the curve was punishing —
+    // 5 hours scored 19, reading as "you did nothing" for a night that was
+    // short but not catastrophic.
+    components.sleep = plateauRange(hours, sleepBounds.min, sleepBounds.max, 2);
   }
 
   // --- Activity (steps) — scored against the app's fixed step goal, not a
@@ -93,34 +111,140 @@ async function calculateDailyScore(userId, dateStr) {
   // scored only 84 (you needed ~20,000 to approach 100, so the goal the user
   // was given didn't line up with the score they got), while 0 steps still
   // paid out 16 points for not walking at all. ---
+  // Goals are always the FULL day's goal, including for a day still in
+  // progress. An earlier version pro-rated them by how much of the day had
+  // elapsed, to avoid showing a demoralising "5/100" at 6am. That created a
+  // worse problem: the score could fall without the user doing anything wrong.
+  // 3,000 steps against a pro-rated 1,500 goal scored 100 at 9am, and the same
+  // 3,000 steps scored 26 by midnight — the number promised something in the
+  // morning and took it back at night, which is exactly how a score stops being
+  // believed.
+  //
+  // Against the full goal the score is monotonic: it only ever climbs as the
+  // user does more, and never claims a goal was met when it wasn't. The morning
+  // problem is a presentation one, not a maths one — `isFinalScoreForToday` and
+  // `dayProgressPercent` let the client label an in-progress day as "so far"
+  // instead of a verdict.
+  const isToday = dateStr === new Date().toISOString().split('T')[0];
+  const dayProgress = isToday
+    ? Math.min(1, (Date.now() - dayStart.getTime()) / 86400000)
+    : 1;
+
+  // Conditions drive two safety exclusions below (fluid restriction, mobility).
+  const conditions = (user?.profile?.chronicConditions || []).map((c) => String(c).toLowerCase());
+
+  // Activity blends step count with active minutes where the device reports
+  // them. Steps alone can't distinguish a brisk walk from shuffling around the
+  // house, and it's intensity that carries most of the cardiovascular benefit
+  // (WHO: 150–300 moderate minutes a week).
+  //
+  // For users with a mobility-limiting condition the step half is dropped
+  // entirely — counting steps there scores their disability, not their effort.
+  // Same principle as hydration for fluid-restricted users.
+  const mobilityLimited = conditions.some((c) =>
+    (config.mobilityLimitedConditions || []).some((mc) => c.includes(mc)),
+  );
+  const activityCfg = config.activity || { activeMinutesGoal: 30, stepsShare: 0.6 };
+
   const stepsEntry = findDailyEntry(wearables, 'dailyMetrics', dateStr);
-  if (stepsEntry?.steps) {
-    raw.steps = stepsEntry.steps;
-    raw.stepsGoal = FIXED_GOALS.steps;
-    components.activity = saturatingToGoal(stepsEntry.steps, FIXED_GOALS.steps);
+  if (stepsEntry) {
+    const parts = [];
+
+    if (stepsEntry.steps && !mobilityLimited) {
+      raw.steps = stepsEntry.steps;
+      raw.stepsGoal = FIXED_GOALS.steps;
+      parts.push({ weight: activityCfg.stepsShare, score: saturatingToGoal(stepsEntry.steps, FIXED_GOALS.steps) });
+    }
+
+    if (stepsEntry.activeMinutes) {
+      raw.activeMinutes = stepsEntry.activeMinutes;
+      raw.activeMinutesGoal = activityCfg.activeMinutesGoal;
+      parts.push({ weight: 1 - activityCfg.stepsShare, score: saturatingToGoal(stepsEntry.activeMinutes, activityCfg.activeMinutesGoal) });
+    }
+
+    if (parts.length > 0) {
+      const total = parts.reduce((s, p) => s + p.weight, 0);
+      components.activity = parts.reduce((s, p) => s + p.score * (p.weight / total), 0);
+    }
   }
 
   // --- Hydration — scored against the app's fixed water goal (glasses, not
-  // ml — the NutritionSummary field is mislabeled, not the data) ---
-  if (nutritionSummary && nutritionSummary.waterIntake > 0) {
+  // ml — the NutritionSummary field is mislabeled, not the data).
+  //
+  // Skipped entirely for users whose conditions normally come with a fluid
+  // RESTRICTION (heart failure, CKD/dialysis, cirrhosis, hyponatremia).
+  // Scoring them against an 8-glass target would penalise them for following
+  // their doctor's instructions, and nudge them toward genuinely unsafe
+  // intake. This is the one component that can cause harm rather than just
+  // report a wrong number, so it is dropped rather than softened. ---
+  const fluidRestricted = conditions.some((c) =>
+    (config.fluidRestrictedConditions || []).some((f) => c.includes(f)),
+  );
+
+  if (!fluidRestricted && nutritionSummary && nutritionSummary.waterIntake > 0) {
     raw.waterGlasses = nutritionSummary.waterIntake;
     raw.waterGoalGlasses = FIXED_GOALS.waterGlasses;
     components.hydration = saturatingToGoal(nutritionSummary.waterIntake, FIXED_GOALS.waterGlasses);
   }
 
   // --- Nutrition ---
+  // Logging used to be 60% of this score and quality only 40%, which meant
+  // three junk meals (60 + 0) scored the same as one genuinely healthy meal
+  // (20 + 40). That measures app compliance, not diet. Quality now leads.
+  //
+  // Calories are also scored rather than merely reported: the old formula
+  // ignored quantity entirely, so 5,000 kcal of "healthy" food scored 100.
+  // Both under- and over-eating count against it, hence the bell curve, with
+  // a width of 20% of the user's goal.
   if (nutritionSummary && nutritionSummary.totalFoodsCount > 0) {
     const mealsLogged = ['breakfast', 'lunch', 'dinner'].filter((m) => nutritionSummary.mealsLogged?.[m]).length;
     const loggingCompleteness = mealsLogged / 3;
-    const mealQuality = nutritionSummary.healthyFoodsCount / nutritionSummary.totalFoodsCount;
+    // Quality comes from `averageHealthScore` — the calorie-weighted average of
+    // the analyser's own 0-100 rating for each meal.
+    //
+    // It used to be healthyFoodsCount / totalFoodsCount, which was wrong twice
+    // over. Those counters increment once per MEAL, not per food item (see
+    // nutritionController.updateDailySummary), so the "share of foods rated
+    // healthy" this claimed to measure was never that. And healthyFoodsCount
+    // only counts meals scoring 7/10 or better, so it collapsed a continuous
+    // rating into a pass/fail: a day of 6.9-out-of-10 meals scored 0% quality
+    // while 7.0 scored 100%, and the real number sitting right beside it in the
+    // same document was thrown away. Falls back to the old ratio if an older
+    // summary has no averageHealthScore.
+    const mealQuality = typeof nutritionSummary.averageHealthScore === 'number' && nutritionSummary.averageHealthScore > 0
+      ? Math.min(1, nutritionSummary.averageHealthScore / 100)
+      : Math.min(1, (nutritionSummary.healthyFoodsCount || 0) / nutritionSummary.totalFoodsCount);
+
     raw.mealsLogged = mealsLogged;
     raw.mealsGoal = 3;
-    raw.dietQuality = Math.round(mealQuality * 100); // % of logged foods rated "healthy" today
+    raw.dietQuality = Math.round(mealQuality * 100); // average quality rating of today's meals, 0-100
+    raw.mealsRated = nutritionSummary.totalFoodsCount; // meals that carried a rating
     raw.calories = nutritionSummary.totalCalories;
-    components.nutrition = 100 * (0.6 * loggingCompleteness + 0.4 * mealQuality);
+
+    const calorieGoal = user?.nutritionGoal?.calorieGoal;
+    if (calorieGoal > 0 && nutritionSummary.totalCalories > 0) {
+      raw.calorieGoal = calorieGoal;
+      const calorieAdherence = gaussian(nutritionSummary.totalCalories, calorieGoal, calorieGoal * 0.2) / 100;
+      components.nutrition = 100 * (
+        nw.logging * loggingCompleteness + nw.quality * mealQuality + nw.calories * calorieAdherence
+      );
+    } else {
+      // No calorie goal set (or nothing with calories logged) — rescale the
+      // remaining two the same way missing components are handled elsewhere.
+      const available = nw.logging + nw.quality;
+      components.nutrition = 100 * (
+        (nw.logging / available) * loggingCompleteness + (nw.quality / available) * mealQuality
+      );
+    }
   }
 
-  // --- Clean Habits (smoking + alcohol) ---
+  // --- Smoking and Alcohol (scored separately) ---
+  // These were previously averaged into one "Clean Habits" component sharing a
+  // single 15% weight — so smoking, the largest modifiable mortality risk
+  // there is, effectively carried 7.5%, less than hydration. They're split so
+  // each carries its own evidence-weighted share, and so a user who drinks but
+  // doesn't smoke isn't scored as though they half-smoke.
+  //
   // Scored ONLY when the user actually logged a cigarette or a drink that day.
   //
   // "0 cigarettes, 0 drinks" scores 100, so counting this component for
@@ -134,34 +258,66 @@ async function calculateDailyScore(userId, dateStr) {
   // component (its weight rescales across what they did log), while users who
   // track it get scored honestly on real behaviour — so smoking and drinking
   // still move the score, which for a health app they must.
-  const todayKey = dateStr;
-  const hasSmokeLog = todayKey in (user?.smokeLog || {});
-  const alcoholSummary = getAlcoholSummary(user?.alcoholLog);
-  const hasAlcoholLog = todayKey in (user?.alcoholLog instanceof Map ? Object.fromEntries(user.alcoholLog) : (user?.alcoholLog || {}));
-  const cigsToday = user?.smokeLog?.[todayKey]?.count || 0;
-  const drinksToday = dateStr === new Date().toISOString().split('T')[0] ? alcoholSummary.today : 0;
+  // Both logs are date-keyed maps. Normalising them the same way matters:
+  // depending on how the document was loaded they arrive as a Mongoose Map, a
+  // subdocument, or a plain object, and `key in map` silently returns false on
+  // a Map — which would drop the component entirely.
+  //
+  // The counts are read from the requested date's own entry rather than from a
+  // "today" summary. Reading a today-only summary meant every historical
+  // recompute scored alcohol as 0 drinks — a free 100 on days the user had
+  // actually logged drinking, which then fed the 30-day windows behind the
+  // Overall Score.
+  const smokeLog = toPlainAlcoholLog(user?.smokeLog);
+  const alcoholLog = toPlainAlcoholLog(user?.alcoholLog);
 
-  if (hasSmokeLog || hasAlcoholLog) {
-    const smokeScore = cigsToday === 0 ? 100 : Math.max(0, 100 - cigsToday * 12);
-    const alcoholScore = drinksToday === 0 ? 100 : Math.max(0, 100 - drinksToday * 15);
-    raw.cigarettes = cigsToday;
-    raw.drinks = drinksToday;
-    components.cleanHabits = 0.5 * smokeScore + 0.5 * alcoholScore;
+  const smokeEntry = lookupTrackerEntry(smokeLog, dateStr);
+  const alcoholEntry = lookupTrackerEntry(alcoholLog, dateStr);
+
+  // Declared non-users are excluded rather than given a standing 100.
+  // Smoking carries 20% of the Daily Score; handing that to someone who has
+  // never smoked, every day, for tapping "0", inflates every score they ever
+  // see and makes the number less able to move on anything they actually do.
+  // It's a fixed trait for them, not a daily behaviour — so it sits out, and
+  // its weight rescales onto the things they can change. A declared smoker
+  // logging a genuine zero still earns the 100; that's a real daily win.
+  const lifestyle = user?.profile?.lifestyle || {};
+
+  if (smokeEntry && lifestyle.smoker !== false) {
+    const cigarettes = Number(smokeEntry.count) || 0;
+    raw.cigarettes = cigarettes;
+    components.smoking = scoreSmoking(cigarettes);
   }
 
-  // --- Consistency (needs a minimum trailing history to be meaningful) ---
-  const trailingDays = await DailyHealthScore.find({
-    userId,
-    date: { $lt: dateStr },
-  }).sort({ date: -1 }).limit(13).lean();
-
-  if (trailingDays.length + 1 >= config.minHistoryDays.consistency) {
-    const daysWithData = trailingDays.filter((d) => Object.keys(d.components || {}).length >= 3).length + 1; // +1 for today
-    components.consistency = 100 * (daysWithData / (trailingDays.length + 1));
+  if (alcoholEntry && lifestyle.alcohol !== false) {
+    // Scored on standard units, not the number of entries. The guidelines are
+    // written in standard drinks, and the tracker already converts serving
+    // sizes into units — three large measures is `count: 3` but six units, and
+    // scoring the count would read that as within a man's daily limit.
+    const drinks = Number(alcoholEntry.count) || 0;
+    const units = Number(alcoholEntry.units) || drinks;
+    raw.drinks = drinks;
+    raw.alcoholUnits = units;
+    components.alcohol = scoreAlcohol(units, user?.profile?.gender);
   }
+
+  // Consistency deliberately does NOT live in the Daily Score.
+  //
+  // It answers "how regularly does this person log?", which is a property of
+  // their history, not of today. Including it here meant a day where the user
+  // did almost nothing still inherited a high number from past behaviour — on
+  // a day with 52 steps logged and nothing else, consistency contributed most
+  // of the score. The Daily Score should reflect only what was actually done
+  // today; regularity is scored once, in the Overall Score.
 
   // --- Weighted combine, rescaling for any missing components ---
-  const availableKeys = Object.keys(components);
+  // Only components the active config actually assigns a weight to are
+  // combined. Weights get renamed across config versions (substanceFree →
+  // cleanHabits → smoking + alcohol), and a component with no matching weight
+  // would otherwise contribute `undefined` and turn the whole score into NaN.
+  const availableKeys = Object.keys(components).filter(
+    (k) => typeof config.dailyWeights[k] === 'number',
+  );
   const totalAvailableWeight = availableKeys.reduce((sum, k) => sum + config.dailyWeights[k], 0);
 
   let finalScore = 0;
@@ -170,6 +326,25 @@ async function calculateDailyScore(userId, dateStr) {
       (sum, k) => sum + components[k] * (config.dailyWeights[k] / totalAvailableWeight),
       0,
     );
+  }
+
+  // A day with nothing logged is not persisted. The engine runs whenever the
+  // user merely opens the app, and storing a finalScore-0 row for those days
+  // created a whole class of bugs — empty days dragging averages down, padding
+  // the "based on N days" hint, and standing in as real history in the
+  // consistency denominator. Every consumer had to remember to filter them
+  // out; not writing them removes the need to remember.
+  // Tells the caller whether this number is settled. A day still in progress
+  // will keep climbing as the user logs more, so the client must present it as
+  // "so far today" rather than as the day's verdict.
+  const progressMeta = {
+    isFinalScoreForToday: !isToday,
+    dayProgressPercent: Math.round(dayProgress * 100),
+  };
+
+  if (availableKeys.length === 0) {
+    await DailyHealthScore.deleteOne({ userId, date: dateStr }); // clears rows written before this rule
+    return { userId, date: dateStr, finalScore: 0, components: {}, raw: {}, configVersion: config.version, ...progressMeta };
   }
 
   const saved = await DailyHealthScore.findOneAndUpdate(
@@ -181,7 +356,31 @@ async function calculateDailyScore(userId, dateStr) {
   // `raw` isn't persisted (it's cheaply re-derivable from source data every
   // call) — attached here only so callers needing it for a single request
   // don't have to duplicate this same NutritionSummary/WearableData reads.
-  return Object.assign(saved.toObject(), { raw });
+  return Object.assign(saved.toObject(), { raw }, progressMeta);
+}
+
+// The smoke and alcohol trackers are the only date-keyed stores written by the
+// CLIENT, using the device's local calendar day. Everything else in the app —
+// nutrition summaries, wearable metrics, these scores — keys off UTC. For most
+// of the day the two agree, but east of UTC they diverge after local midnight:
+// at 02:00 IST a cigarette is filed under tomorrow's UTC date, so scoring
+// "today" would miss it entirely and the component would silently vanish.
+//
+// Rather than change a convention half the codebase depends on, the lookup
+// tolerates the one-day skew: exact key first, then the next day's key, and
+// only when the requested day is the current UTC day. That bounds the fallback
+// to exactly the window where the divergence is possible — a past date can
+// never pull a later day's data, and a normal daytime log matches on the first
+// try because both conventions produce the same key.
+function lookupTrackerEntry(log, dateStr) {
+  if (log[dateStr]) return log[dateStr];
+
+  const utcToday = new Date().toISOString().split('T')[0];
+  if (dateStr !== utcToday) return null;
+
+  const nextDay = new Date(`${dateStr}T00:00:00.000Z`);
+  nextDay.setUTCDate(nextDay.getUTCDate() + 1);
+  return log[nextDay.toISOString().split('T')[0]] || null;
 }
 
 function findDailyEntry(wearables, arrayField, dateStr) {

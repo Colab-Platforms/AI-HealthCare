@@ -12,7 +12,7 @@ class HealthScoreCronService {
   startWeeklyRecompute() {
     // Sunday 3 AM — off-peak. Instant recompute on report upload (see
     // healthController.js) covers the "just changed something important" case;
-    // this is the routine refresh for Lifestyle/Consistency/Trend drift.
+    // this is the routine refresh for Today/Consistency/Trend drift.
     cron.schedule('0 3 * * 0', () => this.recomputeAllUsers());
     console.log('Health Score weekly recompute scheduler started');
   }

@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 // One document per user per calendar day. Recomputed whenever a log affecting
-// it changes; stored (not just cached) so the Long-Term score's Lifestyle,
+// it changes; stored (not just cached) so the Overall score's Today,
 // Consistency, and Trend components can query a real rolling window instead
 // of recomputing every day's score from scratch on every request.
 const dailyHealthScoreSchema = new mongoose.Schema({
@@ -16,9 +16,9 @@ const dailyHealthScoreSchema = new mongoose.Schema({
     sleep: Number,
     nutrition: Number,
     activity: Number,
-    cleanHabits: Number,
+    smoking: Number,
+    alcohol: Number,
     hydration: Number,
-    consistency: Number,
   },
 
   configVersion: { type: Number, required: true }, // traces this score to the weights that produced it

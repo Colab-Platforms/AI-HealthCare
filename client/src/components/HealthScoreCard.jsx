@@ -1,13 +1,13 @@
-import { TrendingUp, TrendingDown, Sparkles } from "lucide-react";
+import { TrendingUp, TrendingDown, Sparkles, AlertTriangle } from "lucide-react";
 import { useData } from "../context/DataContext";
 
 const COMPONENT_LABELS = {
   sleep: "Sleep",
   nutrition: "Diet Quality",
   activity: "Activity",
+  smoking: "Smoking",
+  alcohol: "Alcohol",
   hydration: "Hydration",
-  cleanHabits: "Clean Habits",
-  consistency: "Consistency",
 };
 
 export default function HealthScoreCard() {
@@ -27,7 +27,7 @@ export default function HealthScoreCard() {
   // Long-Term score computed yet) — quiet empty state, not an error/a "0".
   // The engine itself has no dead zone once *something* is logged.
   const hasDailyComponents = data?.dailyHealthScore?.components && Object.keys(data.dailyHealthScore.components).length > 0;
-  if (!hasDailyComponents && !data?.longTermHealthScore) {
+  if (!hasDailyComponents && !data?.overallHealthScore) {
     return (
       <div className="liquid-glass-strong rounded-[28px] p-6 text-center">
         <Sparkles className="w-8 h-8 text-[#69A38D] mx-auto mb-2" />
@@ -41,7 +41,7 @@ export default function HealthScoreCard() {
   // Prefer today's Daily Score, but only if it's backed by real components —
   // an empty-components day has value:0, which isn't "0 health", it's "no
   // data yet today" and should fall back to the Long-Term score instead.
-  const score = Math.round(hasDailyComponents ? data.dailyHealthScore.value : (data.longTermHealthScore?.value ?? 0));
+  const score = Math.round(hasDailyComponents ? data.dailyHealthScore.value : (data.overallHealthScore?.value ?? 0));
   const circumference = 2 * Math.PI * 46;
   const offset = circumference - (circumference * score) / 100;
   const weeklyChange = data.weeklyChange;
@@ -57,9 +57,35 @@ export default function HealthScoreCard() {
 
   return (
     <div className="liquid-glass-strong rounded-[28px] p-6 flex flex-col items-center">
-      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">
-        Health Score
+      {/* An in-progress day is labelled as such. The score climbs as the user
+          logs more, so presenting a mid-morning number as "today's score" reads
+          as a verdict on a day they haven't finished living. */}
+      <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">
+        {data.dailyHealthScore?.isFinalScoreForToday === false ? "Today so far" : "Health Score"}
       </span>
+      {data.dailyHealthScore?.isFinalScoreForToday === false && (
+        <span className="text-[9px] font-semibold text-slate-400 mb-3">
+          builds through the day
+        </span>
+      )}
+
+      {/* Safety netting — shown ABOVE the score deliberately. A critical lab
+          value must not be something the user has to infer from a number. */}
+      {data.criticalAlert && (
+        <div className="w-full mb-4 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-3 flex gap-2.5">
+          <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0 mt-0.5" />
+          <div className="min-w-0">
+            <p className="text-[11px] font-black text-rose-700 leading-snug">
+              {data.criticalAlert.message}
+            </p>
+            <p className="text-[10px] text-rose-600 font-semibold mt-1 leading-snug">
+              {data.criticalAlert.findings
+                .map((f) => `${f.marker} ${f.value}${f.unit ? ` ${f.unit}` : ""} (${f.direction})`)
+                .join(" · ")}
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="relative w-32 h-32 mb-2">
         <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
@@ -86,9 +112,9 @@ export default function HealthScoreCard() {
         </div>
       )}
 
-      {data.longTermHealthScore?.daysOfHistory !== undefined && data.longTermHealthScore.daysOfHistory < 14 && (
+      {data.overallHealthScore?.daysOfHistory !== undefined && data.overallHealthScore.daysOfHistory < 14 && (
         <p className="text-[10px] text-slate-400 font-semibold -mt-2 mb-3 text-center">
-          Based on {data.longTermHealthScore.daysOfHistory} day{data.longTermHealthScore.daysOfHistory === 1 ? "" : "s"} — gets more accurate over 2 weeks
+          Based on {data.overallHealthScore.daysOfHistory} day{data.overallHealthScore.daysOfHistory === 1 ? "" : "s"} — gets more accurate over 2 weeks
         </p>
       )}
 
@@ -112,6 +138,12 @@ export default function HealthScoreCard() {
           </div>
         ))}
       </div>
+
+      {data.disclaimer && (
+        <p className="text-[9px] text-slate-400 font-semibold mt-4 text-center leading-snug">
+          {data.disclaimer}
+        </p>
+      )}
     </div>
   );
 }

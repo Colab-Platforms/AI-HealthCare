@@ -134,19 +134,27 @@ const userSchema = new mongoose.Schema({
     // old reports don't break; do not write new values here.
     healthScore: { type: Number, min: 0, max: 100 }
   },
-  // The Long-Term Health Score (see docs/health-score-formulas.md) — the
-  // single trustworthy composite number: Clinical + Lifestyle + Consistency +
+  // The Overall Health Score (see docs/health-score-formulas.md) — the
+  // single trustworthy composite number: Clinical + Today + Consistency +
   // Trend, multiplicatively capped by RiskAdjustmentFactor. Recomputed weekly
   // and instantly on a new report upload.
   compositeHealthScore: {
     value: { type: Number, min: 0, max: 100 },
     components: {
       clinical: Number,
-      lifestyle: Number,
+      today: Number, // today's Daily Score — see longTermHealthScoreService
       consistency: Number,
       trend: Number,
     },
     riskAdjustmentFactor: Number,
+    // Lab values in critical ("panic value") range on the latest report. When
+    // non-empty the score is capped — see criticalFindingScoreCap.
+    criticalFindings: [{
+      marker: String,
+      value: Number,
+      unit: String,
+      direction: { type: String, enum: ['low', 'high'] },
+    }],
     daysOfHistory: Number, // drives the "based on N days" confidence hint in the UI
     configVersion: Number,
     computedAt: Date,
