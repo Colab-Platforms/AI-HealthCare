@@ -309,6 +309,7 @@ try {
     { path: "/api/documents", module: "./routes/documentRoutes" },
     { path: "/api/privacy",   module: "./routes/privacyRoutes" },
     { path: "/api/activity", module: "./routes/activityRoutes" },
+    { path: "/api/insights", module: "./routes/insightRoutes" },
     { path: "/api/support", module: "./routes/supportRoutes" },
     { path: "/api/subscription", module: "./routes/subscriptionRoutes" },
     { path: "/", module: "./routes/fastrrRoutes" }, // Fastrr scaffolding: /shiprocket/*, /api/checkout/start, /api/fastrr/webhook
@@ -416,6 +417,17 @@ if (!process.env.VERCEL) {
     console.log("🔔 Starting Follow-up Nudge cron...");
     await runNudgeCron();
   });
+
+  // Daily Insights — 11:59 PM IST, the last moment of the day being analysed.
+  // Writes tomorrow-dated rows so the user opens the app to a fresh "yesterday
+  // you did X, today try Y" pair. Explicitly pinned to Asia/Kolkata: the host
+  // runs on UTC, where 11:59 PM would land at 5:29 AM IST and analyse the
+  // wrong day. See services/dailyInsightService.js.
+  const { runDailyInsightCron } = require("./services/dailyInsightService");
+  cron.schedule("59 23 * * *", async () => {
+    console.log("💡 Running Daily Insight generation cron...");
+    await runDailyInsightCron();
+  }, { timezone: "Asia/Kolkata" });
 
   // Streak Loss Warning — every night at 8 PM
   cron.schedule("0 20 * * *", async () => {
