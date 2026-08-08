@@ -5,8 +5,9 @@ const notificationPreferenceSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
         required: true,
-        unique: true,
-        index: true
+        // `unique: true` already builds the index — adding `index: true` as well
+        // declared it twice and produced a Mongoose duplicate-index warning.
+        unique: true
     },
     // Meal reminders - user's preferred meal times
     mealReminders: {
@@ -86,11 +87,12 @@ const notificationPreferenceSchema = new mongoose.Schema({
 }, { timestamps: true });
 
 // ✅ OPTIMIZED: Add indexes for faster queries
-notificationPreferenceSchema.index({ userId: 1 }); // Fast user lookup
-notificationPreferenceSchema.index({ 'mealReminders.enabled': 1 }); // Fast enabled status check
-notificationPreferenceSchema.index({ 'sleepReminder.enabled': 1 });
-notificationPreferenceSchema.index({ 'macroUpdate.enabled': 1 });
-notificationPreferenceSchema.index({ 'dietAdherence.enabled': 1 });
-notificationPreferenceSchema.index({ 'healthInsights.enabled': 1 });
+// userId is indexed by `unique: true` on the field above — no second declaration.
+//
+// The five `*.enabled` boolean indexes that used to live here have been removed.
+// Nothing queries on those fields (every read is by userId, or an unfiltered
+// find()), and a boolean index is near-useless anyway — two distinct values over
+// the whole collection means the planner would scan roughly half of it. They
+// only added write cost on every preference update.
 
 module.exports = mongoose.model('NotificationPreference', notificationPreferenceSchema);

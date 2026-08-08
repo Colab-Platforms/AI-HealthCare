@@ -275,4 +275,40 @@ userSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
+// ---------------------------------------------------------------------------
+// Keep the `protect` middleware's user cache honest.
+//
+// utils/userCache holds each user for a short TTL so auth doesn't hit Mongo on
+// every request. Invalidating at each of the ~70 places that write a User would
+// be forgotten the first time someone adds a new one, so it happens here
+// instead: any write through this model drops the cached copy.
+//
+// Not covered: updateMany and bulk writes, which don't expose the affected ids.
+// Those are admin/cron paths where a <30s stale read is acceptable; call
+// userCache.clear() explicitly if you add one where it isn't.
+// ---------------------------------------------------------------------------
+const userCache = require('../utils/userCache');
+
+userSchema.post('save', function (doc) {
+  if (doc?._id) userCache.invalidate(doc._id);
+});
+
+userSchema.post(
+  ['findOneAndUpdate', 'findOneAndDelete', 'findOneAndReplace'],
+  function (doc) {
+    // Only populated when the query returns the doc; fall back to the filter.
+    const id = doc?._id ?? this.getQuery?.()?._id;
+    if (id) userCache.invalidate(id);
+  }
+);
+
+userSchema.post(
+  ['updateOne', 'deleteOne', 'replaceOne'],
+  { query: true, document: false },
+  function () {
+    const id = this.getQuery?.()?._id;
+    if (id) userCache.invalidate(id);
+  }
+);
+
 module.exports = mongoose.model('User', userSchema);

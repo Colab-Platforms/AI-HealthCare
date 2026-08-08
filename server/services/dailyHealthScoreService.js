@@ -61,7 +61,10 @@ async function calculateDailyScore(userId, dateStr) {
 
   const [nutritionSummary, wearables, user] = await Promise.all([
     NutritionSummary.findOne({ userId, date: dayStart }).lean(),
-    WearableData.find({ user: userId }).lean(),
+    // Only sleepData and dailyMetrics are read (see findDailyEntry below);
+    // projecting keeps the ever-growing heartRate/bloodOxygen/stressLevels
+    // arrays out of a query that runs for every user in the nightly cron.
+    WearableData.find({ user: userId }).select('dailyMetrics sleepData').lean(),
     User.findById(userId).select('smokeLog alcoholLog').lean(),
   ]);
 

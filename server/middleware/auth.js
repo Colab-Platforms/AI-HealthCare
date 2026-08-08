@@ -1,6 +1,24 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
-const mongoose = require('mongoose');
+const userCache = require('../utils/userCache');
+
+/**
+ * Load the request's user, hitting Mongo at most once per user per cache TTL.
+ *
+ * This runs on every authenticated request, and the frontend fans out ~12
+ * parallel calls per dashboard load — so this used to be ~12 findById round
+ * trips plus 12 full Mongoose hydrations of a large schema per page view.
+ * `.lean()` skips hydration; the cache skips the round trip. Entries are
+ * invalidated by hooks in models/User.js whenever a User is written.
+ */
+async function loadUser(userId) {
+  const cached = userCache.get(userId);
+  if (cached) return cached;
+
+  const user = await User.findById(userId).select('-password').lean().maxTimeMS(15000);
+  if (user) userCache.set(userId, user);
+  return user;
+}
 
 exports.protect = async (req, res, next) => {
   try {
@@ -20,16 +38,15 @@ exports.protect = async (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    // Single lookup - no retry loop needed (wastes serverless execution time)
-    const user = await User.findById(decoded.id).select('-password').maxTimeMS(15000);
+    const user = await loadUser(decoded.id);
 
     if (!user) {
       console.error('User not found in database:', decoded.id);
       return res.status(401).json({ message: 'User not found' });
     }
 
+    // Read-only: shared by reference with other in-flight requests (see utils/userCache).
     req.user = user;
-    console.log('User authenticated:', req.user._id, req.user.name);
     next();
   } catch (error) {
     console.error('Auth middleware error:', error.message);

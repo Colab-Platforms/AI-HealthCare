@@ -278,7 +278,13 @@ exports.addSleepData = async (req, res) => {
 // Get wearable dashboard data
 exports.getWearableDashboard = async (req, res) => {
   try {
-    const wearables = await WearableData.find({ user: req.user._id, isConnected: true });
+    // Project to the fields actually read below, and let Mongo do the
+    // heartRate slice — otherwise the whole (unbounded, one-entry-per-sample)
+    // heartRate array crosses the wire just to take the last 10 readings.
+    const wearables = await WearableData.find({ user: req.user._id, isConnected: true })
+      .select('deviceType deviceName lastSyncedAt dailyMetrics sleepData heartRate')
+      .slice('heartRate', -10)
+      .lean();
 
     if (!wearables.length) {
       return res.json({ connected: false, devices: [] });

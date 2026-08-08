@@ -5,11 +5,12 @@ const User = require('../models/User');
 const Doctor = require('../models/Doctor');
 const HealthGoal = require('../models/HealthGoal');
 const { analyzeHealthReport, chatAboutReport, chatWithReport, generateMetricInfo, generateVitalsInsights } = require('../services/aiService');
-const pdfParse = require('pdf-parse');
+const { extractPdfText } = require('../utils/pdfExtract');
 const fs = require('fs');
 const NutritionSummary = require('../models/NutritionSummary');
 const DailyProgress = require('../models/DailyProgress');
 const cache = require('../utils/cache');
+const { invalidateUserHealthCache } = require('../utils/cacheKeys');
 const cloudinary = require('../services/cloudinary');
 const emailService = require('../services/emailService');
 const queueService = require('../services/queueService');
@@ -56,6 +57,17 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
       }
     }
 
+    // Deferred PDF text extraction — moved here from uploadReport so the CPU
+    // cost lands in background processing instead of the user's request. Runs
+    // on a worker thread; resolves to '' on failure, in which case
+    // analyzeHealthReport falls back to AI vision/OCR exactly as before.
+    if (!extractedText && fileMimetype === 'application/pdf' && dataBuffer) {
+      extractedText = await extractPdfText(dataBuffer);
+      if (extractedText) {
+        await HealthReport.updateOne({ _id: reportId }, { $set: { extractedText } });
+      }
+    }
+
     aiAnalysis = await analyzeHealthReport(extractedText, userDoc, {
       buffer: dataBuffer,
       mimetype: fileMimetype
@@ -98,10 +110,11 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
     await updatedReport.save();
     console.log(`[BG] Report saved. Metrics count: ${Object.keys(aiAnalysis.metrics || {}).length}`);
 
-    // Invalidate caches
-    await cache.delete(`reports:${userId}`);
-    await cache.delete(`dashboard:${userId}`);
-    await cache.delete(`trends:${userId}:all`);
+    // Invalidate every view derived from this user's reports. Previously only
+    // `trends:<id>:all` was cleared, leaving per-reportType trend entries stale,
+    // and health_dna (cached for 24h) was never invalidated at all — so a new
+    // report didn't change the user's Health DNA until the next day.
+    await invalidateUserHealthCache(userId);
 
     // Instant Report Score — recompute the composite Long-Term Health Score
     // the moment analysis finishes, so the user sees an updated number
@@ -193,8 +206,7 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
     const msg = String(error?.message || 'Analysis failed');
     console.warn(`🗑️ [BG] Deleting failed report ${reportId}: ${msg}`);
     await HealthReport.findByIdAndDelete(reportId);
-    await cache.delete(`reports:${userId}`);
-    await cache.delete(`dashboard:${userId}`);
+    await invalidateUserHealthCache(userId);
   }
 }
 
@@ -240,20 +252,17 @@ exports.uploadReport = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
-    const dataBuffer = req.file.buffer || (req.file.path ? fs.readFileSync(req.file.path) : null);
+    const dataBuffer = req.file.buffer || (req.file.path ? await fs.promises.readFile(req.file.path) : null);
     let extractedText = '';
-    
-    if (req.file.mimetype === 'application/pdf') {
-      try {
-        const pdfData = await pdfParse(dataBuffer);
-        extractedText = pdfData.text;
-      } catch (e) {
-        console.warn('PDF Text extraction failed, relying on AI Vision/OCR:', e.message);
-        extractedText = '';
-      }
-    } else if (req.file.mimetype === 'text/plain') {
+
+    // PDF text extraction is deliberately NOT done here. It is CPU-bound and
+    // used to run inline, blocking the event loop — and therefore every other
+    // user's request — before this response was even sent. It now happens in
+    // processReportInternal (on a worker thread), which the client never waits
+    // on because the report is created with status 'processing'.
+    if (req.file.mimetype === 'text/plain') {
       extractedText = dataBuffer.toString('utf8');
-    } else {
+    } else if (req.file.mimetype !== 'application/pdf') {
       extractedText = req.body.manualText || '';
     }
 
@@ -319,14 +328,22 @@ exports.uploadReport = async (req, res) => {
     // Respond to client
     res.status(201).json({ report, backgroundProcessing: true, gamification: gamificationResult });
 
-    // Trigger analysis
-    const isVercel = !!(process.env.VERCEL || process.env.VERCEL_ID);
+    // Trigger analysis.
+    // Prefer the durable queue wherever it is configured — not just on Vercel.
+    // Previously this only enqueued when VERCEL was set, so on Render every
+    // upload ran the full AI analysis in-process via setImmediate (which is the
+    // same event loop, one tick later), competing with live request traffic.
     const protocol = req.protocol || 'https';
     const host = req.get('host');
     const baseUrl = `${protocol}://${host}`;
 
-    if (isVercel) {
-      await queueService.enqueueTask('process-report', {
+    const runInProcess = () => setImmediate(() =>
+      processReportInternal(req.user._id, report._id, req.file.mimetype, extractedText, dataBuffer)
+        .catch(err => console.error('[BG] processReportInternal failed:', err.message))
+    );
+
+    if (process.env.QSTASH_TOKEN) {
+      const queued = await queueService.enqueueTask('process-report', {
         userId: req.user._id,
         reportId: report._id,
         fileMimetype: req.file.mimetype,
@@ -334,8 +351,13 @@ exports.uploadReport = async (req, res) => {
         isPastReport,
         isPrescription
       }, baseUrl);
+      // Queue unavailable — degrade to in-process rather than losing the report.
+      if (!queued) {
+        console.warn('[Upload] QStash enqueue failed; processing in-process instead');
+        runInProcess();
+      }
     } else {
-      setImmediate(() => processReportInternal(req.user._id, report._id, req.file.mimetype, extractedText, dataBuffer, isPastReport, isPrescription));
+      runInProcess();
     }
 
   } catch (error) {
@@ -641,7 +663,13 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
       NutritionSummary.findOne({ userId: reqUser._id, date: targetDate }).lean(),
       NutritionSummary.find({ userId: reqUser._id, date: { $gte: ninetyDaysAgo, $lte: targetDate } }).sort({ date: 1 }).lean(),
       User.findById(reqUser._id).select('alcoholLog smokeLog profile.lifestyle').lean(),
-      withTimeout(WearableData.find({ user: reqUser._id }).lean()),
+      // Project only what the history loop below reads. Without this we pulled
+      // whole wearable documents, including the heartRate / bloodOxygen /
+      // stressLevels arrays — which grow one entry per sample, forever, for any
+      // user with a connected device — just to read steps and sleep minutes.
+      withTimeout(WearableData.find({ user: reqUser._id })
+        .select('dailyMetrics.date dailyMetrics.steps sleepData.date sleepData.totalSleepMinutes')
+        .lean()),
       withTimeout(HealthMetric.find({ userId: reqUser._id, type: 'weight', recordedAt: { $gte: ninetyDaysAgo, $lte: targetDate } }).sort({ recordedAt: 1 }).lean()),
       HealthMetric.findOne({ userId: reqUser._id, type: 'blood_sugar' }).sort({ recordedAt: -1 }).lean(),
       HealthMetric.findOne({ userId: reqUser._id, type: 'hba1c' }).sort({ recordedAt: -1 }).lean(),
@@ -728,7 +756,8 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
 
     const calorieGoal = reqUser.nutritionGoal?.calorieGoal || 2100;
     // Trim the user object sent to the frontend — strip password/version/internal fields
-    const { password, __v, ...trimmedUser } = reqUser.toObject();
+    // reqUser is already a plain object (protect uses .lean()), so no toObject().
+    const { password, __v, ...trimmedUser } = reqUser;
     const dashboardData = {
       user: trimmedUser,
       healthScores, latestAnalysis: latestReport?.aiAnalysis, latestReportId: latestReport?._id, processingReport, latestComparison,
@@ -757,7 +786,10 @@ exports.getMetricInfo = async (req, res) => {
 
     // Cache key by metric + status (value doesn't matter for the explanation)
     const cacheKey = `metricInfo:${metricName.toLowerCase().replace(/\s+/g, '_')}:${unit || 'na'}`;
-    const cached = cache.get(cacheKey);
+    // cache.get is async — without await this held a Promise, which is always
+    // truthy, so this endpoint returned `{ metricInfo: {} }` on every call and
+    // generateMetricInfo below was never reached.
+    const cached = await cache.get(cacheKey);
     if (cached) return res.json({ metricInfo: cached });
 
     const metricInfo = await generateMetricInfo(metricName, metricValue, normalRange, unit, {
@@ -765,7 +797,7 @@ exports.getMetricInfo = async (req, res) => {
     });
 
     // Cache for 7 days (604800s) — metric explanations don't change
-    if (metricInfo) cache.set(cacheKey, metricInfo, 604800);
+    if (metricInfo) await cache.set(cacheKey, metricInfo, 604800);
 
     res.json({ metricInfo });
   } catch (error) {
@@ -779,12 +811,9 @@ exports.deleteReport = async (req, res) => {
     if (!report) return res.status(404).json({ message: 'Report not found' });
     if (report.originalFile?.path && fs.existsSync(report.originalFile.path)) fs.unlinkSync(report.originalFile.path);
     await HealthReport.deleteOne({ _id: req.params.id });
-    const uid = req.user._id.toString();
-    cache.delete(`reports:${uid}`);
-    cache.delete(`dashboard:${uid}`);
-    cache.delete(`trends:${uid}:all`);
-    cache.delete(`trends:${uid}:Blood Test`);
-    cache.delete(`trends:${uid}:undefined`);
+    // Was a hand-written list of literal keys that guessed at which report
+    // types had been cached under `trends:` — anything else stayed stale.
+    await invalidateUserHealthCache(req.user._id);
     res.json({ message: 'Report deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
@@ -948,7 +977,7 @@ exports.getHealthDNA = async (req, res) => {
 
     // 4. Generate DNA with AI
     const dna = await require('../services/aiService').generateHealthDNA(
-      req.user.toObject(),
+      req.user, // already a plain object — protect uses .lean()
       aggregatedMetrics,
       trends
     );
