@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { healthService } from '../services/api';
 
 const getTodayStr = () => new Date().toISOString().split('T')[0];
@@ -38,10 +38,25 @@ export default function useCarePlanTasks() {
   }, []);
 
   // Sync to backend whenever completedTasks changes (immediate, not debounced,
-  // so a quick logout right after checking a box can't drop the write)
+  // so a quick logout right after checking a box can't drop the write).
+  //
+  // The first run after loading settles is skipped. That run isn't a user
+  // change — it's the state arriving from the server or localStorage — so it
+  // wrote the same tasks straight back on every single mount. Besides being a
+  // pointless write, that endpoint feeds the Health Score, so it invalidated a
+  // score the dashboard had just fetched and forced a second recompute on every
+  // page load. Real toggles still sync immediately.
+  const skipInitialSync = useRef(true);
+
   useEffect(() => {
     if (loading) return;
     saveLocal(completedTasks);
+
+    if (skipInitialSync.current) {
+      skipInitialSync.current = false;
+      return;
+    }
+
     healthService
       .syncDailyProgress({ date: getTodayStr(), completedTasks })
       .catch(() => {});

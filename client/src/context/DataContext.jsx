@@ -1,7 +1,8 @@
-import { createContext, useContext, useState, useCallback, useEffect } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import { healthService, wearableService, nutritionService, dietRecommendationService } from '../services/api';
 import toast from 'react-hot-toast';
 import { cache } from '../utils/cache';
+import { HEALTH_SCORE_CACHE_KEY, onHealthScoreStale } from '../utils/scoreCache';
 import { useAuth } from './AuthContext';
 
 const DataContext = createContext();
@@ -28,7 +29,12 @@ export const DataProvider = ({ children }) => {
   const [weeklyTrends, setWeeklyTrends] = useState(() => cache.get('weekly_trends'));
   const [healthGoals, setHealthGoals] = useState(() => cache.get('health_goals'));
   const [dietPlan, setDietPlan] = useState(() => cache.get('diet_plan'));
-  const [healthScoreData, setHealthScoreData] = useState(() => cache.get('health_score'));
+  const [healthScoreData, setHealthScoreData] = useState(() => cache.get(HEALTH_SCORE_CACHE_KEY));
+  // True while a background refresh triggered by a log is in flight, so the card
+  // can show it is catching up instead of appearing to have ignored the log.
+  const [healthScoreRefreshing, setHealthScoreRefreshing] = useState(false);
+  const healthScoreRequest = useRef(null);      // in-flight request, shared by concurrent callers
+  const healthScoreRefreshTimer = useRef(null); // debounce handle for bursty logging
   
   const [loading, setLoading] = useState({
     dashboard: false,
@@ -82,28 +88,62 @@ export const DataProvider = ({ children }) => {
     }
   }, []);
 
-  // Fetch composite Health Score with caching — short TTL since it changes
-  // with every log, but still avoids refetching on every Dashboard re-render.
+  // The server recomputes this score on every request, so the only thing that
+  // can make it stale is this cache. It exists because the Dashboard re-renders
+  // constantly and would otherwise refetch on every render — but the TTL is
+  // kept short, and callers that know something has changed should pass
+  // `forceRefresh` (or call invalidateHealthScore) rather than wait it out.
   const fetchHealthScore = useCallback(async (forceRefresh = false) => {
     if (!forceRefresh) {
-      const cached = cache.get('health_score');
+      const cached = cache.get(HEALTH_SCORE_CACHE_KEY);
       if (cached) {
         setHealthScoreData(cached);
         return cached;
       }
     }
 
-    try {
-      const response = await healthService.getHealthScore();
-      const data = response.data;
-      setHealthScoreData(data);
-      cache.set('health_score', data, 2 * 60 * 1000); // Cache for 2 minutes
-      return data;
-    } catch (error) {
-      console.error('Failed to fetch health score:', error);
-      return null;
-    }
+    // Concurrent callers share one request. Without this, a mount and a
+    // just-logged invalidation landing together fire two identical calls at an
+    // endpoint that recomputes the whole score — and it sits behind a rate
+    // limiter that would eventually reject the duplicates.
+    if (healthScoreRequest.current) return healthScoreRequest.current;
+
+    healthScoreRequest.current = healthService.getHealthScore()
+      .then(({ data }) => {
+        setHealthScoreData(data);
+        cache.set(HEALTH_SCORE_CACHE_KEY, data, 30 * 1000);
+        return data;
+      })
+      .catch((error) => {
+        console.error('Failed to fetch health score:', error);
+        return null;
+      })
+      .finally(() => { healthScoreRequest.current = null; });
+
+    return healthScoreRequest.current;
   }, []);
+
+  // Something the user logged has changed the score. The refetch is debounced
+  // because logging is bursty — saving a meal with three items, or a sync that
+  // posts steps and sleep together, would otherwise trigger a recompute per
+  // write. One refetch after the burst settles gives the same answer.
+  //
+  // The existing value stays on screen while this runs, so the card shows the
+  // previous number rather than a spinner and then swaps to the new one.
+  useEffect(() => {
+    const unsubscribe = onHealthScoreStale(() => {
+      clearTimeout(healthScoreRefreshTimer.current);
+      setHealthScoreRefreshing(true);
+      healthScoreRefreshTimer.current = setTimeout(() => {
+        fetchHealthScore(true).finally(() => setHealthScoreRefreshing(false));
+      }, 400);
+    });
+
+    return () => {
+      unsubscribe();
+      clearTimeout(healthScoreRefreshTimer.current);
+    };
+  }, [fetchHealthScore]);
 
   // Fetch wearable data with caching
   const fetchWearable = useCallback(async (forceRefresh = false) => {
@@ -442,6 +482,7 @@ export const DataProvider = ({ children }) => {
     healthGoals,
     dietPlan,
     healthScoreData,
+    healthScoreRefreshing,
     loading,
 
     pendingAnalysisIds,

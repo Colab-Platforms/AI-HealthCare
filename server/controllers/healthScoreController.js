@@ -1,6 +1,7 @@
 const DailyHealthScore = require('../models/DailyHealthScore');
 const { calculateDailyScore } = require('../services/dailyHealthScoreService');
 const { calculateLongTermScore, daysAgoStr } = require('../services/longTermHealthScoreService');
+const { getActiveScoreConfig } = require('../utils/scoreConfig');
 
 // GET /api/health/score — powers the Dashboard's Health Score ring + sub-cards.
 // Ensures today's Daily Score is fresh (the user is actively waiting on this
@@ -12,9 +13,24 @@ exports.getHealthScore = async (req, res) => {
     const userId = req.user._id;
     const todayStr = new Date().toISOString().split('T')[0];
 
+    // The active config is loaded once here and handed to both engines. They
+    // each used to fetch it themselves, which meant two reads per request for a
+    // document that changes only when a new version is deliberately activated.
+    const config = await getActiveScoreConfig();
+
     // Today's Daily Score first — the Overall Score now includes it as a
     // component, so it has to exist and be current before Overall is computed.
-    const todayScore = await calculateDailyScore(userId, todayStr).catch(() => null);
+    const todayScore = await calculateDailyScore(userId, todayStr, { config }).catch(() => null);
+
+    // One read of the 90-day score window, reused by everything below. Overall
+    // needs it for Today/Consistency/Trend/history, and this endpoint needs it
+    // again for the week-over-week and day-over-day comparisons — previously
+    // eight separate queries over overlapping ranges of the same collection.
+    // It is read AFTER the daily score above so it includes today's new row.
+    const dailyRows = await DailyHealthScore.find({
+      userId,
+      date: { $gte: daysAgoStr(89) },
+    }).sort({ date: 1 }).lean();
 
     // Overall is computed fresh rather than read from the stored snapshot.
     // It used to be safe to read the stored value because its inputs (the
@@ -22,7 +38,7 @@ exports.getHealthScore = async (req, res) => {
     // cron. Now that today's Daily Score is one of its components, a stored
     // value goes stale the moment the user logs anything — which is exactly
     // the feedback this change exists to give them.
-    const overall = await calculateLongTermScore(userId).catch(() => null);
+    const overall = await calculateLongTermScore(userId, { config, dailyRows }).catch(() => null);
 
     // A day with no logged components still gets a persisted row (finalScore
     // 0) so the engine has a slot to fill as the day goes on — but 0 there
@@ -35,11 +51,11 @@ exports.getHealthScore = async (req, res) => {
     // Raw week-over-week delta for the UI's "+N this week" pill — separate
     // from the Long-Term Score's own clamped ±15 Trend component, which is
     // meant to be gentle, not a literal display number.
-    const [recentWeek, priorWeek, yesterdayScore] = await Promise.all([
-      DailyHealthScore.find({ userId, date: { $gte: daysAgoStr(6) } }).lean(),
-      DailyHealthScore.find({ userId, date: { $gte: daysAgoStr(13), $lt: daysAgoStr(6) } }).lean(),
-      DailyHealthScore.findOne({ userId, date: daysAgoStr(1) }).lean(),
-    ]);
+    const weekStart = daysAgoStr(6);
+    const priorStart = daysAgoStr(13);
+    const recentWeek = dailyRows.filter((d) => d.date >= weekStart);
+    const priorWeek = dailyRows.filter((d) => d.date >= priorStart && d.date < weekStart);
+    const yesterdayScore = dailyRows.find((d) => d.date === daysAgoStr(1)) || null;
     const avg = (arr) => {
       const logged = arr.filter(hasComponents);
       return logged.length ? logged.reduce((s, d) => s + d.finalScore, 0) / logged.length : null;

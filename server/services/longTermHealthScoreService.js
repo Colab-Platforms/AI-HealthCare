@@ -1,9 +1,9 @@
-const HealthScoreConfig = require('../models/HealthScoreConfig');
 const DailyHealthScore = require('../models/DailyHealthScore');
 const HealthReport = require('../models/HealthReport');
 const HealthMetric = require('../models/HealthMetric');
 const User = require('../models/User');
 const { scoreBloodPressure } = require('./healthScoreFormulas');
+const { getActiveScoreConfig } = require('../utils/scoreConfig');
 
 // The analyser mostly emits normal/high/low, but not exclusively — anything
 // unmapped was silently dropped from the Clinical Score, so a report full of
@@ -126,9 +126,13 @@ function findCriticalFindings(metrics, config) {
 // the panel-size dependence, where ordering a bigger test lowered the score
 // purely by giving more markers a chance to be flagged.
 async function calculateClinicalScore(userId, config) {
-  const latestReport = await HealthReport.findOne({ user: userId, status: 'completed' })
-    .sort({ createdAt: -1 })
-    .lean();
+  // Fetched together: the report and the blood pressure reading are independent
+  // of each other, and running them in sequence made this function cost two
+  // round trips where it needs one.
+  const [latestReport, latestBP] = await Promise.all([
+    HealthReport.findOne({ user: userId, status: 'completed' }).sort({ createdAt: -1 }).lean(),
+    HealthMetric.findOne({ userId, type: 'blood_pressure' }).sort({ recordedAt: -1 }).lean(),
+  ]);
   if (!latestReport?.aiAnalysis?.metrics) return null;
 
   const metrics = latestReport.aiAnalysis.metrics;
@@ -177,7 +181,6 @@ async function calculateClinicalScore(userId, config) {
   // A separately logged blood pressure reading is only used while it's recent.
   // An old one is worse than none: it presents a stale number as current, and
   // BP is exactly the marker people log precisely because it changes.
-  const latestBP = await HealthMetric.findOne({ userId, type: 'blood_pressure' }).sort({ recordedAt: -1 }).lean();
   const bpAgeDays = latestBP ? (Date.now() - new Date(latestBP.recordedAt).getTime()) / 86400000 : Infinity;
 
   if (latestBP?.systolic && latestBP?.diastolic && bpAgeDays <= 90) {
@@ -234,8 +237,12 @@ function calculateRiskAdjustmentFactor(report, config) {
 // A day with nothing logged has a persisted row with finalScore 0 — that's
 // "not logged yet", not "scored zero", so it's excluded rather than dragging
 // the Overall Score to the floor every morning.
-async function calculateTodayScore(userId) {
-  const today = await DailyHealthScore.findOne({ userId, date: todayStr() }).lean();
+// Takes the preloaded 90-day window rather than querying. Today, Consistency,
+// Trend and the history count were each issuing their own DailyHealthScore
+// query over overlapping date ranges — five round trips for data that one read
+// already contains.
+function calculateTodayScore(rows) {
+  const today = rows.find((d) => d.date === todayStr());
   if (!today || Object.keys(today.components || {}).length === 0) return null;
   return today.finalScore;
 }
@@ -261,34 +268,39 @@ const isLoggedDay = (d) => Object.keys(d.components || {}).length > 0;
 //
 // The window is capped at how long the user has actually been on the app, so a
 // three-day-old account isn't scored against 14 days of imagined inactivity.
-async function calculateConsistencyScore(userId, config) {
+function calculateConsistencyScore(rows, config) {
   const windowDays = config.consistencyWindowDays || 14;
   const minComponents = config.minComponentsForLoggedDay || 3;
 
-  const firstEver = await DailyHealthScore.findOne({ userId }).sort({ date: 1 }).select('date').lean();
-  if (!firstEver) return null;
+  if (rows.length === 0) return null;
 
+  // The earliest row inside the 90-day window stands in for the account's first
+  // ever day. That is exact for accounts younger than the window, and for older
+  // ones it reports "at least 90 days", which the 14-day cap below overrides
+  // anyway — so the result is identical to querying the true first row.
+  const firstDate = rows[0].date;
   const daysSinceJoining = Math.floor(
-    (new Date(`${todayStr()}T00:00:00.000Z`) - new Date(`${firstEver.date}T00:00:00.000Z`)) / 86400000,
+    (new Date(`${todayStr()}T00:00:00.000Z`) - new Date(`${firstDate}T00:00:00.000Z`)) / 86400000,
   ) + 1;
 
   const effectiveWindow = Math.min(windowDays, daysSinceJoining);
   if (effectiveWindow < config.minHistoryDays.consistency) return null; // too new to judge regularity
 
-  const rows = await DailyHealthScore.find({
-    userId,
-    date: { $gte: daysAgoStr(effectiveWindow - 1) },
-  }).select('date components').lean();
+  const since = daysAgoStr(effectiveWindow - 1);
+  const loggedDays = rows.filter(
+    (d) => d.date >= since && Object.keys(d.components || {}).length >= minComponents,
+  ).length;
 
-  const loggedDays = rows.filter((d) => Object.keys(d.components || {}).length >= minComponents).length;
   return 100 * (loggedDays / effectiveWindow);
 }
 
 // Trend: recent 7-day average vs the preceding period average, mapped to a
 // ±15-point bonus/malus (not a raw percentage — a modest nudge, not a swing
 // large enough to dominate the composite).
-async function calculateTrendScore(userId, config) {
-  const days = (await DailyHealthScore.find({ userId, date: { $gte: daysAgoStr(29) } }).sort({ date: 1 }).lean())
+function calculateTrendScore(rows, config) {
+  const since = daysAgoStr(29);
+  const days = rows
+    .filter((d) => d.date >= since)
     .filter(isLoggedDay); // unlogged days would drag both window averages toward 0
   if (days.length < config.minHistoryDays.trend) return null;
 
@@ -305,16 +317,27 @@ async function calculateTrendScore(userId, config) {
   return 50 + bonus; // expressed on the same 0-100 scale as other components (50 = flat/no change)
 }
 
-async function calculateLongTermScore(userId) {
-  const config = await HealthScoreConfig.findOne({ isActive: true }).lean();
+// `ctx` lets the score endpoint hand in the config and the 90-day score window
+// it has already loaded. Both are optional — without them this loads its own,
+// so the recompute triggers and the weekly cron keep working unchanged.
+async function calculateLongTermScore(userId, ctx = {}) {
+  const config = ctx.config || await getActiveScoreConfig();
   if (!config) throw new Error('No active HealthScoreConfig found');
 
-  const [clinical, today, consistency, trend] = await Promise.all([
+  // One read covering the widest window any component needs. Today, Consistency
+  // (14 days), Trend (30 days) and the history count (90 days) are all derived
+  // from this array in memory.
+  const rows = ctx.dailyRows || await DailyHealthScore.find({
+    userId,
+    date: { $gte: daysAgoStr(89) },
+  }).sort({ date: 1 }).lean();
+
+  const [clinical] = await Promise.all([
     calculateClinicalScore(userId, config),
-    calculateTodayScore(userId),
-    calculateConsistencyScore(userId, config),
-    calculateTrendScore(userId, config),
   ]);
+  const today = calculateTodayScore(rows);
+  const consistency = calculateConsistencyScore(rows, config);
+  const trend = calculateTrendScore(rows, config);
 
   const values = {
     clinical: clinical?.score ?? null,
@@ -362,8 +385,7 @@ async function calculateLongTermScore(userId) {
   // Counts days the user actually logged on, since this drives the UI's
   // "based on N days" confidence hint — days with an empty row would inflate
   // the apparent confidence behind the score.
-  const daysOfHistory = (await DailyHealthScore.find({ userId, date: { $gte: daysAgoStr(89) } })
-    .select('components').lean()).filter(isLoggedDay).length;
+  const daysOfHistory = rows.filter(isLoggedDay).length;
 
   const snapshot = {
     value: Math.round(finalScore * 10) / 10,
@@ -380,7 +402,12 @@ async function calculateLongTermScore(userId) {
     computedAt: new Date(),
   };
 
-  await User.findByIdAndUpdate(userId, { compositeHealthScore: snapshot });
+  // Persisted, but not awaited. This snapshot is a record for other consumers
+  // and support — nothing reads it back to build the response, which is computed
+  // fresh. Awaiting it put a database write on the critical path of what is
+  // otherwise a read, and the caller was waiting for it before seeing a score.
+  User.findByIdAndUpdate(userId, { compositeHealthScore: snapshot })
+    .catch((e) => console.error(`[HealthScore] snapshot save failed for ${userId}:`, e.message));
   return snapshot;
 }
 

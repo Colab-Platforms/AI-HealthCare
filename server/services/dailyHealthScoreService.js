@@ -1,4 +1,3 @@
-const HealthScoreConfig = require('../models/HealthScoreConfig');
 const UserMetricBaseline = require('../models/UserMetricBaseline');
 const DailyHealthScore = require('../models/DailyHealthScore');
 const NutritionSummary = require('../models/NutritionSummary');
@@ -18,7 +17,7 @@ const { toPlainAlcoholLog } = require('../utils/alcoholLog');
 const POPULATION_NORMS = { sleepHours: 7.5 };
 const FIXED_GOALS = { steps: 10000, waterGlasses: 8 };
 
-const getActiveConfig = () => HealthScoreConfig.findOne({ isActive: true }).lean();
+const { getActiveScoreConfig } = require('../utils/scoreConfig');
 
 // Reads (and lazily creates) the user's per-metric running baseline doc,
 // updates the given metric with today's value, and returns the personalized
@@ -52,8 +51,12 @@ async function updateAndBlend(userId, metricKey, todayValue, populationNorm, tau
   return blendedBaseline(existing, populationNorm, tau);
 }
 
-async function calculateDailyScore(userId, dateStr) {
-  const config = await getActiveConfig();
+// `ctx.config` lets a caller that has already loaded the active config (the
+// score endpoint loads it once for both engines) pass it in rather than have it
+// fetched again. Omitting it keeps the previous behaviour exactly, so existing
+// callers — the recompute triggers and the weekly cron — are unaffected.
+async function calculateDailyScore(userId, dateStr, ctx = {}) {
+  const config = ctx.config || await getActiveScoreConfig();
   if (!config) throw new Error('No active HealthScoreConfig found — run the seed script first');
 
   const dayStart = new Date(`${dateStr}T00:00:00.000Z`);

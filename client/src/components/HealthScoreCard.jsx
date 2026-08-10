@@ -15,7 +15,7 @@ export default function HealthScoreCard() {
   // rather than an independent fetch in this component — Dashboard re-renders
   // very frequently, which would otherwise unmount/remount a local fetch
   // before it ever gets a chance to resolve.
-  const { healthScoreData: data } = useData();
+  const { healthScoreData: data, healthScoreRefreshing } = useData();
 
   if (!data) {
     return (
@@ -96,8 +96,17 @@ export default function HealthScoreCard() {
             style={{ transition: "stroke-dashoffset 0.6s ease" }}
           />
         </svg>
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-4xl font-black text-[#1a2138]">{score}</span>
+        <div className="absolute inset-0 flex flex-col items-center justify-center">
+          {/* The previous number stays visible while a refresh runs — replacing
+              it with a spinner would hide the very thing the user is watching. */}
+          <span className={`text-4xl font-black text-[#1a2138] transition-opacity ${healthScoreRefreshing ? "opacity-50" : ""}`}>
+            {score}
+          </span>
+          {healthScoreRefreshing && (
+            <span className="text-[8px] font-bold text-[#69A38D] uppercase tracking-widest mt-0.5">
+              updating
+            </span>
+          )}
         </div>
       </div>
 
