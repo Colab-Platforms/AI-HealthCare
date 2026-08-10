@@ -1,8 +1,24 @@
 const UsageLog = require('../models/UsageLog');
 const { MODEL_PRICING } = require('../models/UsageLog');
 
-// Helper: date range from period string
-const getPeriodRange = (period = 'month') => {
+// Helper: date range from query — either a preset `period`, or period='custom'
+// with `from`/`to` as YYYY-MM-DD (inclusive on both ends, in server local time).
+const getPeriodRange = (query = {}) => {
+    const { period = 'month' } = query;
+
+    if (period === 'custom') {
+        const from = new Date(query.from);
+        const to   = new Date(query.to);
+        // Invalid or missing dates → fall back to the default preset rather than
+        // silently returning every log ever.
+        if (isNaN(from) || isNaN(to)) return getPeriodRange({ period: 'month' });
+        from.setHours(0, 0, 0, 0);
+        to.setHours(23, 59, 59, 999);
+        // Tolerate a reversed range instead of returning nothing
+        if (from > to) return { createdAt: { $gte: to, $lte: from } };
+        return { createdAt: { $gte: from, $lte: to } };
+    }
+
     const now = new Date();
     const from = new Date();
     if (period === 'today')       from.setHours(0, 0, 0, 0);
@@ -30,7 +46,7 @@ const calcCacheSavings = (modelBreakdown) => {
 // ── GET /admin/usage/summary?period=month ─────────────────────────────────
 exports.getSummary = async (req, res) => {
     try {
-        const match = getPeriodRange(req.query.period);
+        const match = getPeriodRange(req.query);
 
         // Main aggregate — totals
         const [agg] = await UsageLog.aggregate([
@@ -119,7 +135,7 @@ exports.getSummary = async (req, res) => {
 // ── GET /admin/usage/cost-over-time?period=month&granularity=day ──────────
 exports.getCostOverTime = async (req, res) => {
     try {
-        const match       = getPeriodRange(req.query.period);
+        const match       = getPeriodRange(req.query);
         const granularity = req.query.granularity || 'day'; // day | week | month
 
         const dateGroup =
@@ -189,7 +205,7 @@ exports.getCostOverTime = async (req, res) => {
 // ── GET /admin/usage/by-feature?period=month ──────────────────────────────
 exports.getByFeature = async (req, res) => {
     try {
-        const match = getPeriodRange(req.query.period);
+        const match = getPeriodRange(req.query);
 
         const data = await UsageLog.aggregate([
             { $match: match },
@@ -246,7 +262,7 @@ exports.getByFeature = async (req, res) => {
 // ── GET /admin/usage/by-model?period=month ────────────────────────────────
 exports.getByModel = async (req, res) => {
     try {
-        const match = getPeriodRange(req.query.period);
+        const match = getPeriodRange(req.query);
 
         const data = await UsageLog.aggregate([
             { $match: match },
@@ -308,7 +324,7 @@ exports.getByModel = async (req, res) => {
 // ── GET /admin/usage/by-user?period=month&limit=20 ────────────────────────
 exports.getByUser = async (req, res) => {
     try {
-        const match = getPeriodRange(req.query.period);
+        const match = getPeriodRange(req.query);
         const topN  = Math.min(100, parseInt(req.query.limit) || 20);
 
         const data = await UsageLog.aggregate([
@@ -374,7 +390,7 @@ exports.getLogs = async (req, res) => {
         if (req.query.model)   filter.model   = req.query.model;
         if (req.query.userId)  filter.userId  = req.query.userId;
 
-        const periodMatch = getPeriodRange(req.query.period);
+        const periodMatch = getPeriodRange(req.query);
         Object.assign(filter, periodMatch);
 
         const [logs, total] = await Promise.all([
@@ -402,7 +418,7 @@ exports.getLogs = async (req, res) => {
 // ── GET /admin/usage/cache-stats?period=month ─────────────────────────────
 exports.getCacheStats = async (req, res) => {
     try {
-        const match = getPeriodRange(req.query.period);
+        const match = getPeriodRange(req.query);
 
         // Group by model so we can apply the correct per-model pricing for savings
         const modelRows = await UsageLog.aggregate([
@@ -485,7 +501,7 @@ exports.getBudgetStatus = async (req, res) => {
             || 100;
 
         // Use all-time for total credit tracking (budget is a one-time top-up, not monthly)
-        const match = getPeriodRange('all');
+        const match = getPeriodRange({ period: 'all' });
 
         const [agg] = await UsageLog.aggregate([
             { $match: match },

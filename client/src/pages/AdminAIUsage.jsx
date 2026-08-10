@@ -19,7 +19,10 @@ const PERIODS = [
   { label: "Month",      value: "month" },
   { label: "Year",       value: "year"  },
   { label: "All",        value: "all"   },
+  { label: "Custom",     value: "custom"},
 ];
+
+const todayStr = () => new Date().toISOString().slice(0, 10);
 
 const FEATURE_LABELS = {
   validate_report:   "Validate",
@@ -157,6 +160,9 @@ function BarTip({ active, payload, label }) {
 export default function AdminAIUsage() {
   const [period,       setPeriod]       = useState("month");
   const [granularity,  setGranularity]  = useState("day");
+  // Draft dates the admin is editing; only applied to `range` on "Apply"
+  const [draft,        setDraft]        = useState({ from: todayStr(), to: todayStr() });
+  const [range,        setRange]        = useState({ from: "", to: "" });
   const [summary,      setSummary]      = useState(null);
   const [budget,       setBudget]       = useState(null);
   const [costOverTime, setCostOverTime] = useState([]);
@@ -172,17 +178,23 @@ export default function AdminAIUsage() {
   const [loading,      setLoading]      = useState(true);
   const [logsLoading,  setLogsLoading]  = useState(false);
 
-  const fetchAll = useCallback(async (p, g) => {
+  // Query params every endpoint shares — a preset, or the custom from/to pair
+  const periodParams = period === "custom"
+    ? { period, from: range.from, to: range.to }
+    : { period };
+
+  const fetchAll = useCallback(async (q, g) => {
     setLoading(true);
     try {
       const [sumRes, budRes, timeRes, featRes, modRes, userRes, cacheRes] = await Promise.all([
-        adminService.getUsageSummary({ period: p }),
-        adminService.getUsageBudget({ monthly: 97.33 }),
-        adminService.getUsageCostOverTime({ period: p, granularity: g }),
-        adminService.getUsageByFeature({ period: p }),
-        adminService.getUsageByModel({ period: p }),
-        adminService.getUsageByUser({ period: p, limit: 15 }),
-        adminService.getUsageCacheStats({ period: p }),
+        adminService.getUsageSummary(q),
+        // Total credits purchased to date (97.33 initial + 100 top-up on 2026-08-08)
+        adminService.getUsageBudget({ monthly: 197.33 }),
+        adminService.getUsageCostOverTime({ ...q, granularity: g }),
+        adminService.getUsageByFeature(q),
+        adminService.getUsageByModel(q),
+        adminService.getUsageByUser({ ...q, limit: 15 }),
+        adminService.getUsageCacheStats(q),
       ]);
       setSummary(sumRes.data.summary || {});
       setBudget(budRes.data);
@@ -201,7 +213,8 @@ export default function AdminAIUsage() {
   const fetchLogs = useCallback(async (page, filter) => {
     setLogsLoading(true);
     try {
-      const res = await adminService.getUsageLogs({ page, limit: 10, period, ...filter });
+      const q = period === "custom" ? { period, from: range.from, to: range.to } : { period };
+      const res = await adminService.getUsageLogs({ page, limit: 10, ...q, ...filter });
       setLogs(res.data.logs || []);
       setLogTotal(res.data.total || 0);
       setLogPages(res.data.pages || 1);
@@ -211,14 +224,17 @@ export default function AdminAIUsage() {
     } finally {
       setLogsLoading(false);
     }
-  }, [period]);
+  }, [period, range.from, range.to]);
 
   useEffect(() => {
-    fetchAll(period, granularity);
+    // A custom period with no applied range yet would fall back to "month" on the
+    // server — wait for Apply instead of showing misleading numbers.
+    if (period === "custom" && !(range.from && range.to)) return;
+    fetchAll(periodParams, granularity);
     fetchLogs(1, logFilter);
-  }, [period, granularity]);
+  }, [period, granularity, range.from, range.to]);
 
-  const refresh = () => { fetchAll(period, granularity); fetchLogs(1, logFilter); };
+  const refresh = () => { fetchAll(periodParams, granularity); fetchLogs(1, logFilter); };
 
   const s = summary || {};
 
@@ -256,6 +272,34 @@ export default function AdminAIUsage() {
           </div>
         </div>
       </div>
+
+      {/* ── Custom date range ── */}
+      {period === "custom" && (
+        <div className="bg-white dark:bg-[#1e2235] rounded-2xl p-3 shadow-sm flex flex-wrap items-end gap-3">
+          <label className="flex flex-col gap-1">
+            <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">From</span>
+            <input type="date" value={draft.from} max={draft.to || todayStr()}
+              onChange={e => setDraft(d => ({ ...d, from: e.target.value }))}
+              className="px-2.5 py-1.5 text-[12px] rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-400" />
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">To</span>
+            <input type="date" value={draft.to} min={draft.from} max={todayStr()}
+              onChange={e => setDraft(d => ({ ...d, to: e.target.value }))}
+              className="px-2.5 py-1.5 text-[12px] rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 outline-none focus:ring-2 focus:ring-indigo-400" />
+          </label>
+          <button
+            disabled={!draft.from || !draft.to}
+            onClick={() => setRange({ from: draft.from, to: draft.to })}
+            className="px-3.5 py-1.5 text-[12px] font-semibold rounded-lg bg-indigo-600 text-white hover:bg-indigo-700 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+          >Apply</button>
+          <p className="text-[11px] text-slate-400 ml-auto self-center">
+            {range.from && range.to
+              ? `Showing ${range.from} → ${range.to} (both days included)`
+              : "Pick a start and end date, then Apply"}
+          </p>
+        </div>
+      )}
 
       {/* ── Budget Alert ── */}
       {budget && budget.alert !== "ok" && (
