@@ -5,6 +5,8 @@ const MODEL_PRICING = {
     'claude-sonnet-4-6':       { input: 3.00,  output: 15.00, cacheRead: 0.30,  cacheWrite: 3.75 },
     'claude-haiku-4-5':        { input: 1.00,  output: 5.00,  cacheRead: 0.10,  cacheWrite: 1.25 },
     'claude-haiku-4-5-20251001': { input: 1.00, output: 5.00, cacheRead: 0.10,  cacheWrite: 1.25 },
+    // Retired/never-valid IDs. Kept only so historical UsageLog rows still price
+    // correctly — do not send either to the API.
     'claude-3-5-haiku-latest': { input: 1.00,  output: 5.00,  cacheRead: 0.10,  cacheWrite: 1.25 },
     'claude-4-haiku-latest':   { input: 1.00,  output: 5.00,  cacheRead: 0.10,  cacheWrite: 1.25 },
     'claude-opus-4-8':         { input: 5.00,  output: 25.00, cacheRead: 0.50,  cacheWrite: 6.25 },

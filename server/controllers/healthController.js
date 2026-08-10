@@ -19,6 +19,7 @@ const HealthMetric = require('../models/HealthMetric');
 const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
 const { logActivity } = require('../utils/activityLogger');
 const { inferCategory } = require('../utils/reportCategory');
+const { normalizeMetrics, canonicalMetricName } = require('../utils/metricNormalizer');
 const {
   sanitizeAlcoholLog,
   toPlainAlcoholLog,
@@ -80,6 +81,8 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
     const updatedReport = await HealthReport.findById(reportId);
     if (!updatedReport) return;
 
+    aiAnalysis.metrics = normalizeMetrics(aiAnalysis.metrics);
+
     updatedReport.aiAnalysis = aiAnalysis;
     updatedReport.status = 'completed';
 
@@ -96,15 +99,24 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
       updatedReport.reportType = aiAnalysis.documentType.trim();
     }
 
-    // Metadata extraction
-    if (aiAnalysis.reportDate) {
-      try { updatedReport.reportDate = new Date(aiAnalysis.reportDate); }
-      catch (e) { updatedReport.reportDate = new Date(); }
-    } else { updatedReport.reportDate = new Date(); }
+    // Metadata extraction.
+    // `new Date('not a date')` returns Invalid Date rather than throwing, so a
+    // try/catch here never fires — the bad value instead reached save() as a
+    // cast error and took the whole analysis down with it. Check explicitly.
+    const parsedReportDate = aiAnalysis.reportDate ? new Date(aiAnalysis.reportDate) : null;
+    if (parsedReportDate && !Number.isNaN(parsedReportDate.getTime())) {
+      updatedReport.reportDate = parsedReportDate;
+    } else {
+      if (aiAnalysis.reportDate) {
+        console.warn(`[BG] Unparseable reportDate from AI: ${JSON.stringify(aiAnalysis.reportDate)} — falling back to now.`);
+      }
+      updatedReport.reportDate = new Date();
+    }
 
-    if (aiAnalysis.patientName) updatedReport.patientName = aiAnalysis.patientName.trim();
-    if (aiAnalysis.patientAge) updatedReport.patientAge = Number(aiAnalysis.patientAge);
-    if (aiAnalysis.patientGender) updatedReport.patientGender = aiAnalysis.patientGender.trim();
+    if (aiAnalysis.patientName) updatedReport.patientName = String(aiAnalysis.patientName).trim();
+    const parsedAge = Number(aiAnalysis.patientAge);
+    if (Number.isFinite(parsedAge) && parsedAge > 0 && parsedAge < 130) updatedReport.patientAge = parsedAge;
+    if (aiAnalysis.patientGender) updatedReport.patientGender = String(aiAnalysis.patientGender).trim();
 
     updatedReport.markModified('aiAnalysis');
     await updatedReport.save();
@@ -129,21 +141,72 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
       });
     }
 
-    // Auto-Comparison
+    // Auto-Comparison.
+    //
+    // This used to match the previous report on an exact `reportType` string —
+    // but `reportType` is overwritten a few lines above with the AI-detected
+    // `documentType`, which drifts freely between uploads of the SAME panel
+    // ("Essential Health Check Panel" / "Health Checkup" / "Blood Test"). The
+    // lookup therefore almost never matched and comparisons silently never
+    // fired. Match on the stable `category` enum instead, then pick the
+    // candidate that actually shares the most markers.
     try {
-      const prev = await HealthReport.findOne({
+      const candidates = await HealthReport.find({
         user: userId,
-        reportType: updatedReport.reportType,
+        category: updatedReport.category,
         _id: { $ne: reportId },
         status: 'completed',
         createdAt: { $lt: updatedReport.createdAt }
-      }).sort({ createdAt: -1 });
+      }).sort({ createdAt: -1 }).limit(20);
 
-      if (prev && prev.aiAnalysis) {
+      const currentMetrics = updatedReport.aiAnalysis?.metrics || {};
+      const currentKeys = new Set(Object.keys(currentMetrics).map(canonicalMetricName));
+
+      // Canonicalise both sides at read time so reports saved before metric
+      // normalisation existed still match.
+      let prev = null;
+      let sharedKeys = [];
+      for (const candidate of candidates) {
+        const keys = Object.keys(candidate.aiAnalysis?.metrics || {}).map(canonicalMetricName);
+        const shared = keys.filter(k => currentKeys.has(k));
+        if (shared.length > sharedKeys.length) {
+          prev = candidate;
+          sharedKeys = shared;
+        }
+      }
+
+      // Require real overlap — comparing a lipid panel against a thyroid panel
+      // because both are `lab_report` would be worse than not comparing at all.
+      if (prev && prev.aiAnalysis && sharedKeys.length >= 2) {
         const currentScore  = updatedReport.aiAnalysis?.healthScore || 0;
         const previousScore = prev.aiAnalysis?.healthScore || 0;
         const diff = currentScore - previousScore;
         const overallTrend = diff > 3 ? 'improving' : diff < -3 ? 'declining' : 'stable';
+
+        // Per-marker deltas, now that shared markers are reliably identifiable.
+        const prevMetrics = {};
+        for (const [rawName, metric] of Object.entries(prev.aiAnalysis?.metrics || {})) {
+          prevMetrics[canonicalMetricName(rawName)] = metric;
+        }
+
+        const metricChanges = [];
+        for (const key of sharedKeys) {
+          const currentValue  = Number(currentMetrics[key]?.value);
+          const previousValue = Number(prevMetrics[key]?.value);
+          if (!Number.isFinite(currentValue) || !Number.isFinite(previousValue)) continue;
+
+          const delta = currentValue - previousValue;
+          metricChanges.push({
+            name: key,
+            unit: currentMetrics[key]?.unit || prevMetrics[key]?.unit || '',
+            currentValue,
+            previousValue,
+            delta: Number(delta.toFixed(4)),
+            percentChange: previousValue !== 0 ? Number(((delta / Math.abs(previousValue)) * 100).toFixed(1)) : null,
+            currentStatus:  currentMetrics[key]?.status || null,
+            previousStatus: prevMetrics[key]?.status || null,
+          });
+        }
 
         updatedReport.comparison = {
           previousReportId:   prev._id,
@@ -153,9 +216,14 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
             scoreDiff:     diff,
             currentScore,
             previousScore,
+            sharedMetricCount: sharedKeys.length,
+            metricChanges,
           }
         };
         await updatedReport.save();
+        console.log(`[BG] Comparison vs ${prev._id} — ${sharedKeys.length} shared marker(s), ${metricChanges.length} with numeric deltas.`);
+      } else {
+        console.log(`[BG] No comparable previous report (best overlap: ${sharedKeys.length} marker(s)).`);
       }
     } catch (e) { console.warn('Comparison failed:', e.message); }
 
@@ -204,8 +272,24 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
   } catch (error) {
     console.error(`❌ [BG] Analysis failed for ${reportId}:`, error.message);
     const msg = String(error?.message || 'Analysis failed');
-    console.warn(`🗑️ [BG] Deleting failed report ${reportId}: ${msg}`);
-    await HealthReport.findByIdAndDelete(reportId);
+
+    // Only discard the report when the USER uploaded something that isn't a
+    // medical document. Every other failure (API overload, timeout, parse
+    // error, DB cast error) is ours, and deleting on those destroyed the
+    // user's upload — and orphaned the Cloudinary asset — for what is usually
+    // a transient blip. It also made the 'stuck in processing' recovery in
+    // getReportStatus unreachable, because the document was already gone.
+    if (error?.code === 'NOT_MEDICAL') {
+      console.warn(`🗑️ [BG] Discarding non-medical upload ${reportId}: ${msg}`);
+      await HealthReport.findByIdAndDelete(reportId);
+    } else {
+      console.warn(`⚠️ [BG] Marking report ${reportId} as failed (retryable): ${msg}`);
+      await HealthReport.findByIdAndUpdate(reportId, {
+        status: 'failed',
+        'aiAnalysis.summary': 'We could not finish analysing this report. Please try again from the report page.',
+      }).catch(e => console.error('[BG] Could not mark report failed:', e.message));
+    }
+
     await invalidateUserHealthCache(userId);
   }
 }
@@ -373,23 +457,30 @@ exports.getReports = async (req, res) => {
     if (cached) return res.json(cached);
 
     const reports = await withTimeout(
-      HealthReport.find({ user: req.user._id, status: { $ne: 'failed' } })
+      HealthReport.find({ user: req.user._id })
         .sort({ reportDate: -1, createdAt: -1 })
         .limit(100)
     );
-    
+
     // Add isAnalyzedReport flag for frontend (HealthReport documents are always analyzed)
     const reportsWithFlag = reports.map(r => ({
       ...r.toObject(),
       isAnalyzedReport: true
     }));
-    
+
+    // Failed reports are now retained rather than deleted (a transient AI error
+    // used to destroy the upload). They are surfaced in their own key so the
+    // existing lists keep exactly their previous contents — the UI can offer a
+    // retry against `failedReports` without any other view changing.
+    const succeeded = reportsWithFlag.filter(r => r.status !== 'failed');
+
     // Organize reports by type
     const organized = {
-      currentReports: reportsWithFlag.filter(r => !r.isPastReport && !r.isPrescription),
-      pastReports: reportsWithFlag.filter(r => r.isPastReport),
-      prescriptions: reportsWithFlag.filter(r => r.isPrescription),
-      all: reportsWithFlag
+      currentReports: succeeded.filter(r => !r.isPastReport && !r.isPrescription),
+      pastReports: succeeded.filter(r => r.isPastReport),
+      prescriptions: succeeded.filter(r => r.isPrescription),
+      failedReports: reportsWithFlag.filter(r => r.status === 'failed'),
+      all: succeeded
     };
 
     await cache.set(cacheKey, organized, 180);
@@ -539,8 +630,8 @@ exports.getHealthTrends = async (req, res) => {
     if (cached) {
       // If metric requested, filter from cached full payload
       if (metric && cached.metricTrends) {
-        const normalised = metric.toLowerCase().trim();
-        const key = Object.keys(cached.metricTrends).find(k => k.toLowerCase() === normalised);
+        const wanted = canonicalMetricName(metric);
+        const key = Object.keys(cached.metricTrends).find(k => canonicalMetricName(k) === wanted);
         return res.json({ metricTrend: key ? cached.metricTrends[key] : [], availableMetrics: cached.availableMetrics, healthScoreTrend: cached.healthScoreTrend });
       }
       return res.json(cached);
@@ -567,24 +658,29 @@ exports.getHealthTrends = async (req, res) => {
       reportType: r.reportType
     }));
 
-    // Collect all metric keys across all reports (case-insensitive dedup)
-    const metricKeyMap = {}; // normalised -> canonical display name
+    // Collect all metric keys across all reports, canonicalised.
+    //
+    // Lowercase-only dedup left "T S H Ultrasensitive" and "TSH" as two
+    // separate series, so a user's thyroid trend restarted whenever the lab's
+    // spelling shifted. Canonicalising at READ time (not just on write) means
+    // reports stored before metric normalisation existed also merge correctly,
+    // with no backfill migration required.
+    const canonicalKeys = new Set();
     reports.forEach(r => {
-      const metrics = r.aiAnalysis?.metrics || {};
-      Object.keys(metrics).forEach(k => {
-        const norm = k.toLowerCase().trim();
-        if (!metricKeyMap[norm]) metricKeyMap[norm] = k;
+      Object.keys(r.aiAnalysis?.metrics || {}).forEach(k => {
+        const canonical = canonicalMetricName(k);
+        if (canonical) canonicalKeys.add(canonical);
       });
     });
-    const availableMetrics = Object.values(metricKeyMap).sort();
+    const availableMetrics = [...canonicalKeys].sort();
 
     // Build per-metric time series
     const metricTrends = {};
-    Object.entries(metricKeyMap).forEach(([norm, canonical]) => {
+    canonicalKeys.forEach(canonical => {
       const series = [];
       reports.forEach(r => {
         const metrics = r.aiAnalysis?.metrics || {};
-        const matchKey = Object.keys(metrics).find(k => k.toLowerCase().trim() === norm);
+        const matchKey = Object.keys(metrics).find(k => canonicalMetricName(k) === canonical);
         if (matchKey) {
           const m = metrics[matchKey];
           series.push({
@@ -605,8 +701,8 @@ exports.getHealthTrends = async (req, res) => {
     await cache.set(cacheKey, payload, 5 * 60); // 5 min TTL
 
     if (metric) {
-      const normalised = metric.toLowerCase().trim();
-      const key = Object.keys(metricTrends).find(k => k.toLowerCase() === normalised);
+      const wanted = canonicalMetricName(metric);
+      const key = Object.keys(metricTrends).find(k => canonicalMetricName(k) === wanted);
       return res.json({ metricTrend: key ? metricTrends[key] : [], availableMetrics, healthScoreTrend });
     }
     res.json(payload);

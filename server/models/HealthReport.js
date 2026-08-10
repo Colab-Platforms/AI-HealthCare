@@ -38,6 +38,13 @@ const healthReportSchema = new mongoose.Schema({
   },
   aiAnalysis: {
     summary: String,
+    // Conversational doctor's note + personalised advice. These are the most
+    // expensive part of the AI response and are rendered on every report page,
+    // so they MUST stay declared here — `aiAnalysis` is a strict subdocument,
+    // and any key missing from this schema is silently dropped on save.
+    doctorSummary: String,
+    doctorAdvice: [String],
+    summaryPoints: [String],
     keyFindings: [String],
     riskFactors: [String],
     healthScore: Number,
@@ -47,6 +54,7 @@ const healthReportSchema = new mongoose.Schema({
       severity: { type: String, enum: ['mild', 'moderate', 'severe', 'low', 'high', 'mild-moderate', 'moderate-severe'] },
       currentValue: String,
       normalRange: String,
+      explanation: String,
       symptoms: [String]
     }],
     supplements: [{
@@ -190,6 +198,16 @@ healthReportSchema.pre('save', function (next) {
         this.aiAnalysis.keyFindings = [this.aiAnalysis.keyFindings];
       } else {
         this.aiAnalysis.keyFindings = [];
+      }
+    }
+
+    // Fix doctorAdvice / summaryPoints — the AI occasionally returns a single
+    // string instead of an array, which would otherwise be a fatal cast error.
+    for (const field of ['doctorAdvice', 'summaryPoints']) {
+      const value = this.aiAnalysis[field];
+      if (value && !Array.isArray(value)) {
+        console.log(`🔧 [PRE-SAVE] Fixing ${field}`);
+        this.aiAnalysis[field] = typeof value === 'string' ? [value] : [];
       }
     }
 

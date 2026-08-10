@@ -5,7 +5,7 @@ const UsageLog = require('../models/UsageLog');
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 // 🚨 USER SPECIFIC MODEL - The user insists on using 'claude-sonnet-4-6'
 const CLAUDE_MODEL = 'claude-sonnet-4-6'; 
-const CLAUDE_HAIKU_MODEL = 'claude-3-5-haiku-latest';
+const CLAUDE_HAIKU_MODEL = 'claude-haiku-4-5';
 
 class DietRecommendationAI {
   constructor() {
