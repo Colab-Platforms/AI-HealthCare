@@ -16,7 +16,7 @@ const dailyHealthScoreSchema = new mongoose.Schema({
     sleep: Number,
     nutrition: Number,
     activity: Number,
-    substanceFree: Number,
+    cleanHabits: Number,
     hydration: Number,
     consistency: Number,
   },

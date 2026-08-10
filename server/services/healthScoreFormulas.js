@@ -9,8 +9,28 @@ const sigmoidIncreasing = (value, mid, width) => 100 * sigmoid((value - mid) / w
 // "Less is better" markers (RHR, LDL, HbA1c) — mirror of the above.
 const sigmoidDecreasing = (value, mid, width) => 100 * sigmoid(-(value - mid) / width);
 
-// "Optimal-range" markers (sleep duration, hydration, weight-ratio) — penalizes both directions.
+// "Optimal-range" markers (sleep duration, weight-ratio) — penalizes both directions.
 const gaussian = (value, target, width) => 100 * Math.exp(-((value - target) ** 2) / (2 * width ** 2));
+
+// "Hit the goal, then plateau" markers (hydration) — an S-curve that reaches
+// exactly 100 at `goal` and stays there beyond it.
+//
+// A Gaussian is wrong for these: it's symmetric, so it punished 10 glasses of
+// water exactly as hard as 6, and 12 as hard as 4 — but drinking past the goal
+// isn't unhealthy the way sleeping 4 hours past it is. This keeps the useful
+// half of that shape (diminishing returns approaching the goal, real cost for
+// falling well short) and drops the penalty for exceeding it.
+//
+// Shape is derived from `goal` alone — midpoint at half the goal, width a
+// sixth of it — so the curve lands near-flat at 0 and saturates right at the
+// goal. Normalizing by the value AT the goal is what pins it to exactly 100
+// there, rather than the ~95 a raw sigmoid would give.
+const saturatingToGoal = (value, goal) => {
+  const mid = goal / 2;
+  const width = goal / 6;
+  const ratio = sigmoid((value - mid) / width) / sigmoid((goal - mid) / width);
+  return 100 * Math.min(1, ratio);
+};
 
 // Blood pressure: AHA clinical categories, not an invented Gaussian width —
 // systolic and diastolic are scored independently against the category table,
@@ -57,6 +77,7 @@ module.exports = {
   sigmoidIncreasing,
   sigmoidDecreasing,
   gaussian,
+  saturatingToGoal,
   scoreBloodPressure,
   updateRunningBaseline,
   stdDev,

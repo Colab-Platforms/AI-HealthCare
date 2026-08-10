@@ -8,7 +8,7 @@ const {
 } = require('../controllers/authController');
 const { protect, authorize } = require('../middleware/auth');
 const upload = require('../middleware/upload');
-const { authLimiter, sensitiveActionLimiter } = require('../middleware/rateLimit');
+const { authLimiter, sensitiveActionLimiter } = require('../middleware/rateLimit')
 
 router.post('/register', authLimiter, register);
 router.post('/register-otp', authLimiter, requestRegistrationOtp);

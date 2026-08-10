@@ -39,7 +39,7 @@ import {
   ScrollText,
   Shield,
   Headphones,
-  ExternalLink,
+  ExternalLink
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { motion, AnimatePresence } from "framer-motion";

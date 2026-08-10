@@ -4,7 +4,7 @@
 // constantly in production, flooding logs and adding load on every request.
 const cache = require('../utils/cache');
 const ChatHistory = require('../models/ChatHistory');
-const { Client } = require('@upstash/qstash');
+const { Client } = require('@upstash/qstash')
 
 class ChatHistoryService {
   constructor() {

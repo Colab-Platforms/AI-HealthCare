@@ -811,9 +811,17 @@ exports.deleteReport = async (req, res) => {
     if (!report) return res.status(404).json({ message: 'Report not found' });
     if (report.originalFile?.path && fs.existsSync(report.originalFile.path)) fs.unlinkSync(report.originalFile.path);
     await HealthReport.deleteOne({ _id: req.params.id });
-    // Was a hand-written list of literal keys that guessed at which report
-    // types had been cached under `trends:` — anything else stayed stale.
-    await invalidateUserHealthCache(req.user._id);
+    const uid = req.user._id.toString();
+    cache.delete(`reports:${uid}`);
+    cache.delete(`dashboard:${uid}`);
+    cache.delete(`trends:${uid}:all`);
+    cache.delete(`trends:${uid}:Blood Test`);
+    cache.delete(`trends:${uid}:undefined`);
+    // The Long-Term score's Clinical component and risk adjustment come from
+    // the user's latest report. Deleting one changes which report that is (or
+    // leaves none at all), so the stored composite score is stale the moment
+    // this returns — recompute it the same way an upload does.
+    require('../utils/scoreRecompute').triggerLongTermScoreRecompute(req.user._id);
     res.json({ message: 'Report deleted successfully' });
   } catch (error) {
     res.status(500).json({ message: error.message });
