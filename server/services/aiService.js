@@ -5,11 +5,13 @@ const UsageLog = require('../models/UsageLog');
 const ANTHROPIC_API_URL = 'https://api.anthropic.com/v1/messages';
 
 const CLAUDE_MODEL = 'claude-sonnet-4-6';
-const CLAUDE_HAIKU_MODEL = 'claude-4-haiku-latest';
-const FALLBACK_HAIKU_MODEL = 'claude-3-5-haiku-latest';
+const CLAUDE_HAIKU_MODEL = 'claude-haiku-4-5';
+const FALLBACK_MODEL = CLAUDE_MODEL;
 
 exports.CLAUDE_MODEL = CLAUDE_MODEL;
 exports.CLAUDE_HAIKU_MODEL = CLAUDE_HAIKU_MODEL;
+
+const STREAM_THRESHOLD = 16000;
 
 // Save usage log — fire-and-forget, never blocks the main response
 const saveUsageLog = (data) => {
@@ -18,7 +20,53 @@ const saveUsageLog = (data) => {
   );
 };
 
-const makeAnthropicRequest = async (messages, maxTokens = 4096, modelOverride = null, context = {}) => {
+
+const consumeSseStream = (stream) => new Promise((resolve, reject) => {
+  let buffer = '';
+  let text = '';
+  let usage = {};
+  let stopReason = null;
+
+  stream.on('data', (chunk) => {
+    buffer += chunk.toString('utf8');
+
+    // Only process complete lines — a chunk can split an SSE frame anywhere.
+    let newlineIdx;
+    while ((newlineIdx = buffer.indexOf('\n')) !== -1) {
+      const line = buffer.slice(0, newlineIdx).trim();
+      buffer = buffer.slice(newlineIdx + 1);
+
+      if (!line.startsWith('data:')) continue;
+      const payload = line.slice(5).trim();
+      if (!payload || payload === '[DONE]') continue;
+
+      let evt;
+      try { evt = JSON.parse(payload); } catch (e) { continue; }
+
+      switch (evt.type) {
+        case 'content_block_delta':
+          if (evt.delta?.type === 'text_delta') text += evt.delta.text;
+          break;
+        case 'message_start':
+          usage = { ...usage, ...(evt.message?.usage || {}) };
+          break;
+        case 'message_delta':
+          if (evt.usage) usage = { ...usage, ...evt.usage };
+          if (evt.delta?.stop_reason) stopReason = evt.delta.stop_reason;
+          break;
+        case 'error':
+          reject(new Error(evt.error?.message || 'Anthropic stream error'));
+          return;
+      }
+    }
+  });
+
+  stream.on('end', () => resolve({ text, usage, stopReason }));
+  stream.on('error', reject);
+});
+
+
+const makeAnthropicRequestDetailed = async (messages, maxTokens = 4096, modelOverride = null, context = {}) => {
   const selectedModel = modelOverride || CLAUDE_MODEL;
   const startTime = Date.now();
 
@@ -33,6 +81,7 @@ const makeAnthropicRequest = async (messages, maxTokens = 4096, modelOverride = 
     });
 
     const requestTimeout = (process.env.VERCEL || process.env.VERCEL_ID) ? 280000 : 150000;
+    const useStream = (maxTokens || 4000) > STREAM_THRESHOLD;
 
     const response = await axios.post(
       ANTHROPIC_API_URL,
@@ -41,7 +90,8 @@ const makeAnthropicRequest = async (messages, maxTokens = 4096, modelOverride = 
         system: systemMessage ? [{ type: 'text', text: systemMessage, cache_control: { type: 'ephemeral' } }] : undefined,
         messages: filteredMessages,
         max_tokens: maxTokens || 4000,
-        temperature: 0
+        temperature: 0,
+        ...(useStream ? { stream: true } : {})
       },
       {
         headers: {
@@ -51,14 +101,29 @@ const makeAnthropicRequest = async (messages, maxTokens = 4096, modelOverride = 
           'Content-Type': 'application/json',
           'Connection': 'close'
         },
-        timeout: requestTimeout
+        timeout: requestTimeout,
+        // On a stream the timeout applies to response headers only, so a long
+        // generation can't trip it — that's the point of streaming here.
+        ...(useStream ? { responseType: 'stream' } : {})
       }
     );
 
-    const usage = response.data?.usage || {};
+    let text, usage, stopReason;
+    if (useStream) {
+      ({ text, usage, stopReason } = await consumeSseStream(response.data));
+    } else {
+      usage = response.data?.usage || {};
+      stopReason = response.data?.stop_reason || null;
+      text = response.data?.content?.[0]?.text;
+    }
+
     const durationMs = Date.now() - startTime;
 
-    console.log(`✅ Anthropic | in:${usage.input_tokens} out:${usage.output_tokens} cache_read:${usage.cache_read_input_tokens || 0} | ${durationMs}ms`);
+    console.log(`✅ Anthropic | in:${usage.input_tokens} out:${usage.output_tokens} cache_read:${usage.cache_read_input_tokens || 0} | stop:${stopReason} | ${durationMs}ms`);
+
+    if (stopReason === 'max_tokens') {
+      console.warn(`⚠️ Anthropic | Response hit max_tokens (${maxTokens}) for feature "${context.feature || 'unknown'}" — output is TRUNCATED.`);
+    }
 
     // Log usage async — don't await
     saveUsageLog({
@@ -74,21 +139,23 @@ const makeAnthropicRequest = async (messages, maxTokens = 4096, modelOverride = 
       status: 'success',
     });
 
-    if (response.data?.content?.[0]) return response.data.content[0].text;
+    if (typeof text === 'string' && text.length) return { text, stopReason, usage };
     throw new Error('Invalid response');
 
   } catch (error) {
     const errorMsg = error.response?.data?.error?.message || error.message;
-    const modelMissing = /model/i.test(errorMsg);
+    const status = error.response?.status;
+    const errorType = error.response?.data?.error?.type;
 
-    // Retry with fallback model
-    if (modelMissing && selectedModel === CLAUDE_HAIKU_MODEL) {
-      console.warn(`⚠️ Model unavailable (${selectedModel}). Retrying with ${FALLBACK_HAIKU_MODEL}...`);
-      return makeAnthropicRequest(messages, maxTokens, FALLBACK_HAIKU_MODEL, context);
-    }
-    if (modelMissing && selectedModel === FALLBACK_HAIKU_MODEL) {
-      console.warn(`⚠️ Model unavailable (${selectedModel}). Retrying with ${CLAUDE_MODEL}...`);
-      return makeAnthropicRequest(messages, maxTokens, CLAUDE_MODEL, context);
+    // Only a genuine "this model does not exist" is worth retrying elsewhere.
+    // Matching /model/i caught overload and rate-limit messages too, silently
+    // escalating cheap Haiku calls to Sonnet on transient failures.
+    const modelMissing =
+      (status === 404 || errorType === 'not_found_error') && /model/i.test(errorMsg);
+
+    if (modelMissing && selectedModel !== FALLBACK_MODEL) {
+      console.warn(`⚠️ Model unavailable (${selectedModel}). Retrying with ${FALLBACK_MODEL}...`);
+      return makeAnthropicRequestDetailed(messages, maxTokens, FALLBACK_MODEL, context);
     }
 
     // Log failed call
@@ -107,9 +174,24 @@ const makeAnthropicRequest = async (messages, maxTokens = 4096, modelOverride = 
   }
 };
 
+// Back-compat wrapper: most callers only want the text.
+const makeAnthropicRequest = async (messages, maxTokens = 4096, modelOverride = null, context = {}) => {
+  const { text } = await makeAnthropicRequestDetailed(messages, maxTokens, modelOverride, context);
+  return text;
+};
+
 exports.makeAnthropicRequest = makeAnthropicRequest;
+exports.makeAnthropicRequestDetailed = makeAnthropicRequestDetailed;
 
 const HEALTH_ANALYSIS_PROMPT = `Analyze this health report as an expert medical AI. You MUST extract EVERY SINGLE health marker, lab result, and medical observation found in the report text without exception.
+
+STEP 1 — GATEKEEPING (do this before anything else):
+Decide whether the provided content is a REAL medical/healthcare document. Valid examples: lab test report, radiology report, prescription, discharge summary, clinical notes, pathology report, vaccination record, insurance/health card.
+If it is NOT a medical/healthcare document, respond with this JSON ONLY, and nothing else:
+{"isMedical": false, "detected": "<what this document most likely is>", "message": "This file does not contains any medical report please upload correct medical report for analyze. It looks like: <what this document most likely is>."}
+Be conservative — only reject when you are confident it is not a medical/healthcare document. If it IS one, ignore this step entirely and produce the full analysis below.
+
+STEP 2 — ANALYSIS (only if the document IS medical):
 STRUCTURE:
 {
   "patientName": "Name",
@@ -146,67 +228,6 @@ IMPORTANT: The "doctorAdvice" array MUST consist of 3-5 specific, actionable poi
 IMPORTANT: "documentCategory" MUST be exactly one of: "lab_report", "prescription", "scan", "doctor_notes", "vaccination", "insurance", "other". Detect from content: lab values/blood tests = "lab_report", medicines/drugs prescribed = "prescription", X-Ray/MRI/CT/Ultrasound/imaging = "scan", doctor consultation notes/discharge summary = "doctor_notes", vaccine records = "vaccination", insurance/ID documents = "insurance".
 IMPORTANT: "documentType" is a short human-readable label like "Blood Test", "Prescription", "X-Ray", "MRI", "Ultrasound", "CBC Report", "Lipid Profile", "Thyroid Panel", "Discharge Summary", "Vaccination Record" etc. Detect from actual report content.`;
 
-const MEDICAL_REPORT_VALIDATOR_PROMPT = `You are a strict gatekeeper for a healthcare app.
-Task: Decide if the uploaded content is a REAL medical/healthcare report/document (examples: lab test report, radiology report, prescription, discharge summary, clinical notes, pathology report, etc).
-
-Rules:
-- If it is NOT a medical/healthcare report, respond with JSON ONLY:
-  {"isMedical": false, "detected": "<what this document most likely is>", "message": "This file does not contains any medical report please upload correct medical report for analyze. It looks like: <what this document most likely is>."}
-- If it IS a medical/healthcare report, respond with JSON ONLY:
-  {"isMedical": true}
-
-Be conservative: only return true when you're confident it's a medical/healthcare document. Do not include any extra keys, text, or explanation outside JSON.`;
-
-const validateMedicalReport = async (reportText, fileData = null) => {
-  try {
-    const userContent = [];
-
-    // For images: send the image since there may be no extracted text
-    if (fileData && fileData.buffer && fileData.mimetype?.startsWith('image/')) {
-      userContent.push({
-        type: 'image',
-        source: {
-          type: 'base64',
-          media_type: fileData.mimetype,
-          data: fileData.buffer.toString('base64')
-        }
-      });
-    } else if (reportText && reportText.trim()) {
-      // Cap at 3000 chars — enough to identify if it's a medical report
-      userContent.push({ type: 'text', text: `Extracted Text:\n${reportText.substring(0, 3000)}` });
-    } else if (fileData && fileData.buffer && fileData.mimetype === 'application/pdf') {
-      // pdf-parse extraction failed or returned nothing (happens with some PDF
-      // generators/fonts) — fall back to sending the PDF itself, which Claude
-      // can read natively, instead of rejecting the file for lack of text.
-      userContent.push({
-        type: 'document',
-        source: {
-          type: 'base64',
-          media_type: 'application/pdf',
-          data: fileData.buffer.toString('base64')
-        }
-      });
-    }
-
-    const messages = [
-      { role: 'system', content: MEDICAL_REPORT_VALIDATOR_PROMPT },
-      { role: 'user', content: userContent.length ? userContent : [{ type: 'text', text: 'No extracted text provided.' }] }
-    ];
-
-    const content = await makeAnthropicRequest(messages, 400, CLAUDE_HAIKU_MODEL, { feature: 'validate_report' });
-    const jsonMatch = content.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return { isMedical: true };
-    const parsed = robustJsonParse(jsonMatch[0]);
-    if (typeof parsed?.isMedical === 'boolean') return parsed;
-    return { isMedical: true };
-  } catch (e) {
-    return {
-      isMedical: false,
-      message: 'Unable to validate this upload as a medical report right now. Please re-upload a clear medical report (lab, prescription, radiology, or discharge summary).'
-    };
-  }
-};
-exports.validateMedicalReport = validateMedicalReport;
 
 exports.analyzeHealthReport = async (reportText, user = {}, fileData = null, reportType = 'general', context = {}) => {
   try {
@@ -214,9 +235,19 @@ exports.analyzeHealthReport = async (reportText, user = {}, fileData = null, rep
     const userContent = [];
     const hasPdf = fileData?.buffer && fileData?.mimetype === 'application/pdf';
     const hasImage = fileData?.buffer && fileData?.mimetype?.startsWith('image/');
+    const hasText = Boolean(reportText && reportText.trim());
+
+    // Nothing to analyse — the file fetch failed or extraction produced nothing.
+    // Bail before calling the API: sending just the context line would make the
+    // model correctly answer "this isn't a medical document", which the caller
+    // treats as a user error and discards the upload for. This is OUR failure,
+    // so it must stay retryable (no NOT_MEDICAL code).
+    if (!hasPdf && !hasImage && !hasText) {
+      throw new Error('Report content unavailable for analysis (file fetch or text extraction failed).');
+    }
 
     // Always include context; only include extracted text if there's no file (text-only fallback)
-    if (!hasPdf && !hasImage && reportText && reportText.trim()) {
+    if (!hasPdf && !hasImage && hasText) {
       userContent.push({ type: 'text', text: `${userContext}\n\nExtracted Text:\n${reportText.substring(0, 50000)}` });
     } else {
       userContent.push({ type: 'text', text: userContext });
@@ -243,16 +274,17 @@ exports.analyzeHealthReport = async (reportText, user = {}, fileData = null, rep
       });
     }
 
-    const validation = await validateMedicalReport(reportText, fileData);
-    if (validation && validation.isMedical === false) {
-      throw new Error(
-        validation.message ||
-          'This file does not contains any medical report please upload correct medical report for analyze.'
-      );
-    }
-
+    // The "is this actually a medical document?" gate is STEP 1 of the analysis
+    // prompt rather than a separate Haiku call. That call re-uploaded the whole
+    // PDF/image a second time and judged from only the first 3000 characters of
+    // text; folding it in halves document tokens, removes a full round-trip from
+    // every upload, and lets the gate see the entire document.
     const messages = [{ role: 'system', content: HEALTH_ANALYSIS_PROMPT }, { role: 'user', content: userContent }];
-    const content = await makeAnthropicRequest(messages, 8000, null, {
+
+    // 32K, streamed. The prompt demands every marker with five prose fields
+    // each, so a 25-30 marker panel needs far more than the old 8K budget —
+    // which truncated mid-object and silently lost the tail of the metrics.
+    const { text: content, stopReason } = await makeAnthropicRequestDetailed(messages, 32000, null, {
       feature: context.feature || 'analyze_report',
       userId: user?._id || context.userId || null,
       reportId: context.reportId || null,
@@ -264,7 +296,31 @@ exports.analyzeHealthReport = async (reportText, user = {}, fileData = null, rep
         'Unable to read this as a structured medical report. Please upload a clear medical report (lab, prescription, radiology, or discharge summary).'
       );
     }
-    return robustJsonParse(jsonMatch[0]);
+
+    const parsed = robustJsonParse(jsonMatch[0]);
+
+    // STEP 1 verdict: the model decided this isn't a medical document.
+    // Tagged so the caller can distinguish "the user uploaded the wrong file"
+    // (their mistake — discarding it is fine) from "our AI call failed"
+    // (our problem — the upload must be kept and retried).
+    if (parsed && parsed.isMedical === false) {
+      const rejection = new Error(
+        parsed.message ||
+          'This file does not contains any medical report please upload correct medical report for analyze.'
+      );
+      rejection.code = 'NOT_MEDICAL';
+      throw rejection;
+    }
+
+    // Even at 32K a pathological report can truncate. Flag it on the result so
+    // the caller can record it, rather than letting the JSON-repair path quietly
+    // hand back a partial metric set as if it were complete.
+    if (stopReason === 'max_tokens') {
+      console.warn(`⚠️ Analysis truncated for report ${context.reportId || '(unknown)'} — metric list may be incomplete.`);
+      if (parsed && typeof parsed === 'object') parsed.__truncated = true;
+    }
+
+    return parsed;
   } catch (error) {
     throw error;
   }

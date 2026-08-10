@@ -1,5 +1,6 @@
 import axios from 'axios';
 import cache from '../utils/cache';
+import { affectsHealthScore, invalidateHealthScore } from '../utils/scoreCache';
 import { getToken, getRefreshToken, setToken, clearAuthData } from '../utils/authStorage';
 
 // Determine API URL based on environment
@@ -94,7 +95,18 @@ api.interceptors.request.use((config) => {
 let _refreshing = null; // singleton promise — prevents parallel refresh storms
 
 api.interceptors.response.use(
-  (response) => response,
+  (response) => {
+    // Anything that successfully changed data feeding the Health Score drops
+    // the cached score and tells anything displaying it to refresh. Doing it
+    // here — on the one path every request already passes through — means no
+    // logging screen has to remember to, and a screen added later gets it free.
+    const method = (response.config?.method || '').toLowerCase();
+    const isWrite = method === 'post' || method === 'put' || method === 'patch' || method === 'delete';
+    if (isWrite && affectsHealthScore(response.config?.url)) {
+      invalidateHealthScore();
+    }
+    return response;
+  },
   async (error) => {
     const original = error.config;
     const skipAutoLogout = original?.skipAutoLogout;

@@ -1,154 +1,152 @@
-const Redis = require('ioredis');
-const dotenv = require('dotenv');
-
-dotenv.config();
+const { getClient, isConfigured } = require('./redisClient');
 
 /**
  * 🚀 PERFORMANCE & SCALING LAYER
- * This caching utility automatically uses Redis if process.env.REDIS_URL is provided.
- * It falls back to a high-performance in-memory Map for local development.
- * 
- * Target: Handles 10,000+ concurrent requests by offloading DB load.
+ *
+ * Uses Redis when REDIS_URL is set and reachable, otherwise a bounded in-memory
+ * store. Redis health is re-checked on every call (see utils/redisClient), so a
+ * transient outage degrades to memory and then recovers by itself.
+ *
+ * NOTE: values go through JSON, so Date objects come back as ISO strings. Do not
+ * cache anything whose Dates are later compared as Dates — see utils/userCache
+ * for why that matters.
  */
 
-let redis = null;
-if (process.env.REDIS_URL) {
-  try {
-    const redisUrl = process.env.REDIS_URL;
-    const isUpstash = redisUrl.includes('upstash.io');
-    
-    redis = new Redis(redisUrl, {
-      maxRetriesPerRequest: 3,
-      connectTimeout: 5000,
-      tls: isUpstash ? { rejectUnauthorized: false } : undefined,
-      reconnectOnError: (err) => {
-        console.warn('[Cache] Redis reconnection error:', err.message);
-        return true;
-      }
-    });
-    
-    redis.on('connect', () => console.log('✅ [Cache] Connected to Redis Cloud/Server'));
-    redis.on('error', (err) => {
-      console.error('❌ [Cache] Redis Connection Failed. Falling back to memory.', err.message);
-      redis = null; // Force fallback
-    });
-  } catch (err) {
-    console.error('❌ [Cache] Could not initialize Redis client:', err.message);
-    redis = null;
+const MAX_MEMORY_ENTRIES = 2000;
+
+// key -> { value, expiresAt }. Insertion-ordered, so the oldest key is first.
+const memoryStore = new Map();
+
+function memoryGet(key) {
+  const hit = memoryStore.get(key);
+  if (!hit) return null;
+  if (Date.now() > hit.expiresAt) {
+    memoryStore.delete(key);
+    return null;
   }
-} else {
-  console.log('ℹ️ [Cache] No REDIS_URL found. Using local in-memory store.');
+  // Mark most-recently-used.
+  memoryStore.delete(key);
+  memoryStore.set(key, hit);
+  return hit.value;
 }
 
-// High-performance Memory Fallback
-const memoryCache = new Map();
-const memoryExpiry = new Map();
+function memorySet(key, value, ttlSeconds) {
+  memoryStore.delete(key);
+  memoryStore.set(key, { value, expiresAt: Date.now() + ttlSeconds * 1000 });
+  // Hard cap: the old implementation only swept on a 10-minute timer, so a
+  // burst of distinct keys could grow this without bound on a small instance.
+  while (memoryStore.size > MAX_MEMORY_ENTRIES) {
+    memoryStore.delete(memoryStore.keys().next().value);
+  }
+}
 
 const cache = {
-  /**
-   * Get value from cache (Async to support Redis)
-   */
   async get(key) {
+    const redis = getClient();
     if (redis) {
       try {
         const val = await redis.get(key);
-        return val ? JSON.parse(val) : null;
+        if (val !== null) return JSON.parse(val);
+        return null;
       } catch (err) {
-        console.error('[Cache] Redis Get Error:', err.message);
-        return this.getFromMemory(key);
+        console.error('[Cache] Redis GET failed, falling back to memory:', err.message);
       }
     }
-    return this.getFromMemory(key);
+    return memoryGet(key);
   },
 
-  getFromMemory(key) {
-    const expiry = memoryExpiry.get(key);
-    if (expiry && Date.now() > expiry) {
-      this.deleteFromMemory(key);
-      return null;
-    }
-    return memoryCache.get(key);
-  },
-
-  /**
-   * Set value in cache
-   */
   async set(key, value, ttlSeconds = 300) {
-    // Basic validation to prevent saving circular structures or huge payloads
-    const cleanValue = typeof value === 'object' ? value : { data: value };
-    
+    const cleanValue = typeof value === 'object' && value !== null ? value : { data: value };
+
+    const redis = getClient();
     if (redis) {
       try {
         await redis.set(key, JSON.stringify(cleanValue), 'EX', ttlSeconds);
         return;
       } catch (err) {
-        console.error('[Cache] Redis Set Error:', err.message);
+        console.error('[Cache] Redis SET failed, falling back to memory:', err.message);
       }
     }
-    
-    // Memory Cache
-    memoryCache.set(key, cleanValue);
-    memoryExpiry.set(key, Date.now() + (ttlSeconds * 1000));
+    memorySet(key, cleanValue, ttlSeconds);
   },
 
-  /**
-   * Delete specific key
-   */
   async delete(key) {
+    const redis = getClient();
     if (redis) {
       try {
         await redis.del(key);
       } catch (err) {
-        console.error('[Cache] Redis Del Error:', err.message);
+        console.error('[Cache] Redis DEL failed:', err.message);
       }
     }
-    this.deleteFromMemory(key);
-  },
-
-  deleteFromMemory(key) {
-    memoryCache.delete(key);
-    memoryExpiry.delete(key);
+    memoryStore.delete(key);
   },
 
   /**
-   * Clear everything (Maintenance)
+   * Delete every key matching a glob pattern, e.g. `trends:<userId>:*`.
+   * Uses SCAN (cursor-based, non-blocking) rather than KEYS, which blocks the
+   * Redis server for the duration of a full keyspace walk.
    */
-  async clear() {
+  async deletePattern(pattern) {
+    const redis = getClient();
     if (redis) {
       try {
-        await redis.flushall();
+        let cursor = '0';
+        do {
+          const [next, keys] = await redis.scan(cursor, 'MATCH', pattern, 'COUNT', 100);
+          cursor = next;
+          if (keys.length) await redis.del(...keys);
+        } while (cursor !== '0');
       } catch (err) {
-        console.error('[Cache] Redis Flush Error:', err.message);
+        console.error('[Cache] Redis SCAN/DEL failed:', err.message);
       }
     }
-    memoryCache.clear();
-    memoryExpiry.clear();
+
+    // Mirror the deletion in the memory store.
+    const re = new RegExp('^' + pattern.split('*').map(s =>
+      s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('.*') + '$');
+    for (const key of memoryStore.keys()) {
+      if (re.test(key)) memoryStore.delete(key);
+    }
   },
 
   /**
-   * Helper for Dashboard Aggregations
+   * Clear this application's cached entries.
+   *
+   * Deliberately NOT redis.flushall(): that wipes the entire Redis database,
+   * including rate-limit counters and anything else sharing the instance.
    */
+  async clear(pattern = '*') {
+    await this.deletePattern(pattern);
+    memoryStore.clear();
+  },
+
   async getOrSet(key, fetchFn, ttl = 120) {
     const cached = await this.get(key);
-    if (cached) return cached;
-    
+    if (cached !== null && cached !== undefined) return cached;
+
     const freshData = await fetchFn();
-    if (freshData) {
-      await this.set(key, freshData, ttl);
-    }
+    if (freshData) await this.set(key, freshData, ttl);
     return freshData;
-  }
+  },
+
+  stats() {
+    return {
+      redisConfigured: isConfigured(),
+      redisHealthy: getClient() !== null,
+      memoryEntries: memoryStore.size,
+      memoryMaxEntries: MAX_MEMORY_ENTRIES,
+    };
+  },
 };
 
-// Periodic Memory Cleanup (Memory safety for non-Redis mode)
+// Periodic sweep of expired memory entries. The LRU cap above is the real bound;
+// this just releases memory sooner for keys nobody reads again.
 setInterval(() => {
   const now = Date.now();
-  for (const [key, expiry] of memoryExpiry.entries()) {
-    if (now > expiry) {
-      memoryCache.delete(key);
-      memoryExpiry.delete(key);
-    }
+  for (const [key, hit] of memoryStore.entries()) {
+    if (now > hit.expiresAt) memoryStore.delete(key);
   }
-}, 10 * 60 * 1000); // Every 10 mins
+}, 10 * 60 * 1000).unref();
 
 module.exports = cache;

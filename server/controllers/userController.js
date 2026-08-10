@@ -4,7 +4,7 @@ const dietRecommendationAI = require('../services/dietRecommendationAI');
 // Get user food preferences
 exports.getFoodPreferences = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id).select('foodPreferences');
+    const user = await User.findById(req.user._id).select('foodPreferences');
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
@@ -28,12 +28,12 @@ exports.getFoodPreferences = async (req, res) => {
 exports.saveFoodPreferences = async (req, res) => {
   try {
     const { preferredFoods, foodsToAvoid, dietaryRestrictions, mealPreferences } = req.body;
-    console.log('[UserPrefs] Saving for user:', req.user.id, { 
+    console.log('[UserPrefs] Saving for user:', req.user._id, { 
       prefCount: preferredFoods?.length, 
       mealPrefKeys: Object.keys(mealPreferences || {}) 
     });
 
-    const user = await User.findById(req.user.id);
+    const user = await User.findById(req.user._id);
 
     if (!user) {
       return res.status(404).json({ success: false, message: 'User not found' });
@@ -56,7 +56,7 @@ exports.saveFoodPreferences = async (req, res) => {
     
     user.markModified('foodPreferences');
     await user.save();
-    console.log('[UserPrefs] Successfully saved for user:', req.user.id);
+    console.log('[UserPrefs] Successfully saved for user:', req.user._id);
 
     res.json({
       success: true,
@@ -72,7 +72,7 @@ exports.saveFoodPreferences = async (req, res) => {
 // Analyze user food choices with AI
 exports.analyzeFoodChoices = async (req, res) => {
   try {
-    const user = await User.findById(req.user.id)
+    const user = await User.findById(req.user._id)
       .select('foodPreferences profile nutritionGoal');
 
     if (!user) {

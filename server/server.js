@@ -1,16 +1,21 @@
-const express = require("express");
-const cors = require("cors");
-const dotenv = require("dotenv");
-const mongoose = require("mongoose");
-const connectDB = require("./config/db");
-const fs = require("fs");
+// .env MUST be loaded before any local module is required. Modules such as
+// config/env and config/db read process.env at import time, so requiring them
+// first made every .env-supplied value (NODE_ENV included) invisible to them.
 const path = require("path");
-const helmet = require("helmet");
-const mongoSanitize = require("express-mongo-sanitize");
-const compression = require("compression");
+const dotenv = require("dotenv");
 
 dotenv.config(); // Works for local dev (CWD = server/)
 dotenv.config({ path: path.join(__dirname, ".env") }); // Works for Railway (CWD = repo root)
+
+const express = require("express");
+const cors = require("cors");
+const mongoose = require("mongoose");
+const fs = require("fs");
+const helmet = require("helmet");
+const mongoSanitize = require("express-mongo-sanitize");
+const compression = require("compression");
+const { isProduction } = require("./config/env");
+const connectDB = require("./config/db");
 
 // Create uploads dir (skip on Vercel - uses memory/cloudinary)
 if (!process.env.VERCEL) {
@@ -74,50 +79,90 @@ app.use(compression());
 // Strip $ and . from req.body/query/params — blocks MongoDB operator injection
 app.use(mongoSanitize());
 
+
+const ALLOWED_ORIGINS = [
+  ...(process.env.ALLOWED_ORIGINS || "").split(","),
+  process.env.CLIENT_URL || "",
+]
+  .map((s) => s.trim())
+  .filter(Boolean);
+
+const hostnameOf = (value) => {
+  try {
+    return new URL(value.includes("://") ? value : `https://${value}`).hostname;
+  } catch {
+    return null;
+  }
+};
+
+function isAllowedOrigin(origin) {
+  const host = hostnameOf(origin);
+  if (!host) return false;
+
+  return ALLOWED_ORIGINS.some((entry) => {
+    if (entry.startsWith("*.")) {
+      const base = entry.slice(2).toLowerCase();
+      return host === base || host.toLowerCase().endsWith(`.${base}`);
+    }
+    const entryHost = hostnameOf(entry);
+    return !!entryHost && entryHost.toLowerCase() === host.toLowerCase();
+  });
+}
+
+const isLocalOrigin = (origin) =>
+  /^https?:\/\/(localhost|127\.0\.0\.1|\[::1\]|192\.168\.\d+\.\d+)(:\d+)?$/.test(origin);
+
+let warnedOpenCors = false;
+
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (mobile apps, curl, etc)
+      // No Origin header: same-origin, mobile apps, curl, server-to-server.
       if (!origin) return callback(null, true);
-      // Allow all localhost origins for development
-      if (
-        origin.includes("localhost") ||
-        origin.includes("127.0.0.1") ||
-        origin.includes("192.168.")
-      ) {
+
+      if (!isProduction && isLocalOrigin(origin)) return callback(null, true);
+
+      if (ALLOWED_ORIGINS.length === 0) {
+        if (!warnedOpenCors) {
+          warnedOpenCors = true;
+          console.warn(
+            "⚠️  [CORS] ALLOWED_ORIGINS is not set — every origin is accepted. " +
+              "Set it (comma-separated) to restrict access.",
+          );
+        }
         return callback(null, true);
       }
-      // Allow Vercel frontend domains
-      if (
-        origin.includes(".vercel.app") ||
-        origin.includes("takehealth") ||
-        origin.includes("healthcare")
-      ) {
-        return callback(null, true);
-      }
-      // Allow any origin set in CLIENT_URL env var
-      if (
-        process.env.CLIENT_URL &&
-        origin.includes(new URL(process.env.CLIENT_URL).hostname)
-      ) {
-        return callback(null, true);
-      }
-      // Default: allow all (for now)
-      callback(null, true);
+
+      if (isAllowedOrigin(origin)) return callback(null, true);
+
+      console.warn(`[CORS] Rejected origin: ${origin}`);
+      return callback(new Error("Not allowed by CORS"));
     },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
     allowedHeaders: ["Content-Type", "Authorization"],
   }),
 );
-app.use(express.json({
-  limit: "50mb",
-  // Capture exact raw bytes for webhook signature verification (QStash, etc.) —
-  // re-serializing req.body with JSON.stringify can produce a different string
-  // than what was actually sent (e.g. empty body becomes "{}"), breaking signatures.
-  verify: (req, res, buf) => { req.rawBody = buf.toString('utf8'); },
-}));
-app.use(express.urlencoded({ limit: "50mb", extended: true }));
+// Capture exact raw bytes for webhook signature verification (QStash, etc.) —
+// re-serializing req.body with JSON.stringify can produce a different string
+// than what was actually sent (e.g. empty body becomes "{}"), breaking signatures.
+const captureRawBody = (req, res, buf) => { req.rawBody = buf.toString("utf8"); };
+
+// A 50mb limit applied to *every* endpoint means a handful of concurrent large
+// bodies can exhaust a 512MB instance. Only the food-analysis endpoints legitimately
+// receive big payloads (base64-encoded photos, which inflate ~33% over the raw
+// image), so they get headroom and everything else is capped. These are mounted
+// first — whichever json parser runs first owns the body.
+const IMAGE_JSON_ROUTES = [
+  "/api/nutrition/analyze-food",
+  "/api/nutrition/quick-check",
+  "/nutrition/analyze-food", // Vercel mounts routes without the /api prefix too
+  "/nutrition/quick-check",
+];
+app.use(IMAGE_JSON_ROUTES, express.json({ limit: "15mb", verify: captureRawBody }));
+
+app.use(express.json({ limit: "2mb", verify: captureRawBody }));
+app.use(express.urlencoded({ limit: "2mb", extended: true }));
 
 if (!process.env.VERCEL) {
   const uploadsDir = path.join(__dirname, "uploads");
@@ -244,12 +289,17 @@ app.get("/api/health-check", async (req, res) => {
 app.get(["/", "/docs"], (req, res) => res.redirect("/api-docs"));
 
 // 🛠️ Global Request Logger (For Debugging 404s)
-app.use((req, res, next) => {
-  console.log(
-    `[Incoming Request] ${req.method} ${req.path} | Host: ${req.headers.host}`,
-  );
-  next();
-});
+// Off in production: this fired on every request, and stdout on a hosted
+// platform is a pipe that applies backpressure once it's busy — so a debug aid
+// turns into per-request latency. Set DEBUG_HTTP=true to switch it back on.
+if (!isProduction || process.env.DEBUG_HTTP === "true") {
+  app.use((req, res, next) => {
+    console.log(
+      `[Incoming Request] ${req.method} ${req.path} | Host: ${req.headers.host}`,
+    );
+    next();
+  });
+}
 
 // 🔍 Direct Debug Routes (Bypass all routers/auth)
 app.get("/api/ping", (req, res) =>
@@ -257,9 +307,11 @@ app.get("/api/ping", (req, res) =>
 );
 // 🛡️ Admin Deep-Trace (Releasing trap into the router)
 app.use("/api/admin", (req, res, next) => {
-  console.log(
-    `[Admin Trace Stage 1] Request: ${req.method} ${req.originalUrl}`,
-  );
+  if (!isProduction || process.env.DEBUG_HTTP === "true") {
+    console.log(
+      `[Admin Trace Stage 1] Request: ${req.method} ${req.originalUrl}`,
+    );
+  }
   // If it's a diagnostic ping, just handle it here to keep it simple
   if (req.path === "/ping" || req.path === "/ping-internal") {
     return res.json({
@@ -309,6 +361,7 @@ try {
     { path: "/api/documents", module: "./routes/documentRoutes" },
     { path: "/api/privacy",   module: "./routes/privacyRoutes" },
     { path: "/api/activity", module: "./routes/activityRoutes" },
+    { path: "/api/insights", module: "./routes/insightRoutes" },
     { path: "/api/support", module: "./routes/supportRoutes" },
     { path: "/api/subscription", module: "./routes/subscriptionRoutes" },
     { path: "/", module: "./routes/fastrrRoutes" }, // Fastrr scaffolding: /shiprocket/*, /api/checkout/start, /api/fastrr/webhook
@@ -346,10 +399,19 @@ app.use((err, req, res, next) => {
   } else {
     console.error("[Server Error Handler]:", err.message);
   }
-  res.status(err.status || 500).json({
-    message: err.message || "Something went wrong!",
+  const status = err.status || err.statusCode || 500;
+
+  // 4xx messages describe what the caller did wrong and are safe (and useful)
+  // to return. 5xx messages are internal — driver errors, stack-derived text,
+  // connection strings — and used to be sent to the client verbatim.
+  const safeMessage = status < 500
+    ? err.message || "Request could not be processed"
+    : "Something went wrong. Please try again.";
+
+  res.status(status).json({
+    message: isProduction ? safeMessage : err.message || "Something went wrong!",
     path: req.originalUrl,
-    error: process.env.NODE_ENV === "development" ? err.stack : undefined,
+    error: isProduction ? undefined : err.stack,
   });
 });
 
@@ -417,6 +479,17 @@ if (!process.env.VERCEL) {
     await runNudgeCron();
   });
 
+  // Daily Insights — 11:59 PM IST, the last moment of the day being analysed.
+  // Writes tomorrow-dated rows so the user opens the app to a fresh "yesterday
+  // you did X, today try Y" pair. Explicitly pinned to Asia/Kolkata: the host
+  // runs on UTC, where 11:59 PM would land at 5:29 AM IST and analyse the
+  // wrong day. See services/dailyInsightService.js.
+  const { runDailyInsightCron } = require("./services/dailyInsightService");
+  cron.schedule("59 23 * * *", async () => {
+    console.log("💡 Running Daily Insight generation cron...");
+    await runDailyInsightCron();
+  }, { timezone: "Asia/Kolkata" });
+
   // Streak Loss Warning — every night at 8 PM
   cron.schedule("0 20 * * *", async () => {
     console.log("🔥 Running streak loss warning cron...");
@@ -448,24 +521,34 @@ if (!process.env.VERCEL) {
 
       const toWarn = activeUserIds.filter(id => !loggedTodaySet.has(id.toString()));
 
+      // Process in bounded-concurrency batches rather than one user at a time.
+      // The previous loop awaited a streak query, an FCM send AND a fixed 100ms
+      // sleep per user in sequence — so the run took at least 100ms × users,
+      // several minutes once the user base grew, all while holding a Mongo
+      // connection. Batching keeps FCM from being hammered without serialising
+      // the whole job.
+      const BATCH = 20;
       let warned = 0;
-      for (const userId of toWarn) {
-        try {
-          const streak = await gamificationService.getCurrentStreak(userId);
-          if (streak < 3) continue; // Only warn if streak worth saving (3+ days)
 
-          await sendToUser(userId, {
-            title: "🔥 Don't break your streak!",
-            body: `You have a ${streak}-day streak! Log any activity today before midnight to keep it alive.`,
-            data: { type: "streak_warning", screen: "dashboard" }
-          });
-          warned++;
+      for (let i = 0; i < toWarn.length; i += BATCH) {
+        const batch = toWarn.slice(i, i + BATCH);
+        const results = await Promise.all(batch.map(async (userId) => {
+          try {
+            const streak = await gamificationService.getCurrentStreak(userId);
+            if (streak < 3) return 0; // Only warn if streak worth saving (3+ days)
 
-          // Small delay to avoid hammering FCM
-          await new Promise(r => setTimeout(r, 100));
-        } catch (err) {
-          console.error(`Streak warning failed for user ${userId}:`, err.message);
-        }
+            await sendToUser(userId, {
+              title: "🔥 Don't break your streak!",
+              body: `You have a ${streak}-day streak! Log any activity today before midnight to keep it alive.`,
+              data: { type: "streak_warning", screen: "dashboard" }
+            });
+            return 1;
+          } catch (err) {
+            console.error(`Streak warning failed for user ${userId}:`, err.message);
+            return 0;
+          }
+        }));
+        warned += results.reduce((a, b) => a + b, 0);
       }
 
       console.log(`✅ Streak warnings sent to ${warned} users`);

@@ -3,12 +3,12 @@ const router = express.Router();
 const ChatHistory = require('../models/ChatHistory');
 const { protect } = require('../middleware/auth');
 const chatHistoryService = require('../services/chatHistoryService');
-const { Receiver } = require('@upstash/qstash');
+const { verifyQStash } = require('../middleware/qstashAuth');
 
 function getAuthenticatedUserId(req) {
   if (!req?.user) return null;
   if (req.user._id) return req.user._id.toString();
-  if (req.user.id) return req.user.id.toString();
+  if (req.user._id) return req.user._id.toString();
   if (req.user.userId) return req.user.userId.toString();
   return null;
 }
@@ -111,20 +111,14 @@ router.post('/history', protect, async (req, res) => {
  * POST /api/queue/save-chat-history
  * QStash webhook - Persists chat to MongoDB (background task)
  */
-router.post('/queue/save-chat-history', async (req, res) => {
+router.post('/queue/save-chat-history', verifyQStash, async (req, res) => {
   try {
-    // Verify QStash signature
-    const receiver = new Receiver({
-      currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY,
-      nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY
-    });
-
-    const body = await receiver.verify({
-      signature: req.headers['upstash-signature'],
-      body: JSON.stringify(req.body)
-    });
-
-    const { userId, messages, version } = JSON.parse(body);
+    // Signature verification moved to verifyQStash, which checks req.rawBody.
+    // This previously verified against JSON.stringify(req.body) — re-serialising
+    // does not reproduce the exact bytes QStash signed (key order and formatting
+    // can differ), so valid deliveries failed verification and were retried until
+    // QStash gave up, silently losing chat-history writes.
+    const { userId, messages, version } = req.body;
 
     console.log(`📝 QStash Processing: Saving chat for ${userId} (v${version})`);
 

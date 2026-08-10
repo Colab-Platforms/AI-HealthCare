@@ -2,9 +2,12 @@ const express = require('express');
 const router = express.Router();
 const dietRecommendationController = require('../controllers/dietRecommendationController');
 const { protect } = require('../middleware/auth');
+const { verifyQStash } = require('../middleware/qstashAuth');
 
-// Background callback route (No Auth needed as it's called by QStash)
-router.post('/process-diet-bg', dietRecommendationController.processDietBG);
+// Background callback route — called by QStash, so no user session to `protect`.
+// Authenticated by signature instead; without it, anyone knowing the URL could
+// trigger diet generation (and AI spend) against any userId.
+router.post('/process-diet-bg', verifyQStash, dietRecommendationController.processDietBG);
 
 // All other routes require authentication
 router.use(protect);

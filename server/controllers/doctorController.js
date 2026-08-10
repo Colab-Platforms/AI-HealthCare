@@ -366,8 +366,13 @@ exports.getPatientProfile = async (req, res) => {
       .sort({ createdAt: -1 })
       .limit(10);
 
-    // Get wearable data
-    const wearableData = await WearableData.find({ user: patientId, isConnected: true });
+    // Get wearable data. Only these three arrays are read below, and heartRate
+    // is only ever used as .slice(-50) — so slice it server-side rather than
+    // transferring an unbounded sample history to average the tail of it.
+    const wearableData = await WearableData.find({ user: patientId, isConnected: true })
+      .select('dailyMetrics sleepData heartRate')
+      .slice('heartRate', -50)
+      .lean();
 
     // Get appointment history
     const appointmentHistory = await Appointment.find({ patient: patientId })

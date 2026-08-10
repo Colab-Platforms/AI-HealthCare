@@ -5,6 +5,8 @@ const MODEL_PRICING = {
     'claude-sonnet-4-6':       { input: 3.00,  output: 15.00, cacheRead: 0.30,  cacheWrite: 3.75 },
     'claude-haiku-4-5':        { input: 1.00,  output: 5.00,  cacheRead: 0.10,  cacheWrite: 1.25 },
     'claude-haiku-4-5-20251001': { input: 1.00, output: 5.00, cacheRead: 0.10,  cacheWrite: 1.25 },
+    // Retired/never-valid IDs. Kept only so historical UsageLog rows still price
+    // correctly — do not send either to the API.
     'claude-3-5-haiku-latest': { input: 1.00,  output: 5.00,  cacheRead: 0.10,  cacheWrite: 1.25 },
     'claude-4-haiku-latest':   { input: 1.00,  output: 5.00,  cacheRead: 0.10,  cacheWrite: 1.25 },
     'claude-opus-4-8':         { input: 5.00,  output: 25.00, cacheRead: 0.50,  cacheWrite: 6.25 },
@@ -13,7 +15,13 @@ const MODEL_PRICING = {
     'google/gemini-2.5-flash-lite': { input: 0.10, output: 0.40, cacheRead: 0.025, cacheWrite: 0 },
 };
 
+const FREE_PRICING = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+
 const calcCost = (model, inputTokens, outputTokens, cacheReadTokens = 0, cacheWriteTokens = 0) => {
+    // OpenRouter marks zero-cost variants with a ':free' suffix. Matching on the
+    // suffix (instead of listing every slug) keeps cost totals honest when the
+    // free-model chain in openrouterAI.js changes.
+    if (typeof model === 'string' && model.endsWith(':free')) return 0;
     const pricing = MODEL_PRICING[model] || { input: 3.00, output: 15.00, cacheRead: 0.30, cacheWrite: 3.75 };
     return (
         (inputTokens      * pricing.input      / 1_000_000) +
@@ -29,7 +37,8 @@ const usageLogSchema = new mongoose.Schema({
         'validate_report', 'analyze_report', 'reanalyze_report',
         'ai_chat', 'chat_about_report', 'metric_info',
         'compare_reports', 'health_dna', 'vitals_insights',
-        'diet_plan', 'translate', 'nutrition_analysis', 'other'
+        'diet_plan', 'translate', 'nutrition_analysis',
+        'daily_insight_activity', 'daily_insight_medical', 'other'
     ]},
     model:             { type: String, required: true },
     inputTokens:       { type: Number, default: 0 },

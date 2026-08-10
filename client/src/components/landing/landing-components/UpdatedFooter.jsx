@@ -22,6 +22,8 @@ const UpdatedFooter = () => {
         { label: "Home", to: "/" },
         { label: "About us", to: "/about" },
         { label: "How it works", to: "/how-it-works" },
+        { label: "Diabetes Management", to: "/diabetes-landing" },
+        { label: "Weight Management", to: "/weight-loss" },
       ],
     },
     {

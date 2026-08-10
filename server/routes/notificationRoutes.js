@@ -11,7 +11,7 @@ const {
     deregisterFCMToken
 } = require('../controllers/notificationController');
 const { protect } = require('../middleware/auth');
-const { Receiver } = require('@upstash/qstash');
+const { verifyQStash } = require('../middleware/qstashAuth');
 const notificationService = require('../services/notificationService');
 
 /**
@@ -19,22 +19,14 @@ const notificationService = require('../services/notificationService');
  * Called by an Upstash QStash Schedule every few minutes (production/serverless).
  * Not user-authenticated — verified via QStash signature instead.
  */
-router.post('/cron-tick', async (req, res) => {
+router.post('/cron-tick', verifyQStash, async (req, res) => {
     try {
-        const receiver = new Receiver({
-            currentSigningKey: process.env.QSTASH_CURRENT_SIGNING_KEY,
-            nextSigningKey: process.env.QSTASH_NEXT_SIGNING_KEY
-        });
-        await receiver.verify({
-            signature: req.headers['upstash-signature'],
-            body: req.rawBody ?? ''
-        });
-
         await notificationService.checkAndSendUserNotifications();
         res.json({ success: true });
     } catch (error) {
         console.error('Notification cron-tick error:', error.message);
-        // Non-200 so QStash retries
+        // Non-200 so QStash retries. Signature failures are handled by
+        // verifyQStash with a 401, which QStash correctly does not retry.
         res.status(500).json({ success: false, error: error.message });
     }
 });

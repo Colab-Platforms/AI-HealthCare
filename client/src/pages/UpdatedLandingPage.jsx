@@ -11,10 +11,18 @@ import UpdatedFAQs from "../components/landing/landing-components/UpdatedFAQs";
 import UpdatedFooter from "../components/landing/landing-components/UpdatedFooter";
 
 // ─── IntersectionObserver Lazy Section Wrapper ──────────────────────────────
-const LazySection = ({ children, minHeight = "300px", rootMargin = "300px 0px" }) => {
+// `id` goes on the wrapper rather than the lazily-rendered children so anchor
+// links have something to target: until the observer fires, `children` (and any
+// id inside them) simply isn't in the DOM.
+const LazySection = ({ children, id, className, minHeight = "300px", rootMargin = "300px 0px" }) => {
   const [ref, hasEntered] = useInViewport(rootMargin);
   return (
-    <div ref={ref} style={{ minHeight: hasEntered ? undefined : minHeight }}>
+    <div
+      id={id}
+      ref={ref}
+      className={className}
+      style={{ minHeight: hasEntered ? undefined : minHeight }}
+    >
       {hasEntered && children}
     </div>
   );
@@ -70,8 +78,9 @@ const UpdatedLandingPage = () => {
         </LazySection>
 
         {/* SECTION 7: FREQUENTLY ASKED QUESTIONS (FAQS) */}
-        <LazySection minHeight="400px">
-          <section id="faqs-section" className="w-full">
+        {/* scroll-mt clears the fixed navbar so the heading isn't hidden under it */}
+        <LazySection id="faqs-section" className="scroll-mt-16 sm:scroll-mt-20" minHeight="400px">
+          <section className="w-full">
             <UpdatedFAQs />
           </section>
         </LazySection>

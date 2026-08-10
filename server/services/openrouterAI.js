@@ -10,6 +10,16 @@ const MODELS = {
   GEMINI_FLASH_LITE: 'google/gemini-2.5-flash-lite',
 };
 
+
+const FREE_MODELS = (process.env.OPENROUTER_FREE_MODELS || [
+  'nvidia/nemotron-3-super-120b-a12b:free',
+  'google/gemma-4-31b-it:free',
+  'nvidia/nemotron-nano-9b-v2:free',
+].join(','))
+  .split(',')
+  .map((s) => s.trim())
+  .filter(Boolean);
+
 const getApiKey = () => {
   const key = process.env.OPENROUTER_API_KEY;
   if (!key) throw new Error('OPENROUTER_API_KEY missing');
@@ -24,11 +34,7 @@ const buildImagePart = (base64Data, mediaType = 'image/jpeg') => {
 
 const buildTextPart = (text) => ({ type: 'text', text });
 
-/**
- * Low-level chat completion call against OpenRouter.
- * `messages` must already be in OpenAI chat format: [{ role: 'user'|'assistant', content: string | Array<part> }]
- * Do NOT include a system message in `messages` — pass it via `system` instead.
- */
+
 const chatCompletion = async ({
   model,
   system = '',
@@ -111,6 +117,27 @@ const chatCompletion = async ({
   }
 };
 
+/**
+ * chatCompletion over a list of models, falling through to the next one on any
+ * failure (rate limit, retired slug, empty body). Returns { text, model } so the
+ * caller can record which model actually answered. Throws only if every model fails.
+ */
+const chatCompletionWithFallback = async ({ models = FREE_MODELS, ...opts }) => {
+  if (!models.length) throw new Error('chatCompletionWithFallback requires at least one model');
+
+  let lastError;
+  for (const model of models) {
+    try {
+      const text = await chatCompletion({ model, ...opts });
+      return { text, model };
+    } catch (err) {
+      lastError = err;
+      console.warn(`⚠️ [OpenRouterAI] Model ${model} failed (${err.message}) — trying next in chain.`);
+    }
+  }
+  throw new Error(`All models failed. Last error: ${lastError.message}`);
+};
+
 // Extracts and parses the JSON object embedded in a model's text response.
 const parseJsonResponse = (text) => {
   if (!text) throw new Error('Empty AI response from server');
@@ -134,7 +161,9 @@ const parseJsonResponse = (text) => {
 
 module.exports = {
   MODELS,
+  FREE_MODELS,
   chatCompletion,
+  chatCompletionWithFallback,
   buildImagePart,
   buildTextPart,
   parseJsonResponse,

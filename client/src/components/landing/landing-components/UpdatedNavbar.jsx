@@ -1,13 +1,31 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link, useLocation } from "react-router-dom";
+import { Link, useLocation, useNavigate } from "react-router-dom";
 
+// `hash` marks an in-page target rather than a route. It needs handling by hand:
+// React Router never scrolls to a hash on its own, and App.jsx runs
+// window.scrollTo(0, 0) on every route change, which would undo it anyway.
 const navLinks = [
   { label: "ABOUT US", to: "/about" },
   { label: "DIABETES MANAGEMENT", to: "/diabetes-landing" },
   { label: "WEIGHT MANAGEMENT", to: "/weight-loss" },
   { label: "HOW IT WORKS", to: "/how-it-works" },
-  { label: "FAQ", to: "#faqs-section" },
+  { label: "FAQ", to: "/", hash: "faqs-section" },
 ];
+
+// The target may not be mounted yet — arriving from another page means waiting
+// on the route chunk, and the landing page's sections render lazily on scroll.
+// Poll briefly rather than failing on the first miss.
+const scrollToSection = (id, deadline = Date.now() + 3000) => {
+  const el = document.getElementById(id);
+  if (!el) {
+    if (Date.now() < deadline) setTimeout(() => scrollToSection(id, deadline), 100);
+    return;
+  }
+  el.scrollIntoView({ behavior: "smooth" });
+  // Sections above this one mount as they scroll past, growing the page and
+  // pulling the target away mid-flight — correct once the motion has settled.
+  setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }), 700);
+};
 
 const UpdatedNavbar = () => {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -15,6 +33,22 @@ const UpdatedNavbar = () => {
   const [scrolled, setScrolled] = useState(false);
   const lastScrollY = useRef(0);
   const { pathname } = useLocation();
+  const navigate = useNavigate();
+
+  const handleNavClick = (e, link) => {
+    if (!link.hash) return; // ordinary route links keep their default behaviour
+    e.preventDefault();
+    setMobileMenuOpen(false);
+
+    if (pathname === link.to) {
+      scrollToSection(link.hash);
+    } else {
+      navigate(link.to);
+      // Let the route commit (and App.jsx's scroll-to-top fire) before scrolling.
+      setTimeout(() => scrollToSection(link.hash), 100);
+    }
+  };
+
   const isHomePage = pathname === "/";
   const isLight = isHomePage || !scrolled;
 
@@ -70,6 +104,7 @@ const UpdatedNavbar = () => {
             <Link
               key={idx}
               to={link.to}
+              onClick={(e) => handleNavClick(e, link)}
               className={`text-xs xl:text-sm font-semibold tracking-wider uppercase transition-colors ${
                 isLight
                   ? "text-white/90 hover:text-white"
@@ -149,7 +184,10 @@ const UpdatedNavbar = () => {
             <Link
               key={idx}
               to={link.to}
-              onClick={() => setMobileMenuOpen(false)}
+              onClick={(e) => {
+                setMobileMenuOpen(false);
+                handleNavClick(e, link);
+              }}
               className={`text-sm font-semibold tracking-wider uppercase py-1 ${
                 isLight
                   ? "text-white/90 hover:text-white"

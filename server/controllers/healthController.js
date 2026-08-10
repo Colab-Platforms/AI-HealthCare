@@ -5,11 +5,12 @@ const User = require('../models/User');
 const Doctor = require('../models/Doctor');
 const HealthGoal = require('../models/HealthGoal');
 const { analyzeHealthReport, chatAboutReport, chatWithReport, generateMetricInfo, generateVitalsInsights } = require('../services/aiService');
-const pdfParse = require('pdf-parse');
+const { extractPdfText } = require('../utils/pdfExtract');
 const fs = require('fs');
 const NutritionSummary = require('../models/NutritionSummary');
 const DailyProgress = require('../models/DailyProgress');
 const cache = require('../utils/cache');
+const { invalidateUserHealthCache } = require('../utils/cacheKeys');
 const cloudinary = require('../services/cloudinary');
 const emailService = require('../services/emailService');
 const queueService = require('../services/queueService');
@@ -18,6 +19,7 @@ const HealthMetric = require('../models/HealthMetric');
 const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
 const { logActivity } = require('../utils/activityLogger');
 const { inferCategory } = require('../utils/reportCategory');
+const { normalizeMetrics, canonicalMetricName } = require('../utils/metricNormalizer');
 const {
   sanitizeAlcoholLog,
   toPlainAlcoholLog,
@@ -56,6 +58,17 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
       }
     }
 
+    // Deferred PDF text extraction — moved here from uploadReport so the CPU
+    // cost lands in background processing instead of the user's request. Runs
+    // on a worker thread; resolves to '' on failure, in which case
+    // analyzeHealthReport falls back to AI vision/OCR exactly as before.
+    if (!extractedText && fileMimetype === 'application/pdf' && dataBuffer) {
+      extractedText = await extractPdfText(dataBuffer);
+      if (extractedText) {
+        await HealthReport.updateOne({ _id: reportId }, { $set: { extractedText } });
+      }
+    }
+
     aiAnalysis = await analyzeHealthReport(extractedText, userDoc, {
       buffer: dataBuffer,
       mimetype: fileMimetype
@@ -67,6 +80,8 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
 
     const updatedReport = await HealthReport.findById(reportId);
     if (!updatedReport) return;
+
+    aiAnalysis.metrics = normalizeMetrics(aiAnalysis.metrics);
 
     updatedReport.aiAnalysis = aiAnalysis;
     updatedReport.status = 'completed';
@@ -84,24 +99,34 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
       updatedReport.reportType = aiAnalysis.documentType.trim();
     }
 
-    // Metadata extraction
-    if (aiAnalysis.reportDate) {
-      try { updatedReport.reportDate = new Date(aiAnalysis.reportDate); }
-      catch (e) { updatedReport.reportDate = new Date(); }
-    } else { updatedReport.reportDate = new Date(); }
+    // Metadata extraction.
+    // `new Date('not a date')` returns Invalid Date rather than throwing, so a
+    // try/catch here never fires — the bad value instead reached save() as a
+    // cast error and took the whole analysis down with it. Check explicitly.
+    const parsedReportDate = aiAnalysis.reportDate ? new Date(aiAnalysis.reportDate) : null;
+    if (parsedReportDate && !Number.isNaN(parsedReportDate.getTime())) {
+      updatedReport.reportDate = parsedReportDate;
+    } else {
+      if (aiAnalysis.reportDate) {
+        console.warn(`[BG] Unparseable reportDate from AI: ${JSON.stringify(aiAnalysis.reportDate)} — falling back to now.`);
+      }
+      updatedReport.reportDate = new Date();
+    }
 
-    if (aiAnalysis.patientName) updatedReport.patientName = aiAnalysis.patientName.trim();
-    if (aiAnalysis.patientAge) updatedReport.patientAge = Number(aiAnalysis.patientAge);
-    if (aiAnalysis.patientGender) updatedReport.patientGender = aiAnalysis.patientGender.trim();
+    if (aiAnalysis.patientName) updatedReport.patientName = String(aiAnalysis.patientName).trim();
+    const parsedAge = Number(aiAnalysis.patientAge);
+    if (Number.isFinite(parsedAge) && parsedAge > 0 && parsedAge < 130) updatedReport.patientAge = parsedAge;
+    if (aiAnalysis.patientGender) updatedReport.patientGender = String(aiAnalysis.patientGender).trim();
 
     updatedReport.markModified('aiAnalysis');
     await updatedReport.save();
     console.log(`[BG] Report saved. Metrics count: ${Object.keys(aiAnalysis.metrics || {}).length}`);
 
-    // Invalidate caches
-    await cache.delete(`reports:${userId}`);
-    await cache.delete(`dashboard:${userId}`);
-    await cache.delete(`trends:${userId}:all`);
+    // Invalidate every view derived from this user's reports. Previously only
+    // `trends:<id>:all` was cleared, leaving per-reportType trend entries stale,
+    // and health_dna (cached for 24h) was never invalidated at all — so a new
+    // report didn't change the user's Health DNA until the next day.
+    await invalidateUserHealthCache(userId);
 
     // Instant Report Score — recompute the composite Long-Term Health Score
     // the moment analysis finishes, so the user sees an updated number
@@ -116,21 +141,72 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
       });
     }
 
-    // Auto-Comparison
+    // Auto-Comparison.
+    //
+    // This used to match the previous report on an exact `reportType` string —
+    // but `reportType` is overwritten a few lines above with the AI-detected
+    // `documentType`, which drifts freely between uploads of the SAME panel
+    // ("Essential Health Check Panel" / "Health Checkup" / "Blood Test"). The
+    // lookup therefore almost never matched and comparisons silently never
+    // fired. Match on the stable `category` enum instead, then pick the
+    // candidate that actually shares the most markers.
     try {
-      const prev = await HealthReport.findOne({
+      const candidates = await HealthReport.find({
         user: userId,
-        reportType: updatedReport.reportType,
+        category: updatedReport.category,
         _id: { $ne: reportId },
         status: 'completed',
         createdAt: { $lt: updatedReport.createdAt }
-      }).sort({ createdAt: -1 });
+      }).sort({ createdAt: -1 }).limit(20);
 
-      if (prev && prev.aiAnalysis) {
+      const currentMetrics = updatedReport.aiAnalysis?.metrics || {};
+      const currentKeys = new Set(Object.keys(currentMetrics).map(canonicalMetricName));
+
+      // Canonicalise both sides at read time so reports saved before metric
+      // normalisation existed still match.
+      let prev = null;
+      let sharedKeys = [];
+      for (const candidate of candidates) {
+        const keys = Object.keys(candidate.aiAnalysis?.metrics || {}).map(canonicalMetricName);
+        const shared = keys.filter(k => currentKeys.has(k));
+        if (shared.length > sharedKeys.length) {
+          prev = candidate;
+          sharedKeys = shared;
+        }
+      }
+
+      // Require real overlap — comparing a lipid panel against a thyroid panel
+      // because both are `lab_report` would be worse than not comparing at all.
+      if (prev && prev.aiAnalysis && sharedKeys.length >= 2) {
         const currentScore  = updatedReport.aiAnalysis?.healthScore || 0;
         const previousScore = prev.aiAnalysis?.healthScore || 0;
         const diff = currentScore - previousScore;
         const overallTrend = diff > 3 ? 'improving' : diff < -3 ? 'declining' : 'stable';
+
+        // Per-marker deltas, now that shared markers are reliably identifiable.
+        const prevMetrics = {};
+        for (const [rawName, metric] of Object.entries(prev.aiAnalysis?.metrics || {})) {
+          prevMetrics[canonicalMetricName(rawName)] = metric;
+        }
+
+        const metricChanges = [];
+        for (const key of sharedKeys) {
+          const currentValue  = Number(currentMetrics[key]?.value);
+          const previousValue = Number(prevMetrics[key]?.value);
+          if (!Number.isFinite(currentValue) || !Number.isFinite(previousValue)) continue;
+
+          const delta = currentValue - previousValue;
+          metricChanges.push({
+            name: key,
+            unit: currentMetrics[key]?.unit || prevMetrics[key]?.unit || '',
+            currentValue,
+            previousValue,
+            delta: Number(delta.toFixed(4)),
+            percentChange: previousValue !== 0 ? Number(((delta / Math.abs(previousValue)) * 100).toFixed(1)) : null,
+            currentStatus:  currentMetrics[key]?.status || null,
+            previousStatus: prevMetrics[key]?.status || null,
+          });
+        }
 
         updatedReport.comparison = {
           previousReportId:   prev._id,
@@ -140,9 +216,14 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
             scoreDiff:     diff,
             currentScore,
             previousScore,
+            sharedMetricCount: sharedKeys.length,
+            metricChanges,
           }
         };
         await updatedReport.save();
+        console.log(`[BG] Comparison vs ${prev._id} — ${sharedKeys.length} shared marker(s), ${metricChanges.length} with numeric deltas.`);
+      } else {
+        console.log(`[BG] No comparable previous report (best overlap: ${sharedKeys.length} marker(s)).`);
       }
     } catch (e) { console.warn('Comparison failed:', e.message); }
 
@@ -191,10 +272,25 @@ async function processReportInternal(userId, reportId, fileMimetype, extractedTe
   } catch (error) {
     console.error(`❌ [BG] Analysis failed for ${reportId}:`, error.message);
     const msg = String(error?.message || 'Analysis failed');
-    console.warn(`🗑️ [BG] Deleting failed report ${reportId}: ${msg}`);
-    await HealthReport.findByIdAndDelete(reportId);
-    await cache.delete(`reports:${userId}`);
-    await cache.delete(`dashboard:${userId}`);
+
+    // Only discard the report when the USER uploaded something that isn't a
+    // medical document. Every other failure (API overload, timeout, parse
+    // error, DB cast error) is ours, and deleting on those destroyed the
+    // user's upload — and orphaned the Cloudinary asset — for what is usually
+    // a transient blip. It also made the 'stuck in processing' recovery in
+    // getReportStatus unreachable, because the document was already gone.
+    if (error?.code === 'NOT_MEDICAL') {
+      console.warn(`🗑️ [BG] Discarding non-medical upload ${reportId}: ${msg}`);
+      await HealthReport.findByIdAndDelete(reportId);
+    } else {
+      console.warn(`⚠️ [BG] Marking report ${reportId} as failed (retryable): ${msg}`);
+      await HealthReport.findByIdAndUpdate(reportId, {
+        status: 'failed',
+        'aiAnalysis.summary': 'We could not finish analysing this report. Please try again from the report page.',
+      }).catch(e => console.error('[BG] Could not mark report failed:', e.message));
+    }
+
+    await invalidateUserHealthCache(userId);
   }
 }
 
@@ -240,20 +336,17 @@ exports.uploadReport = async (req, res) => {
   try {
     if (!req.file) return res.status(400).json({ message: 'No file uploaded' });
 
-    const dataBuffer = req.file.buffer || (req.file.path ? fs.readFileSync(req.file.path) : null);
+    const dataBuffer = req.file.buffer || (req.file.path ? await fs.promises.readFile(req.file.path) : null);
     let extractedText = '';
-    
-    if (req.file.mimetype === 'application/pdf') {
-      try {
-        const pdfData = await pdfParse(dataBuffer);
-        extractedText = pdfData.text;
-      } catch (e) {
-        console.warn('PDF Text extraction failed, relying on AI Vision/OCR:', e.message);
-        extractedText = '';
-      }
-    } else if (req.file.mimetype === 'text/plain') {
+
+    // PDF text extraction is deliberately NOT done here. It is CPU-bound and
+    // used to run inline, blocking the event loop — and therefore every other
+    // user's request — before this response was even sent. It now happens in
+    // processReportInternal (on a worker thread), which the client never waits
+    // on because the report is created with status 'processing'.
+    if (req.file.mimetype === 'text/plain') {
       extractedText = dataBuffer.toString('utf8');
-    } else {
+    } else if (req.file.mimetype !== 'application/pdf') {
       extractedText = req.body.manualText || '';
     }
 
@@ -319,14 +412,22 @@ exports.uploadReport = async (req, res) => {
     // Respond to client
     res.status(201).json({ report, backgroundProcessing: true, gamification: gamificationResult });
 
-    // Trigger analysis
-    const isVercel = !!(process.env.VERCEL || process.env.VERCEL_ID);
+    // Trigger analysis.
+    // Prefer the durable queue wherever it is configured — not just on Vercel.
+    // Previously this only enqueued when VERCEL was set, so on Render every
+    // upload ran the full AI analysis in-process via setImmediate (which is the
+    // same event loop, one tick later), competing with live request traffic.
     const protocol = req.protocol || 'https';
     const host = req.get('host');
     const baseUrl = `${protocol}://${host}`;
 
-    if (isVercel) {
-      await queueService.enqueueTask('process-report', {
+    const runInProcess = () => setImmediate(() =>
+      processReportInternal(req.user._id, report._id, req.file.mimetype, extractedText, dataBuffer)
+        .catch(err => console.error('[BG] processReportInternal failed:', err.message))
+    );
+
+    if (process.env.QSTASH_TOKEN) {
+      const queued = await queueService.enqueueTask('process-report', {
         userId: req.user._id,
         reportId: report._id,
         fileMimetype: req.file.mimetype,
@@ -334,8 +435,13 @@ exports.uploadReport = async (req, res) => {
         isPastReport,
         isPrescription
       }, baseUrl);
+      // Queue unavailable — degrade to in-process rather than losing the report.
+      if (!queued) {
+        console.warn('[Upload] QStash enqueue failed; processing in-process instead');
+        runInProcess();
+      }
     } else {
-      setImmediate(() => processReportInternal(req.user._id, report._id, req.file.mimetype, extractedText, dataBuffer, isPastReport, isPrescription));
+      runInProcess();
     }
 
   } catch (error) {
@@ -351,23 +457,30 @@ exports.getReports = async (req, res) => {
     if (cached) return res.json(cached);
 
     const reports = await withTimeout(
-      HealthReport.find({ user: req.user._id, status: { $ne: 'failed' } })
+      HealthReport.find({ user: req.user._id })
         .sort({ reportDate: -1, createdAt: -1 })
         .limit(100)
     );
-    
+
     // Add isAnalyzedReport flag for frontend (HealthReport documents are always analyzed)
     const reportsWithFlag = reports.map(r => ({
       ...r.toObject(),
       isAnalyzedReport: true
     }));
-    
+
+    // Failed reports are now retained rather than deleted (a transient AI error
+    // used to destroy the upload). They are surfaced in their own key so the
+    // existing lists keep exactly their previous contents — the UI can offer a
+    // retry against `failedReports` without any other view changing.
+    const succeeded = reportsWithFlag.filter(r => r.status !== 'failed');
+
     // Organize reports by type
     const organized = {
-      currentReports: reportsWithFlag.filter(r => !r.isPastReport && !r.isPrescription),
-      pastReports: reportsWithFlag.filter(r => r.isPastReport),
-      prescriptions: reportsWithFlag.filter(r => r.isPrescription),
-      all: reportsWithFlag
+      currentReports: succeeded.filter(r => !r.isPastReport && !r.isPrescription),
+      pastReports: succeeded.filter(r => r.isPastReport),
+      prescriptions: succeeded.filter(r => r.isPrescription),
+      failedReports: reportsWithFlag.filter(r => r.status === 'failed'),
+      all: succeeded
     };
 
     await cache.set(cacheKey, organized, 180);
@@ -517,8 +630,8 @@ exports.getHealthTrends = async (req, res) => {
     if (cached) {
       // If metric requested, filter from cached full payload
       if (metric && cached.metricTrends) {
-        const normalised = metric.toLowerCase().trim();
-        const key = Object.keys(cached.metricTrends).find(k => k.toLowerCase() === normalised);
+        const wanted = canonicalMetricName(metric);
+        const key = Object.keys(cached.metricTrends).find(k => canonicalMetricName(k) === wanted);
         return res.json({ metricTrend: key ? cached.metricTrends[key] : [], availableMetrics: cached.availableMetrics, healthScoreTrend: cached.healthScoreTrend });
       }
       return res.json(cached);
@@ -545,24 +658,29 @@ exports.getHealthTrends = async (req, res) => {
       reportType: r.reportType
     }));
 
-    // Collect all metric keys across all reports (case-insensitive dedup)
-    const metricKeyMap = {}; // normalised -> canonical display name
+    // Collect all metric keys across all reports, canonicalised.
+    //
+    // Lowercase-only dedup left "T S H Ultrasensitive" and "TSH" as two
+    // separate series, so a user's thyroid trend restarted whenever the lab's
+    // spelling shifted. Canonicalising at READ time (not just on write) means
+    // reports stored before metric normalisation existed also merge correctly,
+    // with no backfill migration required.
+    const canonicalKeys = new Set();
     reports.forEach(r => {
-      const metrics = r.aiAnalysis?.metrics || {};
-      Object.keys(metrics).forEach(k => {
-        const norm = k.toLowerCase().trim();
-        if (!metricKeyMap[norm]) metricKeyMap[norm] = k;
+      Object.keys(r.aiAnalysis?.metrics || {}).forEach(k => {
+        const canonical = canonicalMetricName(k);
+        if (canonical) canonicalKeys.add(canonical);
       });
     });
-    const availableMetrics = Object.values(metricKeyMap).sort();
+    const availableMetrics = [...canonicalKeys].sort();
 
     // Build per-metric time series
     const metricTrends = {};
-    Object.entries(metricKeyMap).forEach(([norm, canonical]) => {
+    canonicalKeys.forEach(canonical => {
       const series = [];
       reports.forEach(r => {
         const metrics = r.aiAnalysis?.metrics || {};
-        const matchKey = Object.keys(metrics).find(k => k.toLowerCase().trim() === norm);
+        const matchKey = Object.keys(metrics).find(k => canonicalMetricName(k) === canonical);
         if (matchKey) {
           const m = metrics[matchKey];
           series.push({
@@ -583,8 +701,8 @@ exports.getHealthTrends = async (req, res) => {
     await cache.set(cacheKey, payload, 5 * 60); // 5 min TTL
 
     if (metric) {
-      const normalised = metric.toLowerCase().trim();
-      const key = Object.keys(metricTrends).find(k => k.toLowerCase() === normalised);
+      const wanted = canonicalMetricName(metric);
+      const key = Object.keys(metricTrends).find(k => canonicalMetricName(k) === wanted);
       return res.json({ metricTrend: key ? metricTrends[key] : [], availableMetrics, healthScoreTrend });
     }
     res.json(payload);
@@ -641,7 +759,13 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
       NutritionSummary.findOne({ userId: reqUser._id, date: targetDate }).lean(),
       NutritionSummary.find({ userId: reqUser._id, date: { $gte: ninetyDaysAgo, $lte: targetDate } }).sort({ date: 1 }).lean(),
       User.findById(reqUser._id).select('alcoholLog smokeLog profile.lifestyle').lean(),
-      withTimeout(WearableData.find({ user: reqUser._id }).lean()),
+      // Project only what the history loop below reads. Without this we pulled
+      // whole wearable documents, including the heartRate / bloodOxygen /
+      // stressLevels arrays — which grow one entry per sample, forever, for any
+      // user with a connected device — just to read steps and sleep minutes.
+      withTimeout(WearableData.find({ user: reqUser._id })
+        .select('dailyMetrics.date dailyMetrics.steps sleepData.date sleepData.totalSleepMinutes')
+        .lean()),
       withTimeout(HealthMetric.find({ userId: reqUser._id, type: 'weight', recordedAt: { $gte: ninetyDaysAgo, $lte: targetDate } }).sort({ recordedAt: 1 }).lean()),
       HealthMetric.findOne({ userId: reqUser._id, type: 'blood_sugar' }).sort({ recordedAt: -1 }).lean(),
       HealthMetric.findOne({ userId: reqUser._id, type: 'hba1c' }).sort({ recordedAt: -1 }).lean(),
@@ -728,7 +852,8 @@ async function buildDashboardData(reqUser, userId, cacheKey) {
 
     const calorieGoal = reqUser.nutritionGoal?.calorieGoal || 2100;
     // Trim the user object sent to the frontend — strip password/version/internal fields
-    const { password, __v, ...trimmedUser } = reqUser.toObject();
+    // reqUser is already a plain object (protect uses .lean()), so no toObject().
+    const { password, __v, ...trimmedUser } = reqUser;
     const dashboardData = {
       user: trimmedUser,
       healthScores, latestAnalysis: latestReport?.aiAnalysis, latestReportId: latestReport?._id, processingReport, latestComparison,
@@ -757,7 +882,10 @@ exports.getMetricInfo = async (req, res) => {
 
     // Cache key by metric + status (value doesn't matter for the explanation)
     const cacheKey = `metricInfo:${metricName.toLowerCase().replace(/\s+/g, '_')}:${unit || 'na'}`;
-    const cached = cache.get(cacheKey);
+    // cache.get is async — without await this held a Promise, which is always
+    // truthy, so this endpoint returned `{ metricInfo: {} }` on every call and
+    // generateMetricInfo below was never reached.
+    const cached = await cache.get(cacheKey);
     if (cached) return res.json({ metricInfo: cached });
 
     const metricInfo = await generateMetricInfo(metricName, metricValue, normalRange, unit, {
@@ -765,7 +893,7 @@ exports.getMetricInfo = async (req, res) => {
     });
 
     // Cache for 7 days (604800s) — metric explanations don't change
-    if (metricInfo) cache.set(cacheKey, metricInfo, 604800);
+    if (metricInfo) await cache.set(cacheKey, metricInfo, 604800);
 
     res.json({ metricInfo });
   } catch (error) {
@@ -953,7 +1081,7 @@ exports.getHealthDNA = async (req, res) => {
 
     // 4. Generate DNA with AI
     const dna = await require('../services/aiService').generateHealthDNA(
-      req.user.toObject(),
+      req.user, // already a plain object — protect uses .lean()
       aggregatedMetrics,
       trends
     );

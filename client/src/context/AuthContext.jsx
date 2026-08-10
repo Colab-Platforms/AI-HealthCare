@@ -3,6 +3,7 @@ import api, { fcmService } from '../services/api';
 import { requestNotificationPermission, onForegroundMessage } from '../services/firebase';
 import toast from 'react-hot-toast';
 import { getToken, getUserRaw, getRefreshToken, setAuthData, setRememberMe, clearAuthData } from '../utils/authStorage';
+import cache from '../utils/cache';
 
 const AuthContext = createContext({});
 
@@ -204,6 +205,12 @@ export const AuthProvider = ({ children }) => {
     clearAuthData();
     delete api.defaults.headers.common['Authorization'];
     setUser(null);
+
+    // Cached responses hold this person's dashboard, nutrition and health score
+    // — medical data. Clearing the auth token alone left all of it readable in
+    // localStorage after logout, until the next login happened to clear it. On
+    // a shared device that is a leak, so it goes now rather than eventually.
+    cache.clear();
 
     if ('caches' in window) {
       caches.keys().then(names => {

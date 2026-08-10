@@ -71,7 +71,15 @@ class GamificationService {
 
   // Current streak — consecutive days with any gamification log
   async getCurrentStreak(userId) {
-    const logs = await GamificationLog.find({ user: userId })
+    // A streak ends at the first missing day, so only recent activity can ever
+    // affect the result — but this used to fetch every GamificationLog the user
+    // had ever created (no date floor, no limit) on every call, including once
+    // per user inside the nightly streak-warning cron.
+    // 400 days is well beyond any streak this can report, and caps the read.
+    const floor = new Date();
+    floor.setDate(floor.getDate() - 400);
+
+    const logs = await GamificationLog.find({ user: userId, createdAt: { $gte: floor } })
       .sort({ createdAt: -1 })
       .select('createdAt')
       .lean();
