@@ -7,7 +7,6 @@ import {
   useNavigate,
 } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
-import { DataProvider } from "./context/DataContext";
 import { PedometerProvider } from "./context/PedometerContext";
 import GenericSkeleton from "./components/skeletons/GenericSkeleton";
 import PageLoader from "./components/PageLoader";
@@ -122,8 +121,13 @@ function ConsentGate({ children }) {
 }
 
 export default function PrivateApp() {
+  // DataProvider is deliberately NOT re-declared here. main.jsx already wraps
+  // the whole app in one, and mounting a second created two independent
+  // instances: two sets of state, two subscriptions, and every fetch issued
+  // twice — including the score refetch after a log. Components here use the
+  // outer provider, which sits inside AuthProvider just the same.
   return (
-    <DataProvider>
+    <>
       <PedometerProvider>
         <ConsentGate>
         <div className="min-h-screen bg-[#F9FCF3]">
@@ -682,6 +686,6 @@ export default function PrivateApp() {
         </div>
         </ConsentGate>
       </PedometerProvider>
-    </DataProvider>
+    </>
   );
 }
