@@ -20,22 +20,71 @@ import {
   Tooltip,
 } from "recharts";
 
-const getTargetRange = (diabetesProfile) => {
-  const dp = diabetesProfile || {};
-  const parsePair = (val, defaultLow, defaultHigh) => {
-    if (!val) return [defaultLow, defaultHigh];
-    const str = String(val);
-    const parts = str.split(/[-–]/);
-    if (parts.length === 2) {
-      const lo = parseInt(parts[0]), hi = parseInt(parts[1]);
-      if (!isNaN(lo) && !isNaN(hi)) return [lo, hi];
-    }
-    const num = parseInt(str);
-    if (!isNaN(num)) return [70, num];
-    return [defaultLow, defaultHigh];
-  };
-  const [lo, hi] = parsePair(dp.fastingGlucose, 70, 130);
-  return { low: lo, high: hi };
+// Reading contexts are written in several forms across the app and the stored
+// data ('before-meal', 'pre_meal', 'preMeal'). Normalising once, here, stops
+// each comparison site inventing its own string handling and quietly failing to
+// match — which is how a reading ends up judged against the wrong target.
+const normaliseContext = (ctx) => String(ctx || "").toLowerCase().replace(/[^a-z]/g, "");
+
+const CONTEXT_ALIASES = {
+  fasting: "fasting",
+  premeal: "preMeal", beforemeal: "preMeal", before: "preMeal",
+  postmeal: "postMeal", aftermeal: "postMeal", after: "postMeal",
+  bedtime: "bedtime",
+  random: "random",
+};
+
+// Glucose targets differ by WHEN the reading was taken — this is the whole
+// point of recording a context. Following ADA guidance for adults:
+//   fasting / pre-meal   80–130 mg/dL
+//   post-meal (1–2 hrs)  under 180 mg/dL
+//   bedtime              90–150 mg/dL
+//
+// A single flat range applied to everything is clinically wrong in both
+// directions: it flags a perfectly normal 150 an hour after eating as "above
+// range", while a 150 before a meal — which genuinely is high — gets the same
+// treatment, so the distinction the context exists to capture is lost.
+//
+// The lower bound stays at 70 wherever it applies: below 70 is hypoglycaemia
+// regardless of when it was measured.
+const CONTEXT_TARGETS = {
+  fasting:  { low: 80, high: 130, label: "Fasting" },
+  preMeal:  { low: 80, high: 130, label: "Before meal" },
+  postMeal: { low: 70, high: 180, label: "After meal" },
+  bedtime:  { low: 90, high: 150, label: "Bedtime" },
+  random:   { low: 70, high: 180, label: "Random" },
+};
+
+const DEFAULT_TARGET = CONTEXT_TARGETS.fasting;
+
+// A clinician-set fasting target on the profile overrides the fasting/pre-meal
+// default — those are the readings such a target is written for. Post-meal and
+// bedtime keep their own guidance rather than inheriting a fasting number.
+const getTargetRange = (diabetesProfile, context) => {
+  const key = CONTEXT_ALIASES[normaliseContext(context)];
+  const base = CONTEXT_TARGETS[key] || DEFAULT_TARGET;
+
+  if (key !== "fasting" && key !== "preMeal") return base;
+
+  const custom = (diabetesProfile || {}).fastingGlucose;
+  if (!custom) return base;
+
+  const str = String(custom);
+  const parts = str.split(/[-–]/);
+  if (parts.length === 2) {
+    const lo = parseInt(parts[0], 10), hi = parseInt(parts[1], 10);
+    if (!isNaN(lo) && !isNaN(hi)) return { ...base, low: lo, high: hi };
+  }
+  const num = parseInt(str, 10);
+  if (!isNaN(num)) return { ...base, high: num };
+
+  return base;
+};
+
+// Whether one reading sits inside the target for its own context.
+const isReadingInRange = (reading, diabetesProfile) => {
+  const t = getTargetRange(diabetesProfile, reading.readingContext);
+  return reading.value >= t.low && reading.value <= t.high;
 };
 
 const STATUS_CFG = {
@@ -104,7 +153,7 @@ const FullHistoryModal = ({ isOpen, onClose, logs, onDelete }) => {
 export default function GlucoseLog() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const targetRange = getTargetRange(user?.profile?.diabetesProfile);
+  const diabetesProfile = user?.profile?.diabetesProfile;
 
   const [showLogModal,    setShowLogModal]    = useState(false);
   const [showHba1cModal,  setShowHba1cModal]  = useState(false);
@@ -117,6 +166,9 @@ export default function GlucoseLog() {
   const [weightHistory,   setWeightHistory]   = useState([]);
 
   const [currentReading, setCurrentReading] = useState(108);
+  // Context of the reading shown on the gauge, so its verdict uses the right
+  // target. Manual edits to the gauge keep the latest reading's context.
+  const [currentContext, setCurrentContext] = useState("fasting");
   const [status,         setStatus]         = useState("stable");
   const [isEditing,      setIsEditing]      = useState(false);
   const [editValue,      setEditValue]      = useState("108");
@@ -128,6 +180,15 @@ export default function GlucoseLog() {
   const [glucoseFilterContext, setGlucoseFilterContext] = useState("all");
   const [aiAnalysis,           setAiAnalysis]           = useState(null);
   const [aiLoading,            setAiLoading]            = useState(false);
+
+  // The target shown on screen follows whichever context is being viewed. With
+  // "All" selected there is no single correct range to display, so the chart
+  // bands and the headline chip fall back to the fasting target — but the
+  // in-range maths below never uses this; it always asks per reading.
+  const displayTarget = getTargetRange(
+    diabetesProfile,
+    glucoseFilterContext === "all" ? "fasting" : glucoseFilterContext,
+  );
 
   const inputRef = useRef(null);
   const gaugeRef = useRef(null);
@@ -152,7 +213,8 @@ export default function GlucoseLog() {
         const latest = glucoseData[0].value;
         setCurrentReading(latest);
         setEditValue(String(latest));
-        updateStatus(latest);
+        setCurrentContext(glucoseData[0].readingContext);
+        updateStatus(latest, glucoseData[0].readingContext);
       }
     } catch (e) {
       console.error("Error fetching metrics:", e);
@@ -172,10 +234,13 @@ export default function GlucoseLog() {
     }
   };
 
-  const updateStatus = (val) => {
-    if      (val >= targetRange.low && val <= targetRange.high) setStatus("stable");
-    else if (val > targetRange.high)                            setStatus("high");
-    else                                                         setStatus("low");
+  // Judged against the target for the context the reading was taken in, so the
+  // headline verdict matches what a clinician would say about that reading.
+  const updateStatus = (val, context) => {
+    const t = getTargetRange(diabetesProfile, context);
+    if      (val >= t.low && val <= t.high) setStatus("stable");
+    else if (val > t.high)                  setStatus("high");
+    else                                    setStatus("low");
   };
 
   const saveReading = async (type, value, unit, context, timestamp) => {
@@ -200,9 +265,9 @@ export default function GlucoseLog() {
   const handleEditStart  = () => { setIsEditing(true); setEditValue(String(currentReading)); setTimeout(() => inputRef.current?.select(), 50); };
   const handleEditChange = (e) => {
     const val = e.target.value.replace(/[^0-9]/g, "");
-    if (val.length <= 3) { setEditValue(val); const n = parseInt(val) || 0; if (n >= 40 && n <= 400) { setCurrentReading(n); updateStatus(n); } }
+    if (val.length <= 3) { setEditValue(val); const n = parseInt(val) || 0; if (n >= 40 && n <= 400) { setCurrentReading(n); updateStatus(n, currentContext); } }
   };
-  const handleEditBlur   = () => { setIsEditing(false); const n = Math.min(Math.max(parseInt(editValue) || 108, 40), 400); setCurrentReading(n); setEditValue(String(n)); updateStatus(n); };
+  const handleEditBlur   = () => { setIsEditing(false); const n = Math.min(Math.max(parseInt(editValue) || 108, 40), 400); setCurrentReading(n); setEditValue(String(n)); updateStatus(n, currentContext); };
   const handleEditKeyDown = (e) => { if (e.key === "Enter") handleEditBlur(); };
 
   /* ─── Gauge drag ─── */
@@ -217,7 +282,7 @@ export default function GlucoseLog() {
     angle = Math.max(-135, Math.min(135, angle));
     const val = Math.round(40 + ((angle + 135) / 270) * 360);
     const clamped = Math.min(Math.max(val, 40), 400);
-    setCurrentReading(clamped); setEditValue(String(clamped)); updateStatus(clamped);
+    setCurrentReading(clamped); setEditValue(String(clamped)); updateStatus(clamped, currentContext);
   };
 
   const bindGaugeDrag = {
@@ -250,9 +315,16 @@ export default function GlucoseLog() {
     else cutoff.setMonth(now.getMonth() - 3);
     let filtered = sorted.filter(i => new Date(i.recordedAt) >= cutoff);
     if (trendType === "blood_sugar" && glucoseFilterContext !== "all")
-      filtered = filtered.filter(i => i.readingContext?.replace("_", "-") === glucoseFilterContext.replace("_", "-"));
+      filtered = filtered.filter(i => normaliseContext(i.readingContext) === normaliseContext(glucoseFilterContext));
     const display = filtered.length > 0 ? filtered : sorted.slice(-7);
-    return display.map(i => ({ day: new Date(i.recordedAt).toLocaleDateString("en-US", { weekday: "short" }), value: i.value }));
+    // readingContext travels with each point so the dot colouring and the
+    // in-range figure can judge it against its own target rather than one
+    // range borrowed from whatever happens to be selected.
+    return display.map(i => ({
+      day: new Date(i.recordedAt).toLocaleDateString("en-US", { weekday: "short" }),
+      value: i.value,
+      readingContext: i.readingContext,
+    }));
   };
 
   const getCompareGraphData = () => {
@@ -282,9 +354,13 @@ export default function GlucoseLog() {
     return Object.values(dayMap).sort((a,b) => a.timestamp - b.timestamp);
   };
 
-  const renderDot = ({ cx, cy, value }) => {
+  const renderDot = ({ cx, cy, value, payload }) => {
     let fill = "#10b981";
-    if (trendType === "blood_sugar") { if (value > targetRange.high) fill = "#f59e0b"; if (value < targetRange.low) fill = "#ef4444"; }
+    if (trendType === "blood_sugar") {
+      const t = getTargetRange(diabetesProfile, payload?.readingContext);
+      if (value > t.high) fill = "#f59e0b";
+      if (value < t.low) fill = "#ef4444";
+    }
     return <circle cx={cx} cy={cy} r={3} strokeWidth={1.5} stroke="#fff" fill={fill} />;
   };
 
@@ -292,12 +368,27 @@ export default function GlucoseLog() {
   const sc = STATUS_CFG[status];
   const currentLogs = trendType === "blood_sugar" ? glucoseHistory : trendType === "hba1c" ? hba1cHistory : weightHistory;
   const trendLabel  = trendType === "blood_sugar" ? "Glucose" : trendType === "hba1c" ? "HbA1c" : "Weight";
-  const normalPct   = (() => {
+  // Percentage of readings inside target, each judged against the target for
+  // ITS OWN context. Previously every reading was compared to one range, which
+  // marked a normal post-meal 150 as out of range and treated a pre-meal 150 —
+  // genuinely high — as the same thing.
+  //
+  // `count` is returned alongside because the percentage alone is meaningless
+  // on a small sample: one reading in range is "100%", which reads as a clean
+  // record rather than as a single measurement.
+  const rangeStats = (() => {
     const d = getGraphData().filter(d => d.day !== "–");
-    if (!d.length) return 0;
-    const n = d.filter(d => trendType === "blood_sugar" ? d.value >= targetRange.low && d.value <= targetRange.high : trendType === "hba1c" ? d.value < 7 : true).length;
-    return Math.round((n / d.length) * 100);
+    if (!d.length) return { pct: 0, count: 0 };
+
+    const inRange = d.filter((r) => {
+      if (trendType === "blood_sugar") return isReadingInRange(r, diabetesProfile);
+      if (trendType === "hba1c") return r.value < 7; // ADA target for most adults
+      return true;
+    }).length;
+
+    return { pct: Math.round((inRange / d.length) * 100), count: d.length };
   })();
+  const normalPct = rangeStats.pct;
   const avg7d = recentReadings.length > 0
     ? Math.round(recentReadings.slice(0, 7).reduce((s, r) => s + r.value, 0) / Math.min(recentReadings.length, 7))
     : null;
@@ -332,7 +423,7 @@ export default function GlucoseLog() {
             {sc.label}
           </span>
           <span className="hidden sm:block text-[11px] md:text-xs font-semibold px-3 py-1.5 rounded-full" style={{ background: "rgba(16,185,129,0.08)", color: "#059669", border: "1px solid rgba(16,185,129,0.18)" }}>
-            Target {targetRange.low}–{targetRange.high}
+            {displayTarget.label} target {displayTarget.low}–{displayTarget.high}
           </span>
           {aiLoading && <div className="flex gap-0.5">{[0,1,2].map(i=><div key={i} className="w-1 h-1 bg-emerald-500 rounded-full animate-bounce" style={{animationDelay:`${i*120}ms`}}/>)}</div>}
           <button onClick={fetchMetrics} className="w-6 h-6 rounded-md flex items-center justify-center text-slate-400 hover:text-emerald-600 transition-colors" style={{ background: "rgba(255,255,255,0.45)" }}>
@@ -514,7 +605,17 @@ export default function GlucoseLog() {
             <div className="flex items-center justify-between mb-2">
               <div className="flex items-center gap-2">
                 <span className="text-lg font-black text-slate-800">{normalPct}%</span>
-                <span className="text-[10px] text-slate-400 font-medium">{trendType === "blood_sugar" ? "in range" : "goal"}</span>
+                {/* The denominator is shown because a percentage from one or two
+                    readings is not a meaningful figure — "100%" off a single
+                    measurement reads like a clean record rather than one number. */}
+                <span className="text-[10px] text-slate-400 font-medium">
+                  {trendType === "blood_sugar" ? "in range" : "goal"}
+                  {rangeStats.count > 0 && (
+                    <span className="ml-1 text-slate-300">
+                      · {rangeStats.count} reading{rangeStats.count === 1 ? "" : "s"}
+                    </span>
+                  )}
+                </span>
               </div>
               <div className="flex items-center gap-1.5">
                 {/* Time range */}
@@ -573,8 +674,8 @@ export default function GlucoseLog() {
                       contentStyle={{ background: "rgba(255,255,255,0.96)", border: "1px solid rgba(16,185,129,0.20)", borderRadius: "10px", fontSize: "11px", boxShadow: "0 4px 16px rgba(0,0,0,0.08)", padding: "5px 10px" }}
                       labelStyle={{ fontWeight: 700, color: "#334155", marginBottom: "1px" }}
                     />
-                    <ReferenceLine y={targetRange.high} stroke="rgba(245,158,11,0.45)" strokeDasharray="4 3" strokeWidth={1}/>
-                    <ReferenceLine y={targetRange.low}  stroke="rgba(239,68,68,0.35)"  strokeDasharray="4 3" strokeWidth={1}/>
+                    <ReferenceLine y={displayTarget.high} stroke="rgba(245,158,11,0.45)" strokeDasharray="4 3" strokeWidth={1}/>
+                    <ReferenceLine y={displayTarget.low}  stroke="rgba(239,68,68,0.35)"  strokeDasharray="4 3" strokeWidth={1}/>
                     <Area type="monotone" dataKey="fasting" stroke="#10b981" fill="rgba(16,185,129,0.08)" strokeWidth={2.5} name="Fasting" connectNulls />
                     <Area type="monotone" dataKey="preMeal" stroke="#3b82f6" fill="rgba(59,130,246,0.08)" strokeWidth={2} name="Pre-Meal" connectNulls />
                     <Area type="monotone" dataKey="postMeal" stroke="#f59e0b" fill="rgba(245,158,11,0.08)" strokeWidth={2} name="Post-Meal" connectNulls />
@@ -591,8 +692,8 @@ export default function GlucoseLog() {
                       itemStyle={{ color: "#10b981", fontWeight: 600 }}
                     />
                     {trendType === "blood_sugar" && <>
-                      <ReferenceLine y={targetRange.high} stroke="rgba(245,158,11,0.45)" strokeDasharray="4 3" strokeWidth={1}/>
-                      <ReferenceLine y={targetRange.low}  stroke="rgba(239,68,68,0.35)"  strokeDasharray="4 3" strokeWidth={1}/>
+                      <ReferenceLine y={displayTarget.high} stroke="rgba(245,158,11,0.45)" strokeDasharray="4 3" strokeWidth={1}/>
+                      <ReferenceLine y={displayTarget.low}  stroke="rgba(239,68,68,0.35)"  strokeDasharray="4 3" strokeWidth={1}/>
                     </>}
                     <Line type="monotone" dataKey="value" stroke="#10b981" strokeWidth={2} dot={renderDot} isAnimationActive activeDot={{ r: 4, fill: "#10b981", stroke: "#fff", strokeWidth: 2 }}/>
                   </LineChart>
@@ -625,8 +726,9 @@ export default function GlucoseLog() {
             {currentLogs.length > 0 ? (
               <div className="flex gap-2">
                 {currentLogs.slice(0, 4).map((r, i) => {
-                  const inRange = r.value >= targetRange.low && r.value <= targetRange.high;
-                  const isHigh  = r.value > targetRange.high;
+                  const rTarget = getTargetRange(diabetesProfile, r.readingContext);
+                  const inRange = r.value >= rTarget.low && r.value <= rTarget.high;
+                  const isHigh  = r.value > rTarget.high;
                   const dot     = inRange ? "#10b981" : isHigh ? "#f59e0b" : "#ef4444";
                   const t = new Date(r.recordedAt || r.timestamp);
                   return (
