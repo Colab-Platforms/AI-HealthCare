@@ -5,16 +5,14 @@ const quickFoodCheckSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
     required: true,
-    index: true
   },
   foodName: {
     type: String,
     required: true,
-    index: true 
+    index: true
   },
   searchDescription: {
-    type: String,
-    index: true // New field to store exactly what user searched for
+    type: String, // exactly what the user searched for
   },
   quantity: String,
   calories: Number,

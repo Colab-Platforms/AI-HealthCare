@@ -10,7 +10,7 @@ const Otp = require('../models/Otp');
 const { logActivity } = require('../utils/activityLogger');
 const gamificationService = require('../services/gamificationService');
 const RefreshToken = require('../models/RefreshToken');
-const crypto = require('crypto');
+const crypto = require('crypto')
 
 // Short-lived access token — 15 minutes
 const generateAccessToken = (id) =>

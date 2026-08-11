@@ -28,6 +28,7 @@ export const DataProvider = ({ children }) => {
   const [weeklyTrends, setWeeklyTrends] = useState(() => cache.get('weekly_trends'));
   const [healthGoals, setHealthGoals] = useState(() => cache.get('health_goals'));
   const [dietPlan, setDietPlan] = useState(() => cache.get('diet_plan'));
+  const [healthScoreData, setHealthScoreData] = useState(() => cache.get('health_score'));
   
   const [loading, setLoading] = useState({
     dashboard: false,
@@ -78,6 +79,29 @@ export const DataProvider = ({ children }) => {
       throw error;
     } finally {
       setLoading(prev => ({ ...prev, dashboard: false }));
+    }
+  }, []);
+
+  // Fetch composite Health Score with caching — short TTL since it changes
+  // with every log, but still avoids refetching on every Dashboard re-render.
+  const fetchHealthScore = useCallback(async (forceRefresh = false) => {
+    if (!forceRefresh) {
+      const cached = cache.get('health_score');
+      if (cached) {
+        setHealthScoreData(cached);
+        return cached;
+      }
+    }
+
+    try {
+      const response = await healthService.getHealthScore();
+      const data = response.data;
+      setHealthScoreData(data);
+      cache.set('health_score', data, 2 * 60 * 1000); // Cache for 2 minutes
+      return data;
+    } catch (error) {
+      console.error('Failed to fetch health score:', error);
+      return null;
     }
   }, []);
 
@@ -417,6 +441,7 @@ export const DataProvider = ({ children }) => {
     weeklyTrends,
     healthGoals,
     dietPlan,
+    healthScoreData,
     loading,
 
     pendingAnalysisIds,
@@ -425,6 +450,7 @@ export const DataProvider = ({ children }) => {
 
     // Methods
     fetchDashboard,
+    fetchHealthScore,
     fetchWearable,
     fetchNutrition,
     fetchNutritionLogs,
