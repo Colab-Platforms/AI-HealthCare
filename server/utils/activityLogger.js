@@ -2,8 +2,13 @@ const ActivityLog = require('../models/ActivityLog');
 const User = require('../models/User');
 
 // Actions always logged regardless of analytics setting (security/audit trail)
+// NOTE: these must match the action strings callers actually pass. This set used
+// to say LOGIN/LOGOUT/REGISTER while every call site passes USER_LOGIN/
+// USER_LOGOUT/USER_REGISTER, so the security-critical actions fell through to the
+// opt-out branch below — costing an extra User lookup per login, and letting a
+// user with analytics disabled silently disable their own auth audit trail.
 const ALWAYS_LOG = new Set([
-  'LOGIN', 'LOGOUT', 'REGISTER',
+  'USER_LOGIN', 'USER_LOGOUT', 'USER_REGISTER', 'PASSWORD_CHANGED',
   'DELETE_ACCOUNT', 'EXPORT_DATA',
   'UPLOAD_REPORT', 'DELETE_REPORT',
   'UPLOAD_MEDICAL_DOCUMENT', 'DELETE_MEDICAL_DOCUMENT',

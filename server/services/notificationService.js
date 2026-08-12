@@ -8,103 +8,276 @@ const HealthReport = require('../models/HealthReport');
 const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
 const { sendToUser } = require('./fcmService');
 
+// Reminder types this tick can emit. Used to seed the "already sent today" set
+// in one query instead of asking the DB once per user per type.
+const REMINDER_TYPES = ['food_reminder', 'sleep_reminder', 'macro_update', 'diet_adherence', 'health_insight'];
+
+const MEAL_TYPES = ['breakfast', 'lunch', 'snack', 'dinner'];
+
+// Push fan-out is HTTP, not DB, but 5k simultaneous FCM calls still bury the
+// event loop and trip Firebase's own rate limits. Send in waves.
+const FCM_CONCURRENCY = 20;
+
+// insertMany payload cap — keeps any single write well under the 16MB BSON limit.
+const INSERT_CHUNK = 500;
+
+const startOfToday = () => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+};
+
+// Identity of "this user has already been sent this reminder today"
+const sentKey = (userId, type, mealType) => `${userId}:${type}${mealType ? `:${mealType}` : ''}`;
+
 class NotificationService {
     constructor() {
         this.cronJobs = [];
         this.cachedPreferences = new Map(); // In-memory cache
         this.lastCacheUpdate = 0;
         this.CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
-        
-        if (!process.env.VERCEL) {
-            this.startSchedulers();
-            console.log('🚀 Optimized Notification Service Started');
-        } else {
-            console.log('🔔 Notification service started in serverless mode');
-        }
+
+        // Per-day dedupe set, seeded from the DB once per day (see loadSentToday).
+        // This process is the only writer of REMINDER_TYPES notifications, so an
+        // in-memory set stays accurate between seeds and lets a tick skip work
+        // without touching the database at all.
+        this.sentToday = new Set();
+        this.sentTodayDate = null;
+
+        // Re-entrancy guard — see checkAndSendUserNotifications.
+        this.tickRunning = false;
+
+        this.startSchedulers();
     }
 
     startSchedulers() {
-        // ✅ Local/always-on dev convenience: check every minute for user-specific
-        // notification times. On Vercel this never runs (serverless has no persistent
-        // process) — production relies on an Upstash QStash Schedule hitting
-        // POST /api/notifications/cron-tick instead (see routes/notificationRoutes.js).
-        if (!process.env.VERCEL) {
+        // The in-process every-minute scheduler is OFF unless explicitly enabled.
+        //
+        // This used to be gated on `!process.env.VERCEL`, which meant it stayed ON
+        // for every non-Vercel deployment — including Render, where it ran a
+        // full per-user scan every 60s against a live production database and
+        // held the Mongo connection pool permanently saturated. Production is
+        // driven by an Upstash QStash Schedule hitting POST /api/notifications/cron-tick
+        // (see routes/notificationRoutes.js); this path is a local-dev convenience
+        // only, so it now requires an opt-in rather than an opt-out.
+        if (process.env.ENABLE_LOCAL_NOTIFICATION_CRON === 'true') {
             const job = cron.schedule('* * * * *', () => {
                 this.checkAndSendUserNotifications();
             });
             this.cronJobs.push(job);
             console.log('🔔 Notification scheduler enabled (node-cron, local mode)');
+        } else {
+            console.log('🔔 Notification service ready (in-process scheduler disabled; driven by /api/notifications/cron-tick)');
         }
     }
 
-    // ✅ Check each user's preferences and send notifications once their preferred
-    // time has passed for today. Uses >= instead of === so this stays correct
-    // regardless of how often the caller ticks (every minute locally via node-cron,
-    // every few minutes in production via QStash) — the per-type "already sent
-    // today" check inside each sendUser* method prevents duplicates.
+    // Check each user's preferences and send notifications once their preferred
+    // time has passed for today. Uses >= (not ===) so this stays correct regardless
+    // of how often the caller ticks — the per-day dedupe set prevents duplicates.
+    //
+    // Shape of the work, and why: the previous version walked every user and issued
+    // 2+ awaited queries per user per reminder type. At ~5k users that is ~50k
+    // sequential round-trips per tick, which cannot finish inside one minute and
+    // holds the whole Mongo connection pool, so ordinary API requests queue behind
+    // it for tens of seconds. This version does the same job in three passes:
+    //
+    //   1. in-memory — decide who is due for what (zero queries)
+    //   2. bulk read — one query per collection, scoped to just the due users
+    //   3. bulk write — one insertMany, then push fan-out in bounded waves
+    //
+    // Steady state is 0–3 small queries per tick, because pass 1 filters against
+    // the in-memory dedupe set and almost everyone has already been served.
     async checkAndSendUserNotifications() {
+        // A slow tick must never stack on top of the next one. Unbounded overlap is
+        // what turned this job into permanent load rather than a periodic spike.
+        if (this.tickRunning) {
+            console.warn('⏭️  Notification tick still in flight — skipping this one');
+            return;
+        }
+        this.tickRunning = true;
+        const startedAt = Date.now();
+
         try {
-            const preferences = await this.getPreferencesWithCache();
+            const today = startOfToday();
+            const tomorrow = new Date(today);
+            tomorrow.setDate(tomorrow.getDate() + 1);
+
             const now = new Date();
             const currentTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
+            await this.loadSentToday(today);
+            const preferences = await this.getPreferencesWithCache();
+
+            // ---- Pass 1: who is due for what (in memory, no queries) ----
+            const dueMeals = new Map();     // userId -> Set<mealType>
+            const dueSleep = new Map();     // userId -> targetSleepHours
+            const dueMacro = [];            // userId[]
+            const dueAdherence = [];        // userId[]
+            const dueInsight = [];          // userId[]
+
+            const isDue = (time) => Boolean(time) && currentTime >= time;
+            const notSent = (userId, type, mealType) => !this.sentToday.has(sentKey(userId, type, mealType));
+
             for (const [userId, pref] of preferences) {
-                try {
-                    // Skip this user if they're in quiet hours (Do Not Disturb)
-                    if (pref.quietHours?.enabled) {
-                        const { startTime, endTime } = pref.quietHours;
-                        if (startTime && endTime) {
-                            // Handle overnight ranges e.g. 22:00 - 07:00
-                            const inQuietHours = startTime <= endTime
-                                ? currentTime >= startTime && currentTime < endTime
-                                : currentTime >= startTime || currentTime < endTime;
-                            if (inQuietHours) continue;
+                // Quiet hours (Do Not Disturb)
+                if (pref.quietHours?.enabled) {
+                    const { startTime, endTime } = pref.quietHours;
+                    if (startTime && endTime) {
+                        // Handle overnight ranges e.g. 22:00 - 07:00
+                        const inQuietHours = startTime <= endTime
+                            ? currentTime >= startTime && currentTime < endTime
+                            : currentTime >= startTime || currentTime < endTime;
+                        if (inQuietHours) continue;
+                    }
+                }
+
+                if (pref.mealReminders?.enabled) {
+                    const meals = new Set();
+                    for (const mealType of MEAL_TYPES) {
+                        if (isDue(pref.mealReminders[mealType]) && notSent(userId, 'food_reminder', mealType)) {
+                            meals.add(mealType);
                         }
                     }
+                    if (meals.size) dueMeals.set(userId, meals);
+                }
 
-                    const user = { _id: userId };
-
-                    // Meal reminders
-                    if (pref.mealReminders?.enabled) {
-                        if (pref.mealReminders.breakfast && currentTime >= pref.mealReminders.breakfast) {
-                            await this.sendUserMealReminder(user, 'breakfast');
-                        }
-                        if (pref.mealReminders.lunch && currentTime >= pref.mealReminders.lunch) {
-                            await this.sendUserMealReminder(user, 'lunch');
-                        }
-                        if (pref.mealReminders.snack && currentTime >= pref.mealReminders.snack) {
-                            await this.sendUserMealReminder(user, 'snack');
-                        }
-                        if (pref.mealReminders.dinner && currentTime >= pref.mealReminders.dinner) {
-                            await this.sendUserMealReminder(user, 'dinner');
-                        }
-                    }
-
-                    // Sleep reminder
-                    if (pref.sleepReminder?.enabled && pref.sleepReminder.time && currentTime >= pref.sleepReminder.time) {
-                        await this.sendUserSleepReminder(user, pref.sleepReminder.targetSleepHours);
-                    }
-
-                    // Macro update
-                    if (pref.macroUpdate?.enabled && pref.macroUpdate.time && currentTime >= pref.macroUpdate.time) {
-                        await this.sendUserMacroUpdate(userId);
-                    }
-
-                    // Diet adherence
-                    if (pref.dietAdherence?.enabled && pref.dietAdherence.time && currentTime >= pref.dietAdherence.time) {
-                        await this.sendUserDietAdherence(userId);
-                    }
-
-                    // Health insights
-                    if (pref.healthInsights?.enabled && pref.healthInsights.time && currentTime >= pref.healthInsights.time) {
-                        await this.sendUserHealthInsight(userId);
-                    }
-                } catch (error) {
-                    console.error(`Error processing notifications for user ${userId}:`, error.message);
+                if (pref.sleepReminder?.enabled && isDue(pref.sleepReminder.time) && notSent(userId, 'sleep_reminder')) {
+                    dueSleep.set(userId, pref.sleepReminder.targetSleepHours);
+                }
+                if (pref.macroUpdate?.enabled && isDue(pref.macroUpdate.time) && notSent(userId, 'macro_update')) {
+                    dueMacro.push(userId);
+                }
+                if (pref.dietAdherence?.enabled && isDue(pref.dietAdherence.time) && notSent(userId, 'diet_adherence')) {
+                    dueAdherence.push(userId);
+                }
+                if (pref.healthInsights?.enabled && isDue(pref.healthInsights.time) && notSent(userId, 'health_insight')) {
+                    dueInsight.push(userId);
                 }
             }
+
+            const totalDue = dueMeals.size + dueSleep.size + dueMacro.length + dueAdherence.length + dueInsight.length;
+            if (totalDue === 0) return; // nothing to do — tick costs nothing
+
+            // ---- Pass 2: bulk reads, scoped to only the users who are actually due ----
+            const foodLogUserIds = [...new Set([...dueMeals.keys(), ...dueAdherence])];
+
+            const [foodLogs, summaries, dietPlans] = await Promise.all([
+                foodLogUserIds.length
+                    ? FoodLog.find({
+                        userId: { $in: foodLogUserIds },
+                        timestamp: { $gte: today, $lt: tomorrow }
+                    }).select('userId mealType foodItems.name').lean()
+                    : [],
+                dueMacro.length
+                    ? NutritionSummary.find({ userId: { $in: dueMacro }, date: today }).lean()
+                    : [],
+                dueAdherence.length
+                    ? PersonalizedDietPlan.find({ userId: { $in: dueAdherence }, isActive: true })
+                        .select('userId mealPlan').lean()
+                    : [],
+            ]);
+
+            // Index the bulk results for O(1) lookup in pass 3
+            const loggedMeals = new Set();          // `${userId}:${mealType}`
+            const logsByUser = new Map();           // userId -> log[]
+            for (const log of foodLogs) {
+                const uid = log.userId.toString();
+                loggedMeals.add(`${uid}:${log.mealType}`);
+                if (!logsByUser.has(uid)) logsByUser.set(uid, []);
+                logsByUser.get(uid).push(log);
+            }
+            const summaryByUser = new Map(summaries.map((s) => [s.userId.toString(), s]));
+            const planByUser = new Map(dietPlans.map((p) => [p.userId.toString(), p]));
+
+            // ---- Pass 3: build every document in memory, then write once ----
+            const docs = [];
+            const pushes = [];
+            const emit = (doc, push) => {
+                docs.push(doc);
+                pushes.push({ userId: doc.userId, payload: push, key: sentKey(doc.userId, doc.type, doc.metadata?.mealType) });
+            };
+
+            for (const [userId, meals] of dueMeals) {
+                for (const mealType of meals) {
+                    if (loggedMeals.has(`${userId}:${mealType}`)) continue; // already ate & logged it
+                    emit(...buildMealReminder(userId, mealType, tomorrow));
+                }
+            }
+            for (const [userId, targetSleepHours] of dueSleep) {
+                emit(...buildSleepReminder(userId, targetSleepHours, tomorrow));
+            }
+            for (const userId of dueMacro) {
+                const summary = summaryByUser.get(userId);
+                if (!summary) continue; // nothing logged today — same as before
+                emit(...buildMacroUpdate(userId, summary, tomorrow));
+            }
+            for (const userId of dueAdherence) {
+                const plan = planByUser.get(userId);
+                if (!plan) continue; // no active plan — same as before
+                emit(...buildDietAdherence(userId, plan, logsByUser.get(userId) || [], tomorrow));
+            }
+            for (const userId of dueInsight) {
+                emit(...buildHealthInsight(userId, tomorrow));
+            }
+
+            if (docs.length === 0) return;
+
+            // Chunked so one oversized batch can't blow the BSON limit, and unordered
+            // so a single bad document doesn't abort the rest of the chunk.
+            let written = 0;
+            for (let i = 0; i < docs.length; i += INSERT_CHUNK) {
+                const chunk = docs.slice(i, i + INSERT_CHUNK);
+                const chunkPushes = pushes.slice(i, i + INSERT_CHUNK);
+                try {
+                    await Notification.insertMany(chunk, { ordered: false });
+                    // Only mark as sent once it is durably stored — a failed chunk is
+                    // retried on the next tick rather than silently dropped.
+                    for (const p of chunkPushes) this.sentToday.add(p.key);
+                    written += chunk.length;
+                    await this.dispatchPush(chunkPushes);
+                } catch (error) {
+                    console.error(`Notification insert chunk failed (${chunk.length} docs):`, error.message);
+                }
+            }
+
+            console.log(`🔔 Notification tick: ${written} sent in ${Date.now() - startedAt}ms`);
         } catch (error) {
             console.error('Error in checkAndSendUserNotifications:', error.message);
+        } finally {
+            this.tickRunning = false;
+        }
+    }
+
+    // Seeds the per-day dedupe set from the DB. Runs once per calendar day (and
+    // once on boot), so the cost is one indexed query per day rather than one per
+    // user per type per tick.
+    async loadSentToday(today) {
+        const dayKey = today.toDateString();
+        if (this.sentTodayDate === dayKey) return;
+
+        const sent = await Notification.find({
+            type: { $in: REMINDER_TYPES },
+            createdAt: { $gte: today }
+        }).select('userId type metadata.mealType').lean();
+
+        this.sentToday = new Set(
+            sent.map((n) => sentKey(n.userId.toString(), n.type, n.metadata?.mealType))
+        );
+        this.sentTodayDate = dayKey;
+        console.log(`🔔 Seeded reminder dedupe set for ${dayKey}: ${this.sentToday.size} already sent`);
+    }
+
+    // Push fan-out in bounded waves. Failures are logged, never thrown — a dead FCM
+    // token must not stop the rest of the batch or retry the DB write.
+    async dispatchPush(entries) {
+        for (let i = 0; i < entries.length; i += FCM_CONCURRENCY) {
+            const wave = entries.slice(i, i + FCM_CONCURRENCY);
+            const results = await Promise.allSettled(
+                wave.map((e) => sendToUser(e.userId, e.payload))
+            );
+            for (const r of results) {
+                if (r.status === 'rejected') console.error('FCM push failed:', r.reason?.message || r.reason);
+            }
         }
     }
 
@@ -120,8 +293,11 @@ class NotificationService {
 
         // Fetch from database
         console.log('🔄 Refreshing preferences cache');
+        // quietHours belongs in this projection — the tick reads pref.quietHours to
+        // honour Do Not Disturb, and without it here the field was always undefined,
+        // so quiet hours were silently ignored for every user.
         const preferences = await NotificationPreference.find({})
-            .select('userId mealReminders sleepReminder macroUpdate dietAdherence healthInsights')
+            .select('userId mealReminders sleepReminder macroUpdate dietAdherence healthInsights quietHours')
             .lean(); // Use lean() for faster queries
 
         // Build cache map
@@ -142,259 +318,6 @@ class NotificationService {
         this.cachedPreferences.clear();
         this.lastCacheUpdate = 0;
         console.log('🔄 Notification cache invalidated');
-    }
-
-    // Helper for specific user reminders
-    async sendUserMealReminder(user, mealType) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-
-        const existingLog = await FoodLog.findOne({
-            userId: user._id,
-            mealType,
-            timestamp: { $gte: today, $lt: tomorrow }
-        });
-
-        if (!existingLog) {
-            const existingReminder = await Notification.findOne({
-                userId: user._id,
-                type: 'food_reminder',
-                'metadata.mealType': mealType,
-                createdAt: { $gte: today }
-            });
-
-            if (!existingReminder) {
-                const mealNames = { breakfast: 'Breakfast', lunch: 'Lunch', snack: 'Snack', dinner: 'Dinner' };
-                const mealMessages = {
-                    breakfast: 'Start your day right! Log your breakfast.',
-                    lunch: 'Time for lunch! Don\'t forget to log it.',
-                    snack: 'Healthy snack time! Log it now.',
-                    dinner: 'Evening meal time! Log your dinner.'
-                };
-
-                const title = `${mealNames[mealType]} Reminder`;
-                const message = mealMessages[mealType];
-
-                await Notification.create({
-                    userId: user._id,
-                    type: 'food_reminder',
-                    title,
-                    message,
-                    icon: '',
-                    priority: 'medium',
-                    actionUrl: '/nutrition',
-                    metadata: { mealType },
-                    expiresAt: tomorrow
-                });
-
-                sendToUser(user._id, { title, body: message, data: { type: 'food_reminder', actionUrl: '/nutrition' } })
-                    .catch(e => console.error('FCM meal reminder failed:', e.message));
-            }
-        }
-    }
-
-    // Send sleep reminder for specific user
-    async sendUserSleepReminder(user, targetSleepHours) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const existingReminder = await Notification.findOne({
-            userId: user._id,
-            type: 'sleep_reminder',
-            createdAt: { $gte: today }
-        });
-
-        if (!existingReminder) {
-            const title = 'Sleep Tracking Reminder';
-            const message = `Time to wind down! Aim for ${targetSleepHours} hours of sleep. Don't forget to log your sleep hours.`;
-
-            await Notification.create({
-                userId: user._id,
-                type: 'sleep_reminder',
-                title,
-                message,
-                icon: '',
-                priority: 'medium',
-                actionUrl: '/dashboard',
-                metadata: { reminderType: 'sleep', targetHours: targetSleepHours },
-                expiresAt: new Date(today.getTime() + 24 * 60 * 60 * 1000)
-            });
-
-            sendToUser(user._id, { title, body: message, data: { type: 'sleep_reminder', actionUrl: '/dashboard' } })
-                .catch(e => console.error('FCM sleep reminder failed:', e.message));
-        }
-    }
-
-    // Send macro update for specific user
-    async sendUserMacroUpdate(userId) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const existingUpdate = await Notification.findOne({
-            userId,
-            type: 'macro_update',
-            createdAt: { $gte: today }
-        });
-
-        if (!existingUpdate) {
-            const summary = await NutritionSummary.findOne({ userId, date: today });
-
-            if (summary) {
-                const calPct = summary.calorieGoal ? Math.round((summary.totalCalories / summary.calorieGoal) * 100) : 0;
-                const protPct = summary.proteinGoal ? Math.round((summary.totalProtein / summary.proteinGoal) * 100) : 0;
-                const carbsPct = summary.carbsGoal ? Math.round((summary.totalCarbs / summary.carbsGoal) * 100) : 0;
-                const fatsPct = summary.fatsGoal ? Math.round((summary.totalFats / summary.fatsGoal) * 100) : 0;
-
-                let statusMsg = '';
-
-                if (calPct >= 80 && calPct <= 110) {
-                    statusMsg = 'You\'re on track with your calorie goal!';
-                } else if (calPct < 50) {
-                    statusMsg = `You've only consumed ${calPct}% of your daily calories. Try to eat more balanced meals.`;
-                } else if (calPct > 110) {
-                    statusMsg = `You've exceeded your calorie goal by ${calPct - 100}%. Consider lighter options for remaining meals.`;
-                } else {
-                    statusMsg = `You've consumed ${calPct}% of your daily calories. Keep it up!`;
-                }
-
-                const macroMessage = `${statusMsg}\nProtein: ${summary.totalProtein}g/${summary.proteinGoal || '?'}g (${protPct}%) | Carbs: ${summary.totalCarbs}g/${summary.carbsGoal || '?'}g (${carbsPct}%) | Fats: ${summary.totalFats}g/${summary.fatsGoal || '?'}g (${fatsPct}%)`;
-
-                await Notification.create({
-                    userId,
-                    type: 'macro_update',
-                    title: 'Daily Macro Check',
-                    message: macroMessage,
-                    icon: '',
-                    priority: calPct < 50 || calPct > 120 ? 'high' : 'low',
-                    actionUrl: '/nutrition',
-                    metadata: {
-                        calories: { consumed: summary.totalCalories, goal: summary.calorieGoal, pct: calPct },
-                        protein: { consumed: summary.totalProtein, goal: summary.proteinGoal, pct: protPct },
-                        carbs: { consumed: summary.totalCarbs, goal: summary.carbsGoal, pct: carbsPct },
-                        fats: { consumed: summary.totalFats, goal: summary.fatsGoal, pct: fatsPct }
-                    },
-                    expiresAt: new Date(today.getTime() + 24 * 60 * 60 * 1000)
-                });
-
-                sendToUser(userId, { title: 'Daily Macro Check', body: statusMsg, data: { type: 'macro_update', actionUrl: '/nutrition' } })
-                    .catch(e => console.error('FCM macro update failed:', e.message));
-            }
-        }
-    }
-
-    // Send diet adherence for specific user
-    async sendUserDietAdherence(userId) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-        const tomorrow = new Date(today);
-        tomorrow.setDate(tomorrow.getDate() + 1);
-
-        const existingNotif = await Notification.findOne({
-            userId,
-            type: 'diet_adherence',
-            createdAt: { $gte: today }
-        });
-
-        if (!existingNotif) {
-            const dietPlans = await PersonalizedDietPlan.findOne({ userId, isActive: true });
-
-            if (dietPlans) {
-                const foodLogs = await FoodLog.find({
-                    userId,
-                    timestamp: { $gte: today, $lt: tomorrow }
-                });
-
-                const mealsLogged = foodLogs.length;
-                const loggedFoods = foodLogs.flatMap(log =>
-                    log.foodItems.map(item => item.name.toLowerCase())
-                );
-
-                let recommendedFoods = [];
-                if (dietPlans.mealPlan) {
-                    Object.values(dietPlans.mealPlan).forEach(mealArray => {
-                        if (Array.isArray(mealArray)) {
-                            mealArray.forEach(meal => {
-                                if (meal.name) recommendedFoods.push(meal.name.toLowerCase());
-                            });
-                        }
-                    });
-                }
-
-                const matchCount = loggedFoods.filter(food =>
-                    recommendedFoods.some(rec => food.includes(rec) || rec.includes(food))
-                ).length;
-
-                let message = '';
-                let priority = 'low';
-
-                if (mealsLogged === 0) {
-                    message = 'You haven\'t logged any meals today. Your personalized diet plan is waiting for you!';
-                    priority = 'medium';
-                } else if (matchCount > 0) {
-                    message = `Great job! ${matchCount} of your logged foods match your recommended diet plan. Keep following your personalized nutrition!`;
-                } else {
-                    message = `You've logged ${mealsLogged} meal(s) today. Try to include more foods from your personalized diet plan for optimal results.`;
-                    priority = 'medium';
-                }
-
-                await Notification.create({
-                    userId,
-                    type: 'diet_adherence',
-                    title: 'Diet Plan Adherence',
-                    message,
-                    icon: '',
-                    priority,
-                    actionUrl: '/diet-plan',
-                    metadata: { mealsLogged, matchCount, totalRecommended: recommendedFoods.length },
-                    expiresAt: tomorrow
-                });
-
-                sendToUser(userId, { title: 'Diet Plan Adherence', body: message, data: { type: 'diet_adherence', actionUrl: '/diet-plan' } })
-                    .catch(e => console.error('FCM diet adherence failed:', e.message));
-            }
-        }
-    }
-
-    // Send health insight for specific user
-    async sendUserHealthInsight(userId) {
-        const today = new Date();
-        today.setHours(0, 0, 0, 0);
-
-        const existingInsight = await Notification.findOne({
-            userId,
-            type: 'health_insight',
-            createdAt: { $gte: today }
-        });
-
-        if (!existingInsight) {
-            // Generate a random health insight based on user data
-            const insights = [
-                { title: 'Hydration Tip', message: 'Remember to drink enough water throughout the day. Aim for 8-10 glasses daily!' },
-                { title: 'Movement Reminder', message: 'Try to take a short walk today. Even 10 minutes of movement can boost your mood!' },
-                { title: 'Stress Management', message: 'Take a few minutes to practice deep breathing or meditation to reduce stress.' },
-                { title: 'Nutrition Tip', message: 'Include more colorful vegetables in your meals for better nutrition!' },
-                { title: 'Sleep Quality', message: 'Maintain a consistent sleep schedule for better health and energy levels.' }
-            ];
-
-            const randomInsight = insights[Math.floor(Math.random() * insights.length)];
-
-            await Notification.create({
-                userId,
-                type: 'health_insight',
-                title: randomInsight.title,
-                message: randomInsight.message,
-                icon: '',
-                priority: 'low',
-                actionUrl: '/dashboard',
-                metadata: { insightType: 'daily_tip' },
-                expiresAt: new Date(today.getTime() + 24 * 60 * 60 * 1000)
-            });
-
-            sendToUser(userId, { title: randomInsight.title, body: randomInsight.message, data: { type: 'health_insight', actionUrl: '/dashboard' } })
-                .catch(e => console.error('FCM health insight failed:', e.message));
-        }
     }
 
     async sendMealReminders(mealType) {
@@ -669,6 +592,168 @@ class NotificationService {
             return null;
         }
     }
+}
+
+// ---------------------------------------------------------------------------
+// Reminder builders.
+//
+// Each returns [notificationDoc, pushPayload] and touches no I/O — all the data
+// they need is handed in by the tick's bulk reads. Keeping them pure is what
+// lets the tick construct an entire batch in memory and write it with a single
+// insertMany, instead of interleaving a read and a write per user.
+// ---------------------------------------------------------------------------
+
+const MEAL_NAMES = { breakfast: 'Breakfast', lunch: 'Lunch', snack: 'Snack', dinner: 'Dinner' };
+const MEAL_MESSAGES = {
+    breakfast: 'Start your day right! Log your breakfast.',
+    lunch: 'Time for lunch! Don\'t forget to log it.',
+    snack: 'Healthy snack time! Log it now.',
+    dinner: 'Evening meal time! Log your dinner.'
+};
+
+const HEALTH_INSIGHTS = [
+    { title: 'Hydration Tip', message: 'Remember to drink enough water throughout the day. Aim for 8-10 glasses daily!' },
+    { title: 'Movement Reminder', message: 'Try to take a short walk today. Even 10 minutes of movement can boost your mood!' },
+    { title: 'Stress Management', message: 'Take a few minutes to practice deep breathing or meditation to reduce stress.' },
+    { title: 'Nutrition Tip', message: 'Include more colorful vegetables in your meals for better nutrition!' },
+    { title: 'Sleep Quality', message: 'Maintain a consistent sleep schedule for better health and energy levels.' }
+];
+
+const push = (title, message, type, actionUrl) => ({
+    title,
+    body: message,
+    data: { type, actionUrl }
+});
+
+function buildMealReminder(userId, mealType, expiresAt) {
+    const title = `${MEAL_NAMES[mealType]} Reminder`;
+    const message = MEAL_MESSAGES[mealType];
+    return [{
+        userId,
+        type: 'food_reminder',
+        title,
+        message,
+        icon: '',
+        priority: 'medium',
+        actionUrl: '/nutrition',
+        metadata: { mealType },
+        expiresAt
+    }, push(title, message, 'food_reminder', '/nutrition')];
+}
+
+function buildSleepReminder(userId, targetSleepHours, expiresAt) {
+    const title = 'Sleep Tracking Reminder';
+    const message = `Time to wind down! Aim for ${targetSleepHours} hours of sleep. Don't forget to log your sleep hours.`;
+    return [{
+        userId,
+        type: 'sleep_reminder',
+        title,
+        message,
+        icon: '',
+        priority: 'medium',
+        actionUrl: '/dashboard',
+        metadata: { reminderType: 'sleep', targetHours: targetSleepHours },
+        expiresAt
+    }, push(title, message, 'sleep_reminder', '/dashboard')];
+}
+
+function buildMacroUpdate(userId, summary, expiresAt) {
+    const pct = (value, goal) => (goal ? Math.round((value / goal) * 100) : 0);
+    const calPct = pct(summary.totalCalories, summary.calorieGoal);
+    const protPct = pct(summary.totalProtein, summary.proteinGoal);
+    const carbsPct = pct(summary.totalCarbs, summary.carbsGoal);
+    const fatsPct = pct(summary.totalFats, summary.fatsGoal);
+
+    let statusMsg;
+    if (calPct >= 80 && calPct <= 110) {
+        statusMsg = 'You\'re on track with your calorie goal!';
+    } else if (calPct < 50) {
+        statusMsg = `You've only consumed ${calPct}% of your daily calories. Try to eat more balanced meals.`;
+    } else if (calPct > 110) {
+        statusMsg = `You've exceeded your calorie goal by ${calPct - 100}%. Consider lighter options for remaining meals.`;
+    } else {
+        statusMsg = `You've consumed ${calPct}% of your daily calories. Keep it up!`;
+    }
+
+    const message = `${statusMsg}\nProtein: ${summary.totalProtein}g/${summary.proteinGoal || '?'}g (${protPct}%) | Carbs: ${summary.totalCarbs}g/${summary.carbsGoal || '?'}g (${carbsPct}%) | Fats: ${summary.totalFats}g/${summary.fatsGoal || '?'}g (${fatsPct}%)`;
+
+    return [{
+        userId,
+        type: 'macro_update',
+        title: 'Daily Macro Check',
+        message,
+        icon: '',
+        priority: calPct < 50 || calPct > 120 ? 'high' : 'low',
+        actionUrl: '/nutrition',
+        metadata: {
+            calories: { consumed: summary.totalCalories, goal: summary.calorieGoal, pct: calPct },
+            protein: { consumed: summary.totalProtein, goal: summary.proteinGoal, pct: protPct },
+            carbs: { consumed: summary.totalCarbs, goal: summary.carbsGoal, pct: carbsPct },
+            fats: { consumed: summary.totalFats, goal: summary.fatsGoal, pct: fatsPct }
+        },
+        expiresAt
+    }, push('Daily Macro Check', statusMsg, 'macro_update', '/nutrition')];
+}
+
+function buildDietAdherence(userId, plan, todaysLogs, expiresAt) {
+    const mealsLogged = todaysLogs.length;
+    const loggedFoods = todaysLogs.flatMap((log) =>
+        (log.foodItems || []).map((item) => item.name?.toLowerCase()).filter(Boolean)
+    );
+
+    const recommendedFoods = [];
+    if (plan.mealPlan) {
+        Object.values(plan.mealPlan).forEach((mealArray) => {
+            if (Array.isArray(mealArray)) {
+                mealArray.forEach((meal) => {
+                    if (meal?.name) recommendedFoods.push(meal.name.toLowerCase());
+                });
+            }
+        });
+    }
+
+    const matchCount = loggedFoods.filter((food) =>
+        recommendedFoods.some((rec) => food.includes(rec) || rec.includes(food))
+    ).length;
+
+    let message;
+    let priority = 'low';
+    if (mealsLogged === 0) {
+        message = 'You haven\'t logged any meals today. Your personalized diet plan is waiting for you!';
+        priority = 'medium';
+    } else if (matchCount > 0) {
+        message = `Great job! ${matchCount} of your logged foods match your recommended diet plan. Keep following your personalized nutrition!`;
+    } else {
+        message = `You've logged ${mealsLogged} meal(s) today. Try to include more foods from your personalized diet plan for optimal results.`;
+        priority = 'medium';
+    }
+
+    return [{
+        userId,
+        type: 'diet_adherence',
+        title: 'Diet Plan Adherence',
+        message,
+        icon: '',
+        priority,
+        actionUrl: '/diet-plan',
+        metadata: { mealsLogged, matchCount, totalRecommended: recommendedFoods.length },
+        expiresAt
+    }, push('Diet Plan Adherence', message, 'diet_adherence', '/diet-plan')];
+}
+
+function buildHealthInsight(userId, expiresAt) {
+    const insight = HEALTH_INSIGHTS[Math.floor(Math.random() * HEALTH_INSIGHTS.length)];
+    return [{
+        userId,
+        type: 'health_insight',
+        title: insight.title,
+        message: insight.message,
+        icon: '',
+        priority: 'low',
+        actionUrl: '/dashboard',
+        metadata: { insightType: 'daily_tip' },
+        expiresAt
+    }, push(insight.title, insight.message, 'health_insight', '/dashboard')];
 }
 
 module.exports = new NotificationService();

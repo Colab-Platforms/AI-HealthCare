@@ -3,8 +3,6 @@ import { Link, useLocation } from "react-router-dom";
 
 const navLinks = [
   { label: "ABOUT US", to: "/about" },
-  { label: "DIABETES MANAGEMENT", to: "/diabetes-landing" },
-  { label: "WEIGHT MANAGEMENT", to: "/weight-loss" },
   { label: "HOW IT WORKS", to: "/how-it-works" },
   { label: "FAQ", to: "#faqs-section" },
 ];

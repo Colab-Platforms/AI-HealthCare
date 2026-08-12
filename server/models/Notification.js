@@ -44,4 +44,9 @@ const notificationSchema = new mongoose.Schema({
 notificationSchema.index({ userId: 1, read: 1, createdAt: -1 });
 notificationSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 }); // TTL index
 
+// Serves the reminder cron's once-a-day dedupe seed:
+//   find({ type: { $in: [...] }, createdAt: { $gte: startOfToday } })
+// Without it that query collection-scans every notification ever written.
+notificationSchema.index({ type: 1, createdAt: -1 });
+
 module.exports = mongoose.model('Notification', notificationSchema);
