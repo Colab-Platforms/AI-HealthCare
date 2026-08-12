@@ -477,7 +477,7 @@ exports.getConnectUrl = async (req, res) => {
       { params: { user_id: wearable.openWearablesUserId } }
     );
 
-    res.json({ url: data.url });
+    res.json({ url: data.authorization_url });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
