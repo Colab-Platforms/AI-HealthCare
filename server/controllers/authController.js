@@ -306,7 +306,10 @@ exports.login = async (req, res) => {
 
     let user;
     try {
-      user = await User.findOne(query).populate('doctorProfile').maxTimeMS(15000);
+      // doctorProfile is only ever read for role === 'doctor' (a few dozen accounts),
+      // but populating it unconditionally cost every single patient login an extra
+      // round-trip. Fetch the user first, then populate only when it's actually used.
+      user = await User.findOne(query).maxTimeMS(15000);
     } catch (dbError) {
       console.error('Database error during user lookup:', dbError.message);
       console.error('Database error code:', dbError.code);
@@ -343,10 +346,9 @@ exports.login = async (req, res) => {
     }
 
     if (passwordMatch) {
-      user.loginCount = (user.loginCount || 0) + 1;
-      await user.save();
-
-      // Issue refresh token and save to DB
+      // Persisting the refresh token is the only write the response actually
+      // depends on — the client cannot refresh a session that isn't stored yet.
+      // Everything else below is bookkeeping and is deliberately not awaited.
       const rawRefreshToken = generateRefreshToken();
       await RefreshToken.create({
         userId: user._id,
@@ -355,6 +357,22 @@ exports.login = async (req, res) => {
         userAgent: req.headers['user-agent'],
         ipAddress: req.ip,
       });
+
+      // A full user.save() round-tripped the entire document (and re-ran every
+      // validator) just to bump a counter. $inc touches one field and doesn't
+      // block the response.
+      User.updateOne({ _id: user._id }, { $inc: { loginCount: 1 } })
+        .catch((e) => console.error('loginCount update failed:', e.message));
+
+      // Doctors are the only role that reads this, so the extra query is paid
+      // for by the few accounts that need it rather than by every login.
+      if (user.role === 'doctor') {
+        try {
+          await user.populate('doctorProfile');
+        } catch (e) {
+          console.error('doctorProfile populate failed:', e.message);
+        }
+      }
 
       const response = {
         _id: user._id,
@@ -386,13 +404,14 @@ exports.login = async (req, res) => {
 
       console.log('Login successful for user:', user._id);
 
-      // Log activity (Awaited for reliability)
-      await logActivity(user._id, 'USER_LOGIN', 'authentication', { method: email ? 'email' : 'phone' }, req);
-
-      // Award gamification points (fire and forget)
-      gamificationService.awardPoints(user._id, 'login', 'Daily Login').catch(console.error);
-
+      // Respond first. The audit log and gamification points are both
+      // fire-and-forget: neither affects what the client receives, and awaiting
+      // the audit write put two extra DB round-trips on the critical path of
+      // every login. logActivity already swallows its own errors.
       res.json(response);
+
+      logActivity(user._id, 'USER_LOGIN', 'authentication', { method: email ? 'email' : 'phone' }, req);
+      gamificationService.awardPoints(user._id, 'login', 'Daily Login').catch(console.error);
     } else {
       console.log('Password mismatch for user:', user._id);
       res.status(401).json({ message: 'Invalid credentials' });
@@ -470,7 +489,8 @@ exports.googleAuth = async (req, res) => {
       return res.status(401).json({ message: 'Google token missing required fields' });
     }
 
-    let user = await User.findOne({ $or: [{ googleId }, { email }] }).populate('doctorProfile');
+    // populate('doctorProfile') is deferred to the role check below — see login().
+    let user = await User.findOne({ $or: [{ googleId }, { email }] });
 
     if (!user) {
       user = await User.create({
@@ -498,9 +518,6 @@ exports.googleAuth = async (req, res) => {
       return res.status(403).json({ message: 'Account is deactivated. Please contact support at support@takesolutions.com' });
     }
 
-    user.loginCount = (user.loginCount || 0) + 1;
-    await user.save();
-
     const rawRefreshToken = generateRefreshToken();
     await RefreshToken.create({
       userId: user._id,
@@ -509,6 +526,18 @@ exports.googleAuth = async (req, res) => {
       userAgent: req.headers['user-agent'],
       ipAddress: req.ip,
     });
+
+    // Counter bump, off the critical path — see login()
+    User.updateOne({ _id: user._id }, { $inc: { loginCount: 1 } })
+      .catch((e) => console.error('loginCount update failed:', e.message));
+
+    if (user.role === 'doctor') {
+      try {
+        await user.populate('doctorProfile');
+      } catch (e) {
+        console.error('doctorProfile populate failed:', e.message);
+      }
+    }
 
     const response = {
       _id: user._id,
@@ -537,10 +566,11 @@ exports.googleAuth = async (req, res) => {
       };
     }
 
-    await logActivity(user._id, 'USER_LOGIN', 'authentication', { method: 'google' }, req);
-    gamificationService.awardPoints(user._id, 'login', 'Daily Login').catch(console.error);
-
     res.json(response);
+
+    // Fire-and-forget bookkeeping — see login()
+    logActivity(user._id, 'USER_LOGIN', 'authentication', { method: 'google' }, req);
+    gamificationService.awardPoints(user._id, 'login', 'Daily Login').catch(console.error);
   } catch (error) {
     console.error('Google auth error:', error.message);
     res.status(500).json({ message: error.message });
