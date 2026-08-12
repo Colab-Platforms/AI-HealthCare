@@ -51,8 +51,8 @@ const UpdatedFooter = () => {
         {/* ─── MAIN FOOTER CONTENT GRID ───────────────────────────────────────── */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-12 gap-8 sm:gap-10 lg:gap-12 pb-10 sm:pb-14 text-left items-start">
 
-          {/* Brand & Mission Statement (col-span-4) */}
-          <div className="lg:col-span-4 flex flex-col items-start pr-0 lg:pr-6">
+          {/* Brand & Mission Statement (col-span-3) */}
+          <div className="lg:col-span-3 flex flex-col items-start pr-0 lg:pr-6">
             <Link to="/" className="inline-block mb-3 sm:mb-4">
               <img
                 src="/updated-landing/take_health_new_logo.png"
@@ -65,14 +65,14 @@ const UpdatedFooter = () => {
             </p>
           </div>
 
-          {/* Navigation Links Columns (col-span-5) */}
-          <div className="lg:col-span-5 grid grid-cols-2 sm:grid-cols-3 gap-6 sm:gap-6">
+          {/* Navigation Links Columns (col-span-6) */}
+          <div className="lg:col-span-6 grid grid-cols-2 lg:grid-cols-4 gap-x-6 gap-y-8">
             {navColumns.map((col, idx) => (
               <div key={idx} className="flex flex-col items-start">
                 <span className="text-xs sm:text-sm font-bold uppercase tracking-wider text-white mb-3 sm:mb-4">
                   {col.title}
                 </span>
-                <ul className="flex flex-col gap-2.5 sm:gap-3 text-sm sm:text-lg text-white/70 font-light">
+                <ul className="flex flex-col gap-2.5 sm:gap-3 text-sm sm:text-base text-white/70 font-light">
                   {col.links.map((link, lIdx) => (
                     <li key={lIdx}>
                       <Link

@@ -6,8 +6,6 @@ import { Link, useLocation, useNavigate } from "react-router-dom";
 // window.scrollTo(0, 0) on every route change, which would undo it anyway.
 const navLinks = [
   { label: "ABOUT US", to: "/about" },
-  { label: "DIABETES MANAGEMENT", to: "/diabetes-landing" },
-  { label: "WEIGHT MANAGEMENT", to: "/weight-loss" },
   { label: "HOW IT WORKS", to: "/how-it-works" },
   { label: "FAQ", to: "/", hash: "faqs-section" },
 ];
