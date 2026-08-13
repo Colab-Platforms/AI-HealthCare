@@ -6,7 +6,7 @@ const mongoose = require('mongoose');
 const processedWebhookSchema = new mongoose.Schema({
     source: {
         type: String,
-        enum: ['fastrr', 'shopify', 'razorpay'],
+        enum: ['fastrr', 'shopify', 'razorpay', 'open_wearables'],
         required: true,
     },
     eventId: {

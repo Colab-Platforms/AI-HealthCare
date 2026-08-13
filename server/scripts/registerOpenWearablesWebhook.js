@@ -18,10 +18,14 @@ async function main() {
 
   // Endpoint management uses a developer Bearer token (from login), not the
   // X-Open-Wearables-API-Key used for the data API
-  const { data: auth } = await axios.post(`${baseURL}/auth/login`, {
-    email: process.env.OPEN_WEARABLES_ADMIN_EMAIL,
-    password: process.env.OPEN_WEARABLES_ADMIN_PASSWORD
-  });
+  // Standard OAuth2 password flow: form-encoded, and the email goes in `username`
+  const { data: auth } = await axios.post(
+    `${baseURL}/auth/login`,
+    new URLSearchParams({
+      username: process.env.OPEN_WEARABLES_ADMIN_EMAIL,
+      password: process.env.OPEN_WEARABLES_ADMIN_PASSWORD
+    })
+  );
   const authHeader = { Authorization: `Bearer ${auth.access_token}` };
 
   const { data: endpoint } = await axios.post(

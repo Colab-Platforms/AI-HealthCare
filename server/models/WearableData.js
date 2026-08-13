@@ -4,7 +4,12 @@ const wearableDataSchema = new mongoose.Schema({
   user: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   deviceType: { 
     type: String, 
-    enum: ['fitbit', 'apple_watch', 'garmin', 'samsung', 'xiaomi', 'other'],
+    // Values match Open Wearables provider slugs so a webhook's `provider` field
+    // maps straight onto deviceType; the first few predate that integration.
+    enum: [
+      'fitbit', 'apple_watch', 'garmin', 'samsung', 'xiaomi', 'other',
+      'google', 'whoop', 'oura', 'polar', 'strava', 'suunto', 'ultrahuman', 'sensorbio', 'apple'
+    ],
     required: true 
   },
   deviceName: String,
@@ -49,6 +54,15 @@ const wearableDataSchema = new mongoose.Schema({
   bloodOxygen: [{
     timestamp: { type: Date, default: Date.now },
     percentage: { type: Number, min: 0, max: 100 }
+  }],
+
+  // Body composition (weight, body fat, BMI) — populated from provider webhooks
+  bodyComposition: [{
+    timestamp: { type: Date, default: Date.now },
+    weightKg: Number,
+    bodyFatPercentage: { type: Number, min: 0, max: 100 },
+    bmi: Number,
+    leanBodyMassKg: Number
   }],
 
   // Stress levels
