@@ -56,6 +56,15 @@ const wearableDataSchema = new mongoose.Schema({
     percentage: { type: Number, min: 0, max: 100 }
   }],
 
+  // Body composition (weight, body fat, BMI) — populated from provider webhooks
+  bodyComposition: [{
+    timestamp: { type: Date, default: Date.now },
+    weightKg: Number,
+    bodyFatPercentage: { type: Number, min: 0, max: 100 },
+    bmi: Number,
+    leanBodyMassKg: Number
+  }],
+
   // Stress levels
   stressLevels: [{
     timestamp: { type: Date, default: Date.now },

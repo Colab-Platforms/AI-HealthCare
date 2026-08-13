@@ -2,6 +2,7 @@ const WearableData = require('../models/WearableData');
 const cache = require('../utils/cache');
 const { logActivity } = require('../utils/activityLogger');
 const openWearablesClient = require('../config/openWearables');
+const ProcessedWebhook = require('../models/ProcessedWebhook');
 
 // Connect a new wearable device
 exports.connectDevice = async (req, res) => {
@@ -513,6 +514,22 @@ exports.handleWebhook = async (req, res) => {
       return res.status(400).json({ message: 'Invalid webhook signature' });
     }
 
+    // Svix retries a failed delivery with the SAME svix-id, and several of our
+    // handlers accumulate (calories, steps), so replaying an event would inflate
+    // the totals. The unique {source, eventId} index makes this insert the lock:
+    // whoever wins it processes the event, a duplicate just acknowledges.
+    try {
+      await ProcessedWebhook.create({
+        source: 'open_wearables',
+        eventId: req.headers['svix-id']
+      });
+    } catch (err) {
+      if (err.code === 11000) {
+        return res.status(200).json({ received: true, duplicate: true });
+      }
+      throw err;
+    }
+
     const { type, data } = event;
 
     switch (type) {
@@ -607,12 +624,61 @@ exports.handleWebhook = async (req, res) => {
               m => dateOnlyUTC(m.date).getTime() === date.getTime()
             );
             if (!entry) {
-              entry = { date, steps: 0 };
-              wearable.dailyMetrics.push(entry);
+              // push() copies the object into a subdocument, so read it back —
+              // mutating the pushed literal would not touch what gets saved
+              wearable.dailyMetrics.push({ date, steps: 0 });
+              entry = wearable.dailyMetrics[wearable.dailyMetrics.length - 1];
             }
             entry.steps = sample.is_daily_total ? sample.value : (entry.steps || 0) + sample.value;
           }
           wearable.markModified('dailyMetrics');
+          wearable.lastSyncedAt = new Date();
+          await wearable.save();
+        }
+        break;
+      }
+
+      case 'calories.created': {
+        const wearable = await findWearableDoc(data.user_id, data.provider);
+        if (wearable) {
+          for (const sample of data.samples) {
+            const date = dateOnlyUTC(sample.timestamp);
+            let entry = wearable.dailyMetrics.find(
+              m => dateOnlyUTC(m.date).getTime() === date.getTime()
+            );
+            if (!entry) {
+              // push() copies the object into a subdocument, so read it back —
+              // mutating the pushed literal would not touch what gets saved
+              wearable.dailyMetrics.push({ date, caloriesBurned: 0 });
+              entry = wearable.dailyMetrics[wearable.dailyMetrics.length - 1];
+            }
+            // A daily total replaces the day's figure; intraday samples add up
+            entry.caloriesBurned = sample.is_daily_total
+              ? sample.value
+              : (entry.caloriesBurned || 0) + sample.value;
+          }
+          wearable.markModified('dailyMetrics');
+          wearable.lastSyncedAt = new Date();
+          await wearable.save();
+        }
+        break;
+      }
+
+      case 'body_composition.created': {
+        const wearable = await findWearableDoc(data.user_id, data.provider);
+        if (wearable) {
+          // One event can carry weight, body fat, BMI, … — group by timestamp so
+          // readings taken together land in a single entry
+          const byTimestamp = new Map();
+          for (const sample of data.samples) {
+            const entry = byTimestamp.get(sample.timestamp) || { timestamp: sample.timestamp };
+            if (sample.type === 'weight') entry.weightKg = sample.value;
+            if (sample.type === 'body_fat_percentage') entry.bodyFatPercentage = sample.value;
+            if (sample.type === 'body_mass_index') entry.bmi = sample.value;
+            if (sample.type === 'lean_body_mass') entry.leanBodyMassKg = sample.value;
+            byTimestamp.set(sample.timestamp, entry);
+          }
+          wearable.bodyComposition.push(...byTimestamp.values());
           wearable.lastSyncedAt = new Date();
           await wearable.save();
         }
@@ -645,6 +711,14 @@ exports.handleWebhook = async (req, res) => {
 
     res.status(200).json({ received: true });
   } catch (error) {
+    // Processing failed after we claimed the event, so release the claim —
+    // otherwise Svix's retry would be swallowed as a duplicate and the data lost
+    if (req.headers['svix-id']) {
+      await ProcessedWebhook.deleteOne({
+        source: 'open_wearables',
+        eventId: req.headers['svix-id']
+      }).catch(() => {});
+    }
     res.status(500).json({ message: error.message });
   }
 };
