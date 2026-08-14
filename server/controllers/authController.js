@@ -22,6 +22,81 @@ const generateRefreshToken = () => crypto.randomBytes(40).toString('hex');
 // Legacy alias so existing register/doctor flows still work
 const generateToken = generateAccessToken;
 
+// ---------------------------------------------------------------------------
+// Single-device sessions
+//
+// An account is bound to one device at a time (User.device_id). The binding was
+// previously only ever written at registration and cleared at logout — never
+// compared, never re-bound — so an app uninstall without logging out left a
+// stale binding that no later login could reclaim. These helpers do the
+// comparison, and re-bind the account to whichever device just signed in.
+// ---------------------------------------------------------------------------
+
+// The mobile app sends this snake_case, the web client camelCase, and a native
+// HTTP layer may only be able to set a header. Accept all of them.
+const getIncomingDeviceId = (req) => {
+  const raw =
+    req.body?.device_id ?? req.body?.deviceId ??
+    req.query?.device_id ?? req.query?.deviceId ??
+    req.headers['x-device-id'];
+  const value = typeof raw === 'string' ? raw.trim() : (raw ? String(raw) : '');
+  return value || null;
+};
+
+// Query-string flags arrive as strings, body flags as real booleans.
+const isTruthyFlag = (v) => v === true || v === 'true' || v === 1 || v === '1';
+
+// "Sign me in here and drop the other device." Honoured from the body or the
+// query string, under either casing.
+const wantsDeviceReplace = (req) =>
+  ['forceLogin', 'force_login', 'replaceDevice', 'replace_device', 'force']
+    .some((flag) => isTruthyFlag(req.body?.[flag]) || isTruthyFlag(req.query?.[flag]));
+
+// Decides whether `user` may sign in from this request's device and re-binds the
+// account when they may; returns a 409 payload when they may not.
+//
+// Callers must only reach this once credentials are verified — run any earlier
+// and it would tell an anonymous caller whether an account has an active
+// session.
+const claimDevice = async (user, req) => {
+  const incoming = getIncomingDeviceId(req);
+  const stored = user.device_id || null;
+
+  // Clients that don't report a device (the web app) keep the old behaviour:
+  // never blocked, and they don't disturb an existing mobile binding.
+  if (!incoming) return { allowed: true };
+
+  const isSameDevice = stored === incoming;
+  const isUnbound = !stored;
+
+  if (!isSameDevice && !isUnbound && !wantsDeviceReplace(req)) {
+    return {
+      allowed: false,
+      status: 409,
+      body: {
+        message: 'This account is already logged in on another device.',
+        code: 'DEVICE_ALREADY_LOGGED_IN',
+        // Tells the app it may retry the same call with forceLogin: true.
+        canForceLogin: true,
+      },
+    };
+  }
+
+  // Taking the account off a different device ends that device's session —
+  // revoke its refresh tokens so it can't silently keep working. The new
+  // session's token is created after this point, so it survives.
+  if (!isSameDevice && !isUnbound) {
+    await RefreshToken.deleteMany({ userId: user._id });
+  }
+
+  // Re-bind on every accepted login, same-device included: that is what makes a
+  // reinstall (or any other stale binding) reclaimable.
+  user.device_id = incoming; // keep the in-memory doc in step with later save()s
+  await User.updateOne({ _id: user._id }, { device_id: incoming });
+
+  return { allowed: true };
+};
+
 exports.requestRegistrationOtp = async (req, res) => {
   try {
     const { name, phone } = req.body;
@@ -113,6 +188,11 @@ exports.loginWithPhoneOtp = async (req, res) => {
     }
     if (!user.isActive) {
       return res.status(403).json({ message: 'Account is deactivated. Please contact support at support@takesolutions.com' });
+    }
+
+    const deviceCheck = await claimDevice(user, req);
+    if (!deviceCheck.allowed) {
+      return res.status(deviceCheck.status).json(deviceCheck.body);
     }
 
     user.isPhoneVerified = true;
@@ -516,6 +596,12 @@ exports.login = async (req, res) => {
     }
 
     if (passwordMatch) {
+      const deviceCheck = await claimDevice(user, req);
+      if (!deviceCheck.allowed) {
+        console.log('Login blocked — device conflict for user:', user._id);
+        return res.status(deviceCheck.status).json(deviceCheck.body);
+      }
+
       user.loginCount = (user.loginCount || 0) + 1;
       await user.save();
 
@@ -687,6 +773,14 @@ exports.googleAuth = async (req, res) => {
 
     if (!user.isActive) {
       return res.status(403).json({ message: 'Account is deactivated. Please contact support at support@takesolutions.com' });
+    }
+
+    // The Google token is verified by this point, so the caller has proven they
+    // own the account and the device state is safe to act on.
+    const deviceCheck = await claimDevice(user, req);
+    if (!deviceCheck.allowed) {
+      console.log('Google login blocked — device conflict for user:', user._id);
+      return res.status(deviceCheck.status).json(deviceCheck.body);
     }
 
     user.loginCount = (user.loginCount || 0) + 1;
