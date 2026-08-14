@@ -477,6 +477,13 @@ exports.getConnectUrl = async (req, res) => {
   try {
     const { provider } = req.params;
 
+    if (!openWearablesClient.isConfigured) {
+      return res.status(503).json({
+        message: 'Wearable device connections are not available yet',
+        error: 'OPEN_WEARABLES_NOT_CONFIGURED'
+      });
+    }
+
     const wearable = await ensureOpenWearablesUser(req.user._id, provider);
 
     const { data } = await openWearablesClient.get(
@@ -486,7 +493,26 @@ exports.getConnectUrl = async (req, res) => {
 
     res.json({ url: data.authorization_url });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    // Distinguish "middleware is down/unreachable" from "we sent it something bad",
+    // so a client sees a retryable 503 instead of a blanket 500
+    const upstreamStatus = error.response?.status;
+    if (!upstreamStatus) {
+      console.error('[OpenWearables] unreachable:', error.message);
+      return res.status(503).json({
+        message: 'Wearable service is temporarily unavailable, please try again',
+        error: 'OPEN_WEARABLES_UNREACHABLE'
+      });
+    }
+
+    console.error(
+      `[OpenWearables] ${upstreamStatus} on /oauth/${req.params.provider}/authorize:`,
+      error.response?.data
+    );
+    res.status(502).json({
+      message: 'Could not start device connection',
+      error: 'OPEN_WEARABLES_ERROR',
+      detail: error.response?.data?.detail
+    });
   }
 };
 
@@ -510,6 +536,13 @@ function dateOnlyUTC(isoString) {
 // Signature is verified instead of a JWT/session.
 exports.handleWebhook = async (req, res) => {
   try {
+    if (!process.env.OPEN_WEARABLES_WEBHOOK_SECRET) {
+      // Without the secret we cannot tell a real event from a forged one, so
+      // refuse rather than trust the payload
+      console.error('[OpenWearables] OPEN_WEARABLES_WEBHOOK_SECRET missing — rejecting webhook');
+      return res.status(503).json({ message: 'Webhook handler not configured' });
+    }
+
     const wh = new Webhook(process.env.OPEN_WEARABLES_WEBHOOK_SECRET);
     let event;
     try {
