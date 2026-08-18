@@ -43,6 +43,32 @@ const getIncomingDeviceId = (req) => {
   return value || null;
 };
 
+// One tagged logger for the whole device-binding path, so the full story of a
+// single login can be pulled out of the logs with `grep '\[device\]'`.
+//
+// Values are JSON.stringify'd on purpose: an id that differs only by trailing
+// whitespace, or an empty string vs. a real null, is invisible in a plain log
+// line and is exactly the kind of mismatch that causes a false conflict.
+const deviceLog = (stage, req, extra = {}) => {
+  const b = req.body || {};
+  const q = req.query || {};
+  console.log('[device]', stage, JSON.stringify({
+    // Which field the client actually populated — tells us at a glance whether
+    // the app is sending snake_case, camelCase, the header, or nothing at all.
+    sources: {
+      'body.device_id': b.device_id ?? null,
+      'body.deviceId': b.deviceId ?? null,
+      'query.device_id': q.device_id ?? null,
+      'query.deviceId': q.deviceId ?? null,
+      'header.x-device-id': req.headers?.['x-device-id'] ?? null,
+    },
+    resolved: getIncomingDeviceId(req),
+    forceFlag: wantsDeviceReplace(req),
+    userAgent: req.headers?.['user-agent'] ?? null,
+    ...extra,
+  }));
+};
+
 // Query-string flags arrive as strings, body flags as real booleans.
 const isTruthyFlag = (v) => v === true || v === 'true' || v === 1 || v === '1';
 
@@ -62,14 +88,36 @@ const claimDevice = async (user, req) => {
   const incoming = getIncomingDeviceId(req);
   const stored = user.device_id || null;
 
+  deviceLog('claimDevice:enter', req, {
+    userId: String(user._id),
+    storedRaw: user.device_id ?? null,
+    stored,
+    incoming,
+    // The comparison that decides everything. If these differ only by
+    // whitespace/case, the mismatch is a normalisation bug, not a real
+    // second device.
+    equal: stored === incoming,
+    storedLen: stored ? stored.length : 0,
+    incomingLen: incoming ? incoming.length : 0,
+  });
+
   // Clients that don't report a device (the web app) keep the old behaviour:
   // never blocked, and they don't disturb an existing mobile binding.
-  if (!incoming) return { allowed: true };
+  if (!incoming) {
+    deviceLog('claimDevice:allow(no-device-reported)', req, { userId: String(user._id), stored });
+    return { allowed: true };
+  }
 
   const isSameDevice = stored === incoming;
   const isUnbound = !stored;
 
   if (!isSameDevice && !isUnbound && !wantsDeviceReplace(req)) {
+    deviceLog('claimDevice:BLOCK', req, {
+      userId: String(user._id),
+      stored,
+      incoming,
+      reason: 'account bound to a different device and no force flag sent',
+    });
     return {
       allowed: false,
       status: 409,
@@ -86,6 +134,12 @@ const claimDevice = async (user, req) => {
   // revoke its refresh tokens so it can't silently keep working. The new
   // session's token is created after this point, so it survives.
   if (!isSameDevice && !isUnbound) {
+    deviceLog('claimDevice:takeover', req, {
+      userId: String(user._id),
+      stored,
+      incoming,
+      note: 'force flag present — revoking refresh tokens of the previous device',
+    });
     await RefreshToken.deleteMany({ userId: user._id });
   }
 
@@ -93,6 +147,13 @@ const claimDevice = async (user, req) => {
   // reinstall (or any other stale binding) reclaimable.
   user.device_id = incoming; // keep the in-memory doc in step with later save()s
   await User.updateOne({ _id: user._id }, { device_id: incoming });
+
+  deviceLog('claimDevice:allow(rebound)', req, {
+    userId: String(user._id),
+    previous: stored,
+    boundTo: incoming,
+    wasSameDevice: isSameDevice,
+  });
 
   return { allowed: true };
 };
@@ -311,6 +372,13 @@ exports.register = async (req, res) => {
     const { name, phone, password, role, profile, nutritionGoal, otp, device_id } = req.body;
     const email = req.body.email?.toLowerCase().trim();
 
+    // Accepted at the top level of the body, but stored under foodPreferences
+    // next to region/country — that is the group the diet prompt reads. Also
+    // accepted from profile.state / foodPreferences.state so a client that
+    // groups it either way still works.
+    const state = (req.body.state ?? profile?.state ?? req.body.foodPreferences?.state ?? '')
+      .toString().trim() || null;
+
     // Validate required fields
     if (!name || !email || !password || !phone) {
       console.log('Registration attempt: Missing required fields');
@@ -388,6 +456,11 @@ exports.register = async (req, res) => {
     let user = null;
     try {
       console.log('Creating user in database...');
+      deviceLog('register:create-user', req, {
+        email,
+        storingRaw: device_id ?? null,
+        wouldResolveTo: getIncomingDeviceId(req),
+      });
       user = await User.create({
         name,
         email,
@@ -397,6 +470,9 @@ exports.register = async (req, res) => {
         isEmailVerified: true,
         device_id: device_id || null,
         profile: profile || {},
+        // Only set when the client actually sent one, so an absent state keeps
+        // the schema default instead of writing an explicit null.
+        ...(state ? { foodPreferences: { state } } : {}),
         nutritionGoal: calculatedGoals ? {
           goal: nutritionGoal.goal,
           targetWeight: nutritionGoal.targetWeight,
@@ -484,6 +560,12 @@ exports.registerDoctor = async (req, res) => {
       return res.status(400).json({ message: 'User already exists with this email' });
     }
 
+    deviceLog('registerDoctor:create-user', req, {
+      email,
+      storingRaw: device_id ?? null,
+      wouldResolveTo: getIncomingDeviceId(req),
+    });
+
     // Create user with doctor role - with extended timeout for Vercel
     const user = await User.create({
       name,
@@ -538,6 +620,8 @@ exports.login = async (req, res) => {
   try {
     const { phone, password, device_id } = req.body;
     const email = req.body.email?.toLowerCase().trim();
+
+    deviceLog('login:request', req, { identifier: email || phone || null });
 
     // Input validation
     if (!email && !phone) {
@@ -598,7 +682,7 @@ exports.login = async (req, res) => {
     if (passwordMatch) {
       const deviceCheck = await claimDevice(user, req);
       if (!deviceCheck.allowed) {
-        console.log('Login blocked — device conflict for user:', user._id);
+        deviceLog('login:RESPONSE_409', req, { userId: String(user._id), body: deviceCheck.body });
         return res.status(deviceCheck.status).json(deviceCheck.body);
       }
 
@@ -693,6 +777,9 @@ exports.googleAuth = async (req, res) => {
     // sends an ID token (JWT) instead — a different token type that needs
     // a different Google verification endpoint. Support both.
     const { accessToken, idToken, device_id } = req.body;
+
+    deviceLog('googleLogin:request', req, { tokenType: idToken ? 'idToken' : 'accessToken' });
+
     if (!accessToken && !idToken) {
       return res.status(400).json({ message: 'A Google access token or ID token is required' });
     }
@@ -749,6 +836,11 @@ exports.googleAuth = async (req, res) => {
     let user = await User.findOne({ $or: [{ googleId }, { email }] }).populate('doctorProfile');
 
     if (!user) {
+      deviceLog('googleLogin:create-user', req, {
+        email,
+        storingRaw: device_id ?? null,
+        wouldResolveTo: getIncomingDeviceId(req),
+      });
       user = await User.create({
         name: profile.name || email.split('@')[0],
         email,
@@ -779,7 +871,7 @@ exports.googleAuth = async (req, res) => {
     // own the account and the device state is safe to act on.
     const deviceCheck = await claimDevice(user, req);
     if (!deviceCheck.allowed) {
-      console.log('Google login blocked — device conflict for user:', user._id);
+      deviceLog('googleLogin:RESPONSE_409', req, { userId: String(user._id), email, body: deviceCheck.body });
       return res.status(deviceCheck.status).json(deviceCheck.body);
     }
 
@@ -854,8 +946,19 @@ exports.logout = async (req, res) => {
       await RefreshToken.deleteOne({ token: refreshToken });
     }
     if (req.user) {
+      deviceLog('logout:clearing-binding', req, {
+        userId: String(req.user._id),
+        wasBoundTo: req.user.device_id ?? null,
+      });
       await User.updateOne({ _id: req.user._id }, { device_id: null });
       await logActivity(req.user._id, 'USER_LOGOUT', 'authentication', {}, req);
+    } else {
+      // No req.user means the access token was missing/expired, so the binding
+      // is NOT cleared here — the account stays bound and the next login on a
+      // freshly-generated device id will look like a conflict.
+      deviceLog('logout:NO_AUTH_BINDING_NOT_CLEARED', req, {
+        hadRefreshToken: Boolean(refreshToken),
+      });
     }
     res.json({ success: true, message: 'Logged out successfully' });
   } catch (error) {
