@@ -486,9 +486,16 @@ exports.getConnectUrl = async (req, res) => {
 
     const wearable = await ensureOpenWearablesUser(req.user._id, provider);
 
+    // Without this, the OAuth flow dead-ends on Open Wearables' own JSON success
+    // page after the provider redirects back — the mobile app never regains control.
     const { data } = await openWearablesClient.get(
       `/oauth/${provider}/authorize`,
-      { params: { user_id: wearable.openWearablesUserId } }
+      {
+        params: {
+          user_id: wearable.openWearablesUserId,
+          redirect_uri: `takehealth://wearables?provider=${provider}`
+        }
+      }
     );
 
     res.json({ url: data.authorization_url });
