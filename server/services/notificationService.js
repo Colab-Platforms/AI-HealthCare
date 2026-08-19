@@ -71,22 +71,6 @@ class NotificationService {
         }
     }
 
-    // Check each user's preferences and send notifications once their preferred
-    // time has passed for today. Uses >= (not ===) so this stays correct regardless
-    // of how often the caller ticks — the per-day dedupe set prevents duplicates.
-    //
-    // Shape of the work, and why: the previous version walked every user and issued
-    // 2+ awaited queries per user per reminder type. At ~5k users that is ~50k
-    // sequential round-trips per tick, which cannot finish inside one minute and
-    // holds the whole Mongo connection pool, so ordinary API requests queue behind
-    // it for tens of seconds. This version does the same job in three passes:
-    //
-    //   1. in-memory — decide who is due for what (zero queries)
-    //   2. bulk read — one query per collection, scoped to just the due users
-    //   3. bulk write — one insertMany, then push fan-out in bounded waves
-    //
-    // Steady state is 0–3 small queries per tick, because pass 1 filters against
-    // the in-memory dedupe set and almost everyone has already been served.
     async checkAndSendUserNotifications() {
         // A slow tick must never stack on top of the next one. Unbounded overlap is
         // what turned this job into permanent load rather than a periodic spike.

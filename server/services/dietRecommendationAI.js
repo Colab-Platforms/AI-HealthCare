@@ -82,7 +82,7 @@ class DietRecommendationAI {
   }
 
   async generatePersonalizedDietPlan(userData, promptExtension = '') {
-    const { age, gender, weight, height, currentBMI, bmiGoal, activityLevel, nutritionGoals, medicalConditions, allergies, diabetesInfo, alcoholContext, alcoholSummary, lifestyle, country, region, foodPreferences } = userData;
+    const { age, gender, weight, height, currentBMI, bmiGoal, activityLevel, nutritionGoals, medicalConditions, allergies, diabetesInfo, alcoholContext, alcoholSummary, lifestyle, country, region, state, foodPreferences } = userData;
     const isDiabetic = !!diabetesInfo;
     const alcoholLine = alcoholContext || 'No alcohol tracker data';
     const elevatedNote = alcoholSummary?.bingePattern || (alcoholSummary?.today >= 3)
@@ -107,7 +107,8 @@ class DietRecommendationAI {
     let regionCountryInstructions = '';
     const userCountry = country || 'India';
     const userRegion = region || 'other';
-    
+    const userState = typeof state === 'string' ? state.trim() : '';
+
     if (userCountry === 'India') {
       if (userRegion && userRegion !== 'other') {
         regionCountryInstructions = `\n- REGION FOCUS: Prioritize ${userRegion} Indian cuisine and regional specialties. Include traditional ${userRegion} dishes.`;
@@ -119,6 +120,13 @@ class DietRecommendationAI {
       if (userRegion && userRegion !== 'other') {
         regionCountryInstructions += `\n- REGION PREFERENCE: User prefers ${userRegion} style cuisine if available in ${userCountry}.`;
       }
+    }
+
+    // State is the most specific location signal we have, so it goes last and
+    // is stated as taking precedence — "south" spans Kerala and Tamil Nadu,
+    // whose staples differ enough that the broader hint alone is misleading.
+    if (userState) {
+      regionCountryInstructions += `\n- STATE FOCUS (highest priority): User is from ${userState}, ${userCountry}. Prefer everyday home-style dishes, staple grains, and local ingredients specific to ${userState}. Where a ${userState} dish and a generic ${userCountry} dish both fit the calorie and preference constraints, choose the ${userState} one.`;
     }
     
     const prompt = `Indian Clinical Nutritionist. Generate a 100% accurate JSON meal plan with 7 daily options per meal (one for each day of the week).
@@ -165,7 +173,7 @@ JSON output ONLY. No markdown. Exact calorie math is mandatory.`;
     try {
       const aiResponse = await this.makeAIRequest({
         max_tokens: 8000,
-        system: "Expert Clinical Dietitian. Generate varied, scientifically accurate 7-day meal plans based on user's region, country, and food preferences. Each day must have a completely different meal. Never repeat dishes. Strict calorie compliance per day combo is mandatory.",
+        system: "Expert Clinical Dietitian. Generate varied, scientifically accurate 7-day meal plans based on user's state, region, country, and food preferences. When a state is given, treat it as the strongest cuisine signal and favour dishes native to that state. Each day must have a completely different meal. Never repeat dishes. Strict calorie compliance per day combo is mandatory.",
         messages: [{ role: 'user', content: prompt }],
         temperature: 0.7
       });

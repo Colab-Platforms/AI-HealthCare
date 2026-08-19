@@ -162,6 +162,7 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
       targetWeight: targetWeight,
       region: user.foodPreferences?.region || 'other',  // ← Region
       country: user.foodPreferences?.country || 'India',  // ← Country
+      state: user.foodPreferences?.state || null,  // ← State (null when not set; no default guess)
       dietaryPreference: user.profile?.dietaryPreference || 'non-vegetarian',
       activityLevel: user.profile?.activityLevel || 'moderately_active',
       fitnessGoals: user.profile?.fitnessGoals || [],
@@ -238,7 +239,8 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
     const isRegenerate = req.body?.isRegenerate || false;
     const region = user.foodPreferences?.region || 'other';
     const country = user.foodPreferences?.country || 'India';
-    
+    const state = (user.foodPreferences?.state || '').trim();
+
     let promptEx = isRegenerate
       ? 'IMPORTANT: This is a REGENERATION request. You MUST provide COMPLETELY NEW and DIFFERENT meal options. Every single meal option must be fresh and unique.'
       : '';
@@ -257,7 +259,11 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
         promptEx += `\nREGION PREFERENCE: User prefers ${region} style cuisine if available in ${country}.`;
       }
     }
-    
+
+    if (state) {
+      promptEx += `\nSTATE FOCUS (highest priority): User is from ${state}, ${country}. Prefer everyday home-style dishes, staple grains, and local ingredients specific to ${state} over generic ${country} options.`;
+    }
+
     if (avoidMealsList.length > 0) {
       promptEx += `\nCRITICAL: DO NOT suggest any of these meals which were in the previous plan: ${avoidMealsList.join(', ')}. Provide a completely different menu.`;
     }
