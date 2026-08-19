@@ -53,7 +53,10 @@ exports.disconnectDevice = async (req, res) => {
 // Get all connected devices
 exports.getConnectedDevices = async (req, res) => {
   try {
-    const devices = await WearableData.find({ user: req.user._id });
+    // Just the connection summary — dailyMetrics/sleepData/etc. belong to
+    // /dashboard, not here, so the payload stays small for a devices-list screen
+    const devices = await WearableData.find({ user: req.user._id })
+      .select('deviceType deviceName isConnected lastSyncedAt');
     res.json(devices);
   } catch (error) {
     res.status(500).json({ message: error.message });
