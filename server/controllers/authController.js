@@ -10,6 +10,7 @@ const Otp = require('../models/Otp');
 const { logActivity } = require('../utils/activityLogger');
 const gamificationService = require('../services/gamificationService');
 const RefreshToken = require('../models/RefreshToken');
+const FCMToken = require('../models/FCMToken');
 const crypto = require('crypto')
 
 // Short-lived access token — 15 minutes
@@ -41,6 +42,40 @@ const getIncomingDeviceId = (req) => {
     req.headers['x-device-id'];
   const value = typeof raw === 'string' ? raw.trim() : (raw ? String(raw) : '');
   return value || null;
+};
+
+// Same snake_case/camelCase split as device_id — mobile sends fcm_token, web sends fcmToken.
+const getIncomingFcmToken = (req) => {
+  const raw = req.body?.fcmToken ?? req.body?.fcm_token;
+  const value = typeof raw === 'string' ? raw.trim() : '';
+  return value.length >= 20 ? value : null;
+};
+
+// Upserts the token so a device that already registered just gets its lastUsedAt
+// bumped instead of creating a duplicate row. Fire-and-forget — a failed token
+// save must never fail the login/register/profile response, and this collection
+// is independent of the User document so it's safe to run in parallel.
+const upsertFcmTokenRecord = (userId, token, req) => {
+  const platform = req.body?.platform || 'web';
+  const deviceLabel = req.body?.deviceLabel || 'Unknown Device';
+
+  FCMToken.findOneAndUpdate(
+    { token },
+    { userId, platform, deviceLabel, isActive: true, lastUsedAt: new Date() },
+    { upsert: true, new: true }
+  ).catch((e) => console.error('FCM token save failed:', e.message));
+};
+
+// Sets the legacy single-token field on an in-memory User document (the caller
+// must still `await user.save()`) and upserts the FCMToken collection record.
+// IMPORTANT: this must mutate the same document instance the handler is about
+// to save — a parallel `User.updateOne` here would race the handler's own
+// `user.save()` and get silently overwritten by the stale in-memory value.
+const captureFcmToken = (user, req) => {
+  const token = getIncomingFcmToken(req);
+  if (!token) return;
+  user.fcmToken = token;
+  upsertFcmTokenRecord(user._id, token, req);
 };
 
 // One tagged logger for the whole device-binding path, so the full story of a
@@ -371,23 +406,18 @@ exports.register = async (req, res) => {
   try {
     const { name, phone, password, role, profile, nutritionGoal, otp, device_id } = req.body;
     const email = req.body.email?.toLowerCase().trim();
-
-    // Accepted at the top level of the body, but stored under foodPreferences
-    // next to region/country — that is the group the diet prompt reads. Also
-    // accepted from profile.state / foodPreferences.state so a client that
-    // groups it either way still works.
     const state = (req.body.state ?? profile?.state ?? req.body.foodPreferences?.state ?? '')
       .toString().trim() || null;
 
     // Validate required fields
-    if (!name || !email || !password || !phone) {
+    if (!name || !email || !password ) {
       console.log('Registration attempt: Missing required fields');
-      return res.status(400).json({ message: 'Name, email, phone, and password are required' });
+      return res.status(400).json({ message: 'Name, email, and password are required' });
     }
 
-    // Phone number validation (exactly 10 digits)
+    // Phone number validation (exactly 0 digits)
     const phoneRegex = /^\d{10}$/;
-    if (!phoneRegex.test(phone)) {
+    if (phone && !phoneRegex.test(phone)) {
       return res.status(400).json({ message: 'Phone number must be exactly 10 digits' });
     }
 
@@ -469,6 +499,7 @@ exports.register = async (req, res) => {
         role: userRole,
         isEmailVerified: true,
         device_id: device_id || null,
+        fcmToken: getIncomingFcmToken(req),
         profile: profile || {},
         // Only set when the client actually sent one, so an absent state keeps
         // the schema default instead of writing an explicit null.
@@ -518,7 +549,9 @@ exports.register = async (req, res) => {
     }
 
     console.log('User registered successfully:', user._id);
-    
+
+    if (user.fcmToken) upsertFcmTokenRecord(user._id, user.fcmToken, req);
+
     // Log activity
     await logActivity(user._id, 'USER_REGISTER', 'authentication', { role: user.role }, req);
 
@@ -687,6 +720,7 @@ exports.login = async (req, res) => {
       }
 
       user.loginCount = (user.loginCount || 0) + 1;
+      captureFcmToken(user, req);
       await user.save();
 
       // Issue refresh token and save to DB
@@ -876,6 +910,7 @@ exports.googleAuth = async (req, res) => {
     }
 
     user.loginCount = (user.loginCount || 0) + 1;
+    captureFcmToken(user, req);
     await user.save();
 
     const rawRefreshToken = generateRefreshToken();
@@ -1002,6 +1037,8 @@ exports.updateProfile = async (req, res) => {
     if (user) {
       const oldHeight = user.profile?.height;
       const oldWeight = user.profile?.weight;
+
+      captureFcmToken(user, req);
 
       user.name = req.body.name || user.name;
       user.phone = req.body.phone || user.phone;
