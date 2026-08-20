@@ -8,10 +8,12 @@ const ProcessedWebhook = require('../models/ProcessedWebhook');
 exports.connectDevice = async (req, res) => {
   try {
     const { deviceType, deviceName } = req.body;
+    console.log(`[Wearables] connectDevice: user=${req.user._id} deviceType=${deviceType} deviceName=${deviceName}`);
 
     let wearable = await WearableData.findOne({ user: req.user._id, deviceType });
 
     if (wearable) {
+      console.log(`[Wearables] connectDevice: existing record ${wearable._id} reused`);
       wearable.isConnected = true;
       wearable.deviceName = deviceName || wearable.deviceName;
       wearable.lastSyncedAt = new Date();
@@ -23,10 +25,12 @@ exports.connectDevice = async (req, res) => {
         deviceName,
         isConnected: true
       });
+      console.log(`[Wearables] connectDevice: created new record ${wearable._id}`);
     }
 
     res.status(201).json(wearable);
   } catch (error) {
+    console.error(`[Wearables] connectDevice failed: user=${req.user?._id} error=${error.message}`);
     res.status(500).json({ message: error.message });
   }
 };
@@ -34,6 +38,13 @@ exports.connectDevice = async (req, res) => {
 // Disconnect device
 exports.disconnectDevice = async (req, res) => {
   try {
+    // Nothing else logs who/when a device gets disconnected, and this endpoint
+    // has already been the prime suspect in one "connection vanished on its
+    // own" investigation — cheap enough to always print, not worth a debug flag
+    console.log(
+      `[Wearables] disconnect requested: user=${req.user._id} deviceType=${req.params.deviceType} ip=${req.ip} ua=${req.headers['user-agent']}`
+    );
+
     const wearable = await WearableData.findOneAndUpdate(
       { user: req.user._id, deviceType: req.params.deviceType },
       { isConnected: false },
@@ -459,6 +470,9 @@ async function ensureOpenWearablesUser(ourUserId, provider) {
       deviceName: provider,
       isConnected: false // becomes true once the OAuth flow actually completes
     });
+    console.log(`[Wearables] ensureOpenWearablesUser: created new WearableData record ${wearable._id} for user=${ourUserId} provider=${provider}`);
+  } else {
+    console.log(`[Wearables] ensureOpenWearablesUser: reusing record ${wearable._id} (isConnected=${wearable.isConnected}, openWearablesUserId=${wearable.openWearablesUserId || 'none yet'})`);
   }
 
   if (!wearable.openWearablesUserId) {
@@ -470,6 +484,7 @@ async function ensureOpenWearablesUser(ourUserId, provider) {
     });
     wearable.openWearablesUserId = data.id;
     await wearable.save();
+    console.log(`[Wearables] ensureOpenWearablesUser: registered new middleware user ${data.id} for record ${wearable._id}`);
   }
 
   return wearable;
@@ -479,6 +494,7 @@ async function ensureOpenWearablesUser(ourUserId, provider) {
 exports.getConnectUrl = async (req, res) => {
   try {
     const { provider } = req.params;
+    console.log(`[Wearables] getConnectUrl requested: user=${req.user._id} provider=${provider}`);
 
     if (!openWearablesClient.isConfigured) {
       return res.status(503).json({
@@ -567,6 +583,9 @@ exports.handleWebhook = async (req, res) => {
     // handlers accumulate (calories, steps), so replaying an event would inflate
     // the totals. The unique {source, eventId} index makes this insert the lock:
     // whoever wins it processes the event, a duplicate just acknowledges.
+    const { type, data } = event;
+    console.log(`[Wearables] webhook received: type=${type} openWearablesUserId=${data?.user_id} provider=${data?.provider || data?.source?.provider}`);
+
     try {
       await ProcessedWebhook.create({
         source: 'open_wearables',
@@ -574,12 +593,11 @@ exports.handleWebhook = async (req, res) => {
       });
     } catch (err) {
       if (err.code === 11000) {
+        console.log(`[Wearables] webhook duplicate (svix-id=${req.headers['svix-id']}), skipping`);
         return res.status(200).json({ received: true, duplicate: true });
       }
       throw err;
     }
-
-    const { type, data } = event;
 
     switch (type) {
       case 'connection.created': {
@@ -592,14 +610,17 @@ exports.handleWebhook = async (req, res) => {
         wearable.isConnected = true;
         wearable.lastSyncedAt = new Date();
         await wearable.save();
+        console.log(`[Wearables] connection.created: record ${wearable._id} (mongo user=${wearable.user}) set isConnected=true`);
         break;
       }
 
       case 'connection.revoked': {
-        await WearableData.findOneAndUpdate(
+        const updated = await WearableData.findOneAndUpdate(
           { openWearablesUserId: data.user_id, deviceType: data.provider },
-          { isConnected: false }
+          { isConnected: false },
+          { new: true }
         );
+        console.log(`[Wearables] connection.revoked: record ${updated?._id} (mongo user=${updated?.user}) set isConnected=false, reason=${data.reason || 'unspecified'}`);
         break;
       }
 
