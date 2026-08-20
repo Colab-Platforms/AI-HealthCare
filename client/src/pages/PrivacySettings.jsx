@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Shield, Download, Trash2, ToggleLeft, ToggleRight, AlertTriangle, CheckCircle, ChevronRight } from 'lucide-react';
 import api from '../services/api';
@@ -15,12 +16,11 @@ const glass = {
 const glassDivider = { borderBottom: '1px solid rgba(0,0,0,0.05)' };
 
 export default function PrivacySettings() {
+  const navigate = useNavigate();
   const [consent, setConsent]         = useState(null);
   const [settings, setSettings]       = useState(null);
   const [loading, setLoading]         = useState(true);
   const [exporting, setExporting]     = useState(false);
-  const [deleteModal, setDeleteModal] = useState(false);
-  const [deleting, setDeleting]       = useState(false);
   const [toast, setToast]             = useState(null);
 
   useEffect(() => { fetchStatus(); }, []);
@@ -79,20 +79,6 @@ export default function PrivacySettings() {
       showToast('Export failed. Try again.', 'error');
     } finally {
       setExporting(false);
-    }
-  };
-
-  const handleDeleteAccount = async () => {
-    setDeleting(true);
-    try {
-      await api.post('/privacy/delete-account');
-      showToast('Account deletion scheduled in 30 days');
-      setDeleteModal(false);
-      fetchStatus();
-    } catch {
-      showToast('Failed. Try again.', 'error');
-    } finally {
-      setDeleting(false);
     }
   };
 
@@ -235,7 +221,7 @@ export default function PrivacySettings() {
               </div>
             </div>
           ) : (
-            <button onClick={() => setDeleteModal(true)}
+            <button onClick={() => navigate('/delete-account')}
               className="w-full flex items-center justify-between p-4 hover:bg-white/50 transition-colors">
               <div className="flex items-center gap-3">
                 <div className="w-9 h-9 rounded-xl flex items-center justify-center"
@@ -261,41 +247,6 @@ export default function PrivacySettings() {
         </div>
 
       </div>
-
-      {/* Delete Confirmation Modal */}
-      {deleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4"
-             style={{ background: 'rgba(0,0,0,0.3)', backdropFilter: 'blur(8px)' }}>
-          <motion.div initial={{ scale: 0.92, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
-            className="w-full max-w-sm rounded-3xl p-6 space-y-4"
-            style={{ ...glass, boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl flex items-center justify-center"
-                   style={{ background: 'rgba(239,68,68,0.1)' }}>
-                <AlertTriangle size={20} className="text-red-500" />
-              </div>
-              <div>
-                <h3 className="text-slate-800 font-bold">Delete Account?</h3>
-                <p className="text-slate-400 text-xs">Cannot be undone after 30 days</p>
-              </div>
-            </div>
-            <p className="text-slate-500 text-sm leading-relaxed">
-              All reports, documents, and data permanently deleted.
-              You have a <strong className="text-slate-700">30-day window</strong> to cancel.
-            </p>
-            <div className="flex gap-3">
-              <button onClick={() => setDeleteModal(false)}
-                className="flex-1 py-2.5 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-100 border border-slate-200 transition-colors">
-                Cancel
-              </button>
-              <button onClick={handleDeleteAccount} disabled={deleting}
-                className="flex-1 py-2.5 rounded-xl text-sm font-bold text-white bg-red-500 hover:bg-red-600 disabled:opacity-60 transition-colors">
-                {deleting ? 'Processing...' : 'Delete Account'}
-              </button>
-            </div>
-          </motion.div>
-        </div>
-      )}
 
       {/* Toast */}
       {toast && (
