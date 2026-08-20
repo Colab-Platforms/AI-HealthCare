@@ -1,5 +1,6 @@
 const Notification = require('../models/Notification');
 const FCMToken = require('../models/FCMToken');
+const User = require('../models/User');
 
 // Get all notifications for current user
 exports.getNotifications = async (req, res) => {
@@ -115,6 +116,11 @@ exports.registerFCMToken = async (req, res) => {
             { upsert: true, new: true }
         );
 
+        // Legacy single-token field, kept in sync so anything still reading
+        // user.fcmToken directly (e.g. the profile response) reflects reality.
+        User.updateOne({ _id: req.user._id }, { fcmToken: token.trim() })
+            .catch((e) => console.error('User.fcmToken sync failed:', e.message));
+
         res.json({ success: true, message: 'FCM token registered' });
     } catch (error) {
         console.error('Register FCM token error:', error);
@@ -132,6 +138,12 @@ exports.deregisterFCMToken = async (req, res) => {
             { token, userId: req.user._id },
             { isActive: false }
         );
+
+        // Only clear the legacy field if it was this token — a user can have
+        // several active devices, and deregistering one shouldn't blank the
+        // field for the others.
+        User.updateOne({ _id: req.user._id, fcmToken: token }, { fcmToken: null })
+            .catch((e) => console.error('User.fcmToken clear failed:', e.message));
 
         res.json({ success: true, message: 'FCM token deregistered' });
     } catch (error) {
