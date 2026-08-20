@@ -773,11 +773,22 @@ exports.handleWebhook = async (req, res) => {
         break;
     }
 
-    // Invalidate dashboard cache so the next fetch shows fresh data
+    // Any data event proves the connection is live, and Open Wearables doesn't
+    // reliably send connection.created for an account it's already linked to a
+    // different internal user (seen when the same Google account gets connected
+    // from a second app account) — so mirror isConnected off real traffic too,
+    // not just the explicit connection lifecycle events.
     const wearableForCache = data.user_id
       ? await WearableData.findOne({ openWearablesUserId: data.user_id })
       : null;
-    if (wearableForCache) cache.delete(`dashboard:${wearableForCache.user}`);
+    if (wearableForCache) {
+      if (type !== 'connection.revoked' && !wearableForCache.isConnected) {
+        wearableForCache.isConnected = true;
+        await wearableForCache.save();
+        console.log(`[Wearables] isConnected repaired to true for record ${wearableForCache._id} via ${type} event`);
+      }
+      cache.delete(`dashboard:${wearableForCache.user}`);
+    }
 
     res.status(200).json({ received: true });
   } catch (error) {
