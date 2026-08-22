@@ -8,6 +8,7 @@ const consentLogSchema = new mongoose.Schema({
     ipAddress:   { type: String },
     userAgent:   { type: String },
     grantedAt:   { type: Date, default: Date.now },
+    metadata:    { type: mongoose.Schema.Types.Mixed },      // e.g. guardian details for under-18 consent
 }, { timestamps: true });
 
 module.exports = mongoose.model('ConsentLog', consentLogSchema);

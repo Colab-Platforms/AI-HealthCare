@@ -193,7 +193,7 @@ exports.runDeletionCron = async () => {
                 FoodLog.deleteMany({ userId: uid }),
                 HealthMetric.deleteMany({ userId: uid }),
                 ChatHistory.deleteMany({ userId: uid }),
-                ActivityLog.deleteMany({ userId: uid }),
+                ActivityLog.deleteMany({ user: uid }), // ActivityLog's field is `user`, not `userId`
                 ConsentLog.deleteMany({ userId: uid }),
             ]);
             await User.findByIdAndDelete(uid);

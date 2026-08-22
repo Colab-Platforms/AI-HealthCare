@@ -91,13 +91,12 @@ export default function Register() {
     if (
       !formData.name ||
       !formData.email ||
-      !formData.phone ||
       !formData.password
     ) {
       toast.error("Please fill in all required fields");
       return;
     }
-    if (formData.phone.length !== 10) {
+    if (formData.phone && formData.phone.length !== 10) {
       toast.error("Phone number must be exactly 10 digits");
       return;
     }
@@ -358,7 +357,7 @@ export default function Register() {
               </div>
               <div>
                 <label className="block text-[10px] font-black text-gray-400 uppercase tracking-widest mb-1 ml-1">
-                  Phone Number *
+                  Phone Number
                 </label>
                 <div className="relative group">
                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-300 group-focus-within:text-[#064e3b] transition-colors" />
@@ -372,8 +371,7 @@ export default function Register() {
                       })
                     }
                     className="w-full bg-white border-2 border-gray-400 rounded-xl py-3 pl-12 pr-4 focus:outline-none focus:ring-4 focus:ring-[#064e3b]/10 focus:border-[#064e3b] text-gray-800 font-semibold transition-all placeholder:text-gray-300 text-sm shadow-sm"
-                    placeholder="Phone Number"
-                    required
+                    placeholder="Phone Number (optional)"
                   />
                 </div>
               </div>

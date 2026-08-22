@@ -96,6 +96,17 @@ async function run() {
         }
     }
 
+    // Feature-gating middleware caches Plan lookups for 5 min (utils/cache) —
+    // clear it so a price/feature edit here takes effect immediately instead
+    // of waiting out the TTL.
+    try {
+        const cache = require('../utils/cache');
+        await cache.deletePattern('plan:*');
+        console.log('Cleared plan cache.');
+    } catch (e) {
+        console.warn('Could not clear plan cache (non-fatal):', e.message);
+    }
+
     console.log('Done.');
     await mongoose.disconnect();
 }

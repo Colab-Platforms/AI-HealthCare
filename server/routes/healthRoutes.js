@@ -32,12 +32,15 @@ const { protect } = require('../middleware/auth');
 const upload = require('../middleware/upload');
 const { aiLimiter, heavyReadLimiter, apiLimiter } = require('../middleware/rateLimit');
 const { verifyQStash } = require('../middleware/qstashAuth');
+const { requireFeature } = require('../middleware/subscriptionAccess');
+const { countReportsThisMonth } = require('../utils/featureUsage');
 
 // Background-job webhook — called by QStash, not by users, so it has no `protect`.
 // It MUST keep verifyQStash: the handler trusts userId/reportId from the body
 // and spends AI credits.
 router.post('/process-report-bg', verifyQStash, processReportBG);
-router.post('/upload', protect, aiLimiter, upload.single('report'), uploadReport);
+// Gate BEFORE multer/Cloudinary spend a byte on a user who's already over quota.
+router.post('/upload', protect, aiLimiter, requireFeature('reportAnalysesPerMonth', countReportsThisMonth), upload.single('report'), uploadReport);
 router.get('/reports', protect, heavyReadLimiter, getReports);
 router.get('/history', protect, apiLimiter, getHealthHistory);
 router.get('/dashboard', protect, heavyReadLimiter, getDashboardData);

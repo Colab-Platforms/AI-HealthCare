@@ -31,6 +31,6 @@ router.put('/profile', protect, updateProfile);
 router.post('/change-password', protect, sensitiveActionLimiter, require('../controllers/authController').changePassword);
 router.post('/upload-profile-picture', protect, upload.single('profilePicture'), uploadProfilePicture);
 router.get('/subscription', protect, getSubscription);
-router.post('/admin/create', protect, authorize('admin'), createAdmin);
+router.post('/admin/create', protect, authorize('superadmin'), createAdmin);
 
 module.exports = router;

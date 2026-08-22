@@ -19,6 +19,16 @@ const userSchema = new mongoose.Schema({
   profilePicture: { type: String }, // Cloudinary URL
   resetPasswordCode: String,
   resetPasswordExpire: Date,
+  resetPasswordAttempts: { type: Number, default: 0 },
+  // DPDPA Section 9: processing a child's (under-18) personal data requires
+  // verifiable parental/guardian consent.
+  guardianConsent: {
+    given: { type: Boolean, default: false },
+    guardianName: String,
+    guardianEmail: String,
+    relation: String,
+    consentedAt: Date,
+  },
   // For doctors - links to Doctor profile
   doctorProfile: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' },
   profile: {

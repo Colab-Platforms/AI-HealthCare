@@ -23,6 +23,17 @@ const generateRefreshToken = () => crypto.randomBytes(40).toString('hex');
 // Legacy alias so existing register/doctor flows still work
 const generateToken = generateAccessToken;
 
+// DPDPA Section 9: a submitted age under 18 requires verifiable guardian
+// consent before that profile data can be stored. Returns an error message
+// string if consent is missing/incomplete, or null if the request may proceed.
+const checkGuardianConsentRequired = (age, guardianConsent, alreadyOnFile) => {
+  const numericAge = Number(age);
+  if (!Number.isFinite(numericAge) || numericAge <= 0 || numericAge >= 18) return null;
+  if (alreadyOnFile) return null;
+  if (guardianConsent?.given && guardianConsent?.guardianName && guardianConsent?.guardianEmail) return null;
+  return 'This profile indicates an age under 18. Guardian consent (guardianConsent: { given, guardianName, guardianEmail }) is required under DPDPA before this data can be saved.';
+};
+
 // ---------------------------------------------------------------------------
 // Single-device sessions
 //
@@ -209,7 +220,7 @@ exports.requestRegistrationOtp = async (req, res) => {
     }
 
     // Generate 6-digit code
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = crypto.randomInt(100000, 1000000).toString();
 
     // Save/Update OTP in DB
     await Otp.findOneAndUpdate(
@@ -247,7 +258,7 @@ exports.requestPhoneLoginOtp = async (req, res) => {
       return res.status(403).json({ message: 'Account is deactivated. Please contact support at support@takesolutions.com' });
     }
 
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = crypto.randomInt(100000, 1000000).toString();
     await Otp.findOneAndUpdate(
       { phone },
       { phone, code, createdAt: Date.now() },
@@ -356,7 +367,7 @@ exports.requestPhoneVerificationOtp = async (req, res) => {
       return res.status(400).json({ message: 'This phone number is already linked to another account' });
     }
 
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = crypto.randomInt(100000, 1000000).toString();
     await Otp.findOneAndUpdate(
       { phone },
       { phone, code, createdAt: Date.now() },
@@ -462,6 +473,11 @@ exports.register = async (req, res) => {
     // Determine role - default to user
     const userRole = role === 'doctor' ? 'doctor' : 'user';
 
+    if (profile?.age) {
+      const consentError = checkGuardianConsentRequired(profile.age, req.body.guardianConsent, false);
+      if (consentError) return res.status(403).json({ message: consentError, requiresGuardianConsent: true });
+    }
+
     // Calculate nutrition goals if profile data is provided
     let calculatedGoals = null;
     if (profile && profile.age && profile.gender && profile.weight && profile.height && nutritionGoal) {
@@ -501,6 +517,15 @@ exports.register = async (req, res) => {
         device_id: device_id || null,
         fcmToken: getIncomingFcmToken(req),
         profile: profile || {},
+        ...(req.body.guardianConsent?.given ? {
+          guardianConsent: {
+            given: true,
+            guardianName: req.body.guardianConsent.guardianName,
+            guardianEmail: req.body.guardianConsent.guardianEmail,
+            relation: req.body.guardianConsent.relation || '',
+            consentedAt: new Date(),
+          },
+        } : {}),
         // Only set when the client actually sent one, so an absent state keeps
         // the schema default instead of writing an explicit null.
         ...(state ? { foodPreferences: { state } } : {}),
@@ -554,6 +579,23 @@ exports.register = async (req, res) => {
 
     // Log activity
     await logActivity(user._id, 'USER_REGISTER', 'authentication', { role: user.role }, req);
+
+    if (user.guardianConsent?.given) {
+      const ConsentLog = require('../models/ConsentLog');
+      await ConsentLog.create({
+        userId: user._id,
+        version: '1.0',
+        action: 'granted',
+        purposes: ['guardian_consent_minor'],
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+        metadata: {
+          guardianName: user.guardianConsent.guardianName,
+          guardianEmail: user.guardianConsent.guardianEmail,
+          relation: user.guardianConsent.relation,
+        },
+      }).catch(err => console.error('Guardian ConsentLog failed:', err.message));
+    }
 
     res.status(201).json({
       _id: user._id,
@@ -1053,10 +1095,43 @@ exports.updateProfile = async (req, res) => {
         if (sanitizedProfile.activityLevel === "") delete sanitizedProfile.activityLevel;
         if (sanitizedProfile.isDiabetic === "") delete sanitizedProfile.isDiabetic;
 
-        user.profile = {
-          ...user.profile.toObject(),
-          ...sanitizedProfile
-        };
+        const mergedProfile = { ...user.profile.toObject(), ...sanitizedProfile };
+
+        if (sanitizedProfile.age) {
+          const consentError = checkGuardianConsentRequired(
+            mergedProfile.age,
+            req.body.guardianConsent,
+            user.guardianConsent?.given
+          );
+          if (consentError) {
+            return res.status(403).json({ message: consentError, requiresGuardianConsent: true });
+          }
+          if (req.body.guardianConsent?.given && !user.guardianConsent?.given) {
+            user.guardianConsent = {
+              given: true,
+              guardianName: req.body.guardianConsent.guardianName,
+              guardianEmail: req.body.guardianConsent.guardianEmail,
+              relation: req.body.guardianConsent.relation || '',
+              consentedAt: new Date(),
+            };
+            const ConsentLog = require('../models/ConsentLog');
+            await ConsentLog.create({
+              userId: user._id,
+              version: '1.0',
+              action: 'granted',
+              purposes: ['guardian_consent_minor'],
+              ipAddress: req.ip,
+              userAgent: req.headers['user-agent'],
+              metadata: {
+                guardianName: req.body.guardianConsent.guardianName,
+                guardianEmail: req.body.guardianConsent.guardianEmail,
+                relation: req.body.guardianConsent.relation || '',
+              },
+            }).catch(err => console.error('Guardian ConsentLog failed:', err.message));
+          }
+        }
+
+        user.profile = mergedProfile;
       }
 
       // Handle foodPreferences update
@@ -1369,11 +1444,12 @@ exports.forgotPassword = async (req, res) => {
     }
 
     // Generate 4-digit numeric code
-    const resetCode = Math.floor(1000 + Math.random() * 9000).toString();
+    const resetCode = crypto.randomInt(1000, 10000).toString();
 
-    // Set expiry (10 minutes)
+    // Set expiry (10 minutes); reset the attempt counter for the new code
     user.resetPasswordCode = resetCode;
     user.resetPasswordExpire = Date.now() + 10 * 60 * 1000;
+    user.resetPasswordAttempts = 0;
 
     await user.save();
 
@@ -1390,17 +1466,33 @@ exports.forgotPassword = async (req, res) => {
 
 // @desc    Verify Reset Code
 // @route   POST /api/auth/verify-reset-code
+const MAX_RESET_CODE_ATTEMPTS = 5;
+
 exports.verifyResetCode = async (req, res) => {
   try {
     const { code } = req.body;
     const email = req.body.email?.toLowerCase().trim();
+
+    // Look up by email first (not by code) so failed guesses count against
+    // this account's attempt limit — matching by code+email together would
+    // let a distributed attacker (many IPs) brute-force the 4-digit code
+    // since the per-IP rate limiter can't see it's the same target account.
     const user = await User.findOne({
       email,
-      resetPasswordCode: code,
       resetPasswordExpire: { $gt: Date.now() }
     });
 
-    if (!user) {
+    if (!user || !user.resetPasswordCode) {
+      return res.status(400).json({ message: 'Invalid or expired verification code' });
+    }
+
+    if (user.resetPasswordAttempts >= MAX_RESET_CODE_ATTEMPTS) {
+      return res.status(429).json({ message: 'Too many attempts. Please request a new code.' });
+    }
+
+    if (user.resetPasswordCode !== code) {
+      user.resetPasswordAttempts += 1;
+      await user.save();
       return res.status(400).json({ message: 'Invalid or expired verification code' });
     }
 
@@ -1418,11 +1510,20 @@ exports.resetPassword = async (req, res) => {
     const email = req.body.email?.toLowerCase().trim();
     const user = await User.findOne({
       email,
-      resetPasswordCode: code,
       resetPasswordExpire: { $gt: Date.now() }
     });
 
-    if (!user) {
+    if (!user || !user.resetPasswordCode) {
+      return res.status(400).json({ message: 'Token expired or invalid. Please request a new code.' });
+    }
+
+    if (user.resetPasswordAttempts >= MAX_RESET_CODE_ATTEMPTS) {
+      return res.status(429).json({ message: 'Too many attempts. Please request a new code.' });
+    }
+
+    if (user.resetPasswordCode !== code) {
+      user.resetPasswordAttempts += 1;
+      await user.save();
       return res.status(400).json({ message: 'Token expired or invalid. Please request a new code.' });
     }
 
@@ -1437,6 +1538,7 @@ exports.resetPassword = async (req, res) => {
     user.password = password;
     user.resetPasswordCode = undefined;
     user.resetPasswordExpire = undefined;
+    user.resetPasswordAttempts = 0;
 
     await user.save();
 
@@ -1500,7 +1602,7 @@ exports.resendVerificationCode = async (req, res) => {
       return res.status(400).json({ message: 'Email already verified' });
     }
 
-    const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const verificationCode = crypto.randomInt(100000, 1000000).toString();
     user.emailVerificationCode = verificationCode;
     user.emailVerificationExpire = Date.now() + 15 * 60 * 1000;
     await user.save();

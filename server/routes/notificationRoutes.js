@@ -10,7 +10,7 @@ const {
     registerFCMToken,
     deregisterFCMToken
 } = require('../controllers/notificationController');
-const { protect } = require('../middleware/auth');
+const { protect, authorize } = require('../middleware/auth');
 const { verifyQStash } = require('../middleware/qstashAuth');
 const notificationService = require('../services/notificationService');
 
@@ -32,7 +32,7 @@ router.post('/cron-tick', verifyQStash, async (req, res) => {
 });
 
 // Test FCM push — superadmin only, remove after testing
-router.post('/test-push', protect, async (req, res) => {
+router.post('/test-push', protect, authorize('admin', 'superadmin'), async (req, res) => {
     try {
         const { token, title, body } = req.body;
         const { sendToToken, sendToUser } = require('../services/fcmService');
@@ -52,7 +52,7 @@ router.post('/test-push', protect, async (req, res) => {
 });
 
 // Manual nudge test — AI-generated, uses real report data
-router.post('/test-nudge', protect, async (req, res) => {
+router.post('/test-nudge', protect, authorize('admin', 'superadmin'), async (req, res) => {
   try {
     const { sendToUser } = require('../services/fcmService');
     const HealthReport = require('../models/HealthReport');

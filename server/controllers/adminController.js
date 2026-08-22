@@ -12,6 +12,7 @@ const ChatHistory = require('../models/ChatHistory');
 const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
 const Otp = require('../models/Otp');
 const cache = require('../utils/cache');
+const { logActivity } = require('../utils/activityLogger');
 
 // User Management
 exports.getAllUsers = async (req, res) => {
@@ -165,7 +166,18 @@ exports.impersonateUser = async (req, res) => {
     const user = await User.findById(req.params.id).select('-password');
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '30d' });
+    // A compromised admin must not be able to mint a long-lived token for
+    // another privileged account — cap impersonation to non-admin targets.
+    if (user.role === 'admin' || user.role === 'superadmin') {
+      return res.status(403).json({ message: 'Cannot impersonate admin users' });
+    }
+
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '30m' });
+
+    await logActivity(req.user._id, 'ADMIN_IMPERSONATE_USER', 'authentication', {
+      targetUserId: user._id,
+      targetEmail: user.email,
+    }, req);
 
     res.json({
       _id: user._id,
