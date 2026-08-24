@@ -612,6 +612,11 @@ exports.register = async (req, res) => {
     console.error('Registration error:', error.message);
     console.error('Registration error stack:', error.stack);
     console.error('Registration error code:', error.code);
+
+    if (error.name === 'ValidationError') {
+      return res.status(400).json({ message: error.message });
+    }
+    
     res.status(500).json({
       message: 'Registration failed. Please try again.',
       error: process.env.NODE_ENV === 'development' ? error.message : undefined,
@@ -907,6 +912,14 @@ exports.googleAuth = async (req, res) => {
     const googleId = profile.sub;
     if (!email || !googleId) {
       return res.status(401).json({ message: 'Google token missing required fields' });
+    }
+
+    // Only auto-link to an existing account (below) when Google itself has
+    // verified ownership of this email — otherwise a federated/Workspace
+    // identity with an unverified claimed address could hijack another
+    // user's account just by matching their email string.
+    if (profile.email_verified === false || profile.email_verified === 'false') {
+      return res.status(401).json({ message: 'Google email not verified' });
     }
 
     let user = await User.findOne({ $or: [{ googleId }, { email }] }).populate('doctorProfile');
@@ -1276,9 +1289,12 @@ exports.updateProfile = async (req, res) => {
       res.status(404).json({ message: 'User not found' });
     }
   } catch (error) {
-    console.error('Profile update error:', error);
-    res.status(500).json({ message: error.message });
+  if (error.name === 'ValidationError') {
+    return res.status(400).json({ message: error.message });
   }
+  res.status(500).json({ message: error.message });
+}
+
 };
 
 exports.getSubscription = async (req, res) => {
