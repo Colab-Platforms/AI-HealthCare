@@ -5,7 +5,7 @@ import UpdatedFooter from "../components/landing/landing-components/UpdatedFoote
 
 const TermsAndCondition = () => {
   const pdfUrl =
-    "https://cdn.shopify.com/s/files/1/0636/5226/6115/files/Terrms_and_Conditions_take.health_revised.pdf?v=1776407779";
+    "https://res.cloudinary.com/dvgg1i1ck/image/upload/v1787557576/Terrms_and_Conditions_take.health_updated_24.08.26_hifch6.pdf";
 
   return (
     <div className="bg-landing-light-bg text-landing-text font-landing-body">
