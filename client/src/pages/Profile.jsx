@@ -783,6 +783,9 @@ export default function Profile() {
                           Age
                         </label>
                         <input
+                          type="number"
+                          min="0"
+                          max="120"
                           name="profile.age"
                           value={formData.profile.age}
                           onChange={handleChange}
@@ -836,6 +839,9 @@ export default function Profile() {
                           Height (cm)
                         </label>
                         <input
+                          type="number"
+                          min="0"
+                          max="300"
                           name="profile.height"
                           value={formData.profile.height}
                           onChange={handleChange}
@@ -847,6 +853,9 @@ export default function Profile() {
                           Weight (kg)
                         </label>
                         <input
+                          type="number"
+                          min="0"
+                          max="500"
                           name="profile.weight"
                           value={formData.profile.weight}
                           onChange={handleChange}
@@ -879,6 +888,10 @@ export default function Profile() {
                                 HbA1c (%)
                               </label>
                               <input
+                                type="number"
+                                min="0"
+                                max="20"
+                                step="0.1"
                                 name="profile.diabetesProfile.hba1c"
                                 value={formData.profile.diabetesProfile.hba1c}
                                 onChange={handleChange}
