@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { X, Plus, Trash2, CheckCircle2, Loader2, Flame } from 'lucide-react';
+import { X, Plus, Trash2, CheckCircle2, Loader2, Flame, AlertTriangle } from 'lucide-react';
 
 const num = (v) => Math.round(Number(v) || 0);
 
@@ -188,6 +188,29 @@ export function MealEditReviewModal({ meal, onClose, onConfirm, isSubmitting }) 
             )}
           </div>
         </div>
+
+        {/* Warnings — condition/allergy-specific flags from the AI analysis */}
+        {Array.isArray(meal.warnings) && meal.warnings.length > 0 && (
+          <div className="px-6 pb-4 shrink-0">
+            <div className="bg-red-50 rounded-2xl p-4 border border-red-100">
+              <div className="flex items-start gap-3">
+                <AlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-[11px] font-black text-red-700 uppercase tracking-widest mb-1.5">
+                    Watch Out
+                  </p>
+                  <ul className="space-y-1">
+                    {meal.warnings.map((w, i) => (
+                      <li key={i} className="text-[12px] text-red-700 font-medium leading-relaxed">
+                        • {typeof w === 'string' ? w : w.message || w.text || JSON.stringify(w)}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Edit toggle */}
         <div className="px-6 pb-4 shrink-0">

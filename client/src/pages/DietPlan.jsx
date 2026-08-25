@@ -250,6 +250,16 @@ const SECTION_INFO = {
   dinner: { label: "Dinner", time: "08:30 PM", emoji: "🌙", icon: Moon },
 };
 
+const OCCASION_PRESETS = [
+  { value: "Ramadan (Roza fasting)", label: "Ramadan / Roza" },
+  { value: "Navratri fasting", label: "Navratri Fasting" },
+  { value: "Shravan month (vegetarian only)", label: "Shravan Month" },
+  { value: "Ekadashi fasting", label: "Ekadashi" },
+  { value: "Vrat / Upvas day", label: "Vrat / Upvas" },
+  { value: "Eid celebration", label: "Eid" },
+  { value: "custom", label: "Other / Custom" },
+];
+
 function getMealName(m) {
   if (typeof m === "string") return m;
   return m?.name || "Meal Item";
@@ -654,6 +664,9 @@ export default function DietPlan() {
   const [showPreferences, setShowPreferences] = useState(false);
   const [showRegenOptions, setShowRegenOptions] = useState(false);
   const [prefMode, setPrefMode] = useState("save");
+  const [showOccasionModal, setShowOccasionModal] = useState(false);
+  const [occasionChoice, setOccasionChoice] = useState("");
+  const [customOccasion, setCustomOccasion] = useState("");
   const [loggedMeals, setLoggedMeals] = useState({});
   const [loggingMealId, setLoggingMealId] = useState(null);
   const [selectedFood, setSelectedFood] = useState(null);
@@ -715,7 +728,11 @@ export default function DietPlan() {
     }
   };
 
-  const generatePlan = async (isRegenerate = false, usePreferences = true) => {
+  const generatePlan = async (
+    isRegenerate = false,
+    usePreferences = true,
+    occasion = null,
+  ) => {
     // Check if user has set a fitness goal first
     if (!user?.nutritionGoal?.calorieGoal) {
       toast.error(
@@ -730,6 +747,7 @@ export default function DietPlan() {
       const { data } = await dietRecommendationService.generateDietPlan({
         isRegenerate,
         usePreferences,
+        ...(occasion ? { occasion } : {}),
       });
       if (data.success) {
         if (data.backgroundProcessing) {
@@ -1171,7 +1189,105 @@ export default function DietPlan() {
                     Update your favorites first, then generate a tailored plan
                   </span>
                 </button>
+
+                <button
+                  onClick={() => {
+                    setShowRegenOptions(false);
+                    setOccasionChoice("");
+                    setCustomOccasion("");
+                    setShowOccasionModal(true);
+                  }}
+                  className="w-full flex flex-col items-start p-5 rounded-[2rem] border border-slate-100 hover:bg-emerald-50/50 hover:border-emerald-200 transition-all text-left group"
+                >
+                  <span className="text-sm font-bold text-[#1a2e35] flex items-center gap-2 group-hover:text-[#69A38D]">
+                    <Moon className="w-4 h-4 text-[#69A38D]" /> For a Special
+                    Occasion
+                  </span>
+                  <span className="text-xs text-slate-500 mt-2 font-medium">
+                    Fasting, Ramadan, Shravan month, or another observance
+                  </span>
+                </button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Occasion Modal */}
+      <AnimatePresence>
+        {showOccasionModal && (
+          <div
+            className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[120] flex items-center justify-center p-4"
+            onClick={() => setShowOccasionModal(false)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-3xl shadow-2xl p-6 max-w-sm w-full border border-slate-100"
+            >
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-bold text-slate-800">
+                  Special Occasion
+                </h3>
+                <button
+                  onClick={() => setShowOccasionModal(false)}
+                  className="text-slate-400 hover:text-black"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <p className="text-xs text-slate-500 mb-4 font-medium">
+                Your plan will be adjusted to fit this occasion's typical
+                dietary customs (fasting windows, vegetarian-only days, etc).
+              </p>
+
+              <div className="space-y-2 mb-4">
+                {OCCASION_PRESETS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setOccasionChoice(opt.value)}
+                    className={`w-full text-left px-4 py-3 rounded-2xl border text-sm font-semibold transition-all ${
+                      occasionChoice === opt.value
+                        ? "border-[#69A38D] bg-emerald-50 text-[#1a2e35]"
+                        : "border-slate-100 text-slate-600 hover:bg-slate-50"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+
+              {occasionChoice === "custom" && (
+                <input
+                  type="text"
+                  value={customOccasion}
+                  onChange={(e) => setCustomOccasion(e.target.value)}
+                  placeholder="Describe the occasion (e.g. Karva Chauth)"
+                  maxLength={100}
+                  className="w-full bg-white border border-slate-200 rounded-xl py-2.5 px-4 text-sm font-semibold mb-4"
+                />
+              )}
+
+              <button
+                disabled={
+                  !occasionChoice ||
+                  (occasionChoice === "custom" && !customOccasion.trim())
+                }
+                onClick={() => {
+                  const finalOccasion =
+                    occasionChoice === "custom"
+                      ? customOccasion.trim()
+                      : occasionChoice;
+                  setShowOccasionModal(false);
+                  generatePlan(true, true, finalOccasion);
+                }}
+                className="w-full bg-[#69A38D] text-white font-bold py-3 rounded-2xl disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[#5a9080] transition-all"
+              >
+                Generate Plan for This Occasion
+              </button>
             </motion.div>
           </div>
         )}

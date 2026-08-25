@@ -15,6 +15,7 @@ const userKeys = (userId) => {
     dashboard: `dashboard:${id}`,
     reports: `reports:${id}`,
     chat: `chat:${id}`,
+    chatReports: `chatReports:${id}`,
     dietPlan: `diet_plan:${id}`,
     healthGoal: `health_goal:${id}`,
     healthDna: `health_dna:${id}`,
@@ -34,6 +35,7 @@ async function invalidateUserHealthCache(userId) {
   await Promise.all([
     cache.delete(k.dashboard),
     cache.delete(k.reports),
+    cache.delete(k.chatReports),
     cache.delete(k.healthDna),
     cache.delete(k.healthGoal),
     cache.delete(k.dietPlan),

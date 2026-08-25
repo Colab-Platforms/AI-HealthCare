@@ -241,6 +241,14 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
     const country = user.foodPreferences?.country || 'India';
     const state = (user.foodPreferences?.state || '').trim();
 
+    // Optional occasion/fasting context (e.g. Ramadan, Shravan month, a vrat/
+    // upvas day) — null unless the client explicitly passes one for this
+    // generation. Carried on userData so processDietInternal can persist it.
+    const occasion = typeof req.body?.occasion === 'string' && req.body.occasion.trim()
+      ? req.body.occasion.trim().slice(0, 100)
+      : null;
+    userData.occasion = occasion;
+
     let promptEx = isRegenerate
       ? 'IMPORTANT: This is a REGENERATION request. You MUST provide COMPLETELY NEW and DIFFERENT meal options. Every single meal option must be fresh and unique.'
       : '';
@@ -266,6 +274,10 @@ exports.generatePersonalizedDietPlan = async (req, res) => {
 
     if (avoidMealsList.length > 0) {
       promptEx += `\nCRITICAL: DO NOT suggest any of these meals which were in the previous plan: ${avoidMealsList.join(', ')}. Provide a completely different menu.`;
+    }
+
+    if (occasion) {
+      promptEx += `\nOCCASION CONTEXT (HIGH PRIORITY): The user is currently observing "${occasion}". Adjust every meal suggestion to respect this occasion's typical dietary customs — for example fasting windows or time-restricted eating, satvik/vegetarian-only requirements, specific ingredients to avoid or favor, and appropriate meal timing (e.g. pre-dawn suhoor and post-sunset iftar for a Ramadan-style fast, or fruit/dairy/nuts-only options for a Hindu vrat/upvas day). Use general cultural and religious knowledge of this occasion. If a standard meal cannot reasonably fit the occasion, replace it with the closest appropriate alternative rather than ignoring the occasion.`;
     }
     console.log('[DietGeneration] Placeholder saved: ', dietPlan._id);
 
@@ -382,6 +394,7 @@ async function processDietInternal(userId, dietPlanId, userData, promptEx) {
         bmiGoal: userData.bmiGoal,
         targetWeight: userData.targetWeight,
         dietaryPreference: userData.dietaryPreference,
+        occasion: userData.occasion || null,
         activityLevel: userData.activityLevel,
         fitnessGoals: userData.fitnessGoals,
         medicalConditions: userData.medicalConditions,
