@@ -9,6 +9,7 @@ const QuickFoodCheck = require('../models/QuickFoodCheck');
 const fs = require('fs');
 const cache = require('../utils/cache');
 const { logActivity } = require('../utils/activityLogger');
+const { buildMedicalContextForAI } = require('../utils/medicalContext');
 const gamificationService = require('../services/gamificationService');
 
 // Helper function to add timeout to all queries for Vercel compatibility
@@ -292,13 +293,14 @@ exports.analyzeFood = async (req, res) => {
 
     let imageUrl = null;
     let analysis = null;
+    const medicalContext = buildMedicalContextForAI(req.user);
 
     if (imageBase64) {
       // Analyze from image and upload to Cloudinary in PARALLEL to save time
       console.log('Analyzing from image and uploading to Cloudinary in parallel...');
-      
+
       const [analysisResult, uploadedUrl] = await Promise.all([
-        nutritionAI.analyzeFromImage(imageBase64, additionalContext),
+        nutritionAI.analyzeFromImage(imageBase64, additionalContext, req.user._id, medicalContext),
         uploadImage(`data:image/jpeg;base64,${imageBase64}`, 'logged_meals').catch(e => {
           console.error('Cloudinary upload in analyzeFood failed:', e.message);
           return null;
@@ -328,7 +330,7 @@ exports.analyzeFood = async (req, res) => {
       
       // ─── PURE AI ANALYSIS (BYPASSING CACHE & STANDARDS AS REQUESTED) ───
       console.log('Using Pure AI analysis for text/voice log...');
-      analysis = await nutritionAI.quickFoodCheck(foodDescription, additionalContext);
+      analysis = await nutritionAI.quickFoodCheck(foodDescription, additionalContext, req.user._id, medicalContext);
       
       // Save for historical reference but do not use for retrieval next time
       if (analysis?.success && analysis?.data?.foodItem) {
@@ -421,7 +423,7 @@ exports.logMeal = async (req, res) => {
 
       if (isEdited === true) {
         console.log('✏️ [LogMeal] User edited dishes — recalculating nutrition via AI...');
-        const recalculated = await nutritionAI.recalculateNutrition(dishes, req.user._id);
+        const recalculated = await nutritionAI.recalculateNutrition(dishes, req.user._id, buildMedicalContextForAI(req.user));
         recalculatedData = recalculated.data;
         finalDishes = recalculated.data.dishes;
         healthScore = recalculated.data.healthScore;
@@ -1651,6 +1653,7 @@ exports.quickFoodCheck = async (req, res) => {
 
     let analysis = null;
     let cloudinaryUrls = [];
+    const medicalContext = buildMedicalContextForAI(req.user);
 
     console.log('🏁 [QuickCheck] Start - User ID:', req.user?._id);
     console.log('📑 [QuickCheck] Headers:', req.headers['content-type']);
@@ -1735,7 +1738,7 @@ exports.quickFoodCheck = async (req, res) => {
             })
           )),
           // Task 2: Single AI Analysis call covering ALL images together
-          nutritionAI.analyzeFromImage(imageInputs, combinedContext)
+          nutritionAI.analyzeFromImage(imageInputs, combinedContext, req.user._id, medicalContext)
         ]);
 
         cloudinaryUrls = uploadResults.filter(Boolean);
@@ -1760,12 +1763,12 @@ exports.quickFoodCheck = async (req, res) => {
         const fallbackContext = [foodDescription, additionalContext]
           .filter(c => c && c !== 'Food from image')
           .join('. ') || 'Food from image';
-        analysis = await nutritionAI.quickFoodCheck(fallbackContext);
+        analysis = await nutritionAI.quickFoodCheck(fallbackContext, '', req.user._id, medicalContext);
       }
     } else {
       // ─── PURE AI ANALYSIS (BYPASSING CACHE & STANDARDS AS REQUESTED) ───
       console.log('📝 Using Pure AI analysis for:', foodDescription);
-      analysis = await nutritionAI.quickFoodCheck(foodDescription, additionalContext);
+      analysis = await nutritionAI.quickFoodCheck(foodDescription, additionalContext, req.user._id, medicalContext);
     }
 
     if (!analysis?.success || !analysis?.data) {

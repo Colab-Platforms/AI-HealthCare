@@ -284,12 +284,6 @@ export default function AIChat() {
         body: JSON.stringify({
           query: currentInput,
           conversationHistory: updatedMessages.slice(-10),
-          userReports: userReports.slice(0, 5).map((r) => ({
-            type: r.reportType,
-            date: r.reportDate || r.uploadDate || r.createdAt,
-            analysis: r.aiAnalysis?.summary || r.aiAnalysis?.doctorSummary || '',
-            metrics: r.aiAnalysis?.metrics || {},
-          })),
         }),
         signal: abortControllerRef.current.signal,
       });

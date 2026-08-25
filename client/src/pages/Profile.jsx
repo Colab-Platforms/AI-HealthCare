@@ -862,6 +862,23 @@ export default function Profile() {
                           className="w-full bg-white border border-slate-100 rounded-xl py-3 px-4 text-sm font-bold shadow-sm"
                         />
                       </div>
+                      <div>
+                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 block">
+                          Diet Preference
+                        </label>
+                        <select
+                          name="profile.dietaryPreference"
+                          value={formData.profile.dietaryPreference}
+                          onChange={handleChange}
+                          className="w-full bg-white border border-slate-100 rounded-xl py-3 px-4 text-sm font-bold shadow-sm"
+                        >
+                          <option value="non-vegetarian">Non-Vegetarian</option>
+                          <option value="vegetarian">Vegetarian</option>
+                          <option value="vegan">Vegan</option>
+                          <option value="eggetarian">Eggetarian</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
 
                       <div className="col-span-2 border-t border-slate-200 pt-5 mt-2">
                         <label className="text-[11px] font-black text-[#69A38D] uppercase tracking-widest mb-4 block">

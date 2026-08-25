@@ -10,7 +10,7 @@ const fs = require('fs');
 const NutritionSummary = require('../models/NutritionSummary');
 const DailyProgress = require('../models/DailyProgress');
 const cache = require('../utils/cache');
-const { invalidateUserHealthCache } = require('../utils/cacheKeys');
+const { invalidateUserHealthCache, userKeys } = require('../utils/cacheKeys');
 const cloudinary = require('../services/cloudinary');
 const emailService = require('../services/emailService');
 const queueService = require('../services/queueService');
@@ -392,6 +392,7 @@ exports.uploadReport = async (req, res) => {
     const report = await HealthReport.create(reportData);
 
     await cache.delete(`reports:${req.user._id}`);
+    await cache.delete(userKeys(req.user._id).chatReports);
     
     // Log activity
     await logActivity(req.user._id, 'UPLOAD_REPORT', 'diagnostics', { 
@@ -909,6 +910,7 @@ exports.deleteReport = async (req, res) => {
     await HealthReport.deleteOne({ _id: req.params.id });
     const uid = req.user._id.toString();
     cache.delete(`reports:${uid}`);
+    cache.delete(userKeys(uid).chatReports);
     cache.delete(`dashboard:${uid}`);
     cache.delete(`trends:${uid}:all`);
     cache.delete(`trends:${uid}:Blood Test`);

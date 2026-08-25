@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const mongoose = require('mongoose');
 const Anthropic = require('@anthropic-ai/sdk');
 const { protect } = require('../middleware/auth');
 const { aiLimiter } = require('../middleware/rateLimit');
@@ -9,14 +10,25 @@ const User = require('../models/User');
 const HealthMetric = require('../models/HealthMetric');
 const FoodLog = require('../models/FoodLog');
 const PersonalizedDietPlan = require('../models/PersonalizedDietPlan');
+const HealthReport = require('../models/HealthReport');
 const cache = require('../utils/cache');
+const { userKeys } = require('../utils/cacheKeys');
 const { buildAlcoholContextForAI, buildSmokeContextForAI } = require('../utils/alcoholLog');
 const UsageLog = require('../models/UsageLog');
+
+// Caps so a heavy user's history can't silently balloon the prompt.
+const MAX_LISTED_ITEMS = 8;
+function joinCapped(arr, formatter = (x) => x) {
+  if (!arr || arr.length === 0) return '';
+  const shown = arr.slice(0, MAX_LISTED_ITEMS).map(formatter).join(', ');
+  const extra = arr.length - MAX_LISTED_ITEMS;
+  return extra > 0 ? `${shown} (+${extra} more)` : shown;
+}
 
 // AI Chat endpoint - Requires authentication for personalized context
 router.post('/chat', protect, aiLimiter, requireFeature('aiChatPerDay', countAiChatToday), async (req, res) => {
   try {
-    const { query, conversationHistory, userReports } = req.body;
+    const { query, conversationHistory } = req.body;
     const user = req.user;
 
     if (!query || query.trim().length === 0) {
@@ -52,28 +64,16 @@ router.post('/chat', protect, aiLimiter, requireFeature('aiChatPerDay', countAiC
       finishStream();
     };
 
-    // Prepare system prompt with comprehensive user context
-    const profile = user.profile || {};
-    const lifestyle = profile.lifestyle || {};
-    const medical = profile.medicalHistory || {};
-    const goals = user.nutritionGoal || {};
-
-    let systemPrompt = `You are a knowledgeable and empathetic healthcare AI assistant named take.health Coach.
-     
-User Context:
-- Name: ${user.name}
-- Profile: Age ${profile.age || 'N/A'}, Gender ${profile.gender || 'N/A'}, BMI ${user.healthMetrics?.bmi || 'N/A'}
-- Medical History: ${medical.conditions?.length > 0 ? medical.conditions.join(', ') : 'None reported'}
-- Chronic Conditions: ${profile.chronicConditions?.length > 0 ? profile.chronicConditions.join(', ') : 'None reported'}
-- Diabetic: ${(profile.isDiabetic === 'yes' || (medical.conditions && medical.conditions.some(c => c.toLowerCase().includes('diabet')))) ? 'Yes' : 'No'}
-- Current Medications: ${medical.currentMedications?.length > 0 ? medical.currentMedications.join(', ') : 'None reported'}
-- Lifestyle: Smoker: ${lifestyle.smoker ? 'Yes' : 'No'} (${lifestyle.smokingFrequency || 'N/A'}), Alcohol: ${lifestyle.alcohol ? 'Yes' : 'No'} (${lifestyle.alcoholFrequency || 'N/A'}), Stress: ${lifestyle.stressLevel || 'N/A'}, Sleep: ${lifestyle.sleepHours || 'N/A'} hours
-- Fitness Goals: ${goals.goal || 'General health improvement'} (Target: ${goals.targetWeight || 'N/A'} kg)
+    // Static role/formatting instructions — identical for every user and every
+    // request, so this is marked as its own cache_control block below. That
+    // turns it into an Anthropic prompt-cache hit across the whole app instead
+    // of being billed as fresh input tokens on every single message.
+    const staticInstructions = `You are a knowledgeable and empathetic healthcare AI assistant named take.health Coach.
 
 Your role is to:
 1. Provide accurate, evidence-based health and nutrition information.
 2. Answer questions about their diet, exercise, and medical reports.
-3. Offer highly personalized recommendations based on the User Context provided above.
+3. Offer highly personalized recommendations based on the User Context provided below.
 4. If they ask about their own health, refer to their specific conditions or goals mentioned in the context.
 5. Always remind users that you are an AI assistant and they should consult healthcare professionals for medical decisions.
 6. Be supportive, concise, and professional.
@@ -88,54 +88,79 @@ IMPORTANT FORMATTING RULES - Follow these strictly:
 - Structure long answers with clear sections using simple labels followed by a colon.
 - Never refer to yourself as TakeHealth. Your name is take.health Coach.`;
 
-    // Add report context with structured metric data for source citation
-    if (userReports && userReports.length > 0) {
-      const reportContext = userReports.map(report => {
-        const date = new Date(report.date).toLocaleDateString();
-        let metricLines = '';
-        if (report.metrics && typeof report.metrics === 'object') {
-          metricLines = Object.entries(report.metrics).map(([name, m]) => {
-            const val   = m?.value ?? m?.result ?? '';
-            const unit  = m?.unit  ?? '';
-            const range = m?.normalRange ?? 'N/A';
-            const status = m?.status ?? '';
-            return `    • ${name}: ${val} ${unit} (Normal: ${range}) [${status}]`;
-          }).join('\n');
-        }
-        return `Report: ${report.type || 'Health Report'} (${date})\nSummary: ${report.analysis || 'No analysis'}\nMetrics:\n${metricLines || '    (no metrics)'}`;
-      }).join('\n\n---\n\n');
+    // Prepare per-user dynamic context
+    const profile = user.profile || {};
+    const lifestyle = profile.lifestyle || {};
+    const medical = profile.medicalHistory || {};
+    const goals = user.nutritionGoal || {};
 
-      systemPrompt += `\n\n=== USER'S HEALTH REPORTS ===\n${reportContext}\n\nSOURCE CITATION RULES (MANDATORY):
-When you reference any specific metric value from the user's reports above, you MUST cite it using this exact format at the end of the sentence: [ref: MetricName — value unit]
-Examples:
-- "Your hemoglobin is low [ref: Hemoglobin — 9.2 g/dL]"
-- "Your fasting glucose is in the normal range [ref: Fasting Glucose — 95 mg/dL]"
-- Only cite metrics you actually found in the reports above.
-- Do NOT cite if you are speaking generally without referencing their specific value.
-- Citations make the user trust your answer — always include them when using their data.`;
-    }
+    let dynamicContext = `User Context:
+- Name: ${user.name}
+- Profile: Age ${profile.age || 'N/A'}, Gender ${profile.gender || 'N/A'}, BMI ${user.healthMetrics?.bmi || 'N/A'}
+- Medical History: ${joinCapped(medical.conditions) || 'None reported'}
+- Chronic Conditions: ${joinCapped(profile.chronicConditions) || 'None reported'}
+- Diabetic: ${(profile.isDiabetic === 'yes' || (medical.conditions && medical.conditions.some(c => c.toLowerCase().includes('diabet')))) ? 'Yes' : 'No'}
+- Current Medications: ${joinCapped(medical.currentMedications) || 'None reported'}
+- Lifestyle: Smoker: ${lifestyle.smoker ? 'Yes' : 'No'} (${lifestyle.smokingFrequency || 'N/A'}), Alcohol: ${lifestyle.alcohol ? 'Yes' : 'No'} (${lifestyle.alcoholFrequency || 'N/A'}), Stress: ${lifestyle.stressLevel || 'N/A'}, Sleep: ${lifestyle.sleepHours || 'N/A'} hours
+- Fitness Goals: ${goals.goal || 'General health improvement'} (Target: ${goals.targetWeight || 'N/A'} kg)`;
 
     let processedQuery = query;
 
-    const isDiabetic = profile.isDiabetic === 'yes' || 
+    const isDiabetic = profile.isDiabetic === 'yes' ||
                        (medical.conditions && medical.conditions.some(c => c.toLowerCase().includes('diabet')));
 
     let recentVitalsContext = '';
     let recentDietContext = '';
+    let lastMealContext = '';
     let activityContext = '';
     let dietPlanContext = '';
     let behaviorContext = '';
+    let reportContext = '';
 
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
 
     try {
-      const [userLogs, recentMetrics, dashboardCache, todaysLogs, activePlan] = await Promise.all([
+      const objectId = new mongoose.Types.ObjectId(String(user._id));
+      const [userLogs, recentMetrics, dashboardCache, todaysAgg, lastMeal, activePlan, latestReports] = await Promise.all([
         User.findById(user._id).select('alcoholLog smokeLog profile.lifestyle').lean(),
         HealthMetric.find({ userId: user._id }).sort({ recordedAt: -1 }).limit(10).lean(),
         cache.get(`dashboard:${user._id}`),
-        FoodLog.find({ userId: user._id, timestamp: { $gte: startOfDay } }).lean(),
-        PersonalizedDietPlan.findOne({ userId: user._id, isActive: true }).select('dailyTargets').lean()
+        // Totals and a capped item list computed in the DB rather than pulled
+        // into Node and reduced by hand — scales with indexing, not memory.
+        FoodLog.aggregate([
+          { $match: { userId: objectId, timestamp: { $gte: startOfDay } } },
+          { $facet: {
+              totals: [{ $group: {
+                _id: null,
+                totalCal: { $sum: '$totalNutrition.calories' },
+                totalCarb: { $sum: '$totalNutrition.carbs' },
+                totalProtein: { $sum: '$totalNutrition.protein' },
+                totalFat: { $sum: '$totalNutrition.fats' },
+              } }],
+              items: [
+                { $unwind: { path: '$foodItems', preserveNullAndEmptyArrays: true } },
+                { $limit: MAX_LISTED_ITEMS },
+                { $project: { _id: 0, name: '$foodItems.name', quantity: '$foodItems.quantity' } }
+              ]
+            }
+          }
+        ]),
+        // The single most recently logged meal, regardless of which day it
+        // fell on — answers "what was my last meal" even if it was yesterday.
+        FoodLog.findOne({ userId: user._id }).sort({ timestamp: -1 }).lean(),
+        PersonalizedDietPlan.findOne({ userId: user._id, isActive: true }).select('dailyTargets').lean(),
+        // Fetched by the server (not forwarded by the client on every
+        // message) and cached briefly, so repeated turns in a conversation
+        // don't re-pay for report tokens or a DB round trip each time.
+        cache.getOrSet(userKeys(user._id).chatReports, async () => {
+          const reports = await HealthReport.find({ user: user._id, status: 'completed' })
+            .sort({ reportDate: -1, createdAt: -1 })
+            .limit(3)
+            .select('reportType reportDate aiAnalysis.summary aiAnalysis.doctorSummary aiAnalysis.metrics')
+            .lean();
+          return { reports };
+        }, 300)
       ]);
 
       if (userLogs) {
@@ -152,39 +177,69 @@ Examples:
         activityContext = `\n[Today's Activity Log & Progress]\n- Steps: 0\n- Water: 0\n- Sleep: 0\n(Activity log waiting for sync)`;
       }
 
-      if (todaysLogs?.length > 0) {
-        let totalCal = 0, totalCarb = 0, totalProtein = 0, totalFat = 0;
-        const items = [];
-        todaysLogs.forEach(log => {
-          totalCal += log.totalNutrition?.calories || 0;
-          totalCarb += log.totalNutrition?.carbs || 0;
-          totalProtein += log.totalNutrition?.protein || 0;
-          totalFat += log.totalNutrition?.fats || 0;
-          log.foodItems?.forEach(fi => items.push(`${fi.quantity} ${fi.name}`));
-        });
-        recentDietContext = `\n[Today's Nutrition Consumed]\n- Calories: ${Math.round(totalCal)} kcal\n- Carbs: ${Math.round(totalCarb)}g, Protein: ${Math.round(totalProtein)}g, Fats: ${Math.round(totalFat)}g\n- Actual Foods Consumed Today: ${items.join(', ')}`;
+      const totals = todaysAgg?.[0]?.totals?.[0];
+      if (totals) {
+        const items = (todaysAgg[0].items || []).map(fi => `${fi.quantity || ''} ${fi.name}`.trim());
+        recentDietContext = `\n[Today's Nutrition Consumed]\n- Calories: ${Math.round(totals.totalCal || 0)} kcal\n- Carbs: ${Math.round(totals.totalCarb || 0)}g, Protein: ${Math.round(totals.totalProtein || 0)}g, Fats: ${Math.round(totals.totalFat || 0)}g\n- Foods Consumed Today: ${items.join(', ') || 'None logged yet'}`;
+      }
+
+      if (lastMeal) {
+        const mealDate = lastMeal.timestamp ? new Date(lastMeal.timestamp).toLocaleString() : 'unknown time';
+        const itemNames = joinCapped(lastMeal.foodItems, fi => `${fi.quantity || ''} ${fi.name}`.trim());
+        lastMealContext = `\n[User's Last Logged Meal — most recent regardless of date]\n- Logged: ${mealDate} (${lastMeal.mealType || 'meal'})\n- Items: ${itemNames || 'N/A'}\n- Calories: ${Math.round(lastMeal.totalNutrition?.calories || 0)} kcal, Carbs: ${Math.round(lastMeal.totalNutrition?.carbs || 0)}g, Protein: ${Math.round(lastMeal.totalNutrition?.protein || 0)}g, Fats: ${Math.round(lastMeal.totalNutrition?.fats || 0)}g${lastMeal.healthScore != null ? `\n- Health Score: ${lastMeal.healthScore}/100` : ''}${lastMeal.healthBenefitsSummary ? `\n- Summary: ${lastMeal.healthBenefitsSummary}` : ''}${lastMeal.warnings?.length ? `\n- Warnings: ${joinCapped(lastMeal.warnings)}` : ''}`;
       }
 
       if (activePlan?.dailyTargets) {
         dietPlanContext = `\n[Current Assigned Diet Plan Targets]\n- Target Calories: ${activePlan.dailyTargets.calories || 'N/A'} kcal\n- Target Macros -> C: ${activePlan.dailyTargets.macros?.carbs || 0}g, P: ${activePlan.dailyTargets.macros?.protein || 0}g, F: ${activePlan.dailyTargets.macros?.fats || 0}g`;
+      }
+
+      const reports = latestReports?.reports || [];
+      if (reports.length > 0) {
+        const formatted = reports.map(report => {
+          const date = report.reportDate ? new Date(report.reportDate).toLocaleDateString() : 'unknown date';
+          const summary = report.aiAnalysis?.summary || report.aiAnalysis?.doctorSummary || 'No analysis';
+          let metricLines = '';
+          if (report.aiAnalysis?.metrics && typeof report.aiAnalysis.metrics === 'object') {
+            metricLines = Object.entries(report.aiAnalysis.metrics).map(([name, m]) => {
+              const val = m?.value ?? m?.result ?? '';
+              const unit = m?.unit ?? '';
+              const range = m?.normalRange ?? 'N/A';
+              const status = m?.status ?? '';
+              return `    • ${name}: ${val} ${unit} (Normal: ${range}) [${status}]`;
+            }).join('\n');
+          }
+          return `Report: ${report.reportType || 'Health Report'} (${date})\nSummary: ${summary}\nMetrics:\n${metricLines || '    (no metrics)'}`;
+        }).join('\n\n---\n\n');
+
+        reportContext = `\n\n=== USER'S MOST RECENT HEALTH REPORTS (newest first) ===\n${formatted}\n\nSOURCE CITATION RULES (MANDATORY):
+When you reference any specific metric value from the user's reports above, you MUST cite it using this exact format at the end of the sentence: [ref: MetricName — value unit]
+Examples:
+- "Your hemoglobin is low [ref: Hemoglobin — 9.2 g/dL]"
+- "Your fasting glucose is in the normal range [ref: Fasting Glucose — 95 mg/dL]"
+- Only cite metrics you actually found in the reports above.
+- Do NOT cite if you are speaking generally without referencing their specific value.
+- Citations make the user trust your answer — always include them when using their data.`;
       }
     } catch (err) {
       console.error("Error fetching comprehensive context for AI Coach:", err);
     }
 
     // Universal real-time context injection for all users
-    systemPrompt += `\n\nREAL-TIME USER LOGS & PLANS
+    dynamicContext += `${reportContext}
+
+REAL-TIME USER LOGS & PLANS
 Below is the user's latest logged health vitals, active health tabs, nutrition limits, and daily progress:
 ${recentVitalsContext}
 ${activityContext}
 ${dietPlanContext}
 ${recentDietContext}
+${lastMealContext}
 ${behaviorContext}
 
 Crucial Instruction: Directly utilize the real-time activity, nutrition page, diet plan, and behavior tracker values provided above when giving advice. For alcohol, reference only the user's logged patterns — no medical advice, diagnoses, or treatment claims. Use reflective, non-judgmental language.`;
 
     if (isDiabetic) {
-      systemPrompt += `\n\nSPECIAL ABILITY: SMART GLYCEMIC RESPONSE PREDICTOR + MEAL COACH
+      dynamicContext += `\n\nSPECIAL ABILITY: SMART GLYCEMIC RESPONSE PREDICTOR + MEAL COACH
 Since the user is diabetic, you must act as a "Personal Diabetic Coach in their pocket" anytime food or eating is mentioned.
 If the user inputs or describes a meal (e.g. "2 roti + dal", "I am about to eat a banana"), you MUST predict their glycemic response BEFORE they eat it. Consider what they have already eaten today and their recent glucose logs when forming your prediction.
 Structure your response exactly like this template:
@@ -221,7 +276,15 @@ Make the meal feedback immediate, clear, highly actionable, and always use these
         const client = new Anthropic({ apiKey: anthropicKey });
         const stream = client.messages.stream({
           model: AI_MODEL,
-          system: systemPrompt,
+          // Two cache breakpoints: the static block is byte-identical across
+          // every user and request (cross-user cache hits); the dynamic block
+          // is identical across turns of the same conversation (cache hits on
+          // message 2+ of a session), since it only changes when the user's
+          // underlying data changes.
+          system: [
+            { type: 'text', text: staticInstructions, cache_control: { type: 'ephemeral' } },
+            { type: 'text', text: dynamicContext, cache_control: { type: 'ephemeral' } }
+          ],
           messages,
           temperature: 0.7,
           max_tokens: 1500

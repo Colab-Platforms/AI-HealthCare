@@ -278,7 +278,7 @@ export default function Register() {
         {/* Centered Logo */}
         <Link to="/" className="mb-6 hover:scale-105 transition-transform">
           <img
-            src="/assets/logos/logo-full.png"
+            src="/updated-landing/take_health_new_logo.png"
             alt="take.health"
             className="h-20 w-auto object-contain"
           />

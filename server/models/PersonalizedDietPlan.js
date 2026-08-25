@@ -26,6 +26,9 @@ const personalizedDietPlanSchema = new mongoose.Schema({
     bmiGoal: String,
     targetWeight: Number,
     dietaryPreference: String,
+    // Optional occasion/fasting context the plan was generated for (e.g.
+    // "Ramadan", "Shravan month", "Navratri upvas"). Null when not set.
+    occasion: { type: String, default: null },
     activityLevel: String,
     fitnessGoals: [String],
     medicalConditions: [String],

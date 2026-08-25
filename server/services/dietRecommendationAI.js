@@ -82,7 +82,7 @@ class DietRecommendationAI {
   }
 
   async generatePersonalizedDietPlan(userData, promptExtension = '') {
-    const { age, gender, weight, height, currentBMI, bmiGoal, activityLevel, nutritionGoals, medicalConditions, allergies, diabetesInfo, alcoholContext, alcoholSummary, lifestyle, country, region, state, foodPreferences } = userData;
+    const { age, gender, weight, height, currentBMI, bmiGoal, activityLevel, nutritionGoals, medicalConditions, allergies, diabetesInfo, alcoholContext, alcoholSummary, lifestyle, country, region, state, foodPreferences, dietaryPreference } = userData;
     const isDiabetic = !!diabetesInfo;
     const alcoholLine = alcoholContext || 'No alcohol tracker data';
     const elevatedNote = alcoholSummary?.bingePattern || (alcoholSummary?.today >= 3)
@@ -102,6 +102,16 @@ class DietRecommendationAI {
     const diabeticAlcoholNote = isDiabetic
       ? 'Diabetic user: do not suggest alcohol; keep meals steady and practical without medical claims about glucose and alcohol.'
       : '';
+
+    // Build dietary preference (veg/non-veg/vegan/etc.) instructions
+    const dietTypeInstructions = {
+      'vegetarian': 'STRICT VEGETARIAN: Every meal must be 100% vegetarian. NEVER include meat, poultry, fish, or eggs. Dairy is allowed.',
+      'vegan': 'STRICT VEGAN: Every meal must be 100% vegan. NEVER include meat, poultry, fish, eggs, dairy, or any animal-derived ingredient.',
+      'eggetarian': 'EGGETARIAN: Every meal must be vegetarian, but eggs are allowed. NEVER include meat, poultry, or fish.',
+      'non-vegetarian': 'NON-VEGETARIAN: User eats meat, poultry, fish, and eggs — feel free to include them alongside vegetarian options for variety.',
+      'other': ''
+    };
+    const dietTypeInstruction = dietTypeInstructions[dietaryPreference] || dietTypeInstructions['non-vegetarian'];
     
     // Build region/country specific instructions
     let regionCountryInstructions = '';
@@ -157,16 +167,18 @@ USER DATA:
 - Diabetes Status: ${isDiabetic ? `Positive (${diabetesInfo.diabetesType})` : 'Negative'}
 - Alcohol / Lifestyle: ${alcoholLine}
 - Profile alcohol flag: ${lifestyle?.alcohol ? `Yes (${lifestyle.alcoholFrequency || 'unspecified'})` : 'No or not set'}
-- Macro Targets: Protein ${nutritionGoals?.protein}g, Carbs ${nutritionGoals?.carbs}g, Fats ${nutritionGoals?.fats}g${prefContext}${regionCountryInstructions}
+- Macro Targets: Protein ${nutritionGoals?.protein}g, Carbs ${nutritionGoals?.carbs}g, Fats ${nutritionGoals?.fats}g
+- Dietary Type: ${dietaryPreference || 'non-vegetarian'}${prefContext}${regionCountryInstructions}
 
 REQUIREMENTS:
 1. CRITICAL CALORIE RULE: Each breakfast+lunch+dinner COMBO (same array index across all three meals) MUST total exactly ${nutritionGoals?.dailyCalories || 2000} kcal ± 50 kcal. So breakfast[0].calories + lunch[0].calories + dinner[0].calories = target. Same for index 1, 2, 3, 4, 5, 6. NEVER let any single day's combo exceed ${nutritionGoals?.dailyCalories || 2000} kcal.
 2. PRECISE PORTIONS: Use measurements like "1.5 Bowl (250g)", "2 Medium Roti (80g)", etc. Include both visual quantity AND approximate weight.
 3. OUTPUT EXACTLY 7 unique meal options per meal type (breakfast, lunch, dinner) — all 7 must be completely different dishes.
-4. MANDATORY PREFERENCE RULE: If user listed Breakfast Favorites, minimum 5 out of 7 breakfast options MUST be built around those exact ingredients (e.g. if user likes "Toast" → "Masala Toast with Egg", "Peanut Butter Toast", "Avocado Toast", "Toast with Dal", "French Toast" — all count). Same rule for Lunch and Dinner favorites — minimum 5 out of 7 must feature them. If user listed only 1-2 items, repeat them across different preparations to meet the 5/7 minimum. General Preferred Foods must appear across at least 5 days total. NEVER suggest foods from their "MUST AVOID" list.
-5. If alcohol intake is elevated per user log, prefer lighter dinners and fewer empty calories — no medical claims.
-6. ${elevatedNote} ${diabeticAlcoholNote}
-7. ${promptExtension}
+4. MANDATORY DIETARY TYPE RULE: ${dietTypeInstruction}
+5. MANDATORY PREFERENCE RULE: If user listed Breakfast Favorites, minimum 5 out of 7 breakfast options MUST be built around those exact ingredients (e.g. if user likes "Toast" → "Masala Toast with Egg", "Peanut Butter Toast", "Avocado Toast", "Toast with Dal", "French Toast" — all count). Same rule for Lunch and Dinner favorites — minimum 5 out of 7 must feature them. If user listed only 1-2 items, repeat them across different preparations to meet the 5/7 minimum. General Preferred Foods must appear across at least 5 days total. NEVER suggest foods from their "MUST AVOID" list.
+6. If alcohol intake is elevated per user log, prefer lighter dinners and fewer empty calories — no medical claims.
+7. ${elevatedNote} ${diabeticAlcoholNote}
+8. ${promptExtension}
 
 JSON output ONLY. No markdown. Exact calorie math is mandatory.`;
 

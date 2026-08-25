@@ -86,15 +86,16 @@ class NutritionAI {
     }
   }
 
-  // imageCount > 0 tailors the instructions for image input (single or multi-photo); 0 = text-only input
-  _getUnifiedPrompt(context = '', imageCount = 0) {
+  // imageCount > 0 tailors the instructions for image input (single or multi-photo); 0 = text-only input.
+  // medicalContext (from utils/medicalContext.js) is '' when the user has no relevant conditions/allergies on file.
+  _getUnifiedPrompt(context = '', imageCount = 0, medicalContext = '') {
     const multiImageNote = imageCount > 1
       ? `\n    MULTI-IMAGE INPUT: You have been given ${imageCount} separate photos that together make up ONE meal. In most cases each photo shows a DIFFERENT dish — treat each photo as contributing one or more entries to the "dishes" array. Do NOT merge two visibly different photos into a single dish unless they are clearly duplicate angles of the exact same plate. If any single photo itself shows multiple distinct food items side by side (e.g. a thali or a tray), split THAT photo into multiple dish entries as well.`
       : '';
 
     return `Analyze the provided image(s) and/or text and return a JSON object describing the FULL meal.
     Context: "${context}"
-    ${multiImageNote}
+    ${multiImageNote}${medicalContext}
 
     TASK:
     1. Determine if the input contains actual FOOD or drink.
@@ -143,7 +144,7 @@ class NutritionAI {
       "micronutrients": [{ "name": "Vitamin C", "amount": "12", "unit": "mg", "percentage": 13 }],
       "enhancementTips": [{ "name": "Tip Title", "benefit": "Explanation" }],
       "healthBenefitsSummary": "Positive impact summary for the whole meal",
-      "warnings": ["Disadvantages if unhealthy"],
+      "warnings": ["Disadvantages if genuinely unhealthy for this meal specifically. Follow the MEDICAL WARNING RULES above strictly if a USER MEDICAL CONTEXT block is present — most meals should have zero or one medical warning, not a full checklist of every condition on file."],
       "alternatives": [{ "name": "Name", "description": "Why better", "nutrition": { "calories": 0, "protein": 0 } }]
     }
 
@@ -187,7 +188,7 @@ class NutritionAI {
   }
 
   // `images` accepts a single base64/data-URI string (legacy) OR an array of those / {data, mediaType} objects (multi-photo)
-  async analyzeFromImage(images, additionalContext = '', userId = null) {
+  async analyzeFromImage(images, additionalContext = '', userId = null, medicalContext = '') {
     const imageList = (Array.isArray(images) ? images : [images]).filter(Boolean);
     const normalized = imageList.map((img) => this._normalizeImageInput(img));
 
@@ -197,7 +198,7 @@ class NutritionAI {
 
     console.log(`🖼️ [NutritionAI] Preparing ${normalized.length} image(s) for Gemini | Context:`, additionalContext.substring(0, 50));
 
-    const prompt = this._getUnifiedPrompt(additionalContext, normalized.length);
+    const prompt = this._getUnifiedPrompt(additionalContext, normalized.length, medicalContext);
 
     try {
       const data = await this._withRetry(async () => {
@@ -224,11 +225,11 @@ class NutritionAI {
     }
   }
 
-  async quickFoodCheck(foodDescription, additionalContext = '', userId = null) {
+  async quickFoodCheck(foodDescription, additionalContext = '', userId = null, medicalContext = '') {
     const combined = additionalContext
       ? `Food: ${foodDescription}. Context: ${additionalContext}`
       : foodDescription;
-    const prompt = this._getUnifiedPrompt(combined, 0);
+    const prompt = this._getUnifiedPrompt(combined, 0, medicalContext);
 
     const data = await this._withRetry(async () => {
       const response = await openrouterAI.chatCompletion({
@@ -247,7 +248,7 @@ class NutritionAI {
   // The user has already reviewed and edited the AI's dish/ingredient guess — this prompt
   // treats that edited list as ground truth and asks the model ONLY to compute nutrition,
   // never to re-identify or second-guess the dish/ingredient names or quantities.
-  _getRecalculationPrompt(dishes) {
+  _getRecalculationPrompt(dishes, medicalContext = '') {
     const confirmedDishes = dishes.map((d) => ({
       name: d.name,
       quantity: d.quantity,
@@ -259,7 +260,7 @@ class NutritionAI {
     return `The user has EDITED and CONFIRMED the exact dishes, ingredients, and quantities for a meal they ate. This is ground truth from the user — you MUST NOT rename, add, remove, merge, or re-identify any dish or ingredient. Do not second-guess their input.
 
     CONFIRMED MEAL:
-    ${JSON.stringify(confirmedDishes, null, 2)}
+    ${JSON.stringify(confirmedDishes, null, 2)}${medicalContext}
 
     TASK: For each ingredient (or for the dish as a whole if it has no listed ingredients), calculate accurate nutrition using official databases (USDA, Indian Food Composition Tables (IFCT)) based purely on the given name and quantity.
 
@@ -285,7 +286,7 @@ class NutritionAI {
       "micronutrients": [{ "name": "Vitamin C", "amount": "12", "unit": "mg", "percentage": 13 }],
       "enhancementTips": [{ "name": "Tip Title", "benefit": "Explanation" }],
       "healthBenefitsSummary": "Positive impact summary for the whole meal",
-      "warnings": ["Disadvantages if unhealthy"],
+      "warnings": ["Disadvantages if genuinely unhealthy for this meal specifically. Follow the MEDICAL WARNING RULES above strictly if a USER MEDICAL CONTEXT block is present — most meals should have zero or one medical warning, not a full checklist of every condition on file."],
       "alternatives": [{ "name": "Name", "description": "Why better", "nutrition": { "calories": 0, "protein": 0 } }]
     }
 
@@ -293,12 +294,12 @@ class NutritionAI {
   }
 
   // Called on the second (log-meal) API call, only when the user actually edited the AI's first guess.
-  async recalculateNutrition(dishes, userId = null) {
+  async recalculateNutrition(dishes, userId = null, medicalContext = '') {
     if (!Array.isArray(dishes) || dishes.length === 0) {
       throw new Error('At least one dish is required for nutrition recalculation');
     }
 
-    const prompt = this._getRecalculationPrompt(dishes);
+    const prompt = this._getRecalculationPrompt(dishes, medicalContext);
 
     const data = await this._withRetry(async () => {
       const response = await openrouterAI.chatCompletion({
