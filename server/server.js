@@ -123,10 +123,18 @@ app.use(
       if (!isProduction && isLocalOrigin(origin)) return callback(null, true);
 
       if (ALLOWED_ORIGINS.length === 0) {
+        if (isProduction) {
+          // Fail closed in production: an empty allow-list must never mean
+          // "accept everything" for a credentialed CORS config.
+          console.error(
+            "[CORS] ALLOWED_ORIGINS is not set in production — rejecting all cross-origin requests.",
+          );
+          return callback(new Error("Not allowed by CORS"));
+        }
         if (!warnedOpenCors) {
           warnedOpenCors = true;
           console.warn(
-            "⚠️  [CORS] ALLOWED_ORIGINS is not set — every origin is accepted. " +
+            "⚠️  [CORS] ALLOWED_ORIGINS is not set — every origin is accepted (dev only). " +
               "Set it (comma-separated) to restrict access.",
           );
         }
@@ -177,8 +185,13 @@ try {
   console.error("[Server] Failed to mount Swagger UI:", err.message);
 }
 
-// Debug endpoint for diagnostic purposes
+// Debug endpoint for diagnostic purposes — not for production traffic:
+// it leaks DB host/name and a user document to anyone who can reach it.
 app.get("/api/debug-connection", async (req, res) => {
+  if (process.env.NODE_ENV === "production" && process.env.DEBUG_HTTP !== "true") {
+    return res.status(404).end();
+  }
+
   const results = {
     timestamp: new Date().toISOString(),
     steps: [],
@@ -266,23 +279,30 @@ app.get("/api/health-check", async (req, res) => {
     }
   }
 
-  res.json({
+  const payload = {
     status: "ok",
     message: "TakeHealth API",
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
     dbConnected,
     dbState: mongoose.connection.readyState,
-    envVars: {
+    connectionError,
+  };
+
+  // Config-presence info is useful for debugging deploys but tells an
+  // unauthenticated caller which secrets are configured — dev-only.
+  if (process.env.NODE_ENV !== "production" || process.env.DEBUG_HTTP === "true") {
+    payload.envVars = {
       MONGODB_URI: process.env.MONGODB_URI ? "SET" : "NOT SET",
       JWT_SECRET: process.env.JWT_SECRET ? "SET" : "NOT SET",
       ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY ? "SET" : "NOT SET",
       CLOUDINARY_CLOUD_NAME: process.env.CLOUDINARY_CLOUD_NAME
         ? "SET"
         : "NOT SET",
-    },
-    connectionError,
-  });
+    };
+  }
+
+  res.json(payload);
 });
 
 // Friendly redirects → interactive docs
@@ -305,19 +325,15 @@ if (!isProduction || process.env.DEBUG_HTTP === "true") {
 app.get("/api/ping", (req, res) =>
   res.json({ status: "pong", domain: req.headers.host }),
 );
-// 🛡️ Admin Deep-Trace (Releasing trap into the router)
+// 🛡️ Admin Deep-Trace — dev-only request logging. The old diagnostic-ping
+// shortcut here used to answer /api/admin/ping-internal with no auth check,
+// bypassing the protect+authorize gate in adminRoutes.js entirely. Removed;
+// ping-internal is now only served by the authenticated route in that router.
 app.use("/api/admin", (req, res, next) => {
   if (!isProduction || process.env.DEBUG_HTTP === "true") {
     console.log(
       `[Admin Trace Stage 1] Request: ${req.method} ${req.originalUrl}`,
     );
-  }
-  // If it's a diagnostic ping, just handle it here to keep it simple
-  if (req.path === "/ping" || req.path === "/ping-internal") {
-    return res.json({
-      status: "admin-diagnostic-ok",
-      msg: "Trace hit the admin mount point!",
-    });
   }
   next();
 });

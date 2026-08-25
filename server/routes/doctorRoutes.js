@@ -33,6 +33,7 @@ const {
   getDoctorScheduleOverview
 } = require('../controllers/doctorController');
 const { protect, authorize } = require('../middleware/auth');
+const { requireVideoConsultIfBooked } = require('../middleware/subscriptionAccess');
 
 // Public routes (only shows approved doctors)
 router.get('/', getAllDoctors);
@@ -40,7 +41,7 @@ router.get('/recommended', protect, getRecommendedDoctors);
 
 // Patient routes
 router.get('/appointments', protect, getMyAppointments);
-router.post('/book', protect, bookAppointment);
+router.post('/book', protect, requireVideoConsultIfBooked, bookAppointment);
 
 // Video consultation routes (accessible by both patients and doctors)
 router.get('/appointments/:appointmentId', protect, getAppointmentDetails);
@@ -51,9 +52,9 @@ router.post('/appointments/:appointmentId/review', protect, submitReview);
 router.get('/appointments/:appointmentId/prescription', protect, downloadPrescription);
 router.post('/appointments/:appointmentId/reminder', protect, sendConsultationReminder);
 
-// Test routes
-router.post('/test-email', testEmail);
-router.post('/generate-video-token', generateVideoToken);
+// Test routes — dev/admin only: send real emails / mint video tokens with no ownership check
+router.post('/test-email', protect, authorize('admin', 'superadmin'), testEmail);
+router.post('/generate-video-token', protect, authorize('admin', 'superadmin'), generateVideoToken);
 
 // Doctor-specific routes (requires doctor role)
 router.get('/me/dashboard', protect, authorize('doctor'), getDoctorDashboard);

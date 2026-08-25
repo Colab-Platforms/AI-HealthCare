@@ -4,6 +4,8 @@ const mongoose = require('mongoose');
 const Anthropic = require('@anthropic-ai/sdk');
 const { protect } = require('../middleware/auth');
 const { aiLimiter } = require('../middleware/rateLimit');
+const { requireFeature } = require('../middleware/subscriptionAccess');
+const { countAiChatToday } = require('../utils/featureUsage');
 const User = require('../models/User');
 const HealthMetric = require('../models/HealthMetric');
 const FoodLog = require('../models/FoodLog');
@@ -24,7 +26,7 @@ function joinCapped(arr, formatter = (x) => x) {
 }
 
 // AI Chat endpoint - Requires authentication for personalized context
-router.post('/chat', protect, aiLimiter, async (req, res) => {
+router.post('/chat', protect, aiLimiter, requireFeature('aiChatPerDay', countAiChatToday), async (req, res) => {
   try {
     const { query, conversationHistory } = req.body;
     const user = req.user;

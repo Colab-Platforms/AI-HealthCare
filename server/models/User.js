@@ -19,15 +19,24 @@ const userSchema = new mongoose.Schema({
   profilePicture: { type: String }, // Cloudinary URL
   resetPasswordCode: String,
   resetPasswordExpire: Date,
+  resetPasswordAttempts: { type: Number, default: 0 },
+  // DPDPA Section 9: processing a child's (under-18) personal data requires
+  // verifiable parental/guardian consent.
+  guardianConsent: {
+    given: { type: Boolean, default: false },
+    guardianName: String,
+    guardianEmail: String,
+    relation: String,
+    consentedAt: Date,
+  },
   // For doctors - links to Doctor profile
   doctorProfile: { type: mongoose.Schema.Types.ObjectId, ref: 'Doctor' },
   profile: {
-    age: { type: Number, min: 0 },
-    age: { type: Number, min: 0 },
+    age: { type: Number, min: 0, max: 120 },
     gender: { type: String, enum: ['male', 'female', 'other'] },
     dietaryPreference: { type: String, enum: ['vegetarian', 'non-vegetarian', 'vegan', 'eggetarian', 'other'], default: 'non-vegetarian' },
-    height: { type: Number, min: 0 },
-    weight: { type: Number, min: 0 },
+    height: { type: Number, min: 0, max: 300 }, // in cm
+    weight: { type: Number, min: 0, max: 500 }, // in kg
     bloodGroup: String,
     dateOfBirth: { type: Date },
     allergies: [String],
@@ -72,9 +81,9 @@ const userSchema = new mongoose.Schema({
       smokingFrequency: String, // 'occasional', 'regular', 'heavy'
       alcohol: { type: Boolean, default: false },
       alcoholFrequency: String, // 'occasional', 'moderate', 'heavy'
-      sleepHours: Number,
+      sleepHours: { type: Number, min: 0, max: 24 }, // hrs per day
       stressLevel: { type: String, enum: ['low', 'moderate', 'high'] },
-      waterIntake: Number // glasses per day
+      waterIntake: { type: Number, min: 0 } // glasses per day
     },
     diabetesProfile: {
       type: {
@@ -86,7 +95,7 @@ const userSchema = new mongoose.Schema({
         type: String,
         enum: ['Controlled', 'Uncontrolled', 'Newly diagnosed']
       },
-      hba1c: Number,
+      hba1c: { type: Number, min: 0, max: 20 }, // HbA1c percentage
       glucoseMonitoring: String,
       fastingGlucose: String,
       postMealGlucose: String,

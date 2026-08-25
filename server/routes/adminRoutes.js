@@ -20,18 +20,13 @@ const {
   getByUser, getLogs, getCacheStats, getBudgetStatus
 } = require('../controllers/usageController');
 
-// 🏓 Internal Router Ping (Bypasses Auth for Debugging)
+// All routes require admin or superadmin role
+router.use(protect, authorize('admin', 'superadmin'));
+
+// 🏓 Internal Router Ping (debugging aid — now behind the auth gate above)
 router.get('/ping-internal', (req, res) => {
   res.json({ status: 'admin-router-active', msg: 'Admin Router is correctly mounted and receiving traffic!' });
 });
-
-// 🚿 Super-Open Admin Router Ping
-router.get('/open-ping', (req, res) => {
-  res.json({ status: 'admin-router-found', msg: 'Successfully reached the admin router! If /users 404s, its an auth issue.' });
-});
-
-// All routes require admin or superadmin role
-router.use(protect, authorize('admin', 'superadmin'));
 
 // Dashboard & Stats
 router.get('/stats', getReportStats);

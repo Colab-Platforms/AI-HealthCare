@@ -1,9 +1,11 @@
 const express = require('express');
 const router = express.Router();
 const { translateWithAI } = require('../services/translationService');
+const { protect } = require('../middleware/auth');
+const { aiLimiter } = require('../middleware/rateLimit');
 
 // POST /api/translate
-router.post('/', async (req, res) => {
+router.post('/', protect, aiLimiter, async (req, res) => {
     try {
         const { text, targetLanguage = 'hi' } = req.body;
 

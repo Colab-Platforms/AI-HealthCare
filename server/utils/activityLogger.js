@@ -12,6 +12,7 @@ const ALWAYS_LOG = new Set([
   'DELETE_ACCOUNT', 'EXPORT_DATA',
   'UPLOAD_REPORT', 'DELETE_REPORT',
   'UPLOAD_MEDICAL_DOCUMENT', 'DELETE_MEDICAL_DOCUMENT',
+  'ADMIN_IMPERSONATE_USER',
 ]);
 
 const logActivity = async (userId, action, category, metadata = {}, req = null) => {
