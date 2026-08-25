@@ -43,6 +43,7 @@ const AdminAIUsage = lazy(() => import("./pages/AdminAIUsage"));
 // const AdminSubscriptions = lazy(() => import("./pages/AdminSubscriptions"));
 const NotificationSettings = lazy(() => import("./pages/NotificationSettings"));
 const PrivacySettings = lazy(() => import("./pages/PrivacySettings"));
+const DeleteAccount = lazy(() => import("./pages/DeleteAccount"));
 
 const StepTracker = lazy(() => import("./pages/StepTracker"));
 const SmokeTracker = lazy(() => import("./pages/SmokeTracker"));
@@ -583,6 +584,17 @@ export default function PrivateApp() {
                   <ProtectedRoute>
                     <Layout>
                       <PrivacySettings />
+                    </Layout>
+                  </ProtectedRoute>
+                }
+              />
+
+              <Route
+                path="/delete-account"
+                element={
+                  <ProtectedRoute>
+                    <Layout>
+                      <DeleteAccount />
                     </Layout>
                   </ProtectedRoute>
                 }
