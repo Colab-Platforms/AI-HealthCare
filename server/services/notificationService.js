@@ -33,14 +33,21 @@ class NotificationService {
         this.cronJobs = [];
         this.cachedPreferences = new Map(); // In-memory cache
         this.lastCacheUpdate = 0;
-        this.CACHE_TTL = 5 * 60 * 1000; // 5 minutes cache
+        // 15 min: preference *writes* invalidate this immediately (see
+        // notificationPreferenceController.js), so TTL only bounds staleness
+        // from any write path that doesn't go through that invalidation —
+        // not the primary consistency mechanism, safe to keep long.
+        this.CACHE_TTL = 15 * 60 * 1000;
 
-        // Per-day dedupe set, seeded from the DB once per day (see loadSentToday).
-        // This process is the only writer of REMINDER_TYPES notifications, so an
-        // in-memory set stays accurate between seeds and lets a tick skip work
-        // without touching the database at all.
+        // Per-tick dedupe set — reloaded from the DB at the start of every tick
+        // (see loadSentToday), not cached across ticks. Reminder inserts are the
+        // only writes this reads back, and the query is a single indexed range
+        // scan, so re-running it every 5 min costs one cheap query rather than
+        // saving one — the point of doing it every tick instead of once a day is
+        // correctness if this process is ever one of several instances: another
+        // instance's send becomes visible here on the very next tick instead of
+        // silently duplicating until this process's next day-boundary reseed.
         this.sentToday = new Set();
-        this.sentTodayDate = null;
 
         // Re-entrancy guard — see checkAndSendUserNotifications.
         this.tickRunning = false;
@@ -230,13 +237,12 @@ class NotificationService {
         }
     }
 
-    // Seeds the per-day dedupe set from the DB. Runs once per calendar day (and
-    // once on boot), so the cost is one indexed query per day rather than one per
-    // user per type per tick.
+    // Reloads the dedupe set from the DB at the start of every tick. `today`
+    // already encodes the current day boundary, so this is naturally correct
+    // across midnight too — no separate day-rollover branch needed. One
+    // indexed range scan (type + createdAt), fast even at several thousand
+    // reminders/day.
     async loadSentToday(today) {
-        const dayKey = today.toDateString();
-        if (this.sentTodayDate === dayKey) return;
-
         const sent = await Notification.find({
             type: { $in: REMINDER_TYPES },
             createdAt: { $gte: today }
@@ -245,8 +251,6 @@ class NotificationService {
         this.sentToday = new Set(
             sent.map((n) => sentKey(n.userId.toString(), n.type, n.metadata?.mealType))
         );
-        this.sentTodayDate = dayKey;
-        console.log(`🔔 Seeded reminder dedupe set for ${dayKey}: ${this.sentToday.size} already sent`);
     }
 
     // Push fan-out in bounded waves. Failures are logged, never thrown — a dead FCM
