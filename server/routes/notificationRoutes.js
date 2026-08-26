@@ -21,8 +21,9 @@ const notificationService = require('../services/notificationService');
  */
 router.post('/cron-tick', verifyQStash, async (req, res) => {
     try {
-        await notificationService.checkAndSendUserNotifications();
-        res.json({ success: true });
+        // TEMP: reminder sends disabled for now — uncomment the line below to re-enable
+        // await notificationService.checkAndSendUserNotifications();
+        res.json({ success: true, skipped: true });
     } catch (error) {
         console.error('Notification cron-tick error:', error.message);
         // Non-200 so QStash retries. Signature failures are handled by
