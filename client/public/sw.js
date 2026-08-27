@@ -64,6 +64,13 @@ self.addEventListener('activate', (event) => {
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
+  // Only intercept same-origin requests. Letting third-party requests (fonts,
+  // analytics, images from Google/Facebook/Bing/etc.) fall through to the
+  // network directly means they're governed by the page's normal CSP
+  // (script-src/style-src/font-src/img-src) instead of also needing a
+  // connect-src entry here — every third-party domain the app ever adds
+  // would otherwise need a matching CSP + SW update, twice the work.
+  if (url.origin !== self.location.origin) return;
   if (url.pathname.includes('/api/') || event.request.method !== 'GET') return;
   if (!event.request.url.startsWith('http')) return;
 
