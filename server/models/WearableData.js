@@ -84,6 +84,7 @@ const wearableDataSchema = new mongoose.Schema({
 
 // Index for efficient queries
 wearableDataSchema.index({ user: 1, 'dailyMetrics.date': -1 });
+wearableDataSchema.index({ user: 1, 'sleepData.date': -1 });
 wearableDataSchema.index({ user: 1, 'heartRate.timestamp': -1 });
 wearableDataSchema.index({ user: 1, isConnected: 1 });
 wearableDataSchema.index({ user: 1, deviceType: 1 });

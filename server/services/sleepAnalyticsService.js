@@ -63,18 +63,81 @@ function average(nums) {
   return Math.round((valid.reduce((a, b) => a + b, 0) / valid.length) * 10) / 10;
 }
 
-async function getSleepAnalytics(userId, range = 'daily') {
-  const rangeDays = { daily: 30, weekly: 90, monthly: 365, yearly: 365 * 5 }[range] || 30;
-  const startDate = new Date();
-  startDate.setUTCDate(startDate.getUTCDate() - rangeDays);
-  startDate.setUTCHours(0, 0, 0, 0);
+const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
+const MAX_SPAN_DAYS = 365 * 5; // hard cap: 5 years, regardless of what caller asks for
+
+function parseDateOnlyUTC(str) {
+  const [y, m, d] = str.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d, 0, 0, 0, 0));
+}
+
+// Monday (UTC) of the current ISO week.
+function currentWeekStartUTC() {
+  const now = new Date();
+  const day = now.getUTCDay(); // 0=Sun..6=Sat
+  const diffToMonday = day === 0 ? 6 : day - 1;
+  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+  monday.setUTCDate(monday.getUTCDate() - diffToMonday);
+  return monday;
+}
+
+class SleepAnalyticsInputError extends Error {}
+
+async function getSleepAnalytics(userId, range = 'daily', options = {}) {
+  const { date, startDate: customStart, endDate: customEnd } = options;
+
+  for (const [label, val] of [['date', date], ['startDate', customStart], ['endDate', customEnd]]) {
+    if (val !== undefined && !DATE_ONLY_RE.test(val)) {
+      throw new SleepAnalyticsInputError(`${label} must be in YYYY-MM-DD format`);
+    }
+  }
+
+  if (date && range !== 'daily') {
+    throw new SleepAnalyticsInputError('date is only valid with range=daily — use startDate/endDate for weekly/monthly/yearly');
+  }
+
+  let matchStart;
+  let matchEnd = null;
+
+  if (date) {
+    matchStart = parseDateOnlyUTC(date);
+    matchEnd = parseDateOnlyUTC(date);
+    matchEnd.setUTCHours(23, 59, 59, 999);
+  } else if (customStart || customEnd) {
+    matchStart = customStart ? parseDateOnlyUTC(customStart) : new Date(0);
+    matchEnd = customEnd ? parseDateOnlyUTC(customEnd) : new Date();
+    matchEnd.setUTCHours(23, 59, 59, 999);
+
+    if (matchEnd < matchStart) {
+      throw new SleepAnalyticsInputError('endDate must not be before startDate');
+    }
+    const spanDays = (matchEnd - matchStart) / 86400000;
+    if (spanDays > MAX_SPAN_DAYS) {
+      throw new SleepAnalyticsInputError(`Date range too large — max ${MAX_SPAN_DAYS} days`);
+    }
+  } else if (range === 'weekly') {
+    matchStart = currentWeekStartUTC();
+  } else if (range === 'monthly') {
+    const now = new Date();
+    matchStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  } else if (range === 'yearly') {
+    const now = new Date();
+    matchStart = new Date(Date.UTC(now.getUTCFullYear(), 0, 1));
+  } else {
+    // 'daily' with no date filter — recent history list, not a single day.
+    matchStart = new Date();
+    matchStart.setUTCDate(matchStart.getUTCDate() - 30);
+    matchStart.setUTCHours(0, 0, 0, 0);
+  }
+
+  const dateMatch = matchEnd ? { $gte: matchStart, $lte: matchEnd } : { $gte: matchStart };
 
   // Aggregation projects only sleepData subfields — avoids pulling heartRate/
   // bloodOxygen/stressLevels arrays that grow unbounded per connected device.
   const rows = await WearableData.aggregate([
     { $match: { user: userId } },
     { $unwind: '$sleepData' },
-    { $match: { 'sleepData.date': { $gte: startDate } } },
+    { $match: { 'sleepData.date': dateMatch } },
     { $project: {
         _id: 0,
         date: '$sleepData.date',
@@ -124,4 +187,4 @@ async function getSleepAnalytics(userId, range = 'daily') {
   return { range, summary };
 }
 
-module.exports = { getSleepAnalytics, estimateQualityScore };
+module.exports = { getSleepAnalytics, estimateQualityScore, SleepAnalyticsInputError };

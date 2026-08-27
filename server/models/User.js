@@ -83,7 +83,8 @@ const userSchema = new mongoose.Schema({
       alcoholFrequency: String, // 'occasional', 'moderate', 'heavy'
       sleepHours: { type: Number, min: 0, max: 24 }, // hrs per day
       stressLevel: { type: String, enum: ['low', 'moderate', 'high'] },
-      waterIntake: { type: Number, min: 0 } // glasses per day
+      waterIntake: { type: Number, min: 0 }, // glasses per day (goal)
+      waterGlassSizeMl: { type: Number, min: 50, max: 2000, default: 250 } // ml per glass, user-configurable
     },
     diabetesProfile: {
       type: {

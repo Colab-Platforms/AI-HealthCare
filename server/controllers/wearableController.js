@@ -3,7 +3,7 @@ const cache = require('../utils/cache');
 const { logActivity } = require('../utils/activityLogger');
 const openWearablesClient = require('../config/openWearables');
 const ProcessedWebhook = require('../models/ProcessedWebhook');
-const { getSleepAnalytics } = require('../services/sleepAnalyticsService');
+const { getSleepAnalytics, SleepAnalyticsInputError } = require('../services/sleepAnalyticsService');
 
 // Connect a new wearable device
 exports.connectDevice = async (req, res) => {
@@ -386,16 +386,20 @@ exports.getSleepAnalyticsData = async (req, res) => {
     const range = ['daily', 'weekly', 'monthly', 'yearly'].includes(req.query.range)
       ? req.query.range
       : 'daily';
+    const { date, startDate, endDate } = req.query;
 
-    const cacheKey = `sleep_analytics:${req.user._id}:${range}`;
+    const cacheKey = `sleep_analytics:${req.user._id}:${range}:${date || ''}:${startDate || ''}:${endDate || ''}`;
     const data = await cache.getOrSet(
       cacheKey,
-      () => getSleepAnalytics(req.user._id, range),
+      () => getSleepAnalytics(req.user._id, range, { date, startDate, endDate }),
       300
     );
 
     res.json({ success: true, ...data });
   } catch (error) {
+    if (error instanceof SleepAnalyticsInputError) {
+      return res.status(400).json({ message: error.message });
+    }
     res.status(500).json({ message: error.message });
   }
 };

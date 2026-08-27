@@ -22,6 +22,9 @@ router.get('/goals', apiLimiter, nutritionController.getHealthGoal);
 router.patch('/goals/calorie-override', nutritionController.setCalorieOverride);
 router.post('/log-weight', nutritionController.logWeight);
 router.post('/log-water', nutritionController.logWater);
+router.get('/water-settings', apiLimiter, nutritionController.getWaterSettings);
+router.patch('/water-settings', nutritionController.setWaterSettings);
+router.get('/water/analytics', heavyReadLimiter, nutritionController.getWaterAnalyticsData);
 
 // Nutrition Summary - SPECIFIC ROUTES BEFORE PARAMETERIZED ROUTES
 router.get('/summary/daily', apiLimiter, nutritionController.getDailySummary);

@@ -11,6 +11,7 @@ const cache = require('../utils/cache');
 const { logActivity } = require('../utils/activityLogger');
 const { buildMedicalContextForAI } = require('../utils/medicalContext');
 const gamificationService = require('../services/gamificationService');
+const { getWaterAnalytics, WaterAnalyticsInputError } = require('../services/waterAnalyticsService');
 
 // Helper function to add timeout to all queries for Vercel compatibility
 const withTimeout = (query, timeoutMs = 30000) => {
@@ -1191,17 +1192,33 @@ exports.logWeight = async (req, res) => {
   }
 };
 
-// Log water
+// Log water — accepts either a glass count (converted via the user's configured
+// glass size) or a raw ml amount, and ADDS it to the day's total by default.
+// action:'set' overwrites the day's total instead (used for corrections).
 exports.logWater = async (req, res) => {
   try {
-    const { waterIntake, date } = req.body;
+    const { glasses, amountMl, date, action = 'add' } = req.body;
+
+    if (typeof glasses !== 'number' && typeof amountMl !== 'number') {
+      return res.status(400).json({ success: false, message: 'Provide either glasses or amountMl' });
+    }
+    if (!['add', 'set'].includes(action)) {
+      return res.status(400).json({ success: false, message: "action must be 'add' or 'set'" });
+    }
+
+    const user = await User.findById(req.user._id).select('profile.lifestyle.waterGlassSizeMl').lean();
+    const glassSizeMl = user?.profile?.lifestyle?.waterGlassSizeMl || 250;
+
+    const deltaMl = typeof amountMl === 'number' ? amountMl : glasses * glassSizeMl;
+
+    if (!Number.isFinite(deltaMl) || Math.abs(deltaMl) > 5000) {
+      return res.status(400).json({ success: false, message: 'amountMl must be a finite number within +/-5000ml per request' });
+    }
+
     const queryDate = date ? new Date(date) : new Date();
     const targetDate = new Date(queryDate.toISOString().split('T')[0]);
     targetDate.setUTCHours(0, 0, 0, 0);
 
-    console.log('Logging water:', { userId: req.user._id, waterIntake, date: targetDate });
-
-    // Update NutritionSummary
     let summary = await NutritionSummary.findOne({
       userId: req.user._id,
       date: targetDate
@@ -1214,7 +1231,9 @@ exports.logWater = async (req, res) => {
       });
     }
 
-    summary.waterIntake = Number(waterIntake);
+    summary.waterIntake = action === 'set'
+      ? Math.max(0, deltaMl)
+      : Math.max(0, (summary.waterIntake || 0) + deltaMl);
     await summary.save();
 
     // Also update DailyProgress for dashboard metrics
@@ -1223,14 +1242,14 @@ exports.logWater = async (req, res) => {
     const DailyProgress = require('../models/DailyProgress');
     await DailyProgress.findOneAndUpdate(
       { userId: req.user._id, date: dateStr },
-      { waterIntake: Number(waterIntake) },
+      { waterIntake: summary.waterIntake },
       { upsert: true, new: true }
     );
 
-    // Invalidate dashboard cache so next fetch returns fresh data
+    // Invalidate caches so next fetch returns fresh data
     cache.delete(`dashboard:${req.user._id}`);
+    cache.deletePattern(`water_analytics:${req.user._id}:*`);
 
-    const gamificationService = require('../services/gamificationService');
     const gamificationResult = await gamificationService.awardPoints(req.user._id, 'water_intake', `Logged water intake`).catch(err => {
       console.error('Gamification Error:', err);
       return null;
@@ -1238,7 +1257,9 @@ exports.logWater = async (req, res) => {
 
     res.json({
       success: true,
-      waterIntake: summary.waterIntake,
+      totalMl: summary.waterIntake,
+      glasses: Math.round(summary.waterIntake / glassSizeMl),
+      glassSizeMl,
       gamification: gamificationResult,
       message: 'Water intake logged successfully'
     });
@@ -1249,6 +1270,56 @@ exports.logWater = async (req, res) => {
       message: 'Failed to log water',
       error: error.message
     });
+  }
+};
+
+// Get/set the user's per-glass ml size (used to convert glass taps into ml)
+exports.getWaterSettings = async (req, res) => {
+  try {
+    const user = await User.findById(req.user._id).select('profile.lifestyle.waterGlassSizeMl').lean();
+    res.json({ success: true, glassSizeMl: user?.profile?.lifestyle?.waterGlassSizeMl || 250 });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+exports.setWaterSettings = async (req, res) => {
+  try {
+    const { glassSizeMl } = req.body;
+    if (typeof glassSizeMl !== 'number' || glassSizeMl < 50 || glassSizeMl > 2000) {
+      return res.status(400).json({ success: false, message: 'glassSizeMl must be a number between 50 and 2000' });
+    }
+    await User.findByIdAndUpdate(req.user._id, { $set: { 'profile.lifestyle.waterGlassSizeMl': glassSizeMl } });
+    res.json({ success: true, glassSizeMl });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// Analytical water breakdown (daily/weekly/monthly/yearly, in ml + glasses)
+exports.getWaterAnalyticsData = async (req, res) => {
+  try {
+    const range = ['daily', 'weekly', 'monthly', 'yearly'].includes(req.query.range)
+      ? req.query.range
+      : 'daily';
+    const { date, startDate, endDate } = req.query;
+
+    const user = await User.findById(req.user._id).select('profile.lifestyle.waterGlassSizeMl').lean();
+    const glassSizeMl = user?.profile?.lifestyle?.waterGlassSizeMl || 250;
+
+    const cacheKey = `water_analytics:${req.user._id}:${range}:${date || ''}:${startDate || ''}:${endDate || ''}`;
+    const data = await cache.getOrSet(
+      cacheKey,
+      () => getWaterAnalytics(req.user._id, range, { date, startDate, endDate }, glassSizeMl),
+      300
+    );
+
+    res.json({ success: true, ...data });
+  } catch (error) {
+    if (error instanceof WaterAnalyticsInputError) {
+      return res.status(400).json({ success: false, message: error.message });
+    }
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
