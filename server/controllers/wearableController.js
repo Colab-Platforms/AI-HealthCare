@@ -3,6 +3,7 @@ const cache = require('../utils/cache');
 const { logActivity } = require('../utils/activityLogger');
 const openWearablesClient = require('../config/openWearables');
 const ProcessedWebhook = require('../models/ProcessedWebhook');
+const { getSleepAnalytics } = require('../services/sleepAnalyticsService');
 
 // Connect a new wearable device
 exports.connectDevice = async (req, res) => {
@@ -282,6 +283,7 @@ exports.addSleepData = async (req, res) => {
 
     // Invalidate server-side dashboard cache so next fetch returns fresh data
     cache.delete(`dashboard:${req.user._id}`);
+    cache.deletePattern(`sleep_analytics:${req.user._id}:*`);
     require('../utils/scoreRecompute').triggerDailyScoreRecompute(req.user._id, targetDateString);
 
     res.json(wearable);
@@ -373,6 +375,26 @@ exports.getWearableDashboard = async (req, res) => {
     dashboard.weeklyTrend.sort((a, b) => new Date(a.date) - new Date(b.date));
 
     res.json(dashboard);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Analytical sleep breakdown (stages, quality score, daily/weekly/monthly/yearly trends)
+exports.getSleepAnalyticsData = async (req, res) => {
+  try {
+    const range = ['daily', 'weekly', 'monthly', 'yearly'].includes(req.query.range)
+      ? req.query.range
+      : 'daily';
+
+    const cacheKey = `sleep_analytics:${req.user._id}:${range}`;
+    const data = await cache.getOrSet(
+      cacheKey,
+      () => getSleepAnalytics(req.user._id, range),
+      300
+    );
+
+    res.json({ success: true, ...data });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -639,6 +661,7 @@ exports.handleWebhook = async (req, res) => {
           });
           wearable.lastSyncedAt = new Date();
           await wearable.save();
+          cache.deletePattern(`sleep_analytics:${wearable.user}:*`);
         }
         break;
       }

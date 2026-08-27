@@ -12,7 +12,8 @@ const {
   getWearableDashboard,
   generateDemoData,
   getConnectUrl,
-  handleWebhook
+  handleWebhook,
+  getSleepAnalyticsData
 } = require('../controllers/wearableController');
 
 // No auth — Open Wearables/Svix calls this directly, verified by signature instead of JWT
@@ -28,6 +29,7 @@ router.post('/sync', syncDailyMetrics);
 router.post('/heart-rate', addHeartRate);
 router.post('/sleep', addSleepData);
 router.get('/dashboard', heavyReadLimiter, getWearableDashboard);
+router.get('/sleep/analytics', heavyReadLimiter, getSleepAnalyticsData);
 router.post('/demo-data', generateDemoData);
 
 module.exports = router;
