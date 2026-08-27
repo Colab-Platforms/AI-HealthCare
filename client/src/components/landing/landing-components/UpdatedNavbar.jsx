@@ -116,8 +116,8 @@ const UpdatedNavbar = () => {
 
         {/* Desktop Right Action Buttons */}
         <div className="hidden lg:flex items-center gap-4">
-          <Link
-            to="/login"
+          {/* <Link
+            to="/waitlist"
             className={`text-xs xl:text-sm font-semibold tracking-wider uppercase transition-colors px-3 py-2 ${
               isLight
                 ? "text-white hover:text-emerald-200"
@@ -127,7 +127,7 @@ const UpdatedNavbar = () => {
             LOG IN
           </Link>
           <Link
-            to="/register"
+            to="/waitlist"
             className={`text-xs xl:text-sm font-bold uppercase tracking-wider px-6 py-2.5 rounded-full transition-all shadow-sm active:scale-95 ${
               isLight
                 ? "text-white bg-white/20 hover:bg-white/30 border border-white/40 backdrop-blur-md"
@@ -135,13 +135,23 @@ const UpdatedNavbar = () => {
             }`}
           >
             Sign Up
+          </Link> */}
+          <Link
+            to="/waitlist"
+            className={`text-xs xl:text-sm font-bold tracking-wider px-6 py-2.5 rounded-full transition-all shadow-sm active:scale-95 ${
+              isLight
+                ? "text-white bg-white/20 hover:bg-white/30 border border-white/40 backdrop-blur-md"
+                : "text-white bg-[#014343] hover:bg-[#014343]/90 border border-[#014343]"
+            }`}
+          >
+            TAKE Your Spot
           </Link>
         </div>
 
-        {/* Mobile Header Controls: Sign Up Button + Hamburger */}
+        {/* Mobile Header Controls: Join Waitlist Button + Hamburger */}
         <div className="flex lg:hidden items-center gap-3">
-          <Link
-            to="/register"
+          {/* <Link
+            to="/waitlist"
             className={`text-xs font-semibold tracking-wide px-4 py-1.5 rounded-full transition-all ${
               isLight
                 ? "text-white bg-white/15 hover:bg-white/25 border border-white/40 backdrop-blur-md"
@@ -149,6 +159,16 @@ const UpdatedNavbar = () => {
             }`}
           >
             Sign Up
+          </Link> */}
+          <Link
+            to="/waitlist"
+            className={`text-xs font-semibold tracking-wide px-4 py-1.5 rounded-full transition-all ${
+              isLight
+                ? "text-white bg-white/15 hover:bg-white/25 border border-white/40 backdrop-blur-md"
+                : "text-white bg-[#014343] hover:bg-[#014343]/90 border border-[#014343]"
+            }`}
+          >
+            Join Waitlist
           </Link>
 
           <button
@@ -200,8 +220,8 @@ const UpdatedNavbar = () => {
               isLight ? "border-t border-white/10" : "border-t border-slate-200"
             }`}
           >
-            <Link
-              to="/login"
+            {/* <Link
+              to="/waitlist"
               onClick={() => setMobileMenuOpen(false)}
               className={`text-center text-sm font-semibold uppercase tracking-wider py-2 ${
                 isLight ? "text-white" : "text-slate-700"
@@ -210,7 +230,7 @@ const UpdatedNavbar = () => {
               LOG IN
             </Link>
             <Link
-              to="/register"
+              to="/waitlist"
               onClick={() => setMobileMenuOpen(false)}
               className={`text-center text-sm font-bold uppercase tracking-wider py-2.5 rounded-full ${
                 isLight
@@ -219,6 +239,17 @@ const UpdatedNavbar = () => {
               }`}
             >
               Sign Up
+            </Link> */}
+            <Link
+              to="/waitlist"
+              onClick={() => setMobileMenuOpen(false)}
+              className={`text-center text-sm font-bold uppercase tracking-wider py-2.5 rounded-full ${
+                isLight
+                  ? "text-white bg-white/20 border border-white/40"
+                  : "text-white bg-[#014343] border border-[#014343]"
+              }`}
+            >
+              Join Waitlist
             </Link>
           </div>
         </div>

@@ -6,6 +6,30 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: "ABC Diatype Expanded Unlicensed Trial";
+  src: url("/assets/fonts/abc-diatype-expanded.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Founders Grotesk";
+  src: url("/assets/fonts/founders-grotesk.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Geist Mono";
+  src: url("/assets/fonts/geist-mono.woff2") format("woff2");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
 .font-brand-logo {
   font-family: 'Vipnagorgialla', 'ABC Diatype Expanded Unlicensed Trial', 'Space Grotesk', sans-serif !important;
   font-weight: 300 !important;
@@ -999,4 +1023,39 @@ textarea {
 
 .animate-marquee:hover {
   animation-play-state: paused;
+}
+
+@keyframes waitlist-confetti-fall {
+  0% {
+    transform: translateY(-10px) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(160px) rotate(540deg);
+    opacity: 0;
+  }
+}
+
+.waitlist-confetti-piece {
+  position: absolute;
+  top: 0;
+  width: 7px;
+  height: 12px;
+  border-radius: 2px;
+  animation: waitlist-confetti-fall 1.4s ease-in forwards;
+}
+
+@keyframes waitlist-toast-in {
+  0% {
+    transform: translate(-50%, -16px);
+    opacity: 0;
+  }
+  100% {
+    transform: translate(-50%, 0);
+    opacity: 1;
+  }
+}
+
+.animate-waitlist-toast-in {
+  animation: waitlist-toast-in 0.35s ease-out;
 }

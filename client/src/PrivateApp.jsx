@@ -93,7 +93,7 @@ const AdminRoute = ({ children }) => {
   const location = useLocation();
 
   if (loading) return <GenericSkeleton />;
-  if (!user) return <Navigate to="/login" replace />;
+  if (!user) return <Navigate to="/waitlist" replace />;
 
   if (!isAdmin()) {
     if (location.pathname !== "/dashboard")

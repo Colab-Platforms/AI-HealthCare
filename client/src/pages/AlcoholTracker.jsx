@@ -38,6 +38,8 @@ import {
   getPatternInsights,
   formatSessionTime,
   buildLocalReflection,
+  computeUnitsFromVolume,
+  DRINK_PRESETS,
   CONTEXT_LABELS,
   DRINK_LABELS,
 } from '../utils/alcoholLog';
@@ -91,7 +93,8 @@ export default function AlcoholTracker() {
   const { log, persistLog, loading: logLoading } = useAlcoholLog();
   const [showContextRow, setShowContextRow] = useState(false);
   const [lastSessionId, setLastSessionId] = useState(null);
-  const [selectedDrinkType, setSelectedDrinkType] = useState('beer');
+  const [showLogSheet, setShowLogSheet] = useState(false);
+  const [draft, setDraft] = useState(() => ({ drinkType: 'beer', name: '', ...DRINK_PRESETS.beer }));
   const [aiInsight, setAiInsight] = useState(() =>
     formatAiPlainText(localStorage.getItem(AI_INSIGHT_KEY) || DEFAULT_INSIGHT)
   );
@@ -195,21 +198,43 @@ Rules: plain text only, no markdown, no medical advice, no goals or limits, no "
     [loadingAI, patterns, summary, todayCount, buildPatternPayload, applyReflection]
   );
 
+  const openLogSheet = useCallback((drinkType = 'beer') => {
+    setDraft({ drinkType, name: '', ...(DRINK_PRESETS[drinkType] || DRINK_PRESETS.other) });
+    setShowLogSheet(true);
+  }, []);
+
+  const setDraftType = useCallback((drinkType) => {
+    setDraft((d) => ({ ...d, drinkType, ...(DRINK_PRESETS[drinkType] || DRINK_PRESETS.other) }));
+  }, []);
+
+  const draftUnits = useMemo(
+    () => computeUnitsFromVolume(draft.volumeMl, draft.abv) ?? 1,
+    [draft.volumeMl, draft.abv]
+  );
+
   const logDrink = useCallback(() => {
     const now = new Date().toISOString();
     const sessionId = now;
+    const volumeMl = Number(draft.volumeMl) || 0;
+    const abv = Number(draft.abv) || 0;
+    const units = computeUnitsFromVolume(volumeMl, abv) ?? 1;
+
     persistLog((prev) => {
       const u = { ...prev };
-      const t = u[today] || { count: 0, units: 0, sessions: [] };
+      const t = u[today] || { count: 0, units: 0, totalVolumeMl: 0, sessions: [] };
       u[today] = {
         count: t.count + 1,
-        units: (t.units || t.count || 0) + 1,
+        units: Math.round(((t.units || 0) + units) * 100) / 100,
+        totalVolumeMl: (t.totalVolumeMl || 0) + volumeMl,
         sessions: [
           ...(t.sessions || []),
           {
             time: now,
-            drinkType: selectedDrinkType,
-            units: 1,
+            drinkType: draft.drinkType,
+            name: draft.name?.trim() || null,
+            volumeMl: volumeMl || null,
+            abv: abv || null,
+            units,
             context: null,
             id: sessionId,
           },
@@ -217,12 +242,13 @@ Rules: plain text only, no markdown, no medical advice, no goals or limits, no "
       };
       return u;
     });
+    setShowLogSheet(false);
     setLastSessionId(sessionId);
     setShowContextRow(true);
     clearTimeout(contextHideTimeout.current);
     contextHideTimeout.current = setTimeout(() => setShowContextRow(false), 12000);
     toast('Logged — tag the situation if you want', { icon: '🍷' });
-  }, [today, persistLog, selectedDrinkType]);
+  }, [today, persistLog, draft]);
 
   const undo = useCallback(() => {
     persistLog((prev) => {
@@ -234,7 +260,8 @@ Rules: plain text only, no markdown, no medical advice, no goals or limits, no "
       const removedUnits = last?.units || 1;
       u[today] = {
         count: Math.max(0, t.count - 1),
-        units: Math.max(0, (t.units || t.count) - removedUnits),
+        units: Math.max(0, Math.round(((t.units || t.count) - removedUnits) * 100) / 100),
+        totalVolumeMl: Math.max(0, (t.totalVolumeMl || 0) - (last?.volumeMl || 0)),
         sessions,
       };
       return u;
@@ -317,12 +344,8 @@ Rules: plain text only, no markdown, no medical advice, no goals or limits, no "
               <button
                 key={d.id}
                 type="button"
-                onClick={() => setSelectedDrinkType(d.id)}
-                className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider border transition-all ${
-                  selectedDrinkType === d.id
-                    ? 'bg-amber-500 text-white border-amber-500'
-                    : 'bg-slate-50 text-slate-500 border-slate-100'
-                }`}
+                onClick={() => openLogSheet(d.id)}
+                className="px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider border transition-all bg-slate-50 text-slate-500 border-slate-100"
               >
                 {d.label}
               </button>
@@ -354,9 +377,9 @@ Rules: plain text only, no markdown, no medical advice, no goals or limits, no "
             </div>
             <button
               type="button"
-              onClick={logDrink}
+              onClick={() => openLogSheet(draft.drinkType)}
               className="w-12 h-12 rounded-2xl bg-amber-500 text-white flex items-center justify-center shadow-lg shadow-amber-200/50"
-              aria-label="Log one drink"
+              aria-label="Log a drink"
             >
               <Plus className="w-5 h-5" strokeWidth={3} />
             </button>
@@ -479,10 +502,19 @@ Rules: plain text only, no markdown, no medical advice, no goals or limits, no "
                   key={s.id}
                   className="flex items-center justify-between text-sm py-2 border-b border-slate-50 last:border-0"
                 >
-                  <span className="font-semibold text-slate-800">{DRINK_LABELS[s.drinkType] || 'Drink'}</span>
-                  <span className="text-slate-400 text-xs">
+                  <span className="font-semibold text-slate-800">
+                    {s.name || DRINK_LABELS[s.drinkType] || 'Drink'}
+                    {s.volumeMl ? (
+                      <span className="text-slate-400 font-medium">
+                        {' '}
+                        · {s.volumeMl}ml{s.abv ? ` · ${s.abv}%` : ''}
+                      </span>
+                    ) : null}
+                  </span>
+                  <span className="text-slate-400 text-xs text-right">
                     {formatSessionTime(s.time)}
                     {s.context ? ` · ${CONTEXT_LABELS[s.context]}` : ''}
+                    {s.units ? ` · ${s.units}u` : ''}
                   </span>
                 </li>
               ))}
@@ -529,6 +561,126 @@ Rules: plain text only, no markdown, no medical advice, no goals or limits, no "
           </p>
         </div>
       </div>
+
+      {showLogSheet && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center">
+          <div
+            className="absolute inset-0 bg-black/40"
+            onClick={() => setShowLogSheet(false)}
+          />
+          <motion.div
+            initial={{ y: 60, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            className="relative w-full max-w-md bg-white rounded-t-[2rem] p-6 pb-8 max-h-[85vh] overflow-y-auto"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-sm font-black text-slate-900 uppercase tracking-wider">Log a drink</h2>
+              <button
+                type="button"
+                onClick={() => setShowLogSheet(false)}
+                className="text-slate-400 text-xs font-bold uppercase tracking-wider"
+              >
+                Cancel
+              </button>
+            </div>
+
+            <p className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Type</p>
+            <div className="flex flex-wrap gap-2 mb-4">
+              {DRINK_TYPES.map((d) => (
+                <button
+                  key={d.id}
+                  type="button"
+                  onClick={() => setDraftType(d.id)}
+                  className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-wider border transition-all ${
+                    draft.drinkType === d.id
+                      ? 'bg-amber-500 text-white border-amber-500'
+                      : 'bg-slate-50 text-slate-500 border-slate-100'
+                  }`}
+                >
+                  {d.label}
+                </button>
+              ))}
+            </div>
+
+            <p className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Name (optional)</p>
+            <input
+              type="text"
+              value={draft.name}
+              onChange={(e) => setDraft((d) => ({ ...d, name: e.target.value.slice(0, 60) }))}
+              placeholder="e.g. Bacardi, Kingfisher"
+              className="w-full mb-4 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-100 text-sm text-slate-800 outline-none focus:border-amber-300"
+            />
+
+            <p className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">Volume (ml)</p>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {[30, 60, 150, 330, 500].map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => setDraft((d) => ({ ...d, volumeMl: v }))}
+                  className={`px-3 py-1.5 rounded-full text-[10px] font-black border transition-all ${
+                    Number(draft.volumeMl) === v
+                      ? 'bg-amber-500 text-white border-amber-500'
+                      : 'bg-slate-50 text-slate-500 border-slate-100'
+                  }`}
+                >
+                  {v}ml
+                </button>
+              ))}
+            </div>
+            <input
+              type="number"
+              min="0"
+              max="2000"
+              value={draft.volumeMl}
+              onChange={(e) => setDraft((d) => ({ ...d, volumeMl: e.target.value }))}
+              placeholder="Custom volume (ml)"
+              className="w-full mb-4 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-100 text-sm text-slate-800 outline-none focus:border-amber-300"
+            />
+
+            <p className="text-[10px] font-bold text-slate-500 mb-2 uppercase tracking-wider">ABV %</p>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {[5, 12, 20, 40].map((a) => (
+                <button
+                  key={a}
+                  type="button"
+                  onClick={() => setDraft((d) => ({ ...d, abv: a }))}
+                  className={`px-3 py-1.5 rounded-full text-[10px] font-black border transition-all ${
+                    Number(draft.abv) === a
+                      ? 'bg-amber-500 text-white border-amber-500'
+                      : 'bg-slate-50 text-slate-500 border-slate-100'
+                  }`}
+                >
+                  {a}%
+                </button>
+              ))}
+            </div>
+            <input
+              type="number"
+              min="0"
+              max="100"
+              step="0.5"
+              value={draft.abv}
+              onChange={(e) => setDraft((d) => ({ ...d, abv: e.target.value }))}
+              placeholder="Custom ABV %"
+              className="w-full mb-5 px-4 py-2.5 rounded-xl bg-slate-50 border border-slate-100 text-sm text-slate-800 outline-none focus:border-amber-300"
+            />
+
+            <div className="liquid-glass-inner rounded-2xl p-3 text-center mb-5">
+              <p className="text-lg font-black text-slate-900">≈ {draftUnits}</p>
+              <p className="text-[9px] font-black uppercase text-slate-400 tracking-wider">standard drink units</p>
+            </div>
+
+            <button
+              type="button"
+              onClick={logDrink}
+              className="w-full py-3.5 rounded-2xl bg-amber-500 text-white text-sm font-black uppercase tracking-wider shadow-lg shadow-amber-200/50"
+            >
+              Save entry
+            </button>
+          </motion.div>
+        </div>
+      )}
 
       {logLoading && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 bg-slate-900 text-white text-[10px] font-bold px-4 py-2 rounded-full">

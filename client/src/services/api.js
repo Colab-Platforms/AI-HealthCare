@@ -186,6 +186,10 @@ export const authService = {
   login: (data) => api.post('auth/login', data)
 };
 
+export const waitlistService = {
+  join: (email) => api.post('waitlist', { email })
+};
+
 export const notificationService = {
   getAll: () => api.get('notifications'),
   getUnreadCount: () => api.get('notifications/unread-count', { skipAutoLogout: true }),

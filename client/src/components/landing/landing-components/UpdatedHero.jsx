@@ -63,7 +63,7 @@ const UpdatedHero = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.7, delay: 0.2 }}
-            className="text-sm sm:text-lg lg:text-xl text-white/95 font-normal max-w-md sm:max-w-2xl lg:max-w-4xl leading-relaxed mb-4 sm:mb-8 px-2"
+            className="max-w-md px-2 text-center text-[rgba(255,255,255,0.80)] text-[28px] not-italic font-normal leading-[140%] font-landing-body mb-4 sm:mb-8 sm:max-w-2xl lg:max-w-4xl"
           >
             Take Health brings your lab reports, daily habits and long-term trends into one place,
             and explains what they actually mean — so you always know what to do next.
@@ -77,7 +77,7 @@ const UpdatedHero = () => {
             className="flex flex-col items-center gap-1.5 mb-4 sm:mb-8 w-full"
           >
             <Link
-              to="/register"
+              to="/waitlist"
               className="w-full max-w-[280px] sm:w-auto sm:px-12 py-3.5 bg-[#014343] hover:bg-[#025656] text-white font-bold text-base sm:text-lg rounded-full transition-all transform hover:scale-105 active:scale-95 shadow-xl border border-emerald-400/20 text-center inline-block"
             >
               Start for Free

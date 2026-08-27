@@ -16,7 +16,7 @@ const HealthCardsSection = () => {
             
             <div className="flex flex-wrap items-center justify-center gap-4 mt-8">
               <Link
-                to="/register"
+                to="/waitlist"
                 className="inline-flex items-center gap-2 px-8 py-4 bg-white text-[#0a3d5c] rounded-full font-medium hover:bg-cyan-100 transition-all shadow-lg"
               >
                 Get started
@@ -58,7 +58,7 @@ const HealthCardsSection = () => {
                   Monitor your daily nutrition intake with AI-powered insights to help you maintain optimal health.
                 </p>
                 <Link
-                  to="/register"
+                  to="/waitlist"
                   className="inline-flex items-center text-white font-medium hover:gap-3 gap-2 transition-all"
                 >
                   Get started <ArrowRight className="w-5 h-5" />
@@ -124,7 +124,7 @@ const HealthCardsSection = () => {
                 A healthcare provider will review your information, so that they can combine guidance on nutrition, activity, sleep, and more into a plan designed around your body's needs.
               </p>
               <Link
-                to="/register"
+                to="/waitlist"
                 className="inline-flex items-center gap-2 px-8 py-4 bg-white text-[#0a3d5c] rounded-full font-medium hover:bg-cyan-100 transition-all shadow-lg"
               >
                 Get started

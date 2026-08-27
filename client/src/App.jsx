@@ -13,6 +13,7 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import LandingPage from "./pages/LandingPage";
 import UpdatedLandingPage from "./pages/UpdatedLandingPage";
+import WaitlistPage from "./pages/Waitlist";
 import HelpWidget from "./components/HelpWidget";
 import DiabetesLanding from "./pages/DiabetesLanding";
 import WeightLossLanding from "./pages/WeightLossLanding";
@@ -34,7 +35,7 @@ export default function App() {
   const navigate = useNavigate();
 
   const getLoginRedirect = () => {
-    if (!user) return <Login />;
+    if (!user) return <Navigate to="/waitlist" replace />;
     if (isAdmin()) return <Navigate to="/admin" />;
     return <Navigate to="/dashboard" />;
   };
@@ -115,8 +116,9 @@ export default function App() {
             }
           />
           <Route path="/about" element={<AboutUs />} />
+          <Route path="/waitlist" element={<WaitlistPage />} />
           <Route path="/login" element={getLoginRedirect()} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/register" element={<Navigate to="/waitlist" replace />} />
           <Route path="/how-it-works" element={<HowItWorks />} />
           {/* <Route path="/pricing" element={<Pricing />} /> */}
           <Route path="/terms-and-conditions" element={<TermsAndCondition />} />
@@ -148,6 +150,7 @@ export default function App() {
           "/about",
           "/login",
           "/register",
+          "/waitlist",
           "/how-it-works",
           "/terms-and-conditions",
           "/privacy-policy",

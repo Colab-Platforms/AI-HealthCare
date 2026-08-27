@@ -379,6 +379,7 @@ try {
     { path: "/api/activity", module: "./routes/activityRoutes" },
     { path: "/api/insights", module: "./routes/insightRoutes" },
     { path: "/api/support", module: "./routes/supportRoutes" },
+    { path: "/api/waitlist", module: "./routes/waitlistRoutes" },
     { path: "/api/subscription", module: "./routes/subscriptionRoutes" },
     { path: "/", module: "./routes/fastrrRoutes" }, // Fastrr scaffolding: /shiprocket/*, /api/checkout/start, /api/fastrr/webhook
     { path: "/api", module: "./routes/sitemapRoutes" }, // SEO: sitemap & robots
