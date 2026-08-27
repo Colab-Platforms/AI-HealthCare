@@ -11,15 +11,15 @@ exports.getPreferences = async (req, res) => {
             return res.status(401).json({ success: false, message: 'User not authenticated' });
         }
 
-        let preferences = await NotificationPreference.findOne({ userId: req.user._id });
-        
-        // If preferences don't exist, create default ones
-        if (!preferences) {
-            console.log('📝 Creating default preferences for user:', req.user._id);
-            preferences = await NotificationPreference.create({
-                userId: req.user._id
-            });
-        }
+        // Atomic find-or-create: two concurrent first-time requests for the same
+        // user used to both see "not found" and both call create(), and the
+        // second insert threw a duplicate-key error against the unique index
+        // on userId. upsert makes this a single atomic operation instead.
+        const preferences = await NotificationPreference.findOneAndUpdate(
+            { userId: req.user._id },
+            { $setOnInsert: { userId: req.user._id } },
+            { new: true, upsert: true }
+        );
 
         console.log('✅ Preferences retrieved:', preferences._id);
         res.json({

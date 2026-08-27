@@ -41,7 +41,8 @@ router.get('/recommended', protect, getRecommendedDoctors);
 
 // Patient routes
 router.get('/appointments', protect, getMyAppointments);
-router.post('/book', protect, requireVideoConsultIfBooked, bookAppointment);
+// TEMP: plan-limit disabled for now — re-enable by uncommenting requireVideoConsultIfBooked below
+router.post('/book', protect, /* requireVideoConsultIfBooked, */ bookAppointment);
 
 // Video consultation routes (accessible by both patients and doctors)
 router.get('/appointments/:appointmentId', protect, getAppointmentDetails);

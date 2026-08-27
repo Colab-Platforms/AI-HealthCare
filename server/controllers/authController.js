@@ -13,9 +13,9 @@ const RefreshToken = require('../models/RefreshToken');
 const FCMToken = require('../models/FCMToken');
 const crypto = require('crypto')
 
-// Short-lived access token — 15 minutes
+// Short-lived access token — 2 minutes (TEMP: for testing, revert to 15m after)
 const generateAccessToken = (id) =>
-  jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '15m' });
+  jwt.sign({ id }, process.env.JWT_SECRET, { expiresIn: '2m' });
 
 // Long-lived refresh token — opaque random string stored in DB
 const generateRefreshToken = () => crypto.randomBytes(40).toString('hex');
@@ -597,6 +597,15 @@ exports.register = async (req, res) => {
       }).catch(err => console.error('Guardian ConsentLog failed:', err.message));
     }
 
+    const rawRefreshToken = generateRefreshToken();
+    await RefreshToken.create({
+      userId: user._id,
+      token: rawRefreshToken,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.ip,
+    });
+
     res.status(201).json({
       _id: user._id,
       name: user.name,
@@ -606,7 +615,8 @@ exports.register = async (req, res) => {
       profile: user.profile,
       nutritionGoal: user.nutritionGoal,
       subscription: user.subscription,
-      token: generateToken(user._id)
+      token: generateAccessToken(user._id),
+      refreshToken: rawRefreshToken
     });
   } catch (error) {
     console.error('Registration error:', error.message);
@@ -678,6 +688,15 @@ exports.registerDoctor = async (req, res) => {
     user.doctorProfile = doctor._id;
     await user.save();
 
+    const rawRefreshToken = generateRefreshToken();
+    await RefreshToken.create({
+      userId: user._id,
+      token: rawRefreshToken,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      userAgent: req.headers['user-agent'],
+      ipAddress: req.ip,
+    });
+
     res.status(201).json({
       _id: user._id,
       name: user.name,
@@ -689,7 +708,8 @@ exports.registerDoctor = async (req, res) => {
         specialization: doctor.specialization
       },
       message: 'Registration successful. Your profile is pending admin approval.',
-      token: generateToken(user._id)
+      token: generateAccessToken(user._id),
+      refreshToken: rawRefreshToken
     });
   } catch (error) {
     res.status(500).json({ message: error.message });

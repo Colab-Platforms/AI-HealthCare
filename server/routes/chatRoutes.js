@@ -26,7 +26,8 @@ function joinCapped(arr, formatter = (x) => x) {
 }
 
 // AI Chat endpoint - Requires authentication for personalized context
-router.post('/chat', protect, aiLimiter, requireFeature('aiChatPerDay', countAiChatToday), async (req, res) => {
+// TEMP: plan-limit disabled for now — re-enable by uncommenting requireFeature below
+router.post('/chat', protect, aiLimiter, /* requireFeature('aiChatPerDay', countAiChatToday), */ async (req, res) => {
   try {
     const { query, conversationHistory } = req.body;
     const user = req.user;
